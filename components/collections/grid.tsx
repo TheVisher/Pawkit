@@ -44,7 +44,7 @@ export function CollectionsGrid({ collections }: CollectionsGridProps) {
           key={collection.id}
           onClick={() => {
             if (collection.slug) {
-              router.push(`/library?collection=${collection.slug}`);
+              router.push(`/collections/${collection.slug}`);
             } else {
               router.push(`/library`);
             }

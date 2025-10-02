@@ -19,9 +19,10 @@ export type LibraryWorkspaceProps = {
     layout: LayoutMode;
   };
   collectionsTree: CollectionNode[];
+  collectionName?: string;
 };
 
-function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery, collectionsTree }: LibraryWorkspaceProps) {
+function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery, collectionsTree, collectionName }: LibraryWorkspaceProps) {
   const [cards, setCards] = useState<CardModel[]>(initialCards);
   const [nextCursor, setNextCursor] = useState<string | undefined>(initialNextCursor);
   const [activeCollectionSlug, setActiveCollectionSlug] = useState<string | null>(null);

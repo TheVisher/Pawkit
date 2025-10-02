@@ -9,7 +9,8 @@ import {
   type ReactElement
 } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { type CollectionNode } from "@/lib/types";
 
 type IconProps = {
   className?: string;
@@ -50,10 +51,12 @@ const bottomIconLinks: SidebarLinkConfig[] = [
 
 export type ResizableSidebarProps = {
   username: string;
+  collections: CollectionNode[];
 };
 
-export function ResizableSidebar({ username }: ResizableSidebarProps) {
+export function ResizableSidebar({ username, collections }: ResizableSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [width, setWidth] = useState(() => {
     if (typeof window === "undefined") {
       return 260;
@@ -66,6 +69,7 @@ export function ResizableSidebar({ username }: ResizableSidebarProps) {
     return clampWidth(parsed);
   });
   const collapsed = width <= COLLAPSE_WIDTH;
+  const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(true);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -122,9 +126,79 @@ export function ResizableSidebar({ username }: ResizableSidebarProps) {
     >
       <div className={`flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto ${collapsed ? "px-2 py-4" : "p-4"}`}>
         <div className={`${collapsed ? "w-full" : ""} space-y-1`}>
-          {primaryLinks.map((link) => (
-            <SidebarLink key={link.href} config={link} active={isActive(link.href)} collapsed={collapsed} />
-          ))}
+          {primaryLinks.map((link) => {
+            if (link.href === "/collections") {
+              return (
+                <div key={link.href}>
+                  <div
+                    className={`flex w-full items-center rounded px-3 py-2 text-sm transition-colors ${
+                      collapsed ? "justify-center gap-0" : "gap-3"
+                    } ${
+                      isActive(link.href)
+                        ? "bg-gray-900 text-gray-100"
+                        : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
+                    }`}
+                  >
+                    {!collapsed && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsCollectionsExpanded(!isCollectionsExpanded);
+                        }}
+                        className="text-gray-400 hover:text-gray-200 transition-colors"
+                      >
+                        {isCollectionsExpanded ? "▼" : "▶"}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => router.push(link.href)}
+                      className="flex items-center gap-3 flex-1"
+                      title={collapsed ? link.label : undefined}
+                    >
+                      <link.icon className="h-5 w-5" />
+                      <span className={collapsed ? "sr-only" : "truncate"}>{link.label}</span>
+                    </button>
+                  </div>
+                  {!collapsed && isCollectionsExpanded && collections && collections.length > 0 && (
+                    <div className="ml-6 mt-1 space-y-1">
+                      {collections.map((collection) => (
+                        <div key={collection.id}>
+                          <button
+                            onClick={() => router.push(`/collections/${collection.slug}`)}
+                            className={`w-full rounded px-3 py-1.5 text-left text-sm transition-colors ${
+                              pathname === `/collections/${collection.slug}`
+                                ? "bg-gray-900 text-gray-100"
+                                : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
+                            }`}
+                          >
+                            {collection.name}
+                          </button>
+                          {collection.children && collection.children.length > 0 && (
+                            <div className="ml-4 mt-1 space-y-1">
+                              {collection.children.map((child) => (
+                                <button
+                                  key={child.id}
+                                  onClick={() => router.push(`/collections/${child.slug}`)}
+                                  className={`w-full rounded px-3 py-1.5 text-left text-sm transition-colors ${
+                                    pathname === `/collections/${child.slug}`
+                                      ? "bg-gray-900 text-gray-100"
+                                      : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
+                                  }`}
+                                >
+                                  {child.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            return <SidebarLink key={link.href} config={link} active={isActive(link.href)} collapsed={collapsed} />;
+          })}
         </div>
         <Separator />
         <SidebarLink config={favoritesLink} active={isActive(favoritesLink.href)} collapsed={collapsed} />

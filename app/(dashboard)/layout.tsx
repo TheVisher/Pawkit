@@ -3,12 +3,15 @@ import { OmniBar } from "@/components/omni-bar";
 import { ResizableSidebar } from "@/components/sidebar/resizable-sidebar";
 import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
 import { DEFAULT_USERNAME } from "@/lib/constants";
+import { listCollections } from "@/lib/server/collections";
 
-export default function DashboardLayout({ children }: { children: ReactNode }) {
+export default async function DashboardLayout({ children }: { children: ReactNode }) {
+  const { tree } = await listCollections();
+
   return (
     <SelectionStoreProvider>
       <div className="flex h-screen overflow-hidden bg-gray-950 text-gray-100">
-        <ResizableSidebar username={DEFAULT_USERNAME} />
+        <ResizableSidebar username={DEFAULT_USERNAME} collections={tree} />
         <div className="flex flex-1 flex-col overflow-hidden">
           <header className="sticky top-0 z-20 border-b border-gray-800 bg-gray-950">
             <div className="mx-auto max-w-6xl px-6 py-4">

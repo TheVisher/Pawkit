@@ -26,6 +26,7 @@ function CollectionsSidebarContent({
 }: CollectionsSidebarProps) {
   const [nodes, setNodes] = useState(tree);
   const [error, setError] = useState<string | null>(null);
+  const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(true);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -132,21 +133,30 @@ function CollectionsSidebarContent({
       onSelect(slug);
       return;
     }
-    const params = new URLSearchParams(searchParams?.toString());
     if (!slug) {
-      params.delete("collection");
-    } else if (params.get("collection") === slug) {
-      params.delete("collection");
+      router.push("/library");
     } else {
-      params.set("collection", slug);
+      router.push(`/collections/${slug}`);
     }
-    router.push(`/library?${params.toString()}`);
   };
 
   return (
     <div className={className ?? "space-y-3"}>
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-300">Collections</h2>
+        <div className="flex items-center gap-1">
+          <button
+            className="text-gray-400 hover:text-gray-200 transition-colors"
+            onClick={() => setIsCollectionsExpanded(!isCollectionsExpanded)}
+          >
+            {isCollectionsExpanded ? "▼" : "▶"}
+          </button>
+          <button
+            className="text-sm font-semibold text-gray-300 hover:text-accent transition-colors"
+            onClick={() => router.push('/collections')}
+          >
+            Collections
+          </button>
+        </div>
         {showManagementControls && (
           <button className="rounded bg-gray-800 px-2 py-1 text-xs" onClick={() => createCollection()}>
             + New
@@ -154,18 +164,19 @@ function CollectionsSidebarContent({
         )}
       </div>
       {error && <p className="text-xs text-rose-400">{error}</p>}
-      <nav className="space-y-1 text-sm">
-        <button
-          className={`w-full rounded px-2 py-1 text-left transition-colors ${!selectedSlug ? "bg-gray-900" : "hover:bg-gray-900"}`}
-          onClick={() => handleSelect(null)}
-        >
-          All cards
-        </button>
-        {nodes.map((node) => (
-          <CollectionItem
-            key={node.id}
-            node={node}
-            depth={0}
+      {isCollectionsExpanded && (
+        <nav className="space-y-1 text-sm">
+          <button
+            className={`w-full rounded px-2 py-1 text-left transition-colors ${!selectedSlug ? "bg-gray-900" : "hover:bg-gray-900"}`}
+            onClick={() => handleSelect(null)}
+          >
+            All cards
+          </button>
+          {nodes.map((node) => (
+            <CollectionItem
+              key={node.id}
+              node={node}
+              depth={0}
             activeSlug={activeSlug}
             selectedSlug={selectedSlug}
             onDragOver={onDragOver}
@@ -177,7 +188,8 @@ function CollectionsSidebarContent({
             showManagementControls={showManagementControls}
           />
         ))}
-      </nav>
+        </nav>
+      )}
     </div>
   );
 }
@@ -209,6 +221,7 @@ function CollectionItem({
   onDelete,
   showManagementControls
 }: CollectionItemProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
   const { setNodeRef, isOver } = useDroppable({ id: node.slug, data: { slug: node.slug } });
 
   useEffect(() => {
@@ -222,6 +235,7 @@ function CollectionItem({
 
   const isSelected = selectedSlug === node.slug;
   const isActiveDrop = activeSlug === node.slug;
+  const hasChildren = node.children && node.children.length > 0;
 
   return (
     <div
@@ -230,9 +244,22 @@ function CollectionItem({
       style={{ marginLeft: depth ? depth * 12 : 0 }}
     >
       <div className="flex items-center justify-between gap-2">
-        <button className="flex-1 truncate text-left text-gray-300" onClick={() => onSelect(node.slug)}>
-          {node.name}
-        </button>
+        <div className="flex flex-1 items-center gap-1">
+          {hasChildren && (
+            <button
+              className="text-gray-500 hover:text-gray-300"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsExpanded(!isExpanded);
+              }}
+            >
+              {isExpanded ? "▼" : "▶"}
+            </button>
+          )}
+          <button className="flex-1 truncate text-left text-gray-300" onClick={() => onSelect(node.slug)}>
+            {node.name}
+          </button>
+        </div>
         {showManagementControls && (
           <div className="flex items-center gap-1">
             <button className="rounded bg-gray-800 px-1 text-[10px]" onClick={() => onCreate(node.id)}>
@@ -250,7 +277,7 @@ function CollectionItem({
           </div>
         )}
       </div>
-      {node.children?.length > 0 && (
+      {hasChildren && isExpanded && (
         <div className="mt-1 space-y-1">
           {node.children.map((child) => (
             <CollectionItem
