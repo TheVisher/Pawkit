@@ -36,19 +36,13 @@ function mapCard(card: Card): CardDTO {
 async function fetchPreview(url: string, previewServiceUrl?: string) {
   const template = previewServiceUrl || DEFAULT_PREVIEW_TEMPLATE;
   const target = template.replace("{{url}}", encodeURIComponent(url));
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-
   try {
-    const response = await fetch(target, { signal: controller.signal });
-    clearTimeout(timeoutId);
+    const response = await fetch(target);
     if (!response.ok) {
       throw new Error(`preview service returned ${response.status}`);
     }
     return (await response.json()) as Record<string, unknown>;
   } catch (error) {
-    clearTimeout(timeoutId);
     console.warn("preview fetch failed", error);
     return undefined;
   }
@@ -187,6 +181,15 @@ export async function countCards() {
   return { total, ready, pending, error };
 }
 
+export async function quickAccessCards(limit = 4) {
+  const items = await prisma.card.findMany({
+    orderBy: {
+      updatedAt: "desc"
+    },
+    take: limit
+  });
+  return items.map(mapCard);
+}
 export async function recentCards(limit = 6) {
   const items = await prisma.card.findMany({
     orderBy: { createdAt: "desc" },
@@ -216,3 +219,6 @@ export async function bulkRemoveCards(cardIds: string[]) {
   if (!cardIds.length) return;
   await prisma.card.deleteMany({ where: { id: { in: cardIds } } });
 }
+
+
+
