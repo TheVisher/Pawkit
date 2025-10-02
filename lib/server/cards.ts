@@ -1,10 +1,11 @@
 import { Card, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/server/prisma";
+import { fetchPreviewMetadata } from "@/lib/server/metadata";
 import { cardCreateSchema, cardListQuerySchema, cardUpdateSchema } from "@/lib/validators/card";
 import { normalizeCollections, normalizeTags, safeHost } from "@/lib/utils/strings";
 import { parseJsonArray, parseJsonObject, stringifyNullable } from "@/lib/utils/json";
 
-const DEFAULT_PREVIEW_TEMPLATE = process.env.NEXT_PUBLIC_PREVIEW_SERVICE_URL ?? "http://localhost:8787/preview?url={{url}}";
+const DEFAULT_PREVIEW_TEMPLATE = process.env.NEXT_PUBLIC_PREVIEW_SERVICE_URL;
 
 export type CardInput = typeof cardCreateSchema._input;
 export type CardUpdateInput = typeof cardUpdateSchema._input;
@@ -33,21 +34,6 @@ function mapCard(card: Card): CardDTO {
   };
 }
 
-async function fetchPreview(url: string, previewServiceUrl?: string) {
-  const template = previewServiceUrl || DEFAULT_PREVIEW_TEMPLATE;
-  const target = template.replace("{{url}}", encodeURIComponent(url));
-  try {
-    const response = await fetch(target);
-    if (!response.ok) {
-      throw new Error(`preview service returned ${response.status}`);
-    }
-    return (await response.json()) as Record<string, unknown>;
-  } catch (error) {
-    console.warn("preview fetch failed", error);
-    return undefined;
-  }
-}
-
 export async function createCard(payload: CardInput): Promise<CardDTO> {
   const parsed = cardCreateSchema.parse(payload);
   const normalizedTags = normalizeTags(parsed.tags);
@@ -62,20 +48,26 @@ export async function createCard(payload: CardInput): Promise<CardDTO> {
     collections: serializeCollections(normalizedCollections)
   };
 
-  let metadata: Record<string, unknown> | undefined;
-
   if (parsed.autoFetchMetadata) {
-    metadata = await fetchPreview(parsed.url, parsed.previewServiceUrl);
-    if (metadata) {
-      const title = typeof metadata.title === "string" ? metadata.title : parsed.title;
-      const description = typeof metadata.description === "string" ? metadata.description : undefined;
-      const image = typeof metadata.image === "string" ? metadata.image : undefined;
+    const preview = await fetchPreviewMetadata(parsed.url, parsed.previewServiceUrl ?? DEFAULT_PREVIEW_TEMPLATE);
+    if (preview) {
+      const title = preview.title ?? parsed.title;
+      const description = preview.description ?? parsed.notes ?? undefined;
+      const image = preview.image ?? preview.logo ?? preview.screenshot;
       const domain = safeHost(parsed.url);
-      data.title = title ?? parsed.title;
-      data.description = description ?? parsed.notes ?? undefined;
-      data.image = image;
-      data.metadata = stringifyNullable(metadata);
-      data.domain = domain;
+      if (title) {
+        data.title = title;
+      }
+      if (description) {
+        data.description = description;
+      }
+      if (image) {
+        data.image = image;
+      }
+      if (domain) {
+        data.domain = domain;
+      }
+      data.metadata = stringifyNullable(preview.raw ?? preview);
       status = "READY";
     }
   }
@@ -92,6 +84,7 @@ export async function createCard(payload: CardInput): Promise<CardDTO> {
 
   return mapCard(created);
 }
+
 
 export async function listCards(query: CardListQuery) {
   const parsed = cardListQuerySchema.parse(query);

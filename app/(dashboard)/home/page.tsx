@@ -99,6 +99,11 @@ type CardProps = {
 function RecentCard({ card }: CardProps) {
   return (
     <article className="rounded border border-gray-800 bg-gray-900 p-4">
+      {card.image && (
+        <div className="mb-3 overflow-hidden rounded bg-gray-800">
+          <img src={card.image} alt={card.title ?? card.url} className="h-32 w-full object-cover" loading="lazy" />
+        </div>
+      )}
       <p className="text-sm font-medium text-gray-100 truncate" title={card.title ?? card.url}>
         {card.title || card.domain || card.url}
       </p>
@@ -111,6 +116,11 @@ function RecentCard({ card }: CardProps) {
 function QuickAccessCard({ card }: CardProps) {
   return (
     <article className="flex h-full flex-col justify-between rounded border border-gray-800 bg-gray-900 p-4">
+      {card.image && (
+        <div className="mb-3 overflow-hidden rounded bg-gray-800">
+          <img src={card.image} alt={card.title ?? card.url} className="h-24 w-full object-cover" loading="lazy" />
+        </div>
+      )}
       <div>
         <p className="text-sm font-medium text-gray-100 truncate" title={card.title ?? card.url}>
           {card.title || card.domain || card.url}

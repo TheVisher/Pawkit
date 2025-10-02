@@ -1,8 +1,8 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import type { MouseEvent } from "react";
 import { Dispatch, SetStateAction, useEffect, useMemo, useState, Suspense } from "react";
-import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -187,13 +187,20 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
       {...listeners}
       {...attributes}
       style={style}
-      className={`group cursor-pointer rounded border border-gray-800 bg-gray-900 p-3 transition-all ${selected ? "ring-2 ring-accent" : "hover:border-accent/60"} ${isDragging ? "opacity-50" : ""}`}
+      className={`group cursor-pointer break-inside-avoid-column rounded border border-gray-800 bg-gray-900 p-3 transition-all ${selected ? "ring-2 ring-accent" : "hover:border-accent/60"} ${isDragging ? "opacity-50" : ""}`}
       onClick={(event) => onClick(event, card)}
       data-id={card.id}
     >
       {showThumbnail && card.image && layout !== "compact" && (
-        <div className="relative mb-3 aspect-video w-full overflow-hidden rounded bg-gray-800">
-          <Image src={card.image} alt={card.title ?? card.url} fill className="object-cover" />
+        <div
+          className={`relative mb-3 w-full overflow-hidden rounded bg-gray-800 ${layout === "masonry" ? "" : "aspect-video"}`}
+        >
+          <img
+            src={card.image}
+            alt={card.title ?? card.url}
+            className={layout === "masonry" ? "block w-full h-auto" : "block h-full w-full object-cover"}
+            loading="lazy"
+          />
         </div>
       )}
       <div className="space-y-1 text-sm">
@@ -295,7 +302,7 @@ function CardModal({ card, onClose, onUpdate, onDelete }: CardModalProps) {
           </div>
           {card.image && (
             <div className="relative aspect-video w-full overflow-hidden rounded bg-gray-900">
-              <Image src={card.image} alt={card.title ?? card.url} fill className="object-cover" />
+              <img src={card.image} alt={card.title ?? card.url} className="h-full w-full object-cover" loading="lazy" />
             </div>
           )}
           <div>
