@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
 import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CardModel, CollectionNode } from "@/lib/types";
@@ -21,7 +21,7 @@ export type LibraryWorkspaceProps = {
   collectionsTree: CollectionNode[];
 };
 
-export function LibraryWorkspace({ initialCards, initialNextCursor, initialQuery, collectionsTree }: LibraryWorkspaceProps) {
+function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery, collectionsTree }: LibraryWorkspaceProps) {
   const [cards, setCards] = useState<CardModel[]>(initialCards);
   const [nextCursor, setNextCursor] = useState<string | undefined>(initialNextCursor);
   const [activeCollectionSlug, setActiveCollectionSlug] = useState<string | null>(null);
@@ -107,5 +107,13 @@ export function LibraryWorkspace({ initialCards, initialNextCursor, initialQuery
         </section>
       </div>
     </DndContext>
+  );
+}
+
+export function LibraryWorkspace(props: LibraryWorkspaceProps) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LibraryWorkspaceContent {...props} />
+    </Suspense>
   );
 }

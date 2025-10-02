@@ -42,7 +42,7 @@ async function ensureDepth(parentId: string | undefined | null) {
   let depth = 1;
   let currentId: string | undefined | null = parentId;
   while (currentId) {
-    const parent = await prisma.collection.findUnique({ where: { id: currentId } });
+    const parent: Collection | null = await prisma.collection.findUnique({ where: { id: currentId } });
     if (!parent) break;
     depth += 1;
     currentId = parent.parentId;

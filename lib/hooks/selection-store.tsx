@@ -68,7 +68,7 @@ function createSelectionStore() {
 const SelectionStoreContext = createContext<StoreApi<SelectionState> | null>(null);
 
 export function SelectionStoreProvider({ children }: { children: ReactNode }) {
-  const storeRef = useRef<StoreApi<SelectionState>>();
+  const storeRef = useRef<StoreApi<SelectionState> | undefined>(undefined);
   if (!storeRef.current) {
     storeRef.current = createSelectionStore();
   }

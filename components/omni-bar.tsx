@@ -1,12 +1,12 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useState } from "react";
+import { FormEvent, KeyboardEvent, useState, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { isProbablyUrl } from "@/lib/utils/strings";
 import { AddCardModal } from "@/components/modals/add-card-modal";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 
-export function OmniBar() {
+function OmniBarContent() {
   const [value, setValue] = useState("");
   const [adding, setAdding] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -100,5 +100,13 @@ export function OmniBar() {
         }}
       />
     </div>
+  );
+}
+
+export function OmniBar() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <OmniBarContent />
+    </Suspense>
   );
 }

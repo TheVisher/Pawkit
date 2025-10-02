@@ -1,6 +1,6 @@
 import { listCards } from "@/lib/server/cards";
 import { listCollections } from "@/lib/server/collections";
-import { CardModel, CollectionNode } from "@/lib/types";
+import { CardModel, CollectionNode, CardStatus } from "@/lib/types";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 
@@ -11,7 +11,8 @@ export default async function LibraryPage({
 }) {
   const q = typeof searchParams.q === "string" ? searchParams.q : undefined;
   const collection = typeof searchParams.collection === "string" ? searchParams.collection : undefined;
-  const status = typeof searchParams.status === "string" ? searchParams.status : undefined;
+  const statusParam = typeof searchParams.status === "string" ? searchParams.status : undefined;
+  const status = statusParam && ["PENDING", "READY", "ERROR"].includes(statusParam) ? statusParam as "PENDING" | "READY" | "ERROR" : undefined;
   const layoutParam = typeof searchParams.layout === "string" ? (searchParams.layout as LayoutMode) : DEFAULT_LAYOUT;
   const cursor = typeof searchParams.cursor === "string" ? searchParams.cursor : undefined;
 
@@ -27,7 +28,7 @@ export default async function LibraryPage({
     url: card.url,
     title: card.title,
     notes: card.notes,
-    status: card.status,
+    status: card.status as CardStatus,
     tags: card.tags,
     collections: card.collections,
     domain: card.domain,

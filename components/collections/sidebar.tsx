@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CollectionNode } from "@/lib/types";
@@ -12,7 +12,7 @@ export type CollectionsSidebarProps = {
   onDragOver: (slug: string | null) => void;
 };
 
-export function CollectionsSidebar({ tree, activeSlug, selectedSlug, onDragOver }: CollectionsSidebarProps) {
+function CollectionsSidebarContent({ tree, activeSlug, selectedSlug, onDragOver }: CollectionsSidebarProps) {
   const [nodes, setNodes] = useState(tree);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -243,5 +243,13 @@ function CollectionItem({
         </div>
       )}
     </div>
+  );
+}
+
+export function CollectionsSidebar(props: CollectionsSidebarProps) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CollectionsSidebarContent {...props} />
+    </Suspense>
   );
 }

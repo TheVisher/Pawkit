@@ -1,7 +1,7 @@
 "use client";
 
 import type { MouseEvent } from "react";
-import { Dispatch, SetStateAction, useEffect, useMemo, useState } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo, useState, Suspense } from "react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useDraggable } from "@dnd-kit/core";
@@ -20,7 +20,7 @@ export type CardGalleryProps = {
   setNextCursor: Dispatch<SetStateAction<string | undefined>>;
 };
 
-export function CardGallery({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor }: CardGalleryProps) {
+function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor }: CardGalleryProps) {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const searchParams = useSearchParams();
   const selectedIds = useSelection((state) => state.selectedIds);
@@ -158,6 +158,14 @@ export function CardGallery({ cards, nextCursor, layout, onLayoutChange, setCard
         />
       )}
     </div>
+  );
+}
+
+export function CardGallery(props: CardGalleryProps) {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CardGalleryContent {...props} />
+    </Suspense>
   );
 }
 

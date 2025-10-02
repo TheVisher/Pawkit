@@ -10,7 +10,7 @@ export type CardInput = typeof cardCreateSchema._input;
 export type CardUpdateInput = typeof cardUpdateSchema._input;
 export type CardListQuery = typeof cardListQuerySchema._input;
 
-export type CardDTO = Card & {
+export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata'> & {
   tags: string[];
   collections: string[];
   metadata: Record<string, unknown> | undefined;
@@ -101,10 +101,10 @@ export async function listCards(query: CardListQuery) {
   if (parsed.q) {
     const term = parsed.q;
     where.OR = [
-      { title: { contains: term, mode: "insensitive" } },
-      { url: { contains: term, mode: "insensitive" } },
-      { domain: { contains: term, mode: "insensitive" } },
-      { notes: { contains: term, mode: "insensitive" } },
+      { title: { contains: term } },
+      { url: { contains: term } },
+      { domain: { contains: term } },
+      { notes: { contains: term } },
       { tags: { contains: term } }
     ];
   }

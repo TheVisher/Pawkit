@@ -5,11 +5,14 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const query = Object.fromEntries(searchParams.entries());
+    const statusParam = query.status;
+    const status = statusParam && ["PENDING", "READY", "ERROR"].includes(statusParam) ? statusParam as "PENDING" | "READY" | "ERROR" : undefined;
+    
     const payload = {
       q: query.q,
       collection: query.collection,
-      status: query.status,
-      limit: query.limit,
+      status,
+      limit: query.limit ? parseInt(query.limit, 10) : undefined,
       cursor: query.cursor
     };
     const result = await listCards(payload);

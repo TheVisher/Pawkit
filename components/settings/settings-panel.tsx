@@ -95,7 +95,7 @@ export function SettingsPanel() {
         </label>
         <div>
           <label className="mb-1 block text-xs text-gray-500" htmlFor="preview-url">
-            Preview service URL (must contain {{url}} token)
+            Preview service URL (must contain {`{{url}}`} token)
           </label>
           <input
             id="preview-url"
