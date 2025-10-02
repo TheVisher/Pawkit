@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { deleteCollection, updateCollection } from "@/lib/server/collections";
 
 interface RouteParams {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export async function PATCH(request: NextRequest, { params }: RouteParams) {
+export async function PATCH(request: NextRequest, segmentData: RouteParams) {
   try {
+    const params = await segmentData.params;
     const body = await request.json();
     const collection = await updateCollection(params.id, body);
     return NextResponse.json(collection);
@@ -17,8 +18,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
   try {
+    const params = await segmentData.params;
     await deleteCollection(params.id);
     return NextResponse.json({ ok: true });
   } catch (error) {

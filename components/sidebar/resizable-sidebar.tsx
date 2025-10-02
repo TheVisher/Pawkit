@@ -5,7 +5,8 @@ import {
   useMemo,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent
+  type PointerEvent as ReactPointerEvent,
+  type ReactElement
 } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -17,7 +18,7 @@ type IconProps = {
 type SidebarLinkConfig = {
   href: string;
   label: string;
-  icon: (props: IconProps) => JSX.Element;
+  icon: (props: IconProps) => ReactElement;
 };
 
 const MIN_WIDTH = 72;
@@ -136,7 +137,7 @@ export function ResizableSidebar({ username }: ResizableSidebarProps) {
           {!collapsed && <span className="truncate text-sm text-gray-300">{username}</span>}
         </div>
         <Separator />
-        <div className={`mt-3 flex items-center gap-2 ${collapsed ? "justify-center" : "justify-end"}`}>
+        <div className={`mt-3 flex items-center gap-2 ${collapsed ? "justify-start" : "justify-start"}`}>
           {bottomIconLinks.map((link) => (
             <SidebarIconButton key={link.href} config={link} active={isActive(link.href)} />
           ))}
