@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent
+} from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -14,12 +20,14 @@ type SidebarLinkConfig = {
   icon: (props: IconProps) => JSX.Element;
 };
 
-const MIN_WIDTH = 220;
+const MIN_WIDTH = 72;
 const MAX_WIDTH = 360;
+const COLLAPSE_WIDTH = 128;
 const STORAGE_KEY = "vbm.sidebar.width";
 
 const primaryLinks: SidebarLinkConfig[] = [
   { href: "/home", label: "Home", icon: IconHome },
+  { href: "/library", label: "Library", icon: IconLibrary },
   { href: "/timeline", label: "Timeline", icon: IconTimeline },
   { href: "/collections", label: "Collections", icon: IconCollections },
   { href: "/notes", label: "Notes", icon: IconNotes },
@@ -56,6 +64,7 @@ export function ResizableSidebar({ username }: ResizableSidebarProps) {
     }
     return clampWidth(parsed);
   });
+  const collapsed = width <= COLLAPSE_WIDTH;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -65,7 +74,7 @@ export function ResizableSidebar({ username }: ResizableSidebarProps) {
   const isActive = useMemo(() => {
     return (href: string) => {
       if (!pathname) return false;
-      if (href === "/home" && pathname === "/") {
+      if (href === "/home" && (pathname === "/" || pathname === "/home")) {
         return true;
       }
       return pathname === href || pathname.startsWith(`${href}/`);
@@ -110,24 +119,24 @@ export function ResizableSidebar({ username }: ResizableSidebarProps) {
       className="relative flex min-h-screen flex-col border-r border-gray-800 bg-gray-950 text-gray-100"
       style={{ width }}
     >
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className="space-y-1">
+      <div className={`flex flex-1 flex-col gap-3 ${collapsed ? "px-2 py-4" : "p-4"}`}>
+        <div className={`${collapsed ? "w-full" : ""} space-y-1`}>
           {primaryLinks.map((link) => (
-            <SidebarLink key={link.href} config={link} active={isActive(link.href)} />
+            <SidebarLink key={link.href} config={link} active={isActive(link.href)} collapsed={collapsed} />
           ))}
         </div>
         <Separator />
-        <SidebarLink config={favoritesLink} active={isActive(favoritesLink.href)} />
+        <SidebarLink config={favoritesLink} active={isActive(favoritesLink.href)} collapsed={collapsed} />
       </div>
-      <div className="px-4 pb-4">
-        <div className="mb-3 flex items-center gap-2 text-sm text-gray-300">
+      <div className={`${collapsed ? "px-2 pb-4" : "px-4 pb-4"}`}>
+        <div className={`mb-3 flex items-center ${collapsed ? "justify-center" : "gap-2"}`}>
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-900 text-gray-100">
             <IconUser className="h-4 w-4" />
           </span>
-          <span className="truncate">{username}</span>
+          {!collapsed && <span className="truncate text-sm text-gray-300">{username}</span>}
         </div>
         <Separator />
-        <div className="mt-3 flex items-center justify-end gap-2">
+        <div className={`mt-3 flex items-center gap-2 ${collapsed ? "justify-center" : "justify-end"}`}>
           {bottomIconLinks.map((link) => (
             <SidebarIconButton key={link.href} config={link} active={isActive(link.href)} />
           ))}
@@ -153,19 +162,24 @@ export function ResizableSidebar({ username }: ResizableSidebarProps) {
 type SidebarLinkProps = {
   config: SidebarLinkConfig;
   active?: boolean;
+  collapsed: boolean;
 };
 
-function SidebarLink({ config, active }: SidebarLinkProps) {
+function SidebarLink({ config, active, collapsed }: SidebarLinkProps) {
   const { href, label, icon: Icon } = config;
+  const stateClasses = active
+    ? "bg-gray-900 text-gray-100"
+    : "text-gray-400 hover:bg-gray-900 hover:text-gray-100";
+  const layoutClasses = collapsed ? "justify-center gap-0" : "gap-3";
+
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 rounded px-3 py-2 text-sm transition-colors ${
-        active ? "bg-gray-900 text-gray-100" : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
-      }`}
+      className={`flex w-full items-center rounded px-3 py-2 text-sm transition-colors ${layoutClasses} ${stateClasses}`}
+      title={collapsed ? label : undefined}
     >
-      <Icon className="h-4 w-4" />
-      <span>{label}</span>
+      <Icon className="h-5 w-5" />
+      <span className={collapsed ? "sr-only" : "truncate"}>{label}</span>
     </Link>
   );
 }
@@ -177,12 +191,14 @@ type SidebarIconButtonProps = {
 
 function SidebarIconButton({ config, active }: SidebarIconButtonProps) {
   const { href, label, icon: Icon } = config;
+  const stateClasses = active
+    ? "bg-gray-900 text-gray-100"
+    : "text-gray-400 hover:bg-gray-900 hover:text-gray-100";
+
   return (
     <Link
       href={href}
-      className={`flex items-center justify-center rounded p-2 transition-colors ${
-        active ? "bg-gray-900 text-gray-100" : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
-      }`}
+      className={`flex h-9 w-9 items-center justify-center rounded transition-colors ${stateClasses}`}
       title={label}
     >
       <Icon className="h-5 w-5" />
@@ -203,6 +219,15 @@ function IconHome({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M3 9.75 12 3l9 6.75V20a1 1 0 0 1-1 1h-6v-6h-4v6H4a1 1 0 0 1-1-1z" />
+    </svg>
+  );
+}
+
+function IconLibrary({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 4h6a2 2 0 0 1 2 2v13l-5-2-5 2V6a2 2 0 0 1 2-2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 4h4a2 2 0 0 1 2 2v13l-3-1.2-3 1.2V4z" />
     </svg>
   );
 }
@@ -281,7 +306,11 @@ function IconSettings({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"
+      />
     </svg>
   );
 }
@@ -294,4 +323,3 @@ function IconHelp({ className }: IconProps) {
     </svg>
   );
 }
-
