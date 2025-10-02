@@ -54,24 +54,24 @@ async function ensureDepth(parentId: string | undefined | null) {
 }
 
 async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
-  let attempt = slugify(base);
-  if (!attempt) {
-    attempt = `collection-${Date.now()}`;
-  }
-  let suffix = 1;
-  while (true) {
-    const existing = await prisma.collection.findFirst({
-      where: {
-        slug: attempt,
-        ...(excludeId ? { id: { not: excludeId } } : {})
-      }
+  const baseSlug = slugify(base) || `collection-${Date.now()}`;
+  const MAX_ATTEMPTS = 100;
+
+  for (let attempt = 0; attempt <= MAX_ATTEMPTS; attempt++) {
+    const candidate = attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`;
+
+    const existing = await prisma.collection.findUnique({
+      where: { slug: candidate },
+      select: { id: true }
     });
-    if (!existing) {
-      return attempt;
+
+    if (!existing || (excludeId && existing.id === excludeId)) {
+      return candidate;
     }
-    attempt = `${slugify(base)}-${suffix}`;
-    suffix += 1;
   }
+
+  // Final fallback: timestamp ensures uniqueness
+  return `${baseSlug}-${Date.now()}`;
 }
 
 export async function createCollection(payload: unknown) {

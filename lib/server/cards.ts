@@ -36,13 +36,19 @@ function mapCard(card: Card): CardDTO {
 async function fetchPreview(url: string, previewServiceUrl?: string) {
   const template = previewServiceUrl || DEFAULT_PREVIEW_TEMPLATE;
   const target = template.replace("{{url}}", encodeURIComponent(url));
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
   try {
-    const response = await fetch(target);
+    const response = await fetch(target, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!response.ok) {
       throw new Error(`preview service returned ${response.status}`);
     }
     return (await response.json()) as Record<string, unknown>;
   } catch (error) {
+    clearTimeout(timeoutId);
     console.warn("preview fetch failed", error);
     return undefined;
   }

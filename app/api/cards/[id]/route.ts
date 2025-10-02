@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deleteCard, getCard, updateCard } from "@/lib/server/cards";
+import { handleApiError } from "@/lib/utils/api-error";
 
 interface RouteParams {
   params: Promise<{
@@ -16,7 +17,7 @@ export async function GET(_request: NextRequest, segmentData: RouteParams) {
     }
     return NextResponse.json(card);
   } catch (error) {
-    return NextResponse.json({ message: (error as Error).message }, { status: 400 });
+    return handleApiError(error);
   }
 }
 
@@ -27,7 +28,7 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
     const card = await updateCard(params.id, body);
     return NextResponse.json(card);
   } catch (error) {
-    return NextResponse.json({ message: (error as Error).message }, { status: 400 });
+    return handleApiError(error);
   }
 }
 
@@ -37,6 +38,6 @@ export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
     await deleteCard(params.id);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    return NextResponse.json({ message: (error as Error).message }, { status: 400 });
+    return handleApiError(error);
   }
 }
