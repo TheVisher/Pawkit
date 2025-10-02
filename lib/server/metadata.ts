@@ -54,68 +54,90 @@ export async function fetchPreviewMetadata(url: string, previewServiceUrl?: stri
 
 async function fetchRemotePreview(url: string, template: string): Promise<SitePreview | undefined> {
   const target = buildPreviewUrl(template, url);
-  const response = await fetch(target, {
-    headers: {
-      Accept: "application/json"
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+  try {
+    const response = await fetch(target, {
+      headers: {
+        Accept: "application/json"
+      },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`preview service returned ${response.status}`);
     }
-  });
-  if (!response.ok) {
-    throw new Error(`preview service returned ${response.status}`);
+    const payload = await response.json();
+    return normaliseRemotePreview(payload, url);
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
   }
-  const payload = await response.json();
-  return normaliseRemotePreview(payload, url);
 }
 
 async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined> {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": USER_AGENT,
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+      },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`metadata request failed with ${response.status}`);
     }
-  });
-  if (!response.ok) {
-    throw new Error(`metadata request failed with ${response.status}`);
+    const html = await response.text();
+    const root = parse(html);
+
+    const metaTags = root.querySelectorAll("meta");
+    const metaMap: Record<string, string> = {};
+    for (const tag of metaTags) {
+      const property = tag.getAttribute("property") || tag.getAttribute("name") || tag.getAttribute("itemprop");
+      if (!property) continue;
+      const content = tag.getAttribute("content") || tag.getAttribute("value");
+      if (!content) continue;
+      const key = property.toLowerCase();
+      if (!metaMap[key]) {
+        metaMap[key] = content.trim();
+      }
+    }
+
+    const baseUrl = response.url || url;
+
+    const heroImages = collectHeroImages(metaMap, baseUrl);
+    const logoImages = collectLogos(root, baseUrl);
+
+    const title = pickFirst(metaMap, TITLE_META_KEYS) || root.querySelector("title")?.textContent?.trim();
+    const description = pickFirst(metaMap, DESCRIPTION_META_KEYS);
+
+    const screenshot = SCREENSHOT_ENDPOINT(url);
+    const logo = logoImages[0] ?? LOGO_ENDPOINT(url);
+    const image = heroImages[0] ?? logo ?? screenshot;
+
+    return {
+      title,
+      description,
+      image,
+      logo,
+      screenshot,
+      raw: {
+        meta: metaMap,
+        heroes: heroImages,
+        logos: logoImages
+      }
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
   }
-  const html = await response.text();
-  const root = parse(html);
-
-  const metaTags = root.querySelectorAll("meta");
-  const metaMap: Record<string, string> = {};
-  for (const tag of metaTags) {
-    const property = tag.getAttribute("property") || tag.getAttribute("name") || tag.getAttribute("itemprop");
-    if (!property) continue;
-    const content = tag.getAttribute("content") || tag.getAttribute("value");
-    if (!content) continue;
-    const key = property.toLowerCase();
-    if (!metaMap[key]) {
-      metaMap[key] = content.trim();
-    }
-  }
-
-  const baseUrl = response.url || url;
-
-  const heroImages = collectHeroImages(metaMap, baseUrl);
-  const logoImages = collectLogos(root, baseUrl);
-
-  const title = pickFirst(metaMap, TITLE_META_KEYS) || root.querySelector("title")?.textContent?.trim();
-  const description = pickFirst(metaMap, DESCRIPTION_META_KEYS);
-
-  const screenshot = SCREENSHOT_ENDPOINT(url);
-  const logo = logoImages[0] ?? LOGO_ENDPOINT(url);
-  const image = heroImages[0] ?? logo ?? screenshot;
-
-  return {
-    title,
-    description,
-    image,
-    logo,
-    screenshot,
-    raw: {
-      meta: metaMap,
-      heroes: heroImages,
-      logos: logoImages
-    }
-  };
 }
 
 function collectHeroImages(metaMap: Record<string, string>, baseUrl: string) {

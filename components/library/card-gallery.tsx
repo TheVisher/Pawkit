@@ -32,6 +32,43 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
 
   const orderedIds = useMemo(() => cards.map((card) => card.id), [cards]);
 
+  // Poll for pending cards to update their metadata
+  useEffect(() => {
+    const pendingCards = cards.filter((card) => card.status === "PENDING");
+    if (pendingCards.length === 0) return;
+
+    const intervalId = setInterval(async () => {
+      // Fetch updated cards
+      const updates = await Promise.all(
+        pendingCards.map(async (card) => {
+          try {
+            const response = await fetch(`/api/cards/${card.id}`);
+            if (response.ok) {
+              const updated = await response.json();
+              return updated;
+            }
+          } catch {
+            // Ignore errors
+          }
+          return null;
+        })
+      );
+
+      // Update cards that changed
+      setCards((prev) =>
+        prev.map((card) => {
+          const update = updates.find((u) => u?.id === card.id);
+          if (update && update.status !== "PENDING") {
+            return update;
+          }
+          return card;
+        })
+      );
+    }, 3000); // Poll every 3 seconds
+
+    return () => clearInterval(intervalId);
+  }, [cards, setCards]);
+
   const handleCardClick = (event: MouseEvent, card: CardModel) => {
     if (event.shiftKey) {
       selectRange(card.id, orderedIds);
@@ -180,6 +217,8 @@ type CardCellProps = {
 function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
+  const isPending = card.status === "PENDING";
+  const isError = card.status === "ERROR";
 
   return (
     <div
@@ -191,21 +230,47 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
       onClick={(event) => onClick(event, card)}
       data-id={card.id}
     >
-      {showThumbnail && card.image && layout !== "compact" && (
+      {showThumbnail && layout !== "compact" && (
         <div
           className={`relative mb-3 w-full overflow-hidden rounded bg-gray-800 ${layout === "masonry" ? "" : "aspect-video"}`}
         >
-          <img
-            src={card.image}
-            alt={card.title ?? card.url}
-            className={layout === "masonry" ? "block w-full h-auto" : "block h-full w-full object-cover"}
-            loading="lazy"
-          />
+          {isPending ? (
+            <div className="flex h-full w-full items-center justify-center">
+              <img
+                src="/PawkitPaw.png"
+                alt="Loading..."
+                className="h-16 w-16 animate-spin"
+                style={{ animationDuration: "2s" }}
+              />
+            </div>
+          ) : isError ? (
+            <div className="flex h-full w-full items-center justify-center">
+              <img
+                src="/PawkitLogo.png"
+                alt="Failed to load"
+                className="h-16 w-16 opacity-50"
+              />
+            </div>
+          ) : card.image ? (
+            <img
+              src={card.image}
+              alt={card.title ?? card.url}
+              className={layout === "masonry" ? "block w-full h-auto" : "block h-full w-full object-cover"}
+              loading="lazy"
+              onError={(e) => {
+                // Fallback to logo on image error
+                const target = e.target as HTMLImageElement;
+                target.onerror = null;
+                target.src = "/PawkitLogo.png";
+                target.className = "h-16 w-16 opacity-50";
+              }}
+            />
+          ) : null}
         </div>
       )}
       <div className="space-y-1 text-sm">
         <h3 className="font-medium text-gray-100">{card.title || card.domain || card.url}</h3>
-        <p className="text-xs text-gray-500">{card.domain ?? card.url}</p>
+        <p className="text-xs text-gray-500">{isPending ? "Kit is Fetching" : card.domain ?? card.url}</p>
         {card.collections.length > 0 && layout !== "compact" && (
           <div className="flex flex-wrap gap-1 text-[10px] text-gray-400">
             {card.collections.map((collection) => (
@@ -215,7 +280,7 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
             ))}
           </div>
         )}
-        <span className="inline-block rounded bg-gray-800 px-2 py-0.5 text-[10px] text-gray-300">
+        <span className={`inline-block rounded px-2 py-0.5 text-[10px] ${isPending ? "bg-blue-900/50 text-blue-300" : isError ? "bg-red-900/50 text-red-300" : "bg-gray-800 text-gray-300"}`}>
           {card.status}
         </span>
       </div>

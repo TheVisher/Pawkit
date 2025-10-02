@@ -39,50 +39,64 @@ export async function createCard(payload: CardInput): Promise<CardDTO> {
   const normalizedTags = normalizeTags(parsed.tags);
   const normalizedCollections = normalizeCollections(parsed.collections);
 
-  let status: "PENDING" | "READY" | "ERROR" = "PENDING";
+  // Create card immediately with PENDING status
   const data: Prisma.CardCreateInput = {
     url: parsed.url,
-    title: parsed.title,
+    title: parsed.title ?? parsed.url, // Use URL as fallback title
     notes: parsed.notes,
     tags: serializeTags(normalizedTags),
-    collections: serializeCollections(normalizedCollections)
+    collections: serializeCollections(normalizedCollections),
+    domain: safeHost(parsed.url),
+    status: "PENDING"
   };
-
-  if (parsed.autoFetchMetadata) {
-    const preview = await fetchPreviewMetadata(parsed.url, parsed.previewServiceUrl ?? DEFAULT_PREVIEW_TEMPLATE);
-    if (preview) {
-      const title = preview.title ?? parsed.title;
-      const description = preview.description ?? parsed.notes ?? undefined;
-      const image = preview.image ?? preview.logo ?? preview.screenshot;
-      const domain = safeHost(parsed.url);
-      if (title) {
-        data.title = title;
-      }
-      if (description) {
-        data.description = description;
-      }
-      if (image) {
-        data.image = image;
-      }
-      if (domain) {
-        data.domain = domain;
-      }
-      data.metadata = stringifyNullable(preview.raw ?? preview);
-      status = "READY";
-    }
-  }
-
-  if (!data.domain) {
-    data.domain = safeHost(parsed.url);
-  }
-
-  data.status = status;
 
   const created = await prisma.card.create({
     data
   });
 
+  // Return immediately - metadata will be fetched in background
   return mapCard(created);
+}
+
+export async function fetchAndUpdateCardMetadata(cardId: string, url: string, previewServiceUrl?: string): Promise<CardDTO> {
+  try {
+    const preview = await fetchPreviewMetadata(url, previewServiceUrl ?? DEFAULT_PREVIEW_TEMPLATE);
+
+    const updateData: Prisma.CardUpdateInput = {
+      status: "READY"
+    };
+
+    if (preview) {
+      const title = preview.title;
+      const description = preview.description;
+      const image = preview.image ?? preview.logo ?? preview.screenshot;
+
+      if (title) {
+        updateData.title = title;
+      }
+      if (description) {
+        updateData.description = description;
+      }
+      if (image) {
+        updateData.image = image;
+      }
+      updateData.metadata = stringifyNullable(preview.raw ?? preview);
+    }
+
+    const updated = await prisma.card.update({
+      where: { id: cardId },
+      data: updateData
+    });
+
+    return mapCard(updated);
+  } catch (error) {
+    // Mark as ERROR if metadata fetch fails
+    const updated = await prisma.card.update({
+      where: { id: cardId },
+      data: { status: "ERROR" }
+    });
+    return mapCard(updated);
+  }
 }
 
 

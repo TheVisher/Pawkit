@@ -28,14 +28,30 @@ function OmniBarContent() {
 
   const quickAdd = async () => {
     setAdding(true);
+    const url = value.trim();
+
+    // Create card immediately
     const response = await fetch("/api/cards", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: value.trim(), autoFetchMetadata, previewServiceUrl })
+      body: JSON.stringify({ url })
     });
+
     setAdding(false);
+
     if (response.ok) {
+      const card = await response.json();
       setValue("");
+
+      // Trigger background metadata fetch (fire and forget)
+      fetch(`/api/cards/${card.id}/fetch-metadata`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: card.url, previewServiceUrl })
+      }).catch(() => {
+        // Silently fail - card is already created
+      });
+
       if (pathname !== "/library") {
         router.push("/library");
       } else {

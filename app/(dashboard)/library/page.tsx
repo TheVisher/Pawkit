@@ -7,14 +7,15 @@ import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 export default async function LibraryPage({
   searchParams
 }: {
-  searchParams: Record<string, string | string[] | undefined>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const q = typeof searchParams.q === "string" ? searchParams.q : undefined;
-  const collection = typeof searchParams.collection === "string" ? searchParams.collection : undefined;
-  const statusParam = typeof searchParams.status === "string" ? searchParams.status : undefined;
+  const params = await searchParams;
+  const q = typeof params.q === "string" ? params.q : undefined;
+  const collection = typeof params.collection === "string" ? params.collection : undefined;
+  const statusParam = typeof params.status === "string" ? params.status : undefined;
   const status = statusParam && ["PENDING", "READY", "ERROR"].includes(statusParam) ? statusParam as "PENDING" | "READY" | "ERROR" : undefined;
-  const layoutParam = typeof searchParams.layout === "string" ? (searchParams.layout as LayoutMode) : DEFAULT_LAYOUT;
-  const cursor = typeof searchParams.cursor === "string" ? searchParams.cursor : undefined;
+  const layoutParam = typeof params.layout === "string" ? (params.layout as LayoutMode) : DEFAULT_LAYOUT;
+  const cursor = typeof params.cursor === "string" ? params.cursor : undefined;
 
   const layout: LayoutMode = LAYOUTS.includes(layoutParam) ? layoutParam : DEFAULT_LAYOUT;
 

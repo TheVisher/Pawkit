@@ -58,25 +58,36 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
       tags: tags ? tags.split(",").map((tag) => tag.trim()).filter(Boolean) : undefined,
       collections: collections
         ? collections.split(",").map((value) => value.trim()).filter(Boolean)
-        : undefined,
-      autoFetchMetadata,
-      previewServiceUrl
+        : undefined
     };
+
+    // Create card immediately
     const response = await fetch("/api/cards", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
+
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       setError(body.message || "Failed to create card");
       setLoading(false);
       return;
     }
+
     const card = await response.json();
     onCreated?.(card);
     setLoading(false);
     onClose();
+
+    // Always trigger background metadata fetch (fire and forget)
+    fetch(`/api/cards/${card.id}/fetch-metadata`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: card.url, previewServiceUrl })
+    }).catch(() => {
+      // Silently fail - card is already created
+    });
   };
 
   return (
