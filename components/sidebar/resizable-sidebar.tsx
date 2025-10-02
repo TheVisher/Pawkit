@@ -70,6 +70,7 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
   });
   const collapsed = width <= COLLAPSE_WIDTH;
   const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(true);
+  const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -131,67 +132,103 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
               return (
                 <div key={link.href}>
                   <div
-                    className={`flex w-full items-center rounded px-3 py-2 text-sm transition-colors ${
-                      collapsed ? "justify-center gap-0" : "gap-3"
-                    } ${
+                    className={`flex w-full items-center justify-between rounded px-3 py-2 text-sm transition-colors ${
                       isActive(link.href)
                         ? "bg-gray-900 text-gray-100"
                         : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
                     }`}
                   >
+                    <button
+                      onClick={() => router.push(link.href)}
+                      className={`flex items-center flex-1 ${collapsed ? "justify-center" : "gap-3"}`}
+                      title={collapsed ? link.label : undefined}
+                    >
+                      <link.icon className="h-5 w-5" />
+                      <span className={collapsed ? "sr-only" : "truncate"}>{link.label}</span>
+                    </button>
                     {!collapsed && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setIsCollectionsExpanded(!isCollectionsExpanded);
                         }}
-                        className="text-gray-400 hover:text-gray-200 transition-colors"
+                        className="text-gray-400 hover:text-gray-200 transition-colors ml-2"
                       >
-                        {isCollectionsExpanded ? "▼" : "▶"}
+                        <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          {isCollectionsExpanded ? (
+                            <path d="M3 5 L6 8 L9 5" />
+                          ) : (
+                            <path d="M5 3 L8 6 L5 9" />
+                          )}
+                        </svg>
                       </button>
                     )}
-                    <button
-                      onClick={() => router.push(link.href)}
-                      className="flex items-center gap-3 flex-1"
-                      title={collapsed ? link.label : undefined}
-                    >
-                      <link.icon className="h-5 w-5" />
-                      <span className={collapsed ? "sr-only" : "truncate"}>{link.label}</span>
-                    </button>
                   </div>
                   {!collapsed && isCollectionsExpanded && collections && collections.length > 0 && (
                     <div className="ml-6 mt-1 space-y-1">
-                      {collections.map((collection) => (
-                        <div key={collection.id}>
-                          <button
-                            onClick={() => router.push(`/collections/${collection.slug}`)}
-                            className={`w-full rounded px-3 py-1.5 text-left text-sm transition-colors ${
-                              pathname === `/collections/${collection.slug}`
-                                ? "bg-gray-900 text-gray-100"
-                                : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
-                            }`}
-                          >
-                            {collection.name}
-                          </button>
-                          {collection.children && collection.children.length > 0 && (
-                            <div className="ml-4 mt-1 space-y-1">
-                              {collection.children.map((child) => (
+                      {collections.map((collection) => {
+                        const isExpanded = expandedCollections.has(collection.id);
+                        const hasChildren = collection.children && collection.children.length > 0;
+
+                        return (
+                          <div key={collection.id}>
+                            <div className="flex items-center justify-between rounded py-1.5 px-3 text-sm transition-colors text-gray-400 hover:bg-gray-900 hover:text-gray-100">
+                              <button
+                                onClick={() => router.push(`/collections/${collection.slug}`)}
+                                className={`flex-1 text-left ${
+                                  pathname === `/collections/${collection.slug}`
+                                    ? "text-gray-100"
+                                    : ""
+                                }`}
+                              >
+                                {collection.name}
+                              </button>
+                              {hasChildren && (
                                 <button
-                                  key={child.id}
-                                  onClick={() => router.push(`/collections/${child.slug}`)}
-                                  className={`w-full rounded px-3 py-1.5 text-left text-sm transition-colors ${
-                                    pathname === `/collections/${child.slug}`
-                                      ? "bg-gray-900 text-gray-100"
-                                      : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
-                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedCollections((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(collection.id)) {
+                                        next.delete(collection.id);
+                                      } else {
+                                        next.add(collection.id);
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                  className="text-gray-400 hover:text-gray-200 transition-colors ml-2"
                                 >
-                                  {child.name}
+                                  <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    {isExpanded ? (
+                                      <path d="M3 5 L6 8 L9 5" />
+                                    ) : (
+                                      <path d="M5 3 L8 6 L5 9" />
+                                    )}
+                                  </svg>
                                 </button>
-                              ))}
+                              )}
                             </div>
-                          )}
-                        </div>
-                      ))}
+                            {hasChildren && isExpanded && (
+                              <div className="ml-4 mt-1 space-y-1">
+                                {collection.children.map((child) => (
+                                  <button
+                                    key={child.id}
+                                    onClick={() => router.push(`/collections/${child.slug}`)}
+                                    className={`w-full rounded px-3 py-1.5 text-left text-sm transition-colors ${
+                                      pathname === `/collections/${child.slug}`
+                                        ? "bg-gray-900 text-gray-100"
+                                        : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
+                                    }`}
+                                  >
+                                    {child.name}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
