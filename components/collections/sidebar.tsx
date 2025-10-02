@@ -7,12 +7,23 @@ import { CollectionNode } from "@/lib/types";
 
 export type CollectionsSidebarProps = {
   tree: CollectionNode[];
-  activeSlug: string | null;
-  selectedSlug: string | null;
-  onDragOver: (slug: string | null) => void;
+  activeSlug?: string | null;
+  selectedSlug?: string | null;
+  onDragOver?: (slug: string | null) => void;
+  onSelect?: (slug: string | null) => void;
+  showManagementControls?: boolean;
+  className?: string;
 };
 
-function CollectionsSidebarContent({ tree, activeSlug, selectedSlug, onDragOver }: CollectionsSidebarProps) {
+function CollectionsSidebarContent({
+  tree,
+  activeSlug = null,
+  selectedSlug = null,
+  onDragOver,
+  onSelect,
+  showManagementControls = true,
+  className
+}: CollectionsSidebarProps) {
   const [nodes, setNodes] = useState(tree);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -34,6 +45,7 @@ function CollectionsSidebarContent({ tree, activeSlug, selectedSlug, onDragOver 
   };
 
   const createCollection = async (parentId?: string) => {
+    if (!showManagementControls) return;
     const name = window.prompt("Collection name");
     if (!name) return;
     const response = await fetch("/api/collections", {
@@ -50,6 +62,7 @@ function CollectionsSidebarContent({ tree, activeSlug, selectedSlug, onDragOver 
   };
 
   const renameCollection = async (node: CollectionNode) => {
+    if (!showManagementControls) return;
     const name = window.prompt("Rename collection", node.name);
     if (!name || name === node.name) return;
     const response = await fetch(`/api/collections/${node.id}`, {
@@ -75,6 +88,7 @@ function CollectionsSidebarContent({ tree, activeSlug, selectedSlug, onDragOver 
   };
 
   const moveCollection = async (node: CollectionNode) => {
+    if (!showManagementControls) return;
     const slug = window.prompt("Enter parent collection slug (leave blank for root)", "");
     if (slug === null) return;
     const trimmed = slug.trim();
@@ -101,6 +115,7 @@ function CollectionsSidebarContent({ tree, activeSlug, selectedSlug, onDragOver 
   };
 
   const deleteCollection = async (node: CollectionNode) => {
+    if (!showManagementControls) return;
     const confirmed = window.confirm(`Delete collection "${node.name}"?`);
     if (!confirmed) return;
     const response = await fetch(`/api/collections/${node.id}`, { method: "DELETE" });
@@ -112,7 +127,11 @@ function CollectionsSidebarContent({ tree, activeSlug, selectedSlug, onDragOver 
     await refresh();
   };
 
-  const selectCollection = (slug: string | null) => {
+  const handleSelect = (slug: string | null) => {
+    if (onSelect) {
+      onSelect(slug);
+      return;
+    }
     const params = new URLSearchParams(searchParams?.toString());
     if (!slug) {
       params.delete("collection");
@@ -125,18 +144,20 @@ function CollectionsSidebarContent({ tree, activeSlug, selectedSlug, onDragOver 
   };
 
   return (
-    <div className="space-y-3">
+    <div className={className ?? "space-y-3"}>
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-300">Collections</h2>
-        <button className="rounded bg-gray-800 px-2 py-1 text-xs" onClick={() => createCollection()}>
-          + New
-        </button>
+        {showManagementControls && (
+          <button className="rounded bg-gray-800 px-2 py-1 text-xs" onClick={() => createCollection()}>
+            + New
+          </button>
+        )}
       </div>
       {error && <p className="text-xs text-rose-400">{error}</p>}
       <nav className="space-y-1 text-sm">
         <button
           className={`w-full rounded px-2 py-1 text-left transition-colors ${!selectedSlug ? "bg-gray-900" : "hover:bg-gray-900"}`}
-          onClick={() => selectCollection(null)}
+          onClick={() => handleSelect(null)}
         >
           All cards
         </button>
@@ -148,11 +169,12 @@ function CollectionsSidebarContent({ tree, activeSlug, selectedSlug, onDragOver 
             activeSlug={activeSlug}
             selectedSlug={selectedSlug}
             onDragOver={onDragOver}
-            onSelect={selectCollection}
+            onSelect={handleSelect}
             onCreate={createCollection}
             onRename={renameCollection}
             onMove={moveCollection}
             onDelete={deleteCollection}
+            showManagementControls={showManagementControls}
           />
         ))}
       </nav>
@@ -165,12 +187,13 @@ type CollectionItemProps = {
   depth: number;
   activeSlug: string | null;
   selectedSlug: string | null;
-  onDragOver: (slug: string | null) => void;
+  onDragOver?: (slug: string | null) => void;
   onSelect: (slug: string | null) => void;
   onCreate: (parentId?: string) => void;
   onRename: (node: CollectionNode) => void;
   onMove: (node: CollectionNode) => void;
   onDelete: (node: CollectionNode) => void;
+  showManagementControls: boolean;
 };
 
 function CollectionItem({
@@ -183,11 +206,13 @@ function CollectionItem({
   onCreate,
   onRename,
   onMove,
-  onDelete
+  onDelete,
+  showManagementControls
 }: CollectionItemProps) {
   const { setNodeRef, isOver } = useDroppable({ id: node.slug, data: { slug: node.slug } });
 
   useEffect(() => {
+    if (!onDragOver) return;
     if (isOver) {
       onDragOver(node.slug);
     } else if (activeSlug === node.slug) {
@@ -208,20 +233,22 @@ function CollectionItem({
         <button className="flex-1 truncate text-left text-gray-300" onClick={() => onSelect(node.slug)}>
           {node.name}
         </button>
-        <div className="flex items-center gap-1">
-          <button className="rounded bg-gray-800 px-1 text-[10px]" onClick={() => onCreate(node.id)}>
-            +
-          </button>
-          <button className="rounded bg-gray-800 px-1 text-[10px]" onClick={() => onRename(node)}>
-            ✎
-          </button>
-          <button className="rounded bg-gray-800 px-1 text-[10px]" onClick={() => onMove(node)}>
-            ↕
-          </button>
-          <button className="rounded bg-gray-800 px-1 text-[10px] text-rose-400" onClick={() => onDelete(node)}>
-            ×
-          </button>
-        </div>
+        {showManagementControls && (
+          <div className="flex items-center gap-1">
+            <button className="rounded bg-gray-800 px-1 text-[10px]" onClick={() => onCreate(node.id)}>
+              +
+            </button>
+            <button className="rounded bg-gray-800 px-1 text-[10px]" onClick={() => onRename(node)}>
+              ✎
+            </button>
+            <button className="rounded bg-gray-800 px-1 text-[10px]" onClick={() => onMove(node)}>
+              ↕
+            </button>
+            <button className="rounded bg-gray-800 px-1 text-[10px] text-rose-400" onClick={() => onDelete(node)}>
+              ×
+            </button>
+          </div>
+        )}
       </div>
       {node.children?.length > 0 && (
         <div className="mt-1 space-y-1">
@@ -238,6 +265,7 @@ function CollectionItem({
               onRename={onRename}
               onMove={onMove}
               onDelete={onDelete}
+              showManagementControls={showManagementControls}
             />
           ))}
         </div>

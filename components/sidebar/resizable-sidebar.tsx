@@ -117,10 +117,10 @@ export function ResizableSidebar({ username }: ResizableSidebarProps) {
 
   return (
     <aside
-      className="relative flex min-h-screen flex-col border-r border-gray-800 bg-gray-950 text-gray-100"
+      className="sticky top-0 z-30 flex h-screen min-h-0 flex-col overflow-hidden border-r border-gray-800 bg-gray-950 text-gray-100 shrink-0"
       style={{ width }}
     >
-      <div className={`flex flex-1 flex-col gap-3 ${collapsed ? "px-2 py-4" : "p-4"}`}>
+      <div className={`flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto ${collapsed ? "px-2 py-4" : "p-4"}`}>
         <div className={`${collapsed ? "w-full" : ""} space-y-1`}>
           {primaryLinks.map((link) => (
             <SidebarLink key={link.href} config={link} active={isActive(link.href)} collapsed={collapsed} />
@@ -129,7 +129,7 @@ export function ResizableSidebar({ username }: ResizableSidebarProps) {
         <Separator />
         <SidebarLink config={favoritesLink} active={isActive(favoritesLink.href)} collapsed={collapsed} />
       </div>
-      <div className={`${collapsed ? "px-2 pb-4" : "px-4 pb-4"}`}>
+      <div className={`${collapsed ? "px-2 pb-4" : "px-4 pb-4"} shrink-0`}>
         <div className={`mb-3 flex items-center ${collapsed ? "justify-center" : "gap-2"}`}>
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-900 text-gray-100">
             <IconUser className="h-4 w-4" />

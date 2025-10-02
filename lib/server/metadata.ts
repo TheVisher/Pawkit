@@ -243,7 +243,7 @@ function normaliseRemotePreview(payload: unknown, url: string): SitePreview | un
   return preview;
 }
 
-function pickValue(data: Record<string, unknown>, keys: string[]) {
+function pickValue(data: Record<string, unknown>, keys: string[]): string | undefined {
   for (const key of keys) {
     const value = data[key];
     if (typeof value === "string" && value.trim().length > 0) {
@@ -252,7 +252,7 @@ function pickValue(data: Record<string, unknown>, keys: string[]) {
     if (value && typeof value === "object") {
       // Look for nested url fields
       const nested = value as Record<string, unknown>;
-      const nestedUrl = pickValue(nested, ["url", "src", "href", "source"]);
+      const nestedUrl: string | undefined = pickValue(nested, ["url", "src", "href", "source"]);
       if (nestedUrl) {
         return nestedUrl;
       }

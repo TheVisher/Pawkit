@@ -183,6 +183,14 @@ export async function quickAccessCards(limit = 4) {
   });
   return items.map(mapCard);
 }
+
+export async function collectionPreviewCards(slug: string, limit = 6) {
+  if (!slug) {
+    return [];
+  }
+  const result = await listCards({ collection: slug, limit });
+  return result.items;
+}
 export async function recentCards(limit = 6) {
   const items = await prisma.card.findMany({
     orderBy: { createdAt: "desc" },

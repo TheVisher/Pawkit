@@ -7,10 +7,10 @@ import { DEFAULT_USERNAME } from "@/lib/constants";
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <SelectionStoreProvider>
-      <div className="flex min-h-screen bg-gray-950 text-gray-100">
+      <div className="flex h-screen overflow-hidden bg-gray-950 text-gray-100">
         <ResizableSidebar username={DEFAULT_USERNAME} />
-        <div className="flex flex-1 flex-col">
-          <header className="border-b border-gray-800">
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <header className="sticky top-0 z-20 border-b border-gray-800 bg-gray-950">
             <div className="mx-auto max-w-6xl px-6 py-4">
               <OmniBar />
             </div>

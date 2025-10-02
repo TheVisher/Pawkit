@@ -93,6 +93,7 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
             activeSlug={activeCollectionSlug}
             selectedSlug={selectedCollection}
             onDragOver={handleDragOver}
+            showManagementControls={false}
           />
         </aside>
         <section className="flex-1">
