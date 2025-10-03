@@ -40,22 +40,27 @@ export async function createCard(payload: CardInput): Promise<CardDTO> {
   const normalizedTags = normalizeTags(parsed.tags);
   const normalizedCollections = normalizeCollections(parsed.collections);
 
-  // Create card immediately with PENDING status
+  const cardType = parsed.type || "url";
+  const isNote = cardType === "md-note" || cardType === "text-note";
+
+  // Create card with different logic based on type
   const data: Prisma.CardCreateInput = {
-    url: parsed.url,
-    title: parsed.title ?? parsed.url, // Use URL as fallback title
+    type: cardType,
+    url: parsed.url || (isNote ? "" : ""),
+    title: parsed.title ?? (cardType === "url" && parsed.url ? parsed.url : parsed.title) ?? (isNote ? "Untitled Note" : ""),
     notes: parsed.notes,
+    content: parsed.content,
     tags: serializeTags(normalizedTags),
     collections: serializeCollections(normalizedCollections),
-    domain: safeHost(parsed.url),
-    status: "PENDING"
+    domain: parsed.url && parsed.url.length > 0 ? safeHost(parsed.url) : undefined,
+    status: cardType === "url" ? "PENDING" : "READY"
   };
 
   const created = await prisma.card.create({
     data
   });
 
-  // Return immediately - metadata will be fetched in background
+  // Return immediately - metadata will be fetched in background for URL cards
   return mapCard(created);
 }
 
@@ -113,6 +118,7 @@ export async function listCards(query: CardListQuery) {
       { url: { contains: term } },
       { domain: { contains: term } },
       { notes: { contains: term } },
+      { content: { contains: term } },
       { tags: { contains: term } }
     ];
   }
@@ -122,6 +128,10 @@ export async function listCards(query: CardListQuery) {
     // Match both ["slug"] and ["slug","other"] patterns
     const jsonPattern = `"${parsed.collection}"`;
     where.collections = { contains: jsonPattern };
+  }
+
+  if (parsed.type) {
+    where.type = parsed.type;
   }
 
   if (parsed.status) {

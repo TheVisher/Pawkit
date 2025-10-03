@@ -1,12 +1,15 @@
 export type CardStatus = "PENDING" | "READY" | "ERROR";
+export type CardType = "url" | "md-note" | "text-note";
 
 export type OldCardAgeThreshold = "1 day" | "12 hours" | "6 hours" | "1 hour";
 
 export type CardModel = {
   id: string;
+  type: CardType;
   url: string;
   title?: string | null;
   notes?: string | null;
+  content?: string | null;
   status: CardStatus;
   tags: string[];
   collections: string[];

@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { Toast } from "@/components/ui/toast";
 import { ReaderView } from "@/components/reader/reader-view";
+import { MDEditor } from "@/components/notes/md-editor";
 
-type Tab = "pawkits" | "pin" | "notes" | "summary" | "reader" | "actions";
+type Tab = "pawkits" | "pin" | "notes" | "summary" | "reader" | "actions" | "content";
 
 type CardDetailModalProps = {
   card: CardModel;
@@ -16,12 +19,16 @@ type CardDetailModalProps = {
 };
 
 export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete }: CardDetailModalProps) {
+  const isNote = card.type === "md-note" || card.type === "text-note";
   const [activeTab, setActiveTab] = useState<Tab>("pawkits");
   const [notes, setNotes] = useState(card.notes ?? "");
+  const [content, setContent] = useState(card.content ?? "");
+  const [noteMode, setNoteMode] = useState<"preview" | "edit">("preview");
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [isPinned, setIsPinned] = useState(card.pinned ?? false);
   const [isReaderExpanded, setIsReaderExpanded] = useState(false);
+  const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
 
@@ -76,6 +83,31 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }, 600);
     return () => clearTimeout(timeout);
   }, [notes, card.id, card.notes, onUpdate]);
+
+  // Auto-save content with debounce (for MD/text notes)
+  useEffect(() => {
+    if (!isNote) return;
+    const timeout = setTimeout(async () => {
+      if (content === (card.content ?? "")) return;
+      setSaving(true);
+      try {
+        const response = await fetch(`/api/cards/${card.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content })
+        });
+        if (response.ok) {
+          const updated = await response.json();
+          onUpdate(updated);
+        }
+      } catch (error) {
+        console.error("Failed to save content:", error);
+      } finally {
+        setSaving(false);
+      }
+    }, 600);
+    return () => clearTimeout(timeout);
+  }, [content, card.id, card.content, onUpdate, isNote]);
 
   const handleSaveNotes = async () => {
     setSaving(true);
@@ -204,6 +236,80 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     );
   }
 
+  // When note is expanded, render fullscreen view (edit or preview)
+  if (isNoteExpanded && isNote) {
+    return (
+      <>
+        <div className="fixed inset-0 z-50 bg-gray-950">
+          <div className="h-full flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-800">
+              <h2 className="text-xl font-semibold text-gray-100">{card.title || "Untitled Note"}</h2>
+              <div className="flex items-center gap-3">
+                {/* Mode Toggle */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setNoteMode("preview")}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                      noteMode === "preview"
+                        ? "bg-accent text-gray-900"
+                        : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                    }`}
+                  >
+                    👁️ Preview
+                  </button>
+                  <button
+                    onClick={() => setNoteMode("edit")}
+                    className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                      noteMode === "edit"
+                        ? "bg-accent text-gray-900"
+                        : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                    }`}
+                  >
+                    ✏️ Edit
+                  </button>
+                </div>
+                <button
+                  onClick={() => setIsNoteExpanded(false)}
+                  className="p-2 rounded hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors"
+                  title="Exit fullscreen"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9l6 6m0-6l-6 6m12-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            {/* Content */}
+            <div className="flex-1 overflow-auto p-8">
+              {noteMode === "preview" ? (
+                <div className="max-w-4xl mx-auto">
+                  <div className="prose prose-invert prose-lg max-w-none">
+                    {content ? (
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+                    ) : (
+                      <p className="text-gray-500 italic">No content yet. Switch to Edit mode to start writing.</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="max-w-4xl mx-auto h-full">
+                  <textarea
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="Start writing your note..."
+                    className="w-full h-full rounded border border-gray-800 bg-gray-900 p-4 text-sm text-gray-100 placeholder-gray-500 resize-none focus:border-accent focus:outline-none font-mono"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      </>
+    );
+  }
+
   return (
     <>
       <div
@@ -211,14 +317,70 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         onClick={onClose}
       >
         <div
-          className={`bg-gray-950 rounded-lg border border-gray-800 shadow-2xl w-full max-h-[90vh] overflow-hidden flex ${
+          className={`bg-gray-950 rounded-lg border border-gray-800 shadow-2xl w-full h-[90vh] overflow-hidden flex ${
             isReaderExpanded ? "max-w-[95vw]" : "max-w-6xl"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Left Panel - Image or Reader */}
-          <div className="flex-1 flex flex-col bg-gray-900/50">
-            {activeTab === "reader" && articleContent ? (
+          {/* Left Panel - Image, Reader, or Note Preview/Edit */}
+          <div className="flex-1 flex flex-col bg-gray-900/50 relative">
+            {isNote ? (
+              <>
+                {/* Header with mode toggle and expand */}
+                <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setNoteMode("preview")}
+                      className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                        noteMode === "preview"
+                          ? "bg-accent text-gray-900"
+                          : "bg-gray-800/80 text-gray-300 hover:bg-gray-700"
+                      }`}
+                    >
+                      👁️ Preview
+                    </button>
+                    <button
+                      onClick={() => setNoteMode("edit")}
+                      className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                        noteMode === "edit"
+                          ? "bg-accent text-gray-900"
+                          : "bg-gray-800/80 text-gray-300 hover:bg-gray-700"
+                      }`}
+                    >
+                      ✏️ Edit
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setIsNoteExpanded(true)}
+                    className="p-2 rounded bg-gray-800/80 text-gray-400 hover:bg-gray-700 hover:text-accent transition-colors"
+                    title="Expand fullscreen"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                    </svg>
+                  </button>
+                </div>
+                {/* Note content area */}
+                <div className="flex-1 overflow-auto p-8 pt-20">
+                  {noteMode === "preview" ? (
+                    <div className="prose prose-invert prose-sm max-w-none">
+                      {content ? (
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+                      ) : (
+                        <p className="text-gray-500 italic">No content yet. Switch to Edit mode to start writing.</p>
+                      )}
+                    </div>
+                  ) : (
+                    <textarea
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      placeholder="Start writing your note..."
+                      className="w-full h-full min-h-[500px] rounded border border-gray-800 bg-gray-900 p-4 text-sm text-gray-100 placeholder-gray-500 resize-none focus:border-accent focus:outline-none font-mono"
+                    />
+                  )}
+                </div>
+              </>
+            ) : activeTab === "reader" && articleContent ? (
               <ReaderView
                 title={card.title || card.domain || card.url}
                 content={articleContent}
@@ -252,9 +414,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           </div>
 
           {/* Right Sidebar */}
-          <div className="w-96 border-l border-gray-800 flex flex-col">
+          <div className="w-96 border-l border-gray-800 flex flex-col min-h-0">
             {/* Header with Close Button */}
-            <div className="border-b border-gray-800 p-4 flex items-center justify-between">
+            <div className="border-b border-gray-800 p-4 flex items-center justify-between flex-shrink-0">
               <h2 className="font-semibold text-gray-100">Card Details</h2>
               <button
                 onClick={onClose}
@@ -265,7 +427,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             </div>
 
             {/* Tab Navigation */}
-            <div className="border-b border-gray-800 px-4 flex gap-1 overflow-x-auto">
+            <div className="border-b border-gray-800 px-4 flex gap-1 overflow-x-auto flex-shrink-0">
               <TabButton
                 active={activeTab === "pawkits"}
                 onClick={() => setActiveTab("pawkits")}
@@ -281,16 +443,20 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 onClick={() => setActiveTab("notes")}
                 label="Notes"
               />
-              <TabButton
-                active={activeTab === "reader"}
-                onClick={() => setActiveTab("reader")}
-                label="Reader"
-              />
-              <TabButton
-                active={activeTab === "summary"}
-                onClick={() => setActiveTab("summary")}
-                label="Summary"
-              />
+              {!isNote && (
+                <>
+                  <TabButton
+                    active={activeTab === "reader"}
+                    onClick={() => setActiveTab("reader")}
+                    label="Reader"
+                  />
+                  <TabButton
+                    active={activeTab === "summary"}
+                    onClick={() => setActiveTab("summary")}
+                    label="Summary"
+                  />
+                </>
+              )}
               <TabButton
                 active={activeTab === "actions"}
                 onClick={() => setActiveTab("actions")}
@@ -299,7 +465,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             </div>
 
             {/* Tab Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 modal-scrollbar">
               {activeTab === "pawkits" && (
                 <PawkitsTab
                   collections={collections}
@@ -327,13 +493,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               )}
               {activeTab === "summary" && <SummaryTab card={card} />}
               {activeTab === "actions" && <ActionsTab />}
+            </div>
 
-              {/* Metadata Section - Always Visible Below Tab Content */}
+            {/* Metadata Section - Anchored Above Delete Button */}
+            <div className="border-t border-gray-800 p-4 flex-shrink-0">
               <MetadataSection card={card} />
             </div>
 
             {/* Delete Button at Bottom */}
-            <div className="border-t border-gray-800 p-4">
+            <div className="border-t border-gray-800 p-4 flex-shrink-0">
               <button
                 onClick={handleDelete}
                 className="w-full rounded bg-rose-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-700 transition-colors"
@@ -374,24 +542,62 @@ type PawkitsTabProps = {
 };
 
 function PawkitsTab({ collections, currentCollections, onSelect }: PawkitsTabProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Recursively filter collections based on search
+  const filterCollections = (nodes: CollectionNode[], query: string): CollectionNode[] => {
+    if (!query) return nodes;
+
+    return nodes.reduce<CollectionNode[]>((acc, node) => {
+      const matchesSearch = node.name.toLowerCase().includes(query.toLowerCase());
+      const filteredChildren = filterCollections(node.children, query);
+
+      if (matchesSearch || filteredChildren.length > 0) {
+        acc.push({
+          ...node,
+          children: filteredChildren
+        });
+      }
+
+      return acc;
+    }, []);
+  };
+
+  const filteredCollections = filterCollections(collections, searchQuery);
+
   return (
-    <div className="space-y-1">
-      <p className="text-xs text-gray-500 mb-3">
+    <div className="space-y-3">
+      <p className="text-xs text-gray-500">
         Click to add or remove this card from Pawkits
       </p>
-      {collections.length === 0 ? (
-        <p className="text-sm text-gray-500 text-center py-8">No Pawkits available</p>
-      ) : (
-        collections.map((collection) => (
-          <PawkitTreeItem
-            key={collection.id}
-            node={collection}
-            depth={0}
-            currentCollections={currentCollections}
-            onSelect={onSelect}
-          />
-        ))
-      )}
+
+      {/* Search input */}
+      <input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Search Pawkits..."
+        className="w-full rounded border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-accent focus:outline-none"
+      />
+
+      {/* Collections list */}
+      <div className="space-y-1">
+        {collections.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-8">No Pawkits available</p>
+        ) : filteredCollections.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-8">No Pawkits match your search</p>
+        ) : (
+          filteredCollections.map((collection) => (
+            <PawkitTreeItem
+              key={collection.id}
+              node={collection}
+              depth={0}
+              currentCollections={currentCollections}
+              onSelect={onSelect}
+            />
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -602,7 +808,7 @@ function ActionsTab() {
 // Metadata Section
 function MetadataSection({ card }: { card: CardModel }) {
   return (
-    <div className="border-t border-gray-800 pt-4 mt-4 space-y-3">
+    <div className="space-y-3">
       <h3 className="text-xs font-medium text-gray-500 uppercase">Details</h3>
 
       <div>

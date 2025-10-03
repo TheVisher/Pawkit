@@ -9,9 +9,11 @@ datasource db {
 
 model Card {
   id             String    @id @default(cuid())
+  type           String    @default("url")
   url            String
   title          String?
   notes          String?
+  content        String?
   status         String    @default("PENDING")
   tags           String?
   collections    String?

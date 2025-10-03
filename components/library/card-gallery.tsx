@@ -302,6 +302,17 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
   const isError = card.status === "ERROR";
+  const isNote = card.type === "md-note" || card.type === "text-note";
+
+  // Extract excerpt from content for notes
+  const getExcerpt = () => {
+    if (!isNote || !card.content) return "";
+    const plainText = card.content.replace(/[#*_~`]/g, "").replace(/\s+/g, " ").trim();
+    return plainText.length > 100 ? plainText.substring(0, 100) + "..." : plainText;
+  };
+
+  const displayTitle = card.title || (isNote ? "Untitled Note" : card.domain || card.url);
+  const displaySubtext = isNote ? getExcerpt() : (isPending ? "Kit is Fetching" : card.domain ?? card.url);
 
   return (
     <div
@@ -313,7 +324,7 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
       onClick={(event) => onClick(event, card)}
       data-id={card.id}
     >
-      {showThumbnail && layout !== "compact" && (
+      {showThumbnail && layout !== "compact" && !isNote && (
         <div
           className={`relative mb-3 w-full overflow-hidden rounded bg-gray-800 ${layout === "masonry" ? "" : "aspect-video"}`}
         >
@@ -352,8 +363,11 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
         </div>
       )}
       <div className="space-y-1 text-sm">
-        <h3 className="font-medium text-gray-100">{card.title || card.domain || card.url}</h3>
-        <p className="text-xs text-gray-500">{isPending ? "Kit is Fetching" : card.domain ?? card.url}</p>
+        <div className="flex items-center gap-2">
+          {isNote && <span className="text-lg">{card.type === "md-note" ? "📝" : "📄"}</span>}
+          <h3 className="font-medium text-gray-100 flex-1">{displayTitle}</h3>
+        </div>
+        <p className="text-xs text-gray-500 line-clamp-2">{displaySubtext}</p>
         {card.collections.length > 0 && layout !== "compact" && (
           <div className="flex flex-wrap gap-1 text-[10px] text-gray-400">
             {card.collections.map((collection) => (
@@ -363,9 +377,16 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
             ))}
           </div>
         )}
-        <span className={`inline-block rounded px-2 py-0.5 text-[10px] ${isPending ? "bg-blue-900/50 text-blue-300" : isError ? "bg-red-900/50 text-red-300" : "bg-gray-800 text-gray-300"}`}>
-          {card.status}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={`inline-block rounded px-2 py-0.5 text-[10px] ${isPending ? "bg-blue-900/50 text-blue-300" : isError ? "bg-red-900/50 text-red-300" : "bg-gray-800 text-gray-300"}`}>
+            {card.status}
+          </span>
+          {isNote && (
+            <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-purple-900/50 text-purple-300">
+              {card.type === "md-note" ? "Markdown" : "Text"}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
