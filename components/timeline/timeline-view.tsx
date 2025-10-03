@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CardModel } from "@/lib/types";
 import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { format } from "date-fns";
@@ -40,6 +40,7 @@ function layoutClass(layout: LayoutMode): string {
 function CardCell({ card, layout }: { card: CardModel; layout: LayoutMode }) {
   const isCompact = layout === "compact";
   const isList = layout === "list";
+  const isMasonry = layout === "masonry";
 
   if (isList) {
     return (
@@ -57,25 +58,35 @@ function CardCell({ card, layout }: { card: CardModel; layout: LayoutMode }) {
 
   return (
     <div
-      className={`group relative overflow-hidden rounded-lg border border-gray-800 bg-gray-900/40 transition-colors hover:border-gray-700 ${
-        layout === "masonry" ? "mb-4 break-inside-avoid" : ""
+      className={`group cursor-pointer break-inside-avoid-column rounded border border-gray-800 bg-gray-900 p-3 transition-all hover:border-accent/60 ${
+        isMasonry ? "mb-4" : ""
       }`}
     >
       {card.image && (
-        <div className={isCompact ? "aspect-square" : "aspect-video"}>
+        <div className={`relative mb-3 w-full overflow-hidden rounded bg-gray-800 ${isMasonry ? "" : isCompact ? "aspect-square" : "aspect-video"}`}>
           <img
             src={card.image}
-            alt=""
-            className="h-full w-full object-cover"
+            alt={card.title ?? card.url}
+            className={isMasonry ? "block w-full h-auto" : "block h-full w-full object-cover"}
+            loading="lazy"
           />
         </div>
       )}
-      <div className={isCompact ? "p-2" : "p-3"}>
-        <div className={`font-medium text-gray-200 ${isCompact ? "text-xs line-clamp-2" : "text-sm line-clamp-1"}`}>
-          {card.title}
+      <div className="space-y-1">
+        <div className={`font-medium text-gray-100 ${isCompact ? "text-xs line-clamp-2" : "text-sm"}`}>
+          {card.title || card.domain || card.url}
         </div>
         {!isCompact && (
-          <div className="mt-1 text-xs text-gray-500 truncate">{card.domain}</div>
+          <div className="text-xs text-gray-500">{card.domain ?? card.url}</div>
+        )}
+        {card.collections.length > 0 && !isCompact && (
+          <div className="flex flex-wrap gap-1 text-[10px] text-gray-400">
+            {card.collections.map((collection) => (
+              <span key={collection} className="rounded bg-gray-800 px-2 py-0.5">
+                {collection}
+              </span>
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -88,8 +99,36 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
   const [selectedRange, setSelectedRange] = useState(30);
   const [loading, setLoading] = useState(false);
 
+  // Load preferences from localStorage on mount
+  useEffect(() => {
+    const savedLayout = localStorage.getItem("timeline-layout") as LayoutMode;
+    const savedRange = localStorage.getItem("timeline-range");
+
+    if (savedLayout && LAYOUTS.includes(savedLayout)) {
+      setLayout(savedLayout);
+    }
+
+    if (savedRange) {
+      const range = parseInt(savedRange, 10);
+      if ([7, 30, 90, 180, 365].includes(range)) {
+        setSelectedRange(range);
+        // Load data for saved range if different from default
+        if (range !== 30) {
+          handleRangeChange(range);
+        }
+      }
+    }
+  }, []);
+
+  // Save layout preference when it changes
+  const handleLayoutChange = (newLayout: LayoutMode) => {
+    setLayout(newLayout);
+    localStorage.setItem("timeline-layout", newLayout);
+  };
+
   const handleRangeChange = async (days: number) => {
     setSelectedRange(days);
+    localStorage.setItem("timeline-range", days.toString());
 
     // Show "Kit is digging" warning for long ranges
     if (days >= 180) {
@@ -144,7 +183,7 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
             {LAYOUTS.map((mode) => (
               <button
                 key={mode}
-                onClick={() => setLayout(mode)}
+                onClick={() => handleLayoutChange(mode)}
                 className={`rounded px-3 py-1 text-sm ${
                   layout === mode
                     ? "bg-accent text-gray-900"

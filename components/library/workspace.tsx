@@ -36,6 +36,20 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
 
   const selectedCollection = useMemo(() => searchParams?.get("collection") ?? null, [searchParams]);
 
+  // Load saved layout preference on mount
+  useEffect(() => {
+    const savedLayout = localStorage.getItem("library-layout") as LayoutMode;
+    if (savedLayout && ["grid", "masonry", "compact", "list"].includes(savedLayout)) {
+      setLayout(savedLayout);
+      // Update URL with saved preference if not already set
+      if (!searchParams?.has("layout")) {
+        const params = new URLSearchParams(searchParams?.toString());
+        params.set("layout", savedLayout);
+        router.replace(`/library?${params.toString()}`);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     setCards(initialCards);
   }, [initialCards]);
@@ -50,6 +64,7 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
 
   const handleLayoutChange = (nextLayout: LayoutMode) => {
     setLayout(nextLayout);
+    localStorage.setItem("library-layout", nextLayout);
     const params = new URLSearchParams(searchParams?.toString());
     params.set("layout", nextLayout);
     router.push(`/library?${params.toString()}`);
