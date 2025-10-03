@@ -291,7 +291,44 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                         components={{
                           a: ({ node, ...props }) => (
                             <a {...props} target="_blank" rel="noopener noreferrer" />
-                          )
+                          ),
+                          input: ({ node, checked, ...props }) => {
+                            if (props.type === 'checkbox') {
+                              return (
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  readOnly
+                                  className="cursor-pointer mr-2"
+                                  onClick={(e) => {
+                                    const checkbox = e.currentTarget;
+                                    const newChecked = !checked;
+
+                                    // Find the text content of the parent li
+                                    const li = checkbox.closest('li');
+                                    if (!li) return;
+
+                                    const text = li.textContent || '';
+                                    const lines = content.split('\n');
+
+                                    // Find the line with this exact text
+                                    for (let i = 0; i < lines.length; i++) {
+                                      if (lines[i].includes(text)) {
+                                        if (newChecked) {
+                                          lines[i] = lines[i].replace(/- \[ \]/, '- [x]');
+                                        } else {
+                                          lines[i] = lines[i].replace(/- \[x\]/i, '- [ ]');
+                                        }
+                                        setContent(lines.join('\n'));
+                                        return;
+                                      }
+                                    }
+                                  }}
+                                />
+                              );
+                            }
+                            return <input {...props} />;
+                          }
                         }}
                       >
                         {content}
