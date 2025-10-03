@@ -14,7 +14,7 @@ export default async function DigUpPage() {
         <div className="text-6xl mb-4">🐕</div>
         <h1 className="text-2xl font-semibold text-gray-100 mb-2">No Old Cards to Dig Up</h1>
         <p className="text-gray-400 text-center max-w-md">
-          Kit couldn't find any cards older than 1 month. All your saved content is fresh!
+          Kit could not find any old cards to review right now. All your saved content is up to date!
         </p>
       </div>
     );

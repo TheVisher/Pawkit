@@ -1,4 +1,5 @@
 import { Card, Prisma } from "@prisma/client";
+import type { OldCardAgeThreshold } from "@/lib/types";
 import { prisma } from "@/lib/server/prisma";
 import { fetchPreviewMetadata } from "@/lib/server/metadata";
 import { cardCreateSchema, cardListQuerySchema, cardUpdateSchema } from "@/lib/validators/card";
@@ -181,20 +182,24 @@ export async function deleteCard(id: string) {
 }
 
 export async function countCards() {
+  const baseWhere: Prisma.CardWhereInput = { deleted: false };
+
   const [total, ready, pending, error] = await Promise.all([
-    prisma.card.count(),
-    prisma.card.count({ where: { status: "READY" } }),
-    prisma.card.count({ where: { status: "PENDING" } }),
-    prisma.card.count({ where: { status: "ERROR" } })
+    prisma.card.count({ where: baseWhere }),
+    prisma.card.count({ where: { ...baseWhere, status: "READY" } }),
+    prisma.card.count({ where: { ...baseWhere, status: "PENDING" } }),
+    prisma.card.count({ where: { ...baseWhere, status: "ERROR" } })
   ]);
 
   return { total, ready, pending, error };
 }
 
 export async function quickAccessCards(limit = 8) {
+  const baseWhere: Prisma.CardWhereInput = { deleted: false };
+
   // Get pinned cards first
   const pinnedCards = await prisma.card.findMany({
-    where: { pinned: true },
+    where: { ...baseWhere, pinned: true },
     orderBy: { updatedAt: "desc" },
     take: limit
   });
@@ -207,10 +212,12 @@ export async function quickAccessCards(limit = 8) {
   // Otherwise, fill remaining slots with most recently updated cards
   const remaining = limit - pinnedCards.length;
   const pinnedIds = pinnedCards.map(card => card.id);
+  const excludePinned: Prisma.CardWhereInput = pinnedIds.length ? { id: { notIn: pinnedIds } } : {};
 
   const recentCards = await prisma.card.findMany({
     where: {
-      id: { notIn: pinnedIds }
+      ...baseWhere,
+      ...excludePinned
     },
     orderBy: { updatedAt: "desc" },
     take: remaining
@@ -228,6 +235,7 @@ export async function collectionPreviewCards(slug: string, limit = 6) {
 }
 export async function recentCards(limit = 6) {
   const items = await prisma.card.findMany({
+    where: { deleted: false },
     orderBy: { createdAt: "desc" },
     take: limit
   });
@@ -362,7 +370,7 @@ export async function purgeOldTrashItems() {
 
 export type OldCardsResult = {
   cards: CardDTO[];
-  ageThreshold: "1 day" | "12 hours" | "6 hours" | "1 hour";
+  ageThreshold: OldCardAgeThreshold;
   total: number;
 };
 
@@ -370,7 +378,7 @@ export async function getOldCards(): Promise<OldCardsResult | null> {
   const now = new Date();
 
   // Try different age thresholds in order (using hours for testing)
-  const thresholds: Array<{ hours: number; label: "1 day" | "12 hours" | "6 hours" | "1 hour" }> = [
+  const thresholds: Array<{ hours: number; label: OldCardAgeThreshold }> = [
     { hours: 24, label: "1 day" },
     { hours: 12, label: "12 hours" },
     { hours: 6, label: "6 hours" },
@@ -404,6 +412,4 @@ export async function getOldCards(): Promise<OldCardsResult | null> {
   // No old cards found
   return null;
 }
-
-
 

@@ -25,6 +25,23 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [extracting, setExtracting] = useState(false);
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
 
+  useEffect(() => {
+    setNotes(card.notes ?? "");
+  }, [card.id, card.notes]);
+
+  useEffect(() => {
+    setIsPinned(card.pinned ?? false);
+  }, [card.id, card.pinned]);
+
+  useEffect(() => {
+    setArticleContent(card.articleContent ?? null);
+  }, [card.id, card.articleContent]);
+
+  useEffect(() => {
+    setIsReaderExpanded(false);
+    setExtracting(false);
+  }, [card.id]);
+
   // Close on Escape key
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {

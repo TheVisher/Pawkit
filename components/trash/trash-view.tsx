@@ -235,7 +235,7 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
           >
             <h2 className="text-xl font-semibold text-gray-100 mb-4">Permanently Delete?</h2>
             <p className="text-sm text-gray-400 mb-2">
-              Are you sure you want to permanently delete <span className="font-medium text-gray-200">"{deleteConfirm.name}"</span>?
+              Are you sure you want to permanently delete <span className="font-medium text-gray-200">&quot;{deleteConfirm.name}&quot;</span>?
             </p>
             <p className="text-sm text-rose-400 mb-4">
               This action cannot be undone.

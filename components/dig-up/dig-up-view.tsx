@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { CardModel, CollectionNode } from "@/lib/types";
+import type { CardModel, CollectionNode, OldCardAgeThreshold } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
 type DigUpViewProps = {
   initialCards: CardModel[];
-  ageThreshold: "1 year" | "6 months" | "3 months" | "1 month";
+  ageThreshold: OldCardAgeThreshold;
   total: number;
   pawkits: CollectionNode[];
 };
@@ -20,8 +20,6 @@ export function DigUpView({ initialCards, ageThreshold, total, pawkits }: DigUpV
 
   const currentCard = cards[currentIndex];
   const reviewed = currentIndex;
-  const remaining = total - reviewed;
-
   const moveToNext = () => {
     if (currentIndex < cards.length - 1) {
       setCurrentIndex(currentIndex + 1);
@@ -81,7 +79,7 @@ export function DigUpView({ initialCards, ageThreshold, total, pawkits }: DigUpV
           <div className="text-6xl mb-4">🐕</div>
           <h2 className="text-2xl font-semibold text-gray-100 mb-2">All Caught Up!</h2>
           <p className="text-gray-400 mb-6">
-            Kit couldn't find any more old cards to dig up.
+            Kit could not find any more old cards to dig up.
           </p>
           <button
             onClick={handleClose}

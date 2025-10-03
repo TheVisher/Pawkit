@@ -166,7 +166,7 @@ function CollectionsSidebarContent({
           </button>
           <button
             className="text-sm font-semibold text-gray-300 hover:text-accent transition-colors"
-            onClick={() => router.push('/collections')}
+            onClick={() => router.push('/pawkits')}
           >
             Collections
           </button>

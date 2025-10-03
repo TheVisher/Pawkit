@@ -316,7 +316,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
           >
             <h2 className="text-xl font-semibold text-gray-100 mb-4">Move to another Pawkit</h2>
             <p className="text-sm text-gray-400 mb-4">
-              Select a Pawkit to move this into, or select "Root" to make it a top-level Pawkit.
+              Select a Pawkit to move this into, or select &quot;Root&quot; to make it a top-level Pawkit.
             </p>
             <div className="max-h-60 overflow-y-auto space-y-2 mb-4">
               <button

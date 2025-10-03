@@ -1,5 +1,7 @@
 export type CardStatus = "PENDING" | "READY" | "ERROR";
 
+export type OldCardAgeThreshold = "1 day" | "12 hours" | "6 hours" | "1 hour";
+
 export type CardModel = {
   id: string;
   url: string;

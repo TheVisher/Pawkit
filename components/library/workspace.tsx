@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { CardGallery } from "@/components/library/card-gallery";
-import { CollectionsSidebar } from "@/components/pawkits/sidebar";
 import { LayoutMode } from "@/lib/constants";
 
 export type LibraryWorkspaceProps = {
@@ -49,7 +48,7 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
         router.replace(`${currentPath}?${params.toString()}`);
       }
     }
-  }, []);
+  }, [router, searchParams]);
 
   useEffect(() => {
     setCards(initialCards);
