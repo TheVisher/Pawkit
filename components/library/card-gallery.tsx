@@ -10,6 +10,7 @@ import { CardModel } from "@/lib/types";
 import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 
 export type CardGalleryProps = {
   cards: CardModel[];
@@ -22,6 +23,7 @@ export type CardGalleryProps = {
 
 function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor }: CardGalleryProps) {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [showMoveModal, setShowMoveModal] = useState(false);
   const searchParams = useSearchParams();
   const selectedIds = useSelection((state) => state.selectedIds);
   const toggleSelection = useSelection((state) => state.toggle);
@@ -37,12 +39,23 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     const pendingCards = cards.filter((card) => card.status === "PENDING");
     if (pendingCards.length === 0) return;
 
+    let isMounted = true;
     const intervalId = setInterval(async () => {
+      // Get fresh pending card IDs to avoid stale requests
+      const currentPendingIds = cards
+        .filter((card) => card.status === "PENDING")
+        .map((card) => card.id);
+
+      if (currentPendingIds.length === 0) {
+        clearInterval(intervalId);
+        return;
+      }
+
       // Fetch updated cards
       const updates = await Promise.all(
-        pendingCards.map(async (card) => {
+        currentPendingIds.map(async (id) => {
           try {
-            const response = await fetch(`/api/cards/${card.id}`);
+            const response = await fetch(`/api/cards/${id}`);
             if (response.ok) {
               const updated = await response.json();
               return updated;
@@ -53,6 +66,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           return null;
         })
       );
+
+      // Only update state if component is still mounted
+      if (!isMounted) return;
 
       // Update cards that changed
       setCards((prev) =>
@@ -66,7 +82,10 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
       );
     }, 3000); // Poll every 3 seconds
 
-    return () => clearInterval(intervalId);
+    return () => {
+      isMounted = false;
+      clearInterval(intervalId);
+    };
   }, [cards, setCards]);
 
   const handleCardClick = (event: MouseEvent, card: CardModel) => {
@@ -95,10 +114,13 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     setNextCursor(data.nextCursor);
   };
 
-  const handleBulkMove = async () => {
+  const handleBulkMove = () => {
     if (!selectedIds.length) return;
-    const slug = window.prompt("Enter destination collection slug");
-    if (!slug) return;
+    setShowMoveModal(true);
+  };
+
+  const handleConfirmMove = async (slug: string) => {
+    if (!selectedIds.length) return;
     await Promise.all(
       selectedIds.map((id) => {
         const card = cards.find((item) => item.id === id);
@@ -152,7 +174,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             disabled={!selectedIds.length}
             onClick={handleBulkMove}
           >
-            Move to collection
+            Move to Pawkit
           </button>
           <button
             className="rounded bg-rose-500 px-3 py-1 text-sm text-gray-950 disabled:opacity-40"
@@ -180,6 +202,11 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           Load more
         </button>
       )}
+      <MoveToPawkitModal
+        open={showMoveModal}
+        onClose={() => setShowMoveModal(false)}
+        onConfirm={handleConfirmMove}
+      />
       {activeCard && (
         <CardModal
           card={activeCard}

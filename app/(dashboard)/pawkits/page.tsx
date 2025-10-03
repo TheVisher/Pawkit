@@ -4,6 +4,8 @@ import { PawkitsHeader } from "@/components/pawkits/pawkits-header";
 import { collectionPreviewCards, countCards, listCards } from "@/lib/server/cards";
 import { listCollections, type CollectionDTO } from "@/lib/server/collections";
 import { safeHost } from "@/lib/utils/strings";
+import { prisma } from "@/lib/server/prisma";
+import { parseJsonArray } from "@/lib/utils/json";
 
 function flattenCollections(nodes: CollectionDTO[]): CollectionDTO[] {
   const result: CollectionDTO[] = [];
@@ -25,26 +27,42 @@ export default async function CollectionsPage() {
 
   const flatCollections = flattenCollections(tree);
 
-  const previewData = await Promise.all(
-    flatCollections.map(async (node) => {
-      const cards = await collectionPreviewCards(node.slug, 6);
-      return {
-        id: node.id,
-        name: node.name,
-        slug: node.slug,
-        count: cards.length,
-        hasChildren: (node.children && node.children.length > 0) || false,
-        isPinned: node.pinned || false,
-        cards: cards.map((card) => ({
-          id: card.id,
-          title: card.title,
-          url: card.url,
-          image: card.image ?? null,
-          domain: card.domain ?? safeHost(card.url)
-        }))
-      };
-    })
-  );
+  // Batch fetch all cards at once to avoid N+1 queries
+  const allCardsRaw = await prisma.card.findMany({
+    orderBy: { createdAt: "desc" }
+  });
+
+  const cardsByCollection = new Map<string, typeof allCardsRaw>();
+
+  // Group cards by collection slug
+  for (const card of allCardsRaw) {
+    const collections = parseJsonArray(card.collections);
+    for (const collectionSlug of collections) {
+      if (!cardsByCollection.has(collectionSlug)) {
+        cardsByCollection.set(collectionSlug, []);
+      }
+      cardsByCollection.get(collectionSlug)!.push(card);
+    }
+  }
+
+  const previewData = flatCollections.map((node) => {
+    const cards = (cardsByCollection.get(node.slug) || []).slice(0, 6);
+    return {
+      id: node.id,
+      name: node.name,
+      slug: node.slug,
+      count: cards.length,
+      hasChildren: (node.children && node.children.length > 0) || false,
+      isPinned: node.pinned || false,
+      cards: cards.map((card) => ({
+        id: card.id,
+        title: card.title,
+        url: card.url,
+        image: card.image ?? null,
+        domain: card.domain ?? safeHost(card.url)
+      }))
+    };
+  });
 
   const rootPreview = {
     id: "all-cards",

@@ -19,10 +19,13 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
   }
 }
 
-export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
+export async function DELETE(request: NextRequest, segmentData: RouteParams) {
   try {
     const params = await segmentData.params;
-    await deleteCollection(params.id);
+    const { searchParams } = new URL(request.url);
+    const deleteCards = searchParams.get('deleteCards') === 'true';
+
+    await deleteCollection(params.id, deleteCards);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return handleApiError(error);

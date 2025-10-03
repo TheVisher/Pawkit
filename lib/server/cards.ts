@@ -117,7 +117,10 @@ export async function listCards(query: CardListQuery) {
   }
 
   if (parsed.collection) {
-    where.collections = { contains: parsed.collection };
+    // Use exact match for collection slug in JSON array
+    // Match both ["slug"] and ["slug","other"] patterns
+    const jsonPattern = `"${parsed.collection}"`;
+    where.collections = { contains: jsonPattern };
   }
 
   if (parsed.status) {
@@ -233,6 +236,13 @@ export async function recentCards(limit = 6) {
 
 export async function bulkAddCollection(cardIds: string[], slug: string) {
   if (cardIds.length === 0) return;
+
+  // Validate that the collection exists
+  const collection = await prisma.collection.findUnique({ where: { slug } });
+  if (!collection) {
+    throw new Error(`Collection with slug "${slug}" does not exist`);
+  }
+
   const cards = await prisma.card.findMany({ where: { id: { in: cardIds } } });
   await Promise.all(
     cards.map((card) => {

@@ -90,11 +90,30 @@ export async function createCollection(payload: unknown) {
   return created;
 }
 
+async function isDescendant(ancestorId: string, potentialDescendantId: string): Promise<boolean> {
+  let currentId: string | null = potentialDescendantId;
+  const visited = new Set<string>();
+
+  while (currentId) {
+    if (visited.has(currentId)) return false; // Cycle detected
+    visited.add(currentId);
+
+    if (currentId === ancestorId) return true;
+
+    const collection = await prisma.collection.findUnique({ where: { id: currentId } });
+    currentId = collection?.parentId ?? null;
+  }
+  return false;
+}
+
 export async function updateCollection(id: string, payload: unknown) {
   const parsed = collectionUpdateSchema.parse(payload);
   if (parsed.parentId) {
     if (parsed.parentId === id) {
       throw new Error("Collection cannot be its own parent");
+    }
+    if (await isDescendant(id, parsed.parentId)) {
+      throw new Error("Cannot move collection under its own descendant");
     }
     await ensureDepth(parsed.parentId);
   }
@@ -111,19 +130,46 @@ export async function updateCollection(id: string, payload: unknown) {
   return prisma.collection.update({ where: { id }, data });
 }
 
-export async function deleteCollection(id: string) {
+export async function deleteCollection(id: string, deleteCards = false) {
   const collection = await prisma.collection.findUnique({ where: { id } });
   if (!collection) {
     return;
   }
 
-  await prisma.$transaction([
-    prisma.collection.updateMany({
+  await prisma.$transaction(async (tx) => {
+    // Move child collections to parent
+    await tx.collection.updateMany({
       where: { parentId: id },
       data: { parentId: collection.parentId }
-    }),
-    prisma.collection.delete({ where: { id } })
-  ]);
+    });
+
+    if (deleteCards) {
+      // Delete all cards in this collection
+      await tx.card.deleteMany({
+        where: { collections: { contains: collection.slug } }
+      });
+    } else {
+      // Remove collection slug from all cards
+      const affectedCards = await tx.card.findMany({
+        where: { collections: { contains: collection.slug } }
+      });
+
+      for (const card of affectedCards) {
+        const collections = card.collections ? JSON.parse(card.collections) : [];
+        const filtered = Array.isArray(collections)
+          ? collections.filter((c: string) => c !== collection.slug)
+          : [];
+
+        await tx.card.update({
+          where: { id: card.id },
+          data: { collections: JSON.stringify(filtered) }
+        });
+      }
+    }
+
+    // Delete the collection
+    await tx.collection.delete({ where: { id } });
+  });
 }
 
 export async function pinnedCollections(limit = 8) {

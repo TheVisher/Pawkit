@@ -25,74 +25,76 @@ export async function importData(payload: unknown) {
   let createdCollections = 0;
   let updatedCollections = 0;
 
-  for (const collection of parsed.collections) {
-    const id = collection.id ?? undefined;
-    const existing = id
-      ? await prisma.collection.findUnique({ where: { id } })
-      : await prisma.collection.findUnique({ where: { slug: collection.slug } });
+  await prisma.$transaction(async (tx) => {
+    for (const collection of parsed.collections) {
+      const id = collection.id ?? undefined;
+      const existing = id
+        ? await tx.collection.findUnique({ where: { id } })
+        : await tx.collection.findUnique({ where: { slug: collection.slug } });
 
-    const data = {
-      name: collection.name,
-      slug: collection.slug,
-      parentId: collection.parentId ?? null,
-      createdAt: collection.createdAt ? parseISO(collection.createdAt) : undefined,
-      updatedAt: collection.updatedAt ? parseISO(collection.updatedAt) : undefined
-    };
+      const data = {
+        name: collection.name,
+        slug: collection.slug,
+        parentId: collection.parentId ?? null,
+        createdAt: collection.createdAt ? parseISO(collection.createdAt) : undefined,
+        updatedAt: collection.updatedAt ? parseISO(collection.updatedAt) : undefined
+      };
 
-    if (existing) {
-      await prisma.collection.update({
-        where: { id: existing.id },
-        data
-      });
-      updatedCollections += 1;
-    } else {
-      await prisma.collection.create({
+      if (existing) {
+        await tx.collection.update({
+          where: { id: existing.id },
+          data
+        });
+        updatedCollections += 1;
+      } else {
+        await tx.collection.create({
+          data: {
+            ...data,
+            id: id ?? undefined
+          }
+        });
+        createdCollections += 1;
+      }
+    }
+
+    for (const card of parsed.cards) {
+      const id = card.id ?? undefined;
+      const normalizedTags = normalizeTags(card.tags);
+      const normalizedCollections = normalizeCollections(card.collections);
+
+      const data = {
+        url: ensureUrlProtocol(card.url),
+        title: card.title,
+        notes: card.notes,
+        status: card.status ?? "PENDING",
+        tags: normalizedTags.length ? JSON.stringify(normalizedTags) : null,
+        collections: normalizedCollections.length ? JSON.stringify(normalizedCollections) : null,
+        domain: card.domain ?? safeHost(card.url),
+        image: card.image,
+        description: card.description,
+        metadata: stringifyNullable(card.metadata),
+        createdAt: card.createdAt ? parseISO(card.createdAt) : undefined,
+        updatedAt: card.updatedAt ? parseISO(card.updatedAt) : undefined
+      };
+
+      if (id) {
+        const existing = await tx.card.findUnique({ where: { id } });
+        if (existing) {
+          await tx.card.update({ where: { id }, data });
+          updatedCards += 1;
+          continue;
+        }
+      }
+
+      await tx.card.create({
         data: {
           ...data,
-          id: id ?? undefined
+          id
         }
       });
-      createdCollections += 1;
+      createdCards += 1;
     }
-  }
-
-  for (const card of parsed.cards) {
-    const id = card.id ?? undefined;
-    const normalizedTags = normalizeTags(card.tags);
-    const normalizedCollections = normalizeCollections(card.collections);
-
-    const data = {
-      url: ensureUrlProtocol(card.url),
-      title: card.title,
-      notes: card.notes,
-      status: card.status ?? "PENDING",
-      tags: normalizedTags.length ? JSON.stringify(normalizedTags) : null,
-      collections: normalizedCollections.length ? JSON.stringify(normalizedCollections) : null,
-      domain: card.domain ?? safeHost(card.url),
-      image: card.image,
-      description: card.description,
-      metadata: stringifyNullable(card.metadata),
-      createdAt: card.createdAt ? parseISO(card.createdAt) : undefined,
-      updatedAt: card.updatedAt ? parseISO(card.updatedAt) : undefined
-    };
-
-    if (id) {
-      const existing = await prisma.card.findUnique({ where: { id } });
-      if (existing) {
-        await prisma.card.update({ where: { id }, data });
-        updatedCards += 1;
-        continue;
-      }
-    }
-
-    await prisma.card.create({
-      data: {
-        ...data,
-        id
-      }
-    });
-    createdCards += 1;
-  }
+  });
 
   return {
     createdCards,

@@ -60,25 +60,52 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
     setActiveCollectionSlug(null);
     if (!slug) return;
     const ids = selectedIds.length ? selectedIds : [event.active.id as string];
-    await Promise.all(
-      ids.map((id) => {
-        const currentCollections = cards.find((card) => card.id === id)?.collections ?? [];
-        const nextCollections = Array.from(new Set([slug, ...currentCollections]));
-        return fetch(`/api/cards/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ collections: nextCollections })
-        });
+
+    // Optimistically update UI
+    const updatedCards = ids.map((id) => {
+      const currentCollections = cards.find((card) => card.id === id)?.collections ?? [];
+      return {
+        id,
+        collections: Array.from(new Set([slug, ...currentCollections]))
+      };
+    });
+
+    setCards((prev) =>
+      prev.map((card) => {
+        const update = updatedCards.find((u) => u.id === card.id);
+        return update ? { ...card, collections: update.collections } : card;
       })
     );
-    clearSelection();
-    setCards((prev) =>
-      prev.map((card) =>
-        ids.includes(card.id)
-          ? { ...card, collections: Array.from(new Set([slug, ...card.collections])) }
-          : card
-      )
-    );
+
+    try {
+      // Update backend
+      const results = await Promise.all(
+        updatedCards.map(({ id, collections }) =>
+          fetch(`/api/cards/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ collections })
+          }).then((res) => {
+            if (!res.ok) throw new Error(`Failed to update card ${id}`);
+            return res.json();
+          })
+        )
+      );
+
+      // Update with actual server response
+      setCards((prev) =>
+        prev.map((card) => {
+          const updated = results.find((r) => r.id === card.id);
+          return updated || card;
+        })
+      );
+
+      clearSelection();
+    } catch (error) {
+      console.error("Failed to update cards:", error);
+      // Revert optimistic update on error
+      setCards(cards);
+    }
   };
 
   const handleDragOver = (slug: string | null) => {
