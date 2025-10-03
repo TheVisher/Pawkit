@@ -263,5 +263,45 @@ export async function bulkRemoveCards(cardIds: string[]) {
   await prisma.card.deleteMany({ where: { id: { in: cardIds } } });
 }
 
+export type TimelineGroup = {
+  date: string;
+  cards: CardDTO[];
+};
+
+export async function getTimelineCards(days = 30): Promise<TimelineGroup[]> {
+  const startDate = new Date();
+  startDate.setDate(startDate.getDate() - days);
+
+  const cards = await prisma.card.findMany({
+    where: {
+      createdAt: {
+        gte: startDate
+      }
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  // Group cards by date (YYYY-MM-DD)
+  const groupedByDate = new Map<string, Card[]>();
+
+  for (const card of cards) {
+    const dateKey = card.createdAt.toISOString().split('T')[0];
+    if (!groupedByDate.has(dateKey)) {
+      groupedByDate.set(dateKey, []);
+    }
+    groupedByDate.get(dateKey)!.push(card);
+  }
+
+  // Convert to array and sort by date descending
+  const timeline: TimelineGroup[] = Array.from(groupedByDate.entries())
+    .map(([date, cards]) => ({
+      date,
+      cards: cards.map(mapCard)
+    }))
+    .sort((a, b) => b.date.localeCompare(a.date));
+
+  return timeline;
+}
+
 
 
