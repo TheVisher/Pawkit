@@ -12,7 +12,10 @@ const config: Config = {
         accent: "#3b82f6"
       }
     }
-  }
+  },
+  plugins: [
+    require("@tailwindcss/typography")
+  ]
 };
 
 export default config;

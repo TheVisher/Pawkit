@@ -114,3 +114,27 @@ textarea:focus-visible {
 .modal-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgb(75, 85, 99);
 }
+
+/* Global dark scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(55, 65, 81) rgb(17, 24, 39);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgb(17, 24, 39);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgb(55, 65, 81);
+  border-radius: 4px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(75, 85, 99);
+}
