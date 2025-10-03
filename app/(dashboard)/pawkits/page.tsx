@@ -72,9 +72,11 @@ export default async function CollectionsPage() {
     <div className="space-y-10">
       <PawkitsHeader />
       <CollectionsGrid collections={gridItems} allPawkits={allPawkits} />
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold text-gray-100">Hierarchy</h2>
-        <CollectionsManager tree={tree} />
+      <section className="rounded-lg border border-gray-800 bg-gray-900/40 p-6">
+        <h2 className="text-lg font-semibold text-gray-100 mb-2">Manage Pawkits</h2>
+        <p className="text-sm text-gray-400">
+          Use the sidebar to navigate Pawkits and sub-Pawkits. Click the 3-dot menu on any Pawkit card to rename, move, or delete it.
+        </p>
       </section>
     </div>
   );

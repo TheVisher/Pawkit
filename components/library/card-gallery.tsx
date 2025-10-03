@@ -395,13 +395,13 @@ function CardModal({ card, onClose, onUpdate, onDelete }: CardModalProps) {
 function layoutClass(layout: LayoutMode) {
   switch (layout) {
     case "masonry":
-      return "columns-1 gap-4 md:columns-2 xl:columns-3 [&>*]:mb-4";
+      return "columns-1 gap-4 md:columns-2 xl:columns-4 [&>*]:mb-4";
     case "list":
       return "flex flex-col gap-3";
     case "compact":
-      return "grid grid-cols-1 gap-2 md:grid-cols-2";
+      return "grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4";
     case "grid":
     default:
-      return "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3";
+      return "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4";
   }
 }

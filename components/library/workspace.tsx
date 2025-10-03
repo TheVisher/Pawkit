@@ -87,27 +87,14 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="flex gap-6">
-        <aside className="hidden w-64 shrink-0 lg:block">
-          <CollectionsSidebar
-            tree={collectionsTree}
-            activeSlug={activeCollectionSlug}
-            selectedSlug={selectedCollection}
-            onDragOver={handleDragOver}
-            showManagementControls={false}
-          />
-        </aside>
-        <section className="flex-1">
-          <CardGallery
-            cards={cards}
-            nextCursor={nextCursor}
-            layout={layout}
-            onLayoutChange={handleLayoutChange}
-            setCards={setCards}
-            setNextCursor={setNextCursor}
-          />
-        </section>
-      </div>
+      <CardGallery
+        cards={cards}
+        nextCursor={nextCursor}
+        layout={layout}
+        onLayoutChange={handleLayoutChange}
+        setCards={setCards}
+        setNextCursor={setNextCursor}
+      />
     </DndContext>
   );
 }
