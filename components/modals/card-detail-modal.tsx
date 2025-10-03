@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { Toast } from "@/components/ui/toast";
+import { ReaderView } from "@/components/reader/reader-view";
 
-type Tab = "pawkits" | "pin" | "notes" | "summary" | "actions";
+type Tab = "pawkits" | "pin" | "notes" | "summary" | "reader" | "actions";
 
 type CardDetailModalProps = {
   card: CardModel;
@@ -20,6 +21,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [isPinned, setIsPinned] = useState(card.pinned ?? false);
+  const [isReaderExpanded, setIsReaderExpanded] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
 
   // Close on Escape key
   useEffect(() => {
@@ -126,6 +130,30 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }
   };
 
+  const handleExtractArticle = async () => {
+    setExtracting(true);
+    try {
+      const response = await fetch(`/api/cards/${card.id}/extract-article`, {
+        method: "POST"
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setArticleContent(data.articleContent);
+        const updated = { ...card, articleContent: data.articleContent };
+        onUpdate(updated);
+        setToast("Article extracted successfully");
+      } else {
+        const error = await response.json();
+        setToast(error.message || "Failed to extract article");
+      }
+    } catch (error) {
+      console.error("Failed to extract article:", error);
+      setToast("Failed to extract article");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
   const handleDelete = async () => {
     try {
       const response = await fetch(`/api/cards/${card.id}`, { method: "DELETE" });
@@ -140,6 +168,25 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }
   };
 
+  // When reader is expanded, render different layout
+  if (isReaderExpanded && articleContent) {
+    return (
+      <>
+        <div className="fixed inset-0 z-50 bg-white">
+          <ReaderView
+            title={card.title || card.domain || card.url}
+            content={articleContent}
+            url={card.url}
+            isExpanded={true}
+            onToggleExpand={() => setIsReaderExpanded(false)}
+            onClose={onClose}
+          />
+        </div>
+        {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+      </>
+    );
+  }
+
   return (
     <>
       <div
@@ -147,31 +194,44 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         onClick={onClose}
       >
         <div
-          className="bg-gray-950 rounded-lg border border-gray-800 shadow-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden flex"
+          className={`bg-gray-950 rounded-lg border border-gray-800 shadow-2xl w-full max-h-[90vh] overflow-hidden flex ${
+            isReaderExpanded ? "max-w-[95vw]" : "max-w-6xl"
+          }`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Left Panel - Image */}
+          {/* Left Panel - Image or Reader */}
           <div className="flex-1 flex flex-col bg-gray-900/50">
-            <div className="flex-1 flex items-center justify-center p-6 overflow-auto">
-              {card.image ? (
-                <img
-                  src={card.image}
-                  alt={card.title || "Card preview"}
-                  className="max-w-full max-h-full object-contain rounded"
-                />
-              ) : (
-                <div className="text-center space-y-4">
+            {activeTab === "reader" && articleContent ? (
+              <ReaderView
+                title={card.title || card.domain || card.url}
+                content={articleContent}
+                url={card.url}
+                isExpanded={false}
+                onToggleExpand={() => setIsReaderExpanded(true)}
+                onClose={onClose}
+              />
+            ) : (
+              <div className="flex-1 flex items-center justify-center p-6 overflow-auto">
+                {card.image ? (
                   <img
-                    src="/PawkitLogo.png"
-                    alt="Pawkit"
-                    className="w-32 h-32 mx-auto opacity-50"
+                    src={card.image}
+                    alt={card.title || "Card preview"}
+                    className="max-w-full max-h-full object-contain rounded"
                   />
-                  <h3 className="text-xl font-semibold text-gray-300">
-                    {card.title || card.domain || card.url}
-                  </h3>
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="text-center space-y-4">
+                    <img
+                      src="/PawkitLogo.png"
+                      alt="Pawkit"
+                      className="w-32 h-32 mx-auto opacity-50"
+                    />
+                    <h3 className="text-xl font-semibold text-gray-300">
+                      {card.title || card.domain || card.url}
+                    </h3>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Right Sidebar */}
@@ -205,6 +265,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 label="Notes"
               />
               <TabButton
+                active={activeTab === "reader"}
+                onClick={() => setActiveTab("reader")}
+                label="Reader"
+              />
+              <TabButton
                 active={activeTab === "summary"}
                 onClick={() => setActiveTab("summary")}
                 label="Summary"
@@ -234,6 +299,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   onChange={setNotes}
                   onSave={handleSaveNotes}
                   saving={saving}
+                />
+              )}
+              {activeTab === "reader" && (
+                <ReaderTab
+                  hasContent={!!articleContent}
+                  onExtract={handleExtractArticle}
+                  extracting={extracting}
                 />
               )}
               {activeTab === "summary" && <SummaryTab card={card} />}
@@ -405,6 +477,62 @@ function NotesTab({
         >
           Save Now
         </button>
+      </div>
+    </div>
+  );
+}
+
+// Reader Tab
+function ReaderTab({
+  hasContent,
+  onExtract,
+  extracting
+}: {
+  hasContent: boolean;
+  onExtract: () => void;
+  extracting: boolean;
+}) {
+  if (hasContent) {
+    return (
+      <div className="space-y-4">
+        <p className="text-xs text-gray-500">
+          Article content loaded. Click the expand button in the article view to read in fullscreen.
+        </p>
+        <div className="text-center py-8">
+          <div className="text-4xl mb-2">📖</div>
+          <p className="text-sm text-gray-400">Article ready to read</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-gray-500">
+        Extract the article content for distraction-free reading
+      </p>
+      <button
+        onClick={onExtract}
+        disabled={extracting}
+        className="w-full rounded bg-accent px-6 py-3 text-sm font-medium text-gray-900 hover:bg-accent/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+      >
+        {extracting ? (
+          <>
+            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            Kit is fetching...
+          </>
+        ) : (
+          <>
+            🐕 Let Kit Fetch Article
+          </>
+        )}
+      </button>
+      <div className="text-center py-8">
+        <div className="text-4xl mb-2">📄</div>
+        <p className="text-sm text-gray-500">No article content yet</p>
       </div>
     </div>
   );

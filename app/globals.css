@@ -15,3 +15,84 @@ input:focus-visible,
 textarea:focus-visible {
   @apply outline outline-2 outline-offset-2 outline-accent;
 }
+
+/* Reader Mode Styles */
+.reader-content {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 20px;
+  line-height: 1.7;
+  color: #1a1a1a;
+}
+
+.reader-content h1,
+.reader-content h2,
+.reader-content h3,
+.reader-content h4,
+.reader-content h5,
+.reader-content h6 {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 700;
+  color: #000;
+  margin-top: 2em;
+  margin-bottom: 0.75em;
+  line-height: 1.3;
+}
+
+.reader-content h1 { font-size: 2em; }
+.reader-content h2 { font-size: 1.5em; }
+.reader-content h3 { font-size: 1.25em; }
+
+.reader-content p {
+  margin-bottom: 1.5em;
+}
+
+.reader-content a {
+  color: #0066cc;
+  text-decoration: none;
+  border-bottom: 1px solid #0066cc33;
+}
+
+.reader-content a:hover {
+  border-bottom-color: #0066cc;
+}
+
+.reader-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+  margin: 2em 0;
+}
+
+.reader-content blockquote {
+  border-left: 4px solid #e0e0e0;
+  padding-left: 1.5em;
+  margin: 2em 0;
+  font-style: italic;
+  color: #555;
+}
+
+.reader-content pre {
+  background: #f5f5f5;
+  border-radius: 4px;
+  padding: 1em;
+  overflow-x: auto;
+  font-size: 0.9em;
+}
+
+.reader-content code {
+  background: #f5f5f5;
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+.reader-content ul,
+.reader-content ol {
+  margin: 1.5em 0;
+  padding-left: 2em;
+}
+
+.reader-content li {
+  margin-bottom: 0.5em;
+}
