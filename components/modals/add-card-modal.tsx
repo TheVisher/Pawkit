@@ -91,10 +91,16 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xl p-6"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-md space-y-4 rounded bg-gray-950 p-6 shadow-lg"
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-100">Add Card</h2>

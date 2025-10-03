@@ -57,35 +57,41 @@ export type ResizableSidebarProps = {
 export function ResizableSidebar({ username, collections }: ResizableSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [width, setWidth] = useState(() => {
-    if (typeof window === "undefined") {
-      return 260;
-    }
-    const stored = window.localStorage.getItem(STORAGE_KEY);
-    const parsed = stored ? parseInt(stored, 10) : NaN;
-    if (Number.isNaN(parsed)) {
-      return 260;
-    }
-    return clampWidth(parsed);
-  });
+  const [width, setWidth] = useState(260);
+  const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(false);
+  const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set());
   const collapsed = width <= COLLAPSE_WIDTH;
-  const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    const saved = localStorage.getItem('pawkits-collections-expanded');
-    return saved === 'true';
-  });
-  const [expandedCollections, setExpandedCollections] = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') return new Set();
-    const saved = localStorage.getItem('pawkits-expanded-collections');
-    if (saved) {
-      try {
-        return new Set(JSON.parse(saved));
-      } catch {
-        return new Set();
-      }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    const parsed = stored ? Number.parseInt(stored, 10) : NaN;
+    if (!Number.isNaN(parsed)) {
+      setWidth(clampWidth(parsed));
     }
-    return new Set();
-  });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem('pawkits-collections-expanded');
+    if (saved === 'true') {
+      setIsCollectionsExpanded(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem('pawkits-expanded-collections');
+    if (!saved) return;
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed)) {
+        setExpandedCollections(new Set(parsed.filter((item): item is string => typeof item === 'string')));
+      }
+    } catch {
+      // ignore malformed state
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -93,11 +99,13 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
   }, [width]);
 
   useEffect(() => {
-    localStorage.setItem('pawkits-collections-expanded', String(isCollectionsExpanded));
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem('pawkits-collections-expanded', String(isCollectionsExpanded));
   }, [isCollectionsExpanded]);
 
   useEffect(() => {
-    localStorage.setItem('pawkits-expanded-collections', JSON.stringify(Array.from(expandedCollections)));
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem('pawkits-expanded-collections', JSON.stringify(Array.from(expandedCollections)));
   }, [expandedCollections]);
 
   const isActive = useMemo(() => {

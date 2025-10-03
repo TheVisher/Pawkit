@@ -16,7 +16,6 @@ function OmniBarContent() {
   const [value, setValue] = useState(initialQuery);
   const [adding, setAdding] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const autoFetchMetadata = useSettingsStore((state) => state.autoFetchMetadata);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
   const lastSearchedRef = useRef(initialQuery);
 
@@ -116,12 +115,6 @@ function OmniBarContent() {
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== "Enter") return;
-    if (event.shiftKey) {
-      if (isProbablyUrl(value)) {
-        setShowModal(true);
-      }
-      return;
-    }
     if (isProbablyUrl(value)) {
       event.preventDefault();
       void quickAdd();
@@ -148,11 +141,20 @@ function OmniBarContent() {
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Paste a URL to save or type to search…"
-          className="w-full rounded border border-gray-800 bg-gray-900 py-3 pl-4 pr-32 text-sm text-gray-100"
+          className="w-full rounded border border-gray-800 bg-gray-900 py-3 pl-4 pr-14 text-sm text-gray-100"
         />
-        <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-3 text-xs text-gray-500">
-          <span className="rounded bg-gray-800 px-2 py-1">Enter = quick add</span>
-          <span className="rounded bg-gray-800 px-2 py-1">Shift+Enter = open form</span>
+        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+          <span className="mr-3 hidden text-xs text-gray-500 sm:inline">Enter = quick add</span>
+          <button
+            type="button"
+            onClick={() => setShowModal(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-gray-950 transition hover:bg-accent/90"
+            aria-label="Open add card form"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </button>
         </div>
       </form>
       {adding && <p className="mt-2 text-xs text-gray-500">Saving…</p>}
