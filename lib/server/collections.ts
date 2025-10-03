@@ -9,6 +9,7 @@ export type CollectionDTO = Collection & { children: CollectionDTO[] };
 
 export async function listCollections() {
   const items = await prisma.collection.findMany({
+    where: { deleted: false },
     orderBy: { name: "asc" }
   });
 
@@ -136,22 +137,34 @@ export async function deleteCollection(id: string, deleteCards = false) {
     return;
   }
 
+  const now = new Date();
+
   await prisma.$transaction(async (tx) => {
-    // Move child collections to parent
+    // Move child collections to parent (they don't get deleted)
     await tx.collection.updateMany({
       where: { parentId: id },
       data: { parentId: collection.parentId }
     });
 
     if (deleteCards) {
-      // Delete all cards in this collection
-      await tx.card.deleteMany({
-        where: { collections: { contains: collection.slug } }
+      // Soft delete all cards in this collection
+      await tx.card.updateMany({
+        where: {
+          collections: { contains: `"${collection.slug}"` },
+          deleted: false
+        },
+        data: {
+          deleted: true,
+          deletedAt: now
+        }
       });
     } else {
       // Remove collection slug from all cards
       const affectedCards = await tx.card.findMany({
-        where: { collections: { contains: collection.slug } }
+        where: {
+          collections: { contains: `"${collection.slug}"` },
+          deleted: false
+        }
       });
 
       for (const card of affectedCards) {
@@ -167,8 +180,14 @@ export async function deleteCollection(id: string, deleteCards = false) {
       }
     }
 
-    // Delete the collection
-    await tx.collection.delete({ where: { id } });
+    // Soft delete the collection
+    await tx.collection.update({
+      where: { id },
+      data: {
+        deleted: true,
+        deletedAt: now
+      }
+    });
   });
 }
 
@@ -176,11 +195,33 @@ export async function pinnedCollections(limit = 8) {
   const collections = await prisma.collection.findMany({
     where: {
       pinned: true,
-      parentId: null // Only root-level Pawkits
+      parentId: null, // Only root-level Pawkits
+      deleted: false
     },
     orderBy: { updatedAt: "desc" },
     take: limit
   });
 
   return collections;
+}
+
+export async function getTrashCollections() {
+  return prisma.collection.findMany({
+    where: { deleted: true },
+    orderBy: { deletedAt: "desc" }
+  });
+}
+
+export async function restoreCollection(id: string) {
+  return prisma.collection.update({
+    where: { id },
+    data: {
+      deleted: false,
+      deletedAt: null
+    }
+  });
+}
+
+export async function permanentlyDeleteCollection(id: string) {
+  return prisma.collection.delete({ where: { id } });
 }

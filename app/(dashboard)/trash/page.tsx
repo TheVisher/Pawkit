@@ -1,10 +1,15 @@
-export default function TrashPage() {
-  return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-gray-100">Trash</h1>
-      <p className="text-sm text-gray-400">
-        Deleted cards will appear here for recovery in a future release. At the moment, deletions remain permanent.
-      </p>
-    </div>
-  );
+import { getTrashCards, purgeOldTrashItems } from "@/lib/server/cards";
+import { getTrashCollections } from "@/lib/server/collections";
+import { TrashView } from "@/components/trash/trash-view";
+
+export default async function TrashPage() {
+  // Auto-purge items older than 30 days
+  await purgeOldTrashItems();
+
+  const [cards, pawkits] = await Promise.all([
+    getTrashCards(),
+    getTrashCollections()
+  ]);
+
+  return <TrashView cards={cards} pawkits={pawkits} />;
 }

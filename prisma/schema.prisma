@@ -8,28 +8,32 @@ datasource db {
 }
 
 model Card {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   url         String
   title       String?
   notes       String?
-  status      String   @default("PENDING")
+  status      String    @default("PENDING")
   tags        String?
   collections String?
   domain      String?
   image       String?
   description String?
   metadata    String?
-  pinned      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  pinned      Boolean   @default(false)
+  deleted     Boolean   @default(false)
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Collection {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  slug      String   @unique
+  slug      String    @unique
   parentId  String?
-  pinned    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  pinned    Boolean   @default(false)
+  deleted   Boolean   @default(false)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }

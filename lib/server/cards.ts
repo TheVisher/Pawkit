@@ -103,7 +103,7 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
 export async function listCards(query: CardListQuery) {
   const parsed = cardListQuerySchema.parse(query);
   const limit = parsed.limit ?? 50;
-  const where: Prisma.CardWhereInput = {};
+  const where: Prisma.CardWhereInput = { deleted: false };
 
   if (parsed.q) {
     const term = parsed.q;
@@ -276,7 +276,8 @@ export async function getTimelineCards(days = 30): Promise<TimelineGroup[]> {
     where: {
       createdAt: {
         gte: startDate
-      }
+      },
+      deleted: false
     },
     orderBy: { createdAt: "desc" }
   });
@@ -301,6 +302,107 @@ export async function getTimelineCards(days = 30): Promise<TimelineGroup[]> {
     .sort((a, b) => b.date.localeCompare(a.date));
 
   return timeline;
+}
+
+export async function softDeleteCard(id: string) {
+  return prisma.card.update({
+    where: { id },
+    data: {
+      deleted: true,
+      deletedAt: new Date()
+    }
+  });
+}
+
+export async function getTrashCards() {
+  const cards = await prisma.card.findMany({
+    where: { deleted: true },
+    orderBy: { deletedAt: "desc" }
+  });
+  return cards.map(mapCard);
+}
+
+export async function restoreCard(id: string) {
+  return prisma.card.update({
+    where: { id },
+    data: {
+      deleted: false,
+      deletedAt: null
+    }
+  });
+}
+
+export async function permanentlyDeleteCard(id: string) {
+  return prisma.card.delete({ where: { id } });
+}
+
+export async function purgeOldTrashItems() {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  await prisma.$transaction([
+    prisma.card.deleteMany({
+      where: {
+        deleted: true,
+        deletedAt: {
+          lte: thirtyDaysAgo
+        }
+      }
+    }),
+    prisma.collection.deleteMany({
+      where: {
+        deleted: true,
+        deletedAt: {
+          lte: thirtyDaysAgo
+        }
+      }
+    })
+  ]);
+}
+
+export type OldCardsResult = {
+  cards: CardDTO[];
+  ageThreshold: "1 year" | "6 months" | "3 months" | "1 month";
+  total: number;
+};
+
+export async function getOldCards(): Promise<OldCardsResult | null> {
+  const now = new Date();
+
+  // Try different age thresholds in order
+  const thresholds: Array<{ months: number; label: "1 year" | "6 months" | "3 months" | "1 month" }> = [
+    { months: 12, label: "1 year" },
+    { months: 6, label: "6 months" },
+    { months: 3, label: "3 months" },
+    { months: 1, label: "1 month" }
+  ];
+
+  for (const threshold of thresholds) {
+    const cutoffDate = new Date(now);
+    cutoffDate.setMonth(cutoffDate.getMonth() - threshold.months);
+
+    const cards = await prisma.card.findMany({
+      where: {
+        deleted: false,
+        createdAt: {
+          lte: cutoffDate
+        }
+      },
+      orderBy: { createdAt: "asc" }, // Oldest first
+      take: 50 // Limit to 50 cards per session
+    });
+
+    if (cards.length > 0) {
+      return {
+        cards: cards.map(mapCard),
+        ageThreshold: threshold.label,
+        total: cards.length
+      };
+    }
+  }
+
+  // No old cards found
+  return null;
 }
 
 

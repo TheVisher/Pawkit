@@ -24,6 +24,7 @@ export type CardGalleryProps = {
 function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor }: CardGalleryProps) {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const searchParams = useSearchParams();
   const selectedIds = useSelection((state) => state.selectedIds);
   const toggleSelection = useSelection((state) => state.toggle);
@@ -142,13 +143,16 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     clearSelection();
   };
 
-  const handleBulkDelete = async () => {
+  const handleBulkDelete = () => {
     if (!selectedIds.length) return;
-    const confirmed = window.confirm(`Delete ${selectedIds.length} selected card(s)?`);
-    if (!confirmed) return;
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
     await Promise.all(selectedIds.map((id) => fetch(`/api/cards/${id}`, { method: "DELETE" })));
     setCards((prev) => prev.filter((card) => !selectedIds.includes(card.id)));
     clearSelection();
+    setShowDeleteConfirm(false);
   };
 
   const activeCard = cards.find((card) => card.id === activeCardId) ?? null;
@@ -207,6 +211,39 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
         onClose={() => setShowMoveModal(false)}
         onConfirm={handleConfirmMove}
       />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="bg-gray-950 rounded-lg p-6 w-full max-w-md shadow-xl border border-gray-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold text-gray-100 mb-4">Delete Cards?</h2>
+            <p className="text-sm text-gray-400 mb-4">
+              Move {selectedIds.length} selected card{selectedIds.length !== 1 ? 's' : ''} to Trash? You can restore them within 30 days.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 rounded bg-gray-900 px-4 py-2 text-sm font-medium text-gray-100 hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 transition-colors"
+              >
+                Move to Trash
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {activeCard && (
         <CardModal
           card={activeCard}

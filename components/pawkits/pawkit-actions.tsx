@@ -217,7 +217,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
             )}
 
             <p className="text-sm text-gray-400 mb-4">
-              This will permanently delete this Pawkit{hasChildren ? " and all its sub-Pawkits" : ""}. This action cannot be undone.
+              This will move this Pawkit{hasChildren ? " and all its sub-Pawkits" : ""} to Trash. You can restore it within 30 days.
             </p>
 
             <div className="mb-4 p-3 rounded bg-gray-900 border border-gray-800">
@@ -232,8 +232,8 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
               </label>
               <p className="text-xs text-gray-500 mt-1 ml-6">
                 {deleteCards
-                  ? "All cards will be permanently deleted"
-                  : "Cards will remain in 'All cards' without a Pawkit"}
+                  ? "All cards will be moved to Trash"
+                  : "Cards will remain in your Library"}
               </p>
             </div>
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { deleteCard, getCard, updateCard } from "@/lib/server/cards";
+import { deleteCard, getCard, updateCard, softDeleteCard } from "@/lib/server/cards";
 import { handleApiError } from "@/lib/utils/api-error";
 
 interface RouteParams {
@@ -35,7 +35,8 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
 export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
   try {
     const params = await segmentData.params;
-    await deleteCard(params.id);
+    // Soft delete - move to trash
+    await softDeleteCard(params.id);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return handleApiError(error);
