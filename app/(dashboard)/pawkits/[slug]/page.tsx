@@ -49,9 +49,11 @@ export default async function CollectionPage({
 
   const initialCards: CardModel[] = items.map((card) => ({
     id: card.id,
+    type: card.type,
     url: card.url,
     title: card.title,
     notes: card.notes,
+    content: card.content,
     status: card.status as CardStatus,
     tags: card.tags,
     collections: card.collections,
@@ -59,6 +61,8 @@ export default async function CollectionPage({
     image: card.image,
     description: card.description,
     metadata: card.metadata ?? null,
+    pinned: card.pinned,
+    articleContent: card.articleContent,
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString()
   }));
