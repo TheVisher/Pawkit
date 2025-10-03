@@ -7,6 +7,10 @@ import { CardModel, CollectionNode } from "@/lib/types";
 import { Toast } from "@/components/ui/toast";
 import { ReaderView } from "@/components/reader/reader-view";
 import { MDEditor } from "@/components/notes/md-editor";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 
 type Tab = "pawkits" | "pin" | "notes" | "summary" | "reader" | "actions" | "content";
 
@@ -248,36 +252,31 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               <div className="flex items-center gap-3">
                 {/* Mode Toggle */}
                 <div className="flex gap-2">
-                  <button
+                  <Button
                     onClick={() => setNoteMode("preview")}
-                    className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                      noteMode === "preview"
-                        ? "bg-accent text-gray-900"
-                        : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                    }`}
+                    variant={noteMode === "preview" ? "default" : "outline"}
+                    size="sm"
                   >
                     👁️ Preview
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     onClick={() => setNoteMode("edit")}
-                    className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                      noteMode === "edit"
-                        ? "bg-accent text-gray-900"
-                        : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                    }`}
+                    variant={noteMode === "edit" ? "default" : "outline"}
+                    size="sm"
                   >
                     ✏️ Edit
-                  </button>
+                  </Button>
                 </div>
-                <button
+                <Button
                   onClick={() => setIsNoteExpanded(false)}
-                  className="p-2 rounded hover:bg-gray-800 text-gray-400 hover:text-gray-200 transition-colors"
+                  variant="ghost"
+                  size="icon"
                   title="Exit fullscreen"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9l6 6m0-6l-6 6m12-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                </button>
+                </Button>
               </div>
             </div>
             {/* Content */}
@@ -375,36 +374,31 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 {/* Header with mode toggle and expand */}
                 <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
                   <div className="flex gap-2">
-                    <button
+                    <Button
                       onClick={() => setNoteMode("preview")}
-                      className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                        noteMode === "preview"
-                          ? "bg-accent text-gray-900"
-                          : "bg-gray-800/80 text-gray-300 hover:bg-gray-700"
-                      }`}
+                      variant={noteMode === "preview" ? "default" : "outline"}
+                      size="sm"
                     >
                       👁️ Preview
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => setNoteMode("edit")}
-                      className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                        noteMode === "edit"
-                          ? "bg-accent text-gray-900"
-                          : "bg-gray-800/80 text-gray-300 hover:bg-gray-700"
-                      }`}
+                      variant={noteMode === "edit" ? "default" : "outline"}
+                      size="sm"
                     >
                       ✏️ Edit
-                    </button>
+                    </Button>
                   </div>
-                  <button
+                  <Button
                     onClick={() => setIsNoteExpanded(true)}
-                    className="p-2 rounded bg-gray-800/80 text-gray-400 hover:bg-gray-700 hover:text-accent transition-colors"
+                    variant="ghost"
+                    size="icon"
                     title="Expand fullscreen"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                     </svg>
-                  </button>
+                  </Button>
                 </div>
                 {/* Note content area */}
                 <div className="flex-1 overflow-auto p-8 pt-20">
@@ -594,12 +588,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
             {/* Delete Button at Bottom */}
             <div className="border-t border-gray-800 p-4 flex-shrink-0">
-              <button
+              <Button
                 onClick={handleDelete}
-                className="w-full rounded bg-rose-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-700 transition-colors"
+                variant="destructive"
+                className="w-full"
               >
                 Delete Card
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -664,12 +659,11 @@ function PawkitsTab({ collections, currentCollections, onSelect }: PawkitsTabPro
       </p>
 
       {/* Search input */}
-      <input
+      <Input
         type="text"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="Search Pawkits..."
-        className="w-full rounded border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-accent focus:outline-none"
       />
 
       {/* Collections list */}
@@ -708,20 +702,17 @@ function PawkitTreeItem({ node, depth, currentCollections, onSelect }: PawkitTre
 
   return (
     <>
-      <button
+      <Button
         onClick={() => onSelect(node.slug)}
-        style={{ paddingLeft: `${paddingLeft}px` }}
-        className={`w-full text-left rounded pr-4 py-2.5 text-sm transition-colors flex items-center justify-between ${
-          isActive
-            ? "bg-accent/20 text-accent border border-accent/30"
-            : "bg-gray-800 text-gray-200 hover:bg-gray-700"
-        }`}
+        variant={isActive ? "default" : "secondary"}
+        className="w-full justify-between text-left"
+        style={{ paddingLeft: `${paddingLeft + 16}px` }}
       >
         <span className="flex items-center gap-2">
           📁 {node.name}
         </span>
-        {isActive && <span className="text-accent text-lg">✓</span>}
-      </button>
+        {isActive && <span className="text-lg">✓</span>}
+      </Button>
       {hasChildren && node.children.map((child) => (
         <PawkitTreeItem
           key={child.id}
@@ -742,16 +733,14 @@ function PinTab({ isPinned, onToggle }: { isPinned: boolean; onToggle: () => voi
       <p className="text-xs text-gray-500">
         Pin this card to quick access on your home page
       </p>
-      <button
+      <Button
         onClick={onToggle}
-        className={`w-full rounded px-6 py-3 text-sm font-medium transition-colors ${
-          isPinned
-            ? "bg-accent text-gray-900 hover:bg-accent/90"
-            : "bg-gray-800 text-gray-200 hover:bg-gray-700"
-        }`}
+        variant={isPinned ? "default" : "secondary"}
+        className="w-full"
+        size="lg"
       >
         {isPinned ? "📌 Pinned" : "Pin to Home"}
-      </button>
+      </Button>
       {isPinned && (
         <p className="text-xs text-gray-500 text-center">
           This card appears in your home page quick access
@@ -785,13 +774,13 @@ function NotesTab({
         <span className="text-xs text-gray-500">
           {saving ? "Saving..." : "Auto-saves as you type"}
         </span>
-        <button
+        <Button
           onClick={onSave}
           disabled={saving}
-          className="rounded bg-accent px-4 py-2 text-xs font-medium text-gray-900 hover:bg-accent/90 transition-colors disabled:opacity-50"
+          size="sm"
         >
           Save Now
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -826,14 +815,15 @@ function ReaderTab({
       <p className="text-xs text-gray-500">
         Extract the article content for distraction-free reading
       </p>
-      <button
+      <Button
         onClick={onExtract}
         disabled={extracting}
-        className="w-full rounded bg-accent px-6 py-3 text-sm font-medium text-gray-900 hover:bg-accent/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+        className="w-full"
+        size="lg"
       >
         {extracting ? (
           <>
-            <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+            <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
@@ -844,7 +834,7 @@ function ReaderTab({
             🐕 Let Kit Fetch Article
           </>
         )}
-      </button>
+      </Button>
       <div className="text-center py-8">
         <div className="text-4xl mb-2">📄</div>
         <p className="text-sm text-gray-500">No article content yet</p>
@@ -881,15 +871,15 @@ function ActionsTab() {
       <p className="text-xs text-gray-500 mb-4">
         Additional actions for this card
       </p>
-      <button className="w-full text-left rounded bg-gray-800 px-4 py-3 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
+      <Button variant="secondary" className="w-full justify-start">
         🔗 Copy Link
-      </button>
-      <button className="w-full text-left rounded bg-gray-800 px-4 py-3 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
+      </Button>
+      <Button variant="secondary" className="w-full justify-start">
         📤 Share
-      </button>
-      <button className="w-full text-left rounded bg-gray-800 px-4 py-3 text-sm text-gray-200 hover:bg-gray-700 transition-colors">
+      </Button>
+      <Button variant="secondary" className="w-full justify-start">
         📋 Duplicate
-      </button>
+      </Button>
       <div className="text-center py-8">
         <p className="text-xs text-gray-500">More actions coming soon</p>
       </div>
@@ -922,12 +912,9 @@ function MetadataSection({ card }: { card: CardModel }) {
           <h5 className="text-xs text-gray-500 mb-1">Pawkits</h5>
           <div className="flex flex-wrap gap-2">
             {card.collections.map((collection) => (
-              <span
-                key={collection}
-                className="inline-block rounded bg-gray-800 px-2 py-1 text-xs text-gray-300"
-              >
+              <Badge key={collection} variant="secondary">
                 📁 {collection}
-              </span>
+              </Badge>
             ))}
           </div>
         </div>
@@ -938,12 +925,9 @@ function MetadataSection({ card }: { card: CardModel }) {
           <h5 className="text-xs text-gray-500 mb-1">Tags</h5>
           <div className="flex flex-wrap gap-2">
             {card.tags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-block rounded bg-gray-800 px-2 py-1 text-xs text-gray-300"
-              >
+              <Badge key={tag} variant="outline">
                 #{tag}
-              </span>
+              </Badge>
             ))}
           </div>
         </div>
@@ -952,13 +936,13 @@ function MetadataSection({ card }: { card: CardModel }) {
       <div className="space-y-2 text-xs text-gray-400">
         <div className="flex justify-between">
           <span>Status</span>
-          <span className={`px-2 py-0.5 rounded text-xs ${
-            card.status === "READY" ? "bg-green-900/30 text-green-400" :
-            card.status === "ERROR" ? "bg-rose-900/30 text-rose-400" :
-            "bg-yellow-900/30 text-yellow-400"
-          }`}>
+          <Badge variant={
+            card.status === "READY" ? "default" :
+            card.status === "ERROR" ? "destructive" :
+            "secondary"
+          }>
             {card.status}
-          </span>
+          </Badge>
         </div>
         <div className="flex justify-between">
           <span>Domain</span>

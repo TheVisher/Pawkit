@@ -3,7 +3,9 @@
     "allow": [
       "Bash(npm run dev:*)",
       "Bash(npx prisma migrate dev:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add:*)"
     ],
     "deny": [],
     "ask": []
