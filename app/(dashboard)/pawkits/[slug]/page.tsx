@@ -65,9 +65,16 @@ export default async function CollectionPage({
 
   const tree: CollectionNode[] = collections.tree.map((node) => serializeCollection(node));
 
+  // Flatten all pawkits for the move modal (only root-level pawkits)
+  const allPawkits = collections.tree.map((node) => ({
+    id: node.id,
+    name: node.name,
+    slug: node.slug,
+  }));
+
   return (
     <div className="space-y-6">
-      <PawkitsHeader parentSlug={slug} />
+      <PawkitsHeader parentSlug={slug} parentId={currentCollection.id} allPawkits={allPawkits} />
       <LibraryWorkspace
         initialCards={initialCards}
         initialNextCursor={nextCursor}

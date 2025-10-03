@@ -33,6 +33,7 @@ export default async function CollectionsPage() {
         name: node.name,
         slug: node.slug,
         count: cards.length,
+        hasChildren: (node.children && node.children.length > 0) || false,
         cards: cards.map((card) => ({
           id: card.id,
           title: card.title,
@@ -60,10 +61,17 @@ export default async function CollectionsPage() {
 
   const gridItems = [rootPreview, ...previewData];
 
+  // Get only root-level pawkits for the move modal
+  const allPawkits = tree.map((node) => ({
+    id: node.id,
+    name: node.name,
+    slug: node.slug,
+  }));
+
   return (
     <div className="space-y-10">
       <PawkitsHeader />
-      <CollectionsGrid collections={gridItems} />
+      <CollectionsGrid collections={gridItems} allPawkits={allPawkits} />
       <section className="space-y-4">
         <h2 className="text-xl font-semibold text-gray-100">Hierarchy</h2>
         <CollectionsManager tree={tree} />

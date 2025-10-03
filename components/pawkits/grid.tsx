@@ -1,12 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { PawkitActions } from "./pawkit-actions";
 
 type CollectionPreviewCard = {
   id: string;
   name: string;
   slug: string | null;
   count: number;
+  hasChildren?: boolean;
   cards: Array<{
     id: string;
     title?: string | null;
@@ -18,6 +20,7 @@ type CollectionPreviewCard = {
 
 type CollectionsGridProps = {
   collections: CollectionPreviewCard[];
+  allPawkits?: Array<{ id: string; name: string; slug: string }>;
 };
 
 const previewPositions = [
@@ -26,7 +29,7 @@ const previewPositions = [
   "bottom-1 left-1/2 -translate-x-1/2 rotate-2"
 ];
 
-export function CollectionsGrid({ collections }: CollectionsGridProps) {
+export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGridProps) {
   const router = useRouter();
 
   if (!collections.length) {
@@ -40,7 +43,7 @@ export function CollectionsGrid({ collections }: CollectionsGridProps) {
   return (
     <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
       {collections.map((collection) => (
-        <button
+        <div
           key={collection.id}
           onClick={() => {
             if (collection.slug) {
@@ -49,14 +52,26 @@ export function CollectionsGrid({ collections }: CollectionsGridProps) {
               router.push(`/library`);
             }
           }}
-          className="group relative flex h-56 flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-900/60 p-5 text-left transition hover:border-accent/60 hover:shadow-lg"
+          className="group relative flex h-56 cursor-pointer flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-900/60 p-5 text-left transition hover:border-accent/60 hover:shadow-lg"
         >
           <div className="relative z-10 flex items-center justify-between bg-gray-900/60 pb-4 text-sm text-gray-400">
             <span className="inline-flex items-center gap-2 text-sm font-medium text-gray-200">
               <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent">📁</span>
               {collection.name}
             </span>
-            <span className="text-xs text-gray-500">{collection.count} item{collection.count === 1 ? "" : "s"}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">{collection.count} item{collection.count === 1 ? "" : "s"}</span>
+              {collection.slug && (
+                <div onClick={(e) => e.stopPropagation()}>
+                  <PawkitActions
+                    pawkitId={collection.id}
+                    pawkitName={collection.name}
+                    hasChildren={collection.hasChildren}
+                    allPawkits={allPawkits}
+                  />
+                </div>
+              )}
+            </div>
           </div>
           <div className="relative h-full w-full">
             {collection.cards.slice(0, 3).map((card, index) => (
@@ -68,7 +83,7 @@ export function CollectionsGrid({ collections }: CollectionsGridProps) {
               </div>
             )}
           </div>
-        </button>
+        </div>
       ))}
     </div>
   );

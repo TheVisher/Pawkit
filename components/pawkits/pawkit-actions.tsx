@@ -3,86 +3,34 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-type PawkitsHeaderProps = {
-  parentSlug?: string | null;
-  parentId?: string | null;
+type PawkitActionsProps = {
+  pawkitId: string;
+  pawkitName: string;
+  hasChildren?: boolean;
   allPawkits?: Array<{ id: string; name: string; slug: string }>;
+  onDeleteSuccess?: () => void;
 };
 
-export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits = [] }: PawkitsHeaderProps) {
-  const [showModal, setShowModal] = useState(false);
+export function PawkitActions({ pawkitId, pawkitName, hasChildren = false, allPawkits = [], onDeleteSuccess }: PawkitActionsProps) {
   const [showMenu, setShowMenu] = useState(false);
-  const [pawkitName, setPawkitName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
-  const [renameValue, setRenameValue] = useState("");
+  const [renameValue, setRenameValue] = useState(pawkitName);
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [deleteCards, setDeleteCards] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  const isSubPawkit = !!parentSlug;
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const trimmedName = pawkitName.trim();
-    if (!trimmedName) {
-      setError("Pawkit name cannot be empty");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const payload: { name: string; parentId?: string } = {
-        name: trimmedName,
-      };
-      // Only include parentId if we're creating a sub-pawkit
-      if (parentId) {
-        payload.parentId = parentId;
-      }
-
-      const response = await fetch("/api/pawkits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.message || "Failed to create Pawkit");
-        setLoading(false);
-        return;
-      }
-
-      setPawkitName("");
-      setShowModal(false);
-      setLoading(false);
-      router.refresh();
-    } catch (err) {
-      setError("Failed to create Pawkit");
-      setLoading(false);
-    }
-  };
-
-  const handleClose = () => {
-    if (!loading) {
-      setShowModal(false);
-      setPawkitName("");
-      setError(null);
-    }
-  };
-
   const handleDelete = async () => {
-    if (!parentId) return;
-
     setLoading(true);
     try {
-      const response = await fetch(`/api/pawkits/${parentId}`, {
+      const url = deleteCards
+        ? `/api/pawkits/${pawkitId}?deleteCards=true`
+        : `/api/pawkits/${pawkitId}`;
+
+      const response = await fetch(url, {
         method: "DELETE",
       });
 
@@ -90,8 +38,10 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
         throw new Error("Failed to delete Pawkit");
       }
 
+      setShowDeleteConfirm(false);
       router.push("/pawkits");
       router.refresh();
+      onDeleteSuccess?.();
     } catch (err) {
       alert("Failed to delete Pawkit");
       setLoading(false);
@@ -99,11 +49,11 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
   };
 
   const handleRename = async () => {
-    if (!parentId || !renameValue.trim()) return;
+    if (!renameValue.trim()) return;
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/pawkits/${parentId}`, {
+      const response = await fetch(`/api/pawkits/${pawkitId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: renameValue.trim() }),
@@ -114,7 +64,6 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
       }
 
       setShowRenameModal(false);
-      setRenameValue("");
       setLoading(false);
       router.refresh();
     } catch (err) {
@@ -124,11 +73,9 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
   };
 
   const handleMove = async () => {
-    if (!parentId) return;
-
     setLoading(true);
     try {
-      const response = await fetch(`/api/pawkits/${parentId}`, {
+      const response = await fetch(`/api/pawkits/${pawkitId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ parentId: selectedMoveTarget }),
@@ -141,7 +88,6 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
       setShowMoveModal(false);
       setSelectedMoveTarget(null);
       setLoading(false);
-      router.push("/pawkits");
       router.refresh();
     } catch (err) {
       alert("Failed to move Pawkit");
@@ -149,7 +95,6 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
     }
   };
 
-  // Click outside to close menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -168,123 +113,56 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
 
   return (
     <>
-      <div className="flex items-center justify-between mb-6">
-        {!isSubPawkit && (
-          <div>
-            <h1 className="text-3xl font-semibold text-gray-100">Pawkits</h1>
-            <p className="text-sm text-gray-400">
-              Organize cards into visual groups. Open a Pawkit to filter the library or manage the hierarchy below.
-            </p>
+      <div className="relative" ref={menuRef}>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowMenu(!showMenu);
+          }}
+          className="flex items-center justify-center h-9 w-9 rounded text-gray-400 hover:bg-gray-900 hover:text-gray-100 transition-colors"
+        >
+          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="12" cy="5" r="1.5" />
+            <circle cx="12" cy="12" r="1.5" />
+            <circle cx="12" cy="19" r="1.5" />
+          </svg>
+        </button>
+
+        {showMenu && (
+          <div className="absolute right-0 mt-2 w-48 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-50">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowRenameModal(true);
+                setShowMenu(false);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors"
+            >
+              Rename
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMoveModal(true);
+                setShowMenu(false);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors"
+            >
+              Move to another Pawkit
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeleteConfirm(true);
+                setShowMenu(false);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-rose-400 hover:bg-gray-800 hover:text-rose-300 transition-colors"
+            >
+              Delete
+            </button>
           </div>
         )}
-        <div className={`flex items-center gap-2 ${isSubPawkit ? "ml-auto" : ""}`}>
-          <button
-            onClick={() => setShowModal(true)}
-            className="rounded bg-accent px-4 py-2 text-sm font-medium text-gray-950 hover:bg-accent/90 transition-colors"
-          >
-            + Create {isSubPawkit ? "Sub-" : ""}Pawkit
-          </button>
-          {isSubPawkit && (
-            <div className="relative" ref={menuRef}>
-              <button
-                onClick={() => setShowMenu(!showMenu)}
-                className="flex items-center justify-center h-9 w-9 rounded text-gray-400 hover:bg-gray-900 hover:text-gray-100 transition-colors"
-              >
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
-                  <circle cx="12" cy="5" r="1.5" />
-                  <circle cx="12" cy="12" r="1.5" />
-                  <circle cx="12" cy="19" r="1.5" />
-                </svg>
-              </button>
-
-              {showMenu && (
-                <div className="absolute right-0 mt-2 w-48 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-50">
-                  <button
-                    onClick={() => {
-                      setShowRenameModal(true);
-                      setShowMenu(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors"
-                  >
-                    Rename
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowMoveModal(true);
-                      setShowMenu(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors"
-                  >
-                    Move to another Pawkit
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowDeleteConfirm(true);
-                      setShowMenu(false);
-                    }}
-                    className="w-full px-4 py-2 text-left text-sm text-rose-400 hover:bg-gray-800 hover:text-rose-300 transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
       </div>
-
-      {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={handleClose}
-        >
-          <div
-            className="bg-gray-950 rounded-lg p-6 w-full max-w-md shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-semibold text-gray-100 mb-4">
-              Create {isSubPawkit ? "Sub-" : ""}Pawkit
-            </h2>
-            <form onSubmit={handleCreate}>
-              <input
-                type="text"
-                value={pawkitName}
-                onChange={(e) => {
-                  setPawkitName(e.target.value);
-                  setError(null);
-                }}
-                placeholder="Enter Pawkit name"
-                className="w-full rounded bg-gray-900 px-4 py-2 text-sm text-gray-100 placeholder-gray-500 border border-gray-800 focus:border-accent focus:outline-none"
-                autoFocus
-                disabled={loading}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape") {
-                    handleClose();
-                  }
-                }}
-              />
-              {error && <p className="mt-2 text-xs text-rose-400">{error}</p>}
-              <div className="flex gap-3 mt-4">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="flex-1 rounded bg-gray-900 px-4 py-2 text-sm font-medium text-gray-100 hover:bg-gray-800 transition-colors"
-                  disabled={loading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 rounded bg-accent px-4 py-2 text-sm font-medium text-gray-950 hover:bg-accent/90 transition-colors disabled:opacity-50"
-                  disabled={loading}
-                >
-                  {loading ? "Creating..." : "Create"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
@@ -297,9 +175,37 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-semibold text-gray-100 mb-4">Delete Pawkit?</h2>
-            <p className="text-sm text-gray-400 mb-6">
-              This will permanently delete this Pawkit and all its contents. This action cannot be undone.
+
+            {hasChildren && (
+              <div className="mb-4 p-3 rounded bg-yellow-900/20 border border-yellow-700/50">
+                <p className="text-sm text-yellow-200 font-medium">⚠️ Warning</p>
+                <p className="text-xs text-yellow-300/80 mt-1">
+                  This Pawkit contains sub-Pawkits. Deleting it will also delete all sub-Pawkits.
+                </p>
+              </div>
+            )}
+
+            <p className="text-sm text-gray-400 mb-4">
+              This will permanently delete this Pawkit{hasChildren ? " and all its sub-Pawkits" : ""}. This action cannot be undone.
             </p>
+
+            <div className="mb-4 p-3 rounded bg-gray-900 border border-gray-800">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={deleteCards}
+                  onChange={(e) => setDeleteCards(e.target.checked)}
+                  className="rounded bg-gray-800 border-gray-700 text-accent focus:ring-accent"
+                />
+                <span className="text-sm text-gray-300">Also delete all cards inside this Pawkit</span>
+              </label>
+              <p className="text-xs text-gray-500 mt-1 ml-6">
+                {deleteCards
+                  ? "All cards will be permanently deleted"
+                  : "Cards will remain in 'All cards' without a Pawkit"}
+              </p>
+            </div>
+
             <div className="flex gap-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
@@ -393,7 +299,7 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
                 Root (Top Level)
               </button>
               {allPawkits
-                .filter((p) => p.id !== parentId)
+                .filter((p) => p.id !== pawkitId)
                 .map((pawkit) => (
                   <button
                     key={pawkit.id}
