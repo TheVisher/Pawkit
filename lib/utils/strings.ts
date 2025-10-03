@@ -1,10 +1,23 @@
-const URL_PATTERN = /^(https?:\/\/)?([\w.-]+)(:[0-9]+)?(\/.*)?$/i;
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 export function isProbablyUrl(input: string): boolean {
   const trimmed = input.trim();
   if (!trimmed) return false;
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return true;
-  return URL_PATTERN.test(trimmed);
+  if (/\s/.test(trimmed)) return false;
+
+  const candidate = trimmed.startsWith("http://") || trimmed.startsWith("https://")
+    ? trimmed
+    : `https://${trimmed}`;
+
+  try {
+    const url = new URL(candidate);
+    const host = url.hostname.toLowerCase();
+    if (!host) return false;
+    if (LOCAL_HOSTS.has(host)) return true;
+    return host.includes(".");
+  } catch {
+    return false;
+  }
 }
 
 export function ensureUrlProtocol(url: string): string {

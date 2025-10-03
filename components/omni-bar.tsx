@@ -1,29 +1,83 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, useState, Suspense } from "react";
+import { FormEvent, KeyboardEvent, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { isProbablyUrl } from "@/lib/utils/strings";
 import { AddCardModal } from "@/components/modals/add-card-modal";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 
+const TEXT_SEARCH_DEBOUNCE_MS = 250;
+
 function OmniBarContent() {
-  const [value, setValue] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [showModal, setShowModal] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const initialQuery = searchParams?.get("q") ?? "";
+  const [value, setValue] = useState(initialQuery);
+  const [adding, setAdding] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const autoFetchMetadata = useSettingsStore((state) => state.autoFetchMetadata);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
+  const lastSearchedRef = useRef(initialQuery);
+
+  const navigateToLibrary = useCallback(
+    (query: string | null) => {
+      const params = new URLSearchParams(searchParams?.toString());
+      if (!query) {
+        params.delete("q");
+      } else {
+        params.set("q", query);
+      }
+      const queryString = params.toString();
+      router.push(queryString ? `/library?${queryString}` : "/library");
+    },
+    [router, searchParams]
+  );
+
+  useEffect(() => {
+    const currentQuery = searchParams?.get("q") ?? "";
+    lastSearchedRef.current = currentQuery;
+    setValue((prev) => (prev === currentQuery ? prev : currentQuery));
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (isProbablyUrl(value)) {
+      return;
+    }
+
+    const trimmed = value.trim();
+
+    const timer = window.setTimeout(() => {
+      if (trimmed.length === 0) {
+        if (lastSearchedRef.current) {
+          navigateToLibrary(null);
+          lastSearchedRef.current = "";
+        }
+        return;
+      }
+
+      if (lastSearchedRef.current === trimmed) {
+        return;
+      }
+
+      navigateToLibrary(trimmed);
+      lastSearchedRef.current = trimmed;
+    }, TEXT_SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [value, navigateToLibrary]);
 
   const handleSearch = () => {
-    const params = new URLSearchParams(searchParams?.toString());
-    if (value.trim().length === 0) {
-      params.delete("q");
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      navigateToLibrary(null);
+      lastSearchedRef.current = "";
     } else {
-      params.set("q", value.trim());
+      navigateToLibrary(trimmed);
+      lastSearchedRef.current = trimmed;
     }
-    router.push(`/library?${params.toString()}`);
   };
 
   const quickAdd = async () => {
