@@ -45,7 +45,8 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
       if (!searchParams?.has("layout")) {
         const params = new URLSearchParams(searchParams?.toString());
         params.set("layout", savedLayout);
-        router.replace(`/library?${params.toString()}`);
+        const currentPath = window.location.pathname;
+        router.replace(`${currentPath}?${params.toString()}`);
       }
     }
   }, []);
@@ -67,7 +68,8 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
     localStorage.setItem("library-layout", nextLayout);
     const params = new URLSearchParams(searchParams?.toString());
     params.set("layout", nextLayout);
-    router.push(`/library?${params.toString()}`);
+    const currentPath = window.location.pathname;
+    router.push(`${currentPath}?${params.toString()}`);
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {

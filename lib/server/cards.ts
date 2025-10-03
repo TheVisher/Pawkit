@@ -362,24 +362,24 @@ export async function purgeOldTrashItems() {
 
 export type OldCardsResult = {
   cards: CardDTO[];
-  ageThreshold: "1 year" | "6 months" | "3 months" | "1 month";
+  ageThreshold: "1 day" | "12 hours" | "6 hours" | "1 hour";
   total: number;
 };
 
 export async function getOldCards(): Promise<OldCardsResult | null> {
   const now = new Date();
 
-  // Try different age thresholds in order
-  const thresholds: Array<{ months: number; label: "1 year" | "6 months" | "3 months" | "1 month" }> = [
-    { months: 12, label: "1 year" },
-    { months: 6, label: "6 months" },
-    { months: 3, label: "3 months" },
-    { months: 1, label: "1 month" }
+  // Try different age thresholds in order (using hours for testing)
+  const thresholds: Array<{ hours: number; label: "1 day" | "12 hours" | "6 hours" | "1 hour" }> = [
+    { hours: 24, label: "1 day" },
+    { hours: 12, label: "12 hours" },
+    { hours: 6, label: "6 hours" },
+    { hours: 1, label: "1 hour" }
   ];
 
   for (const threshold of thresholds) {
     const cutoffDate = new Date(now);
-    cutoffDate.setMonth(cutoffDate.getMonth() - threshold.months);
+    cutoffDate.setHours(cutoffDate.getHours() - threshold.hours);
 
     const cards = await prisma.card.findMany({
       where: {

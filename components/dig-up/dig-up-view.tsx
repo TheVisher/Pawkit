@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { CardModel } from "@/lib/types";
+import { CardModel, CollectionNode } from "@/lib/types";
 import { useRouter } from "next/navigation";
-import { Collection } from "@prisma/client";
 
 type DigUpViewProps = {
   initialCards: CardModel[];
   ageThreshold: "1 year" | "6 months" | "3 months" | "1 month";
   total: number;
-  pawkits: Collection[];
+  pawkits: CollectionNode[];
 };
 
 export function DigUpView({ initialCards, ageThreshold, total, pawkits }: DigUpViewProps) {
@@ -216,19 +215,18 @@ export function DigUpView({ initialCards, ageThreshold, total, pawkits }: DigUpV
               <h3 className="font-medium text-gray-100">Add to Pawkit</h3>
               <p className="text-xs text-gray-500 mt-1">Select a Pawkit to organize this card</p>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            <div className="flex-1 overflow-y-auto p-4 space-y-1">
               {pawkits.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-8">No Pawkits available</p>
               ) : (
                 pawkits.map((pawkit) => (
-                  <button
+                  <PawkitTreeItem
                     key={pawkit.id}
-                    onClick={() => handleAddToPawkit(pawkit.slug)}
-                    disabled={loading}
-                    className="w-full text-left rounded px-4 py-3 text-sm bg-gray-800 text-gray-200 hover:bg-gray-700 transition-colors disabled:opacity-50"
-                  >
-                    📁 {pawkit.name}
-                  </button>
+                    node={pawkit}
+                    depth={0}
+                    onSelect={handleAddToPawkit}
+                    loading={loading}
+                  />
                 ))
               )}
             </div>
@@ -236,5 +234,39 @@ export function DigUpView({ initialCards, ageThreshold, total, pawkits }: DigUpV
         )}
       </div>
     </div>
+  );
+}
+
+type PawkitTreeItemProps = {
+  node: CollectionNode;
+  depth: number;
+  onSelect: (slug: string) => void;
+  loading: boolean;
+};
+
+function PawkitTreeItem({ node, depth, onSelect, loading }: PawkitTreeItemProps) {
+  const hasChildren = node.children && node.children.length > 0;
+  const paddingLeft = 16 + (depth * 16); // Base padding 16px + depth indent
+
+  return (
+    <>
+      <button
+        onClick={() => onSelect(node.slug)}
+        disabled={loading}
+        style={{ paddingLeft: `${paddingLeft}px` }}
+        className="w-full text-left rounded pr-4 py-2.5 text-sm bg-gray-800 text-gray-200 hover:bg-gray-700 transition-colors disabled:opacity-50"
+      >
+        📁 {node.name}
+      </button>
+      {hasChildren && node.children.map((child) => (
+        <PawkitTreeItem
+          key={child.id}
+          node={child}
+          depth={depth + 1}
+          onSelect={onSelect}
+          loading={loading}
+        />
+      ))}
+    </>
   );
 }

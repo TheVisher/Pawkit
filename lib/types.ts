@@ -12,6 +12,7 @@ export type CardModel = {
   image?: string | null;
   description?: string | null;
   metadata?: Record<string, unknown> | null;
+  pinned?: boolean;
   createdAt: string;
   updatedAt: string;
 };

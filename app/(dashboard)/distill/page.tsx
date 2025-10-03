@@ -3,7 +3,7 @@ import { listCollections } from "@/lib/server/collections";
 import { DigUpView } from "@/components/dig-up/dig-up-view";
 
 export default async function DigUpPage() {
-  const [oldCardsResult, { flat: pawkits }] = await Promise.all([
+  const [oldCardsResult, { tree: pawkits }] = await Promise.all([
     getOldCards(),
     listCollections()
   ]);

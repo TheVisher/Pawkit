@@ -172,14 +172,14 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
 
                         return (
                           <div key={collection.id}>
-                            <div className="flex items-center justify-between rounded py-1.5 px-3 text-sm transition-colors text-gray-400 hover:bg-gray-900 hover:text-gray-100">
+                            <div className={`flex items-center justify-between rounded py-1.5 px-3 text-sm transition-colors ${
+                              pathname === `/pawkits/${collection.slug}`
+                                ? "bg-gray-900 text-gray-100"
+                                : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
+                            }`}>
                               <button
                                 onClick={() => router.push(`/pawkits/${collection.slug}`)}
-                                className={`flex-1 text-left ${
-                                  pathname === `/pawkits/${collection.slug}`
-                                    ? "text-gray-100"
-                                    : ""
-                                }`}
+                                className="flex-1 text-left"
                               >
                                 {collection.name}
                               </button>

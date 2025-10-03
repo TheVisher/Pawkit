@@ -6,11 +6,12 @@ import { Dispatch, SetStateAction, useEffect, useMemo, useState, Suspense } from
 import { useSearchParams } from "next/navigation";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { CardModel } from "@/lib/types";
+import { CardModel, CollectionNode } from "@/lib/types";
 import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
+import { CardDetailModal } from "@/components/modals/card-detail-modal";
 
 export type CardGalleryProps = {
   cards: CardModel[];
@@ -25,6 +26,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [collections, setCollections] = useState<CollectionNode[]>([]);
   const searchParams = useSearchParams();
   const selectedIds = useSelection((state) => state.selectedIds);
   const toggleSelection = useSelection((state) => state.toggle);
@@ -34,6 +36,22 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const showThumbnails = useSettingsStore((state) => state.showThumbnails);
 
   const orderedIds = useMemo(() => cards.map((card) => card.id), [cards]);
+
+  // Fetch collections for the modal
+  useEffect(() => {
+    const fetchCollections = async () => {
+      try {
+        const response = await fetch("/api/pawkits");
+        if (response.ok) {
+          const data = await response.json();
+          setCollections(data.tree);
+        }
+      } catch (error) {
+        console.error("Failed to fetch collections:", error);
+      }
+    };
+    fetchCollections();
+  }, []);
 
   // Poll for pending cards to update their metadata
   useEffect(() => {
@@ -245,8 +263,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
       )}
 
       {activeCard && (
-        <CardModal
+        <CardDetailModal
           card={activeCard}
+          collections={collections}
           onClose={() => setActiveCardId(null)}
           onUpdate={(updated) =>
             setCards((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
@@ -352,109 +371,6 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
   );
 }
 
-type CardModalProps = {
-  card: CardModel;
-  onClose: () => void;
-  onUpdate: (card: CardModel) => void;
-  onDelete: () => void;
-};
-
-function CardModal({ card, onClose, onUpdate, onDelete }: CardModalProps) {
-  const [notes, setNotes] = useState(card.notes ?? "");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setNotes(card.notes ?? "");
-  }, [card.id, card.notes]);
-
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
-  useEffect(() => {
-    const timeout = setTimeout(async () => {
-      if (notes === (card.notes ?? "")) return;
-      setSaving(true);
-      const response = await fetch(`/api/cards/${card.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes })
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        setError(body.message || "Unable to save notes");
-      } else {
-        const updated = await response.json();
-        onUpdate(updated);
-        setError(null);
-      }
-      setSaving(false);
-    }, 600);
-    return () => clearTimeout(timeout);
-  }, [notes, card.id, card.notes, onUpdate]);
-
-  const handleDelete = async () => {
-    const confirmed = window.confirm("Delete this card?");
-    if (!confirmed) return;
-    const response = await fetch(`/api/cards/${card.id}`, { method: "DELETE" });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      setError(body.message || "Unable to delete card");
-      return;
-    }
-    onDelete();
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6" role="dialog" aria-modal="true">
-      <div className="max-h-full w-full max-w-2xl overflow-y-auto rounded bg-gray-950 p-6 shadow-lg">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-100">{card.title || card.domain || card.url}</h2>
-            <p className="text-xs text-gray-500">{card.url}</p>
-          </div>
-          <button className="rounded bg-gray-800 px-2 py-1 text-sm" onClick={onClose}>
-            Close
-          </button>
-        </div>
-        <div className="mt-4 space-y-4 text-sm text-gray-300">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="rounded bg-gray-800 px-2 py-0.5 text-[10px]">{card.status}</span>
-            <span>Created {new Date(card.createdAt).toLocaleString()}</span>
-          </div>
-          {card.image && (
-            <div className="relative aspect-video w-full overflow-hidden rounded bg-gray-900">
-              <img src={card.image} alt={card.title ?? card.url} className="h-full w-full object-cover" loading="lazy" />
-            </div>
-          )}
-          <div>
-            <label className="mb-1 block text-xs text-gray-500" htmlFor="notes">
-              Notes
-            </label>
-            <textarea
-              id="notes"
-              value={notes}
-              onChange={(event) => setNotes(event.target.value)}
-              className="min-h-[120px] w-full rounded border border-gray-800 bg-gray-900 p-3"
-            />
-            {saving && <p className="mt-1 text-xs text-gray-500">Saving…</p>}
-            {error && <p className="mt-1 text-xs text-rose-400">{error}</p>}
-          </div>
-          <button className="rounded bg-rose-500 px-3 py-2 text-sm text-gray-950" onClick={handleDelete}>
-            Delete card
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function layoutClass(layout: LayoutMode) {
   switch (layout) {
