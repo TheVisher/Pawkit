@@ -42,6 +42,7 @@ export const cardUpdateSchema = z
     domain: nullableString,
     image: nullableString,
     description: nullableString,
+    pinned: z.boolean().optional(),
     metadata: z
       .record(z.any())
       .nullable()

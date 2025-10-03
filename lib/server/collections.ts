@@ -125,3 +125,16 @@ export async function deleteCollection(id: string) {
     prisma.collection.delete({ where: { id } })
   ]);
 }
+
+export async function pinnedCollections(limit = 8) {
+  const collections = await prisma.collection.findMany({
+    where: {
+      pinned: true,
+      parentId: null // Only root-level Pawkits
+    },
+    orderBy: { updatedAt: "desc" },
+    take: limit
+  });
+
+  return collections;
+}

@@ -1,13 +1,19 @@
 import Link from "next/link";
 import { countCards, quickAccessCards, recentCards, type CardDTO } from "@/lib/server/cards";
+import { pinnedCollections } from "@/lib/server/collections";
 import { DEFAULT_USERNAME } from "@/lib/constants";
+import { QuickAccessCard } from "@/components/home/quick-access-card";
+import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
 
 export default async function HomePage() {
-  const [counts, recent, quickAccess] = await Promise.all([
+  const [counts, recent, quickAccessCardsData, pinnedPawkits] = await Promise.all([
     countCards(),
     recentCards(5),
-    quickAccessCards(4)
+    quickAccessCards(8),
+    pinnedCollections(8)
   ]);
+
+  const quickAccess = quickAccessCardsData;
 
   const recentIds = new Set(recent.map((card) => card.id));
   let quickAccessUnique = quickAccess
@@ -50,18 +56,21 @@ export default async function HomePage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold text-gray-100">Quick Access</h2>
-          <Link href="/library?layout=compact" className="text-sm text-accent hover:text-accent/80">
+          <Link href="/pawkits" className="text-sm text-accent hover:text-accent/80">
             Manage shortcuts
           </Link>
         </div>
-        {quickAccessUnique.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {(pinnedPawkits.length > 0 || quickAccessUnique.length > 0) ? (
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+            {pinnedPawkits.map((pawkit) => (
+              <QuickAccessPawkitCard key={pawkit.id} pawkit={pawkit} />
+            ))}
             {quickAccessUnique.map((item) => (
               <QuickAccessCard key={item.id} card={item} />
             ))}
           </div>
         ) : (
-          <EmptyState message="Pin a card or collection to surface it here." />
+          <EmptyState message="Pin cards or Pawkits to surface them here." />
         )}
       </section>
 
@@ -113,24 +122,6 @@ function RecentCard({ card }: CardProps) {
   );
 }
 
-function QuickAccessCard({ card }: CardProps) {
-  return (
-    <article className="flex h-full flex-col justify-between rounded border border-gray-800 bg-gray-900 p-4">
-      {card.image && (
-        <div className="mb-3 overflow-hidden rounded bg-gray-800">
-          <img src={card.image} alt={card.title ?? card.url} className="h-24 w-full object-cover" loading="lazy" />
-        </div>
-      )}
-      <div>
-        <p className="text-sm font-medium text-gray-100 truncate" title={card.title ?? card.url}>
-          {card.title || card.domain || card.url}
-        </p>
-        <p className="mt-1 text-xs text-gray-500 truncate">{card.url}</p>
-      </div>
-      <p className="mt-4 text-xs text-gray-500">Updated {formatDate(card.updatedAt)}</p>
-    </article>
-  );
-}
 
 type EmptyStateProps = {
   message: string;

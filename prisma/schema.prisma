@@ -19,6 +19,7 @@ model Card {
   image       String?
   description String?
   metadata    String?
+  pinned      Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -28,6 +29,7 @@ model Collection {
   name      String
   slug      String   @unique
   parentId  String?
+  pinned    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

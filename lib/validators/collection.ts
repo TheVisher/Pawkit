@@ -14,7 +14,8 @@ export const collectionCreateSchema = z.object({
 export const collectionUpdateSchema = z
   .object({
     name: nameSchema.optional(),
-    parentId: z.string().nullable().optional()
+    parentId: z.string().nullable().optional(),
+    pinned: z.boolean().optional()
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided"

@@ -188,14 +188,32 @@ export async function countCards() {
   return { total, ready, pending, error };
 }
 
-export async function quickAccessCards(limit = 4) {
-  const items = await prisma.card.findMany({
-    orderBy: {
-      updatedAt: "desc"
-    },
+export async function quickAccessCards(limit = 8) {
+  // Get pinned cards first
+  const pinnedCards = await prisma.card.findMany({
+    where: { pinned: true },
+    orderBy: { updatedAt: "desc" },
     take: limit
   });
-  return items.map(mapCard);
+
+  // If we have enough pinned cards, return them
+  if (pinnedCards.length >= limit) {
+    return pinnedCards.map(mapCard);
+  }
+
+  // Otherwise, fill remaining slots with most recently updated cards
+  const remaining = limit - pinnedCards.length;
+  const pinnedIds = pinnedCards.map(card => card.id);
+
+  const recentCards = await prisma.card.findMany({
+    where: {
+      id: { notIn: pinnedIds }
+    },
+    orderBy: { updatedAt: "desc" },
+    take: remaining
+  });
+
+  return [...pinnedCards, ...recentCards].map(mapCard);
 }
 
 export async function collectionPreviewCards(slug: string, limit = 6) {

@@ -34,6 +34,7 @@ export default async function CollectionsPage() {
         slug: node.slug,
         count: cards.length,
         hasChildren: (node.children && node.children.length > 0) || false,
+        isPinned: node.pinned || false,
         cards: cards.map((card) => ({
           id: card.id,
           title: card.title,

@@ -6,12 +6,13 @@ import { useRouter } from "next/navigation";
 type PawkitActionsProps = {
   pawkitId: string;
   pawkitName: string;
+  isPinned?: boolean;
   hasChildren?: boolean;
   allPawkits?: Array<{ id: string; name: string; slug: string }>;
   onDeleteSuccess?: () => void;
 };
 
-export function PawkitActions({ pawkitId, pawkitName, hasChildren = false, allPawkits = [], onDeleteSuccess }: PawkitActionsProps) {
+export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChildren = false, allPawkits = [], onDeleteSuccess }: PawkitActionsProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
@@ -20,6 +21,7 @@ export function PawkitActions({ pawkitId, pawkitName, hasChildren = false, allPa
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleteCards, setDeleteCards] = useState(false);
+  const [pinned, setPinned] = useState(isPinned);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -95,6 +97,26 @@ export function PawkitActions({ pawkitId, pawkitName, hasChildren = false, allPa
     }
   };
 
+  const handlePinToggle = async () => {
+    try {
+      const response = await fetch(`/api/pawkits/${pawkitId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pinned: !pinned }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to toggle pin");
+      }
+
+      setPinned(!pinned);
+      setShowMenu(false);
+      router.refresh();
+    } catch (err) {
+      alert("Failed to toggle pin");
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -130,6 +152,15 @@ export function PawkitActions({ pawkitId, pawkitName, hasChildren = false, allPa
 
         {showMenu && (
           <div className="absolute right-0 mt-2 w-48 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-50">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePinToggle();
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors"
+            >
+              {pinned ? "Unpin from Quick Access" : "Pin to Quick Access"}
+            </button>
             <button
               onClick={(e) => {
                 e.stopPropagation();

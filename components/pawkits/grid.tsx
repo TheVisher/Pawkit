@@ -9,6 +9,7 @@ type CollectionPreviewCard = {
   slug: string | null;
   count: number;
   hasChildren?: boolean;
+  isPinned?: boolean;
   cards: Array<{
     id: string;
     title?: string | null;
@@ -66,6 +67,7 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
                   <PawkitActions
                     pawkitId={collection.id}
                     pawkitName={collection.name}
+                    isPinned={collection.isPinned}
                     hasChildren={collection.hasChildren}
                     allPawkits={allPawkits}
                   />
