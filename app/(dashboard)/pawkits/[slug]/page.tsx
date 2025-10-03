@@ -2,6 +2,7 @@ import { listCards } from "@/lib/server/cards";
 import { listCollections } from "@/lib/server/collections";
 import { CardModel, CollectionNode, CardStatus } from "@/lib/types";
 import { LibraryWorkspace } from "@/components/library/workspace";
+import { PawkitsHeader } from "@/components/pawkits/pawkits-header";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { notFound } from "next/navigation";
 
@@ -65,13 +66,16 @@ export default async function CollectionPage({
   const tree: CollectionNode[] = collections.tree.map((node) => serializeCollection(node));
 
   return (
-    <LibraryWorkspace
-      initialCards={initialCards}
-      initialNextCursor={nextCursor}
-      initialQuery={{ q, collection: slug, status, layout }}
-      collectionsTree={tree}
-      collectionName={currentCollection.name}
-    />
+    <div className="space-y-6">
+      <PawkitsHeader parentSlug={slug} />
+      <LibraryWorkspace
+        initialCards={initialCards}
+        initialNextCursor={nextCursor}
+        initialQuery={{ q, collection: slug, status, layout }}
+        collectionsTree={tree}
+        collectionName={currentCollection.name}
+      />
+    </div>
   );
 }
 

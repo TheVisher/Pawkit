@@ -31,7 +31,7 @@ const primaryLinks: SidebarLinkConfig[] = [
   { href: "/home", label: "Home", icon: IconHome },
   { href: "/library", label: "Library", icon: IconLibrary },
   { href: "/timeline", label: "Timeline", icon: IconTimeline },
-  { href: "/collections", label: "Collections", icon: IconCollections },
+  { href: "/pawkits", label: "Pawkits", icon: IconCollections },
   { href: "/notes", label: "Notes", icon: IconNotes },
   { href: "/distill", label: "Distill", icon: IconDistill },
   { href: "/trash", label: "Trash", icon: IconTrash }
@@ -128,7 +128,7 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
       <div className={`flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto ${collapsed ? "px-2 py-4" : "p-4"}`}>
         <div className={`${collapsed ? "w-full" : ""} space-y-1`}>
           {primaryLinks.map((link) => {
-            if (link.href === "/collections") {
+            if (link.href === "/pawkits") {
               return (
                 <div key={link.href}>
                   <div
@@ -174,9 +174,9 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
                           <div key={collection.id}>
                             <div className="flex items-center justify-between rounded py-1.5 px-3 text-sm transition-colors text-gray-400 hover:bg-gray-900 hover:text-gray-100">
                               <button
-                                onClick={() => router.push(`/collections/${collection.slug}`)}
+                                onClick={() => router.push(`/pawkits/${collection.slug}`)}
                                 className={`flex-1 text-left ${
-                                  pathname === `/collections/${collection.slug}`
+                                  pathname === `/pawkits/${collection.slug}`
                                     ? "text-gray-100"
                                     : ""
                                 }`}
@@ -214,9 +214,9 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
                                 {collection.children.map((child) => (
                                   <button
                                     key={child.id}
-                                    onClick={() => router.push(`/collections/${child.slug}`)}
+                                    onClick={() => router.push(`/pawkits/${child.slug}`)}
                                     className={`w-full rounded px-3 py-1.5 text-left text-sm transition-colors ${
-                                      pathname === `/collections/${child.slug}`
+                                      pathname === `/pawkits/${child.slug}`
                                         ? "bg-gray-900 text-gray-100"
                                         : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
                                     }`}

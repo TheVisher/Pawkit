@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { CardGallery } from "@/components/library/card-gallery";
-import { CollectionsSidebar } from "@/components/collections/sidebar";
+import { CollectionsSidebar } from "@/components/pawkits/sidebar";
 import { LayoutMode } from "@/lib/constants";
 
 export type LibraryWorkspaceProps = {

@@ -1,5 +1,6 @@
-import { CollectionsGrid } from "@/components/collections/grid";
-import { CollectionsManager } from "@/components/collections/manager";
+import { CollectionsGrid } from "@/components/pawkits/grid";
+import { CollectionsManager } from "@/components/pawkits/manager";
+import { PawkitsHeader } from "@/components/pawkits/pawkits-header";
 import { collectionPreviewCards, countCards, listCards } from "@/lib/server/cards";
 import { listCollections, type CollectionDTO } from "@/lib/server/collections";
 import { safeHost } from "@/lib/utils/strings";
@@ -61,12 +62,7 @@ export default async function CollectionsPage() {
 
   return (
     <div className="space-y-10">
-      <header className="space-y-2">
-        <h1 className="text-3xl font-semibold text-gray-100">Collections</h1>
-        <p className="text-sm text-gray-400">
-          Organize cards into visual groups. Open a collection to filter the library or manage the hierarchy below.
-        </p>
-      </header>
+      <PawkitsHeader />
       <CollectionsGrid collections={gridItems} />
       <section className="space-y-4">
         <h2 className="text-xl font-semibold text-gray-100">Hierarchy</h2>

@@ -35,7 +35,7 @@ function CollectionsSidebarContent({
   }, [tree]);
 
   const refresh = async () => {
-    const response = await fetch("/api/collections");
+    const response = await fetch("/api/pawkits");
     if (!response.ok) {
       setError("Failed to refresh collections");
       return;
@@ -49,7 +49,7 @@ function CollectionsSidebarContent({
     if (!showManagementControls) return;
     const name = window.prompt("Collection name");
     if (!name) return;
-    const response = await fetch("/api/collections", {
+    const response = await fetch("/api/pawkits", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, parentId })
@@ -66,7 +66,7 @@ function CollectionsSidebarContent({
     if (!showManagementControls) return;
     const name = window.prompt("Rename collection", node.name);
     if (!name || name === node.name) return;
-    const response = await fetch(`/api/collections/${node.id}`, {
+    const response = await fetch(`/api/pawkits/${node.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name })
@@ -102,7 +102,7 @@ function CollectionsSidebarContent({
       }
       parentId = target.id;
     }
-    const response = await fetch(`/api/collections/${node.id}`, {
+    const response = await fetch(`/api/pawkits/${node.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ parentId })
@@ -119,7 +119,7 @@ function CollectionsSidebarContent({
     if (!showManagementControls) return;
     const confirmed = window.confirm(`Delete collection "${node.name}"?`);
     if (!confirmed) return;
-    const response = await fetch(`/api/collections/${node.id}`, { method: "DELETE" });
+    const response = await fetch(`/api/pawkits/${node.id}`, { method: "DELETE" });
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       setError(body.message || "Unable to delete collection");
@@ -136,7 +136,7 @@ function CollectionsSidebarContent({
     if (!slug) {
       router.push("/library");
     } else {
-      router.push(`/collections/${slug}`);
+      router.push(`/pawkits/${slug}`);
     }
   };
 
