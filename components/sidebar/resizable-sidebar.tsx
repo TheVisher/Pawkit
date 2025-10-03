@@ -33,7 +33,7 @@ const primaryLinks: SidebarLinkConfig[] = [
   { href: "/timeline", label: "Timeline", icon: IconTimeline },
   { href: "/pawkits", label: "Pawkits", icon: IconCollections },
   { href: "/notes", label: "Notes", icon: IconNotes },
-  { href: "/distill", label: "Distill", icon: IconDistill },
+  { href: "/distill", label: "Dig Up", icon: IconDistill },
   { href: "/trash", label: "Trash", icon: IconTrash }
 ];
 
