@@ -1,19 +1,61 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { countCards, quickAccessCards, recentCards, type CardDTO } from "@/lib/server/cards";
-import { pinnedCollections } from "@/lib/server/collections";
+import { type CardDTO } from "@/lib/server/cards";
 import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
 import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
+import { CardDetailModal } from "@/components/modals/card-detail-modal";
+import { CollectionNode, CardModel } from "@/lib/types";
 
-export default async function HomePage() {
-  const [counts, recent, quickAccessCardsData, pinnedPawkits] = await Promise.all([
-    countCards(),
-    recentCards(5),
-    quickAccessCards(8),
-    pinnedCollections(8)
-  ]);
+type Counts = {
+  total: number;
+  ready: number;
+  pending: number;
+  error: number;
+};
 
-  const quickAccess = quickAccessCardsData;
+type PinnedCollection = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
+export default function HomePage() {
+  const [counts, setCounts] = useState<Counts>({ total: 0, ready: 0, pending: 0, error: 0 });
+  const [recent, setRecent] = useState<CardDTO[]>([]);
+  const [quickAccess, setQuickAccess] = useState<CardDTO[]>([]);
+  const [pinnedPawkits, setPinnedPawkits] = useState<PinnedCollection[]>([]);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [collections, setCollections] = useState<CollectionNode[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [countsRes, recentRes, quickAccessRes, pinnedRes, collectionsRes] = await Promise.all([
+          fetch("/api/cards/count"),
+          fetch("/api/cards/recent?limit=5"),
+          fetch("/api/cards/quick-access?limit=8"),
+          fetch("/api/pawkits/pinned?limit=8"),
+          fetch("/api/pawkits")
+        ]);
+
+        if (countsRes.ok) setCounts(await countsRes.json());
+        if (recentRes.ok) setRecent(await recentRes.json());
+        if (quickAccessRes.ok) setQuickAccess(await quickAccessRes.json());
+        if (pinnedRes.ok) setPinnedPawkits(await pinnedRes.json());
+        if (collectionsRes.ok) {
+          const data = await collectionsRes.json();
+          setCollections(data.tree);
+        }
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const recentIds = new Set(recent.map((card) => card.id));
   let quickAccessUnique = quickAccess
@@ -26,32 +68,44 @@ export default async function HomePage() {
     });
   }
 
-  return (
-    <div className="flex flex-1 flex-col gap-12 pb-16">
-      <section className="text-center">
-        <h1 className="text-4xl font-semibold text-gray-100 sm:text-5xl">
-          <span className="mr-3 inline-block" aria-hidden="true">👋</span>
-          Welcome back, {DEFAULT_USERNAME}
-        </h1>
-      </section>
+  const activeCard = activeCardId ? recent.find((c) => c.id === activeCardId) : null;
 
-      <section className="space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-semibold text-gray-100">Recent Items</h2>
-          <Link href="/library" className="text-sm text-accent hover:text-accent/80">
-            View library
-          </Link>
-        </div>
-        {recent.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {recent.map((card) => (
-              <RecentCard key={card.id} card={card} />
-            ))}
+  const handleUpdateCard = (updated: CardModel) => {
+    setRecent((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+  };
+
+  const handleDeleteCard = () => {
+    setRecent((prev) => prev.filter((c) => c.id !== activeCardId));
+    setActiveCardId(null);
+  };
+
+  return (
+    <>
+      <div className="flex flex-1 flex-col gap-12 pb-16">
+        <section className="text-center">
+          <h1 className="text-4xl font-semibold text-gray-100 sm:text-5xl">
+            <span className="mr-3 inline-block" aria-hidden="true">👋</span>
+            Welcome back, {DEFAULT_USERNAME}
+          </h1>
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-xl font-semibold text-gray-100">Recent Items</h2>
+            <Link href="/library" className="text-sm text-accent hover:text-accent/80">
+              View library
+            </Link>
           </div>
-        ) : (
-          <EmptyState message="Add your first bookmark to see it here." />
-        )}
-      </section>
+          {recent.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {recent.map((card) => (
+                <RecentCard key={card.id} card={card} onClick={() => setActiveCardId(card.id)} />
+              ))}
+            </div>
+          ) : (
+            <EmptyState message="Add your first bookmark to see it here." />
+          )}
+        </section>
 
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-4">
@@ -83,7 +137,18 @@ export default async function HomePage() {
           <StatCard label="Error" value={counts.error} />
         </div>
       </section>
-    </div>
+      </div>
+
+      {activeCard && (
+        <CardDetailModal
+          card={activeCard as CardModel}
+          collections={collections}
+          onClose={() => setActiveCardId(null)}
+          onUpdate={handleUpdateCard}
+          onDelete={handleDeleteCard}
+        />
+      )}
+    </>
   );
 }
 
@@ -103,11 +168,15 @@ function StatCard({ label, value }: StatCardProps) {
 
 type CardProps = {
   card: CardDTO;
+  onClick: () => void;
 };
 
-function RecentCard({ card }: CardProps) {
+function RecentCard({ card, onClick }: CardProps) {
   return (
-    <article className="rounded border border-gray-800 bg-gray-900 p-4">
+    <article
+      onClick={onClick}
+      className="rounded border border-gray-800 bg-gray-900 p-4 cursor-pointer transition hover:border-accent/60"
+    >
       {card.image && (
         <div className="mb-3 overflow-hidden rounded bg-gray-800">
           <img src={card.image} alt={card.title ?? card.url} className="h-32 w-full object-cover" loading="lazy" />
@@ -131,8 +200,9 @@ function EmptyState({ message }: EmptyStateProps) {
   return <p className="rounded border border-dashed border-gray-800 bg-gray-950 p-6 text-sm text-gray-500">{message}</p>;
 }
 
-function formatDate(date: Date) {
-  return date.toLocaleDateString(undefined, {
+function formatDate(date: Date | string) {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric"

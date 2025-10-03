@@ -69,13 +69,36 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
     return clampWidth(parsed);
   });
   const collapsed = width <= COLLAPSE_WIDTH;
-  const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(true);
-  const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set());
+  const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const saved = localStorage.getItem('pawkits-collections-expanded');
+    return saved === 'true';
+  });
+  const [expandedCollections, setExpandedCollections] = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    const saved = localStorage.getItem('pawkits-expanded-collections');
+    if (saved) {
+      try {
+        return new Set(JSON.parse(saved));
+      } catch {
+        return new Set();
+      }
+    }
+    return new Set();
+  });
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     window.localStorage.setItem(STORAGE_KEY, String(width));
   }, [width]);
+
+  useEffect(() => {
+    localStorage.setItem('pawkits-collections-expanded', String(isCollectionsExpanded));
+  }, [isCollectionsExpanded]);
+
+  useEffect(() => {
+    localStorage.setItem('pawkits-expanded-collections', JSON.stringify(Array.from(expandedCollections)));
+  }, [expandedCollections]);
 
   const isActive = useMemo(() => {
     return (href: string) => {

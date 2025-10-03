@@ -44,7 +44,7 @@ export function ReaderView({ title, content, url, isExpanded, onToggleExpand, on
       )}
 
       {/* Article Content */}
-      <div className={`flex-1 overflow-y-auto ${isExpanded ? "px-8 py-12" : "p-6"}`}>
+      <div className={`flex-1 overflow-y-auto bg-[#fefefe] ${isExpanded ? "px-8 py-12" : "p-6"}`}>
         <article className="mx-auto max-w-[680px]">
           {/* Title - show in non-expanded mode */}
           {!isExpanded && (

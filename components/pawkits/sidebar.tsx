@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, useState, useRef, Suspense } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CollectionNode } from "@/lib/types";
@@ -26,9 +26,23 @@ function CollectionsSidebarContent({
 }: CollectionsSidebarProps) {
   const [nodes, setNodes] = useState(tree);
   const [error, setError] = useState<string | null>(null);
-  const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(true);
+
+  // Initialize from localStorage or default to false
+  const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pawkits-collections-expanded');
+      return saved === 'true'; // Will be false if null/undefined or 'false'
+    }
+    return false;
+  });
+
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Save collections expansion state to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('pawkits-collections-expanded', String(isCollectionsExpanded));
+  }, [isCollectionsExpanded]);
 
   useEffect(() => {
     setNodes(tree);
@@ -221,8 +235,21 @@ function CollectionItem({
   onDelete,
   showManagementControls
 }: CollectionItemProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Initialize from localStorage or default to false
+  const [isExpanded, setIsExpanded] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`pawkit-expanded-${node.slug}`);
+      return saved === 'true'; // Will be false if null/undefined or 'false'
+    }
+    return false;
+  });
+
   const { setNodeRef, isOver } = useDroppable({ id: node.slug, data: { slug: node.slug } });
+
+  // Save expansion state to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem(`pawkit-expanded-${node.slug}`, String(isExpanded));
+  }, [isExpanded, node.slug]);
 
   useEffect(() => {
     if (!onDragOver) return;
