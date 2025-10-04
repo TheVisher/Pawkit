@@ -10,6 +10,7 @@ import { CardModel, CollectionNode } from "@/lib/types";
 import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { useDataStore } from "@/lib/stores/data-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 
@@ -24,6 +25,8 @@ export type CardGalleryProps = {
 };
 
 function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false }: CardGalleryProps) {
+  const updateCardInStore = useDataStore(state => state.updateCard);
+  const deleteCardFromStore = useDataStore(state => state.deleteCard);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -141,17 +144,17 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
 
   const handleConfirmMove = async (slug: string) => {
     if (!selectedIds.length) return;
+
+    // Update all cards in store (optimistic)
     await Promise.all(
       selectedIds.map((id) => {
         const card = cards.find((item) => item.id === id);
         const collections = card ? Array.from(new Set([slug, ...card.collections])) : [slug];
-        return fetch(`/api/cards/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ collections })
-        });
+        return updateCardInStore(id, { collections });
       })
     );
+
+    // Update local state
     setCards((prev) =>
       prev.map((card) =>
         selectedIds.includes(card.id)
@@ -168,7 +171,10 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   };
 
   const handleConfirmDelete = async () => {
-    await Promise.all(selectedIds.map((id) => fetch(`/api/cards/${id}`, { method: "DELETE" })));
+    // Delete all cards from store (optimistic)
+    await Promise.all(selectedIds.map((id) => deleteCardFromStore(id)));
+
+    // Update local state
     setCards((prev) => prev.filter((card) => !selectedIds.includes(card.id)));
     clearSelection();
     setShowDeleteConfirm(false);

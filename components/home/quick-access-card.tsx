@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CardDTO } from "@/lib/server/cards";
+import { useDataStore } from "@/lib/stores/data-store";
 
 type QuickAccessCardProps = {
   card: CardDTO;
 };
 
 export function QuickAccessCard({ card }: QuickAccessCardProps) {
+  const updateCardInStore = useDataStore(state => state.updateCard);
   const [isPinned, setIsPinned] = useState(card.pinned);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -18,23 +20,15 @@ export function QuickAccessCard({ card }: QuickAccessCardProps) {
     e.stopPropagation();
     setIsLoading(true);
 
-    try {
-      const response = await fetch(`/api/cards/${card.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pinned: !isPinned })
-      });
+    const newPinned = !isPinned;
+    setIsPinned(newPinned);
 
-      if (response.ok) {
-        setIsPinned(!isPinned);
-        // Refresh the page to show updated card order
-        router.refresh();
-      }
-    } catch (error) {
-      console.error("Failed to toggle pin:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    // Update store (optimistic)
+    await updateCardInStore(card.id, { pinned: newPinned });
+
+    setIsLoading(false);
+    // Refresh the page to show updated card order
+    router.refresh();
   };
 
   const handleCardClick = () => {

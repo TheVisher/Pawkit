@@ -85,25 +85,17 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         return;
       }
       setSaving(true);
-      try {
-        const response = await fetch(`/api/cards/${card.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ notes })
-        });
-        if (response.ok) {
-          const updated = await response.json();
-          lastSavedNotesRef.current = notes;
-          onUpdate(updated);
-        }
-      } catch (error) {
-        console.error("Failed to save notes:", error);
-      } finally {
-        setSaving(false);
-      }
+
+      // Update store (optimistic)
+      await updateCardInStore(card.id, { notes });
+      lastSavedNotesRef.current = notes;
+
+      // Update parent component state
+      onUpdate({ ...card, notes });
+      setSaving(false);
     }, 1000);
     return () => clearTimeout(timeout);
-  }, [notes, card.id, onUpdate]);
+  }, [notes, card.id, onUpdate, updateCardInStore, card]);
 
   // Auto-save content with debounce (for MD/text notes)
   useEffect(() => {
@@ -114,25 +106,17 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         return;
       }
       setSaving(true);
-      try {
-        const response = await fetch(`/api/cards/${card.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content })
-        });
-        if (response.ok) {
-          const updated = await response.json();
-          lastSavedContentRef.current = content;
-          onUpdate(updated);
-        }
-      } catch (error) {
-        console.error("Failed to save content:", error);
-      } finally {
-        setSaving(false);
-      }
+
+      // Update store (optimistic)
+      await updateCardInStore(card.id, { content });
+      lastSavedContentRef.current = content;
+
+      // Update parent component state
+      onUpdate({ ...card, content });
+      setSaving(false);
     }, 1000);
     return () => clearTimeout(timeout);
-  }, [content, card.id, onUpdate, isNote]);
+  }, [content, card.id, onUpdate, isNote, updateCardInStore, card]);
 
   const handleSaveNotes = async () => {
     setSaving(true);
@@ -159,26 +143,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     const newPinned = !isPinned;
     setIsPinned(newPinned);
 
-    try {
-      const response = await fetch(`/api/cards/${card.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pinned: newPinned })
-      });
-      if (response.ok) {
-        const updated = await response.json();
-        onUpdate(updated);
-        setToast(newPinned ? "Pinned to home" : "Unpinned from home");
-      } else {
-        // Rollback on error
-        setIsPinned(!newPinned);
-        setToast("Failed to update pin status");
-      }
-    } catch (error) {
-      // Rollback on error
-      setIsPinned(!newPinned);
-      setToast("Failed to update pin status");
-    }
+    // Update store (optimistic)
+    await updateCardInStore(card.id, { pinned: newPinned });
+
+    // Update parent component state
+    onUpdate({ ...card, pinned: newPinned });
+
+    setToast(newPinned ? "Pinned to home" : "Unpinned from home");
   };
 
   const handleAddToPawkit = async (slug: string) => {
