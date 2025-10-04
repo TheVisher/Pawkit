@@ -118,6 +118,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       domain: null,
       image: null,
       description: null,
+      articleContent: null,
       metadata: undefined
     };
 
