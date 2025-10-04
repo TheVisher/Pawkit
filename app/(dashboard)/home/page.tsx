@@ -30,9 +30,22 @@ export default function HomePage() {
     [cards]
   );
 
-  // Note: CollectionNode doesn't have pinned property yet
-  // For now, return empty array until pinned feature is implemented
-  const pinnedPawkits = useMemo<CollectionNode[]>(() => [], []);
+  // Get pinned pawkits from collections (flatten tree and filter)
+  const pinnedPawkits = useMemo(() => {
+    const flattenCollections = (nodes: CollectionNode[]): CollectionNode[] => {
+      return nodes.reduce<CollectionNode[]>((acc, node) => {
+        acc.push(node);
+        if (node.children.length > 0) {
+          acc.push(...flattenCollections(node.children));
+        }
+        return acc;
+      }, []);
+    };
+
+    return flattenCollections(collections)
+      .filter(c => c.pinned)
+      .slice(0, 8);
+  }, [collections]);
 
   const counts = useMemo(() => ({
     total: cards.length,

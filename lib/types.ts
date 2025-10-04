@@ -30,6 +30,9 @@ export type CollectionNode = {
   name: string;
   slug: string;
   parentId?: string | null;
+  pinned: boolean;
+  deleted: boolean;
+  userId: string;
   createdAt: string;
   updatedAt: string;
   children: CollectionNode[];

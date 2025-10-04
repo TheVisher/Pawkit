@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { CollectionDTO } from "@/lib/server/collections";
+import type { CollectionNode } from "@/lib/types";
 
 type QuickAccessPawkitCardProps = {
-  pawkit: CollectionDTO;
+  pawkit: CollectionNode;
 };
 
 export function QuickAccessPawkitCard({ pawkit }: QuickAccessPawkitCardProps) {
