@@ -31,9 +31,9 @@ export default function CollectionsPage() {
         id: root.id,
         name: root.name,
         slug: root.slug,
-        itemCount: pawkitCards.length,
+        count: pawkitCards.length,
         cards: pawkitCards,
-        isPinned: false, // TODO: Add pinned support later
+        isPinned: root.pinned,
         hasChildren: root.children && root.children.length > 0
       };
     });
