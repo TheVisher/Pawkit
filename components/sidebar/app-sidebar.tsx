@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronRight, Home, Library, Clock, FolderOpen, FileText, Trash2, Star, History, Settings, HelpCircle, User, Layers } from "lucide-react";
 import { type CollectionNode } from "@/lib/types";
+import { ProfileModal } from "@/components/modals/profile-modal";
 import {
   Sidebar,
   SidebarContent,
@@ -48,6 +49,7 @@ export function AppSidebar({ username, collections }: AppSidebarProps) {
   const router = useRouter();
   const [isPawkitsExpanded, setIsPawkitsExpanded] = React.useState(false);
   const [expandedCollections, setExpandedCollections] = React.useState<Set<string>>(new Set());
+  const [showProfileModal, setShowProfileModal] = React.useState(false);
 
   // Load Pawkits expansion state from localStorage
   React.useEffect(() => {
@@ -251,15 +253,13 @@ export function AppSidebar({ username, collections }: AppSidebarProps) {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <div className="cursor-default">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-surface-muted">
-                  <User className="h-4 w-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{username}</span>
-                  <span className="truncate text-xs text-muted-foreground">View profile</span>
-                </div>
+            <SidebarMenuButton size="lg" onClick={() => setShowProfileModal(true)}>
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold text-sm">
+                {username.charAt(0).toUpperCase()}
+              </div>
+              <div className="grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-semibold">{username}</span>
+                <span className="truncate text-xs text-muted-foreground">View profile</span>
               </div>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -278,6 +278,12 @@ export function AppSidebar({ username, collections }: AppSidebarProps) {
           ))}
         </SidebarMenu>
       </SidebarFooter>
+
+      <ProfileModal
+        open={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        username={username}
+      />
     </Sidebar>
   );
 }
