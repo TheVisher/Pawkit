@@ -20,7 +20,7 @@ export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type' | 
   metadata: Record<string, unknown> | undefined;
   createdAt: string;
   updatedAt: string;
-  deletedAt?: string | null;
+  deletedAt: string | null;
 };
 
 function serializeTags(tags: string[]): string | null {
