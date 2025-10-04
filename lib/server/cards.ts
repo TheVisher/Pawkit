@@ -368,13 +368,14 @@ export async function permanentlyDeleteCard(userId: string, id: string) {
   return prisma.card.delete({ where: { id, userId } });
 }
 
-export async function purgeOldTrashItems() {
+export async function purgeOldTrashItems(userId: string) {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   await prisma.$transaction([
     prisma.card.deleteMany({
       where: {
+        userId,
         deleted: true,
         deletedAt: {
           lte: thirtyDaysAgo
@@ -383,6 +384,7 @@ export async function purgeOldTrashItems() {
     }),
     prisma.collection.deleteMany({
       where: {
+        userId,
         deleted: true,
         deletedAt: {
           lte: thirtyDaysAgo

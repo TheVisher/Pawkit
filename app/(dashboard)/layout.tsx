@@ -5,7 +5,6 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
 import { listCollections } from "@/lib/server/collections";
 import { requireUser } from "@/lib/auth/get-user";
-import { UserMenu } from "@/components/auth/user-menu";
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +23,6 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               <div className="mx-auto w-full max-w-6xl">
                 <OmniBar />
               </div>
-              <UserMenu />
             </div>
           </header>
           <main className="flex flex-1 overflow-y-auto bg-transparent">

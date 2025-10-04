@@ -18,13 +18,10 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-accent transition-colors">
+      <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg px-2 py-2 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-accent transition-colors">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/20 text-accent">
           <User className="h-4 w-4" />
         </div>
-        <span className="hidden text-sm font-medium text-gray-200 sm:inline-block">
-          {user.email}
-        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="font-normal">

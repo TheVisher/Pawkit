@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettingsStore, type Theme, type AccentColor } from "@/lib/hooks/settings-store";
-import { Check } from "lucide-react";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { Check, LogOut } from "lucide-react";
 
 type ProfileModalProps = {
   open: boolean;
@@ -32,6 +33,9 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   const [avatarPreview, setAvatarPreview] = useState(avatarUrl || "");
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auth
+  const { signOut } = useAuth();
 
   // Settings from store
   const theme = useSettingsStore((state) => state.theme);
@@ -376,13 +380,23 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
           </Tabs>
         </div>
 
-        <div className="sticky bottom-0 border-t border-gray-800 bg-gray-950 p-6 flex justify-end gap-3">
-          <Button onClick={onClose} variant="outline">
-            Cancel
+        <div className="sticky bottom-0 border-t border-gray-800 bg-gray-950 p-6 flex justify-between items-center">
+          <Button
+            onClick={() => signOut()}
+            variant="ghost"
+            className="text-red-400 hover:text-red-300 hover:bg-red-950/20"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save Changes"}
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={onClose} variant="outline">
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

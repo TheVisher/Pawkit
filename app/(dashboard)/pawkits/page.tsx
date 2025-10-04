@@ -6,6 +6,7 @@ import { listCollections, type CollectionDTO } from "@/lib/server/collections";
 import { safeHost } from "@/lib/utils/strings";
 import { prisma } from "@/lib/server/prisma";
 import { parseJsonArray } from "@/lib/utils/json";
+import { requireUser } from "@/lib/auth/get-user";
 
 function flattenCollections(nodes: CollectionDTO[]): CollectionDTO[] {
   const result: CollectionDTO[] = [];
@@ -19,16 +20,19 @@ function flattenCollections(nodes: CollectionDTO[]): CollectionDTO[] {
 }
 
 export default async function CollectionsPage() {
+  const user = await requireUser();
+
   const [{ tree }, rootCards, totals] = await Promise.all([
-    listCollections(),
-    listCards({ limit: 6 }),
-    countCards()
+    listCollections(user.id),
+    listCards(user.id, { limit: 6 }),
+    countCards(user.id)
   ]);
 
   const flatCollections = flattenCollections(tree);
 
   // Batch fetch all cards at once to avoid N+1 queries
   const allCardsRaw = await prisma.card.findMany({
+    where: { userId: user.id },
     orderBy: { createdAt: "desc" }
   });
 
