@@ -6,7 +6,7 @@ import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
 import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
-import { CardModel } from "@/lib/types";
+import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
 
 export default function HomePage() {
@@ -32,7 +32,7 @@ export default function HomePage() {
 
   // Note: CollectionNode doesn't have pinned property yet
   // For now, return empty array until pinned feature is implemented
-  const pinnedPawkits = useMemo(() => [], []);
+  const pinnedPawkits = useMemo<CollectionNode[]>(() => [], []);
 
   const counts = useMemo(() => ({
     total: cards.length,
