@@ -6,9 +6,9 @@ import { CardDTO } from "@/lib/server/cards";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 
-type TrashItem = (CardDTO | Collection) & {
-  type: "card" | "pawkit";
-};
+type TrashItem =
+  | (CardDTO & { type: "card" })
+  | (Collection & { type: "pawkit" });
 
 type TrashViewProps = {
   cards: CardDTO[];
@@ -26,8 +26,8 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
     ...cards.map((card) => ({ ...card, type: "card" as const })),
     ...pawkits.map((pawkit) => ({ ...pawkit, type: "pawkit" as const }))
   ].sort((a, b) => {
-    const aTime = a.deletedAt?.getTime() || 0;
-    const bTime = b.deletedAt?.getTime() || 0;
+    const aTime = a.deletedAt ? new Date(a.deletedAt).getTime() : 0;
+    const bTime = b.deletedAt ? new Date(b.deletedAt).getTime() : 0;
     return bTime - aTime;
   });
 
