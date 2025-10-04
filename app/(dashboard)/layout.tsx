@@ -6,8 +6,6 @@ import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
 import { listCollections } from "@/lib/server/collections";
 import { requireUser } from "@/lib/auth/get-user";
 
-export const dynamic = 'force-dynamic';
-
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();
   const { tree } = await listCollections(user.id);

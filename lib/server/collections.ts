@@ -2,6 +2,7 @@ import { Collection, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/server/prisma";
 import { collectionCreateSchema, collectionUpdateSchema } from "@/lib/validators/collection";
 import { slugify } from "@/lib/utils/slug";
+import { unstable_cache } from 'next/cache';
 
 const MAX_DEPTH = 4;
 
@@ -21,36 +22,41 @@ function mapCollection(collection: Collection): Omit<CollectionDTO, 'children'> 
   };
 }
 
-export async function listCollections(userId: string) {
-  const items = await prisma.collection.findMany({
-    where: { userId, deleted: false },
-    orderBy: { name: "asc" }
-  });
+// Cache collections for 60 seconds to improve navigation speed
+export const listCollections = unstable_cache(
+  async (userId: string) => {
+    const items = await prisma.collection.findMany({
+      where: { userId, deleted: false },
+      orderBy: { name: "asc" }
+    });
 
-  const nodes = new Map<string, CollectionDTO>();
-  const roots: CollectionDTO[] = [];
+    const nodes = new Map<string, CollectionDTO>();
+    const roots: CollectionDTO[] = [];
 
-  items.forEach((item) => {
-    nodes.set(item.id, { ...mapCollection(item), children: [] });
-  });
+    items.forEach((item) => {
+      nodes.set(item.id, { ...mapCollection(item), children: [] });
+    });
 
-  nodes.forEach((node) => {
-    if (node.parentId && nodes.has(node.parentId)) {
-      nodes.get(node.parentId)!.children.push(node);
-    } else {
-      roots.push(node);
-    }
-  });
+    nodes.forEach((node) => {
+      if (node.parentId && nodes.has(node.parentId)) {
+        nodes.get(node.parentId)!.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
 
-  const sortTree = (tree: CollectionDTO[]) => {
-    tree.sort((a, b) => a.name.localeCompare(b.name));
-    tree.forEach((node) => sortTree(node.children));
-  };
+    const sortTree = (tree: CollectionDTO[]) => {
+      tree.sort((a, b) => a.name.localeCompare(b.name));
+      tree.forEach((node) => sortTree(node.children));
+    };
 
-  sortTree(roots);
+    sortTree(roots);
 
-  return { tree: roots, flat: Array.from(nodes.values()) };
-}
+    return { tree: roots, flat: Array.from(nodes.values()) };
+  },
+  ['collections'],
+  { revalidate: 60, tags: ['collections'] }
+);
 
 async function ensureDepth(userId: string, parentId: string | undefined | null) {
   if (!parentId) return 1;
