@@ -119,7 +119,8 @@ export async function listCards(query: CardListQuery) {
       { domain: { contains: term } },
       { notes: { contains: term } },
       { content: { contains: term } },
-      { tags: { contains: term } }
+      { tags: { contains: term } },
+      { collections: { contains: term } }
     ];
   }
 

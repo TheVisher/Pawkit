@@ -22,6 +22,8 @@ function OmniBarContent() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
   const lastSearchedRef = useRef(initialQuery);
+  const isTypingRef = useRef(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const navigateToLibrary = useCallback(
     (query: string | null) => {
@@ -40,7 +42,10 @@ function OmniBarContent() {
   useEffect(() => {
     const currentQuery = searchParams?.get("q") ?? "";
     lastSearchedRef.current = currentQuery;
-    setValue((prev) => (prev === currentQuery ? prev : currentQuery));
+    // Only update value if user is not actively typing
+    if (!isTypingRef.current) {
+      setValue((prev) => (prev === currentQuery ? prev : currentQuery));
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -165,12 +170,29 @@ function OmniBarContent() {
     }
   };
 
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setValue(event.target.value);
+
+    // Mark user as typing
+    isTypingRef.current = true;
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set timeout to mark user as no longer typing after 500ms of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      isTypingRef.current = false;
+    }, 500);
+  };
+
   return (
     <div>
       <form onSubmit={handleSubmit} className="relative">
         <input
           value={value}
-          onChange={(event) => setValue(event.target.value)}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
           placeholder="Paste a URL to save or type to search…"
           className="w-full rounded-xl border border-subtle bg-surface-80 py-3 pl-4 pr-28 text-sm text-foreground shadow-panel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"

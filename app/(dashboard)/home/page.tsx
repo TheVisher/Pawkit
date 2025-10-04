@@ -175,18 +175,20 @@ function RecentCard({ card, onClick }: CardProps) {
   return (
     <article
       onClick={onClick}
-      className="card-hover rounded border border-gray-800 bg-gray-900 p-4 cursor-pointer transition"
+      className="card-hover flex h-full cursor-pointer flex-col justify-between rounded-2xl border border-subtle bg-surface p-4 transition"
     >
       {card.image && (
-        <div className="mb-3 overflow-hidden rounded bg-gray-800">
+        <div className="mb-3 overflow-hidden rounded-xl bg-surface-soft">
           <img src={card.image} alt={card.title ?? card.url} className="h-32 w-full object-cover" loading="lazy" />
         </div>
       )}
-      <p className="text-sm font-medium text-gray-100 truncate" title={card.title ?? card.url}>
-        {card.title || card.domain || card.url}
-      </p>
-      <p className="mt-1 text-xs text-gray-500 truncate">{card.url}</p>
-      <p className="mt-3 text-xs text-gray-500">Added {formatDate(card.createdAt)}</p>
+      <div>
+        <p className="text-sm font-semibold text-foreground truncate" title={card.title ?? card.url}>
+          {card.title || card.domain || card.url}
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground truncate">{card.url}</p>
+      </div>
+      <p className="mt-4 text-xs text-muted-foreground/80">Added {formatDate(card.createdAt)}</p>
     </article>
   );
 }

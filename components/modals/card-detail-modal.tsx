@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CardModel, CollectionNode } from "@/lib/types";
@@ -35,10 +35,21 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
+  const isTypingNotesRef = useRef(false);
+  const isTypingContentRef = useRef(false);
+  const lastSavedNotesRef = useRef(card.notes ?? "");
+  const lastSavedContentRef = useRef(card.content ?? "");
 
+  // Update initial values when card changes
   useEffect(() => {
     setNotes(card.notes ?? "");
-  }, [card.id, card.notes]);
+    lastSavedNotesRef.current = card.notes ?? "";
+  }, [card.id]);
+
+  useEffect(() => {
+    setContent(card.content ?? "");
+    lastSavedContentRef.current = card.content ?? "";
+  }, [card.id]);
 
   useEffect(() => {
     setIsPinned(card.pinned ?? false);
@@ -67,7 +78,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   // Auto-save notes with debounce
   useEffect(() => {
     const timeout = setTimeout(async () => {
-      if (notes === (card.notes ?? "")) return;
+      // Only save if notes have changed from last saved value
+      if (notes === lastSavedNotesRef.current) {
+        return;
+      }
       setSaving(true);
       try {
         const response = await fetch(`/api/cards/${card.id}`, {
@@ -77,6 +91,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         });
         if (response.ok) {
           const updated = await response.json();
+          lastSavedNotesRef.current = notes;
           onUpdate(updated);
         }
       } catch (error) {
@@ -84,15 +99,18 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       } finally {
         setSaving(false);
       }
-    }, 600);
+    }, 1000);
     return () => clearTimeout(timeout);
-  }, [notes, card.id, card.notes, onUpdate]);
+  }, [notes, card.id, onUpdate]);
 
   // Auto-save content with debounce (for MD/text notes)
   useEffect(() => {
     if (!isNote) return;
     const timeout = setTimeout(async () => {
-      if (content === (card.content ?? "")) return;
+      // Only save if content has changed from last saved value
+      if (content === lastSavedContentRef.current) {
+        return;
+      }
       setSaving(true);
       try {
         const response = await fetch(`/api/cards/${card.id}`, {
@@ -102,6 +120,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         });
         if (response.ok) {
           const updated = await response.json();
+          lastSavedContentRef.current = content;
           onUpdate(updated);
         }
       } catch (error) {
@@ -109,9 +128,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       } finally {
         setSaving(false);
       }
-    }, 600);
+    }, 1000);
     return () => clearTimeout(timeout);
-  }, [content, card.id, card.content, onUpdate, isNote]);
+  }, [content, card.id, onUpdate, isNote]);
 
   const handleSaveNotes = async () => {
     setSaving(true);

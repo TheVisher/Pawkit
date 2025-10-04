@@ -219,7 +219,7 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
         <div key={group.date} className="space-y-4">
           {/* Date Header */}
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-medium text-gray-300">
+            <h2 className="text-3xl font-medium text-gray-300">
               {formatDateHeader(group.date)}
             </h2>
             <button className="rounded bg-gray-800 px-2 py-1 text-xs text-gray-400 hover:bg-gray-700">
