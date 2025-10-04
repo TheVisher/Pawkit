@@ -153,7 +153,7 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
 
   return (
     <aside
-      className="sticky top-0 z-30 flex h-screen min-h-0 flex-col overflow-hidden border-r border-gray-800 bg-gray-950 text-gray-100 shrink-0"
+      className="sticky top-0 z-30 flex h-screen min-h-0 shrink-0 flex-col overflow-hidden border-r border-subtle bg-surface text-foreground"
       style={{ width }}
     >
       <div className={`flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto ${collapsed ? "px-2 py-4" : "p-4"}`}>
@@ -163,15 +163,15 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
               return (
                 <div key={link.href}>
                   <div
-                    className={`flex w-full items-center justify-between rounded px-3 py-2 text-sm transition-colors ${
+                    className={`flex w-full items-center justify-between rounded-lg border border-transparent px-3 py-2 text-sm transition-colors ${
                       isActive(link.href)
-                        ? "bg-gray-900 text-gray-100"
-                        : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
+                        ? "bg-surface-muted text-foreground"
+                        : "text-muted-foreground hover:bg-surface-80 hover:text-foreground"
                     }`}
                   >
                     <button
                       onClick={() => router.push(link.href)}
-                      className={`flex items-center flex-1 ${collapsed ? "justify-center" : "gap-3"}`}
+                      className={`flex flex-1 items-center ${collapsed ? "justify-center" : "gap-3"}`}
                       title={collapsed ? link.label : undefined}
                     >
                       <link.icon className="h-5 w-5" />
@@ -183,7 +183,7 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
                           e.stopPropagation();
                           setIsCollectionsExpanded(!isCollectionsExpanded);
                         }}
-                        className="text-gray-400 hover:text-gray-200 transition-colors ml-2"
+                        className="ml-2 text-muted-foreground transition-colors hover:text-foreground"
                       >
                         <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           {isCollectionsExpanded ? (
@@ -203,10 +203,10 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
 
                         return (
                           <div key={collection.id}>
-                            <div className={`flex items-center justify-between rounded py-1.5 px-3 text-sm transition-colors ${
+                            <div className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm transition-colors ${
                               pathname === `/pawkits/${collection.slug}`
-                                ? "bg-gray-900 text-gray-100"
-                                : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
+                                ? "bg-surface-muted text-foreground"
+                                : "text-muted-foreground hover:bg-surface-80 hover:text-foreground"
                             }`}>
                               <button
                                 onClick={() => router.push(`/pawkits/${collection.slug}`)}
@@ -228,7 +228,7 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
                                       return next;
                                     });
                                   }}
-                                  className="text-gray-400 hover:text-gray-200 transition-colors ml-2"
+                                  className="ml-2 text-muted-foreground transition-colors hover:text-foreground"
                                 >
                                   <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     {isExpanded ? (
@@ -246,10 +246,10 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
                                   <button
                                     key={child.id}
                                     onClick={() => router.push(`/pawkits/${child.slug}`)}
-                                    className={`w-full rounded px-3 py-1.5 text-left text-sm transition-colors ${
+                                    className={`w-full rounded-lg px-3 py-1.5 text-left text-sm transition-colors ${
                                       pathname === `/pawkits/${child.slug}`
-                                        ? "bg-gray-900 text-gray-100"
-                                        : "text-gray-400 hover:bg-gray-900 hover:text-gray-100"
+                                        ? "bg-surface-muted text-foreground"
+                                        : "text-muted-foreground hover:bg-surface-80 hover:text-foreground"
                                     }`}
                                   >
                                     {child.name}
@@ -273,13 +273,13 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
       </div>
       <div className={`${collapsed ? "px-2 pb-4" : "px-4 pb-4"} shrink-0`}>
         <div className={`mb-3 flex items-center ${collapsed ? "justify-center" : "gap-2"}`}>
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-900 text-gray-100">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-surface-muted text-foreground">
             <IconUser className="h-4 w-4" />
           </span>
-          {!collapsed && <span className="truncate text-sm text-gray-300">{username}</span>}
+          {!collapsed && <span className="truncate text-sm text-muted-foreground">{username}</span>}
         </div>
         <Separator />
-        <div className={`mt-3 flex items-center gap-2 ${collapsed ? "justify-start" : "justify-start"}`}>
+        <div className={`mt-3 flex items-center gap-2`}>
           {bottomIconLinks.map((link) => (
             <SidebarIconButton key={link.href} config={link} active={isActive(link.href)} />
           ))}
@@ -296,7 +296,7 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
         onKeyDown={handleHandleKeyDown}
         className="absolute top-0 -right-1 z-10 h-full w-2 cursor-col-resize focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       >
-        <div className="mx-auto h-full w-px bg-gray-800" aria-hidden="true" />
+        <div className="mx-auto h-full w-px bg-surface-soft" aria-hidden="true" />
       </div>
     </aside>
   );
@@ -311,14 +311,14 @@ type SidebarLinkProps = {
 function SidebarLink({ config, active, collapsed }: SidebarLinkProps) {
   const { href, label, icon: Icon } = config;
   const stateClasses = active
-    ? "bg-gray-900 text-gray-100"
-    : "text-gray-400 hover:bg-gray-900 hover:text-gray-100";
+    ? "bg-surface-muted text-foreground"
+    : "text-muted-foreground hover:bg-surface-80 hover:text-foreground";
   const layoutClasses = collapsed ? "justify-center gap-0" : "gap-3";
 
   return (
     <Link
       href={href}
-      className={`flex w-full items-center rounded px-3 py-2 text-sm transition-colors ${layoutClasses} ${stateClasses}`}
+      className={`flex w-full items-center rounded-lg px-3 py-2 text-sm transition-colors ${layoutClasses} ${stateClasses}`}
       title={collapsed ? label : undefined}
     >
       <Icon className="h-5 w-5" />
@@ -335,13 +335,13 @@ type SidebarIconButtonProps = {
 function SidebarIconButton({ config, active }: SidebarIconButtonProps) {
   const { href, label, icon: Icon } = config;
   const stateClasses = active
-    ? "bg-gray-900 text-gray-100"
-    : "text-gray-400 hover:bg-gray-900 hover:text-gray-100";
+    ? "bg-surface-muted text-foreground"
+    : "text-muted-foreground hover:bg-surface-80 hover:text-foreground";
 
   return (
     <Link
       href={href}
-      className={`flex h-9 w-9 items-center justify-center rounded transition-colors ${stateClasses}`}
+      className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${stateClasses}`}
       title={label}
     >
       <Icon className="h-5 w-5" />
@@ -351,7 +351,7 @@ function SidebarIconButton({ config, active }: SidebarIconButtonProps) {
 }
 
 function Separator() {
-  return <div className="h-px w-full bg-gray-800" aria-hidden="true" />;
+  return <div className="h-px w-full bg-surface-soft" aria-hidden="true" />;
 }
 
 function clampWidth(next: number) {

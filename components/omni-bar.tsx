@@ -171,14 +171,14 @@ function OmniBarContent() {
           onChange={(event) => setValue(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Paste a URL to save or type to search…"
-          className="w-full rounded border border-gray-800 bg-gray-900 py-3 pl-4 pr-24 text-sm text-gray-100"
+          className="w-full rounded-xl border border-subtle bg-surface-80 py-3 pl-4 pr-28 text-sm text-foreground shadow-panel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         />
-        <div className="absolute inset-y-0 right-0 flex items-center pr-3 gap-2">
-          <span className="mr-1 hidden text-xs text-gray-500 sm:inline">Enter = quick add</span>
+        <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-3">
+          <span className="mr-1 hidden text-xs text-muted-foreground sm:inline">Enter = quick add</span>
           <button
             type="button"
             onClick={() => setShowNoteModal(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-600 text-white transition hover:bg-purple-700"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-surface text-foreground transition hover:bg-surface-muted"
             aria-label="Create note"
             title="Create note"
           >
@@ -192,7 +192,7 @@ function OmniBarContent() {
           <button
             type="button"
             onClick={() => setShowModal(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-gray-950 transition hover:bg-accent/90"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-accent-foreground transition hover:brightness-110"
             aria-label="Open add card form"
           >
             <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

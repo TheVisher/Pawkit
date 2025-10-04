@@ -10,16 +10,18 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
   return (
     <SelectionStoreProvider>
-      <div className="flex h-screen overflow-hidden bg-gray-950 text-gray-100">
+      <div className="flex h-screen overflow-hidden text-foreground">
         <ResizableSidebar username={DEFAULT_USERNAME} collections={tree} />
         <div className="flex flex-1 flex-col overflow-hidden">
-          <header className="sticky top-0 z-20 border-b border-gray-800 bg-gray-950">
+          <header className="sticky top-0 z-20 border-b border-subtle bg-surface-90 backdrop-blur-xl">
             <div className="mx-auto max-w-6xl px-6 py-4">
               <OmniBar />
             </div>
           </header>
           <main className="flex flex-1 overflow-y-auto">
-            <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">{children}</div>
+            <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
+              {children}
+            </div>
           </main>
         </div>
       </div>

@@ -92,19 +92,19 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xl p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-2xl p-6"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md space-y-4 rounded bg-gray-950 p-6 shadow-lg"
+        className="w-full max-w-md space-y-4 rounded-2xl border border-subtle bg-surface shadow-panel p-6"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-100">Add Card</h2>
-          <button type="button" className="rounded bg-gray-800 px-2 py-1 text-sm" onClick={onClose}>
+          <h2 className="text-lg font-semibold text-foreground">Add Card</h2>
+          <button type="button" className="rounded-lg bg-surface-muted px-2 py-1 text-sm text-muted-foreground transition hover:text-foreground" onClick={onClose}>
             Close
           </button>
         </div>
@@ -117,7 +117,7 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
               id="url"
               value={url}
               onChange={(event) => setUrl(event.target.value)}
-              className="w-full rounded border border-gray-800 bg-gray-900 p-2"
+              className="w-full rounded-lg border border-subtle bg-surface-muted p-2 text-foreground"
               required
             />
           </div>
@@ -129,7 +129,7 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
               id="title"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              className="w-full rounded border border-gray-800 bg-gray-900 p-2"
+              className="w-full rounded-lg border border-subtle bg-surface-muted p-2 text-foreground"
             />
           </div>
           <div>
@@ -140,7 +140,7 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
               id="notes"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              className="w-full rounded border border-gray-800 bg-gray-900 p-2"
+              className="modal-scrollbar w-full rounded-lg border border-subtle bg-surface-muted p-2 text-foreground"
               rows={4}
             />
           </div>
@@ -152,7 +152,7 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
               id="tags"
               value={tags}
               onChange={(event) => setTags(event.target.value)}
-              className="w-full rounded border border-gray-800 bg-gray-900 p-2"
+              className="w-full rounded-lg border border-subtle bg-surface-muted p-2 text-foreground"
             />
           </div>
           <div>
@@ -163,12 +163,12 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
               id="collections"
               value={collections}
               onChange={(event) => setCollections(event.target.value)}
-              className="w-full rounded border border-gray-800 bg-gray-900 p-2"
+              className="w-full rounded-lg border border-subtle bg-surface-muted p-2 text-foreground"
             />
           </div>
         </div>
         {error && <p className="text-xs text-rose-400">{error}</p>}
-        <button type="submit" className="w-full rounded bg-accent py-2 text-sm font-medium text-gray-950" disabled={loading}>
+        <button type="submit" className="w-full rounded-lg bg-accent py-2 text-sm font-medium text-accent-foreground transition hover:brightness-110" disabled={loading}>
           {loading ? "Saving…" : "Save"}
         </button>
       </form>
