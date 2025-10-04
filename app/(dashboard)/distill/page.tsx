@@ -1,11 +1,14 @@
 import { getOldCards } from "@/lib/server/cards";
 import { listCollections } from "@/lib/server/collections";
 import { DigUpView } from "@/components/dig-up/dig-up-view";
+import { requireUser } from "@/lib/auth/get-user";
 
 export default async function DigUpPage() {
+  const user = await requireUser();
+
   const [oldCardsResult, { tree: pawkits }] = await Promise.all([
-    getOldCards(),
-    listCollections()
+    getOldCards(user.id),
+    listCollections(user.id)
   ]);
 
   if (!oldCardsResult) {
