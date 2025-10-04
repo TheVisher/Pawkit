@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ListFilter, Check, MoreVertical } from "lucide-react";
 
-export default function CollectionPage() {
+function CollectionPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -610,5 +610,13 @@ export default function CollectionPage() {
         </div>
       )}
     </>
+  );
+}
+
+export default function CollectionPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <CollectionPageContent />
+    </Suspense>
   );
 }

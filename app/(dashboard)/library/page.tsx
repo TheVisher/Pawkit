@@ -1,12 +1,12 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, Suspense } from "react";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { LibraryView } from "@/components/library/library-view";
 import { useDataStore } from "@/lib/stores/data-store";
 
-export default function LibraryPage() {
+function LibraryPageContent() {
   const searchParams = useSearchParams();
 
   const q = searchParams.get("q") || undefined;
@@ -63,5 +63,13 @@ export default function LibraryPage() {
       collectionsTree={collections}
       query={{ q, collection, status }}
     />
+  );
+}
+
+export default function LibraryPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LibraryPageContent />
+    </Suspense>
   );
 }

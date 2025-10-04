@@ -1,12 +1,12 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, Suspense } from "react";
 import { LayoutMode, LAYOUTS, DEFAULT_LAYOUT } from "@/lib/constants";
 import { NotesView } from "@/components/notes/notes-view";
 import { useDataStore } from "@/lib/stores/data-store";
 
-export default function NotesPage() {
+function NotesPageContent() {
   const searchParams = useSearchParams();
   const q = searchParams.get("q") || undefined;
   const layoutParam = searchParams.get("layout") as LayoutMode | null;
@@ -47,5 +47,13 @@ export default function NotesPage() {
       collectionsTree={collections}
       query={q}
     />
+  );
+}
+
+export default function NotesPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <NotesPageContent />
+    </Suspense>
   );
 }
