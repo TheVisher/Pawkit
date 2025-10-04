@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Collection } from "@prisma/client";
+import type { CollectionDTO } from "@/lib/server/collections";
 
 type QuickAccessPawkitCardProps = {
-  pawkit: Collection;
+  pawkit: CollectionDTO;
 };
 
 export function QuickAccessPawkitCard({ pawkit }: QuickAccessPawkitCardProps) {
@@ -76,7 +76,7 @@ export function QuickAccessPawkitCard({ pawkit }: QuickAccessPawkitCardProps) {
   );
 }
 
-function formatDate(date: Date) {
+function formatDate(date: string | Date) {
   return new Date(date).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",

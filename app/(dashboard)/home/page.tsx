@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { type CardDTO } from "@/lib/server/cards";
+import { type CollectionDTO } from "@/lib/server/collections";
 import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
 import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CollectionNode, CardModel } from "@/lib/types";
-import { Collection } from "@prisma/client";
 
 type Counts = {
   total: number;
@@ -21,7 +21,7 @@ export default function HomePage() {
   const [counts, setCounts] = useState<Counts>({ total: 0, ready: 0, pending: 0, error: 0 });
   const [recent, setRecent] = useState<CardDTO[]>([]);
   const [quickAccess, setQuickAccess] = useState<CardDTO[]>([]);
-  const [pinnedPawkits, setPinnedPawkits] = useState<Collection[]>([]);
+  const [pinnedPawkits, setPinnedPawkits] = useState<CollectionDTO[]>([]);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [collections, setCollections] = useState<CollectionNode[]>([]);
 

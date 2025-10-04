@@ -216,14 +216,16 @@ export async function pinnedCollections(limit = 8) {
     take: limit
   });
 
-  return collections;
+  return collections.map(c => ({ ...mapCollection(c), children: [] }));
 }
 
 export async function getTrashCollections() {
-  return prisma.collection.findMany({
+  const collections = await prisma.collection.findMany({
     where: { deleted: true },
     orderBy: { deletedAt: "desc" }
   });
+
+  return collections.map(c => ({ ...mapCollection(c), children: [] }));
 }
 
 export async function restoreCollection(id: string) {

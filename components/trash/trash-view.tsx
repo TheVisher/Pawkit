@@ -1,18 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Collection } from "@prisma/client";
 import { CardDTO } from "@/lib/server/cards";
+import { CollectionDTO } from "@/lib/server/collections";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 
 type TrashItem =
   | (CardDTO & { type: "card" })
-  | (Collection & { type: "pawkit" });
+  | (CollectionDTO & { type: "pawkit" });
 
 type TrashViewProps = {
   cards: CardDTO[];
-  pawkits: Collection[];
+  pawkits: CollectionDTO[];
 };
 
 export function TrashView({ cards, pawkits }: TrashViewProps) {
@@ -98,7 +98,7 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
     }
   };
 
-  const getDaysRemaining = (deletedAt: Date | null) => {
+  const getDaysRemaining = (deletedAt: string | null) => {
     if (!deletedAt) return 30;
     const now = new Date();
     const thirtyDaysLater = new Date(deletedAt);
@@ -171,7 +171,7 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
         <div className="space-y-2">
           {filteredItems.map((item) => {
             const isCard = item.type === "card";
-            const name = isCard ? (item as Card).title || (item as Card).url : (item as Collection).name;
+            const name = isCard ? (item as CardDTO).title || (item as CardDTO).url : (item as CollectionDTO).name;
             const daysRemaining = getDaysRemaining(item.deletedAt);
 
             return (
@@ -192,7 +192,7 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
                   <div className="text-xs text-gray-500">
                     {item.deletedAt && (
                       <>
-                        Deleted {formatDistanceToNow(item.deletedAt, { addSuffix: true })} •{" "}
+                        Deleted {formatDistanceToNow(new Date(item.deletedAt), { addSuffix: true })} •{" "}
                         <span className={daysRemaining <= 7 ? "text-rose-400" : ""}>
                           Auto-deletes in {daysRemaining} day{daysRemaining !== 1 ? "s" : ""}
                         </span>
