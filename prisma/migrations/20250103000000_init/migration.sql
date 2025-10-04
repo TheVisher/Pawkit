@@ -40,3 +40,4 @@ CREATE TABLE "Collection" (
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Collection_slug_key" ON "Collection"("slug");
+
