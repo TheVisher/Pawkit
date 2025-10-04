@@ -158,7 +158,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
     };
 
     // STEP 1: Persist to queue FIRST (prevents data loss on refresh)
-    await syncQueue.enqueue({
+    const operationId = await syncQueue.enqueue({
       type: 'CREATE_CARD',
       payload: cardData,
       tempId
@@ -169,15 +169,17 @@ export const useDataStore = create<DataStore>((set, get) => ({
       cards: [optimisticCard, ...state.cards]
     }));
 
-    // STEP 3: Execute sync in background
-    await executeCreateCard({ type: 'CREATE_CARD', payload: cardData, tempId } as QueueOperation, set, get);
+    // STEP 3: Execute sync in background with operation ID
+    executeCreateCard({ id: operationId, type: 'CREATE_CARD', payload: cardData, tempId, timestamp: Date.now(), retries: 0, status: 'processing' } as QueueOperation, set, get).catch(() => {
+      // Silently fail - operation will be retried on next drain
+    });
   },
 
   updateCard: async (id: string, updates: Partial<CardDTO>) => {
     const oldCard = get().cards.find(c => c.id === id);
 
     // STEP 1: Persist to queue FIRST
-    await syncQueue.enqueue({
+    const operationId = await syncQueue.enqueue({
       type: 'UPDATE_CARD',
       payload: updates,
       targetId: id
@@ -188,15 +190,17 @@ export const useDataStore = create<DataStore>((set, get) => ({
       cards: state.cards.map(c => c.id === id ? { ...c, ...updates } : c)
     }));
 
-    // STEP 3: Execute sync in background
-    await executeUpdateCard({ type: 'UPDATE_CARD', payload: updates, targetId: id } as QueueOperation, set, get);
+    // STEP 3: Execute sync in background with operation ID
+    executeUpdateCard({ id: operationId, type: 'UPDATE_CARD', payload: updates, targetId: id, timestamp: Date.now(), retries: 0, status: 'processing' } as QueueOperation, set, get).catch(() => {
+      // Silently fail - operation will be retried on next drain
+    });
   },
 
   deleteCard: async (id: string) => {
     const oldCard = get().cards.find(c => c.id === id);
 
     // STEP 1: Persist to queue FIRST
-    await syncQueue.enqueue({
+    const operationId = await syncQueue.enqueue({
       type: 'DELETE_CARD',
       payload: oldCard,
       targetId: id
@@ -207,8 +211,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
       cards: state.cards.filter(c => c.id !== id)
     }));
 
-    // STEP 3: Execute sync in background
-    await executeDeleteCard({ type: 'DELETE_CARD', payload: oldCard, targetId: id } as QueueOperation, set, get);
+    // STEP 3: Execute sync in background with operation ID
+    executeDeleteCard({ id: operationId, type: 'DELETE_CARD', payload: oldCard, targetId: id, timestamp: Date.now(), retries: 0, status: 'processing' } as QueueOperation, set, get).catch(() => {
+      // Silently fail - operation will be retried on next drain
+    });
   },
 
   addCollection: async (collection: CollectionNode) => {
