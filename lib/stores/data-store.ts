@@ -110,8 +110,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
       status: 'PENDING',
       collections: cardData.collections || [],
       tags: cardData.tags || [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
       userId: '', // Will be set by server
       deleted: false,
       pinned: false,
