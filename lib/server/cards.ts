@@ -12,12 +12,15 @@ export type CardInput = typeof cardCreateSchema._input;
 export type CardUpdateInput = typeof cardUpdateSchema._input;
 export type CardListQuery = typeof cardListQuerySchema._input;
 
-export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type' | 'status'> & {
+export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type' | 'status' | 'createdAt' | 'updatedAt' | 'deletedAt'> & {
   type: CardType;
   status: CardStatus;
   tags: string[];
   collections: string[];
   metadata: Record<string, unknown> | undefined;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
 };
 
 function serializeTags(tags: string[]): string | null {
@@ -35,7 +38,10 @@ function mapCard(card: Card): CardDTO {
     status: card.status as CardStatus,
     tags: parseJsonArray(card.tags),
     collections: parseJsonArray(card.collections),
-    metadata: parseJsonObject(card.metadata)
+    metadata: parseJsonObject(card.metadata),
+    createdAt: card.createdAt.toISOString(),
+    updatedAt: card.updatedAt.toISOString(),
+    deletedAt: card.deletedAt?.toISOString() ?? null
   };
 }
 
