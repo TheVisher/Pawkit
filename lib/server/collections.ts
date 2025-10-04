@@ -9,7 +9,7 @@ export type CollectionDTO = Omit<Collection, 'createdAt' | 'updatedAt' | 'delete
   children: CollectionDTO[];
   createdAt: string;
   updatedAt: string;
-  deletedAt?: string | null;
+  deletedAt: string | null;
 };
 
 function mapCollection(collection: Collection): Omit<CollectionDTO, 'children'> {
