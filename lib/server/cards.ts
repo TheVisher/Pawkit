@@ -45,7 +45,7 @@ function mapCard(card: Card): CardDTO {
   };
 }
 
-export async function createCard(payload: CardInput): Promise<CardDTO> {
+export async function createCard(userId: string, payload: CardInput): Promise<CardDTO> {
   const parsed = cardCreateSchema.parse(payload);
   const normalizedTags = normalizeTags(parsed.tags);
   const normalizedCollections = normalizeCollections(parsed.collections);
@@ -63,7 +63,8 @@ export async function createCard(payload: CardInput): Promise<CardDTO> {
     tags: serializeTags(normalizedTags),
     collections: serializeCollections(normalizedCollections),
     domain: parsed.url && parsed.url.length > 0 ? safeHost(parsed.url) : undefined,
-    status: cardType === "url" ? "PENDING" : "READY"
+    status: cardType === "url" ? "PENDING" : "READY",
+    user: { connect: { id: userId } }
   };
 
   const created = await prisma.card.create({
@@ -116,10 +117,10 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
 }
 
 
-export async function listCards(query: CardListQuery) {
+export async function listCards(userId: string, query: CardListQuery) {
   const parsed = cardListQuerySchema.parse(query);
   const limit = parsed.limit ?? 50;
-  const where: Prisma.CardWhereInput = { deleted: false };
+  const where: Prisma.CardWhereInput = { userId, deleted: false };
 
   if (parsed.q) {
     const term = parsed.q;
@@ -169,12 +170,12 @@ export async function listCards(query: CardListQuery) {
   };
 }
 
-export async function getCard(id: string) {
-  const card = await prisma.card.findUnique({ where: { id } });
+export async function getCard(userId: string, id: string) {
+  const card = await prisma.card.findFirst({ where: { id, userId } });
   return card ? mapCard(card) : null;
 }
 
-export async function updateCard(id: string, payload: CardUpdateInput): Promise<CardDTO> {
+export async function updateCard(userId: string, id: string, payload: CardUpdateInput): Promise<CardDTO> {
   const parsed = cardUpdateSchema.parse(payload);
   const normalizedTags = parsed.tags ? normalizeTags(parsed.tags) : undefined;
   const normalizedCollections = parsed.collections ? normalizeCollections(parsed.collections) : undefined;
@@ -191,19 +192,19 @@ export async function updateCard(id: string, payload: CardUpdateInput): Promise<
   }
 
   const updated = await prisma.card.update({
-    where: { id },
+    where: { id, userId },
     data
   });
 
   return mapCard(updated);
 }
 
-export async function deleteCard(id: string) {
-  await prisma.card.delete({ where: { id } });
+export async function deleteCard(userId: string, id: string) {
+  await prisma.card.delete({ where: { id, userId } });
 }
 
-export async function countCards() {
-  const baseWhere: Prisma.CardWhereInput = { deleted: false };
+export async function countCards(userId: string) {
+  const baseWhere: Prisma.CardWhereInput = { userId, deleted: false };
 
   const [total, ready, pending, error] = await Promise.all([
     prisma.card.count({ where: baseWhere }),
@@ -215,8 +216,8 @@ export async function countCards() {
   return { total, ready, pending, error };
 }
 
-export async function quickAccessCards(limit = 8) {
-  const baseWhere: Prisma.CardWhereInput = { deleted: false };
+export async function quickAccessCards(userId: string, limit = 8) {
+  const baseWhere: Prisma.CardWhereInput = { userId, deleted: false };
 
   // Get pinned cards first
   const pinnedCards = await prisma.card.findMany({
@@ -247,38 +248,39 @@ export async function quickAccessCards(limit = 8) {
   return [...pinnedCards, ...recentCards].map(mapCard);
 }
 
-export async function collectionPreviewCards(slug: string, limit = 6) {
+export async function collectionPreviewCards(userId: string, slug: string, limit = 6) {
   if (!slug) {
     return [];
   }
-  const result = await listCards({ collection: slug, limit });
+  const result = await listCards(userId, { collection: slug, limit });
   return result.items;
 }
-export async function recentCards(limit = 6) {
+
+export async function recentCards(userId: string, limit = 6) {
   const items = await prisma.card.findMany({
-    where: { deleted: false },
+    where: { userId, deleted: false },
     orderBy: { createdAt: "desc" },
     take: limit
   });
   return items.map(mapCard);
 }
 
-export async function bulkAddCollection(cardIds: string[], slug: string) {
+export async function bulkAddCollection(userId: string, cardIds: string[], slug: string) {
   if (cardIds.length === 0) return;
 
   // Validate that the collection exists
-  const collection = await prisma.collection.findUnique({ where: { slug } });
+  const collection = await prisma.collection.findFirst({ where: { slug, userId } });
   if (!collection) {
     throw new Error(`Collection with slug "${slug}" does not exist`);
   }
 
-  const cards = await prisma.card.findMany({ where: { id: { in: cardIds } } });
+  const cards = await prisma.card.findMany({ where: { id: { in: cardIds }, userId } });
   await Promise.all(
     cards.map((card) => {
       const existing = new Set(parseJsonArray(card.collections));
       existing.add(slug);
       return prisma.card.update({
-        where: { id: card.id },
+        where: { id: card.id, userId },
         data: {
           collections: serializeCollections(Array.from(existing))
         }
@@ -287,9 +289,9 @@ export async function bulkAddCollection(cardIds: string[], slug: string) {
   );
 }
 
-export async function bulkRemoveCards(cardIds: string[]) {
+export async function bulkRemoveCards(userId: string, cardIds: string[]) {
   if (!cardIds.length) return;
-  await prisma.card.deleteMany({ where: { id: { in: cardIds } } });
+  await prisma.card.deleteMany({ where: { id: { in: cardIds }, userId } });
 }
 
 export type TimelineGroup = {
@@ -297,12 +299,13 @@ export type TimelineGroup = {
   cards: CardDTO[];
 };
 
-export async function getTimelineCards(days = 30): Promise<TimelineGroup[]> {
+export async function getTimelineCards(userId: string, days = 30): Promise<TimelineGroup[]> {
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
 
   const cards = await prisma.card.findMany({
     where: {
+      userId,
       createdAt: {
         gte: startDate
       },
@@ -333,9 +336,9 @@ export async function getTimelineCards(days = 30): Promise<TimelineGroup[]> {
   return timeline;
 }
 
-export async function softDeleteCard(id: string) {
+export async function softDeleteCard(userId: string, id: string) {
   return prisma.card.update({
-    where: { id },
+    where: { id, userId },
     data: {
       deleted: true,
       deletedAt: new Date()
@@ -343,17 +346,17 @@ export async function softDeleteCard(id: string) {
   });
 }
 
-export async function getTrashCards() {
+export async function getTrashCards(userId: string) {
   const cards = await prisma.card.findMany({
-    where: { deleted: true },
+    where: { userId, deleted: true },
     orderBy: { deletedAt: "desc" }
   });
   return cards.map(mapCard);
 }
 
-export async function restoreCard(id: string) {
+export async function restoreCard(userId: string, id: string) {
   return prisma.card.update({
-    where: { id },
+    where: { id, userId },
     data: {
       deleted: false,
       deletedAt: null
@@ -361,8 +364,8 @@ export async function restoreCard(id: string) {
   });
 }
 
-export async function permanentlyDeleteCard(id: string) {
-  return prisma.card.delete({ where: { id } });
+export async function permanentlyDeleteCard(userId: string, id: string) {
+  return prisma.card.delete({ where: { id, userId } });
 }
 
 export async function purgeOldTrashItems() {
@@ -395,7 +398,7 @@ export type OldCardsResult = {
   total: number;
 };
 
-export async function getOldCards(): Promise<OldCardsResult | null> {
+export async function getOldCards(userId: string): Promise<OldCardsResult | null> {
   const now = new Date();
 
   // Try different age thresholds in order (using hours for testing)
@@ -412,6 +415,7 @@ export async function getOldCards(): Promise<OldCardsResult | null> {
 
     const cards = await prisma.card.findMany({
       where: {
+        userId,
         deleted: false,
         createdAt: {
           lte: cutoffDate

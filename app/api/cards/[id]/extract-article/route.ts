@@ -2,17 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 import { prisma } from "@/lib/server/prisma";
+import { getCurrentUser } from "@/lib/auth/get-user";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { id } = await params;
 
     // Get the card
-    const card = await prisma.card.findUnique({
-      where: { id }
+    const card = await prisma.card.findFirst({
+      where: { id, userId: user.id }
     });
 
     if (!card) {
@@ -49,7 +55,7 @@ export async function POST(
 
     // Update the card with the extracted content
     const updatedCard = await prisma.card.update({
-      where: { id },
+      where: { id, userId: user.id },
       data: {
         articleContent: article.content,
         // Also update title if it wasn't set

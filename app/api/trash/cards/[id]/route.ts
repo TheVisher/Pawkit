@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { permanentlyDeleteCard } from "@/lib/server/cards";
 import { handleApiError } from "@/lib/utils/api-error";
+import { getCurrentUser } from "@/lib/auth/get-user";
 
 interface RouteParams {
   params: Promise<{
@@ -10,8 +11,13 @@ interface RouteParams {
 
 export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const params = await segmentData.params;
-    await permanentlyDeleteCard(params.id);
+    await permanentlyDeleteCard(user.id, params.id);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return handleApiError(error);

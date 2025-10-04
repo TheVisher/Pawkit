@@ -21,9 +21,9 @@ function mapCollection(collection: Collection): Omit<CollectionDTO, 'children'> 
   };
 }
 
-export async function listCollections() {
+export async function listCollections(userId: string) {
   const items = await prisma.collection.findMany({
-    where: { deleted: false },
+    where: { userId, deleted: false },
     orderBy: { name: "asc" }
   });
 
@@ -52,12 +52,12 @@ export async function listCollections() {
   return { tree: roots, flat: Array.from(nodes.values()) };
 }
 
-async function ensureDepth(parentId: string | undefined | null) {
+async function ensureDepth(userId: string, parentId: string | undefined | null) {
   if (!parentId) return 1;
   let depth = 1;
   let currentId: string | undefined | null = parentId;
   while (currentId) {
-    const parent: Collection | null = await prisma.collection.findUnique({ where: { id: currentId } });
+    const parent: Collection | null = await prisma.collection.findFirst({ where: { id: currentId, userId } });
     if (!parent) break;
     depth += 1;
     currentId = parent.parentId;
@@ -68,15 +68,15 @@ async function ensureDepth(parentId: string | undefined | null) {
   return depth;
 }
 
-async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
+async function uniqueSlug(userId: string, base: string, excludeId?: string): Promise<string> {
   const baseSlug = slugify(base) || `collection-${Date.now()}`;
   const MAX_ATTEMPTS = 100;
 
   for (let attempt = 0; attempt <= MAX_ATTEMPTS; attempt++) {
     const candidate = attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`;
 
-    const existing = await prisma.collection.findUnique({
-      where: { slug: candidate },
+    const existing = await prisma.collection.findFirst({
+      where: { slug: candidate, userId },
       select: { id: true }
     });
 
@@ -89,23 +89,24 @@ async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
   return `${baseSlug}-${Date.now()}`;
 }
 
-export async function createCollection(payload: unknown) {
+export async function createCollection(userId: string, payload: unknown) {
   const parsed = collectionCreateSchema.parse(payload);
-  await ensureDepth(parsed.parentId ?? null);
-  const slug = await uniqueSlug(parsed.name);
+  await ensureDepth(userId, parsed.parentId ?? null);
+  const slug = await uniqueSlug(userId, parsed.name);
 
   const created = await prisma.collection.create({
     data: {
       name: parsed.name,
       parentId: parsed.parentId ?? null,
-      slug
+      slug,
+      user: { connect: { id: userId } }
     }
   });
 
   return created;
 }
 
-async function isDescendant(ancestorId: string, potentialDescendantId: string): Promise<boolean> {
+async function isDescendant(userId: string, ancestorId: string, potentialDescendantId: string): Promise<boolean> {
   let currentId: string | null = potentialDescendantId;
   const visited = new Set<string>();
 
@@ -115,22 +116,22 @@ async function isDescendant(ancestorId: string, potentialDescendantId: string): 
 
     if (currentId === ancestorId) return true;
 
-    const collection: Collection | null = await prisma.collection.findUnique({ where: { id: currentId } });
+    const collection: Collection | null = await prisma.collection.findFirst({ where: { id: currentId, userId } });
     currentId = collection?.parentId ?? null;
   }
   return false;
 }
 
-export async function updateCollection(id: string, payload: unknown) {
+export async function updateCollection(userId: string, id: string, payload: unknown) {
   const parsed = collectionUpdateSchema.parse(payload);
   if (parsed.parentId) {
     if (parsed.parentId === id) {
       throw new Error("Collection cannot be its own parent");
     }
-    if (await isDescendant(id, parsed.parentId)) {
+    if (await isDescendant(userId, id, parsed.parentId)) {
       throw new Error("Cannot move collection under its own descendant");
     }
-    await ensureDepth(parsed.parentId);
+    await ensureDepth(userId, parsed.parentId);
   }
 
   const data: Prisma.CollectionUpdateInput = {
@@ -139,14 +140,14 @@ export async function updateCollection(id: string, payload: unknown) {
   };
 
   if (parsed.name) {
-    data.slug = await uniqueSlug(parsed.name, id);
+    data.slug = await uniqueSlug(userId, parsed.name, id);
   }
 
-  return prisma.collection.update({ where: { id }, data });
+  return prisma.collection.update({ where: { id, userId }, data });
 }
 
-export async function deleteCollection(id: string, deleteCards = false) {
-  const collection = await prisma.collection.findUnique({ where: { id } });
+export async function deleteCollection(userId: string, id: string, deleteCards = false) {
+  const collection = await prisma.collection.findFirst({ where: { id, userId } });
   if (!collection) {
     return;
   }
@@ -156,7 +157,7 @@ export async function deleteCollection(id: string, deleteCards = false) {
   await prisma.$transaction(async (tx) => {
     // Move child collections to parent (they don't get deleted)
     await tx.collection.updateMany({
-      where: { parentId: id },
+      where: { parentId: id, userId },
       data: { parentId: collection.parentId }
     });
 
@@ -164,6 +165,7 @@ export async function deleteCollection(id: string, deleteCards = false) {
       // Soft delete all cards in this collection
       await tx.card.updateMany({
         where: {
+          userId,
           collections: { contains: `"${collection.slug}"` },
           deleted: false
         },
@@ -176,6 +178,7 @@ export async function deleteCollection(id: string, deleteCards = false) {
       // Remove collection slug from all cards
       const affectedCards = await tx.card.findMany({
         where: {
+          userId,
           collections: { contains: `"${collection.slug}"` },
           deleted: false
         }
@@ -188,7 +191,7 @@ export async function deleteCollection(id: string, deleteCards = false) {
           : [];
 
         await tx.card.update({
-          where: { id: card.id },
+          where: { id: card.id, userId },
           data: { collections: JSON.stringify(filtered) }
         });
       }
@@ -196,7 +199,7 @@ export async function deleteCollection(id: string, deleteCards = false) {
 
     // Soft delete the collection
     await tx.collection.update({
-      where: { id },
+      where: { id, userId },
       data: {
         deleted: true,
         deletedAt: now
@@ -205,9 +208,10 @@ export async function deleteCollection(id: string, deleteCards = false) {
   });
 }
 
-export async function pinnedCollections(limit = 8) {
+export async function pinnedCollections(userId: string, limit = 8) {
   const collections = await prisma.collection.findMany({
     where: {
+      userId,
       pinned: true,
       parentId: null, // Only root-level Pawkits
       deleted: false
@@ -219,18 +223,18 @@ export async function pinnedCollections(limit = 8) {
   return collections.map(c => ({ ...mapCollection(c), children: [] }));
 }
 
-export async function getTrashCollections() {
+export async function getTrashCollections(userId: string) {
   const collections = await prisma.collection.findMany({
-    where: { deleted: true },
+    where: { userId, deleted: true },
     orderBy: { deletedAt: "desc" }
   });
 
   return collections.map(c => ({ ...mapCollection(c), children: [] }));
 }
 
-export async function restoreCollection(id: string) {
+export async function restoreCollection(userId: string, id: string) {
   return prisma.collection.update({
-    where: { id },
+    where: { id, userId },
     data: {
       deleted: false,
       deletedAt: null
@@ -238,6 +242,6 @@ export async function restoreCollection(id: string) {
   });
 }
 
-export async function permanentlyDeleteCollection(id: string) {
-  return prisma.collection.delete({ where: { id } });
+export async function permanentlyDeleteCollection(userId: string, id: string) {
+  return prisma.collection.delete({ where: { id, userId } });
 }

@@ -3,18 +3,20 @@ import { OmniBar } from "@/components/omni-bar";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
-import { DEFAULT_USERNAME } from "@/lib/constants";
 import { listCollections } from "@/lib/server/collections";
+import { requireUser } from "@/lib/auth/get-user";
+import { UserMenu } from "@/components/auth/user-menu";
 
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
-  const { tree } = await listCollections();
+  const user = await requireUser();
+  const { tree } = await listCollections(user.id);
 
   return (
     <SelectionStoreProvider>
       <SidebarProvider>
-        <AppSidebar username={DEFAULT_USERNAME} collections={tree} />
+        <AppSidebar username={user.email} collections={tree} />
         <SidebarInset className="bg-transparent">
           <header className="sticky top-0 z-20 border-b border-subtle bg-surface-90 backdrop-blur-xl">
             <div className="flex items-center gap-2 px-6 py-4">
@@ -22,6 +24,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
               <div className="mx-auto w-full max-w-6xl">
                 <OmniBar />
               </div>
+              <UserMenu />
             </div>
           </header>
           <main className="flex flex-1 overflow-y-auto bg-transparent">

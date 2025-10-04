@@ -4,10 +4,10 @@ import { exportPayloadSchema } from "@/lib/validators/import";
 import { normalizeCollections, normalizeTags, ensureUrlProtocol, safeHost } from "@/lib/utils/strings";
 import { stringifyNullable } from "@/lib/utils/json";
 
-export async function exportData() {
+export async function exportData(userId: string) {
   const [cards, collections] = await Promise.all([
-    prisma.card.findMany({ orderBy: { createdAt: "asc" } }),
-    prisma.collection.findMany({ orderBy: { createdAt: "asc" } })
+    prisma.card.findMany({ where: { userId }, orderBy: { createdAt: "asc" } }),
+    prisma.collection.findMany({ where: { userId }, orderBy: { createdAt: "asc" } })
   ]);
 
   return {
@@ -17,7 +17,7 @@ export async function exportData() {
   };
 }
 
-export async function importData(payload: unknown) {
+export async function importData(userId: string, payload: unknown) {
   const parsed = exportPayloadSchema.parse(payload);
 
   let createdCards = 0;
@@ -29,8 +29,8 @@ export async function importData(payload: unknown) {
     for (const collection of parsed.collections) {
       const id = collection.id ?? undefined;
       const existing = id
-        ? await tx.collection.findUnique({ where: { id } })
-        : await tx.collection.findUnique({ where: { slug: collection.slug } });
+        ? await tx.collection.findFirst({ where: { id, userId } })
+        : await tx.collection.findFirst({ where: { slug: collection.slug, userId } });
 
       const data = {
         name: collection.name,
@@ -42,7 +42,7 @@ export async function importData(payload: unknown) {
 
       if (existing) {
         await tx.collection.update({
-          where: { id: existing.id },
+          where: { id: existing.id, userId },
           data
         });
         updatedCollections += 1;
@@ -50,7 +50,8 @@ export async function importData(payload: unknown) {
         await tx.collection.create({
           data: {
             ...data,
-            id: id ?? undefined
+            id: id ?? undefined,
+            userId
           }
         });
         createdCollections += 1;
@@ -78,9 +79,9 @@ export async function importData(payload: unknown) {
       };
 
       if (id) {
-        const existing = await tx.card.findUnique({ where: { id } });
+        const existing = await tx.card.findFirst({ where: { id, userId } });
         if (existing) {
-          await tx.card.update({ where: { id }, data });
+          await tx.card.update({ where: { id, userId }, data });
           updatedCards += 1;
           continue;
         }
@@ -89,7 +90,8 @@ export async function importData(payload: unknown) {
       await tx.card.create({
         data: {
           ...data,
-          id
+          id,
+          userId
         }
       });
       createdCards += 1;
