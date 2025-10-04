@@ -82,15 +82,15 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
       tags: payload.tags || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      userId: '',
       deleted: false,
       deletedAt: null,
       pinned: false,
       domain: null,
       image: null,
       description: null,
-      articleContent: null
-    } as CardModel);
+      articleContent: null,
+      metadata: undefined
+    });
 
     setLoading(false);
     onClose();

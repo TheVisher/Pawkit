@@ -46,12 +46,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   useEffect(() => {
     setNotes(card.notes ?? "");
     lastSavedNotesRef.current = card.notes ?? "";
-  }, [card.id]);
+  }, [card.id, card.notes]);
 
   useEffect(() => {
     setContent(card.content ?? "");
     lastSavedContentRef.current = card.content ?? "";
-  }, [card.id]);
+  }, [card.id, card.content]);
 
   useEffect(() => {
     setIsPinned(card.pinned ?? false);
