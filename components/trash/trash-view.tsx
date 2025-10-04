@@ -1,16 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Collection } from "@prisma/client";
+import { Collection } from "@prisma/client";
+import { CardDTO } from "@/lib/server/cards";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 
-type TrashItem = (Card | Collection) & {
+type TrashItem = (CardDTO | Collection) & {
   type: "card" | "pawkit";
 };
 
 type TrashViewProps = {
-  cards: Card[];
+  cards: CardDTO[];
   pawkits: Collection[];
 };
 
