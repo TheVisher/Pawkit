@@ -1,9 +1,8 @@
 import { listCards } from "@/lib/server/cards";
 import { listCollections } from "@/lib/server/collections";
 import { CardModel, CollectionNode, CardStatus } from "@/lib/types";
-import { LibraryWorkspace } from "@/components/library/workspace";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
-import { LibraryHeader } from "@/components/library/library-header";
+import { LibraryView } from "@/components/library/library-view";
 
 export default async function LibraryPage({
   searchParams
@@ -44,15 +43,13 @@ export default async function LibraryPage({
   const tree: CollectionNode[] = collections.tree.map((node) => serializeCollection(node));
 
   return (
-    <div className="space-y-4">
-      <LibraryHeader cardCount={initialCards.length} initialLayout={layout} />
-      <LibraryWorkspace
-        initialCards={initialCards}
-        initialNextCursor={nextCursor}
-        initialQuery={{ q, collection, status, layout }}
-        collectionsTree={tree}
-      />
-    </div>
+    <LibraryView
+      initialCards={initialCards}
+      initialNextCursor={nextCursor}
+      initialLayout={layout}
+      collectionsTree={tree}
+      query={{ q, collection, status }}
+    />
   );
 }
 

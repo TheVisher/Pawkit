@@ -1,14 +1,7 @@
 import { listCards } from "@/lib/server/cards";
 import { listCollections } from "@/lib/server/collections";
-import { LibraryWorkspace } from "@/components/library/workspace";
 import { LayoutMode, LAYOUTS, DEFAULT_LAYOUT } from "@/lib/constants";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { NotesHeader } from "@/components/notes/notes-header";
+import { NotesView } from "@/components/notes/notes-view";
 
 type SearchParams = {
   q?: string;
@@ -41,14 +34,11 @@ export default async function NotesPage({ searchParams }: { searchParams: Search
   const { tree } = await listCollections();
 
   return (
-    <div className="space-y-4">
-      <NotesHeader noteCount={allNotes.length} initialLayout={layout} />
-      <LibraryWorkspace
-        initialCards={allNotes}
-        initialNextCursor={undefined}
-        initialQuery={{ q: query, layout }}
-        collectionsTree={tree}
-      />
-    </div>
+    <NotesView
+      initialCards={allNotes}
+      initialLayout={layout}
+      collectionsTree={tree}
+      query={query}
+    />
   );
 }

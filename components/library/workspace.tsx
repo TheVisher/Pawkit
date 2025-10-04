@@ -19,9 +19,10 @@ export type LibraryWorkspaceProps = {
   };
   collectionsTree: CollectionNode[];
   collectionName?: string;
+  hideControls?: boolean;
 };
 
-function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery, collectionsTree, collectionName }: LibraryWorkspaceProps) {
+function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery, collectionsTree, collectionName, hideControls = false }: LibraryWorkspaceProps) {
   const [cards, setCards] = useState<CardModel[]>(initialCards);
   const [nextCursor, setNextCursor] = useState<string | undefined>(initialNextCursor);
   const [activeCollectionSlug, setActiveCollectionSlug] = useState<string | null>(null);
@@ -137,6 +138,7 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
         onLayoutChange={handleLayoutChange}
         setCards={setCards}
         setNextCursor={setNextCursor}
+        hideControls={hideControls}
       />
     </DndContext>
   );

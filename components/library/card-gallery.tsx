@@ -20,9 +20,10 @@ export type CardGalleryProps = {
   onLayoutChange: (layout: LayoutMode) => void;
   setCards: Dispatch<SetStateAction<CardModel[]>>;
   setNextCursor: Dispatch<SetStateAction<string | undefined>>;
+  hideControls?: boolean;
 };
 
-function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor }: CardGalleryProps) {
+function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false }: CardGalleryProps) {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -177,25 +178,27 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="text-xs text-muted-foreground">{cards.length} card(s)</span>
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            className="rounded-lg bg-surface-soft px-3 py-1 text-sm text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-            disabled={!selectedIds.length}
-            onClick={handleBulkMove}
-          >
-            Move to Pawkit
-          </button>
-          <button
-            className="rounded bg-rose-500 px-3 py-1 text-sm text-gray-950 disabled:opacity-40"
-            disabled={!selectedIds.length}
-            onClick={handleBulkDelete}
-          >
-            Delete selected
-          </button>
+      {!hideControls && (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-xs text-muted-foreground">{cards.length} card(s)</span>
+          <div className="ml-auto flex items-center gap-2">
+            <button
+              className="rounded-lg bg-surface-soft px-3 py-1 text-sm text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+              disabled={!selectedIds.length}
+              onClick={handleBulkMove}
+            >
+              Move to Pawkit
+            </button>
+            <button
+              className="rounded bg-rose-500 px-3 py-1 text-sm text-gray-950 disabled:opacity-40"
+              disabled={!selectedIds.length}
+              onClick={handleBulkDelete}
+            >
+              Delete selected
+            </button>
+          </div>
         </div>
-      </div>
+      )}
       <div className={layoutClass(layout)}>
         {cards.map((card) => (
           <CardCell

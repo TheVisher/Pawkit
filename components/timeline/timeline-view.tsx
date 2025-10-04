@@ -9,8 +9,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ListFilter, Check } from "lucide-react";
+import { useSelection } from "@/lib/hooks/selection-store";
+import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 
 type TimelineGroup = {
   date: string;
@@ -102,45 +106,48 @@ function CardCell({ card, layout }: { card: CardModel; layout: LayoutMode }) {
   );
 }
 
-function DateRangeDropdown({ selectedRange, onRangeChange }: { selectedRange: number; onRangeChange: (days: number) => void }) {
-  const selectedLabel = DATE_RANGES.find(({ value }) => value === selectedRange)?.label || "30 days";
-
+function CombinedViewDropdown({
+  layout,
+  onLayoutChange,
+  selectedRange,
+  onRangeChange
+}: {
+  layout: LayoutMode;
+  onLayoutChange: (layout: LayoutMode) => void;
+  selectedRange: number;
+  onRangeChange: (days: number) => void;
+}) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
-        <span>{selectedLabel}</span>
-        <ChevronDown className="h-4 w-4" />
+        <ListFilter className="h-4 w-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {DATE_RANGES.map(({ label, value }) => (
-          <DropdownMenuItem
-            key={value}
-            onClick={() => onRangeChange(value)}
-            className="cursor-pointer"
-          >
-            {label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
-
-function LayoutDropdown({ layout, onLayoutChange }: { layout: LayoutMode; onLayoutChange: (layout: LayoutMode) => void }) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
-        <span className="capitalize">{layout}</span>
-        <ChevronDown className="h-4 w-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
+        <DropdownMenuLabel>View</DropdownMenuLabel>
         {LAYOUTS.map((layoutOption) => (
           <DropdownMenuItem
             key={layoutOption}
             onClick={() => onLayoutChange(layoutOption)}
-            className="capitalize cursor-pointer"
+            className="capitalize cursor-pointer relative pl-8"
           >
+            {layout === layoutOption && (
+              <Check className="absolute left-2 h-4 w-4" />
+            )}
             {layoutOption}
+          </DropdownMenuItem>
+        ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Time Range</DropdownMenuLabel>
+        {DATE_RANGES.map(({ label, value }) => (
+          <DropdownMenuItem
+            key={value}
+            onClick={() => onRangeChange(value)}
+            className="cursor-pointer relative pl-8"
+          >
+            {selectedRange === value && (
+              <Check className="absolute left-2 h-4 w-4" />
+            )}
+            {label}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
@@ -153,6 +160,11 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
   const [layout, setLayout] = useState<LayoutMode>("grid");
   const [selectedRange, setSelectedRange] = useState(30);
   const [loading, setLoading] = useState(false);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const selectedIds = useSelection((state) => state.selectedIds);
+  const clearSelection = useSelection((state) => state.clear);
 
   // Load preferences from localStorage on mount
   useEffect(() => {
@@ -208,21 +220,97 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
     return format(date, "MMMM do, yyyy");
   };
 
+  const handleBulkMove = () => {
+    if (!selectedIds.length) return;
+    setShowMoveModal(true);
+  };
+
+  const handleConfirmMove = async (slug: string) => {
+    if (!selectedIds.length) return;
+
+    // Get all cards from all groups
+    const allCards = groups.flatMap(group => group.cards);
+
+    await Promise.all(
+      selectedIds.map((id) => {
+        const card = allCards.find((item) => item.id === id);
+        const collections = card ? Array.from(new Set([slug, ...card.collections])) : [slug];
+        return fetch(`/api/cards/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ collections })
+        });
+      })
+    );
+
+    // Update cards in groups
+    setGroups((prev) =>
+      prev.map((group) => ({
+        ...group,
+        cards: group.cards.map((card) =>
+          selectedIds.includes(card.id)
+            ? { ...card, collections: Array.from(new Set([slug, ...card.collections])) }
+            : card
+        )
+      }))
+    );
+    clearSelection();
+  };
+
+  const handleBulkDelete = () => {
+    if (!selectedIds.length) return;
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    await Promise.all(selectedIds.map((id) => fetch(`/api/cards/${id}`, { method: "DELETE" })));
+
+    // Remove deleted cards from groups
+    setGroups((prev) =>
+      prev.map((group) => ({
+        ...group,
+        cards: group.cards.filter((card) => !selectedIds.includes(card.id))
+      }))
+      .filter((group) => group.cards.length > 0) // Remove empty groups
+    );
+    clearSelection();
+    setShowDeleteConfirm(false);
+  };
+
   const totalCards = groups.reduce((sum, group) => sum + group.cards.length, 0);
 
   return (
-    <div className="space-y-6">
-      {/* Header with controls */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-100">Timeline</h1>
-        <div className="flex items-center gap-3">
-          {/* Date Range Dropdown */}
-          <DateRangeDropdown selectedRange={selectedRange} onRangeChange={handleRangeChange} />
+    <>
+      <div className="space-y-6">
+        {/* Header with controls */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-gray-100">Timeline</h1>
+          <div className="flex items-center gap-2">
+            {/* Action buttons */}
+            <button
+              className="rounded-lg bg-surface-soft px-3 py-1 text-sm text-muted-foreground transition hover:text-foreground disabled:opacity-40"
+              disabled={!selectedIds.length}
+              onClick={handleBulkMove}
+            >
+              Move to Pawkit
+            </button>
+            <button
+              className="rounded bg-rose-500 px-3 py-1 text-sm text-gray-950 disabled:opacity-40"
+              disabled={!selectedIds.length}
+              onClick={handleBulkDelete}
+            >
+              Delete selected
+            </button>
 
-          {/* Layout Dropdown */}
-          <LayoutDropdown layout={layout} onLayoutChange={handleLayoutChange} />
+            {/* Combined View & Time Range Dropdown */}
+            <CombinedViewDropdown
+              layout={layout}
+              onLayoutChange={handleLayoutChange}
+              selectedRange={selectedRange}
+              onRangeChange={handleRangeChange}
+            />
+          </div>
         </div>
-      </div>
 
       {/* Loading state */}
       {loading && (
@@ -267,6 +355,45 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
           Showing {totalCards} card{totalCards !== 1 ? 's' : ''} across {groups.length} day{groups.length !== 1 ? 's' : ''}
         </div>
       )}
-    </div>
+      </div>
+
+      <MoveToPawkitModal
+        open={showMoveModal}
+        onClose={() => setShowMoveModal(false)}
+        onConfirm={handleConfirmMove}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowDeleteConfirm(false)}
+        >
+          <div
+            className="bg-gray-950 rounded-lg p-6 w-full max-w-md shadow-xl border border-gray-800"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold text-gray-100 mb-4">Delete Cards?</h2>
+            <p className="text-sm text-gray-400 mb-4">
+              Move {selectedIds.length} selected card{selectedIds.length !== 1 ? 's' : ''} to Trash? You can restore them within 30 days.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="flex-1 rounded bg-gray-900 px-4 py-2 text-sm font-medium text-gray-100 hover:bg-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 transition-colors"
+              >
+                Move to Trash
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -29,7 +29,10 @@ export function NotesHeader({ noteCount, initialLayout }: NotesHeaderProps) {
 
   return (
     <div className="flex items-center justify-between">
-      <h1 className="text-2xl font-semibold text-foreground">Notes</h1>
+      <div className="flex items-center gap-3">
+        <h1 className="text-2xl font-semibold text-foreground">Notes</h1>
+        <p className="text-sm text-muted-foreground">{noteCount} note(s)</p>
+      </div>
       <DropdownMenu>
         <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
           <span className="capitalize">{initialLayout}</span>
