@@ -3,6 +3,8 @@ import { getTrashCollections } from "@/lib/server/collections";
 import { TrashView } from "@/components/trash/trash-view";
 import { requireUser } from "@/lib/auth/get-user";
 
+export const dynamic = 'force-dynamic';
+
 export default async function TrashPage() {
   const user = await requireUser();
 
