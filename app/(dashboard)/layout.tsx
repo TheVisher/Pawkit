@@ -6,6 +6,8 @@ import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
 import { DEFAULT_USERNAME } from "@/lib/constants";
 import { listCollections } from "@/lib/server/collections";
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardLayout({ children }: { children: ReactNode }) {
   const { tree } = await listCollections();
 
