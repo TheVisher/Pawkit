@@ -47,28 +47,6 @@ export default async function CollectionPage({
     notFound();
   }
 
-  const initialCards: CardModel[] = items.map((card) => ({
-    id: card.id,
-    type: card.type,
-    url: card.url,
-    title: card.title,
-    notes: card.notes,
-    content: card.content,
-    status: card.status as CardStatus,
-    tags: card.tags,
-    collections: card.collections,
-    domain: card.domain,
-    image: card.image,
-    description: card.description,
-    metadata: card.metadata ?? null,
-    pinned: card.pinned,
-    articleContent: card.articleContent,
-    createdAt: card.createdAt.toISOString(),
-    updatedAt: card.updatedAt.toISOString()
-  }));
-
-  const tree: CollectionNode[] = collections.tree.map((node) => serializeCollection(node));
-
   // Flatten all pawkits for the move modal (only root-level pawkits)
   const allPawkits = collections.tree.map((node) => ({
     id: node.id,
@@ -80,24 +58,12 @@ export default async function CollectionPage({
     <div className="space-y-6">
       <PawkitsHeader parentSlug={slug} parentId={currentCollection.id} allPawkits={allPawkits} />
       <LibraryWorkspace
-        initialCards={initialCards}
+        initialCards={items}
         initialNextCursor={nextCursor}
         initialQuery={{ q, collection: slug, status, layout }}
-        collectionsTree={tree}
+        collectionsTree={collections.tree}
         collectionName={currentCollection.name}
       />
     </div>
   );
-}
-
-function serializeCollection(node: any): CollectionNode {
-  return {
-    id: node.id,
-    name: node.name,
-    slug: node.slug,
-    parentId: node.parentId,
-    createdAt: node.createdAt instanceof Date ? node.createdAt.toISOString() : node.createdAt,
-    updatedAt: node.updatedAt instanceof Date ? node.updatedAt.toISOString() : node.updatedAt,
-    children: Array.isArray(node.children) ? node.children.map((child: any) => serializeCollection(child)) : []
-  };
 }
