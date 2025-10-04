@@ -1,5 +1,5 @@
 import { Card, Prisma } from "@prisma/client";
-import type { OldCardAgeThreshold } from "@/lib/types";
+import type { OldCardAgeThreshold, CardType } from "@/lib/types";
 import { prisma } from "@/lib/server/prisma";
 import { fetchPreviewMetadata } from "@/lib/server/metadata";
 import { cardCreateSchema, cardListQuerySchema, cardUpdateSchema } from "@/lib/validators/card";
@@ -12,7 +12,8 @@ export type CardInput = typeof cardCreateSchema._input;
 export type CardUpdateInput = typeof cardUpdateSchema._input;
 export type CardListQuery = typeof cardListQuerySchema._input;
 
-export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata'> & {
+export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type'> & {
+  type: CardType;
   tags: string[];
   collections: string[];
   metadata: Record<string, unknown> | undefined;
@@ -29,6 +30,7 @@ function serializeCollections(collections: string[]): string | null {
 function mapCard(card: Card): CardDTO {
   return {
     ...card,
+    type: card.type as CardType,
     tags: parseJsonArray(card.tags),
     collections: parseJsonArray(card.collections),
     metadata: parseJsonObject(card.metadata)
