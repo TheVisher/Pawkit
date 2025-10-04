@@ -66,7 +66,7 @@ export default function HomePage() {
   const activeCard = activeCardId ? recent.find((c) => c.id === activeCardId) : null;
 
   const handleUpdateCard = (updated: CardModel) => {
-    setRecent((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+    setRecent((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
   };
 
   const handleDeleteCard = () => {
