@@ -24,43 +24,13 @@ export default async function LibraryPage({
     listCollections()
   ]);
 
-  const initialCards: CardModel[] = items.map((card) => ({
-    id: card.id,
-    url: card.url,
-    title: card.title,
-    notes: card.notes,
-    status: card.status as CardStatus,
-    tags: card.tags,
-    collections: card.collections,
-    domain: card.domain,
-    image: card.image,
-    description: card.description,
-    metadata: card.metadata ?? null,
-    createdAt: card.createdAt.toISOString(),
-    updatedAt: card.updatedAt.toISOString()
-  }));
-
-  const tree: CollectionNode[] = collections.tree.map((node) => serializeCollection(node));
-
   return (
     <LibraryView
-      initialCards={initialCards}
+      initialCards={items}
       initialNextCursor={nextCursor}
       initialLayout={layout}
-      collectionsTree={tree}
+      collectionsTree={collections.tree}
       query={{ q, collection, status }}
     />
   );
-}
-
-function serializeCollection(node: any): CollectionNode {
-  return {
-    id: node.id,
-    name: node.name,
-    slug: node.slug,
-    parentId: node.parentId,
-    createdAt: node.createdAt instanceof Date ? node.createdAt.toISOString() : node.createdAt,
-    updatedAt: node.updatedAt instanceof Date ? node.updatedAt.toISOString() : node.updatedAt,
-    children: Array.isArray(node.children) ? node.children.map((child: any) => serializeCollection(child)) : []
-  };
 }
