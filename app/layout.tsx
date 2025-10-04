@@ -2,6 +2,7 @@ import "./globals.css";
 import { ReactNode } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/lib/contexts/auth-context";
+import { SWRProvider } from "@/lib/providers/swr-provider";
 
 export const metadata = {
   title: "Pawkit",
@@ -21,7 +22,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" className="dark">
       <body>
         <AuthProvider>
-          <ThemeProvider>{children}</ThemeProvider>
+          <SWRProvider>
+            <ThemeProvider>{children}</ThemeProvider>
+          </SWRProvider>
         </AuthProvider>
       </body>
     </html>

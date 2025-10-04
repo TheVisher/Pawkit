@@ -1,17 +1,20 @@
-import { getOldCards } from "@/lib/server/cards";
-import { listCollections } from "@/lib/server/collections";
+"use client";
+
+import useSWR from "swr";
 import { DigUpView } from "@/components/dig-up/dig-up-view";
-import { requireUser } from "@/lib/auth/get-user";
+import { CollectionNode } from "@/lib/types";
 
-export default async function DigUpPage() {
-  const user = await requireUser();
+export default function DigUpPage() {
+  const { data: oldCardsResult } = useSWR("/api/distill");
+  const { data: collectionsData } = useSWR<{ tree: CollectionNode[] }>("/api/pawkits");
 
-  const [oldCardsResult, { tree: pawkits }] = await Promise.all([
-    getOldCards(user.id),
-    listCollections(user.id)
-  ]);
+  const pawkits = collectionsData?.tree || [];
 
   if (!oldCardsResult) {
+    return null; // Loading state
+  }
+
+  if (!oldCardsResult.cards || oldCardsResult.cards.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
         <div className="text-6xl mb-4">🐕</div>

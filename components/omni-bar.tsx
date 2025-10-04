@@ -6,7 +6,7 @@ import { isProbablyUrl } from "@/lib/utils/strings";
 import { AddCardModal } from "@/components/modals/add-card-modal";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
-import { useCardEvents } from "@/lib/hooks/card-events-store";
+import { useDataStore } from "@/lib/stores/data-store";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -22,7 +22,7 @@ function OmniBarContent() {
   const [showModal, setShowModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
-  const addCard = useCardEvents((state) => state.addCard);
+  const addCardToStore = useDataStore((state) => state.addCard);
   const lastSearchedRef = useRef(initialQuery);
   const isTypingRef = useRef(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -91,38 +91,19 @@ function OmniBarContent() {
   };
 
   const quickAdd = async () => {
-    setAdding(true);
     const url = value.trim();
+    setValue("");
 
-    // Create card immediately
-    const response = await fetch("/api/cards", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url })
-    });
+    // Create card optimistically - shows instantly!
+    addCardToStore({ url, type: 'url' });
 
-    setAdding(false);
-
-    if (response.ok) {
-      const card = await response.json();
-      setValue("");
-
-      // Notify listeners that a new card was created
-      addCard(card);
-
-      // Trigger background metadata fetch (fire and forget)
-      fetch(`/api/cards/${card.id}/fetch-metadata`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: card.url, previewServiceUrl })
-      }).catch(() => {
-        // Silently fail - card is already created
-      });
-
-      if (pathname !== "/library") {
-        router.push("/library");
-      }
+    // Navigate immediately
+    if (pathname !== "/library") {
+      router.push("/library");
     }
+
+    // Note: The store handles server sync in background
+    // Metadata fetch will happen after server responds with real card ID
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -146,31 +127,22 @@ function OmniBarContent() {
   };
 
   const handleCreateNote = async (data: { type: string; title: string; content?: string }) => {
-    setAdding(true);
-    const response = await fetch("/api/cards", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: data.type,
-        title: data.title,
-        content: data.content || "",
-        url: "" // Empty URL for notes
-      })
+    setShowNoteModal(false);
+
+    // Create note optimistically - shows instantly!
+    addCardToStore({
+      type: data.type as 'md-note' | 'text-note',
+      title: data.title,
+      content: data.content || "",
+      url: "" // Empty URL for notes
     });
 
-    setAdding(false);
-
-    if (response.ok) {
-      setShowNoteModal(false);
-      // If on notes page, stay there and refresh; otherwise go to library
-      if (pathname === "/notes") {
-        router.refresh();
-      } else if (pathname !== "/library") {
-        router.push("/library");
-      } else {
-        router.refresh();
-      }
+    // Navigate immediately if needed
+    if (pathname !== "/notes" && pathname !== "/library") {
+      router.push("/library");
     }
+
+    // Note: The store handles server sync in background
   };
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {

@@ -1,77 +1,64 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import { type CardDTO } from "@/lib/server/cards";
-import { type CollectionDTO } from "@/lib/server/collections";
 import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
 import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
-import { CollectionNode, CardModel } from "@/lib/types";
-
-type Counts = {
-  total: number;
-  ready: number;
-  pending: number;
-  error: number;
-};
+import { CardModel } from "@/lib/types";
+import { useDataStore } from "@/lib/stores/data-store";
 
 export default function HomePage() {
-  const [counts, setCounts] = useState<Counts>({ total: 0, ready: 0, pending: 0, error: 0 });
-  const [recent, setRecent] = useState<CardDTO[]>([]);
-  const [quickAccess, setQuickAccess] = useState<CardDTO[]>([]);
-  const [pinnedPawkits, setPinnedPawkits] = useState<CollectionDTO[]>([]);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
-  const [collections, setCollections] = useState<CollectionNode[]>([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [countsRes, recentRes, quickAccessRes, pinnedRes, collectionsRes] = await Promise.all([
-          fetch("/api/cards/count"),
-          fetch("/api/cards/recent?limit=5"),
-          fetch("/api/cards/quick-access?limit=8"),
-          fetch("/api/pawkits/pinned?limit=8"),
-          fetch("/api/pawkits")
-        ]);
+  // Read from global store - instant, no API calls
+  const { cards, collections, updateCard, deleteCard } = useDataStore();
 
-        if (countsRes.ok) setCounts(await countsRes.json());
-        if (recentRes.ok) setRecent(await recentRes.json());
-        if (quickAccessRes.ok) setQuickAccess(await quickAccessRes.json());
-        if (pinnedRes.ok) setPinnedPawkits(await pinnedRes.json());
-        if (collectionsRes.ok) {
-          const data = await collectionsRes.json();
-          setCollections(data.tree);
-        }
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-      }
-    };
+  // Compute views from the single source of truth
+  const recent = useMemo(() =>
+    cards
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5),
+    [cards]
+  );
 
-    fetchData();
-  }, []);
+  const quickAccess = useMemo(() =>
+    cards
+      .filter(c => c.pinned)
+      .slice(0, 8),
+    [cards]
+  );
 
-  const recentIds = new Set(recent.map((card) => card.id));
-  let quickAccessUnique = quickAccess
-    .filter((item, index) => quickAccess.findIndex((candidate) => candidate.id === item.id) === index)
-    .filter((item) => !recentIds.has(item.id));
+  // Note: CollectionNode doesn't have pinned property yet
+  // For now, return empty array until pinned feature is implemented
+  const pinnedPawkits = useMemo(() => [], []);
+
+  const counts = useMemo(() => ({
+    total: cards.length,
+    ready: cards.filter(c => c.status === 'READY').length,
+    pending: cards.filter(c => c.status === 'PENDING').length,
+    error: cards.filter(c => c.status === 'ERROR').length
+  }), [cards]);
+
+  const recentIds = new Set(recent.map(card => card.id));
+  let quickAccessUnique = quickAccess.filter(item => !recentIds.has(item.id));
 
   if (quickAccessUnique.length === 0) {
-    quickAccessUnique = quickAccess.filter((item, index) => {
-      return quickAccess.findIndex((candidate) => candidate.id === item.id) === index;
-    });
+    quickAccessUnique = quickAccess;
   }
 
-  const activeCard = activeCardId ? recent.find((c) => c.id === activeCardId) : null;
+  const activeCard = activeCardId ? cards.find(c => c.id === activeCardId) : null;
 
-  const handleUpdateCard = (updated: CardModel) => {
-    setRecent((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
+  const handleUpdateCard = async (updated: CardModel) => {
+    await updateCard(updated.id, updated);
   };
 
-  const handleDeleteCard = () => {
-    setRecent((prev) => prev.filter((c) => c.id !== activeCardId));
-    setActiveCardId(null);
+  const handleDeleteCard = async () => {
+    if (activeCardId) {
+      await deleteCard(activeCardId);
+      setActiveCardId(null);
+    }
   };
 
   return (
@@ -162,7 +149,7 @@ function StatCard({ label, value }: StatCardProps) {
 }
 
 type CardProps = {
-  card: CardDTO;
+  card: CardModel;
   onClick: () => void;
 };
 

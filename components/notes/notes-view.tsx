@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { LayoutMode, LAYOUTS } from "@/lib/constants";
@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ListFilter, Check } from "lucide-react";
+import { ListFilter, Check, MoreVertical } from "lucide-react";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 
 type NotesViewProps = {
@@ -30,6 +30,11 @@ export function NotesView({ initialCards, initialLayout, collectionsTree, query 
   const [cards, setCards] = useState<CardModel[]>(initialCards);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  // Sync local state when store updates (important for reactivity!)
+  useEffect(() => {
+    setCards(initialCards);
+  }, [initialCards]);
 
   const handleLayoutChange = (layout: LayoutMode) => {
     localStorage.setItem("notes-layout", layout);
@@ -88,20 +93,6 @@ export function NotesView({ initialCards, initialLayout, collectionsTree, query 
             <p className="text-sm text-muted-foreground">{cards.length} note(s)</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              className="rounded-lg bg-surface-soft px-3 py-1 text-sm text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-              disabled={!selectedIds.length}
-              onClick={handleBulkMove}
-            >
-              Move to Pawkit
-            </button>
-            <button
-              className="rounded bg-rose-500 px-3 py-1 text-sm text-gray-950 disabled:opacity-40"
-              disabled={!selectedIds.length}
-              onClick={handleBulkDelete}
-            >
-              Delete selected
-            </button>
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
                 <ListFilter className="h-4 w-4" />
@@ -121,6 +112,27 @@ export function NotesView({ initialCards, initialLayout, collectionsTree, query 
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
+                <MoreVertical className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={handleBulkMove}
+                  disabled={!selectedIds.length}
+                  className="cursor-pointer"
+                >
+                  Move to Pawkit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleBulkDelete}
+                  disabled={!selectedIds.length}
+                  className="cursor-pointer text-rose-400"
+                >
+                  Delete selected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         <LibraryWorkspace
@@ -129,6 +141,7 @@ export function NotesView({ initialCards, initialLayout, collectionsTree, query 
           initialQuery={{ q: query, layout: initialLayout }}
           collectionsTree={collectionsTree}
           hideControls={true}
+          storageKey="notes-layout"
         />
       </div>
 

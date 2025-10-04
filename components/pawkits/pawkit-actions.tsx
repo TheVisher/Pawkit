@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useDataStore } from "@/lib/stores/data-store";
 
 type PawkitActionsProps = {
   pawkitId: string;
@@ -24,6 +25,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
   const [pinned, setPinned] = useState(isPinned);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { refresh } = useDataStore();
 
   const handleDelete = async () => {
     setLoading(true);
@@ -41,8 +43,8 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
       }
 
       setShowDeleteConfirm(false);
+      await refresh();
       router.push("/pawkits");
-      router.refresh();
       onDeleteSuccess?.();
     } catch (err) {
       alert("Failed to delete Pawkit");
@@ -67,7 +69,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
 
       setShowRenameModal(false);
       setLoading(false);
-      router.refresh();
+      await refresh();
     } catch (err) {
       alert("Failed to rename Pawkit");
       setLoading(false);
@@ -90,7 +92,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
       setShowMoveModal(false);
       setSelectedMoveTarget(null);
       setLoading(false);
-      router.refresh();
+      await refresh();
     } catch (err) {
       alert("Failed to move Pawkit");
       setLoading(false);
@@ -111,7 +113,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
 
       setPinned(!pinned);
       setShowMenu(false);
-      router.refresh();
+      await refresh();
     } catch (err) {
       alert("Failed to toggle pin");
     }

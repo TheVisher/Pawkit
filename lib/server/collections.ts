@@ -2,7 +2,7 @@ import { Collection, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/server/prisma";
 import { collectionCreateSchema, collectionUpdateSchema } from "@/lib/validators/collection";
 import { slugify } from "@/lib/utils/slug";
-import { unstable_cache } from 'next/cache';
+import { unstable_cache, revalidateTag } from 'next/cache';
 
 const MAX_DEPTH = 4;
 
@@ -109,6 +109,7 @@ export async function createCollection(userId: string, payload: unknown) {
     }
   });
 
+  revalidateTag('collections');
   return created;
 }
 
@@ -149,7 +150,9 @@ export async function updateCollection(userId: string, id: string, payload: unkn
     data.slug = await uniqueSlug(userId, parsed.name, id);
   }
 
-  return prisma.collection.update({ where: { id, userId }, data });
+  const updated = await prisma.collection.update({ where: { id, userId }, data });
+  revalidateTag('collections');
+  return updated;
 }
 
 export async function deleteCollection(userId: string, id: string, deleteCards = false) {
@@ -212,6 +215,8 @@ export async function deleteCollection(userId: string, id: string, deleteCards =
       }
     });
   });
+
+  revalidateTag('collections');
 }
 
 export async function pinnedCollections(userId: string, limit = 8) {

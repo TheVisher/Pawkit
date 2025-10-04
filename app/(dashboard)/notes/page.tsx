@@ -1,46 +1,51 @@
-import { listCards } from "@/lib/server/cards";
-import { listCollections } from "@/lib/server/collections";
+"use client";
+
+import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import { LayoutMode, LAYOUTS, DEFAULT_LAYOUT } from "@/lib/constants";
 import { NotesView } from "@/components/notes/notes-view";
-import { requireUser } from "@/lib/auth/get-user";
+import { useDataStore } from "@/lib/stores/data-store";
 
-type SearchParams = {
-  q?: string;
-  layout?: LayoutMode;
-};
+export default function NotesPage() {
+  const searchParams = useSearchParams();
+  const q = searchParams.get("q") || undefined;
+  const layoutParam = searchParams.get("layout") as LayoutMode | null;
 
-export default async function NotesPage({ searchParams }: { searchParams: SearchParams }) {
-  const user = await requireUser();
-  const query = searchParams.q;
-  const layoutParam = searchParams.layout as LayoutMode;
-  const layout: LayoutMode = layoutParam && LAYOUTS.includes(layoutParam) ? layoutParam : DEFAULT_LAYOUT;
+  // Read from localStorage first, then URL param, then default
+  const savedLayout = typeof window !== 'undefined' ? localStorage.getItem("notes-layout") as LayoutMode | null : null;
+  const layout: LayoutMode = layoutParam && LAYOUTS.includes(layoutParam)
+    ? layoutParam
+    : savedLayout && LAYOUTS.includes(savedLayout)
+      ? savedLayout
+      : DEFAULT_LAYOUT;
 
-  // Fetch only note cards (md-note or text-note)
-  const { items: mdNotes, nextCursor: mdCursor } = await listCards(user.id, {
-    q: query,
-    type: "md-note",
-    limit: 50
-  });
+  // Read from global store - instant, no API calls
+  const { cards, collections } = useDataStore();
 
-  const { items: textNotes, nextCursor: textCursor } = await listCards(user.id, {
-    q: query,
-    type: "text-note",
-    limit: 50
-  });
+  // Filter to only notes (md-note or text-note)
+  const allNotes = useMemo(() => {
+    let notes = cards.filter(c => c.type === 'md-note' || c.type === 'text-note');
 
-  // Combine and sort by creation date
-  const allNotes = [...mdNotes, ...textNotes].sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+    // Apply search filter if present
+    if (q) {
+      const query = q.toLowerCase();
+      notes = notes.filter(note =>
+        note.title?.toLowerCase().includes(query) ||
+        note.content?.toLowerCase().includes(query) ||
+        note.notes?.toLowerCase().includes(query)
+      );
+    }
 
-  const { tree } = await listCollections(user.id);
+    // Sort by creation date
+    return notes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }, [cards, q]);
 
   return (
     <NotesView
       initialCards={allNotes}
       initialLayout={layout}
-      collectionsTree={tree}
-      query={query}
+      collectionsTree={collections}
+      query={q}
     />
   );
 }

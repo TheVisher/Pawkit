@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, ListFilter, Check } from "lucide-react";
+import { ChevronDown, ListFilter, Check, MoreVertical } from "lucide-react";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
@@ -123,38 +123,22 @@ function CardCell({
   );
 }
 
-function CombinedViewDropdown({
-  layout,
-  onLayoutChange,
+function TimeRangeDropdown({
   selectedRange,
   onRangeChange
 }: {
-  layout: LayoutMode;
-  onLayoutChange: (layout: LayoutMode) => void;
   selectedRange: number;
   onRangeChange: (days: number) => void;
 }) {
+  const currentLabel = DATE_RANGES.find(r => r.value === selectedRange)?.label || "30 days";
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
-        <ListFilter className="h-4 w-4" />
+        {currentLabel}
+        <ChevronDown className="h-4 w-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>View</DropdownMenuLabel>
-        {LAYOUTS.map((layoutOption) => (
-          <DropdownMenuItem
-            key={layoutOption}
-            onClick={() => onLayoutChange(layoutOption)}
-            className="capitalize cursor-pointer relative pl-8"
-          >
-            {layout === layoutOption && (
-              <Check className="absolute left-2 h-4 w-4" />
-            )}
-            {layoutOption}
-          </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>Time Range</DropdownMenuLabel>
         {DATE_RANGES.map(({ label, value }) => (
           <DropdownMenuItem
             key={value}
@@ -355,31 +339,60 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
       <div className="space-y-6">
         {/* Header with controls */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-gray-100">Timeline</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold text-foreground">Timeline</h1>
+            <p className="text-sm text-muted-foreground">{totalCards} card(s)</p>
+          </div>
           <div className="flex items-center gap-2">
-            {/* Action buttons */}
-            <button
-              className="rounded-lg bg-surface-soft px-3 py-1 text-sm text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-              disabled={!selectedIds.length}
-              onClick={handleBulkMove}
-            >
-              Move to Pawkit
-            </button>
-            <button
-              className="rounded bg-rose-500 px-3 py-1 text-sm text-gray-950 disabled:opacity-40"
-              disabled={!selectedIds.length}
-              onClick={handleBulkDelete}
-            >
-              Delete selected
-            </button>
-
-            {/* Combined View & Time Range Dropdown */}
-            <CombinedViewDropdown
-              layout={layout}
-              onLayoutChange={handleLayoutChange}
+            {/* Time Range Dropdown */}
+            <TimeRangeDropdown
               selectedRange={selectedRange}
               onRangeChange={handleRangeChange}
             />
+
+            {/* Layout Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
+                <ListFilter className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {LAYOUTS.map((layoutOption) => (
+                  <DropdownMenuItem
+                    key={layoutOption}
+                    onClick={() => handleLayoutChange(layoutOption)}
+                    className="capitalize cursor-pointer relative pl-8"
+                  >
+                    {layout === layoutOption && (
+                      <Check className="absolute left-2 h-4 w-4" />
+                    )}
+                    {layoutOption}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Actions Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
+                <MoreVertical className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={handleBulkMove}
+                  disabled={!selectedIds.length}
+                  className="cursor-pointer"
+                >
+                  Move to Pawkit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleBulkDelete}
+                  disabled={!selectedIds.length}
+                  className="cursor-pointer text-rose-400"
+                >
+                  Delete selected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

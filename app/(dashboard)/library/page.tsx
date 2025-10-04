@@ -1,37 +1,66 @@
-import { listCards } from "@/lib/server/cards";
-import { listCollections } from "@/lib/server/collections";
-import { CardModel, CollectionNode, CardStatus } from "@/lib/types";
+"use client";
+
+import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { LibraryView } from "@/components/library/library-view";
-import { requireUser } from "@/lib/auth/get-user";
+import { useDataStore } from "@/lib/stores/data-store";
 
-export default async function LibraryPage({
-  searchParams
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const user = await requireUser();
-  const params = await searchParams;
-  const q = typeof params.q === "string" ? params.q : undefined;
-  const collection = typeof params.collection === "string" ? params.collection : undefined;
-  const statusParam = typeof params.status === "string" ? params.status : undefined;
+export default function LibraryPage() {
+  const searchParams = useSearchParams();
+
+  const q = searchParams.get("q") || undefined;
+  const collection = searchParams.get("collection") || undefined;
+  const statusParam = searchParams.get("status") || undefined;
   const status = statusParam && ["PENDING", "READY", "ERROR"].includes(statusParam) ? statusParam as "PENDING" | "READY" | "ERROR" : undefined;
-  const layoutParam = typeof params.layout === "string" ? (params.layout as LayoutMode) : DEFAULT_LAYOUT;
-  const cursor = typeof params.cursor === "string" ? params.cursor : undefined;
+  const layoutParam = searchParams.get("layout") as LayoutMode | null;
 
-  const layout: LayoutMode = LAYOUTS.includes(layoutParam) ? layoutParam : DEFAULT_LAYOUT;
+  // Read from localStorage first, then URL param, then default
+  const savedLayout = typeof window !== 'undefined' ? localStorage.getItem("library-layout") as LayoutMode | null : null;
+  const layout: LayoutMode = layoutParam && LAYOUTS.includes(layoutParam)
+    ? layoutParam
+    : savedLayout && LAYOUTS.includes(savedLayout)
+      ? savedLayout
+      : DEFAULT_LAYOUT;
 
-  const [{ items, nextCursor }, collections] = await Promise.all([
-    listCards(user.id, { q, collection, status, limit: 50, cursor }),
-    listCollections(user.id)
-  ]);
+  // Read from global store - instant, no API calls
+  const { cards, collections } = useDataStore();
+
+  // Filter cards based on search params (client-side filtering)
+  const items = useMemo(() => {
+    let filtered = cards;
+
+    // Search query
+    if (q) {
+      const query = q.toLowerCase();
+      filtered = filtered.filter(card =>
+        card.title?.toLowerCase().includes(query) ||
+        card.url.toLowerCase().includes(query) ||
+        card.notes?.toLowerCase().includes(query)
+      );
+    }
+
+    // Collection filter
+    if (collection) {
+      filtered = filtered.filter(card =>
+        card.collections?.includes(collection)
+      );
+    }
+
+    // Status filter
+    if (status) {
+      filtered = filtered.filter(card => card.status === status);
+    }
+
+    return filtered;
+  }, [cards, q, collection, status]);
 
   return (
     <LibraryView
       initialCards={items}
-      initialNextCursor={nextCursor}
+      initialNextCursor={undefined}
       initialLayout={layout}
-      collectionsTree={collections.tree}
+      collectionsTree={collections}
       query={{ q, collection, status }}
     />
   );

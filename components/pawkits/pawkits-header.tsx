@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useDataStore } from "@/lib/stores/data-store";
 
 type PawkitsHeaderProps = {
   parentSlug?: string | null;
@@ -22,6 +23,7 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { refresh } = useDataStore();
 
   const isSubPawkit = !!parentSlug;
 
@@ -62,7 +64,7 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
       setPawkitName("");
       setShowModal(false);
       setLoading(false);
-      router.refresh();
+      await refresh();
     } catch (err) {
       setError("Failed to create Pawkit");
       setLoading(false);
@@ -90,8 +92,8 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
         throw new Error("Failed to delete Pawkit");
       }
 
+      await refresh();
       router.push("/pawkits");
-      router.refresh();
     } catch (err) {
       alert("Failed to delete Pawkit");
       setLoading(false);
@@ -116,7 +118,7 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
       setShowRenameModal(false);
       setRenameValue("");
       setLoading(false);
-      router.refresh();
+      await refresh();
     } catch (err) {
       alert("Failed to rename Pawkit");
       setLoading(false);
@@ -141,8 +143,8 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
       setShowMoveModal(false);
       setSelectedMoveTarget(null);
       setLoading(false);
+      await refresh();
       router.push("/pawkits");
-      router.refresh();
     } catch (err) {
       alert("Failed to move Pawkit");
       setLoading(false);

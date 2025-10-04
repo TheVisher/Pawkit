@@ -20,9 +20,10 @@ export type LibraryWorkspaceProps = {
   collectionsTree: CollectionNode[];
   collectionName?: string;
   hideControls?: boolean;
+  storageKey?: string; // Key for localStorage, e.g. "library-layout" or "pawkit-movies-layout"
 };
 
-function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery, collectionsTree, collectionName, hideControls = false }: LibraryWorkspaceProps) {
+function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery, collectionsTree, collectionName, hideControls = false, storageKey = "library-layout" }: LibraryWorkspaceProps) {
   const [cards, setCards] = useState<CardModel[]>(initialCards);
   const [nextCursor, setNextCursor] = useState<string | undefined>(initialNextCursor);
   const [activeCollectionSlug, setActiveCollectionSlug] = useState<string | null>(null);
@@ -38,7 +39,7 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
 
   // Load saved layout preference on mount
   useEffect(() => {
-    const savedLayout = localStorage.getItem("library-layout") as LayoutMode;
+    const savedLayout = localStorage.getItem(storageKey) as LayoutMode;
     if (savedLayout && ["grid", "masonry", "compact", "list"].includes(savedLayout)) {
       setLayout(savedLayout);
       // Update URL with saved preference if not already set
@@ -49,7 +50,7 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
         router.replace(`${currentPath}?${params.toString()}`);
       }
     }
-  }, [router, searchParams]);
+  }, [router, searchParams, storageKey]);
 
   useEffect(() => {
     setCards(initialCards);
@@ -65,7 +66,7 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
 
   const handleLayoutChange = (nextLayout: LayoutMode) => {
     setLayout(nextLayout);
-    localStorage.setItem("library-layout", nextLayout);
+    localStorage.setItem(storageKey, nextLayout);
     const params = new URLSearchParams(searchParams?.toString());
     params.set("layout", nextLayout);
     const currentPath = window.location.pathname;

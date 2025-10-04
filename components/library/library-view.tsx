@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ListFilter, Check } from "lucide-react";
+import { ListFilter, Check, MoreVertical } from "lucide-react";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 
 type LibraryViewProps = {
@@ -37,10 +37,15 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Sync local state when store updates (important for reactivity!)
+  useEffect(() => {
+    setCards(initialCards);
+  }, [initialCards]);
+
   const newCard = useCardEvents((state) => state.newCard);
   const clearNewCard = useCardEvents((state) => state.clearNewCard);
 
-  // Listen for new cards added via OmniBar
+  // Listen for new cards added via OmniBar (legacy event system, can probably remove)
   useEffect(() => {
     if (newCard) {
       // Only add if not already in the list and no active search/filter
@@ -108,20 +113,6 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
             <p className="text-sm text-muted-foreground">{cards.length} card(s)</p>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              className="rounded-lg bg-surface-soft px-3 py-1 text-sm text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-              disabled={!selectedIds.length}
-              onClick={handleBulkMove}
-            >
-              Move to Pawkit
-            </button>
-            <button
-              className="rounded bg-rose-500 px-3 py-1 text-sm text-gray-950 disabled:opacity-40"
-              disabled={!selectedIds.length}
-              onClick={handleBulkDelete}
-            >
-              Delete selected
-            </button>
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
                 <ListFilter className="h-4 w-4" />
@@ -141,6 +132,27 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
+                <MoreVertical className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={handleBulkMove}
+                  disabled={!selectedIds.length}
+                  className="cursor-pointer"
+                >
+                  Move to Pawkit
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={handleBulkDelete}
+                  disabled={!selectedIds.length}
+                  className="cursor-pointer text-rose-400"
+                >
+                  Delete selected
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         <LibraryWorkspace
@@ -149,6 +161,7 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
           initialQuery={{ ...query, layout: initialLayout }}
           collectionsTree={collectionsTree}
           hideControls={true}
+          storageKey="library-layout"
         />
       </div>
 
