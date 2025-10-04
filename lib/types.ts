@@ -19,6 +19,8 @@ export type CardModel = {
   metadata?: Record<string, unknown> | null;
   articleContent?: string | null;
   pinned?: boolean;
+  deleted: boolean;
+  deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 };
