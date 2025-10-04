@@ -151,6 +151,11 @@ textarea:focus-visible {
 @layer base {
   :root,
   .dark {
+    /* Default accent color (purple) - will be overridden by JS */
+    --accent-h: 270;
+    --accent-s: 70%;
+    --accent-l: 60%;
+
     --background: 248 32% 7.5%;
     --foreground: 256 33% 96%;
     --surface: 248 28% 12%;
@@ -166,15 +171,15 @@ textarea:focus-visible {
     --secondary-foreground: 256 33% 96%;
     --muted: 248 22% 20%;
     --muted-foreground: 258 14% 72%;
-    --accent: 258 92% 70%;
+    --accent: var(--accent-h) var(--accent-s) var(--accent-l);
     --accent-foreground: 256 33% 96%;
     --destructive: 0 70% 48%;
     --destructive-foreground: 0 0% 100%;
     --border: 248 24% 20%;
     --border-strong: 248 24% 28%;
     --input: 248 24% 20%;
-    --ring: 258 92% 70%;
-    --chart-1: 258 92% 70%;
+    --ring: var(--accent-h) var(--accent-s) var(--accent-l);
+    --chart-1: var(--accent-h) var(--accent-s) var(--accent-l);
     --chart-2: 222 76% 65%;
     --chart-3: 190 68% 62%;
     --chart-4: 40 90% 65%;

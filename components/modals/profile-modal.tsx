@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useSettingsStore, type Theme, type AccentColor } from "@/lib/hooks/settings-store";
+import { Check } from "lucide-react";
 
 type ProfileModalProps = {
   open: boolean;
@@ -15,6 +17,14 @@ type ProfileModalProps = {
   avatarUrl?: string;
 };
 
+const ACCENT_COLORS: { name: AccentColor; value: string }[] = [
+  { name: "purple", value: "bg-purple-500" },
+  { name: "blue", value: "bg-blue-500" },
+  { name: "green", value: "bg-green-500" },
+  { name: "red", value: "bg-red-500" },
+  { name: "orange", value: "bg-orange-500" },
+];
+
 export function ProfileModal({ open, onClose, username, email = "", avatarUrl }: ProfileModalProps) {
   const [name, setName] = useState(username);
   const [userEmail, setUserEmail] = useState(email);
@@ -22,6 +32,21 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   const [avatarPreview, setAvatarPreview] = useState(avatarUrl || "");
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Settings from store
+  const theme = useSettingsStore((state) => state.theme);
+  const accentColor = useSettingsStore((state) => state.accentColor);
+  const notifications = useSettingsStore((state) => state.notifications);
+  const autoSave = useSettingsStore((state) => state.autoSave);
+  const compactMode = useSettingsStore((state) => state.compactMode);
+  const showPreviews = useSettingsStore((state) => state.showPreviews);
+
+  const setTheme = useSettingsStore((state) => state.setTheme);
+  const setAccentColor = useSettingsStore((state) => state.setAccentColor);
+  const setNotifications = useSettingsStore((state) => state.setNotifications);
+  const setAutoSave = useSettingsStore((state) => state.setAutoSave);
+  const setCompactMode = useSettingsStore((state) => state.setCompactMode);
+  const setShowPreviews = useSettingsStore((state) => state.setShowPreviews);
 
   if (!open || typeof document === 'undefined') return null;
 
@@ -194,15 +219,33 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                   </p>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
-                  <button className="p-4 rounded-lg border-2 border-accent bg-gray-900 text-left">
+                  <button
+                    onClick={() => setTheme("dark")}
+                    className={`p-4 rounded-lg border-2 ${
+                      theme === "dark" ? "border-accent bg-gray-900" : "border-gray-700 bg-gray-900/50"
+                    } text-left relative`}
+                  >
                     <div className="text-sm font-medium text-gray-100">Dark</div>
-                    <div className="text-xs text-gray-500 mt-1">Current theme</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {theme === "dark" ? "Current theme" : "Dark mode"}
+                    </div>
+                    {theme === "dark" && (
+                      <Check className="absolute top-2 right-2 h-4 w-4 text-accent" />
+                    )}
                   </button>
-                  <button className="p-4 rounded-lg border-2 border-gray-700 bg-gray-900/50 text-left opacity-50 cursor-not-allowed">
+                  <button
+                    onClick={() => setTheme("light")}
+                    className="p-4 rounded-lg border-2 border-gray-700 bg-gray-900/50 text-left opacity-50 cursor-not-allowed"
+                    disabled
+                  >
                     <div className="text-sm font-medium text-gray-400">Light</div>
                     <div className="text-xs text-gray-500 mt-1">Coming soon</div>
                   </button>
-                  <button className="p-4 rounded-lg border-2 border-gray-700 bg-gray-900/50 text-left opacity-50 cursor-not-allowed">
+                  <button
+                    onClick={() => setTheme("auto")}
+                    className="p-4 rounded-lg border-2 border-gray-700 bg-gray-900/50 text-left opacity-50 cursor-not-allowed"
+                    disabled
+                  >
                     <div className="text-sm font-medium text-gray-400">Auto</div>
                     <div className="text-xs text-gray-500 mt-1">Coming soon</div>
                   </button>
@@ -218,11 +261,20 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                   </p>
                 </div>
                 <div className="flex gap-3">
-                  <button className="h-10 w-10 rounded-full bg-purple-500 border-2 border-white shadow-lg" title="Purple (Current)" />
-                  <button className="h-10 w-10 rounded-full bg-blue-500 border-2 border-transparent hover:border-white/50" title="Blue" />
-                  <button className="h-10 w-10 rounded-full bg-green-500 border-2 border-transparent hover:border-white/50" title="Green" />
-                  <button className="h-10 w-10 rounded-full bg-red-500 border-2 border-transparent hover:border-white/50" title="Red" />
-                  <button className="h-10 w-10 rounded-full bg-orange-500 border-2 border-transparent hover:border-white/50" title="Orange" />
+                  {ACCENT_COLORS.map((color) => (
+                    <button
+                      key={color.name}
+                      onClick={() => setAccentColor(color.name)}
+                      className={`h-10 w-10 rounded-full ${color.value} border-2 ${
+                        accentColor === color.name ? "border-white ring-2 ring-white/30" : "border-transparent hover:border-white/50"
+                      } transition-all relative`}
+                      title={color.name.charAt(0).toUpperCase() + color.name.slice(1)}
+                    >
+                      {accentColor === color.name && (
+                        <Check className="absolute inset-0 m-auto h-5 w-5 text-white" />
+                      )}
+                    </button>
+                  ))}
                 </div>
               </div>
             </TabsContent>
@@ -237,7 +289,12 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                       Receive notifications for important updates
                     </p>
                   </div>
-                  <input type="checkbox" className="h-5 w-5 rounded" defaultChecked />
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 rounded"
+                    checked={notifications}
+                    onChange={(e) => setNotifications(e.target.checked)}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -247,7 +304,12 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                       Automatically save changes as you type
                     </p>
                   </div>
-                  <input type="checkbox" className="h-5 w-5 rounded" defaultChecked />
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 rounded"
+                    checked={autoSave}
+                    onChange={(e) => setAutoSave(e.target.checked)}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -257,7 +319,12 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                       Show more content on screen
                     </p>
                   </div>
-                  <input type="checkbox" className="h-5 w-5 rounded" />
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 rounded"
+                    checked={compactMode}
+                    onChange={(e) => setCompactMode(e.target.checked)}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -267,7 +334,12 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                       Display image and link previews in cards
                     </p>
                   </div>
-                  <input type="checkbox" className="h-5 w-5 rounded" defaultChecked />
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 rounded"
+                    checked={showPreviews}
+                    onChange={(e) => setShowPreviews(e.target.checked)}
+                  />
                 </div>
               </div>
 
