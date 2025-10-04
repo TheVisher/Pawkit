@@ -192,6 +192,45 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }
   };
 
+  const handleRefreshMetadata = async () => {
+    setToast("Refreshing metadata...");
+    try {
+      const response = await fetch(`/api/cards/${card.id}/fetch-metadata`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: card.url })
+      });
+
+      if (response.ok) {
+        // Fetch the updated card to get fresh metadata
+        const updatedCardRes = await fetch(`/api/cards/${card.id}`);
+        if (updatedCardRes.ok) {
+          const updatedCard = await updatedCardRes.json();
+
+          // Update store
+          await updateCardInStore(card.id, {
+            title: updatedCard.title,
+            description: updatedCard.description,
+            image: updatedCard.image,
+            domain: updatedCard.domain,
+            metadata: updatedCard.metadata
+          });
+
+          // Update parent component
+          onUpdate(updatedCard);
+          setToast("Metadata refreshed successfully");
+        } else {
+          setToast("Failed to fetch updated metadata");
+        }
+      } else {
+        setToast("Failed to refresh metadata");
+      }
+    } catch (error) {
+      console.error("Failed to refresh metadata:", error);
+      setToast("Failed to refresh metadata");
+    }
+  };
+
   const handleDelete = async () => {
     try {
       const response = await fetch(`/api/cards/${card.id}`, { method: "DELETE" });
@@ -563,7 +602,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 />
               )}
               {activeTab === "summary" && <SummaryTab card={card} />}
-              {activeTab === "actions" && <ActionsTab />}
+              {activeTab === "actions" && <ActionsTab card={card} onRefreshMetadata={handleRefreshMetadata} />}
             </div>
 
             {/* Metadata Section - Anchored Above Delete Button */}
@@ -850,12 +889,38 @@ function SummaryTab({ card }: { card: CardModel }) {
 }
 
 // Actions Tab
-function ActionsTab() {
+type ActionsTabProps = {
+  card: CardModel;
+  onRefreshMetadata: () => Promise<void>;
+};
+
+function ActionsTab({ card, onRefreshMetadata }: ActionsTabProps) {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await onRefreshMetadata();
+    setRefreshing(false);
+  };
+
   return (
     <div className="space-y-3">
       <p className="text-xs text-gray-500 mb-4">
         Additional actions for this card
       </p>
+
+      {/* Only show for URL cards */}
+      {card.type === 'url' && (
+        <Button
+          variant="secondary"
+          className="w-full justify-start"
+          onClick={handleRefresh}
+          disabled={refreshing}
+        >
+          {refreshing ? '🔄 Refreshing...' : '🔄 Refresh Metadata'}
+        </Button>
+      )}
+
       <Button variant="secondary" className="w-full justify-start">
         🔗 Copy Link
       </Button>
