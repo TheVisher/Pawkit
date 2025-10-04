@@ -232,22 +232,6 @@ export function AppSidebar({ username, collections }: AppSidebarProps) {
         </SidebarGroup>
 
         <SidebarSeparator />
-
-        {/* Favorites */}
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/favorites")}>
-                  <Link href="/favorites">
-                    <Star className="fill-current" />
-                    <span>Favorites</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
       </SidebarContent>
 
       <SidebarFooter>
