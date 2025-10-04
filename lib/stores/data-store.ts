@@ -114,6 +114,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       updatedAt: new Date().toISOString(),
       userId: '', // Will be set by server
       deleted: false,
+      deletedAt: null,
       pinned: false,
       domain: null,
       image: null,
