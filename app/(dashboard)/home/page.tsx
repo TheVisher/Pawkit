@@ -175,7 +175,7 @@ function RecentCard({ card, onClick }: CardProps) {
   return (
     <article
       onClick={onClick}
-      className="rounded border border-gray-800 bg-gray-900 p-4 cursor-pointer transition hover:border-accent/60"
+      className="card-hover rounded border border-gray-800 bg-gray-900 p-4 cursor-pointer transition"
     >
       {card.image && (
         <div className="mb-3 overflow-hidden rounded bg-gray-800">

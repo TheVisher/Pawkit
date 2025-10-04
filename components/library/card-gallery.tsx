@@ -118,7 +118,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
       event.preventDefault();
       return;
     }
-    selectExclusive(card.id);
+    // Only open modal, don't add to selection
     setActiveCardId(card.id);
   };
 

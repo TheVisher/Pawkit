@@ -6,6 +6,8 @@ import { isProbablyUrl } from "@/lib/utils/strings";
 import { AddCardModal } from "@/components/modals/add-card-modal";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const TEXT_SEARCH_DEBOUNCE_MS = 250;
 
@@ -173,32 +175,69 @@ function OmniBarContent() {
           placeholder="Paste a URL to save or type to search…"
           className="w-full rounded-xl border border-subtle bg-surface-80 py-3 pl-4 pr-28 text-sm text-foreground shadow-panel transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
         />
-        <div className="absolute inset-y-0 right-0 flex items-center gap-2 pr-3">
+        <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-2">
           <span className="mr-1 hidden text-xs text-muted-foreground sm:inline">Enter = quick add</span>
-          <button
-            type="button"
-            onClick={() => setShowNoteModal(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-surface text-foreground transition hover:bg-surface-muted"
-            aria-label="Create note"
-            title="Create note"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="12" y1="18" x2="12" y2="12" />
-              <line x1="9" y1="15" x2="15" y2="15" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowModal(true)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-accent-foreground transition hover:brightness-110"
-            aria-label="Open add card form"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button size="icon" className="h-9 w-9 rounded-full" aria-label="Add new item">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-48 p-2" align="end">
+              <div className="flex flex-col gap-1">
+                <Button
+                  variant="ghost"
+                  className="justify-start"
+                  onClick={() => setShowNoteModal(true)}
+                >
+                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="12" y1="18" x2="12" y2="12" />
+                    <line x1="9" y1="15" x2="15" y2="15" />
+                  </svg>
+                  Add Note
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="justify-start"
+                  onClick={() => setShowModal(true)}
+                >
+                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <line x1="12" y1="8" x2="12" y2="16" />
+                    <line x1="8" y1="12" x2="16" y2="12" />
+                  </svg>
+                  Add Card
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="justify-start"
+                  disabled
+                >
+                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  Add PDF
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="justify-start"
+                  disabled
+                >
+                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                  Upload File
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </form>
       {adding && <p className="mt-2 text-xs text-gray-500">Saving…</p>}

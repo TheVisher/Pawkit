@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { CardType } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type CreateNoteModalProps = {
   open: boolean;
@@ -15,7 +18,7 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -54,10 +57,11 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
     setGenerating(false);
   };
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
       <div
         className="bg-gray-950 rounded-lg border border-gray-800 shadow-2xl w-full max-w-md"
@@ -80,26 +84,22 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
               Note Type
             </label>
             <div className="flex gap-2">
-              <button
+              <Button
                 onClick={() => setNoteType("md-note")}
-                className={`flex-1 px-4 py-3 rounded text-sm font-medium transition-colors ${
-                  noteType === "md-note"
-                    ? "bg-accent text-gray-900"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                }`}
+                variant={noteType === "md-note" ? "default" : "secondary"}
+                className="flex-1"
+                size="lg"
               >
                 📝 Markdown Note
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setNoteType("text-note")}
-                className={`flex-1 px-4 py-3 rounded text-sm font-medium transition-colors ${
-                  noteType === "text-note"
-                    ? "bg-accent text-gray-900"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                }`}
+                variant={noteType === "text-note" ? "default" : "secondary"}
+                className="flex-1"
+                size="lg"
               >
                 📄 Plain Text Note
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -108,7 +108,7 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Title
             </label>
-            <input
+            <Input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -119,19 +119,19 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
                 }
               }}
               placeholder="Enter note title..."
-              className="w-full rounded border border-gray-800 bg-gray-900 px-4 py-2.5 text-sm text-gray-100 placeholder-gray-500 focus:border-accent focus:outline-none"
               autoFocus
             />
           </div>
 
           {/* Generate Title Button */}
-          <button
+          <Button
             onClick={handleGenerateTitle}
             disabled={generating}
-            className="w-full text-left rounded bg-gray-800 px-4 py-2.5 text-sm text-gray-300 hover:bg-gray-700 transition-colors disabled:opacity-50"
+            variant="secondary"
+            className="w-full justify-start"
           >
             {generating ? "Generating..." : "🎲 Generate Random Title"}
-          </button>
+          </Button>
 
           {error && (
             <p className="text-sm text-rose-400 bg-rose-900/20 rounded px-3 py-2">
@@ -141,20 +141,26 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
         </div>
 
         <div className="border-t border-gray-800 p-4 flex gap-3">
-          <button
+          <Button
             onClick={onClose}
-            className="flex-1 rounded bg-gray-900 px-4 py-2.5 text-sm font-medium text-gray-100 hover:bg-gray-800 transition-colors"
+            variant="outline"
+            className="flex-1"
+            size="lg"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleSubmit}
-            className="flex-1 rounded bg-accent px-4 py-2.5 text-sm font-medium text-gray-900 hover:bg-accent/90 transition-colors"
+            variant="default"
+            className="flex-1"
+            size="lg"
           >
             Create Note
-          </button>
+          </Button>
         </div>
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

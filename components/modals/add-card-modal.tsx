@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { CardModel } from "@/lib/types";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 
@@ -45,7 +46,7 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === 'undefined') return null;
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -90,9 +91,9 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
     });
   };
 
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-2xl p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-6"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
@@ -174,4 +175,6 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
       </form>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
