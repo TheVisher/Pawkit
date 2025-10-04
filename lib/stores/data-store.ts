@@ -118,7 +118,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       domain: null,
       image: null,
       description: null,
-      metadata: null
+      metadata: undefined
     };
 
     // Add to store immediately - shows in UI instantly
