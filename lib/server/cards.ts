@@ -1,5 +1,5 @@
 import { Card, Prisma } from "@prisma/client";
-import type { OldCardAgeThreshold, CardType } from "@/lib/types";
+import type { OldCardAgeThreshold, CardType, CardStatus } from "@/lib/types";
 import { prisma } from "@/lib/server/prisma";
 import { fetchPreviewMetadata } from "@/lib/server/metadata";
 import { cardCreateSchema, cardListQuerySchema, cardUpdateSchema } from "@/lib/validators/card";
@@ -12,8 +12,9 @@ export type CardInput = typeof cardCreateSchema._input;
 export type CardUpdateInput = typeof cardUpdateSchema._input;
 export type CardListQuery = typeof cardListQuerySchema._input;
 
-export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type'> & {
+export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type' | 'status'> & {
   type: CardType;
+  status: CardStatus;
   tags: string[];
   collections: string[];
   metadata: Record<string, unknown> | undefined;
@@ -31,6 +32,7 @@ function mapCard(card: Card): CardDTO {
   return {
     ...card,
     type: card.type as CardType,
+    status: card.status as CardStatus,
     tags: parseJsonArray(card.tags),
     collections: parseJsonArray(card.collections),
     metadata: parseJsonObject(card.metadata)
