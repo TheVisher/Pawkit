@@ -309,6 +309,41 @@ textarea:focus-visible {
   }
 }
 
+/* Shadcn Sidebar Custom Styling */
+@layer base {
+  [data-sidebar="sidebar"] {
+    background-color: hsl(var(--surface)) !important;
+    border-color: hsl(var(--border)) !important;
+  }
+
+  [data-sidebar="sidebar"] [data-sidebar="header"],
+  [data-sidebar="sidebar"] [data-sidebar="content"],
+  [data-sidebar="sidebar"] [data-sidebar="footer"] {
+    background-color: transparent !important;
+  }
+
+  [data-sidebar="sidebar"] [data-sidebar="menu-button"],
+  [data-sidebar="sidebar"] [data-sidebar="menu-sub-button"] {
+    color: hsl(var(--muted-foreground));
+  }
+
+  [data-sidebar="sidebar"] [data-sidebar="menu-button"]:hover,
+  [data-sidebar="sidebar"] [data-sidebar="menu-sub-button"]:hover {
+    background-color: hsla(var(--surface-muted) / 0.8);
+    color: hsl(var(--foreground));
+  }
+
+  [data-sidebar="sidebar"] [data-sidebar="menu-button"][data-active="true"],
+  [data-sidebar="sidebar"] [data-sidebar="menu-sub-button"][data-active="true"] {
+    background-color: hsl(var(--surface-muted));
+    color: hsl(var(--foreground));
+  }
+
+  [data-sidebar="sidebar"] [data-sidebar="group-label"] {
+    color: hsl(var(--muted-foreground));
+  }
+}
+
 
 
 @layer base {
