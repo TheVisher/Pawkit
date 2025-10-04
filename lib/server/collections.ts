@@ -5,7 +5,21 @@ import { slugify } from "@/lib/utils/slug";
 
 const MAX_DEPTH = 4;
 
-export type CollectionDTO = Collection & { children: CollectionDTO[] };
+export type CollectionDTO = Omit<Collection, 'createdAt' | 'updatedAt' | 'deletedAt'> & {
+  children: CollectionDTO[];
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+};
+
+function mapCollection(collection: Collection): Omit<CollectionDTO, 'children'> {
+  return {
+    ...collection,
+    createdAt: collection.createdAt.toISOString(),
+    updatedAt: collection.updatedAt.toISOString(),
+    deletedAt: collection.deletedAt?.toISOString() ?? null
+  };
+}
 
 export async function listCollections() {
   const items = await prisma.collection.findMany({
@@ -17,7 +31,7 @@ export async function listCollections() {
   const roots: CollectionDTO[] = [];
 
   items.forEach((item) => {
-    nodes.set(item.id, { ...item, children: [] });
+    nodes.set(item.id, { ...mapCollection(item), children: [] });
   });
 
   nodes.forEach((node) => {
