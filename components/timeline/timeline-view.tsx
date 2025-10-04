@@ -4,6 +4,13 @@ import { useState, useEffect } from "react";
 import { CardModel } from "@/lib/types";
 import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { format } from "date-fns";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
 
 type TimelineGroup = {
   date: string;
@@ -95,6 +102,52 @@ function CardCell({ card, layout }: { card: CardModel; layout: LayoutMode }) {
   );
 }
 
+function DateRangeDropdown({ selectedRange, onRangeChange }: { selectedRange: number; onRangeChange: (days: number) => void }) {
+  const selectedLabel = DATE_RANGES.find(({ value }) => value === selectedRange)?.label || "30 days";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
+        <span>{selectedLabel}</span>
+        <ChevronDown className="h-4 w-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {DATE_RANGES.map(({ label, value }) => (
+          <DropdownMenuItem
+            key={value}
+            onClick={() => onRangeChange(value)}
+            className="cursor-pointer"
+          >
+            {label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function LayoutDropdown({ layout, onLayoutChange }: { layout: LayoutMode; onLayoutChange: (layout: LayoutMode) => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
+        <span className="capitalize">{layout}</span>
+        <ChevronDown className="h-4 w-4" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {LAYOUTS.map((layoutOption) => (
+          <DropdownMenuItem
+            key={layoutOption}
+            onClick={() => onLayoutChange(layoutOption)}
+            className="capitalize cursor-pointer"
+          >
+            {layoutOption}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function TimelineView({ initialGroups }: TimelineViewProps) {
   const [groups, setGroups] = useState<TimelineGroup[]>(initialGroups);
   const [layout, setLayout] = useState<LayoutMode>("grid");
@@ -160,42 +213,14 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
   return (
     <div className="space-y-6">
       {/* Header with controls */}
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-gray-100">Timeline</h1>
-        <div className="ml-auto flex flex-wrap items-center gap-3">
-          {/* Date Range Filter */}
-          <div className="flex gap-1">
-            {DATE_RANGES.map(({ label, value }) => (
-              <button
-                key={value}
-                onClick={() => handleRangeChange(value)}
-                className={`rounded px-3 py-1 text-sm ${
-                  selectedRange === value
-                    ? "bg-accent text-gray-900 font-medium"
-                    : "bg-gray-900 text-gray-300 hover:bg-gray-800"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center gap-3">
+          {/* Date Range Dropdown */}
+          <DateRangeDropdown selectedRange={selectedRange} onRangeChange={handleRangeChange} />
 
-          {/* Layout Switcher */}
-          <div className="flex gap-1">
-            {LAYOUTS.map((mode) => (
-              <button
-                key={mode}
-                onClick={() => handleLayoutChange(mode)}
-                className={`rounded px-3 py-1 text-sm ${
-                  layout === mode
-                    ? "bg-accent text-gray-900"
-                    : "bg-gray-900 text-gray-300"
-                }`}
-              >
-                {mode}
-              </button>
-            ))}
-          </div>
+          {/* Layout Dropdown */}
+          <LayoutDropdown layout={layout} onLayoutChange={handleLayoutChange} />
         </div>
       </div>
 

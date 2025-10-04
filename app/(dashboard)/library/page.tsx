@@ -3,6 +3,7 @@ import { listCollections } from "@/lib/server/collections";
 import { CardModel, CollectionNode, CardStatus } from "@/lib/types";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
+import { LibraryHeader } from "@/components/library/library-header";
 
 export default async function LibraryPage({
   searchParams
@@ -43,12 +44,15 @@ export default async function LibraryPage({
   const tree: CollectionNode[] = collections.tree.map((node) => serializeCollection(node));
 
   return (
-    <LibraryWorkspace
-      initialCards={initialCards}
-      initialNextCursor={nextCursor}
-      initialQuery={{ q, collection, status, layout }}
-      collectionsTree={tree}
-    />
+    <div className="space-y-4">
+      <LibraryHeader cardCount={initialCards.length} initialLayout={layout} />
+      <LibraryWorkspace
+        initialCards={initialCards}
+        initialNextCursor={nextCursor}
+        initialQuery={{ q, collection, status, layout }}
+        collectionsTree={tree}
+      />
+    </div>
   );
 }
 

@@ -1,7 +1,14 @@
 import { listCards } from "@/lib/server/cards";
 import { listCollections } from "@/lib/server/collections";
 import { LibraryWorkspace } from "@/components/library/workspace";
-import { LayoutMode } from "@/lib/constants";
+import { LayoutMode, LAYOUTS, DEFAULT_LAYOUT } from "@/lib/constants";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { NotesHeader } from "@/components/notes/notes-header";
 
 type SearchParams = {
   q?: string;
@@ -10,7 +17,8 @@ type SearchParams = {
 
 export default async function NotesPage({ searchParams }: { searchParams: SearchParams }) {
   const query = searchParams.q;
-  const layout = (searchParams.layout as LayoutMode) || "grid";
+  const layoutParam = searchParams.layout as LayoutMode;
+  const layout: LayoutMode = layoutParam && LAYOUTS.includes(layoutParam) ? layoutParam : DEFAULT_LAYOUT;
 
   // Fetch only note cards (md-note or text-note)
   const { items: mdNotes, nextCursor: mdCursor } = await listCards({
@@ -34,10 +42,7 @@ export default async function NotesPage({ searchParams }: { searchParams: Search
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-foreground">Notes</h1>
-        <p className="text-sm text-muted-foreground">{allNotes.length} note(s)</p>
-      </div>
+      <NotesHeader noteCount={allNotes.length} initialLayout={layout} />
       <LibraryWorkspace
         initialCards={allNotes}
         initialNextCursor={undefined}

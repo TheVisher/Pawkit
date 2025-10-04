@@ -5,7 +5,10 @@
       "Bash(npx prisma migrate dev:*)",
       "Bash(npm install:*)",
       "Bash(npx shadcn@latest init:*)",
-      "Bash(npx shadcn@latest add:*)"
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)",
+      "Bash(pkill:*)"
     ],
     "deny": [],
     "ask": []

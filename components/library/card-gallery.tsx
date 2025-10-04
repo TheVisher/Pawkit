@@ -178,21 +178,6 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-1">
-          {LAYOUTS.map((mode) => (
-            <button
-              key={mode}
-              onClick={() => onLayoutChange(mode)}
-              className={`rounded-lg px-3 py-1 text-sm transition ${
-                layout === mode
-                  ? "bg-accent text-accent-foreground shadow-panel"
-                  : "bg-surface-soft text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
         <span className="text-xs text-muted-foreground">{cards.length} card(s)</span>
         <div className="ml-auto flex items-center gap-2">
           <button
