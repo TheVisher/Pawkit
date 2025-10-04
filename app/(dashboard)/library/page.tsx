@@ -3,12 +3,14 @@ import { listCollections } from "@/lib/server/collections";
 import { CardModel, CollectionNode, CardStatus } from "@/lib/types";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { LibraryView } from "@/components/library/library-view";
+import { requireUser } from "@/lib/auth/get-user";
 
 export default async function LibraryPage({
   searchParams
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const user = await requireUser();
   const params = await searchParams;
   const q = typeof params.q === "string" ? params.q : undefined;
   const collection = typeof params.collection === "string" ? params.collection : undefined;
@@ -20,8 +22,8 @@ export default async function LibraryPage({
   const layout: LayoutMode = LAYOUTS.includes(layoutParam) ? layoutParam : DEFAULT_LAYOUT;
 
   const [{ items, nextCursor }, collections] = await Promise.all([
-    listCards({ q, collection, status, limit: 50, cursor }),
-    listCollections()
+    listCards(user.id, { q, collection, status, limit: 50, cursor }),
+    listCollections(user.id)
   ]);
 
   return (

@@ -5,6 +5,7 @@ import { LibraryWorkspace } from "@/components/library/workspace";
 import { PawkitsHeader } from "@/components/pawkits/pawkits-header";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { notFound } from "next/navigation";
+import { requireUser } from "@/lib/auth/get-user";
 
 export default async function CollectionPage({
   params,
@@ -13,6 +14,7 @@ export default async function CollectionPage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const user = await requireUser();
   const { slug } = await params;
   const searchParamsResolved = await searchParams;
 
@@ -26,8 +28,8 @@ export default async function CollectionPage({
 
   // Fetch cards for this specific collection
   const [{ items, nextCursor }, collections] = await Promise.all([
-    listCards({ q, collection: slug, status, limit: 50, cursor }),
-    listCollections()
+    listCards(user.id, { q, collection: slug, status, limit: 50, cursor }),
+    listCollections(user.id)
   ]);
 
   // Verify collection exists

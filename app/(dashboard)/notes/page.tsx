@@ -2,6 +2,7 @@ import { listCards } from "@/lib/server/cards";
 import { listCollections } from "@/lib/server/collections";
 import { LayoutMode, LAYOUTS, DEFAULT_LAYOUT } from "@/lib/constants";
 import { NotesView } from "@/components/notes/notes-view";
+import { requireUser } from "@/lib/auth/get-user";
 
 type SearchParams = {
   q?: string;
@@ -9,18 +10,19 @@ type SearchParams = {
 };
 
 export default async function NotesPage({ searchParams }: { searchParams: SearchParams }) {
+  const user = await requireUser();
   const query = searchParams.q;
   const layoutParam = searchParams.layout as LayoutMode;
   const layout: LayoutMode = layoutParam && LAYOUTS.includes(layoutParam) ? layoutParam : DEFAULT_LAYOUT;
 
   // Fetch only note cards (md-note or text-note)
-  const { items: mdNotes, nextCursor: mdCursor } = await listCards({
+  const { items: mdNotes, nextCursor: mdCursor } = await listCards(user.id, {
     q: query,
     type: "md-note",
     limit: 50
   });
 
-  const { items: textNotes, nextCursor: textCursor } = await listCards({
+  const { items: textNotes, nextCursor: textCursor } = await listCards(user.id, {
     q: query,
     type: "text-note",
     limit: 50
@@ -31,7 +33,7 @@ export default async function NotesPage({ searchParams }: { searchParams: Search
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
-  const { tree } = await listCollections();
+  const { tree } = await listCollections(user.id);
 
   return (
     <NotesView
