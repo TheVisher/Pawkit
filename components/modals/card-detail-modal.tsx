@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useDataStore } from "@/lib/stores/data-store";
 
 type Tab = "pawkits" | "pin" | "notes" | "summary" | "reader" | "actions" | "content";
 
@@ -23,6 +24,7 @@ type CardDetailModalProps = {
 };
 
 export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete }: CardDetailModalProps) {
+  const updateCardInStore = useDataStore(state => state.updateCard);
   const isNote = card.type === "md-note" || card.type === "text-note";
   const [activeTab, setActiveTab] = useState<Tab>("pawkits");
   const [notes, setNotes] = useState(card.notes ?? "");
@@ -185,21 +187,14 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       ? card.collections.filter((s) => s !== slug)
       : Array.from(new Set([slug, ...card.collections]));
 
-    try {
-      const response = await fetch(`/api/cards/${card.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ collections: nextCollections })
-      });
-      if (response.ok) {
-        const updated = await response.json();
-        onUpdate(updated);
-        setToast(isAlreadyIn ? "Removed from Pawkit" : "Added to Pawkit");
-      }
-    } catch (error) {
-      console.error("Failed to update pawkit:", error);
-      setToast("Failed to update Pawkit");
-    }
+    // Update the global store (optimistic update)
+    await updateCardInStore(card.id, { collections: nextCollections });
+
+    // Also update parent component state
+    const updated = { ...card, collections: nextCollections };
+    onUpdate(updated);
+
+    setToast(isAlreadyIn ? "Removed from Pawkit" : "Added to Pawkit");
   };
 
   const handleExtractArticle = async () => {
