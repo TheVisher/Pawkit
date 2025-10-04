@@ -10,7 +10,7 @@ import { useDataStore } from "@/lib/stores/data-store";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { data: userData } = useSWR<{ email: string }>("/api/user");
-  const { collections, initialize, isInitialized } = useDataStore();
+  const { collections, initialize, drainQueue, isInitialized } = useDataStore();
 
   // Initialize data store on mount
   useEffect(() => {
@@ -18,6 +18,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       initialize();
     }
   }, [isInitialized, initialize]);
+
+  // Drain pending operations queue after initialization
+  useEffect(() => {
+    if (isInitialized) {
+      drainQueue();
+    }
+  }, [isInitialized, drainQueue]);
 
   const username = userData?.email || "";
 

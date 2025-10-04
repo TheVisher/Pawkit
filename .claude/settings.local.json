@@ -11,7 +11,12 @@
       "Bash(pkill:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(xargs -r kill -9)",
+      "Bash(pnpm dev:*)",
+      "Bash(pnpm add:*)",
+      "Bash(pnpm run build:*)",
+      "Bash(pnpm run lint:*)"
     ],
     "deny": [],
     "ask": []

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { CardDTO } from '@/lib/server/cards';
 import { CollectionNode } from '@/lib/types';
+import { syncQueue, QueueOperation } from '@/lib/services/sync-queue';
 
 type DataStore = {
   // Data
@@ -13,6 +14,7 @@ type DataStore = {
 
   // Actions
   initialize: () => Promise<void>;
+  drainQueue: () => Promise<void>;
   addCard: (cardData: Partial<CardDTO>) => Promise<void>;
   updateCard: (id: string, updates: Partial<CardDTO>) => Promise<void>;
   deleteCard: (id: string) => Promise<void>;
@@ -97,6 +99,38 @@ export const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
+  drainQueue: async () => {
+    console.log('[DataStore] drainQueue() called');
+
+    const pendingOps = await syncQueue.getPending();
+    console.log('[DataStore] Found', pendingOps.length, 'pending operations');
+
+    for (const op of pendingOps) {
+      console.log('[DataStore] Processing queued operation:', op.id, op.type);
+
+      try {
+        await syncQueue.markProcessing(op.id);
+
+        // Execute the operation based on type
+        if (op.type === 'CREATE_CARD') {
+          await executeCreateCard(op, set, get);
+        } else if (op.type === 'UPDATE_CARD') {
+          await executeUpdateCard(op, set, get);
+        } else if (op.type === 'DELETE_CARD') {
+          await executeDeleteCard(op, set, get);
+        }
+
+        // Remove from queue on success
+        await syncQueue.remove(op.id);
+      } catch (error) {
+        console.error('[DataStore] Failed to process queued operation:', op.id, error);
+        await syncQueue.markFailed(op.id);
+      }
+    }
+
+    console.log('[DataStore] drainQueue() complete');
+  },
+
   addCard: async (cardData: Partial<CardDTO>) => {
     // Generate optimistic card with temp ID
     const tempId = `temp_${Date.now()}_${Math.random()}`;
@@ -123,122 +157,58 @@ export const useDataStore = create<DataStore>((set, get) => ({
       metadata: undefined
     };
 
-    // Add to store immediately - shows in UI instantly
+    // STEP 1: Persist to queue FIRST (prevents data loss on refresh)
+    await syncQueue.enqueue({
+      type: 'CREATE_CARD',
+      payload: cardData,
+      tempId
+    });
+
+    // STEP 2: Add to store for immediate UI update
     set((state) => ({
       cards: [optimisticCard, ...state.cards]
     }));
 
-    // Background sync to server (fire and forget)
-    try {
-      const response = await fetch('/api/cards', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(cardData)
-      });
-
-      if (!response.ok) {
-        // Remove optimistic card on error
-        set((state) => ({
-          cards: state.cards.filter(c => c.id !== tempId)
-        }));
-        console.error('Failed to create card on server');
-      } else {
-        // Replace temp card with real server card
-        const serverCard = await response.json();
-        set((state) => ({
-          cards: state.cards.map(c => c.id === tempId ? serverCard : c)
-        }));
-
-        // Trigger metadata fetch for URL cards
-        if (serverCard.type === 'url' && serverCard.url) {
-          fetch(`/api/cards/${serverCard.id}/fetch-metadata`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url: serverCard.url })
-          }).then(async () => {
-            // After metadata fetch completes, get the updated card
-            const updatedCardRes = await fetch(`/api/cards/${serverCard.id}`);
-            if (updatedCardRes.ok) {
-              const updatedCard = await updatedCardRes.json();
-              // Update the card in store with new metadata
-              set((state) => ({
-                cards: state.cards.map(c => c.id === serverCard.id ? updatedCard : c)
-              }));
-            }
-          }).catch(() => {
-            // Silently fail - card is already created, just no metadata
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to sync card to server:', error);
-      // Remove optimistic card on error
-      set((state) => ({
-        cards: state.cards.filter(c => c.id !== tempId)
-      }));
-    }
+    // STEP 3: Execute sync in background
+    await executeCreateCard({ type: 'CREATE_CARD', payload: cardData, tempId } as QueueOperation, set, get);
   },
 
   updateCard: async (id: string, updates: Partial<CardDTO>) => {
-    // Optimistic update
     const oldCard = get().cards.find(c => c.id === id);
+
+    // STEP 1: Persist to queue FIRST
+    await syncQueue.enqueue({
+      type: 'UPDATE_CARD',
+      payload: updates,
+      targetId: id
+    });
+
+    // STEP 2: Optimistic update for immediate UI
     set((state) => ({
       cards: state.cards.map(c => c.id === id ? { ...c, ...updates } : c)
     }));
 
-    // Background sync
-    try {
-      const response = await fetch(`/api/cards/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      });
-
-      if (!response.ok && oldCard) {
-        // Rollback on error
-        set((state) => ({
-          cards: state.cards.map(c => c.id === id ? oldCard : c)
-        }));
-      }
-    } catch (error) {
-      console.error('Failed to sync card update to server:', error);
-      // Rollback on error
-      if (oldCard) {
-        set((state) => ({
-          cards: state.cards.map(c => c.id === id ? oldCard : c)
-        }));
-      }
-    }
+    // STEP 3: Execute sync in background
+    await executeUpdateCard({ type: 'UPDATE_CARD', payload: updates, targetId: id } as QueueOperation, set, get);
   },
 
   deleteCard: async (id: string) => {
-    // Optimistic update
     const oldCard = get().cards.find(c => c.id === id);
+
+    // STEP 1: Persist to queue FIRST
+    await syncQueue.enqueue({
+      type: 'DELETE_CARD',
+      payload: oldCard,
+      targetId: id
+    });
+
+    // STEP 2: Optimistic update for immediate UI
     set((state) => ({
       cards: state.cards.filter(c => c.id !== id)
     }));
 
-    // Background sync
-    try {
-      const response = await fetch(`/api/cards/${id}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok && oldCard) {
-        // Rollback on error
-        set((state) => ({
-          cards: [...state.cards, oldCard]
-        }));
-      }
-    } catch (error) {
-      console.error('Failed to sync card deletion to server:', error);
-      // Rollback on error
-      if (oldCard) {
-        set((state) => ({
-          cards: [...state.cards, oldCard]
-        }));
-      }
-    }
+    // STEP 3: Execute sync in background
+    await executeDeleteCard({ type: 'DELETE_CARD', payload: oldCard, targetId: id } as QueueOperation, set, get);
   },
 
   addCollection: async (collection: CollectionNode) => {
@@ -254,3 +224,117 @@ export const useDataStore = create<DataStore>((set, get) => ({
     await get().refresh();
   }
 }));
+
+// Helper functions to execute queued operations
+async function executeCreateCard(op: QueueOperation, set: any, get: any) {
+  const { payload, tempId } = op;
+
+  try {
+    const response = await fetch('/api/cards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      // Remove optimistic card on error
+      set((state: any) => ({
+        cards: state.cards.filter((c: CardDTO) => c.id !== tempId)
+      }));
+      throw new Error('Failed to create card on server');
+    }
+
+    // Replace temp card with real server card
+    const serverCard = await response.json();
+    set((state: any) => ({
+      cards: state.cards.map((c: CardDTO) => c.id === tempId ? serverCard : c)
+    }));
+
+    // Trigger metadata fetch for URL cards
+    if (serverCard.type === 'url' && serverCard.url) {
+      fetch(`/api/cards/${serverCard.id}/fetch-metadata`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: serverCard.url })
+      }).then(async () => {
+        const updatedCardRes = await fetch(`/api/cards/${serverCard.id}`);
+        if (updatedCardRes.ok) {
+          const updatedCard = await updatedCardRes.json();
+          set((state: any) => ({
+            cards: state.cards.map((c: CardDTO) => c.id === serverCard.id ? updatedCard : c)
+          }));
+        }
+      }).catch(() => {
+        // Silently fail - card is already created, just no metadata
+      });
+    }
+
+    // Remove from queue after successful sync
+    if (op.id) {
+      await syncQueue.remove(op.id);
+    }
+  } catch (error) {
+    console.error('Failed to execute create card:', error);
+    throw error;
+  }
+}
+
+async function executeUpdateCard(op: QueueOperation, set: any, get: any) {
+  const { payload, targetId } = op;
+  const oldCard = get().cards.find((c: CardDTO) => c.id === targetId);
+
+  try {
+    const response = await fetch(`/api/cards/${targetId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      // Rollback on error
+      if (oldCard) {
+        set((state: any) => ({
+          cards: state.cards.map((c: CardDTO) => c.id === targetId ? oldCard : c)
+        }));
+      }
+      throw new Error('Failed to update card on server');
+    }
+
+    // Remove from queue after successful sync
+    if (op.id) {
+      await syncQueue.remove(op.id);
+    }
+  } catch (error) {
+    console.error('Failed to execute update card:', error);
+    throw error;
+  }
+}
+
+async function executeDeleteCard(op: QueueOperation, set: any, get: any) {
+  const { targetId, payload } = op;
+  const oldCard = payload;
+
+  try {
+    const response = await fetch(`/api/cards/${targetId}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      // Rollback on error
+      if (oldCard) {
+        set((state: any) => ({
+          cards: [...state.cards, oldCard]
+        }));
+      }
+      throw new Error('Failed to delete card on server');
+    }
+
+    // Remove from queue after successful sync
+    if (op.id) {
+      await syncQueue.remove(op.id);
+    }
+  } catch (error) {
+    console.error('Failed to execute delete card:', error);
+    throw error;
+  }
+}
