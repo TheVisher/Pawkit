@@ -44,13 +44,13 @@ function CardCell({ card, layout }: { card: CardModel; layout: LayoutMode }) {
 
   if (isList) {
     return (
-      <div className="flex items-center gap-3 rounded border border-gray-800 bg-gray-900/40 p-3 hover:border-gray-700">
+      <div className="card-hover flex items-center gap-3 rounded-2xl border border-subtle bg-surface p-3">
         {card.image && (
-          <img src={card.image} alt="" className="h-12 w-12 rounded object-cover" />
+          <img src={card.image} alt="" className="h-12 w-12 rounded-lg object-cover" />
         )}
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-gray-200 truncate">{card.title}</div>
-          <div className="text-xs text-gray-500 truncate">{card.domain}</div>
+          <div className="text-sm font-semibold text-foreground truncate">{card.title}</div>
+          <div className="text-xs text-muted-foreground truncate">{card.domain}</div>
         </div>
       </div>
     );
@@ -58,12 +58,14 @@ function CardCell({ card, layout }: { card: CardModel; layout: LayoutMode }) {
 
   return (
     <div
-      className={`group cursor-pointer break-inside-avoid-column rounded border border-gray-800 bg-gray-900 p-3 transition-all hover:border-accent/60 ${
+      className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border border-subtle bg-surface p-4 transition-all ${
         isMasonry ? "mb-4" : ""
       }`}
     >
       {card.image && (
-        <div className={`relative mb-3 w-full overflow-hidden rounded bg-gray-800 ${isMasonry ? "" : isCompact ? "aspect-square" : "aspect-video"}`}>
+        <div className={`relative mb-3 w-full overflow-hidden rounded-xl bg-surface-soft ${
+          isMasonry ? "" : isCompact ? "aspect-square" : "aspect-video"
+        }`}>
           <img
             src={card.image}
             alt={card.title ?? card.url}
@@ -73,16 +75,16 @@ function CardCell({ card, layout }: { card: CardModel; layout: LayoutMode }) {
         </div>
       )}
       <div className="space-y-1">
-        <div className={`font-medium text-gray-100 ${isCompact ? "text-xs line-clamp-2" : "text-sm"}`}>
+        <div className={`font-semibold text-foreground ${isCompact ? "text-xs line-clamp-2" : "text-sm"}`}>
           {card.title || card.domain || card.url}
         </div>
         {!isCompact && (
-          <div className="text-xs text-gray-500">{card.domain ?? card.url}</div>
+          <div className="text-xs text-muted-foreground">{card.domain ?? card.url}</div>
         )}
         {card.collections.length > 0 && !isCompact && (
-          <div className="flex flex-wrap gap-1 text-[10px] text-gray-400">
+          <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
             {card.collections.map((collection) => (
-              <span key={collection} className="rounded bg-gray-800 px-2 py-0.5">
+              <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
                 {collection}
               </span>
             ))}

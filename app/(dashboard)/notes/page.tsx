@@ -35,8 +35,8 @@ export default async function NotesPage({ searchParams }: { searchParams: Search
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-100">Notes</h1>
-        <p className="text-sm text-gray-400">{allNotes.length} note(s)</p>
+        <h1 className="text-2xl font-semibold text-foreground">Notes</h1>
+        <p className="text-sm text-muted-foreground">{allNotes.length} note(s)</p>
       </div>
       <LibraryWorkspace
         initialCards={allNotes}

@@ -183,16 +183,20 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             <button
               key={mode}
               onClick={() => onLayoutChange(mode)}
-              className={`rounded px-3 py-1 text-sm ${layout === mode ? "bg-accent text-gray-900" : "bg-gray-900 text-gray-300"}`}
+              className={`rounded-lg px-3 py-1 text-sm transition ${
+                layout === mode
+                  ? "bg-accent text-accent-foreground shadow-panel"
+                  : "bg-surface-soft text-muted-foreground hover:text-foreground"
+              }`}
             >
               {mode}
             </button>
           ))}
         </div>
-        <span className="text-xs text-gray-500">{cards.length} card(s)</span>
+        <span className="text-xs text-muted-foreground">{cards.length} card(s)</span>
         <div className="ml-auto flex items-center gap-2">
           <button
-            className="rounded bg-gray-800 px-3 py-1 text-sm disabled:opacity-40"
+            className="rounded-lg bg-surface-soft px-3 py-1 text-sm text-muted-foreground transition hover:text-foreground disabled:opacity-40"
             disabled={!selectedIds.length}
             onClick={handleBulkMove}
           >
@@ -320,13 +324,15 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
       {...listeners}
       {...attributes}
       style={style}
-      className={`group cursor-pointer break-inside-avoid-column rounded border border-gray-800 bg-gray-900 p-3 transition-all ${selected ? "ring-2 ring-accent" : "hover:border-accent/60"} ${isDragging ? "opacity-50" : ""}`}
+      className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface p-4 transition-all ${
+        selected ? "is-selected ring-2 ring-accent border-transparent" : "border-subtle"
+      } ${isDragging ? "opacity-50" : ""}`}
       onClick={(event) => onClick(event, card)}
       data-id={card.id}
     >
       {showThumbnail && layout !== "compact" && !isNote && (
         <div
-          className={`relative mb-3 w-full overflow-hidden rounded bg-gray-800 ${layout === "masonry" ? "" : "aspect-video"}`}
+          className={`relative mb-3 w-full overflow-hidden rounded-xl bg-surface-soft ${layout === "masonry" ? "" : "aspect-video"}`}
         >
           {isPending ? (
             <div className="flex h-full w-full items-center justify-center">
@@ -365,24 +371,32 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
       <div className="space-y-1 text-sm">
         <div className="flex items-center gap-2">
           {isNote && <span className="text-lg">{card.type === "md-note" ? "📝" : "📄"}</span>}
-          <h3 className="font-medium text-gray-100 flex-1">{displayTitle}</h3>
+          <h3 className="flex-1 font-semibold text-foreground transition-colors group-hover:text-white">{displayTitle}</h3>
         </div>
-        <p className="text-xs text-gray-500 line-clamp-2">{displaySubtext}</p>
+        <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
         {card.collections.length > 0 && layout !== "compact" && (
-          <div className="flex flex-wrap gap-1 text-[10px] text-gray-400">
+          <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
             {card.collections.map((collection) => (
-              <span key={collection} className="rounded bg-gray-800 px-2 py-0.5">
+              <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
                 {collection}
               </span>
             ))}
           </div>
         )}
         <div className="flex items-center gap-2">
-          <span className={`inline-block rounded px-2 py-0.5 text-[10px] ${isPending ? "bg-blue-900/50 text-blue-300" : isError ? "bg-red-900/50 text-red-300" : "bg-gray-800 text-gray-300"}`}>
+          <span
+            className={`inline-block rounded px-2 py-0.5 text-[10px] ${
+              isPending
+                ? "bg-surface-soft text-blue-300"
+                : isError
+                ? "bg-red-900/40 text-red-300"
+                : "bg-surface-soft text-muted-foreground"
+            }`}
+          >
             {card.status}
           </span>
           {isNote && (
-            <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-purple-900/50 text-purple-300">
+            <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-purple-200">
               {card.type === "md-note" ? "Markdown" : "Text"}
             </span>
           )}

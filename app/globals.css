@@ -250,6 +250,43 @@ textarea:focus-visible {
   .shadow-panel {
     box-shadow: 0 24px 60px rgba(5, 5, 12, 0.45);
   }
+
+  .card-hover {
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease, background-color 0.28s ease;
+  }
+
+  .card-hover::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(180deg, hsla(var(--accent) / 0) 0%, hsla(var(--accent) / 0.12) 55%, hsla(var(--accent) / 0.42) 100%);
+    opacity: 0;
+    transition: opacity 0.28s ease;
+  }
+
+  .card-hover:hover {
+    transform: translateY(-6px);
+    border-color: hsla(var(--accent) / 0.55);
+    box-shadow: 0 32px 60px -18px hsla(var(--accent) / 0.45);
+  }
+
+  .card-hover:hover::after {
+    opacity: 1;
+  }
+
+  .card-hover.is-selected::after,
+  .card-hover.is-selected:hover::after {
+    opacity: 1;
+  }
+
+  .card-hover.is-selected {
+    border-color: hsla(var(--accent) / 0.65);
+    box-shadow: 0 30px 60px -16px hsla(var(--accent) / 0.5);
+  }
 }
 
 

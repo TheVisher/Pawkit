@@ -44,12 +44,12 @@ export function QuickAccessCard({ card }: QuickAccessCardProps) {
   return (
     <article
       onClick={handleCardClick}
-      className="group relative flex h-full cursor-pointer flex-col justify-between rounded border border-gray-800 bg-gray-900 p-4 transition hover:border-accent/60"
+      className="card-hover group relative flex h-full cursor-pointer flex-col justify-between rounded-2xl border border-subtle bg-surface p-4 transition"
     >
       <button
         onClick={handlePinToggle}
         disabled={isLoading}
-        className="absolute top-2 right-2 z-10 rounded bg-gray-800/80 p-1.5 text-gray-400 opacity-0 transition hover:bg-gray-700 hover:text-accent group-hover:opacity-100"
+        className="absolute top-2 right-2 z-10 rounded bg-surface-soft/80 p-1.5 text-muted-foreground opacity-0 transition hover:bg-surface-soft hover:text-accent group-hover:opacity-100"
         title={isPinned ? "Unpin from Quick Access" : "Pin to Quick Access"}
       >
         {isPinned ? (
@@ -64,17 +64,17 @@ export function QuickAccessCard({ card }: QuickAccessCardProps) {
       </button>
 
       {card.image && (
-        <div className="mb-3 overflow-hidden rounded bg-gray-800">
+        <div className="mb-3 overflow-hidden rounded-xl bg-surface-soft">
           <img src={card.image} alt={card.title ?? card.url} className="h-24 w-full object-cover" loading="lazy" />
         </div>
       )}
       <div>
-        <p className="text-sm font-medium text-gray-100 truncate" title={card.title ?? card.url}>
+        <p className="text-sm font-semibold text-foreground truncate" title={card.title ?? card.url}>
           {card.title || card.domain || card.url}
         </p>
-        <p className="mt-1 text-xs text-gray-500 truncate">{card.url}</p>
+        <p className="mt-1 text-xs text-muted-foreground truncate">{card.url}</p>
       </div>
-      <p className="mt-4 text-xs text-gray-500">Updated {formatDate(card.updatedAt)}</p>
+      <p className="mt-4 text-xs text-muted-foreground/80">Updated {formatDate(card.updatedAt)}</p>
     </article>
   );
 }

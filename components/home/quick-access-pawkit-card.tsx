@@ -43,12 +43,12 @@ export function QuickAccessPawkitCard({ pawkit }: QuickAccessPawkitCardProps) {
   return (
     <article
       onClick={handleCardClick}
-      className="group relative flex h-full cursor-pointer flex-col justify-between rounded border border-gray-800 bg-gray-900 p-4 transition hover:border-accent/60"
+      className="card-hover group relative flex h-full cursor-pointer flex-col justify-between rounded-2xl border border-subtle bg-surface p-4 transition"
     >
       <button
         onClick={handlePinToggle}
         disabled={isLoading}
-        className="absolute top-2 right-2 z-10 rounded bg-gray-800/80 p-1.5 text-gray-400 opacity-0 transition hover:bg-gray-700 hover:text-accent group-hover:opacity-100"
+        className="absolute top-2 right-2 z-10 rounded bg-surface-soft/80 p-1.5 text-muted-foreground opacity-0 transition hover:bg-surface-soft hover:text-accent group-hover:opacity-100"
         title={isPinned ? "Unpin from Quick Access" : "Pin to Quick Access"}
       >
         {isPinned ? (
@@ -62,16 +62,16 @@ export function QuickAccessPawkitCard({ pawkit }: QuickAccessPawkitCardProps) {
         )}
       </button>
 
-      <div className="mb-3 flex h-24 items-center justify-center rounded bg-gray-800">
+      <div className="mb-3 flex h-24 items-center justify-center rounded-xl bg-surface-soft">
         <span className="text-4xl">📁</span>
       </div>
       <div>
-        <p className="text-sm font-medium text-gray-100 truncate" title={pawkit.name}>
+        <p className="text-sm font-semibold text-foreground truncate" title={pawkit.name}>
           {pawkit.name}
         </p>
-        <p className="mt-1 text-xs text-gray-500">Pawkit</p>
+        <p className="mt-1 text-xs text-muted-foreground">Pawkit</p>
       </div>
-      <p className="mt-4 text-xs text-gray-500">Updated {formatDate(pawkit.updatedAt)}</p>
+      <p className="mt-4 text-xs text-muted-foreground/80">Updated {formatDate(pawkit.updatedAt)}</p>
     </article>
   );
 }
