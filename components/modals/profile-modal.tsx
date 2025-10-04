@@ -235,19 +235,31 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                   </button>
                   <button
                     onClick={() => setTheme("light")}
-                    className="p-4 rounded-lg border-2 border-gray-700 bg-gray-900/50 text-left opacity-50 cursor-not-allowed"
-                    disabled
+                    className={`p-4 rounded-lg border-2 ${
+                      theme === "light" ? "border-accent bg-gray-900" : "border-gray-700 bg-gray-900/50"
+                    } text-left relative`}
                   >
-                    <div className="text-sm font-medium text-gray-400">Light</div>
-                    <div className="text-xs text-gray-500 mt-1">Coming soon</div>
+                    <div className="text-sm font-medium text-gray-100">Light</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {theme === "light" ? "Current theme" : "Light mode"}
+                    </div>
+                    {theme === "light" && (
+                      <Check className="absolute top-2 right-2 h-4 w-4 text-accent" />
+                    )}
                   </button>
                   <button
                     onClick={() => setTheme("auto")}
-                    className="p-4 rounded-lg border-2 border-gray-700 bg-gray-900/50 text-left opacity-50 cursor-not-allowed"
-                    disabled
+                    className={`p-4 rounded-lg border-2 ${
+                      theme === "auto" ? "border-accent bg-gray-900" : "border-gray-700 bg-gray-900/50"
+                    } text-left relative`}
                   >
-                    <div className="text-sm font-medium text-gray-400">Auto</div>
-                    <div className="text-xs text-gray-500 mt-1">Coming soon</div>
+                    <div className="text-sm font-medium text-gray-100">Auto</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {theme === "auto" ? "Current theme" : "Follows system"}
+                    </div>
+                    {theme === "auto" && (
+                      <Check className="absolute top-2 right-2 h-4 w-4 text-accent" />
+                    )}
                   </button>
                 </div>
               </div>

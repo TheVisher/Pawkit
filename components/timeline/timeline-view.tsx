@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { CardModel } from "@/lib/types";
+import { useState, useEffect, MouseEvent, useMemo } from "react";
+import { CardModel, CollectionNode } from "@/lib/types";
 import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { format } from "date-fns";
 import {
@@ -15,6 +15,7 @@ import {
 import { ChevronDown, ListFilter, Check } from "lucide-react";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
+import { CardDetailModal } from "@/components/modals/card-detail-modal";
 
 type TimelineGroup = {
   date: string;
@@ -48,14 +49,29 @@ function layoutClass(layout: LayoutMode): string {
   }
 }
 
-function CardCell({ card, layout }: { card: CardModel; layout: LayoutMode }) {
+function CardCell({
+  card,
+  layout,
+  isSelected,
+  onClick
+}: {
+  card: CardModel;
+  layout: LayoutMode;
+  isSelected: boolean;
+  onClick: (e: MouseEvent) => void;
+}) {
   const isCompact = layout === "compact";
   const isList = layout === "list";
   const isMasonry = layout === "masonry";
 
   if (isList) {
     return (
-      <div className="card-hover flex items-center gap-3 rounded-2xl border border-subtle bg-surface p-3">
+      <div
+        onClick={onClick}
+        className={`card-hover flex items-center gap-3 rounded-2xl border bg-surface p-3 cursor-pointer transition-all ${
+          isSelected ? "border-accent ring-2 ring-accent/20" : "border-subtle"
+        }`}
+      >
         {card.image && (
           <img src={card.image} alt="" className="h-12 w-12 rounded-lg object-cover" />
         )}
@@ -69,9 +85,10 @@ function CardCell({ card, layout }: { card: CardModel; layout: LayoutMode }) {
 
   return (
     <div
-      className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border border-subtle bg-surface p-4 transition-all ${
+      onClick={onClick}
+      className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface p-4 transition-all ${
         isMasonry ? "mb-4" : ""
-      }`}
+      } ${isSelected ? "border-accent ring-2 ring-accent/20" : "border-subtle"}`}
     >
       {card.image && (
         <div className={`relative mb-3 w-full overflow-hidden rounded-xl bg-surface-soft ${
@@ -162,9 +179,48 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
   const [loading, setLoading] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [collections, setCollections] = useState<CollectionNode[]>([]);
 
   const selectedIds = useSelection((state) => state.selectedIds);
+  const toggleSelection = useSelection((state) => state.toggle);
+  const selectExclusive = useSelection((state) => state.selectExclusive);
+  const selectRange = useSelection((state) => state.selectRange);
   const clearSelection = useSelection((state) => state.clear);
+
+  // Flatten all cards into ordered array for shift-select
+  const orderedIds = useMemo(
+    () => groups.flatMap((group) => group.cards.map((card) => card.id)),
+    [groups]
+  );
+
+  // Get all cards as flat array
+  const allCards = useMemo(
+    () => groups.flatMap((group) => group.cards),
+    [groups]
+  );
+
+  // Get active card object
+  const activeCard = useMemo(
+    () => allCards.find((card) => card.id === activeCardId) ?? null,
+    [allCards, activeCardId]
+  );
+
+  // Fetch collections for the modal
+  useEffect(() => {
+    const fetchCollections = async () => {
+      try {
+        const response = await fetch("/api/pawkits");
+        if (response.ok) {
+          const data = await response.json();
+          setCollections(data.tree);
+        }
+      } catch (error) {
+        console.error("Failed to fetch collections:", error);
+      }
+    };
+    fetchCollections();
+  }, []);
 
   // Load preferences from localStorage on mount
   useEffect(() => {
@@ -218,6 +274,21 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
   const formatDateHeader = (dateStr: string) => {
     const date = new Date(dateStr + 'T00:00:00');
     return format(date, "MMMM do, yyyy");
+  };
+
+  const handleCardClick = (event: MouseEvent, card: CardModel) => {
+    if (event.shiftKey) {
+      selectRange(card.id, orderedIds);
+      event.preventDefault();
+      return;
+    }
+    if (event.metaKey || event.ctrlKey) {
+      toggleSelection(card.id);
+      event.preventDefault();
+      return;
+    }
+    // Open modal
+    setActiveCardId(card.id);
   };
 
   const handleBulkMove = () => {
@@ -343,7 +414,13 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
           {/* Cards for this date */}
           <div className={layoutClass(layout)}>
             {group.cards.map((card) => (
-              <CardCell key={card.id} card={card} layout={layout} />
+              <CardCell
+                key={card.id}
+                card={card}
+                layout={layout}
+                isSelected={selectedIds.includes(card.id)}
+                onClick={(e) => handleCardClick(e, card)}
+              />
             ))}
           </div>
         </div>
@@ -362,6 +439,34 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
         onClose={() => setShowMoveModal(false)}
         onConfirm={handleConfirmMove}
       />
+
+      {activeCard && (
+        <CardDetailModal
+          card={activeCard}
+          collections={collections}
+          onClose={() => setActiveCardId(null)}
+          onUpdate={(updatedCard) => {
+            setGroups((prev) =>
+              prev.map((group) => ({
+                ...group,
+                cards: group.cards.map((card) =>
+                  card.id === updatedCard.id ? updatedCard : card
+                )
+              }))
+            );
+          }}
+          onDelete={() => {
+            setGroups((prev) =>
+              prev.map((group) => ({
+                ...group,
+                cards: group.cards.filter((card) => card.id !== activeCardId)
+              }))
+              .filter((group) => group.cards.length > 0)
+            );
+            setActiveCardId(null);
+          }}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (

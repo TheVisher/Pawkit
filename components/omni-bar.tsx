@@ -6,6 +6,7 @@ import { isProbablyUrl } from "@/lib/utils/strings";
 import { AddCardModal } from "@/components/modals/add-card-modal";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { useCardEvents } from "@/lib/hooks/card-events-store";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -21,6 +22,7 @@ function OmniBarContent() {
   const [showModal, setShowModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
+  const addCard = useCardEvents((state) => state.addCard);
   const lastSearchedRef = useRef(initialQuery);
   const isTypingRef = useRef(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -105,6 +107,9 @@ function OmniBarContent() {
       const card = await response.json();
       setValue("");
 
+      // Notify listeners that a new card was created
+      addCard(card);
+
       // Trigger background metadata fetch (fire and forget)
       fetch(`/api/cards/${card.id}/fetch-metadata`, {
         method: "POST",
@@ -116,8 +121,6 @@ function OmniBarContent() {
 
       if (pathname !== "/library") {
         router.push("/library");
-      } else {
-        router.refresh();
       }
     }
   };

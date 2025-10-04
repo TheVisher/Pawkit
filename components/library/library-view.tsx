@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { LayoutMode, LAYOUTS } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
+import { useCardEvents } from "@/lib/hooks/card-events-store";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import {
   DropdownMenu,
@@ -35,6 +36,20 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
   const [cards, setCards] = useState<CardModel[]>(initialCards);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  const newCard = useCardEvents((state) => state.newCard);
+  const clearNewCard = useCardEvents((state) => state.clearNewCard);
+
+  // Listen for new cards added via OmniBar
+  useEffect(() => {
+    if (newCard) {
+      // Only add if not already in the list and no active search/filter
+      if (!cards.find((c) => c.id === newCard.id) && !query?.q && !query?.collection && !query?.status) {
+        setCards((prev) => [newCard, ...prev]);
+      }
+      clearNewCard();
+    }
+  }, [newCard, clearNewCard, cards, query]);
 
   const handleLayoutChange = (layout: LayoutMode) => {
     localStorage.setItem("library-layout", layout);

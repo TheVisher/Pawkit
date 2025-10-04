@@ -359,7 +359,7 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
       <div className="space-y-1 text-sm">
         <div className="flex items-center gap-2">
           {isNote && <span className="text-lg">{card.type === "md-note" ? "📝" : "📄"}</span>}
-          <h3 className="flex-1 font-semibold text-foreground transition-colors group-hover:text-white">{displayTitle}</h3>
+          <h3 className="flex-1 font-semibold text-foreground transition-colors">{displayTitle}</h3>
         </div>
         <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
         {card.collections.length > 0 && layout !== "compact" && (

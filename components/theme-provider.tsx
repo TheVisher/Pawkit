@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSettingsStore, type AccentColor } from "@/lib/hooks/settings-store";
 
 const ACCENT_COLOR_VALUES: Record<AccentColor, { h: number; s: number; l: number }> = {
@@ -14,6 +14,24 @@ const ACCENT_COLOR_VALUES: Record<AccentColor, { h: number; s: number; l: number
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const accentColor = useSettingsStore((state) => state.accentColor);
   const theme = useSettingsStore((state) => state.theme);
+  const [systemPreference, setSystemPreference] = useState<"light" | "dark">("dark");
+
+  // Listen for system theme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const handleChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      setSystemPreference(e.matches ? "dark" : "light");
+    };
+
+    // Set initial value
+    handleChange(mediaQuery);
+
+    // Listen for changes
+    mediaQuery.addEventListener("change", handleChange);
+
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
 
   useEffect(() => {
     const color = ACCENT_COLOR_VALUES[accentColor];
@@ -25,16 +43,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [accentColor]);
 
   useEffect(() => {
+    // Determine the effective theme
+    const effectiveTheme = theme === "auto" ? systemPreference : theme;
+
     // Apply theme class to html element
-    if (theme === "dark") {
+    if (effectiveTheme === "dark") {
       document.documentElement.classList.add("dark");
       document.documentElement.classList.remove("light");
-    } else if (theme === "light") {
+    } else {
       document.documentElement.classList.add("light");
       document.documentElement.classList.remove("dark");
     }
-    // Auto theme would check system preference here
-  }, [theme]);
+  }, [theme, systemPreference]);
 
   return <>{children}</>;
 }
