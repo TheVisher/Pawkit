@@ -79,7 +79,7 @@ export function QuickAccessCard({ card }: QuickAccessCardProps) {
   );
 }
 
-function formatDate(date: Date) {
+function formatDate(date: string | Date) {
   return new Date(date).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
