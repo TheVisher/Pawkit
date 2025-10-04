@@ -115,7 +115,7 @@ async function isDescendant(ancestorId: string, potentialDescendantId: string): 
 
     if (currentId === ancestorId) return true;
 
-    const collection = await prisma.collection.findUnique({ where: { id: currentId } });
+    const collection: Collection | null = await prisma.collection.findUnique({ where: { id: currentId } });
     currentId = collection?.parentId ?? null;
   }
   return false;
