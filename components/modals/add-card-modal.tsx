@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { CardModel } from "@/lib/types";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { useDataStore } from "@/lib/stores/data-store";
 
 export type AddCardModalProps = {
   open: boolean;
@@ -13,6 +14,7 @@ export type AddCardModalProps = {
 };
 
 export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardModalProps) {
+  const addCardToStore = useDataStore((state) => state.addCard);
   const [url, setUrl] = useState(initialUrl ?? "");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -52,8 +54,10 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
     event.preventDefault();
     setLoading(true);
     setError(null);
+
     const payload = {
       url,
+      type: 'url' as const,
       title: title || undefined,
       notes: notes || undefined,
       tags: tags ? tags.split(",").map((tag) => tag.trim()).filter(Boolean) : undefined,
@@ -62,33 +66,36 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
         : undefined
     };
 
-    // Create card immediately
-    const response = await fetch("/api/cards", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    // Create card optimistically - shows instantly!
+    addCardToStore(payload);
 
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      setError(body.message || "Failed to create card");
-      setLoading(false);
-      return;
-    }
+    // Call onCreated callback (with temporary card data)
+    onCreated?.({
+      id: 'temp',
+      url,
+      title: title || null,
+      notes: notes || null,
+      content: null,
+      type: 'url',
+      status: 'PENDING',
+      collections: payload.collections || [],
+      tags: payload.tags || [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      userId: '',
+      deleted: false,
+      deletedAt: null,
+      pinned: false,
+      domain: null,
+      image: null,
+      description: null,
+      articleContent: null
+    } as CardModel);
 
-    const card = await response.json();
-    onCreated?.(card);
     setLoading(false);
     onClose();
 
-    // Always trigger background metadata fetch (fire and forget)
-    fetch(`/api/cards/${card.id}/fetch-metadata`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: card.url, previewServiceUrl })
-    }).catch(() => {
-      // Silently fail - card is already created
-    });
+    // Note: The store handles server sync and metadata fetch in background
   };
 
   const modalContent = (
