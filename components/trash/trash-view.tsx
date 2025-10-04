@@ -6,8 +6,8 @@ import { CollectionDTO } from "@/lib/server/collections";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 
-type CardTrashItem = CardDTO & { type: "card" };
-type PawkitTrashItem = CollectionDTO & { type: "pawkit" };
+type CardTrashItem = CardDTO & { itemType: "card" };
+type PawkitTrashItem = CollectionDTO & { itemType: "pawkit" };
 type TrashItem = CardTrashItem | PawkitTrashItem;
 
 type TrashViewProps = {
@@ -18,13 +18,13 @@ type TrashViewProps = {
 export function TrashView({ cards, pawkits }: TrashViewProps) {
   const [filter, setFilter] = useState<"all" | "cards" | "pawkits">("all");
   const [loading, setLoading] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; type: "card" | "pawkit"; name: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; itemType: "card" | "pawkit"; name: string } | null>(null);
   const [showEmptyConfirm, setShowEmptyConfirm] = useState(false);
   const router = useRouter();
 
   const allItems: TrashItem[] = [
-    ...cards.map((card): CardTrashItem => ({ ...card, type: "card" as const })),
-    ...pawkits.map((pawkit): PawkitTrashItem => ({ ...pawkit, type: "pawkit" as const }))
+    ...cards.map((card): CardTrashItem => ({ ...card, itemType: "card" as const })),
+    ...pawkits.map((pawkit): PawkitTrashItem => ({ ...pawkit, itemType: "pawkit" as const }))
   ].sort((a, b) => {
     const aTime = a.deletedAt ? new Date(a.deletedAt).getTime() : 0;
     const bTime = b.deletedAt ? new Date(b.deletedAt).getTime() : 0;
@@ -33,8 +33,8 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
 
   const filteredItems = allItems.filter((item) => {
     if (filter === "all") return true;
-    if (filter === "cards") return item.type === "card";
-    if (filter === "pawkits") return item.type === "pawkit";
+    if (filter === "cards") return item.itemType === "card";
+    if (filter === "pawkits") return item.itemType === "pawkit";
     return true;
   });
 
@@ -54,8 +54,8 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
     }
   };
 
-  const handlePermanentDelete = (id: string, type: "card" | "pawkit", name: string) => {
-    setDeleteConfirm({ id, type, name });
+  const handlePermanentDelete = (id: string, itemType: "card" | "pawkit", name: string) => {
+    setDeleteConfirm({ id, itemType, name });
   };
 
   const confirmPermanentDelete = async () => {
@@ -63,7 +63,7 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
 
     setLoading(deleteConfirm.id);
     try {
-      const endpoint = deleteConfirm.type === "card"
+      const endpoint = deleteConfirm.itemType === "card"
         ? `/api/trash/cards/${deleteConfirm.id}`
         : `/api/trash/pawkits/${deleteConfirm.id}`;
       const response = await fetch(endpoint, { method: "DELETE" });
@@ -72,7 +72,7 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
 
       router.refresh();
     } catch (error) {
-      alert(`Failed to permanently delete ${deleteConfirm.type}`);
+      alert(`Failed to permanently delete ${deleteConfirm.itemType}`);
     } finally {
       setLoading(null);
       setDeleteConfirm(null);
@@ -170,8 +170,8 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
       ) : (
         <div className="space-y-2">
           {filteredItems.map((item) => {
-            const isCard = item.type === "card";
-            const name = isCard ? (item as CardDTO).title || (item as CardDTO).url : (item as CollectionDTO).name;
+            const isCard = item.itemType === "card";
+            const name = isCard ? (item as CardTrashItem).title || (item as CardTrashItem).url : (item as PawkitTrashItem).name;
             const daysRemaining = getDaysRemaining(item.deletedAt);
 
             return (
@@ -204,14 +204,14 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
                 {/* Actions */}
                 <div className="flex gap-2">
                   <button
-                    onClick={() => handleRestore(item.id, item.type)}
+                    onClick={() => handleRestore(item.id, item.itemType)}
                     disabled={loading === item.id}
                     className="rounded bg-accent px-3 py-1 text-sm font-medium text-gray-900 hover:bg-accent/90 disabled:opacity-50"
                   >
                     {loading === item.id ? "Restoring..." : "Restore"}
                   </button>
                   <button
-                    onClick={() => handlePermanentDelete(item.id, item.type, name)}
+                    onClick={() => handlePermanentDelete(item.id, item.itemType, name)}
                     disabled={loading === item.id}
                     className="rounded bg-gray-800 px-3 py-1 text-sm text-gray-300 hover:bg-gray-700 disabled:opacity-50"
                   >
