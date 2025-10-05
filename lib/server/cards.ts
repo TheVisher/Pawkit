@@ -120,7 +120,7 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
 export async function listCards(userId: string, query: CardListQuery) {
   const parsed = cardListQuerySchema.parse(query);
   const limit = parsed.limit ?? 50;
-  const where: Prisma.CardWhereInput = { userId, deleted: false };
+  const where: Prisma.CardWhereInput = { userId, deleted: false, inDen: false };
 
   if (parsed.q) {
     const term = parsed.q;

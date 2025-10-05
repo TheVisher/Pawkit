@@ -245,6 +245,28 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }
   };
 
+  const handleMoveToDen = async () => {
+    try {
+      const endpoint = card.inDen ? `/api/cards/${card.id}/remove-from-den` : `/api/cards/${card.id}/move-to-den`;
+      const response = await fetch(endpoint, { method: "PATCH" });
+      if (response.ok) {
+        const updated = await response.json();
+        await updateCardInStore(card.id, { inDen: updated.inDen });
+        onUpdate({ ...card, inDen: updated.inDen });
+        setToast(updated.inDen ? "Moved to The Den" : "Removed from The Den");
+        // Close modal after moving to Den
+        if (updated.inDen) {
+          setTimeout(() => onClose(), 1000);
+        }
+      } else {
+        setToast("Failed to update card");
+      }
+    } catch (error) {
+      console.error("Failed to move card:", error);
+      setToast("Failed to update card");
+    }
+  };
+
   // When reader is expanded, render different layout
   if (isReaderExpanded && articleContent) {
     return (
@@ -610,8 +632,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               <MetadataSection card={card} />
             </div>
 
-            {/* Delete Button at Bottom */}
-            <div className="border-t border-gray-800 p-4 flex-shrink-0">
+            {/* Den and Delete Buttons at Bottom */}
+            <div className="border-t border-gray-800 p-4 flex-shrink-0 space-y-2">
+              <Button
+                onClick={handleMoveToDen}
+                variant="outline"
+                className="w-full"
+              >
+                🏠 {card.inDen ? "Remove from The Den" : "Move to The Den"}
+              </Button>
               <Button
                 onClick={handleDelete}
                 variant="destructive"
