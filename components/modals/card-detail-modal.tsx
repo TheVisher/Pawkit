@@ -249,27 +249,26 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     try {
       const endpoint = card.inDen ? `/api/cards/${card.id}/remove-from-den` : `/api/cards/${card.id}/move-to-den`;
       const response = await fetch(endpoint, { method: "PATCH" });
-      if (response.ok) {
-        const updated = await response.json();
 
-        // If moving TO Den, remove from main cards list (since Den items are filtered)
-        // If removing FROM Den, add back to main cards list
-        const { cards } = useDataStore.getState();
-        const updatedCards = updated.inDen
-          ? cards.filter(c => c.id !== card.id)  // Remove from list when moving to Den
-          : [...cards, { ...card, inDen: false }]; // Add back when removing from Den
-
-        useDataStore.setState({ cards: updatedCards });
-
-        onUpdate({ ...card, inDen: updated.inDen });
-        setToast(updated.inDen ? "Moved to The Den" : "Removed from The Den");
-
-        // Close modal after moving to Den
-        if (updated.inDen) {
-          setTimeout(() => onClose(), 1000);
-        }
-      } else {
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Den API error:", errorText);
         setToast("Failed to update card");
+        return;
+      }
+
+      const updated = await response.json();
+
+      // Simply refresh the entire data store to get the latest state from server
+      // This ensures consistency and will properly filter out Den items
+      await useDataStore.getState().refresh();
+
+      onUpdate({ ...card, inDen: updated.inDen });
+      setToast(updated.inDen ? "Moved to The Den" : "Removed from The Den");
+
+      // Close modal after moving to Den
+      if (updated.inDen) {
+        setTimeout(() => onClose(), 500);
       }
     } catch (error) {
       console.error("Failed to move card:", error);
