@@ -330,7 +330,7 @@ function isTikTokUrl(url: string): boolean {
 }
 
 async function fetchTikTokMetadata(url: string): Promise<SitePreview> {
-  // TikTok oEmbed API - provides reliable thumbnails
+  // TikTok oEmbed API - provides reliable thumbnails for videos
   const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
 
   try {
@@ -366,19 +366,76 @@ async function fetchTikTokMetadata(url: string): Promise<SitePreview> {
     console.error('TikTok oEmbed failed:', error);
   }
 
-  // Fallback to regular scraping
-  const scraped = await scrapeSiteMetadata(url).catch(() => undefined);
-  if (scraped) {
-    return scraped;
+  // Fallback to scraping (for photo posts and when oEmbed fails)
+  try {
+    const scraped = await scrapeTikTokPage(url);
+    if (scraped) {
+      return scraped;
+    }
+  } catch (error) {
+    console.error('TikTok scraping failed:', error);
   }
 
   return {
-    title: 'TikTok Video',
-    description: 'Watch on TikTok',
+    title: 'TikTok Content',
+    description: 'View on TikTok',
     image: LOGO_ENDPOINT(url),
     logo: LOGO_ENDPOINT(url),
     screenshot: SCREENSHOT_ENDPOINT(url)
   };
+}
+
+async function scrapeTikTokPage(url: string): Promise<SitePreview | undefined> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
+      },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`TikTok request failed with ${response.status}`);
+    }
+
+    const html = await response.text();
+    const root = parse(html);
+
+    // Get meta tags
+    const metaTags = root.querySelectorAll('meta');
+    const metaMap: Record<string, string> = {};
+    for (const tag of metaTags) {
+      const property = tag.getAttribute('property') || tag.getAttribute('name');
+      if (!property) continue;
+      const content = tag.getAttribute('content');
+      if (!content) continue;
+      metaMap[property.toLowerCase()] = content.trim();
+    }
+
+    const title = pickFirst(metaMap, TITLE_META_KEYS) || root.querySelector('title')?.textContent?.trim();
+    const description = pickFirst(metaMap, DESCRIPTION_META_KEYS);
+    const image = pickFirst(metaMap, HERO_META_KEYS);
+
+    return {
+      title: title || 'TikTok Content',
+      description: description || 'View on TikTok',
+      image: image || LOGO_ENDPOINT(url),
+      logo: LOGO_ENDPOINT(url),
+      screenshot: SCREENSHOT_ENDPOINT(url),
+      raw: {
+        meta: metaMap,
+        source: 'tiktok-scraper'
+      }
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    throw error;
+  }
 }
 
 // Amazon-specific helpers
@@ -393,7 +450,10 @@ function isAmazonUrl(url: string): boolean {
            hostname.includes('amazon.fr') ||
            hostname.includes('amazon.it') ||
            hostname.includes('amazon.es') ||
-           hostname.includes('amazon.co.jp');
+           hostname.includes('amazon.co.jp') ||
+           hostname.includes('a.co') ||        // Amazon short links
+           hostname.includes('amzn.to') ||     // Amazon short links
+           hostname.includes('amzn.com');      // Amazon short links
   } catch {
     return false;
   }
@@ -548,19 +608,27 @@ async function fetchEcommerceMetadata(url: string): Promise<SitePreview> {
     const root = parse(html);
 
     // E-commerce product image selectors (common patterns)
+    // Note: Order matters - more specific selectors first
     const imageSelectors = [
-      'meta[property="og:image"]',
+      // LG-specific selectors
+      '.visual-product img',
+      '.product-visual img',
+      '.hero-product-image img',
+      // Generic product image selectors
       'meta[property="product:image"]',
-      'meta[name="twitter:image"]',
+      '[itemprop="image"] img',
       '[itemprop="image"]',
       '.product-image img',
       '.product-img img',
       '.main-image img',
       '.primary-image img',
-      '#product-image',
-      '#main-image',
+      '#product-image img',
+      '#main-image img',
       'img[class*="product"]',
-      'img[class*="hero"]'
+      'img[class*="hero"]',
+      // Fallback to meta tags last (often low quality)
+      'meta[property="og:image"]',
+      'meta[name="twitter:image"]'
     ];
 
     let productImage: string | undefined;
