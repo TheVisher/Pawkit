@@ -21,6 +21,8 @@ export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type' | 
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  inDen: boolean;
+  encryptedContent: string | null;
 };
 
 function serializeTags(tags: string[]): string | null {
@@ -120,7 +122,7 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
 export async function listCards(userId: string, query: CardListQuery) {
   const parsed = cardListQuerySchema.parse(query);
   const limit = parsed.limit ?? 50;
-  const where: Prisma.CardWhereInput = { userId, deleted: false };
+  const where: Prisma.CardWhereInput = { userId, deleted: false, inDen: false };
 
   if (parsed.q) {
     const term = parsed.q;

@@ -153,10 +153,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   };
 
   const handleAddToPawkit = async (slug: string) => {
-    const isAlreadyIn = card.collections.includes(slug);
+    const currentCollections = card.collections || [];
+    const isAlreadyIn = currentCollections.includes(slug);
     const nextCollections = isAlreadyIn
-      ? card.collections.filter((s) => s !== slug)
-      : Array.from(new Set([slug, ...card.collections]));
+      ? currentCollections.filter((s) => s !== slug)
+      : Array.from(new Set([slug, ...currentCollections]));
 
     // Update the global store (optimistic update)
     await updateCardInStore(card.id, { collections: nextCollections });
@@ -242,6 +243,36 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     } catch (error) {
       console.error("Failed to delete card:", error);
       setToast("Failed to delete card");
+    }
+  };
+
+  const handleMoveToDen = async () => {
+    try {
+      const endpoint = card.inDen ? `/api/cards/${card.id}/remove-from-den` : `/api/cards/${card.id}/move-to-den`;
+      const response = await fetch(endpoint, { method: "PATCH" });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Den API error:", errorText);
+        setToast("Failed to update card");
+        return;
+      }
+
+      const updated = await response.json();
+
+      // Simply refresh the entire data store to get the latest state from server
+      // This ensures consistency and will properly filter out Den items
+      await useDataStore.getState().refresh();
+
+      setToast(updated.inDen ? "Moved to The Den" : "Removed from The Den");
+
+      // Close modal after moving to Den
+      if (updated.inDen) {
+        setTimeout(() => onClose(), 500);
+      }
+    } catch (error) {
+      console.error("Failed to move card:", error);
+      setToast("Failed to update card");
     }
   };
 
@@ -579,7 +610,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               {activeTab === "pawkits" && (
                 <PawkitsTab
                   collections={collections}
-                  currentCollections={card.collections}
+                  currentCollections={card.collections || []}
                   onSelect={handleAddToPawkit}
                 />
               )}
@@ -610,8 +641,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               <MetadataSection card={card} />
             </div>
 
-            {/* Delete Button at Bottom */}
-            <div className="border-t border-gray-800 p-4 flex-shrink-0">
+            {/* Den and Delete Buttons at Bottom */}
+            <div className="border-t border-gray-800 p-4 flex-shrink-0 space-y-2">
+              <Button
+                onClick={handleMoveToDen}
+                variant="outline"
+                className="w-full"
+              >
+                🏠 {card.inDen ? "Remove from The Den" : "Move to The Den"}
+              </Button>
               <Button
                 onClick={handleDelete}
                 variant="destructive"
@@ -722,7 +760,7 @@ type PawkitTreeItemProps = {
 function PawkitTreeItem({ node, depth, currentCollections, onSelect }: PawkitTreeItemProps) {
   const hasChildren = node.children && node.children.length > 0;
   const paddingLeft = 16 + (depth * 16);
-  const isActive = currentCollections.includes(node.slug);
+  const isActive = currentCollections?.includes(node.slug) || false;
 
   return (
     <>
@@ -957,7 +995,7 @@ function MetadataSection({ card }: { card: CardModel }) {
         </a>
       </div>
 
-      {card.collections.length > 0 && (
+      {card.collections && card.collections.length > 0 && (
         <div>
           <h5 className="text-xs text-gray-500 mb-1">Pawkits</h5>
           <div className="flex flex-wrap gap-2">
@@ -970,7 +1008,7 @@ function MetadataSection({ card }: { card: CardModel }) {
         </div>
       )}
 
-      {card.tags.length > 0 && (
+      {card.tags && card.tags.length > 0 && (
         <div>
           <h5 className="text-xs text-gray-500 mb-1">Tags</h5>
           <div className="flex flex-wrap gap-2">

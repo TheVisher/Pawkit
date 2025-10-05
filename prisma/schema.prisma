@@ -9,41 +9,47 @@ datasource db {
 }
 
 model User {
-  id          String   @id
-  email       String   @unique
-  displayName String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                    String   @id
+  email                 String   @unique
+  displayName           String?
+  denPasswordHash       String?
+  denEncryptionEnabled  Boolean  @default(false)
+  denSyncEnabled        Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   cards       Card[]
   collections Collection[]
 }
 
 model Card {
-  id             String    @id @default(cuid())
-  type           String    @default("url")
-  url            String
-  title          String?
-  notes          String?
-  content        String?
-  status         String    @default("PENDING")
-  tags           String?
-  collections    String?
-  domain         String?
-  image          String?
-  description    String?
-  metadata       String?
-  articleContent String?
-  pinned         Boolean   @default(false)
-  deleted        Boolean   @default(false)
-  deletedAt      DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  userId         String
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String    @id @default(cuid())
+  type            String    @default("url")
+  url             String
+  title           String?
+  notes           String?
+  content         String?
+  status          String    @default("PENDING")
+  tags            String?
+  collections     String?
+  domain          String?
+  image           String?
+  description     String?
+  metadata        String?
+  articleContent  String?
+  pinned          Boolean   @default(false)
+  deleted         Boolean   @default(false)
+  deletedAt       DateTime?
+  inDen           Boolean   @default(false)
+  encryptedContent String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, deleted])
+  @@index([userId, inDen])
 }
 
 model Collection {

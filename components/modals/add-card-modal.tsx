@@ -89,7 +89,9 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
       image: null,
       description: null,
       articleContent: null,
-      metadata: undefined
+      metadata: undefined,
+      inDen: false,
+      encryptedContent: null
     });
 
     setLoading(false);
