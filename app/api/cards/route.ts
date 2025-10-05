@@ -2,10 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { createCard, listCards } from "@/lib/server/cards";
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { getUserByExtensionToken, extractTokenFromHeader } from "@/lib/auth/extension-auth";
+
+async function getAuthenticatedUser(request: NextRequest) {
+  // Try extension token first (from Authorization header)
+  const authHeader = request.headers.get('Authorization')
+  if (authHeader) {
+    const token = extractTokenFromHeader(authHeader)
+    if (token) {
+      const user = await getUserByExtensionToken(token)
+      if (user) {
+        return user
+      }
+    }
+  }
+
+  // Fall back to session auth
+  return getCurrentUser()
+}
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getAuthenticatedUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -31,7 +49,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getAuthenticatedUser(request);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
