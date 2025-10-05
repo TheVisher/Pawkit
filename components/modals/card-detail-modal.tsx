@@ -153,10 +153,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   };
 
   const handleAddToPawkit = async (slug: string) => {
-    const isAlreadyIn = card.collections.includes(slug);
+    const currentCollections = card.collections || [];
+    const isAlreadyIn = currentCollections.includes(slug);
     const nextCollections = isAlreadyIn
-      ? card.collections.filter((s) => s !== slug)
-      : Array.from(new Set([slug, ...card.collections]));
+      ? currentCollections.filter((s) => s !== slug)
+      : Array.from(new Set([slug, ...currentCollections]));
 
     // Update the global store (optimistic update)
     await updateCardInStore(card.id, { collections: nextCollections });
@@ -995,7 +996,7 @@ function MetadataSection({ card }: { card: CardModel }) {
         </a>
       </div>
 
-      {card.collections.length > 0 && (
+      {card.collections && card.collections.length > 0 && (
         <div>
           <h5 className="text-xs text-gray-500 mb-1">Pawkits</h5>
           <div className="flex flex-wrap gap-2">
