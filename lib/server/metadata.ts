@@ -815,7 +815,40 @@ function isRedditUrl(url: string): boolean {
 }
 
 async function fetchRedditMetadata(url: string): Promise<SitePreview> {
-  // Reddit's JSON API - append .json to get structured data
+  // Try Reddit's oEmbed API first (less likely to be blocked)
+  try {
+    const oembedUrl = `https://www.reddit.com/oembed?url=${encodeURIComponent(url)}`;
+    const oembedResponse = await fetch(oembedUrl, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'application/json'
+      },
+      signal: AbortSignal.timeout(10000)
+    });
+
+    console.log('[Reddit] oEmbed response status:', oembedResponse.status);
+
+    if (oembedResponse.ok) {
+      const oembedData = await oembedResponse.json();
+      console.log('[Reddit] oEmbed success, has thumbnail:', !!oembedData.thumbnail_url);
+
+      return {
+        title: oembedData.title || 'Reddit Post',
+        description: oembedData.author_name ? `Posted by ${oembedData.author_name}` : 'View on Reddit',
+        image: oembedData.thumbnail_url || LOGO_ENDPOINT(url),
+        logo: LOGO_ENDPOINT(url),
+        screenshot: SCREENSHOT_ENDPOINT(url),
+        raw: {
+          ...oembedData,
+          source: 'reddit-oembed'
+        }
+      };
+    }
+  } catch (error) {
+    console.log('[Reddit] oEmbed failed, trying JSON API:', error);
+  }
+
+  // Fallback to JSON API (often blocked on Vercel)
   const jsonUrl = url.endsWith('/') ? `${url}.json` : `${url}/.json`;
 
   const controller = new AbortController();
@@ -831,7 +864,7 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
     });
     clearTimeout(timeoutId);
 
-    console.log('[Reddit] API response status:', response.status, response.statusText);
+    console.log('[Reddit] JSON API response status:', response.status, response.statusText);
 
     if (response.ok) {
       const data = await response.json();
