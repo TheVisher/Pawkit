@@ -142,7 +142,7 @@ export function DigUpView({
       onClick={handleClose}
     >
       <div
-        className="bg-gray-950 rounded-lg border border-gray-800 shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex"
+        className="bg-gray-950 rounded-lg border border-gray-800 shadow-2xl max-w-5xl w-full h-[90vh] overflow-hidden flex"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Main Card Area */}
