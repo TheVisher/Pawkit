@@ -832,17 +832,22 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
       const oembedData = await oembedResponse.json();
       console.log('[Reddit] oEmbed success, has thumbnail:', !!oembedData.thumbnail_url);
 
-      return {
-        title: oembedData.title || 'Reddit Post',
-        description: oembedData.author_name ? `Posted by ${oembedData.author_name}` : 'View on Reddit',
-        image: oembedData.thumbnail_url || LOGO_ENDPOINT(url),
-        logo: LOGO_ENDPOINT(url),
-        screenshot: SCREENSHOT_ENDPOINT(url),
-        raw: {
-          ...oembedData,
-          source: 'reddit-oembed'
-        }
-      };
+      // Only use oEmbed if it has a thumbnail, otherwise fall through
+      if (oembedData.thumbnail_url) {
+        return {
+          title: oembedData.title || 'Reddit Post',
+          description: oembedData.author_name ? `Posted by ${oembedData.author_name}` : 'View on Reddit',
+          image: oembedData.thumbnail_url,
+          logo: LOGO_ENDPOINT(url),
+          screenshot: SCREENSHOT_ENDPOINT(url),
+          raw: {
+            ...oembedData,
+            source: 'reddit-oembed'
+          }
+        };
+      } else {
+        console.log('[Reddit] oEmbed has no thumbnail, will try other methods');
+      }
     }
   } catch (error) {
     console.log('[Reddit] oEmbed failed, trying JSON API:', error);
