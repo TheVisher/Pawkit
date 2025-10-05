@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, MouseEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { LayoutMode, LAYOUTS } from "@/lib/constants";
@@ -12,9 +12,25 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { ListFilter, Check, MoreVertical } from "lucide-react";
+import { ListFilter, Check, MoreVertical, Calendar, LayoutGrid } from "lucide-react";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
+import { CardDetailModal } from "@/components/modals/card-detail-modal";
+import { format } from "date-fns";
+
+type TimelineGroup = {
+  date: string;
+  cards: CardModel[];
+};
+
+const DATE_RANGES = [
+  { label: "7 days", value: 7 },
+  { label: "30 days", value: 30 },
+  { label: "90 days", value: 90 },
+  { label: "6 months", value: 180 },
+  { label: "1 year", value: 365 }
+] as const;
 
 type LibraryViewProps = {
   initialCards: CardModel[];
@@ -26,16 +42,32 @@ type LibraryViewProps = {
     collection?: string;
     status?: string;
   };
+  viewMode?: "normal" | "timeline";
+  timelineDays?: number;
 };
 
-export function LibraryView({ initialCards, initialNextCursor, initialLayout, collectionsTree, query }: LibraryViewProps) {
+export function LibraryView({
+  initialCards,
+  initialNextCursor,
+  initialLayout,
+  collectionsTree,
+  query,
+  viewMode = "normal",
+  timelineDays = 30
+}: LibraryViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selectedIds = useSelection((state) => state.selectedIds);
+  const toggleSelection = useSelection((state) => state.toggle);
+  const selectExclusive = useSelection((state) => state.selectExclusive);
+  const selectRange = useSelection((state) => state.selectRange);
   const clearSelection = useSelection((state) => state.clear);
   const [cards, setCards] = useState<CardModel[]>(initialCards);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [timelineGroups, setTimelineGroups] = useState<TimelineGroup[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
   // Sync local state when store updates (important for reactivity!)
   useEffect(() => {
@@ -56,12 +88,90 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
     }
   }, [newCard, clearNewCard, cards, query]);
 
+  // Fetch timeline data when in timeline mode
+  useEffect(() => {
+    if (viewMode === "timeline") {
+      const fetchTimeline = async () => {
+        setLoading(true);
+        try {
+          const response = await fetch(`/api/timeline?days=${timelineDays}`);
+          if (response.ok) {
+            const data = await response.json();
+            setTimelineGroups(data.groups);
+          }
+        } catch (error) {
+          console.error("Failed to load timeline:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchTimeline();
+    }
+  }, [viewMode, timelineDays]);
+
+  // Flatten all cards for shift-select in timeline mode
+  const orderedIds = useMemo(
+    () => timelineGroups.flatMap((group) => group.cards.map((card) => card.id)),
+    [timelineGroups]
+  );
+
+  // Get all timeline cards as flat array
+  const allTimelineCards = useMemo(
+    () => timelineGroups.flatMap((group) => group.cards),
+    [timelineGroups]
+  );
+
+  // Get active card object
+  const activeCard = useMemo(() => {
+    if (viewMode === "timeline") {
+      return allTimelineCards.find((card) => card.id === activeCardId) ?? null;
+    }
+    return cards.find((card) => card.id === activeCardId) ?? null;
+  }, [viewMode, allTimelineCards, cards, activeCardId]);
+
   const handleLayoutChange = (layout: LayoutMode) => {
     localStorage.setItem("library-layout", layout);
     const params = new URLSearchParams(searchParams?.toString());
     params.set("layout", layout);
     const currentPath = window.location.pathname;
     router.push(`${currentPath}?${params.toString()}`);
+  };
+
+  const handleViewToggle = () => {
+    const params = new URLSearchParams(searchParams?.toString());
+    if (viewMode === "normal") {
+      params.set("view", "timeline");
+      params.set("days", "30");
+    } else {
+      params.delete("view");
+      params.delete("days");
+    }
+    router.push(`/library?${params.toString()}`);
+  };
+
+  const handleDaysChange = (days: number) => {
+    const params = new URLSearchParams(searchParams?.toString());
+    params.set("days", days.toString());
+    router.push(`/library?${params.toString()}`);
+  };
+
+  const formatDateHeader = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    return format(date, "MMMM do, yyyy");
+  };
+
+  const handleTimelineCardClick = (event: MouseEvent, card: CardModel) => {
+    if (event.shiftKey) {
+      selectRange(card.id, orderedIds);
+      event.preventDefault();
+      return;
+    }
+    if (event.metaKey || event.ctrlKey) {
+      toggleSelection(card.id);
+      event.preventDefault();
+      return;
+    }
+    setActiveCardId(card.id);
   };
 
   const handleBulkMove = () => {
@@ -71,9 +181,12 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
 
   const handleConfirmMove = async (slug: string) => {
     if (!selectedIds.length) return;
+
+    const allCards = viewMode === "timeline" ? allTimelineCards : cards;
+
     await Promise.all(
       selectedIds.map((id) => {
-        const card = cards.find((item) => item.id === id);
+        const card = allCards.find((item) => item.id === id);
         const collections = card ? Array.from(new Set([slug, ...card.collections])) : [slug];
         return fetch(`/api/cards/${id}`, {
           method: "PATCH",
@@ -82,13 +195,27 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
         });
       })
     );
-    setCards((prev) =>
-      prev.map((card) =>
-        selectedIds.includes(card.id)
-          ? { ...card, collections: Array.from(new Set([slug, ...card.collections])) }
-          : card
-      )
-    );
+
+    if (viewMode === "timeline") {
+      setTimelineGroups((prev) =>
+        prev.map((group) => ({
+          ...group,
+          cards: group.cards.map((card) =>
+            selectedIds.includes(card.id)
+              ? { ...card, collections: Array.from(new Set([slug, ...card.collections])) }
+              : card
+          )
+        }))
+      );
+    } else {
+      setCards((prev) =>
+        prev.map((card) =>
+          selectedIds.includes(card.id)
+            ? { ...card, collections: Array.from(new Set([slug, ...card.collections])) }
+            : card
+        )
+      );
+    }
     clearSelection();
   };
 
@@ -99,9 +226,100 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
 
   const handleConfirmDelete = async () => {
     await Promise.all(selectedIds.map((id) => fetch(`/api/cards/${id}`, { method: "DELETE" })));
-    setCards((prev) => prev.filter((card) => !selectedIds.includes(card.id)));
+
+    if (viewMode === "timeline") {
+      setTimelineGroups((prev) =>
+        prev.map((group) => ({
+          ...group,
+          cards: group.cards.filter((card) => !selectedIds.includes(card.id))
+        }))
+        .filter((group) => group.cards.length > 0)
+      );
+    } else {
+      setCards((prev) => prev.filter((card) => !selectedIds.includes(card.id)));
+    }
     clearSelection();
     setShowDeleteConfirm(false);
+  };
+
+  const layoutClass = (layout: LayoutMode): string => {
+    switch (layout) {
+      case "grid":
+        return "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+      case "masonry":
+        return "columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4";
+      case "compact":
+        return "grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8";
+      case "list":
+        return "flex flex-col gap-2";
+      default:
+        return "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+    }
+  };
+
+  const TimelineCard = ({ card, layout }: { card: CardModel; layout: LayoutMode }) => {
+    const isCompact = layout === "compact";
+    const isList = layout === "list";
+    const isMasonry = layout === "masonry";
+    const isSelected = selectedIds.includes(card.id);
+
+    if (isList) {
+      return (
+        <div
+          onClick={(e) => handleTimelineCardClick(e, card)}
+          className={`card-hover flex items-center gap-3 rounded-2xl border bg-surface p-3 cursor-pointer transition-all ${
+            isSelected ? "border-accent ring-2 ring-accent/20" : "border-subtle"
+          }`}
+        >
+          {card.image && (
+            <img src={card.image} alt="" className="h-12 w-12 rounded-lg object-cover" />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold text-foreground truncate">{card.title}</div>
+            <div className="text-xs text-muted-foreground truncate">{card.domain}</div>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        onClick={(e) => handleTimelineCardClick(e, card)}
+        className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface p-4 transition-all ${
+          isMasonry ? "mb-4" : ""
+        } ${isSelected ? "border-accent ring-2 ring-accent/20" : "border-subtle"}`}
+      >
+        {card.image && (
+          <div className={`relative mb-3 w-full overflow-hidden rounded-xl bg-surface-soft ${
+            isMasonry ? "" : isCompact ? "aspect-square" : "aspect-video"
+          }`}>
+            <img
+              src={card.image}
+              alt={card.title ?? card.url}
+              className={isMasonry ? "block w-full h-auto" : "block h-full w-full object-cover"}
+              loading="lazy"
+            />
+          </div>
+        )}
+        <div className="space-y-1">
+          <div className={`font-semibold text-foreground ${isCompact ? "text-xs line-clamp-2" : "text-sm"}`}>
+            {card.title || card.domain || card.url}
+          </div>
+          {!isCompact && (
+            <div className="text-xs text-muted-foreground">{card.domain ?? card.url}</div>
+          )}
+          {card.collections && card.collections.length > 0 && !isCompact && (
+            <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+              {card.collections.map((collection) => (
+                <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
+                  {collection}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -110,9 +328,27 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-semibold text-foreground">Library</h1>
-            <p className="text-sm text-muted-foreground">{cards.length} card(s)</p>
+            <p className="text-sm text-muted-foreground">
+              {viewMode === "timeline"
+                ? `${timelineGroups.reduce((sum, g) => sum + g.cards.length, 0)} card(s)`
+                : `${cards.length} card(s)`}
+            </p>
           </div>
           <div className="flex items-center gap-2">
+            {/* View Toggle Button */}
+            <button
+              onClick={handleViewToggle}
+              className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors"
+              title={viewMode === "timeline" ? "Switch to grid view" : "Switch to timeline view"}
+            >
+              {viewMode === "timeline" ? (
+                <LayoutGrid className="h-4 w-4" />
+              ) : (
+                <Calendar className="h-4 w-4" />
+              )}
+            </button>
+
+            {/* Filter Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
                 <ListFilter className="h-4 w-4" />
@@ -130,6 +366,25 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
                     {layout}
                   </DropdownMenuItem>
                 ))}
+
+                {/* Date Range Filters (only in timeline mode) */}
+                {viewMode === "timeline" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {DATE_RANGES.map(({ label, value }) => (
+                      <DropdownMenuItem
+                        key={value}
+                        onClick={() => handleDaysChange(value)}
+                        className="cursor-pointer relative pl-8"
+                      >
+                        {timelineDays === value && (
+                          <Check className="absolute left-2 h-4 w-4" />
+                        )}
+                        {label}
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
             <DropdownMenu>
@@ -155,14 +410,55 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
             </DropdownMenu>
           </div>
         </div>
-        <LibraryWorkspace
-          initialCards={cards}
-          initialNextCursor={initialNextCursor}
-          initialQuery={{ ...query, layout: initialLayout }}
-          collectionsTree={collectionsTree}
-          hideControls={true}
-          storageKey="library-layout"
-        />
+
+        {/* Timeline View */}
+        {viewMode === "timeline" && (
+          <>
+            {loading && (
+              <div className="rounded-lg border border-gray-800 bg-gray-900/40 p-8 text-center">
+                <div className="text-lg font-medium text-gray-300 mb-2">Kit is digging this up...</div>
+                <div className="text-sm text-gray-500">This may take a moment for longer time ranges</div>
+              </div>
+            )}
+
+            {!loading && timelineGroups.length === 0 && (
+              <div className="rounded-lg border border-gray-800 bg-gray-900/40 p-8 text-center">
+                <div className="text-lg font-medium text-gray-300 mb-2">No cards found</div>
+                <div className="text-sm text-gray-500">Try a different time range or add some cards!</div>
+              </div>
+            )}
+
+            {!loading && timelineGroups.map((group) => (
+              <div key={group.date} className="space-y-4">
+                {/* Date Header */}
+                <div className="flex items-center gap-3">
+                  <h2 className="text-3xl font-medium text-gray-300">
+                    {formatDateHeader(group.date)}
+                  </h2>
+                </div>
+
+                {/* Cards for this date */}
+                <div className={layoutClass(initialLayout)}>
+                  {group.cards.map((card) => (
+                    <TimelineCard key={card.id} card={card} layout={initialLayout} />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Normal Library View */}
+        {viewMode === "normal" && (
+          <LibraryWorkspace
+            initialCards={cards}
+            initialNextCursor={initialNextCursor}
+            initialQuery={{ ...query, layout: initialLayout }}
+            collectionsTree={collectionsTree}
+            hideControls={true}
+            storageKey="library-layout"
+          />
+        )}
       </div>
 
       <MoveToPawkitModal
@@ -170,6 +466,35 @@ export function LibraryView({ initialCards, initialNextCursor, initialLayout, co
         onClose={() => setShowMoveModal(false)}
         onConfirm={handleConfirmMove}
       />
+
+      {/* Card Detail Modal for Timeline */}
+      {activeCard && viewMode === "timeline" && (
+        <CardDetailModal
+          card={activeCard}
+          collections={collectionsTree}
+          onClose={() => setActiveCardId(null)}
+          onUpdate={(updatedCard) => {
+            setTimelineGroups((prev) =>
+              prev.map((group) => ({
+                ...group,
+                cards: group.cards.map((card) =>
+                  card.id === updatedCard.id ? updatedCard : card
+                )
+              }))
+            );
+          }}
+          onDelete={() => {
+            setTimelineGroups((prev) =>
+              prev.map((group) => ({
+                ...group,
+                cards: group.cards.filter((card) => card.id !== activeCardId)
+              }))
+              .filter((group) => group.cards.length > 0)
+            );
+            setActiveCardId(null);
+          }}
+        />
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (

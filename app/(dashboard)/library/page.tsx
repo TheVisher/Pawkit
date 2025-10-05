@@ -14,6 +14,8 @@ function LibraryPageContent() {
   const statusParam = searchParams.get("status") || undefined;
   const status = statusParam && ["PENDING", "READY", "ERROR"].includes(statusParam) ? statusParam as "PENDING" | "READY" | "ERROR" : undefined;
   const layoutParam = searchParams.get("layout") as LayoutMode | null;
+  const viewParam = searchParams.get("view") || "normal";
+  const daysParam = searchParams.get("days") || "30";
 
   // Read from localStorage first, then URL param, then default
   const savedLayout = typeof window !== 'undefined' ? localStorage.getItem("library-layout") as LayoutMode | null : null;
@@ -22,6 +24,12 @@ function LibraryPageContent() {
     : savedLayout && LAYOUTS.includes(savedLayout)
       ? savedLayout
       : DEFAULT_LAYOUT;
+
+  // Parse view mode and days
+  const viewMode = viewParam === "timeline" ? "timeline" : "normal";
+  const validDays = [7, 30, 90, 180, 365];
+  const requestedDays = parseInt(daysParam, 10);
+  const days = validDays.includes(requestedDays) ? requestedDays : 30;
 
   // Read from global store - instant, no API calls
   const { cards, collections } = useDataStore();
@@ -62,6 +70,8 @@ function LibraryPageContent() {
       initialLayout={layout}
       collectionsTree={collections}
       query={{ q, collection, status }}
+      viewMode={viewMode}
+      timelineDays={days}
     />
   );
 }

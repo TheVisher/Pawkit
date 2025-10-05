@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Home, Library, Clock, FolderOpen, FileText, Trash2, Star, History, Settings, HelpCircle, User, Layers } from "lucide-react";
+import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, Settings, HelpCircle, User, Layers } from "lucide-react";
 import { type CollectionNode } from "@/lib/types";
 import { ProfileModal } from "@/components/modals/profile-modal";
 import { DogHouseIcon } from "@/components/icons/dog-house";
@@ -34,7 +34,6 @@ type AppSidebarProps = {
 const navigationItems = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/library", label: "Library", icon: Library },
-  { href: "/timeline", label: "Timeline", icon: Clock },
   { href: "/notes", label: "Notes", icon: FileText },
   { href: "/den", label: "The Den", icon: DogHouseIcon },
   { href: "/distill", label: "Dig Up", icon: Layers },
