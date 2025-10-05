@@ -422,15 +422,16 @@ async function scrapeTikTokPage(url: string): Promise<SitePreview | undefined> {
     const description = pickFirst(metaMap, DESCRIPTION_META_KEYS);
     const image = pickFirst(metaMap, HERO_META_KEYS);
 
-    // For TikTok photos without meta tags, use screenshot as it shows actual content
+    // TikTok blocks screenshot services, so use logo as final fallback
+    const logo = LOGO_ENDPOINT(url);
     const screenshot = SCREENSHOT_ENDPOINT(url);
-    const finalImage = image || screenshot;
+    const finalImage = image || logo;
 
     return {
       title: title || 'TikTok Content',
       description: description || 'View on TikTok',
       image: finalImage,
-      logo: LOGO_ENDPOINT(url),
+      logo: logo,
       screenshot: screenshot,
       raw: {
         meta: metaMap,
