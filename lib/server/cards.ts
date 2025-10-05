@@ -21,6 +21,8 @@ export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type' | 
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  inDen: boolean;
+  encryptedContent: string | null;
 };
 
 function serializeTags(tags: string[]): string | null {

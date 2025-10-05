@@ -21,6 +21,8 @@ export type CardModel = {
   pinned: boolean;
   deleted: boolean;
   deletedAt: string | null;
+  inDen: boolean;
+  encryptedContent: string | null;
   createdAt: string;
   updatedAt: string;
 };

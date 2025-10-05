@@ -154,7 +154,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
       image: null,
       description: null,
       articleContent: null,
-      metadata: undefined
+      metadata: undefined,
+      inDen: false,
+      encryptedContent: null
     };
 
     // STEP 1: Persist to queue FIRST (prevents data loss on refresh)
