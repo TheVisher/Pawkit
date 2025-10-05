@@ -54,6 +54,11 @@ export async function middleware(request: NextRequest) {
     }
   )
 
+  // Skip auth check for API routes - they handle their own authentication
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return response
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
