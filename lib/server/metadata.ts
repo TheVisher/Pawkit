@@ -937,10 +937,29 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
       }
     }
   } catch (error) {
-    console.error('Reddit API failed:', error);
+    console.error('Reddit JSON API failed:', error);
   }
 
-  // Fallback to regular scraping
+  // Last resort: scrape the HTML page for images
+  console.log('[Reddit] Falling back to HTML scraping');
+  try {
+    const scraped = await scrapeSiteMetadata(url);
+    if (scraped) {
+      console.log('[Reddit] HTML scrape found image:', !!scraped.image);
+      return {
+        ...scraped,
+        raw: {
+          ...scraped.raw,
+          source: 'reddit-html-scrape'
+        }
+      };
+    }
+  } catch (error) {
+    console.error('[Reddit] HTML scraping failed:', error);
+  }
+
+  // Ultimate fallback
+  console.log('[Reddit] All methods failed, using fallback');
   return {
     title: 'Reddit Post',
     description: 'View on Reddit',
