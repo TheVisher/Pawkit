@@ -59,14 +59,18 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
 
   // Poll for pending cards to update their metadata
   useEffect(() => {
-    const pendingCards = cards.filter((card) => card.status === "PENDING");
+    // Only poll for PENDING cards that have real IDs (not temp IDs)
+    const pendingCards = cards.filter(
+      (card) => card.status === "PENDING" && !card.id.startsWith("temp_")
+    );
+
     if (pendingCards.length === 0) return;
 
     let isMounted = true;
     const intervalId = setInterval(async () => {
-      // Get fresh pending card IDs to avoid stale requests
+      // Get fresh pending card IDs to avoid stale requests (exclude temp IDs)
       const currentPendingIds = cards
-        .filter((card) => card.status === "PENDING")
+        .filter((card) => card.status === "PENDING" && !card.id.startsWith("temp_"))
         .map((card) => card.id);
 
       if (currentPendingIds.length === 0) {
@@ -84,7 +88,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               return updated;
             }
           } catch {
-            // Ignore errors
+            // Ignore errors - card might not exist yet
           }
           return null;
         })

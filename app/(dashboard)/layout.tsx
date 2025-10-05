@@ -7,10 +7,11 @@ import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useNetworkSync } from "@/lib/hooks/use-network-sync";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { data: userData } = useSWR<{ email: string; displayName?: string | null }>("/api/user");
-  const { collections, initialize, drainQueue, isInitialized } = useDataStore();
+  const { collections, initialize, isInitialized } = useDataStore();
 
   // Initialize data store on mount
   useEffect(() => {
@@ -19,12 +20,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
   }, [isInitialized, initialize]);
 
-  // Drain pending operations queue after initialization
-  useEffect(() => {
-    if (isInitialized) {
-      drainQueue();
-    }
-  }, [isInitialized, drainQueue]);
+  // Network sync hook handles queue draining on reconnection + periodic retries
+  useNetworkSync();
 
   const username = userData?.email || "";
   const displayName = userData?.displayName || null;
