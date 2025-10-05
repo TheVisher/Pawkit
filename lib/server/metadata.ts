@@ -832,10 +832,17 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
       const post = data?.[0]?.data?.children?.[0]?.data;
 
       if (post) {
+        // Debug logging
+        console.log('[Reddit] Post type:', post.post_hint);
+        console.log('[Reddit] Is gallery:', post.is_gallery);
+        console.log('[Reddit] Has preview:', !!post.preview);
+        console.log('[Reddit] URL:', post.url);
+        console.log('[Reddit] Thumbnail:', post.thumbnail);
+
         // Extract image from various Reddit post types
         let image: string | undefined;
 
-        // 1. Direct image posts
+        // 1. Direct image posts (i.reddit.it or i.redd.it)
         if (post.post_hint === 'image' && post.url) {
           image = post.url;
         }
@@ -848,18 +855,24 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
             image = firstImage.s.u.replace(/&amp;/g, '&');
           }
         }
-        // 3. Video posts (use thumbnail)
-        else if (post.is_video && post.thumbnail && post.thumbnail.startsWith('http')) {
-          image = post.thumbnail;
-        }
-        // 4. Link posts with preview
+        // 3. Preview images (most reliable for various post types)
         else if (post.preview?.images?.[0]?.source?.url) {
           image = post.preview.images[0].source.url.replace(/&amp;/g, '&');
         }
-        // 5. Fallback to thumbnail if available
-        else if (post.thumbnail && post.thumbnail.startsWith('http')) {
+        // 4. Video posts (use thumbnail)
+        else if (post.is_video && post.thumbnail && post.thumbnail.startsWith('http')) {
           image = post.thumbnail;
         }
+        // 5. External image URLs
+        else if (post.url && (post.url.match(/\.(jpg|jpeg|png|gif|webp)$/i) || post.url.includes('imgur.com'))) {
+          image = post.url;
+        }
+        // 6. Fallback to thumbnail if available (but not default icons)
+        else if (post.thumbnail && post.thumbnail.startsWith('http') && !post.thumbnail.includes('default')) {
+          image = post.thumbnail;
+        }
+
+        console.log('[Reddit] Selected image:', image);
 
         return {
           title: post.title || 'Reddit Post',
