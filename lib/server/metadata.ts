@@ -31,6 +31,12 @@ const TITLE_META_KEYS = ["og:title", "twitter:title", "itemprop:name", "title"];
 const DESCRIPTION_META_KEYS = ["og:description", "description", "twitter:description", "itemprop:description"];
 
 export async function fetchPreviewMetadata(url: string, previewServiceUrl?: string): Promise<SitePreview | undefined> {
+  // Special handling for YouTube - use their reliable thumbnail API
+  const youtubeVideoId = extractYouTubeVideoId(url);
+  if (youtubeVideoId) {
+    return fetchYouTubeMetadata(url, youtubeVideoId);
+  }
+
   const results: SitePreview[] = [];
 
   if (previewServiceUrl) {
@@ -286,4 +292,82 @@ function pickValue(data: Record<string, unknown>, keys: string[]): string | unde
 function normaliseUrlValue(value: unknown, base: string) {
   if (typeof value !== "string") return undefined;
   return resolveUrl(base, value);
+}
+
+// YouTube-specific helpers
+function extractYouTubeVideoId(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+
+    // Handle youtube.com URLs
+    if (hostname.includes('youtube.com')) {
+      // Standard watch URL: youtube.com/watch?v=VIDEO_ID
+      const videoId = urlObj.searchParams.get('v');
+      if (videoId) return videoId;
+
+      // Shortened URL: youtube.com/shorts/VIDEO_ID
+      const shortsMatch = urlObj.pathname.match(/^\/shorts\/([a-zA-Z0-9_-]+)/);
+      if (shortsMatch) return shortsMatch[1];
+
+      // Embed URL: youtube.com/embed/VIDEO_ID
+      const embedMatch = urlObj.pathname.match(/^\/embed\/([a-zA-Z0-9_-]+)/);
+      if (embedMatch) return embedMatch[1];
+    }
+
+    // Handle youtu.be URLs: youtu.be/VIDEO_ID
+    if (hostname === 'youtu.be') {
+      const videoId = urlObj.pathname.slice(1).split('/')[0];
+      if (videoId) return videoId;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchYouTubeMetadata(url: string, videoId: string): Promise<SitePreview> {
+  // YouTube's reliable thumbnail API - always works
+  // Try maxresdefault (1280x720) first, fallback to hqdefault (480x360)
+  const maxResThumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+  const hqThumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+
+  // Check if maxresdefault exists (not all videos have it)
+  let thumbnail = maxResThumbnail;
+  try {
+    const response = await fetch(maxResThumbnail, { method: 'HEAD' });
+    if (!response.ok || response.headers.get('content-length') === '0') {
+      thumbnail = hqThumbnail;
+    }
+  } catch {
+    thumbnail = hqThumbnail;
+  }
+
+  // Try to get title/description from scraping (best effort)
+  let title: string | undefined = undefined;
+  let description: string | undefined = undefined;
+
+  try {
+    const scraped = await scrapeSiteMetadata(url).catch(() => undefined);
+    if (scraped) {
+      title = scraped.title;
+      description = scraped.description;
+    }
+  } catch {
+    // Scraping failed, use defaults
+  }
+
+  return {
+    title: title || `YouTube Video - ${videoId}`,
+    description: description || 'Watch on YouTube',
+    image: thumbnail,
+    logo: LOGO_ENDPOINT(url),
+    screenshot: SCREENSHOT_ENDPOINT(url),
+    raw: {
+      videoId,
+      thumbnailUrl: thumbnail,
+      source: 'youtube-api'
+    }
+  };
 }
