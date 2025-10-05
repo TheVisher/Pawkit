@@ -8,6 +8,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useNetworkSync } from "@/lib/hooks/use-network-sync";
+import { ConflictNotifications } from "@/components/conflict-notifications";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { data: userData } = useSWR<{ email: string; displayName?: string | null }>("/api/user");
@@ -45,6 +46,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </div>
           </main>
         </SidebarInset>
+        <ConflictNotifications />
       </SidebarProvider>
     </SelectionStoreProvider>
   );

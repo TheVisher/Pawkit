@@ -35,6 +35,29 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
     }
 
     const params = await segmentData.params;
+
+    // Conflict detection: Check if client has stale version
+    const ifUnmodifiedSince = request.headers.get('If-Unmodified-Since');
+    if (ifUnmodifiedSince) {
+      const currentCard = await getCard(user.id, params.id);
+      if (currentCard) {
+        const clientTimestamp = new Date(ifUnmodifiedSince).getTime();
+        const serverTimestamp = new Date(currentCard.updatedAt).getTime();
+
+        // If server version is newer, reject the update (conflict detected)
+        if (serverTimestamp > clientTimestamp) {
+          return NextResponse.json(
+            {
+              error: "Conflict",
+              message: "Card was modified by another device. Please refresh and try again.",
+              serverCard: currentCard
+            },
+            { status: 409 } // 409 Conflict
+          );
+        }
+      }
+    }
+
     const body = await request.json();
     const card = await updateCard(user.id, params.id, body);
     return NextResponse.json(card);

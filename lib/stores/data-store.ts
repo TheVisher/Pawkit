@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { CardDTO } from '@/lib/server/cards';
 import { CollectionNode } from '@/lib/types';
 import { syncQueue, QueueOperation } from '@/lib/services/sync-queue';
+import { useConflictStore } from '@/lib/stores/conflict-store';
 
 type DataStore = {
   // Data
@@ -292,11 +293,48 @@ async function executeUpdateCard(op: QueueOperation, set: any, get: any) {
   const oldCard = get().cards.find((c: CardDTO) => c.id === targetId);
 
   try {
+    // Add conflict detection header with card's last known timestamp
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    };
+
+    if (oldCard?.updatedAt) {
+      headers['If-Unmodified-Since'] = oldCard.updatedAt;
+    }
+
     const response = await fetch(`/api/cards/${targetId}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload)
     });
+
+    // Handle conflict (409)
+    if (response.status === 409) {
+      const conflict = await response.json();
+      console.warn('[DataStore] Conflict detected:', conflict.message);
+
+      // Notify user about the conflict
+      useConflictStore.getState().addConflict(
+        targetId,
+        'This card was modified on another device. Your changes were not saved.'
+      );
+
+      // Update with server version and mark operation as failed
+      if (conflict.serverCard) {
+        set((state: any) => ({
+          cards: state.cards.map((c: CardDTO) =>
+            c.id === targetId ? conflict.serverCard : c
+          )
+        }));
+      }
+
+      // Mark as failed so it doesn't retry endlessly
+      if (op.id) {
+        await syncQueue.markFailed(op.id);
+      }
+
+      throw new Error(`Conflict: ${conflict.message}`);
+    }
 
     if (!response.ok) {
       // Rollback on error
