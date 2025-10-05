@@ -2,7 +2,7 @@ import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { CardDTO } from '@/lib/server/cards';
 
 // Operation types that can be queued
-type OperationType = 'CREATE_CARD' | 'UPDATE_CARD' | 'DELETE_CARD';
+type OperationType = 'CREATE_CARD' | 'UPDATE_CARD' | 'DELETE_CARD' | 'CREATE_COLLECTION' | 'UPDATE_COLLECTION' | 'DELETE_COLLECTION';
 
 // Queue operation structure
 export interface QueueOperation {

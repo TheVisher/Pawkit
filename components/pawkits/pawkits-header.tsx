@@ -23,7 +23,7 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { refresh } = useDataStore();
+  const { addCollection, updateCollection, deleteCollection } = useDataStore();
 
   const isSubPawkit = !!parentSlug;
 
@@ -48,23 +48,11 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
         payload.parentId = parentId;
       }
 
-      const response = await fetch("/api/pawkits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.message || "Failed to create Pawkit");
-        setLoading(false);
-        return;
-      }
+      await addCollection(payload);
 
       setPawkitName("");
       setShowModal(false);
       setLoading(false);
-      await refresh();
     } catch (err) {
       setError("Failed to create Pawkit");
       setLoading(false);
@@ -84,15 +72,9 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/pawkits/${parentId}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete Pawkit");
+      if (parentId) {
+        await deleteCollection(parentId);
       }
-
-      await refresh();
       router.push("/pawkits");
     } catch (err) {
       alert("Failed to delete Pawkit");
@@ -105,20 +87,10 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/pawkits/${parentId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: renameValue.trim() }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to rename Pawkit");
-      }
-
+      await updateCollection(parentId, { name: renameValue.trim() });
       setShowRenameModal(false);
       setRenameValue("");
       setLoading(false);
-      await refresh();
     } catch (err) {
       alert("Failed to rename Pawkit");
       setLoading(false);
@@ -130,20 +102,10 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/pawkits/${parentId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parentId: selectedMoveTarget }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to move Pawkit");
-      }
-
+      await updateCollection(parentId, { parentId: selectedMoveTarget });
       setShowMoveModal(false);
       setSelectedMoveTarget(null);
       setLoading(false);
-      await refresh();
       router.push("/pawkits");
     } catch (err) {
       alert("Failed to move Pawkit");

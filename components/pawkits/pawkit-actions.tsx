@@ -25,25 +25,13 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
   const [pinned, setPinned] = useState(isPinned);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { refresh } = useDataStore();
+  const { deleteCollection, updateCollection } = useDataStore();
 
   const handleDelete = async () => {
     setLoading(true);
     try {
-      const url = deleteCards
-        ? `/api/pawkits/${pawkitId}?deleteCards=true`
-        : `/api/pawkits/${pawkitId}`;
-
-      const response = await fetch(url, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to delete Pawkit");
-      }
-
+      await deleteCollection(pawkitId, deleteCards);
       setShowDeleteConfirm(false);
-      await refresh();
       router.push("/pawkits");
       onDeleteSuccess?.();
     } catch (err) {
@@ -57,19 +45,9 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/pawkits/${pawkitId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: renameValue.trim() }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to rename Pawkit");
-      }
-
+      await updateCollection(pawkitId, { name: renameValue.trim() });
       setShowRenameModal(false);
       setLoading(false);
-      await refresh();
     } catch (err) {
       alert("Failed to rename Pawkit");
       setLoading(false);
@@ -79,20 +57,10 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
   const handleMove = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/pawkits/${pawkitId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parentId: selectedMoveTarget }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to move Pawkit");
-      }
-
+      await updateCollection(pawkitId, { parentId: selectedMoveTarget });
       setShowMoveModal(false);
       setSelectedMoveTarget(null);
       setLoading(false);
-      await refresh();
     } catch (err) {
       alert("Failed to move Pawkit");
       setLoading(false);
@@ -101,21 +69,12 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
 
   const handlePinToggle = async () => {
     try {
-      const response = await fetch(`/api/pawkits/${pawkitId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pinned: !pinned }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to toggle pin");
-      }
-
       setPinned(!pinned);
       setShowMenu(false);
-      await refresh();
+      await updateCollection(pawkitId, { pinned: !pinned });
     } catch (err) {
       alert("Failed to toggle pin");
+      setPinned(pinned); // Revert on error
     }
   };
 

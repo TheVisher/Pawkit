@@ -119,6 +119,12 @@ export const useDataStore = create<DataStore>((set, get) => ({
           await executeUpdateCard(op, set, get);
         } else if (op.type === 'DELETE_CARD') {
           await executeDeleteCard(op, set, get);
+        } else if (op.type === 'CREATE_COLLECTION') {
+          await executeCreateCollection(op, set, get);
+        } else if (op.type === 'UPDATE_COLLECTION') {
+          await executeUpdateCollection(op, set, get);
+        } else if (op.type === 'DELETE_COLLECTION') {
+          await executeDeleteCollection(op, set, get);
         }
 
         // Remove from queue on success
@@ -220,17 +226,57 @@ export const useDataStore = create<DataStore>((set, get) => ({
     });
   },
 
-  addCollection: async (collection: CollectionNode) => {
-    // For collections, just refresh since tree structure is complex
-    await get().refresh();
+  addCollection: async (collectionData: { name: string; parentId?: string | null }) => {
+    // Queue the operation
+    const operationId = await syncQueue.enqueue({
+      type: 'CREATE_COLLECTION',
+      payload: collectionData
+    });
+
+    // Execute in background
+    executeCreateCollection(
+      { id: operationId, type: 'CREATE_COLLECTION', payload: collectionData, timestamp: Date.now(), retries: 0, status: 'processing' } as QueueOperation,
+      set,
+      get
+    ).catch(() => {
+      // Silently fail - operation will be retried on next drain
+    });
   },
 
-  updateCollection: async (id: string, updates: Partial<CollectionNode>) => {
-    await get().refresh();
+  updateCollection: async (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean }) => {
+    // Queue the operation
+    const operationId = await syncQueue.enqueue({
+      type: 'UPDATE_COLLECTION',
+      payload: updates,
+      targetId: id
+    });
+
+    // Execute in background
+    executeUpdateCollection(
+      { id: operationId, type: 'UPDATE_COLLECTION', payload: updates, targetId: id, timestamp: Date.now(), retries: 0, status: 'processing' } as QueueOperation,
+      set,
+      get
+    ).catch(() => {
+      // Silently fail - operation will be retried on next drain
+    });
   },
 
-  deleteCollection: async (id: string) => {
-    await get().refresh();
+  deleteCollection: async (id: string, deleteCards = false) => {
+    // Queue the operation
+    const operationId = await syncQueue.enqueue({
+      type: 'DELETE_COLLECTION',
+      payload: { deleteCards },
+      targetId: id
+    });
+
+    // Execute in background
+    executeDeleteCollection(
+      { id: operationId, type: 'DELETE_COLLECTION', payload: { deleteCards }, targetId: id, timestamp: Date.now(), retries: 0, status: 'processing' } as QueueOperation,
+      set,
+      get
+    ).catch(() => {
+      // Silently fail - operation will be retried on next drain
+    });
   }
 }));
 
@@ -383,6 +429,102 @@ async function executeDeleteCard(op: QueueOperation, set: any, get: any) {
     }
   } catch (error) {
     console.error('Failed to execute delete card:', error);
+    throw error;
+  }
+}
+
+// Collection operation helpers
+async function executeCreateCollection(op: QueueOperation, set: any, get: any) {
+  const { payload } = op;
+
+  try {
+    const response = await fetch('/api/pawkits', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create collection on server');
+    }
+
+    // Refresh collections tree from server
+    const collectionsRes = await fetch('/api/pawkits');
+    if (collectionsRes.ok) {
+      const collectionsData = await collectionsRes.json();
+      set({ collections: collectionsData.tree || [] });
+    }
+
+    // Remove from queue after successful sync
+    if (op.id) {
+      await syncQueue.remove(op.id);
+    }
+  } catch (error) {
+    console.error('Failed to execute create collection:', error);
+    throw error;
+  }
+}
+
+async function executeUpdateCollection(op: QueueOperation, set: any, get: any) {
+  const { payload, targetId } = op;
+
+  try {
+    const response = await fetch(`/api/pawkits/${targetId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update collection on server');
+    }
+
+    // Refresh collections tree from server
+    const collectionsRes = await fetch('/api/pawkits');
+    if (collectionsRes.ok) {
+      const collectionsData = await collectionsRes.json();
+      set({ collections: collectionsData.tree || [] });
+    }
+
+    // Remove from queue after successful sync
+    if (op.id) {
+      await syncQueue.remove(op.id);
+    }
+  } catch (error) {
+    console.error('Failed to execute update collection:', error);
+    throw error;
+  }
+}
+
+async function executeDeleteCollection(op: QueueOperation, set: any, get: any) {
+  const { targetId, payload } = op;
+
+  try {
+    const url = payload?.deleteCards
+      ? `/api/pawkits/${targetId}?deleteCards=true`
+      : `/api/pawkits/${targetId}`;
+
+    const response = await fetch(url, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete collection on server');
+    }
+
+    // Refresh collections tree from server
+    const collectionsRes = await fetch('/api/pawkits');
+    if (collectionsRes.ok) {
+      const collectionsData = await collectionsRes.json();
+      set({ collections: collectionsData.tree || [] });
+    }
+
+    // Remove from queue after successful sync
+    if (op.id) {
+      await syncQueue.remove(op.id);
+    }
+  } catch (error) {
+    console.error('Failed to execute delete collection:', error);
     throw error;
   }
 }
