@@ -3,12 +3,14 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { CheckCircle2, Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2, Copy, Check } from 'lucide-react'
 
 export default function ExtensionAuthPage() {
   const [loading, setLoading] = useState(false)
   const [authorized, setAuthorized] = useState(false)
   const [error, setError] = useState('')
+  const [token, setToken] = useState('')
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     // Check if opened from extension
@@ -39,29 +41,44 @@ export default function ExtensionAuthPage() {
 
       const data = await response.json()
 
-      // Send token to extension
+      // Store token to display to user
+      setToken(data.token)
+      setAuthorized(true)
+
+      // Try to send to extension via window.opener
       if (window.opener) {
-        window.opener.postMessage(
-          {
-            type: 'PAWKIT_AUTH_SUCCESS',
-            token: data.token
-          },
-          window.location.origin
-        )
+        try {
+          window.opener.postMessage(
+            {
+              type: 'PAWKIT_AUTH_SUCCESS',
+              token: data.token
+            },
+            '*' // Allow any origin for extension communication
+          )
 
-        setAuthorized(true)
-
-        // Close window after 2 seconds
-        setTimeout(() => {
-          window.close()
-        }, 2000)
-      } else {
-        setError('Could not communicate with extension. Please try again.')
+          // Close window after 3 seconds if successful
+          setTimeout(() => {
+            window.close()
+          }, 3000)
+        } catch (e) {
+          // If postMessage fails, user can copy token manually
+          console.log('Could not auto-send token, user will copy manually')
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authorization failed')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const copyToken = async () => {
+    try {
+      await navigator.clipboard.writeText(token)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy token:', err)
     }
   }
 
@@ -75,9 +92,36 @@ export default function ExtensionAuthPage() {
               <CardTitle>Authorization Successful</CardTitle>
             </div>
             <CardDescription>
-              You can now close this window and start using the Pawkit Web Clipper.
+              Copy your token below and paste it in the extension
             </CardDescription>
           </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Your Extension Token</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={token}
+                  readOnly
+                  className="flex-1 px-3 py-2 bg-muted border border-border rounded-md text-sm font-mono"
+                />
+                <Button
+                  onClick={copyToken}
+                  variant="outline"
+                  size="icon"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                This window will close automatically, or you can close it manually after copying.
+              </p>
+            </div>
+          </CardContent>
         </Card>
       </div>
     )
