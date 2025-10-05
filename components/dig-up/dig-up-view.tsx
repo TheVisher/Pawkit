@@ -10,6 +10,7 @@ type DigUpViewProps = {
   initialCards: CardModel[];
   initialNextCursor: string | null;
   initialHasMore: boolean;
+  initialTotalCount: number;
   pawkits: CollectionNode[];
   filterMode: "uncategorized" | "all";
   onFilterModeChange: (mode: "uncategorized" | "all") => void;
@@ -19,6 +20,7 @@ export function DigUpView({
   initialCards,
   initialNextCursor,
   initialHasMore,
+  initialTotalCount,
   pawkits,
   filterMode,
   onFilterModeChange
@@ -30,6 +32,7 @@ export function DigUpView({
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
   const [hasMore, setHasMore] = useState(initialHasMore);
+  const [totalCount, setTotalCount] = useState(initialTotalCount);
   const router = useRouter();
 
   const currentCard = cards[currentIndex];
@@ -89,7 +92,10 @@ export function DigUpView({
 
     setLoading(true);
     try {
-      const nextCollections = Array.from(new Set([slug, ...currentCard.collections]));
+      // Safely handle null collections
+      const currentCollections = currentCard.collections || [];
+      const nextCollections = Array.from(new Set([slug, ...currentCollections]));
+
       await fetch(`/api/cards/${currentCard.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -99,6 +105,7 @@ export function DigUpView({
       setShowPawkitSelector(false);
       moveToNext();
     } catch (error) {
+      console.error("Add to Pawkit error:", error);
       alert("Failed to add to Pawkit");
     } finally {
       setLoading(false);
@@ -183,17 +190,25 @@ export function DigUpView({
             </div>
 
             <p className="text-sm text-gray-400">
-              Reviewing {filterMode === "uncategorized" ? "uncategorized" : "all"} cards {hasMore ? "(loading more as you go)" : ""}
+              Reviewing {filterMode === "uncategorized" ? "uncategorized" : "all"} cards
             </p>
             <div className="mt-3">
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                 <span>Progress</span>
-                <span>Card {reviewed + 1}{hasMore ? "+" : ` of ${cards.length}`}</span>
+                <span>
+                  {totalCount > 0
+                    ? `${reviewed + 1} of ${totalCount}`
+                    : `Card ${reviewed + 1}`}
+                </span>
               </div>
               <div className="w-full bg-gray-800 rounded-full h-2">
                 <div
                   className="bg-accent rounded-full h-2 transition-all duration-300"
-                  style={{ width: hasMore ? "100%" : `${((reviewed + 1) / cards.length) * 100}%` }}
+                  style={{
+                    width: totalCount > 0
+                      ? `${((reviewed + 1) / totalCount) * 100}%`
+                      : "100%"
+                  }}
                 />
               </div>
             </div>

@@ -40,6 +40,7 @@ function DigUpContent() {
       initialCards={digUpResult.cards}
       initialNextCursor={digUpResult.nextCursor}
       initialHasMore={digUpResult.hasMore}
+      initialTotalCount={digUpResult.totalCount}
       pawkits={pawkits}
       filterMode={filterMode}
       onFilterModeChange={setFilterMode}

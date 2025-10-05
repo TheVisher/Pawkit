@@ -402,7 +402,7 @@ export type DigUpCardsResult = {
   cards: CardDTO[];
   nextCursor: string | null;
   hasMore: boolean;
-  total?: number;
+  totalCount: number;
 };
 
 export interface GetDigUpCardsParams {
@@ -433,6 +433,9 @@ export async function getDigUpCards({
     ];
   }
 
+  // Get total count (only on first request when cursor is null)
+  const totalCount = !cursor ? await prisma.card.count({ where }) : 0;
+
   // Add cursor for pagination (start after the cursor ID)
   if (cursor) {
     where.id = { gt: cursor };
@@ -452,7 +455,8 @@ export async function getDigUpCards({
   return {
     cards: cardsToReturn.map(mapCard),
     nextCursor,
-    hasMore
+    hasMore,
+    totalCount
   };
 }
 
