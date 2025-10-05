@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Home } from "lucide-react";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDenStore } from "@/lib/stores/den-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
+import { DogHouseIcon } from "@/components/icons/dog-house";
 
 export default function DenPage() {
   const { denCards, isUnlocked, loadDenCards, checkExpiry, refreshDenCards } = useDenStore();
@@ -40,7 +40,7 @@ export default function DenPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
-              <Home className="h-5 w-5 text-accent" />
+              <DogHouseIcon className="h-5 w-5 text-accent" />
             </div>
             <div>
               <h1 className="text-2xl font-semibold text-gray-100">The Den</h1>
@@ -53,7 +53,7 @@ export default function DenPage() {
 
         {denCards.length === 0 ? (
           <div className="rounded-lg border border-dashed border-gray-800 bg-gray-950 p-12 text-center">
-            <Home className="mx-auto h-12 w-12 text-gray-600" />
+            <DogHouseIcon className="mx-auto h-12 w-12 text-gray-600" />
             <h3 className="mt-4 text-lg font-medium text-gray-300">
               Your Den is empty
             </h3>
