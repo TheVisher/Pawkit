@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { DigUpView } from "@/components/dig-up/dig-up-view";
 import { CollectionNode } from "@/lib/types";
 
-export default function DigUpPage() {
+function DigUpContent() {
   const searchParams = useSearchParams();
   const [filterMode, setFilterMode] = useState<"uncategorized" | "all">(
     (searchParams.get("mode") as "uncategorized" | "all") || "uncategorized"
@@ -44,5 +44,13 @@ export default function DigUpPage() {
       filterMode={filterMode}
       onFilterModeChange={setFilterMode}
     />
+  );
+}
+
+export default function DigUpPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DigUpContent />
+    </Suspense>
   );
 }
