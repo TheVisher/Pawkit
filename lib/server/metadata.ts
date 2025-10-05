@@ -150,7 +150,8 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
 
     const screenshot = SCREENSHOT_ENDPOINT(url);
     const logo = logoImages[0] ?? LOGO_ENDPOINT(url);
-    const image = heroImages[0] ?? logo ?? screenshot;
+    // Prefer screenshot over logo if no hero image - shows actual content
+    const image = heroImages[0] ?? screenshot ?? logo;
 
     return {
       title,
@@ -421,15 +422,20 @@ async function scrapeTikTokPage(url: string): Promise<SitePreview | undefined> {
     const description = pickFirst(metaMap, DESCRIPTION_META_KEYS);
     const image = pickFirst(metaMap, HERO_META_KEYS);
 
+    // For TikTok photos without meta tags, use screenshot as it shows actual content
+    const screenshot = SCREENSHOT_ENDPOINT(url);
+    const finalImage = image || screenshot;
+
     return {
       title: title || 'TikTok Content',
       description: description || 'View on TikTok',
-      image: image || LOGO_ENDPOINT(url),
+      image: finalImage,
       logo: LOGO_ENDPOINT(url),
-      screenshot: SCREENSHOT_ENDPOINT(url),
+      screenshot: screenshot,
       raw: {
         meta: metaMap,
-        source: 'tiktok-scraper'
+        source: 'tiktok-scraper',
+        hasMetaImage: !!image
       }
     };
   } catch (error) {
@@ -678,15 +684,20 @@ async function fetchEcommerceMetadata(url: string): Promise<SitePreview> {
     const title = pickFirst(metaMap, TITLE_META_KEYS) || root.querySelector('title')?.textContent?.trim();
     const description = pickFirst(metaMap, DESCRIPTION_META_KEYS);
 
+    // Use screenshot if no product image found - shows actual page content
+    const screenshot = SCREENSHOT_ENDPOINT(url);
+    const finalImage = productImage || screenshot;
+
     return {
       title: title || 'Product',
       description: description || 'View product',
-      image: productImage || SCREENSHOT_ENDPOINT(url),
+      image: finalImage,
       logo: LOGO_ENDPOINT(url),
-      screenshot: SCREENSHOT_ENDPOINT(url),
+      screenshot: screenshot,
       raw: {
         productImage,
-        source: 'ecommerce-scraper'
+        source: 'ecommerce-scraper',
+        hasProductImage: !!productImage
       }
     };
   } catch (error) {
