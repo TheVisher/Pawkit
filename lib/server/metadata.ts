@@ -39,10 +39,16 @@ export async function fetchPreviewMetadata(url: string, previewServiceUrl?: stri
 
   // Special handling for Reddit - extract post images
   if (isRedditUrl(url)) {
-    const redditMeta = await fetchRedditMetadata(url).catch(() => undefined);
+    console.log('[Metadata] Detected Reddit URL, fetching with Reddit API');
+    const redditMeta = await fetchRedditMetadata(url).catch((err) => {
+      console.error('[Metadata] Reddit fetch failed:', err);
+      return undefined;
+    });
     if (redditMeta) {
+      console.log('[Metadata] Reddit metadata success:', redditMeta.title);
       return redditMeta;
     }
+    console.log('[Metadata] Reddit metadata failed, falling back to scraping');
   }
 
   // Special handling for TikTok - use their oEmbed API
