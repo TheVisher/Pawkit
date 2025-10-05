@@ -76,11 +76,25 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
 
   const handleSave = async () => {
     setSaving(true);
-    // TODO: Implement API call to save profile
-    // For now, just simulate saving
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setSaving(false);
-    onClose();
+    try {
+      // Save display name
+      const response = await fetch('/api/user', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName: name })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save profile');
+      }
+
+      onClose();
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Failed to save profile. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const getAvatarDisplay = () => {

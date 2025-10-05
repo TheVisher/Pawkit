@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
@@ -9,11 +9,37 @@ import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
 
+const GREETINGS = [
+  "Welcome back",
+  "Hey there",
+  "Good to see you",
+  "Happy to see you",
+  "Great to have you back"
+];
+
 export default function HomePage() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
 
   // Read from global store - instant, no API calls
   const { cards, collections, updateCard, deleteCard } = useDataStore();
+
+  // Fetch user profile
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await fetch('/api/user');
+        if (response.ok) {
+          const data = await response.json();
+          setDisplayName(data.displayName);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   // Compute views from the single source of truth
   const recent = useMemo(() =>
@@ -80,7 +106,7 @@ export default function HomePage() {
         <section className="text-center">
           <h1 className="text-4xl font-semibold text-gray-100 sm:text-5xl">
             <span className="mr-3 inline-block" aria-hidden="true">👋</span>
-            Welcome back, {DEFAULT_USERNAME}
+            {displayName ? `${greeting}, ${displayName}` : "Welcome to Pawkit!"}
           </h1>
         </section>
 
