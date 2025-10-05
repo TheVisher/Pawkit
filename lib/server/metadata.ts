@@ -37,6 +37,14 @@ export async function fetchPreviewMetadata(url: string, previewServiceUrl?: stri
     return fetchYouTubeMetadata(url, youtubeVideoId);
   }
 
+  // Special handling for Reddit - extract post images
+  if (isRedditUrl(url)) {
+    const redditMeta = await fetchRedditMetadata(url).catch(() => undefined);
+    if (redditMeta) {
+      return redditMeta;
+    }
+  }
+
   // Special handling for TikTok - use their oEmbed API
   if (isTikTokUrl(url)) {
     const tiktokMeta = await fetchTikTokMetadata(url).catch(() => undefined);
@@ -786,5 +794,96 @@ async function fetchYouTubeMetadata(url: string, videoId: string): Promise<SiteP
       thumbnailUrl: thumbnail,
       source: 'youtube-api'
     }
+  };
+}
+
+// Reddit-specific helpers
+function isRedditUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname.includes('reddit.com');
+  } catch {
+    return false;
+  }
+}
+
+async function fetchRedditMetadata(url: string): Promise<SitePreview> {
+  // Reddit's JSON API - append .json to get structured data
+  const jsonUrl = url.endsWith('/') ? `${url}.json` : `${url}/.json`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(jsonUrl, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'application/json'
+      },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data = await response.json();
+
+      // Reddit API returns an array with post data
+      const post = data?.[0]?.data?.children?.[0]?.data;
+
+      if (post) {
+        // Extract image from various Reddit post types
+        let image: string | undefined;
+
+        // 1. Direct image posts
+        if (post.post_hint === 'image' && post.url) {
+          image = post.url;
+        }
+        // 2. Gallery posts (take first image)
+        else if (post.is_gallery && post.media_metadata) {
+          const firstImageId = Object.keys(post.media_metadata)[0];
+          const firstImage = post.media_metadata[firstImageId];
+          if (firstImage?.s?.u) {
+            // Decode HTML entities in URL
+            image = firstImage.s.u.replace(/&amp;/g, '&');
+          }
+        }
+        // 3. Video posts (use thumbnail)
+        else if (post.is_video && post.thumbnail && post.thumbnail.startsWith('http')) {
+          image = post.thumbnail;
+        }
+        // 4. Link posts with preview
+        else if (post.preview?.images?.[0]?.source?.url) {
+          image = post.preview.images[0].source.url.replace(/&amp;/g, '&');
+        }
+        // 5. Fallback to thumbnail if available
+        else if (post.thumbnail && post.thumbnail.startsWith('http')) {
+          image = post.thumbnail;
+        }
+
+        return {
+          title: post.title || 'Reddit Post',
+          description: post.subreddit_name_prefixed ? `Posted in ${post.subreddit_name_prefixed}` : 'View on Reddit',
+          image: image || LOGO_ENDPOINT(url),
+          logo: LOGO_ENDPOINT(url),
+          screenshot: SCREENSHOT_ENDPOINT(url),
+          raw: {
+            ...post,
+            source: 'reddit-api'
+          }
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Reddit API failed:', error);
+  }
+
+  // Fallback to regular scraping
+  return {
+    title: 'Reddit Post',
+    description: 'View on Reddit',
+    image: LOGO_ENDPOINT(url),
+    logo: LOGO_ENDPOINT(url),
+    screenshot: SCREENSHOT_ENDPOINT(url)
   };
 }
