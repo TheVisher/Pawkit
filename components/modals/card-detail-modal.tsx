@@ -1022,16 +1022,18 @@ function MetadataSection({ card }: { card: CardModel }) {
       )}
 
       <div className="space-y-2 text-xs text-gray-400">
-        <div className="flex justify-between">
-          <span>Status</span>
-          <Badge variant={
-            card.status === "READY" ? "default" :
-            card.status === "ERROR" ? "destructive" :
-            "secondary"
-          }>
-            {card.status}
-          </Badge>
-        </div>
+        {card.status === "PENDING" && (
+          <div className="flex justify-between">
+            <span>Status</span>
+            <Badge variant="secondary">Kit is Fetching</Badge>
+          </div>
+        )}
+        {card.status === "ERROR" && (
+          <div className="flex justify-between">
+            <span>Status</span>
+            <Badge variant="destructive">Fetch Error</Badge>
+          </div>
+        )}
         <div className="flex justify-between">
           <span>Domain</span>
           <span className="text-gray-300">{card.domain || "—"}</span>

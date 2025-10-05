@@ -389,17 +389,16 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
           </div>
         )}
         <div className="flex items-center gap-2">
-          <span
-            className={`inline-block rounded px-2 py-0.5 text-[10px] ${
-              isPending
-                ? "bg-surface-soft text-blue-300"
-                : isError
-                ? "bg-red-900/40 text-red-300"
-                : "bg-surface-soft text-muted-foreground"
-            }`}
-          >
-            {card.status}
-          </span>
+          {isPending && (
+            <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-blue-300">
+              Kit is Fetching
+            </span>
+          )}
+          {isError && (
+            <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-red-900/40 text-red-300">
+              Fetch Error
+            </span>
+          )}
           {isNote && (
             <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-purple-200">
               {card.type === "md-note" ? "Markdown" : "Text"}
