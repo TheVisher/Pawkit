@@ -264,7 +264,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       // This ensures consistency and will properly filter out Den items
       await useDataStore.getState().refresh();
 
-      onUpdate({ ...card, inDen: updated.inDen });
       setToast(updated.inDen ? "Moved to The Den" : "Removed from The Den");
 
       // Close modal after moving to Den
