@@ -11,13 +11,11 @@ export default function DenPage() {
   const { collections } = useDataStore();
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
-  // Check if unlock has expired on mount and navigation
+  // Load Den cards on mount (password protection not yet implemented)
   useEffect(() => {
-    checkExpiry();
-    if (isUnlocked) {
-      loadDenCards();
-    }
-  }, [isUnlocked, checkExpiry, loadDenCards]);
+    // For now, always load Den cards (password protection coming in Phase 2)
+    loadDenCards();
+  }, [loadDenCards]);
 
   return (
     <div className="space-y-6">
