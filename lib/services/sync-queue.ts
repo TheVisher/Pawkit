@@ -51,6 +51,35 @@ class SyncQueue {
     await this.init();
     if (!this.db) throw new Error('Database not initialized');
 
+    // Check for duplicate pending operations
+    const existing = await this.db.getAll('operations');
+    const duplicate = existing.find(op => {
+      // Same operation type
+      if (op.type !== operation.type) return false;
+
+      // For updates/deletes, check if targeting same resource
+      if ((op.type === 'UPDATE_CARD' || op.type === 'DELETE_CARD' ||
+           op.type === 'UPDATE_COLLECTION' || op.type === 'DELETE_COLLECTION') &&
+          op.targetId === operation.targetId &&
+          (op.status === 'pending' || op.status === 'processing')) {
+        return true;
+      }
+
+      // For creates, check if same temp ID (prevents duplicate creates)
+      if ((op.type === 'CREATE_CARD' || op.type === 'CREATE_COLLECTION') &&
+          op.tempId === operation.tempId &&
+          (op.status === 'pending' || op.status === 'processing')) {
+        return true;
+      }
+
+      return false;
+    });
+
+    if (duplicate) {
+      console.log('[SyncQueue] Duplicate operation detected, skipping:', duplicate.id);
+      return duplicate.id; // Return existing operation ID
+    }
+
     const id = `op_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const queueOperation: QueueOperation = {
       ...operation,

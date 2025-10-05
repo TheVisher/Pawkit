@@ -53,8 +53,45 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
       console.log('[DataStore] Fetched', (cardsData.items || []).length, 'cards and', (collectionsData.tree || []).length, 'collections');
 
+      // Check queue for pending create operations with temp cards
+      const pendingOps = await syncQueue.getPending();
+      const tempCards: CardDTO[] = [];
+
+      for (const op of pendingOps) {
+        if (op.type === 'CREATE_CARD' && op.tempId && op.payload) {
+          // Recreate the optimistic temp card
+          const tempCard: CardDTO = {
+            id: op.tempId,
+            url: op.payload.url || '',
+            title: op.payload.title || null,
+            notes: op.payload.notes || null,
+            content: op.payload.content || null,
+            type: (op.payload.type as 'url' | 'md-note' | 'text-note') || 'url',
+            status: 'PENDING',
+            collections: op.payload.collections || [],
+            tags: op.payload.tags || [],
+            createdAt: new Date(op.timestamp).toISOString(),
+            updatedAt: new Date(op.timestamp).toISOString(),
+            userId: '',
+            deleted: false,
+            deletedAt: null,
+            pinned: false,
+            domain: null,
+            image: null,
+            description: null,
+            articleContent: null,
+            metadata: undefined,
+            inDen: false,
+            encryptedContent: null
+          };
+          tempCards.push(tempCard);
+        }
+      }
+
+      console.log('[DataStore] Found', tempCards.length, 'pending temp cards from queue');
+
       set({
-        cards: cardsData.items || [],
+        cards: [...tempCards, ...(cardsData.items || [])],
         collections: collectionsData.tree || [],
         isInitialized: true,
         isLoading: false
@@ -86,8 +123,45 @@ export const useDataStore = create<DataStore>((set, get) => ({
       console.log('[DataStore] Fetched', (cardsData.items || []).length, 'cards and', (collectionsData.tree || []).length, 'collections');
       console.log('[DataStore] Collections tree:', collectionsData.tree);
 
+      // Check queue for pending create operations with temp cards
+      const pendingOps = await syncQueue.getPending();
+      const tempCards: CardDTO[] = [];
+
+      for (const op of pendingOps) {
+        if (op.type === 'CREATE_CARD' && op.tempId && op.payload) {
+          // Recreate the optimistic temp card
+          const tempCard: CardDTO = {
+            id: op.tempId,
+            url: op.payload.url || '',
+            title: op.payload.title || null,
+            notes: op.payload.notes || null,
+            content: op.payload.content || null,
+            type: (op.payload.type as 'url' | 'md-note' | 'text-note') || 'url',
+            status: 'PENDING',
+            collections: op.payload.collections || [],
+            tags: op.payload.tags || [],
+            createdAt: new Date(op.timestamp).toISOString(),
+            updatedAt: new Date(op.timestamp).toISOString(),
+            userId: '',
+            deleted: false,
+            deletedAt: null,
+            pinned: false,
+            domain: null,
+            image: null,
+            description: null,
+            articleContent: null,
+            metadata: undefined,
+            inDen: false,
+            encryptedContent: null
+          };
+          tempCards.push(tempCard);
+        }
+      }
+
+      console.log('[DataStore] Found', tempCards.length, 'pending temp cards from queue');
+
       set({
-        cards: cardsData.items || [],
+        cards: [...tempCards, ...(cardsData.items || [])],
         collections: collectionsData.tree || [],
         isInitialized: true,
         isLoading: false
