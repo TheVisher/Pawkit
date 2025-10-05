@@ -26,6 +26,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 type AppSidebarProps = {
   username: string;
+  displayName?: string | null;
   collections: CollectionNode[];
 };
 
@@ -44,7 +45,7 @@ const bottomItems = [
   { href: "/help", label: "Help", icon: HelpCircle },
 ];
 
-export function AppSidebar({ username, collections }: AppSidebarProps) {
+export function AppSidebar({ username, displayName, collections }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isPawkitsExpanded, setIsPawkitsExpanded] = React.useState(false);
@@ -239,10 +240,10 @@ export function AppSidebar({ username, collections }: AppSidebarProps) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" onClick={() => setShowProfileModal(true)}>
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold text-sm">
-                {username.charAt(0).toUpperCase()}
+                {(displayName || username).charAt(0).toUpperCase()}
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{username}</span>
+                <span className="truncate font-semibold">{displayName || username}</span>
                 <span className="truncate text-xs text-muted-foreground">View profile</span>
               </div>
             </SidebarMenuButton>

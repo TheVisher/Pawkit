@@ -9,7 +9,7 @@ import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
 import { useDataStore } from "@/lib/stores/data-store";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  const { data: userData } = useSWR<{ email: string }>("/api/user");
+  const { data: userData } = useSWR<{ email: string; displayName?: string | null }>("/api/user");
   const { collections, initialize, drainQueue, isInitialized } = useDataStore();
 
   // Initialize data store on mount
@@ -27,11 +27,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, [isInitialized, drainQueue]);
 
   const username = userData?.email || "";
+  const displayName = userData?.displayName || null;
 
   return (
     <SelectionStoreProvider>
       <SidebarProvider>
-        <AppSidebar username={username} collections={collections} />
+        <AppSidebar username={username} displayName={displayName} collections={collections} />
         <SidebarInset className="bg-transparent">
           <header className="sticky top-0 z-20 border-b border-subtle bg-surface-90 backdrop-blur-xl">
             <div className="flex items-center gap-2 px-6 py-4">

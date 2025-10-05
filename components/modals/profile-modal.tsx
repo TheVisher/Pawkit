@@ -88,7 +88,8 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
         throw new Error('Failed to save profile');
       }
 
-      onClose();
+      // Trigger a page refresh to update all components with new display name
+      window.location.reload();
     } catch (error) {
       console.error('Error saving profile:', error);
       alert('Failed to save profile. Please try again.');
