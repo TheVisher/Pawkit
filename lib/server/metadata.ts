@@ -37,6 +37,30 @@ export async function fetchPreviewMetadata(url: string, previewServiceUrl?: stri
     return fetchYouTubeMetadata(url, youtubeVideoId);
   }
 
+  // Special handling for TikTok - use their oEmbed API
+  if (isTikTokUrl(url)) {
+    const tiktokMeta = await fetchTikTokMetadata(url).catch(() => undefined);
+    if (tiktokMeta) {
+      return tiktokMeta;
+    }
+  }
+
+  // Special handling for Amazon - target product images
+  if (isAmazonUrl(url)) {
+    const amazonMeta = await fetchAmazonMetadata(url).catch(() => undefined);
+    if (amazonMeta) {
+      return amazonMeta;
+    }
+  }
+
+  // Special handling for e-commerce sites - target product images
+  if (isEcommerceSite(url)) {
+    const ecommerceMeta = await fetchEcommerceMetadata(url).catch(() => undefined);
+    if (ecommerceMeta) {
+      return ecommerceMeta;
+    }
+  }
+
   const results: SitePreview[] = [];
 
   if (previewServiceUrl) {
@@ -292,6 +316,316 @@ function pickValue(data: Record<string, unknown>, keys: string[]): string | unde
 function normaliseUrlValue(value: unknown, base: string) {
   if (typeof value !== "string") return undefined;
   return resolveUrl(base, value);
+}
+
+// TikTok-specific helpers
+function isTikTokUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname.includes('tiktok.com');
+  } catch {
+    return false;
+  }
+}
+
+async function fetchTikTokMetadata(url: string): Promise<SitePreview> {
+  // TikTok oEmbed API - provides reliable thumbnails
+  const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(oembedUrl, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'application/json'
+      },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data = await response.json();
+
+      // TikTok oEmbed returns: title, author_name, author_url, thumbnail_url, thumbnail_width, thumbnail_height
+      return {
+        title: data.title || 'TikTok Video',
+        description: data.author_name ? `By ${data.author_name}` : 'Watch on TikTok',
+        image: data.thumbnail_url || undefined,
+        logo: LOGO_ENDPOINT(url),
+        screenshot: SCREENSHOT_ENDPOINT(url),
+        raw: {
+          ...data,
+          source: 'tiktok-oembed'
+        }
+      };
+    }
+  } catch (error) {
+    console.error('TikTok oEmbed failed:', error);
+  }
+
+  // Fallback to regular scraping
+  const scraped = await scrapeSiteMetadata(url).catch(() => undefined);
+  if (scraped) {
+    return scraped;
+  }
+
+  return {
+    title: 'TikTok Video',
+    description: 'Watch on TikTok',
+    image: LOGO_ENDPOINT(url),
+    logo: LOGO_ENDPOINT(url),
+    screenshot: SCREENSHOT_ENDPOINT(url)
+  };
+}
+
+// Amazon-specific helpers
+function isAmazonUrl(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+    return hostname.includes('amazon.com') ||
+           hostname.includes('amazon.co.uk') ||
+           hostname.includes('amazon.ca') ||
+           hostname.includes('amazon.de') ||
+           hostname.includes('amazon.fr') ||
+           hostname.includes('amazon.it') ||
+           hostname.includes('amazon.es') ||
+           hostname.includes('amazon.co.jp');
+  } catch {
+    return false;
+  }
+}
+
+async function fetchAmazonMetadata(url: string): Promise<SitePreview> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
+      },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Amazon request failed with ${response.status}`);
+    }
+
+    const html = await response.text();
+    const root = parse(html);
+
+    // Amazon-specific image selectors (in priority order)
+    const imageSelectors = [
+      '#landingImage',           // Main product image
+      '#imgBlkFront',            // Alternative main image
+      '#ebooksImgBlkFront',      // E-book cover
+      '.a-dynamic-image',        // Dynamic image container
+      'img[data-old-hires]',     // High-res image data
+      'img[data-a-dynamic-image]' // Another dynamic image
+    ];
+
+    let productImage: string | undefined;
+    for (const selector of imageSelectors) {
+      const img = root.querySelector(selector);
+      if (img) {
+        // Try multiple attributes
+        const src = img.getAttribute('data-old-hires') ||
+                   img.getAttribute('src') ||
+                   img.getAttribute('data-a-dynamic-image');
+
+        if (src) {
+          // Parse dynamic image JSON if needed
+          if (src.startsWith('{')) {
+            try {
+              const imageObj = JSON.parse(src);
+              const imageUrls = Object.keys(imageObj);
+              if (imageUrls.length > 0) {
+                productImage = imageUrls[0];
+                break;
+              }
+            } catch {
+              // Not JSON, use as-is
+              productImage = src;
+              break;
+            }
+          } else {
+            productImage = src;
+            break;
+          }
+        }
+      }
+    }
+
+    // Get title and description from meta tags
+    const metaTags = root.querySelectorAll('meta');
+    const metaMap: Record<string, string> = {};
+    for (const tag of metaTags) {
+      const property = tag.getAttribute('property') || tag.getAttribute('name');
+      if (!property) continue;
+      const content = tag.getAttribute('content');
+      if (!content) continue;
+      metaMap[property.toLowerCase()] = content.trim();
+    }
+
+    const title = pickFirst(metaMap, TITLE_META_KEYS) || root.querySelector('title')?.textContent?.trim();
+    const description = pickFirst(metaMap, DESCRIPTION_META_KEYS);
+
+    return {
+      title: title || 'Amazon Product',
+      description: description || 'View on Amazon',
+      image: productImage || SCREENSHOT_ENDPOINT(url),
+      logo: LOGO_ENDPOINT(url),
+      screenshot: SCREENSHOT_ENDPOINT(url),
+      raw: {
+        productImage,
+        source: 'amazon-scraper'
+      }
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.error('Amazon scraping failed:', error);
+    throw error;
+  }
+}
+
+// E-commerce site helpers
+function isEcommerceSite(url: string): boolean {
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+
+    // Common e-commerce domains
+    const ecommerceDomains = [
+      'bestbuy.com',
+      'target.com',
+      'walmart.com',
+      'lg.com',
+      'samsung.com',
+      'apple.com',
+      'newegg.com',
+      'ebay.com',
+      'etsy.com',
+      'shopify.com',
+      'wayfair.com',
+      'homedepot.com',
+      'lowes.com',
+      'ikea.com',
+      'aliexpress.com',
+      'alibaba.com'
+    ];
+
+    return ecommerceDomains.some(domain => hostname.includes(domain));
+  } catch {
+    return false;
+  }
+}
+
+async function fetchEcommerceMetadata(url: string): Promise<SitePreview> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8'
+      },
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`E-commerce request failed with ${response.status}`);
+    }
+
+    const html = await response.text();
+    const root = parse(html);
+
+    // E-commerce product image selectors (common patterns)
+    const imageSelectors = [
+      'meta[property="og:image"]',
+      'meta[property="product:image"]',
+      'meta[name="twitter:image"]',
+      '[itemprop="image"]',
+      '.product-image img',
+      '.product-img img',
+      '.main-image img',
+      '.primary-image img',
+      '#product-image',
+      '#main-image',
+      'img[class*="product"]',
+      'img[class*="hero"]'
+    ];
+
+    let productImage: string | undefined;
+    for (const selector of imageSelectors) {
+      const element = root.querySelector(selector);
+      if (element) {
+        const tagName = element.tagName?.toLowerCase();
+
+        if (tagName === 'meta') {
+          productImage = element.getAttribute('content');
+          if (productImage) break;
+        } else if (tagName === 'img') {
+          productImage = element.getAttribute('src') ||
+                        element.getAttribute('data-src') ||
+                        element.getAttribute('data-lazy-src');
+          if (productImage) break;
+        } else {
+          // Try to find img inside the element
+          const img = element.querySelector('img');
+          if (img) {
+            productImage = img.getAttribute('src') ||
+                          img.getAttribute('data-src') ||
+                          img.getAttribute('data-lazy-src');
+            if (productImage) break;
+          }
+        }
+      }
+    }
+
+    // Resolve relative URLs
+    const baseUrl = response.url || url;
+    if (productImage) {
+      productImage = resolveUrl(baseUrl, productImage);
+    }
+
+    // Get title and description from meta tags
+    const metaTags = root.querySelectorAll('meta');
+    const metaMap: Record<string, string> = {};
+    for (const tag of metaTags) {
+      const property = tag.getAttribute('property') || tag.getAttribute('name');
+      if (!property) continue;
+      const content = tag.getAttribute('content');
+      if (!content) continue;
+      metaMap[property.toLowerCase()] = content.trim();
+    }
+
+    const title = pickFirst(metaMap, TITLE_META_KEYS) || root.querySelector('title')?.textContent?.trim();
+    const description = pickFirst(metaMap, DESCRIPTION_META_KEYS);
+
+    return {
+      title: title || 'Product',
+      description: description || 'View product',
+      image: productImage || SCREENSHOT_ENDPOINT(url),
+      logo: LOGO_ENDPOINT(url),
+      screenshot: SCREENSHOT_ENDPOINT(url),
+      raw: {
+        productImage,
+        source: 'ecommerce-scraper'
+      }
+    };
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.error('E-commerce scraping failed:', error);
+    throw error;
+  }
 }
 
 // YouTube-specific helpers
