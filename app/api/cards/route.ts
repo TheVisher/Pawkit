@@ -4,6 +4,13 @@ import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { getUserByExtensionToken, extractTokenFromHeader } from "@/lib/auth/extension-auth";
 
+// CORS headers for extension requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+}
+
 async function getAuthenticatedUser(request: NextRequest) {
   // Try extension token first (from Authorization header)
   const authHeader = request.headers.get('Authorization')
@@ -21,11 +28,16 @@ async function getAuthenticatedUser(request: NextRequest) {
   return getCurrentUser()
 }
 
+// Handle preflight requests
+export async function OPTIONS(request: NextRequest) {
+  return NextResponse.json({}, { headers: corsHeaders })
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await getAuthenticatedUser(request);
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
     }
 
     const { searchParams } = new URL(request.url);
@@ -41,7 +53,7 @@ export async function GET(request: NextRequest) {
       cursor: query.cursor
     };
     const result = await listCards(user.id, payload);
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: corsHeaders });
   } catch (error) {
     return handleApiError(error);
   }
@@ -51,12 +63,12 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getAuthenticatedUser(request);
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
     }
 
     const body = await request.json();
     const card = await createCard(user.id, body);
-    return NextResponse.json(card, { status: 201 });
+    return NextResponse.json(card, { status: 201, headers: corsHeaders });
   } catch (error) {
     return handleApiError(error);
   }
