@@ -21,9 +21,8 @@ export default function DenPage() {
   const activeCard = activeCardId ? denCards.find(c => c.id === activeCardId) : null;
 
   const handleUpdateCard = async (updated: CardModel) => {
-    // Update in data store if needed
-    await updateCard(updated.id, updated);
-    // Refresh Den cards to get latest state
+    // Just refresh to get the latest state from server
+    // The modal already handles the API calls
     await refreshDenCards();
   };
 
