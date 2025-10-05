@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createCard, listCards } from "@/lib/server/cards";
+import { createCard, listCards, fetchAndUpdateCardMetadata } from "@/lib/server/cards";
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { getUserByExtensionToken, extractTokenFromHeader } from "@/lib/auth/extension-auth";
@@ -68,6 +68,15 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const card = await createCard(user.id, body);
+
+    // Auto-fetch metadata for URL cards created via extension
+    if (body.source === 'webext' && card.type === 'url' && card.url) {
+      // Trigger metadata fetch in background (don't await to avoid blocking response)
+      fetchAndUpdateCardMetadata(card.id, card.url).catch(err => {
+        console.error('Background metadata fetch failed:', err);
+      });
+    }
+
     return NextResponse.json(card, { status: 201, headers: corsHeaders });
   } catch (error) {
     return handleApiError(error);

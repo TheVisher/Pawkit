@@ -102,11 +102,10 @@ export function Popup() {
   }
 
   const openSavedCard = () => {
-    if (savedCardId) {
-      browser.tabs.create({
-        url: `https://app.getpawkit.com/cards/${savedCardId}`
-      })
-    }
+    // Open home page where saved cards are displayed
+    browser.tabs.create({
+      url: `https://pawkit.vercel.app/home`
+    })
   }
 
   return (
