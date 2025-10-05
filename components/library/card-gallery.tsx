@@ -309,7 +309,14 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
     return plainText.length > 100 ? plainText.substring(0, 100) + "..." : plainText;
   };
 
-  const displayTitle = card.title || (isNote ? "Untitled Note" : card.domain || card.url);
+  // Truncate title for cleaner display
+  const truncateTitle = (text: string, maxLength: number = 60) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + "…";
+  };
+
+  const rawTitle = card.title || (isNote ? "Untitled Note" : card.domain || card.url);
+  const displayTitle = truncateTitle(rawTitle);
   const displaySubtext = isNote ? getExcerpt() : (isPending ? "Kit is Fetching" : card.domain ?? card.url);
 
   return (
