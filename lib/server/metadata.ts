@@ -963,14 +963,13 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
     console.error('[Reddit] HTML scraping failed:', error);
   }
 
-  // Ultimate fallback - use screenshot since Reddit blocks all API access
-  console.log('[Reddit] All methods failed, using screenshot fallback');
-  const screenshot = SCREENSHOT_ENDPOINT(url);
+  // Ultimate fallback - Reddit blocks all server-side access methods
+  console.log('[Reddit] All methods failed, using logo fallback');
   return {
     title: 'Reddit Post',
     description: 'View on Reddit',
-    image: screenshot, // Use screenshot instead of logo
+    image: LOGO_ENDPOINT(url),
     logo: LOGO_ENDPOINT(url),
-    screenshot: screenshot
+    screenshot: SCREENSHOT_ENDPOINT(url)
   };
 }
