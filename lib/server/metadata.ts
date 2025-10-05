@@ -584,7 +584,10 @@ function isEcommerceSite(url: string): boolean {
       'lowes.com',
       'ikea.com',
       'aliexpress.com',
-      'alibaba.com'
+      'alibaba.com',
+      'vans.com',
+      'nike.com',
+      'adidas.com'
     ];
 
     return ecommerceDomains.some(domain => hostname.includes(domain));
