@@ -19,9 +19,9 @@ type DataStore = {
   addCard: (cardData: Partial<CardDTO>) => Promise<void>;
   updateCard: (id: string, updates: Partial<CardDTO>) => Promise<void>;
   deleteCard: (id: string) => Promise<void>;
-  addCollection: (collection: CollectionNode) => Promise<void>;
-  updateCollection: (id: string, updates: Partial<CollectionNode>) => Promise<void>;
-  deleteCollection: (id: string) => Promise<void>;
+  addCollection: (collectionData: { name: string; parentId?: string | null }) => Promise<void>;
+  updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean }) => Promise<void>;
+  deleteCollection: (id: string, deleteCards?: boolean) => Promise<void>;
   refresh: () => Promise<void>;
 };
 
