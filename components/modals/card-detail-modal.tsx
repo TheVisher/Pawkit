@@ -610,7 +610,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               {activeTab === "pawkits" && (
                 <PawkitsTab
                   collections={collections}
-                  currentCollections={card.collections}
+                  currentCollections={card.collections || []}
                   onSelect={handleAddToPawkit}
                 />
               )}
@@ -760,7 +760,7 @@ type PawkitTreeItemProps = {
 function PawkitTreeItem({ node, depth, currentCollections, onSelect }: PawkitTreeItemProps) {
   const hasChildren = node.children && node.children.length > 0;
   const paddingLeft = 16 + (depth * 16);
-  const isActive = currentCollections.includes(node.slug);
+  const isActive = currentCollections?.includes(node.slug) || false;
 
   return (
     <>

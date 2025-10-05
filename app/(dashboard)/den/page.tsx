@@ -74,7 +74,7 @@ export default function DenPage() {
       {activeCard && (
         <CardDetailModal
           card={activeCard as CardModel}
-          collections={collections}
+          collections={collections || []}
           onClose={() => setActiveCardId(null)}
           onUpdate={handleUpdateCard}
           onDelete={handleDeleteCard}
