@@ -13,7 +13,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDataStore } from "@/lib/stores/data-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { extractTikTokId, isTikTokUrl, getTikTokEmbedUrl } from "@/lib/utils/tiktok";
 
 type Tab = "pawkits" | "pin" | "notes" | "summary" | "reader" | "actions" | "content";
 
@@ -538,18 +537,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   <iframe
                     src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
                     title={card.title || "YouTube video"}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full rounded-lg"
-                  />
-                </div>
-              </div>
-            ) : isTikTokUrl(card.url) ? (
-              <div className="flex-1 flex items-center justify-center p-6">
-                <div className="w-full max-w-md aspect-[9/16]">
-                  <iframe
-                    src={getTikTokEmbedUrl(extractTikTokId(card.url) || '')}
-                    title={card.title || "TikTok video"}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen
                     className="w-full h-full rounded-lg"
