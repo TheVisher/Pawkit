@@ -833,17 +833,25 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
 
     if (response.ok) {
       const data = await response.json();
+      console.log('[Reddit] API response received, checking structure...');
 
       // Reddit API returns an array with post data
       const post = data?.[0]?.data?.children?.[0]?.data;
 
+      if (!post) {
+        console.error('[Reddit] No post data found in response structure');
+        console.error('[Reddit] Response structure:', JSON.stringify(data).substring(0, 500));
+      }
+
       if (post) {
         // Debug logging
+        console.log('[Reddit] Post found! Title:', post.title);
         console.log('[Reddit] Post type:', post.post_hint);
         console.log('[Reddit] Is gallery:', post.is_gallery);
         console.log('[Reddit] Has preview:', !!post.preview);
         console.log('[Reddit] URL:', post.url);
         console.log('[Reddit] Thumbnail:', post.thumbnail);
+        console.log('[Reddit] Has media_metadata:', !!post.media_metadata);
 
         // Extract image from various Reddit post types
         let image: string | undefined;
