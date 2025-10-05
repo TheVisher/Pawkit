@@ -831,6 +831,8 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
     });
     clearTimeout(timeoutId);
 
+    console.log('[Reddit] API response status:', response.status, response.statusText);
+
     if (response.ok) {
       const data = await response.json();
       console.log('[Reddit] API response received, checking structure...');
