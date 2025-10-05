@@ -251,9 +251,19 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       const response = await fetch(endpoint, { method: "PATCH" });
       if (response.ok) {
         const updated = await response.json();
-        await updateCardInStore(card.id, { inDen: updated.inDen });
+
+        // If moving TO Den, remove from main cards list (since Den items are filtered)
+        // If removing FROM Den, add back to main cards list
+        const { cards } = useDataStore.getState();
+        const updatedCards = updated.inDen
+          ? cards.filter(c => c.id !== card.id)  // Remove from list when moving to Den
+          : [...cards, { ...card, inDen: false }]; // Add back when removing from Den
+
+        useDataStore.setState({ cards: updatedCards });
+
         onUpdate({ ...card, inDen: updated.inDen });
         setToast(updated.inDen ? "Moved to The Den" : "Removed from The Den");
+
         // Close modal after moving to Den
         if (updated.inDen) {
           setTimeout(() => onClose(), 1000);
