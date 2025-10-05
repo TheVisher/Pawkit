@@ -396,6 +396,67 @@ export async function purgeOldTrashItems(userId: string) {
   ]);
 }
 
+export type DigUpFilterMode = "uncategorized" | "all";
+
+export type DigUpCardsResult = {
+  cards: CardDTO[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  total?: number;
+};
+
+export interface GetDigUpCardsParams {
+  userId: string;
+  cursor?: string;
+  filterMode?: DigUpFilterMode;
+  limit?: number;
+}
+
+export async function getDigUpCards({
+  userId,
+  cursor,
+  filterMode = "uncategorized",
+  limit = 20
+}: GetDigUpCardsParams): Promise<DigUpCardsResult> {
+  // Build where clause based on filter mode
+  const where: Prisma.CardWhereInput = {
+    userId,
+    deleted: false,
+    inDen: false,
+  };
+
+  // Add filter for uncategorized cards (no collections assigned)
+  if (filterMode === "uncategorized") {
+    where.OR = [
+      { collections: null },
+      { collections: "" }
+    ];
+  }
+
+  // Add cursor for pagination (start after the cursor ID)
+  if (cursor) {
+    where.id = { gt: cursor };
+  }
+
+  const cards = await prisma.card.findMany({
+    where,
+    orderBy: { createdAt: "asc" }, // Oldest first
+    take: limit + 1 // Take one extra to check if there are more
+  });
+
+  // Check if there are more cards
+  const hasMore = cards.length > limit;
+  const cardsToReturn = hasMore ? cards.slice(0, limit) : cards;
+  const nextCursor = hasMore ? cardsToReturn[cardsToReturn.length - 1].id : null;
+
+  return {
+    cards: cardsToReturn.map(mapCard),
+    nextCursor,
+    hasMore
+  };
+}
+
+// Keep old function for backwards compatibility (deprecated)
 export type OldCardsResult = {
   cards: CardDTO[];
   ageThreshold: OldCardAgeThreshold;
@@ -403,42 +464,21 @@ export type OldCardsResult = {
 };
 
 export async function getOldCards(userId: string): Promise<OldCardsResult | null> {
-  const now = new Date();
+  // Use new function with default params
+  const result = await getDigUpCards({
+    userId,
+    filterMode: "uncategorized",
+    limit: 50
+  });
 
-  // Try different age thresholds in order (using hours for testing)
-  const thresholds: Array<{ hours: number; label: OldCardAgeThreshold }> = [
-    { hours: 24, label: "1 day" },
-    { hours: 12, label: "12 hours" },
-    { hours: 6, label: "6 hours" },
-    { hours: 1, label: "1 hour" }
-  ];
-
-  for (const threshold of thresholds) {
-    const cutoffDate = new Date(now);
-    cutoffDate.setHours(cutoffDate.getHours() - threshold.hours);
-
-    const cards = await prisma.card.findMany({
-      where: {
-        userId,
-        deleted: false,
-        createdAt: {
-          lte: cutoffDate
-        }
-      },
-      orderBy: { createdAt: "asc" }, // Oldest first
-      take: 50 // Limit to 50 cards per session
-    });
-
-    if (cards.length > 0) {
-      return {
-        cards: cards.map(mapCard),
-        ageThreshold: threshold.label,
-        total: cards.length
-      };
-    }
+  if (result.cards.length === 0) {
+    return null;
   }
 
-  // No old cards found
-  return null;
+  return {
+    cards: result.cards,
+    ageThreshold: "1 day", // Legacy field
+    total: result.cards.length
+  };
 }
 

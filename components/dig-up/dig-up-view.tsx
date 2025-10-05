@@ -1,27 +1,64 @@
 "use client";
 
 import { useState } from "react";
-import type { CardModel, CollectionNode, OldCardAgeThreshold } from "@/lib/types";
+import type { CardModel, CollectionNode } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ChevronDown, Check } from "lucide-react";
 
 type DigUpViewProps = {
   initialCards: CardModel[];
-  ageThreshold: OldCardAgeThreshold;
-  total: number;
+  initialNextCursor: string | null;
+  initialHasMore: boolean;
   pawkits: CollectionNode[];
+  filterMode: "uncategorized" | "all";
+  onFilterModeChange: (mode: "uncategorized" | "all") => void;
 };
 
-export function DigUpView({ initialCards, ageThreshold, total, pawkits }: DigUpViewProps) {
+export function DigUpView({
+  initialCards,
+  initialNextCursor,
+  initialHasMore,
+  pawkits,
+  filterMode,
+  onFilterModeChange
+}: DigUpViewProps) {
   const [cards, setCards] = useState(initialCards);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showPawkitSelector, setShowPawkitSelector] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(initialNextCursor);
+  const [hasMore, setHasMore] = useState(initialHasMore);
   const router = useRouter();
 
   const currentCard = cards[currentIndex];
   const reviewed = currentIndex;
-  const moveToNext = () => {
+
+  const loadMoreCards = async () => {
+    if (!hasMore || !nextCursor || loadingMore) return;
+
+    setLoadingMore(true);
+    try {
+      const response = await fetch(`/api/distill?mode=${filterMode}&cursor=${nextCursor}&limit=20`);
+      const data = await response.json();
+
+      setCards((prev) => [...prev, ...data.cards]);
+      setNextCursor(data.nextCursor);
+      setHasMore(data.hasMore);
+    } catch (error) {
+      console.error("Failed to load more cards:", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  const moveToNext = async () => {
     if (currentIndex < cards.length - 1) {
+      setCurrentIndex(currentIndex + 1);
+    } else if (hasMore) {
+      // Load more cards before moving to next
+      await loadMoreCards();
       setCurrentIndex(currentIndex + 1);
     } else {
       // All cards reviewed
@@ -79,7 +116,7 @@ export function DigUpView({ initialCards, ageThreshold, total, pawkits }: DigUpV
           <div className="text-6xl mb-4">🐕</div>
           <h2 className="text-2xl font-semibold text-gray-100 mb-2">All Caught Up!</h2>
           <p className="text-gray-400 mb-6">
-            Kit could not find any more old cards to dig up.
+            Kit could not find any more cards to dig up.
           </p>
           <button
             onClick={handleClose}
@@ -114,18 +151,49 @@ export function DigUpView({ initialCards, ageThreshold, total, pawkits }: DigUpV
                 ×
               </button>
             </div>
+
+            {/* Filter Mode Selector */}
+            <div className="flex items-center gap-3 mb-3">
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
+                  {filterMode === "uncategorized" ? "Uncategorized Only" : "All Cards"}
+                  <ChevronDown className="h-4 w-4" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem
+                    onClick={() => onFilterModeChange("uncategorized")}
+                    className="cursor-pointer relative pl-8"
+                  >
+                    {filterMode === "uncategorized" && (
+                      <Check className="absolute left-2 h-4 w-4" />
+                    )}
+                    Uncategorized Only
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onFilterModeChange("all")}
+                    className="cursor-pointer relative pl-8"
+                  >
+                    {filterMode === "all" && (
+                      <Check className="absolute left-2 h-4 w-4" />
+                    )}
+                    All Cards
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
             <p className="text-sm text-gray-400">
-              Digging up {total} cards older than {ageThreshold}
+              Reviewing {filterMode === "uncategorized" ? "uncategorized" : "all"} cards {hasMore ? "(loading more as you go)" : ""}
             </p>
             <div className="mt-3">
               <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                 <span>Progress</span>
-                <span>{reviewed + 1} / {total}</span>
+                <span>Card {reviewed + 1}{hasMore ? "+" : ` of ${cards.length}`}</span>
               </div>
               <div className="w-full bg-gray-800 rounded-full h-2">
                 <div
                   className="bg-accent rounded-full h-2 transition-all duration-300"
-                  style={{ width: `${((reviewed + 1) / total) * 100}%` }}
+                  style={{ width: hasMore ? "100%" : `${((reviewed + 1) / cards.length) * 100}%` }}
                 />
               </div>
             </div>
@@ -156,7 +224,7 @@ export function DigUpView({ initialCards, ageThreshold, total, pawkits }: DigUpV
                   <p className="text-gray-300 text-sm whitespace-pre-wrap">{currentCard.notes}</p>
                 </div>
               )}
-              {currentCard.collections.length > 0 && (
+              {currentCard.collections && currentCard.collections.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-4">
                   {currentCard.collections.map((collection) => (
                     <span
@@ -183,21 +251,21 @@ export function DigUpView({ initialCards, ageThreshold, total, pawkits }: DigUpV
             <div className="flex gap-3">
               <button
                 onClick={handleKeep}
-                disabled={loading}
+                disabled={loading || loadingMore}
                 className="flex-1 rounded bg-gray-800 px-6 py-3 text-sm font-medium text-gray-100 hover:bg-gray-700 transition-colors disabled:opacity-50"
               >
-                Keep
+                {loadingMore ? "Loading..." : "Keep"}
               </button>
               <button
                 onClick={() => setShowPawkitSelector(!showPawkitSelector)}
-                disabled={loading}
+                disabled={loading || loadingMore}
                 className="flex-1 rounded bg-accent px-6 py-3 text-sm font-medium text-gray-900 hover:bg-accent/90 transition-colors disabled:opacity-50"
               >
                 Add to Pawkit
               </button>
               <button
                 onClick={handleDelete}
-                disabled={loading}
+                disabled={loading || loadingMore}
                 className="flex-1 rounded bg-rose-600 px-6 py-3 text-sm font-medium text-white hover:bg-rose-700 transition-colors disabled:opacity-50"
               >
                 {loading ? "Deleting..." : "Delete"}
