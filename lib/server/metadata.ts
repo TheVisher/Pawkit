@@ -842,18 +842,18 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
         // Extract image from various Reddit post types
         let image: string | undefined;
 
-        // 1. Direct image posts (i.reddit.it or i.redd.it)
-        if (post.post_hint === 'image' && post.url) {
-          image = post.url;
-        }
-        // 2. Gallery posts (take first image)
-        else if (post.is_gallery && post.media_metadata) {
+        // 1. Gallery posts (check first - most specific)
+        if (post.is_gallery && post.media_metadata) {
           const firstImageId = Object.keys(post.media_metadata)[0];
           const firstImage = post.media_metadata[firstImageId];
           if (firstImage?.s?.u) {
             // Decode HTML entities in URL
             image = firstImage.s.u.replace(/&amp;/g, '&');
           }
+        }
+        // 2. Direct image posts (i.reddit.it or i.redd.it)
+        else if (post.post_hint === 'image' && post.url) {
+          image = post.url;
         }
         // 3. Preview images (most reliable for various post types)
         else if (post.preview?.images?.[0]?.source?.url) {
