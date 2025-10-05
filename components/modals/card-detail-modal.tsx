@@ -1009,7 +1009,7 @@ function MetadataSection({ card }: { card: CardModel }) {
         </div>
       )}
 
-      {card.tags.length > 0 && (
+      {card.tags && card.tags.length > 0 && (
         <div>
           <h5 className="text-xs text-gray-500 mb-1">Tags</h5>
           <div className="flex flex-wrap gap-2">
