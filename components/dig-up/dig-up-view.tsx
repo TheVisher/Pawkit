@@ -5,6 +5,7 @@ import type { CardModel, CollectionNode } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Check } from "lucide-react";
+import { useDataStore } from "@/lib/stores/data-store";
 
 type DigUpViewProps = {
   initialCards: CardModel[];
@@ -101,6 +102,9 @@ export function DigUpView({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ collections: nextCollections })
       });
+
+      // Refresh the data store so changes appear immediately
+      await useDataStore.getState().refresh();
 
       setShowPawkitSelector(false);
       moveToNext();
