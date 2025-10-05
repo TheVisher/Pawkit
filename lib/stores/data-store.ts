@@ -314,10 +314,12 @@ async function executeUpdateCard(op: QueueOperation, set: any, get: any) {
       console.warn('[DataStore] Conflict detected:', conflict.message);
 
       // Notify user about the conflict
-      useConflictStore.getState().addConflict(
-        targetId,
-        'This card was modified on another device. Your changes were not saved.'
-      );
+      if (targetId) {
+        useConflictStore.getState().addConflict(
+          targetId,
+          'This card was modified on another device. Your changes were not saved.'
+        );
+      }
 
       // Update with server version and mark operation as failed
       if (conflict.serverCard) {
