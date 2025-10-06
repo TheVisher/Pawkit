@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth/get-user'
 import { prisma } from '@/lib/server/prisma'
 import { randomBytes } from 'crypto'
+import { rateLimit, getRateLimitHeaders } from '@/lib/utils/rate-limit'
 
 /**
  * Generate a new extension token for the authenticated user
@@ -11,6 +12,25 @@ export async function POST(request: NextRequest) {
     const user = await getCurrentUser()
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // Rate limiting: 5 token generations per hour per user (prevents abuse)
+    const rateLimitResult = rateLimit({
+      identifier: `token-gen:${user.id}`,
+      limit: 5,
+      windowMs: 60 * 60 * 1000, // 1 hour
+    });
+
+    const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
+
+    if (!rateLimitResult.allowed) {
+      return NextResponse.json(
+        { error: 'Too many token generation requests. Please try again later.' },
+        {
+          status: 429,
+          headers: rateLimitHeaders
+        }
+      );
     }
 
     // Generate a secure random token (32 bytes = 64 hex characters)
@@ -25,7 +45,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ token })
+    return NextResponse.json({ token }, { headers: rateLimitHeaders })
   } catch (error) {
     console.error('Error generating extension token:', error)
     return NextResponse.json(

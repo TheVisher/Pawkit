@@ -1,8 +1,12 @@
 import { prisma } from '@/lib/server/prisma'
 import { User } from '@prisma/client'
 
+// Extension tokens expire after 90 days
+const TOKEN_EXPIRY_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
+
 /**
  * Validate an extension token and return the associated user
+ * Tokens expire after 90 days and must be regenerated
  */
 export async function getUserByExtensionToken(token: string): Promise<User | null> {
   if (!token) {
@@ -13,6 +17,20 @@ export async function getUserByExtensionToken(token: string): Promise<User | nul
     const user = await prisma.user.findUnique({
       where: { extensionToken: token }
     })
+
+    if (!user) {
+      return null
+    }
+
+    // Check if token has expired
+    if (user.extensionTokenCreatedAt) {
+      const tokenAge = Date.now() - user.extensionTokenCreatedAt.getTime()
+
+      if (tokenAge > TOKEN_EXPIRY_MS) {
+        console.warn(`Extension token expired for user ${user.id} (age: ${Math.floor(tokenAge / (24 * 60 * 60 * 1000))} days)`)
+        return null
+      }
+    }
 
     return user
   } catch (error) {

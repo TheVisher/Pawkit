@@ -2,7 +2,7 @@
 "use client";
 
 import type { MouseEvent } from "react";
-import { Dispatch, SetStateAction, useEffect, useMemo, useState, Suspense } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo, useState, Suspense, memo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -299,7 +299,7 @@ type CardCellProps = {
   onClick: (event: MouseEvent, card: CardModel) => void;
 };
 
-function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellProps) {
+const CardCell = memo(function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
@@ -408,7 +408,17 @@ function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellPr
       </div>
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison: only re-render if these specific props change
+  return (
+    prevProps.card.id === nextProps.card.id &&
+    prevProps.card.updatedAt === nextProps.card.updatedAt &&
+    prevProps.card.status === nextProps.card.status &&
+    prevProps.selected === nextProps.selected &&
+    prevProps.showThumbnail === nextProps.showThumbnail &&
+    prevProps.layout === nextProps.layout
+  );
+});
 
 
 function layoutClass(layout: LayoutMode) {
