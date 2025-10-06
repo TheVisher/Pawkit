@@ -59,6 +59,11 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
+  // Skip auth check for landing page
+  if (request.nextUrl.pathname === '/') {
+    return response
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser()
