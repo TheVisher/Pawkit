@@ -25,6 +25,17 @@ type DataStore = {
   refresh: () => Promise<void>;
 };
 
+// Set up BroadcastChannel listener once at module level
+if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
+  const channel = new BroadcastChannel('pawkit-extension');
+  channel.onmessage = (event) => {
+    if (event.data.type === 'CARD_CREATED') {
+      console.log('[DataStore] Extension created a card, refreshing...');
+      useDataStore.getState().refresh();
+    }
+  };
+}
+
 export const useDataStore = create<DataStore>((set, get) => ({
   cards: [],
   collections: [],
@@ -39,17 +50,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
     console.log('[DataStore] initialize() starting...');
     set({ isLoading: true });
-
-    // Listen for extension card creation events
-    if (typeof BroadcastChannel !== 'undefined') {
-      const channel = new BroadcastChannel('pawkit-extension');
-      channel.onmessage = (event) => {
-        if (event.data.type === 'CARD_CREATED') {
-          console.log('[DataStore] Extension created a card, refreshing...');
-          get().refresh();
-        }
-      };
-    }
 
     try {
       console.log('[DataStore] Fetching cards and collections...');
