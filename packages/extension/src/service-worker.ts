@@ -65,6 +65,24 @@ browser.runtime.onMessage.addListener(
         switch (message.type) {
           case 'SAVE_CARD': {
             const response = await saveCard(message.payload)
+
+            // If save was successful, notify content scripts to trigger page refresh
+            if (response.ok && response.data?.id) {
+              // Send message to all tabs on pawkit.vercel.app
+              browser.tabs.query({ url: 'https://pawkit.vercel.app/*' }).then(tabs => {
+                tabs.forEach(tab => {
+                  if (tab.id) {
+                    browser.tabs.sendMessage(tab.id, {
+                      type: 'CARD_CREATED',
+                      cardId: response.data.id
+                    }).catch(() => {
+                      // Content script might not be loaded yet, that's ok
+                    })
+                  }
+                })
+              })
+            }
+
             resolve(response as SaveCardResponse)
             break
           }

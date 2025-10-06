@@ -87,16 +87,7 @@ export function Popup() {
         setSavedCardId(response.data?.id || null)
         // Clear notes after successful save
         setNotes('')
-
-        // Notify any open Pawkit tabs to refresh
-        try {
-          const channel = new BroadcastChannel('pawkit-extension')
-          channel.postMessage({ type: 'CARD_CREATED', cardId: response.data?.id })
-          channel.close()
-        } catch (e) {
-          // BroadcastChannel might not be available in all contexts
-          console.log('Could not broadcast card creation:', e)
-        }
+        // Service worker will notify content scripts to refresh the page
       } else {
         setError(response.error || 'Failed to save card')
       }

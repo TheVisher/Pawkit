@@ -16,7 +16,15 @@
       "Bash(pnpm dev:*)",
       "Bash(pnpm add:*)",
       "Bash(pnpm run build:*)",
-      "Bash(pnpm run lint:*)"
+      "Bash(pnpm run lint:*)",
+      "Bash(BUILD_TARGET=service-worker vite build)",
+      "Bash(pnpm build:*)",
+      "Bash(cat:*)",
+      "Bash(curl -X POST https://pawkit.vercel.app/api/cards -H \"Content-Type: application/json\" -H \"Authorization: Bearer test\" -d '{\"\"\"\"title\"\"\"\":\"\"\"\"test\"\"\"\",\"\"\"\"url\"\"\"\":\"\"\"\"https://example.com\"\"\"\"}' -v)",
+      "Bash(curl -X POST https://pawkit.vercel.app/api/cards -H \"Content-Type: application/json\" -H \"Authorization: Bearer test\" -d '{\"\"\"\"title\"\"\"\":\"\"\"\"test\"\"\"\",\"\"\"\"url\"\"\"\":\"\"\"\"https://example.com\"\"\"\"}')",
+      "Bash(curl -X OPTIONS https://pawkit.vercel.app/api/cards -H \"Origin: moz-extension://test\" -H \"Access-Control-Request-Method: POST\" -H \"Access-Control-Request-Headers: content-type,authorization\" -v)",
+      "Bash(curl:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

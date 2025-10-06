@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite build --watch --mode development",
-    "build": "tsc && vite build && BUILD_TARGET=service-worker vite build",
+    "build": "tsc && vite build && BUILD_TARGET=service-worker vite build && BUILD_TARGET=content-script vite build",
     "preview": "vite preview",
     "dev:firefox": "pnpm build && web-ext run --source-dir=./dist",
     "package:firefox": "pnpm build && web-ext build --source-dir=./dist --overwrite-dest",

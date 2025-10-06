@@ -25,7 +25,14 @@
     "contextMenus"
   ],
   "host_permissions": [
-    "https://app.getpawkit.com/*"
+    "https://pawkit.vercel.app/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://pawkit.vercel.app/*"],
+      "js": ["content-script.js"],
+      "run_at": "document_start"
+    }
   ],
   "options_ui": {
     "page": "src/options/index.html",

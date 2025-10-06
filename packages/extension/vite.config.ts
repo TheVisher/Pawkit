@@ -4,6 +4,7 @@ import { viteStaticCopy } from 'vite-plugin-static-copy'
 import path from 'path'
 
 const isServiceWorker = process.env.BUILD_TARGET === 'service-worker'
+const isContentScript = process.env.BUILD_TARGET === 'content-script'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -30,7 +31,7 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
-      emptyOutDir: !isServiceWorker, // Don't clear on second build
+      emptyOutDir: !isServiceWorker && !isContentScript, // Don't clear on second/third build
       rollupOptions: isServiceWorker
         ? {
             // Service worker build - IIFE format with inlined deps
@@ -39,6 +40,17 @@ export default defineConfig(({ mode }) => {
             },
             output: {
               entryFileNames: 'service-worker.js',
+              format: 'iife'
+            }
+          }
+        : isContentScript
+        ? {
+            // Content script build - IIFE format with inlined deps
+            input: {
+              'content-script': path.resolve(__dirname, 'src/content/content-script.ts')
+            },
+            output: {
+              entryFileNames: 'content-script.js',
               format: 'iife'
             }
           }
