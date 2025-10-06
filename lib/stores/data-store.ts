@@ -27,13 +27,16 @@ type DataStore = {
 
 // Set up BroadcastChannel listener once at module level
 if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
+  console.log('[DataStore] Setting up BroadcastChannel listener...');
   const channel = new BroadcastChannel('pawkit-extension');
   channel.onmessage = (event) => {
+    console.log('[DataStore] BroadcastChannel received message:', event.data);
     if (event.data.type === 'CARD_CREATED') {
       console.log('[DataStore] Extension created a card, refreshing...');
       useDataStore.getState().refresh();
     }
   };
+  console.log('[DataStore] BroadcastChannel listener ready');
 }
 
 export const useDataStore = create<DataStore>((set, get) => ({
