@@ -25,16 +25,11 @@ type DataStore = {
   refresh: () => Promise<void>;
 };
 
-// Set up polling to check for new cards from extension
-if (typeof window !== 'undefined') {
-  // Check for new cards every 3 seconds when page is visible
-  setInterval(() => {
-    if (document.visibilityState === 'visible') {
-      // Silently refresh to check for new cards
-      useDataStore.getState().refresh();
-    }
-  }, 3000);
-}
+// Removed global polling - data is now truly local-first
+// Server sync only happens:
+// 1. On initial load (initialize())
+// 2. When explicitly requested (refresh())
+// 3. When writing data (via sync queue)
 
 export const useDataStore = create<DataStore>((set, get) => ({
   cards: [],

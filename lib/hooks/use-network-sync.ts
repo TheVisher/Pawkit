@@ -6,10 +6,14 @@ import { useDataStore } from "@/lib/stores/data-store";
 /**
  * Network sync hook that automatically retries failed operations when connection is restored
  *
+ * LOCAL-FIRST ARCHITECTURE:
+ * This hook ONLY drains the sync queue (pending writes to server).
+ * It does NOT fetch new data - all reads are from local Zustand store.
+ *
  * Features:
  * - Listens for browser online/offline events
  * - Drains sync queue when connection returns
- * - Periodic fallback drain every 30s (in case online event is missed)
+ * - Periodic fallback drain (in case online event is missed)
  * - Prevents duplicate drains with debouncing
  */
 export function useNetworkSync() {
@@ -55,12 +59,13 @@ export function useNetworkSync() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Periodic fallback drain (in case online event is missed or user was already online)
+    // Periodic fallback drain (in case online event is missed)
+    // This is ONLY for draining the sync queue (pending writes), NOT for fetching new data
     const intervalId = setInterval(() => {
       if (navigator.onLine) {
         safeDrain();
       }
-    }, 30000); // Every 30 seconds
+    }, 60000); // Every 60 seconds - only for ensuring pending writes sync
 
     // Initial drain attempt on mount (handles app startup)
     if (navigator.onLine) {
