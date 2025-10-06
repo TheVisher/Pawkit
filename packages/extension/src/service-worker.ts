@@ -35,6 +35,22 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
       })
 
       if (response.ok) {
+        // Notify content scripts to trigger page refresh
+        if (response.data?.id) {
+          browser.tabs.query({ url: 'https://pawkit.vercel.app/*' }).then(tabs => {
+            tabs.forEach(tab => {
+              if (tab.id) {
+                browser.tabs.sendMessage(tab.id, {
+                  type: 'CARD_CREATED',
+                  cardId: response.data.id
+                }).catch(() => {
+                  // Content script might not be loaded yet, that's ok
+                })
+              }
+            })
+          })
+        }
+
         // Show success notification
         browser.notifications?.create({
           type: 'basic',
