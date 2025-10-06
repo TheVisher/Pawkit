@@ -35,22 +35,7 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
       })
 
       if (response.ok) {
-        // Notify content scripts to trigger page refresh
-        if (response.data?.id) {
-          browser.tabs.query({ url: 'https://pawkit.vercel.app/*' }).then(tabs => {
-            tabs.forEach(tab => {
-              if (tab.id) {
-                browser.tabs.sendMessage(tab.id, {
-                  type: 'CARD_CREATED',
-                  cardId: response.data.id
-                }).catch(() => {
-                  // Content script might not be loaded yet, that's ok
-                })
-              }
-            })
-          })
-        }
-
+        // Page uses polling to auto-refresh, no need to notify
         // Show success notification
         browser.notifications?.create({
           type: 'basic',
@@ -82,29 +67,7 @@ browser.runtime.onMessage.addListener(
           case 'SAVE_CARD': {
             const response = await saveCard(message.payload)
 
-            // If save was successful, notify content scripts to trigger page refresh
-            if (response.ok && response.data?.id) {
-              console.log('[Service Worker] Card saved, notifying tabs...', response.data.id);
-              // Send message to all tabs on pawkit.vercel.app
-              browser.tabs.query({ url: 'https://pawkit.vercel.app/*' }).then(tabs => {
-                console.log('[Service Worker] Found tabs:', tabs.length);
-                tabs.forEach(tab => {
-                  if (tab.id) {
-                    console.log('[Service Worker] Sending message to tab:', tab.id);
-                    browser.tabs.sendMessage(tab.id, {
-                      type: 'CARD_CREATED',
-                      cardId: response.data.id
-                    }).then(() => {
-                      console.log('[Service Worker] Message sent successfully to tab:', tab.id);
-                    }).catch((err) => {
-                      console.error('[Service Worker] Failed to send message to tab:', tab.id, err);
-                    })
-                  }
-                })
-              }).catch(err => {
-                console.error('[Service Worker] Failed to query tabs:', err);
-              })
-            }
+            // Page uses polling to auto-refresh, no need to notify
 
             resolve(response as SaveCardResponse)
             break

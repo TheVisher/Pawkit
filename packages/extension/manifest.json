@@ -27,14 +27,6 @@
   "host_permissions": [
     "https://pawkit.vercel.app/*"
   ],
-  "content_scripts": [
-    {
-      "matches": ["https://pawkit.vercel.app/*"],
-      "js": ["content-script.js"],
-      "run_at": "document_end",
-      "all_frames": false
-    }
-  ],
   "options_ui": {
     "page": "src/options/index.html",
     "open_in_tab": true
