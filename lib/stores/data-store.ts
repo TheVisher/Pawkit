@@ -37,6 +37,23 @@ if (typeof window !== 'undefined' && typeof BroadcastChannel !== 'undefined') {
     }
   };
   console.log('[DataStore] BroadcastChannel listener ready');
+
+  // Also set up polling as a fallback in case content script doesn't load
+  // Check for new cards every 3 seconds when page is visible
+  let lastCardCount = 0;
+  setInterval(() => {
+    if (document.visibilityState === 'visible') {
+      const currentCount = useDataStore.getState().cards.length;
+      if (lastCardCount > 0 && currentCount > lastCardCount) {
+        console.log('[DataStore] Detected new cards via polling, count changed from', lastCardCount, 'to', currentCount);
+      }
+      lastCardCount = currentCount;
+
+      // Silently refresh to check for new cards
+      useDataStore.getState().refresh();
+    }
+  }, 3000);
+  console.log('[DataStore] Polling fallback enabled (3s interval)');
 }
 
 export const useDataStore = create<DataStore>((set, get) => ({

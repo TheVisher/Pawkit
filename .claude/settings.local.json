@@ -24,7 +24,9 @@
       "Bash(curl -X POST https://pawkit.vercel.app/api/cards -H \"Content-Type: application/json\" -H \"Authorization: Bearer test\" -d '{\"\"\"\"title\"\"\"\":\"\"\"\"test\"\"\"\",\"\"\"\"url\"\"\"\":\"\"\"\"https://example.com\"\"\"\"}')",
       "Bash(curl -X OPTIONS https://pawkit.vercel.app/api/cards -H \"Origin: moz-extension://test\" -H \"Access-Control-Request-Method: POST\" -H \"Access-Control-Request-Headers: content-type,authorization\" -v)",
       "Bash(curl:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(BUILD_TARGET=service-worker pnpm vite build)",
+      "Bash(python3:*)"
     ],
     "deny": [],
     "ask": []

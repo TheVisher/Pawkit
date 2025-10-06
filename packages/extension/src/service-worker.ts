@@ -84,18 +84,25 @@ browser.runtime.onMessage.addListener(
 
             // If save was successful, notify content scripts to trigger page refresh
             if (response.ok && response.data?.id) {
+              console.log('[Service Worker] Card saved, notifying tabs...', response.data.id);
               // Send message to all tabs on pawkit.vercel.app
               browser.tabs.query({ url: 'https://pawkit.vercel.app/*' }).then(tabs => {
+                console.log('[Service Worker] Found tabs:', tabs.length);
                 tabs.forEach(tab => {
                   if (tab.id) {
+                    console.log('[Service Worker] Sending message to tab:', tab.id);
                     browser.tabs.sendMessage(tab.id, {
                       type: 'CARD_CREATED',
                       cardId: response.data.id
-                    }).catch(() => {
-                      // Content script might not be loaded yet, that's ok
+                    }).then(() => {
+                      console.log('[Service Worker] Message sent successfully to tab:', tab.id);
+                    }).catch((err) => {
+                      console.error('[Service Worker] Failed to send message to tab:', tab.id, err);
                     })
                   }
                 })
+              }).catch(err => {
+                console.error('[Service Worker] Failed to query tabs:', err);
               })
             }
 
