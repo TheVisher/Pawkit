@@ -60,6 +60,7 @@ export const cardUpdateSchema = z
     image: nullableString,
     description: nullableString,
     pinned: z.boolean().optional(),
+    scheduledDate: z.string().datetime().nullable().optional(),
     metadata: z
       .record(z.any())
       .nullable()

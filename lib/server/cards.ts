@@ -12,7 +12,7 @@ export type CardInput = typeof cardCreateSchema._input;
 export type CardUpdateInput = typeof cardUpdateSchema._input;
 export type CardListQuery = typeof cardListQuerySchema._input;
 
-export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type' | 'status' | 'createdAt' | 'updatedAt' | 'deletedAt'> & {
+export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type' | 'status' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'scheduledDate'> & {
   type: CardType;
   status: CardStatus;
   tags: string[];
@@ -21,6 +21,7 @@ export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type' | 
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  scheduledDate: string | null;
   inDen: boolean;
   encryptedContent: string | null;
 };
@@ -43,7 +44,8 @@ function mapCard(card: Card): CardDTO {
     metadata: parseJsonObject(card.metadata),
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
-    deletedAt: card.deletedAt?.toISOString() ?? null
+    deletedAt: card.deletedAt?.toISOString() ?? null,
+    scheduledDate: card.scheduledDate?.toISOString() ?? null
   };
 }
 
