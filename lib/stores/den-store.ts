@@ -14,6 +14,7 @@ type DenStore = {
   checkExpiry: () => void;
   loadDenCards: () => Promise<void>;
   refreshDenCards: () => Promise<void>;
+  updateDenCard: (id: string, updates: Partial<CardDTO>) => Promise<void>;
 };
 
 const UNLOCK_DURATION = 30 * 60 * 1000; // 30 minutes in milliseconds
@@ -60,6 +61,45 @@ export const useDenStore = create<DenStore>()(
 
       refreshDenCards: async () => {
         await get().loadDenCards();
+      },
+
+      updateDenCard: async (id: string, updates: Partial<CardDTO>) => {
+        // Optimistic update
+        set((state) => ({
+          denCards: state.denCards.map((card) =>
+            card.id === id ? { ...card, ...updates } : card
+          )
+        }));
+
+        try {
+          const response = await fetch(`/api/cards/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates)
+          });
+
+          if (!response.ok) {
+            // Rollback on error - refresh from server
+            await get().refreshDenCards();
+            throw new Error('Failed to update Den card');
+          }
+
+          // Update with server response
+          const updatedCard = await response.json();
+          // Ensure collections is always an array
+          const safeCard = {
+            ...updatedCard,
+            collections: Array.isArray(updatedCard.collections) ? updatedCard.collections : []
+          };
+          set((state) => ({
+            denCards: state.denCards.map((card) =>
+              card.id === id ? safeCard : card
+            )
+          }));
+        } catch (error) {
+          console.error('Failed to update Den card:', error);
+          throw error;
+        }
       }
     }),
     {

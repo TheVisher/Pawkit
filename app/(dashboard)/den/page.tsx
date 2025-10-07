@@ -11,8 +11,8 @@ import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import useSWR from "swr";
 
 export default function DenPage() {
-  const { denCards, isUnlocked, loadDenCards, checkExpiry, refreshDenCards } = useDenStore();
-  const { collections, updateCard, deleteCard } = useDataStore();
+  const { denCards, isUnlocked, loadDenCards, checkExpiry, refreshDenCards, updateDenCard } = useDenStore();
+  const { collections, deleteCard } = useDataStore();
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showCreatePawkitModal, setShowCreatePawkitModal] = useState(false);
   const [newPawkitName, setNewPawkitName] = useState("");
@@ -143,14 +143,12 @@ export default function DenPage() {
                   onAddToDenPawkit={async (slug) => {
                     const collections = Array.from(new Set([slug, ...(card.collections || [])]));
                     // Always ensure Den cards have inDen: true when adding to Den Pawkits
-                    await updateCard(card.id, { collections, inDen: true });
-                    await refreshDenCards();
+                    await updateDenCard(card.id, { collections, inDen: true });
                   }}
                   onAddToRegularPawkit={async (slug) => {
                     const collections = Array.from(new Set([slug, ...(card.collections || [])]));
                     // When moving to regular Pawkit, remove from Den
-                    await updateCard(card.id, { collections, inDen: false });
-                    await refreshDenCards();
+                    await updateDenCard(card.id, { collections, inDen: false });
                   }}
                   onDeleteCard={async () => {
                     await deleteCard(card.id);
@@ -158,12 +156,10 @@ export default function DenPage() {
                   }}
                   onRemoveFromPawkit={async (slug) => {
                     const collections = (card.collections || []).filter(s => s !== slug);
-                    await updateCard(card.id, { collections });
-                    await refreshDenCards();
+                    await updateDenCard(card.id, { collections });
                   }}
                   onRemoveFromAllPawkits={async () => {
-                    await updateCard(card.id, { collections: [] });
-                    await refreshDenCards();
+                    await updateDenCard(card.id, { collections: [] });
                   }}
                 />
               ))}

@@ -24,10 +24,12 @@ export default function DenPawkitPage() {
   // Find the current pawkit
   const currentPawkit = denPawkits.find((p: any) => p.slug === slug);
 
-  // Load Den cards on mount
+  // Load Den cards on mount only if not already loaded
   useEffect(() => {
-    loadDenCards();
-  }, [loadDenCards]);
+    if (denCards.length === 0) {
+      loadDenCards();
+    }
+  }, [loadDenCards, denCards.length]);
 
   // Filter cards that belong to this pawkit
   const pawkitCards = denCards.filter((card: CardModel) =>
