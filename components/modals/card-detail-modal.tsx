@@ -600,7 +600,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 ) : (
                   <div className="text-center space-y-4">
                     <img
-                      src="/PawkitLogo.png"
+                      src="/logo.png"
                       alt="Pawkit"
                       className="w-32 h-32 mx-auto opacity-50"
                     />

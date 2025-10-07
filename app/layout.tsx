@@ -9,11 +9,12 @@ export const metadata = {
   description: "Your personal bookmark manager - save, organize, and discover",
   icons: {
     icon: [
-      { url: "/PawkitFavicon.png", sizes: "any" },
-      { url: "/PawkitFavicon.png", sizes: "32x32", type: "image/png" },
-      { url: "/PawkitFavicon.png", sizes: "16x16", type: "image/png" }
+      { url: "/icons/favicon.svg?v=3", type: "image/svg+xml" },
+      { url: "/icons/favicon-96x96.png?v=3", sizes: "96x96", type: "image/png" },
+      { url: "/icons/favicon.ico?v=3", sizes: "48x48" }
     ],
-    apple: "/PawkitFavicon.png"
+    apple: "/icons/apple-touch-icon.png?v=3",
+    shortcut: "/icons/favicon.ico?v=3"
   }
 };
 

@@ -394,7 +394,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
           {isPending ? (
             <div className="flex h-full w-full items-center justify-center">
               <img
-                src="/PawkitPaw.png"
+                src="/logo.png"
                 alt="Loading..."
                 className="h-16 w-16 animate-spin"
                 style={{ animationDuration: "2s" }}
@@ -403,7 +403,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
           ) : isError ? (
             <div className="flex h-full w-full items-center justify-center">
               <img
-                src="/PawkitLogo.png"
+                src="/logo.png"
                 alt="Failed to load"
                 className="h-16 w-16 opacity-50"
               />
@@ -418,7 +418,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
                 // Fallback to logo on image error
                 const target = e.target as HTMLImageElement;
                 target.onerror = null;
-                target.src = "/PawkitLogo.png";
+                target.src = "/logo.png";
                 target.className = "h-16 w-16 opacity-50";
               }}
             />
