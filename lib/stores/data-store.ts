@@ -3,6 +3,7 @@ import { CardDTO } from '@/lib/server/cards';
 import { CollectionNode } from '@/lib/types';
 import { syncQueue, QueueOperation } from '@/lib/services/sync-queue';
 import { useConflictStore } from '@/lib/stores/conflict-store';
+import { useSettingsStore } from '@/lib/hooks/settings-store';
 
 type DataStore = {
   // Data
@@ -47,7 +48,56 @@ export const useDataStore = create<DataStore>((set, get) => ({
     set({ isLoading: true });
 
     try {
-      console.log('[DataStore] Fetching cards and collections...');
+      const serverSync = useSettingsStore.getState().serverSync;
+
+      if (!serverSync) {
+        console.log('[DataStore] Server sync disabled - initializing in local-only mode');
+        // Just load from sync queue for local-only mode
+        const pendingOps = await syncQueue.getPending();
+        const tempCards: CardDTO[] = [];
+
+        for (const op of pendingOps) {
+          if (op.type === 'CREATE_CARD' && op.tempId && op.payload) {
+            const tempCard: CardDTO = {
+              id: op.tempId,
+              url: op.payload.url || '',
+              title: op.payload.title || null,
+              notes: op.payload.notes || null,
+              content: op.payload.content || null,
+              type: (op.payload.type as 'url' | 'md-note' | 'text-note') || 'url',
+              status: 'PENDING',
+              collections: op.payload.collections || [],
+              tags: op.payload.tags || [],
+              createdAt: new Date(op.timestamp).toISOString(),
+              updatedAt: new Date(op.timestamp).toISOString(),
+              userId: '',
+              deleted: false,
+              deletedAt: null,
+              pinned: false,
+              domain: null,
+              image: null,
+              description: null,
+              articleContent: null,
+              metadata: undefined,
+              inDen: false,
+              encryptedContent: null
+            };
+            tempCards.push(tempCard);
+          }
+        }
+
+        set({
+          cards: tempCards,
+          collections: [],
+          isInitialized: true,
+          isLoading: false
+        });
+
+        console.log('[DataStore] initialize() complete (local-only mode)');
+        return;
+      }
+
+      console.log('[DataStore] Fetching cards and collections from server...');
       // Fetch ALL data once
       const [cardsRes, collectionsRes] = await Promise.all([
         fetch('/api/cards?limit=1000'), // Get all cards

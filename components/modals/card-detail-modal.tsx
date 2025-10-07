@@ -38,10 +38,30 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
+  const [denPawkitSlugs, setDenPawkitSlugs] = useState<Set<string>>(new Set());
   const isTypingNotesRef = useRef(false);
   const isTypingContentRef = useRef(false);
   const lastSavedNotesRef = useRef(card.notes ?? "");
   const lastSavedContentRef = useRef(card.content ?? "");
+
+  // Fetch Den Pawkit slugs to differentiate from regular Pawkits
+  useEffect(() => {
+    const fetchDenPawkits = async () => {
+      try {
+        const response = await fetch("/api/den/pawkits");
+        if (response.ok) {
+          const data = await response.json();
+          const slugs = new Set(
+            (data.collections || []).map((c: any) => c.slug)
+          );
+          setDenPawkitSlugs(slugs);
+        }
+      } catch (error) {
+        console.error("Failed to fetch Den Pawkits:", error);
+      }
+    };
+    fetchDenPawkits();
+  }, []);
 
   // Update initial values when card changes
   useEffect(() => {
@@ -160,12 +180,38 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       ? currentCollections.filter((s) => s !== slug)
       : Array.from(new Set([slug, ...currentCollections]));
 
+    const updates: { collections: string[]; inDen?: boolean } = { collections: nextCollections };
+
+    // Check if the slug is a Den Pawkit or regular Pawkit
+    const isDenPawkit = denPawkitSlugs.has(slug);
+
+    const wasInDen = card.inDen;
+
+    if (!isAlreadyIn) {
+      // Adding to a new Pawkit
+      if (isDenPawkit) {
+        // Adding to Den Pawkit - ensure inDen is true
+        updates.inDen = true;
+      } else {
+        // Adding to regular Pawkit - ensure inDen is false
+        updates.inDen = false;
+      }
+    }
+
     // Update the global store (optimistic update)
-    await updateCardInStore(card.id, { collections: nextCollections });
+    await updateCardInStore(card.id, updates);
 
     // Also update parent component state
-    const updated = { ...card, collections: nextCollections };
+    const updated = { ...card, ...updates };
     onUpdate(updated);
+
+    // If card was in Den and is now being moved out, close the modal
+    if (wasInDen && updates.inDen === false) {
+      setToast("Moved out of The Den");
+      // Close modal after a brief delay to show the toast
+      setTimeout(() => onClose(), 500);
+      return;
+    }
 
     setToast(isAlreadyIn ? "Removed from Pawkit" : "Added to Pawkit");
   };
@@ -1008,7 +1054,7 @@ function MetadataSection({ card }: { card: CardModel }) {
         </a>
       </div>
 
-      {card.collections && card.collections.length > 0 && (
+      {card.collections && Array.isArray(card.collections) && card.collections.length > 0 && (
         <div>
           <h5 className="text-xs text-gray-500 mb-1">Pawkits</h5>
           <div className="flex flex-wrap gap-2">

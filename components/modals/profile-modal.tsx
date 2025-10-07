@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,9 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   const [avatar, setAvatar] = useState(avatarUrl || "");
   const [avatarPreview, setAvatarPreview] = useState(avatarUrl || "");
   const [saving, setSaving] = useState(false);
+  const [dataMessage, setDataMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importFileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Auth
   const { signOut } = useAuth();
@@ -44,6 +46,10 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   const autoSave = useSettingsStore((state) => state.autoSave);
   const compactMode = useSettingsStore((state) => state.compactMode);
   const showPreviews = useSettingsStore((state) => state.showPreviews);
+  const autoFetchMetadata = useSettingsStore((state) => state.autoFetchMetadata);
+  const showThumbnails = useSettingsStore((state) => state.showThumbnails);
+  const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
+  const serverSync = useSettingsStore((state) => state.serverSync);
 
   const setTheme = useSettingsStore((state) => state.setTheme);
   const setAccentColor = useSettingsStore((state) => state.setAccentColor);
@@ -51,6 +57,10 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   const setAutoSave = useSettingsStore((state) => state.setAutoSave);
   const setCompactMode = useSettingsStore((state) => state.setCompactMode);
   const setShowPreviews = useSettingsStore((state) => state.setShowPreviews);
+  const setAutoFetchMetadata = useSettingsStore((state) => state.setAutoFetchMetadata);
+  const setShowThumbnails = useSettingsStore((state) => state.setShowThumbnails);
+  const setPreviewServiceUrl = useSettingsStore((state) => state.setPreviewServiceUrl);
+  const setServerSync = useSettingsStore((state) => state.setServerSync);
 
   if (!open || typeof document === 'undefined') return null;
 
@@ -98,6 +108,66 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
     }
   };
 
+  const handleExport = async () => {
+    const response = await fetch("/api/import");
+    if (!response.ok) {
+      setDataMessage("Failed to export data");
+      return;
+    }
+    const data = await response.json();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `bookmark-export-${new Date().toISOString()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setDataMessage("Exported data");
+  };
+
+  const handleImport = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    try {
+      const payload = JSON.parse(text);
+      const response = await fetch("/api/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        setDataMessage(body.message || "Failed to import data");
+        return;
+      }
+      const result = await response.json();
+      setDataMessage(
+        `Import complete — ${result.createdCards} created, ${result.updatedCards} updated, ${result.createdCollections} collections created, ${result.updatedCollections} collections updated.`
+      );
+    } catch (error) {
+      setDataMessage("Invalid JSON file");
+    } finally {
+      if (importFileInputRef.current) {
+        importFileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleClear = async () => {
+    const confirmed = window.confirm("Delete all cards and collections?");
+    if (!confirmed) return;
+    const response = await fetch("/api/admin/clear", { method: "POST" });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      setDataMessage(body.message || "Failed to clear data");
+      return;
+    }
+    setDataMessage("All data cleared");
+  };
+
   const getAvatarDisplay = () => {
     if (avatarPreview) {
       return (
@@ -137,14 +207,15 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
 
         <div className="p-6">
           <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="appearance">Appearance</TabsTrigger>
               <TabsTrigger value="preferences">Preferences</TabsTrigger>
+              <TabsTrigger value="data">Data</TabsTrigger>
             </TabsList>
 
             {/* General Tab */}
-            <TabsContent value="general" className="space-y-6 mt-6">
+            <TabsContent value="general" className="space-y-6 mt-6 min-h-[550px]">
               {/* Avatar Section */}
               <div className="space-y-4">
                 <Label className="text-gray-300">Profile Picture</Label>
@@ -229,7 +300,7 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
             </TabsContent>
 
             {/* Appearance Tab */}
-            <TabsContent value="appearance" className="space-y-6 mt-6">
+            <TabsContent value="appearance" className="space-y-6 mt-6 min-h-[550px]">
               <div className="space-y-4">
                 <div>
                   <Label className="text-gray-300">Theme</Label>
@@ -311,7 +382,7 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
             </TabsContent>
 
             {/* Preferences Tab */}
-            <TabsContent value="preferences" className="space-y-6 mt-6">
+            <TabsContent value="preferences" className="space-y-6 mt-6 min-h-[550px]">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -372,22 +443,138 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                     onChange={(e) => setShowPreviews(e.target.checked)}
                   />
                 </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-gray-300">Auto-fetch Metadata</Label>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Automatically fetch metadata from preview service
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 rounded"
+                    checked={autoFetchMetadata}
+                    onChange={(e) => setAutoFetchMetadata(e.target.checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-gray-300">Show Thumbnails</Label>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Show thumbnails in card views
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 rounded"
+                    checked={showThumbnails}
+                    onChange={(e) => setShowThumbnails(e.target.checked)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="preview-url" className="text-gray-300">
+                    Preview Service URL
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Must contain {`{{url}}`} token
+                  </p>
+                  <Input
+                    id="preview-url"
+                    value={previewServiceUrl}
+                    onChange={(e) => setPreviewServiceUrl(e.target.value)}
+                    placeholder="https://example.com/preview?url={{url}}"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Data Tab */}
+            <TabsContent value="data" className="space-y-6 mt-6 min-h-[550px]">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-gray-300">Sync Settings</Label>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Control how your data is synced
+                  </p>
+                </div>
+                <div className="flex items-center justify-between p-4 rounded-lg border border-gray-800 bg-gray-900/50">
+                  <div>
+                    <Label className="text-gray-300">Server Sync</Label>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Keep data local-only or sync with server
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 rounded"
+                    checked={serverSync}
+                    onChange={(e) => setServerSync(e.target.checked)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-gray-300">Import & Export</Label>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Manage your bookmark data
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3">
+                  <Button onClick={handleExport} variant="outline">
+                    Export JSON
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => importFileInputRef.current?.click()}
+                  >
+                    Import JSON
+                  </Button>
+                  <input
+                    ref={importFileInputRef}
+                    type="file"
+                    accept="application/json"
+                    className="hidden"
+                    onChange={handleImport}
+                  />
+                </div>
+                {dataMessage && (
+                  <p className="text-sm text-gray-400 bg-gray-900/50 p-3 rounded-lg">
+                    {dataMessage}
+                  </p>
+                )}
               </div>
 
               {/* Danger Zone */}
               <div className="mt-8 pt-6 border-t border-gray-800">
                 <Label className="text-red-400">Danger Zone</Label>
                 <div className="mt-4 p-4 rounded-lg border border-red-900/50 bg-red-950/20">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-medium text-gray-300">Delete Account</div>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Permanently delete your account and all data
-                      </p>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm font-medium text-gray-300">Clear All Data</div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Delete all cards and collections permanently
+                        </p>
+                      </div>
+                      <Button variant="destructive" size="sm" onClick={handleClear}>
+                        Clear Data
+                      </Button>
                     </div>
-                    <Button variant="destructive" size="sm" disabled>
-                      Delete
-                    </Button>
+                    <div className="flex items-center justify-between pt-4 border-t border-red-900/30">
+                      <div>
+                        <div className="text-sm font-medium text-gray-300">Delete Account</div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Permanently delete your account and all data
+                        </p>
+                      </div>
+                      <Button variant="destructive" size="sm" disabled>
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -26,7 +26,7 @@ function mapCollection(collection: Collection): Omit<CollectionDTO, 'children'> 
 export const listCollections = unstable_cache(
   async (userId: string) => {
     const items = await prisma.collection.findMany({
-      where: { userId, deleted: false },
+      where: { userId, deleted: false, inDen: false },
       orderBy: { name: "asc" }
     });
 
@@ -225,7 +225,8 @@ export async function pinnedCollections(userId: string, limit = 8) {
       userId,
       pinned: true,
       parentId: null, // Only root-level Pawkits
-      deleted: false
+      deleted: false,
+      inDen: false
     },
     orderBy: { updatedAt: "desc" },
     take: limit

@@ -13,6 +13,7 @@ import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
+import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 
 export type CardGalleryProps = {
   cards: CardModel[];
@@ -218,6 +219,31 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             showThumbnail={showThumbnails}
             layout={layout}
             onClick={handleCardClick}
+            onAddToPawkit={(slug) => {
+              const collections = Array.from(new Set([slug, ...(card.collections || [])]));
+              // If card is in The Den, remove it when adding to regular Pawkit
+              const updates: { collections: string[]; inDen?: boolean } = { collections };
+              if (card.inDen) {
+                updates.inDen = false;
+              }
+              updateCardInStore(card.id, updates);
+              setCards((prev) =>
+                prev.map((c) => (c.id === card.id ? { ...c, ...updates } : c))
+              );
+            }}
+            onAddToDen={async () => {
+              // Move card to The Den
+              const response = await fetch(`/api/cards/${card.id}/move-to-den`, {
+                method: "PATCH",
+              });
+              if (response.ok) {
+                setCards((prev) => prev.filter((c) => c.id !== card.id));
+              }
+            }}
+            onDeleteCard={async () => {
+              await deleteCardFromStore(card.id);
+              setCards((prev) => prev.filter((c) => c.id !== card.id));
+            }}
           />
         ))}
       </div>
@@ -297,9 +323,12 @@ type CardCellProps = {
   showThumbnail: boolean;
   layout: LayoutMode;
   onClick: (event: MouseEvent, card: CardModel) => void;
+  onAddToPawkit: (slug: string) => void;
+  onAddToDen: () => void;
+  onDeleteCard: () => void;
 };
 
-const CardCell = memo(function CardCell({ card, selected, showThumbnail, layout, onClick }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddToPawkit, onAddToDen, onDeleteCard }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
@@ -324,17 +353,22 @@ const CardCell = memo(function CardCell({ card, selected, showThumbnail, layout,
   const displaySubtext = isNote ? getExcerpt() : (isPending ? "Kit is Fetching" : card.domain ?? card.url);
 
   return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      style={style}
-      className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface p-4 transition-all ${
-        selected ? "is-selected ring-2 ring-accent border-transparent" : "border-subtle"
-      } ${isDragging ? "opacity-50" : ""}`}
-      onClick={(event) => onClick(event, card)}
-      data-id={card.id}
+    <CardContextMenuWrapper
+      onAddToPawkit={onAddToPawkit}
+      onAddToDen={onAddToDen}
+      onDelete={onDeleteCard}
     >
+      <div
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        style={style}
+        className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface p-4 transition-all ${
+          selected ? "is-selected ring-2 ring-accent border-transparent" : "border-subtle"
+        } ${isDragging ? "opacity-50" : ""}`}
+        onClick={(event) => onClick(event, card)}
+        data-id={card.id}
+      >
       {showThumbnail && layout !== "compact" && !isNote && (
         <div
           className={`relative mb-3 w-full overflow-hidden rounded-xl bg-surface-soft ${layout === "masonry" ? "" : "aspect-video"}`}
@@ -407,8 +441,11 @@ const CardCell = memo(function CardCell({ card, selected, showThumbnail, layout,
         </div>
       </div>
     </div>
+    </CardContextMenuWrapper>
   );
-}, (prevProps, nextProps) => {
+}
+
+const CardCell = memo(CardCellInner, (prevProps, nextProps) => {
   // Custom comparison: only re-render if these specific props change
   return (
     prevProps.card.id === nextProps.card.id &&

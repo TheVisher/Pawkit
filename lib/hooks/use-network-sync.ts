@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useSettingsStore } from "@/lib/hooks/settings-store";
 
 /**
  * Network sync hook that automatically retries failed operations when connection is restored
@@ -15,13 +16,20 @@ import { useDataStore } from "@/lib/stores/data-store";
  * - Drains sync queue when connection returns
  * - Periodic fallback drain (in case online event is missed)
  * - Prevents duplicate drains with debouncing
+ * - Respects serverSync setting (local-only mode when disabled)
  */
 export function useNetworkSync() {
   const drainQueue = useDataStore((state) => state.drainQueue);
+  const serverSync = useSettingsStore((state) => state.serverSync);
   const isDrainingRef = useRef(false);
   const lastDrainRef = useRef(0);
 
   useEffect(() => {
+    // Skip all syncing if server sync is disabled
+    if (!serverSync) {
+      console.log('[NetworkSync] Server sync disabled - running in local-only mode');
+      return;
+    }
     const MIN_DRAIN_INTERVAL = 5000; // Don't drain more than once per 5 seconds
 
     const safeDrain = async () => {
@@ -78,5 +86,5 @@ export function useNetworkSync() {
       window.removeEventListener('offline', handleOffline);
       clearInterval(intervalId);
     };
-  }, [drainQueue]);
+  }, [drainQueue, serverSync]);
 }

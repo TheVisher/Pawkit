@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, Settings, HelpCircle, User, Layers } from "lucide-react";
+import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, HelpCircle, User, Layers } from "lucide-react";
 import { type CollectionNode } from "@/lib/types";
 import { ProfileModal } from "@/components/modals/profile-modal";
 import { DogHouseIcon } from "@/components/icons/dog-house";
@@ -41,7 +41,6 @@ const navigationItems = [
 
 const bottomItems = [
   { href: "/changelog", label: "Changelog", icon: History },
-  { href: "/settings", label: "Settings", icon: Settings },
   { href: "/trash", label: "Trash", icon: Trash2 },
   { href: "/help", label: "Help", icon: HelpCircle },
 ];

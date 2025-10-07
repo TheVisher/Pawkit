@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { CardModel, CollectionNode } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -17,6 +17,37 @@ type DigUpViewProps = {
   onFilterModeChange: (mode: "uncategorized" | "all") => void;
 };
 
+// Helper function to get seen cards from localStorage
+function getSeenCards(): Record<string, number> {
+  if (typeof window === 'undefined') return {};
+  try {
+    return JSON.parse(localStorage.getItem('digup-seen-cards') || '{}');
+  } catch {
+    return {};
+  }
+}
+
+// Helper function to sort cards: unseen first, then by last seen timestamp (oldest seen first)
+function sortCardsBySeenStatus(cards: CardModel[]): CardModel[] {
+  const seenCards = getSeenCards();
+
+  return [...cards].sort((a, b) => {
+    const aLastSeen = seenCards[a.id] || 0;
+    const bLastSeen = seenCards[b.id] || 0;
+
+    // If both unseen or both seen, keep original order
+    if ((aLastSeen === 0 && bLastSeen === 0) || (aLastSeen > 0 && bLastSeen > 0)) {
+      return aLastSeen - bLastSeen;
+    }
+
+    // Unseen cards come first
+    if (aLastSeen === 0) return -1;
+    if (bLastSeen === 0) return 1;
+
+    return 0;
+  });
+}
+
 export function DigUpView({
   initialCards,
   initialNextCursor,
@@ -26,7 +57,7 @@ export function DigUpView({
   filterMode,
   onFilterModeChange
 }: DigUpViewProps) {
-  const [cards, setCards] = useState(initialCards);
+  const [cards, setCards] = useState(() => sortCardsBySeenStatus(initialCards));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showPawkitSelector, setShowPawkitSelector] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -35,6 +66,11 @@ export function DigUpView({
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [totalCount, setTotalCount] = useState(initialTotalCount);
   const router = useRouter();
+
+  // Re-sort cards when they change or when coming back to the view
+  useEffect(() => {
+    setCards(sortCardsBySeenStatus(initialCards));
+  }, [initialCards]);
 
   const currentCard = cards[currentIndex];
   const reviewed = currentIndex;
@@ -47,7 +83,7 @@ export function DigUpView({
       const response = await fetch(`/api/distill?mode=${filterMode}&cursor=${nextCursor}&limit=20`);
       const data = await response.json();
 
-      setCards((prev) => [...prev, ...data.cards]);
+      setCards((prev) => sortCardsBySeenStatus([...prev, ...data.cards]));
       setNextCursor(data.nextCursor);
       setHasMore(data.hasMore);
     } catch (error) {
@@ -71,6 +107,13 @@ export function DigUpView({
   };
 
   const handleKeep = () => {
+    if (!currentCard) return;
+
+    // Mark card as seen by storing timestamp in localStorage
+    const seenCards = JSON.parse(localStorage.getItem('digup-seen-cards') || '{}');
+    seenCards[currentCard.id] = Date.now();
+    localStorage.setItem('digup-seen-cards', JSON.stringify(seenCards));
+
     moveToNext();
   };
 
@@ -80,6 +123,12 @@ export function DigUpView({
     setLoading(true);
     try {
       await fetch(`/api/cards/${currentCard.id}`, { method: "DELETE" });
+
+      // Mark as seen when deleted
+      const seenCards = getSeenCards();
+      seenCards[currentCard.id] = Date.now();
+      localStorage.setItem('digup-seen-cards', JSON.stringify(seenCards));
+
       moveToNext();
     } catch (error) {
       alert("Failed to delete card");
@@ -105,6 +154,11 @@ export function DigUpView({
 
       // Refresh the data store so changes appear immediately
       await useDataStore.getState().refresh();
+
+      // Mark as seen when added to Pawkit
+      const seenCards = getSeenCards();
+      seenCards[currentCard.id] = Date.now();
+      localStorage.setItem('digup-seen-cards', JSON.stringify(seenCards));
 
       setShowPawkitSelector(false);
       moveToNext();

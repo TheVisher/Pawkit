@@ -18,6 +18,7 @@ export type SettingsState = {
   autoSave: boolean;
   compactMode: boolean;
   showPreviews: boolean;
+  serverSync: boolean;
   setAutoFetchMetadata: (value: boolean) => void;
   setShowThumbnails: (value: boolean) => void;
   setPreviewServiceUrl: (value: string) => void;
@@ -27,6 +28,7 @@ export type SettingsState = {
   setAutoSave: (value: boolean) => void;
   setCompactMode: (value: boolean) => void;
   setShowPreviews: (value: boolean) => void;
+  setServerSync: (value: boolean) => void;
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -41,6 +43,7 @@ export const useSettingsStore = create<SettingsState>()(
       autoSave: true,
       compactMode: false,
       showPreviews: true,
+      serverSync: true,
       setAutoFetchMetadata: (value) => set({ autoFetchMetadata: value }),
       setShowThumbnails: (value) => set({ showThumbnails: value }),
       setPreviewServiceUrl: (value) => set({ previewServiceUrl: value }),
@@ -49,7 +52,8 @@ export const useSettingsStore = create<SettingsState>()(
       setNotifications: (value) => set({ notifications: value }),
       setAutoSave: (value) => set({ autoSave: value }),
       setCompactMode: (value) => set({ compactMode: value }),
-      setShowPreviews: (value) => set({ showPreviews: value })
+      setShowPreviews: (value) => set({ showPreviews: value }),
+      setServerSync: (value) => set({ serverSync: value })
     }),
     {
       name: "vbm-settings"

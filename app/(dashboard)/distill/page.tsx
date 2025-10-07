@@ -12,13 +12,23 @@ function DigUpContent() {
     (searchParams.get("mode") as "uncategorized" | "all") || "uncategorized"
   );
 
-  const { data: digUpResult } = useSWR(`/api/distill?mode=${filterMode}&limit=20`);
+  const { data: digUpResult, isLoading: isLoadingCards } = useSWR(`/api/distill?mode=${filterMode}&limit=20`);
   const { data: collectionsData } = useSWR<{ tree: CollectionNode[] }>("/api/pawkits");
 
   const pawkits = collectionsData?.tree || [];
 
-  if (!digUpResult) {
-    return null; // Loading state
+  if (isLoadingCards || !digUpResult) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div className="bg-gray-950 rounded-lg p-12 max-w-md text-center border border-gray-800">
+          <div className="text-6xl mb-4 animate-bounce">🐕</div>
+          <h2 className="text-2xl font-semibold text-gray-100 mb-2">Digging Up Cards...</h2>
+          <p className="text-gray-400">
+            Kit is fetching your cards to review
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (!digUpResult.cards || digUpResult.cards.length === 0) {

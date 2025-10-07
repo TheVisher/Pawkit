@@ -8,6 +8,7 @@ import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-car
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
+import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 
 const GREETINGS = [
   "Welcome back",
@@ -120,7 +121,32 @@ export default function HomePage() {
           {recent.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               {recent.map((card) => (
-                <RecentCard key={card.id} card={card} onClick={() => setActiveCardId(card.id)} />
+                <RecentCard
+                  key={card.id}
+                  card={card}
+                  onClick={() => setActiveCardId(card.id)}
+                  onAddToPawkit={async (slug) => {
+                    const collections = Array.from(new Set([slug, ...(card.collections || [])]));
+                    // If card is in The Den, remove it when adding to regular Pawkit
+                    const updates: { collections: string[]; inDen?: boolean } = { collections };
+                    if (card.inDen) {
+                      updates.inDen = false;
+                    }
+                    await updateCard(card.id, updates);
+                  }}
+                  onAddToDen={async () => {
+                    const response = await fetch(`/api/cards/${card.id}/move-to-den`, {
+                      method: "PATCH",
+                    });
+                    if (response.ok) {
+                      // Card moved to Den, refresh the page data
+                      window.location.reload();
+                    }
+                  }}
+                  onDeleteCard={async () => {
+                    await deleteCard(card.id);
+                  }}
+                />
               ))}
             </div>
           ) : (
@@ -190,14 +216,22 @@ function StatCard({ label, value }: StatCardProps) {
 type CardProps = {
   card: CardModel;
   onClick: () => void;
+  onAddToPawkit: (slug: string) => void;
+  onAddToDen: () => void;
+  onDeleteCard: () => void;
 };
 
-function RecentCard({ card, onClick }: CardProps) {
+function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard }: CardProps) {
   return (
-    <article
-      onClick={onClick}
-      className="card-hover flex h-full cursor-pointer flex-col justify-between rounded-2xl border border-subtle bg-surface p-4 transition"
+    <CardContextMenuWrapper
+      onAddToPawkit={onAddToPawkit}
+      onAddToDen={onAddToDen}
+      onDelete={onDeleteCard}
     >
+      <article
+        onClick={onClick}
+        className="card-hover flex h-full cursor-pointer flex-col justify-between rounded-2xl border border-subtle bg-surface p-4 transition"
+      >
       {card.image && (
         <div className="mb-3 overflow-hidden rounded-xl bg-surface-soft">
           <img src={card.image} alt={card.title ?? card.url} className="h-32 w-full object-cover" loading="lazy" />
@@ -211,6 +245,7 @@ function RecentCard({ card, onClick }: CardProps) {
       </div>
       <p className="mt-4 text-xs text-muted-foreground/80">Added {formatDate(card.createdAt)}</p>
     </article>
+    </CardContextMenuWrapper>
   );
 }
 

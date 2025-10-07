@@ -62,6 +62,7 @@ model Collection {
   pinned    Boolean   @default(false)
   deleted   Boolean   @default(false)
   deletedAt DateTime?
+  inDen     Boolean   @default(false)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   userId    String
@@ -69,4 +70,5 @@ model Collection {
 
   @@index([userId])
   @@index([userId, deleted])
+  @@index([userId, inDen])
 }
