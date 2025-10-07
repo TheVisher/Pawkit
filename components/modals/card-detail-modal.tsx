@@ -1148,10 +1148,15 @@ type ScheduleTabProps = {
 };
 
 function ScheduleTab({ scheduledDate, onSave }: ScheduleTabProps) {
-  const [date, setDate] = useState(scheduledDate || "");
+  // Convert scheduledDate (ISO string) to YYYY-MM-DD for date input
+  const initialDate = scheduledDate ? scheduledDate.split('T')[0] : "";
+  const [date, setDate] = useState(initialDate);
 
   const handleSave = () => {
-    onSave(date || null);
+    if (!date) return;
+    // Convert YYYY-MM-DD to ISO datetime at noon UTC to avoid timezone issues
+    const isoDate = `${date}T12:00:00.000Z`;
+    onSave(isoDate);
   };
 
   const handleClear = () => {

@@ -40,7 +40,10 @@ export default function CalendarPage() {
     return cards
       .filter((card) => card.scheduledDate) // Only show cards with scheduled dates
       .map((card) => {
-        const cardDate = new Date(card.scheduledDate!);
+        // Parse the ISO string and create a date at local midnight
+        const dateStr = card.scheduledDate!.split('T')[0]; // Get YYYY-MM-DD
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const cardDate = new Date(year, month - 1, day); // Create local date
         return {
           id: card.id,
           title: card.title || card.domain || card.url,

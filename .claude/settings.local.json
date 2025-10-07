@@ -28,7 +28,9 @@
       "Bash(BUILD_TARGET=service-worker pnpm vite build)",
       "Bash(python3:*)",
       "Bash(npx prisma generate:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm i:*)"
     ],
     "deny": [],
     "ask": []
