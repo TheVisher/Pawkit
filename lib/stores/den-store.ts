@@ -46,7 +46,12 @@ export const useDenStore = create<DenStore>()(
           const response = await fetch('/api/den/cards');
           if (response.ok) {
             const data = await response.json();
-            set({ denCards: data.items || [] });
+            // Ensure all cards have collections as an array
+            const cards = (data.items || []).map((card: any) => ({
+              ...card,
+              collections: Array.isArray(card.collections) ? card.collections : []
+            }));
+            set({ denCards: cards });
           }
         } catch (error) {
           console.error('Failed to load Den cards:', error);

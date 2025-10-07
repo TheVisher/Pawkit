@@ -146,8 +146,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
       console.log('[DataStore] Found', tempCards.length, 'pending temp cards from queue');
 
+      // Ensure all cards have collections as an array
+      const cards = (cardsData.items || []).map((card: any) => ({
+        ...card,
+        collections: Array.isArray(card.collections) ? card.collections : []
+      }));
+
       set({
-        cards: [...tempCards, ...(cardsData.items || [])],
+        cards: [...tempCards, ...cards],
         collections: collectionsData.tree || [],
         isInitialized: true,
         isLoading: false
@@ -216,8 +222,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
       console.log('[DataStore] Found', tempCards.length, 'pending temp cards from queue');
 
+      // Ensure all cards have collections as an array
+      const cards = (cardsData.items || []).map((card: any) => ({
+        ...card,
+        collections: Array.isArray(card.collections) ? card.collections : []
+      }));
+
       set({
-        cards: [...tempCards, ...(cardsData.items || [])],
+        cards: [...tempCards, ...cards],
         collections: collectionsData.tree || [],
         isInitialized: true,
         isLoading: false
