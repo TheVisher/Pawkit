@@ -244,6 +244,19 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               await deleteCardFromStore(card.id);
               setCards((prev) => prev.filter((c) => c.id !== card.id));
             }}
+            onRemoveFromPawkit={(slug) => {
+              const collections = (card.collections || []).filter(s => s !== slug);
+              updateCardInStore(card.id, { collections });
+              setCards((prev) =>
+                prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
+              );
+            }}
+            onRemoveFromAllPawkits={() => {
+              updateCardInStore(card.id, { collections: [] });
+              setCards((prev) =>
+                prev.map((c) => (c.id === card.id ? { ...c, collections: [] } : c))
+              );
+            }}
           />
         ))}
       </div>
@@ -326,9 +339,11 @@ type CardCellProps = {
   onAddToPawkit: (slug: string) => void;
   onAddToDen: () => void;
   onDeleteCard: () => void;
+  onRemoveFromPawkit: (slug: string) => void;
+  onRemoveFromAllPawkits: () => void;
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddToPawkit, onAddToDen, onDeleteCard }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
@@ -358,19 +373,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
       onAddToDen={onAddToDen}
       onDelete={onDeleteCard}
       cardCollections={card.collections || []}
-      onRemoveFromPawkit={(slug) => {
-        const collections = (card.collections || []).filter(s => s !== slug);
-        updateCardInStore(card.id, { collections });
-        setCards((prev) =>
-          prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
-        );
-      }}
-      onRemoveFromAllPawkits={() => {
-        updateCardInStore(card.id, { collections: [] });
-        setCards((prev) =>
-          prev.map((c) => (c.id === card.id ? { ...c, collections: [] } : c))
-        );
-      }}
+      onRemoveFromPawkit={onRemoveFromPawkit}
+      onRemoveFromAllPawkits={onRemoveFromAllPawkits}
     >
       <div
         ref={setNodeRef}
