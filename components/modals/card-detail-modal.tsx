@@ -51,8 +51,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         const response = await fetch("/api/den/pawkits");
         if (response.ok) {
           const data = await response.json();
-          const slugs = new Set(
-            (data.collections || []).map((c: any) => c.slug)
+          const slugs = new Set<string>(
+            (data.collections || []).map((c: any) => c.slug as string)
           );
           setDenPawkitSlugs(slugs);
         }
