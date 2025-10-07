@@ -35,18 +35,20 @@ export default function CalendarPage() {
   const [date, setDate] = useState(new Date());
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
-  // Convert cards to calendar events
+  // Convert cards to calendar events (only cards with scheduledDate)
   const events: CalendarEvent[] = useMemo(() => {
-    return cards.map((card) => {
-      const cardDate = new Date(card.createdAt);
-      return {
-        id: card.id,
-        title: card.title || card.domain || card.url,
-        start: cardDate,
-        end: cardDate,
-        resource: card,
-      };
-    });
+    return cards
+      .filter((card) => card.scheduledDate) // Only show cards with scheduled dates
+      .map((card) => {
+        const cardDate = new Date(card.scheduledDate!);
+        return {
+          id: card.id,
+          title: card.title || card.domain || card.url,
+          start: cardDate,
+          end: cardDate,
+          resource: card,
+        };
+      });
   }, [cards]);
 
   const handleSelectEvent = useCallback((event: CalendarEvent) => {

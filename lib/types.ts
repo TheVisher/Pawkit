@@ -23,6 +23,7 @@ export type CardModel = {
   deletedAt: string | null;
   inDen: boolean;
   encryptedContent: string | null;
+  scheduledDate: string | null;
   createdAt: string;
   updatedAt: string;
 };

@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useDataStore } from "@/lib/stores/data-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
 
-type Tab = "pawkits" | "pin" | "notes" | "summary" | "reader" | "actions" | "content";
+type Tab = "pawkits" | "pin" | "notes" | "summary" | "reader" | "actions" | "content" | "schedule";
 
 type CardDetailModalProps = {
   card: CardModel;
@@ -320,6 +320,22 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     } catch (error) {
       console.error("Failed to move card:", error);
       setToast("Failed to update card");
+    }
+  };
+
+  const handleSaveScheduledDate = async (date: string | null) => {
+    try {
+      // Update store (optimistic)
+      await updateCardInStore(card.id, { scheduledDate: date });
+
+      // Update parent component state
+      const updated = { ...card, scheduledDate: date };
+      onUpdate(updated);
+
+      setToast(date ? `Scheduled for ${new Date(date).toLocaleDateString()}` : "Schedule cleared");
+    } catch (error) {
+      console.error("Failed to save scheduled date:", error);
+      setToast("Failed to save date");
     }
   };
 
@@ -643,6 +659,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 onClick={() => setActiveTab("notes")}
                 label="Notes"
               />
+              <TabButton
+                active={activeTab === "schedule"}
+                onClick={() => setActiveTab("schedule")}
+                label="Schedule"
+              />
               {!isNote && (
                 <>
                   <TabButton
@@ -693,6 +714,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               )}
               {activeTab === "summary" && <SummaryTab card={card} />}
               {activeTab === "actions" && <ActionsTab card={card} onRefreshMetadata={handleRefreshMetadata} />}
+              {activeTab === "schedule" && (
+                <ScheduleTab
+                  scheduledDate={card.scheduledDate}
+                  onSave={handleSaveScheduledDate}
+                />
+              )}
             </div>
 
             {/* Metadata Section - Anchored Above Delete Button */}
@@ -1114,3 +1141,66 @@ function MetadataSection({ card }: { card: CardModel }) {
   );
 }
 
+// Schedule Tab
+type ScheduleTabProps = {
+  scheduledDate: string | null;
+  onSave: (date: string | null) => void;
+};
+
+function ScheduleTab({ scheduledDate, onSave }: ScheduleTabProps) {
+  const [date, setDate] = useState(scheduledDate || "");
+
+  const handleSave = () => {
+    onSave(date || null);
+  };
+
+  const handleClear = () => {
+    setDate("");
+    onSave(null);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h4 className="text-sm font-medium text-gray-200 mb-2">📅 Schedule for Calendar</h4>
+        <p className="text-xs text-gray-400 mb-4">
+          Assign a date to this card to display it on your calendar. Perfect for tracking release dates, reminders, or countdowns.
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium text-gray-300 mb-2">
+          Scheduled Date
+        </label>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="w-full rounded bg-gray-900 px-3 py-2 text-sm text-gray-100 border border-gray-800 focus:border-accent focus:outline-none"
+        />
+      </div>
+
+      {date && (
+        <div className="p-3 rounded bg-gray-900 border border-gray-800">
+          <p className="text-xs text-gray-400">
+            This card will appear on your calendar on{" "}
+            <span className="text-accent font-medium">
+              {new Date(date).toLocaleDateString()}
+            </span>
+          </p>
+        </div>
+      )}
+
+      <div className="flex gap-2">
+        <Button onClick={handleSave} className="flex-1" disabled={!date}>
+          Save Date
+        </Button>
+        {scheduledDate && (
+          <Button onClick={handleClear} variant="outline" className="flex-1">
+            Clear
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
