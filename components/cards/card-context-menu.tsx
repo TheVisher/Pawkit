@@ -11,7 +11,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { FolderPlus, Trash2, Home } from "lucide-react";
+import { FolderPlus, Trash2, Home, FolderMinus } from "lucide-react";
 import { CollectionNode } from "@/lib/types";
 
 type CardContextMenuWrapperProps = {
@@ -21,6 +21,9 @@ type CardContextMenuWrapperProps = {
   onAddToDen?: () => void;
   filterDenOnly?: boolean; // If true, only show Den Pawkits
   onAddToRegularPawkit?: (slug: string) => void; // For Den cards to move to regular Pawkits
+  cardCollections?: string[]; // Current Pawkits the card is in
+  onRemoveFromPawkit?: (slug: string) => void; // Remove from a specific Pawkit
+  onRemoveFromAllPawkits?: () => void; // Remove from all Pawkits
 };
 
 export function CardContextMenuWrapper({
@@ -30,6 +33,9 @@ export function CardContextMenuWrapper({
   onAddToDen,
   filterDenOnly = false,
   onAddToRegularPawkit,
+  cardCollections = [],
+  onRemoveFromPawkit,
+  onRemoveFromAllPawkits,
 }: CardContextMenuWrapperProps) {
   const [collections, setCollections] = useState<CollectionNode[]>([]);
   const [regularCollections, setRegularCollections] = useState<CollectionNode[]>([]);
@@ -106,6 +112,27 @@ export function CardContextMenuWrapper({
     });
   };
 
+  // Helper to find collection name from slug
+  const findCollectionName = (slug: string, items: CollectionNode[]): string | null => {
+    for (const item of items) {
+      if (item.slug === slug) return item.name;
+      if (item.children) {
+        const found = findCollectionName(slug, item.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  // Get names for current collections
+  const getCurrentPawkitNames = () => {
+    const allCollections = filterDenOnly ? [...collections, ...regularCollections] : collections;
+    return cardCollections.map(slug => ({
+      slug,
+      name: findCollectionName(slug, allCollections) || slug
+    }));
+  };
+
   return (
     <ContextMenu onOpenChange={(open) => open && fetchCollections()}>
       <ContextMenuTrigger asChild>
@@ -153,6 +180,37 @@ export function CardContextMenuWrapper({
             <Home className="mr-2 h-4 w-4" />
             Add to The Den
           </ContextMenuItem>
+        )}
+
+        {/* Remove from Pawkits submenu */}
+        {cardCollections.length > 0 && onRemoveFromPawkit && (
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <FolderMinus className="mr-2 h-4 w-4" />
+              Remove from Pawkits
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="max-h-[300px] overflow-y-auto">
+              {getCurrentPawkitNames().map(({ slug, name }) => (
+                <ContextMenuItem
+                  key={slug}
+                  onClick={() => onRemoveFromPawkit(slug)}
+                >
+                  {name}
+                </ContextMenuItem>
+              ))}
+              {cardCollections.length > 1 && onRemoveFromAllPawkits && (
+                <>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem
+                    onClick={onRemoveFromAllPawkits}
+                    className="text-rose-400"
+                  >
+                    Remove from all Pawkits
+                  </ContextMenuItem>
+                </>
+              )}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
         )}
 
         <ContextMenuSeparator />

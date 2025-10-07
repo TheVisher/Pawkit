@@ -65,7 +65,7 @@ export default function DenPawkitPage() {
             Pawkit not found
           </h3>
           <p className="mt-2 text-sm text-gray-500">
-            This Den Pawkit doesn't exist or has been deleted.
+            This Den Pawkit doesn&apos;t exist or has been deleted.
           </p>
         </div>
       </div>

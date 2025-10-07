@@ -146,6 +146,13 @@ export default function HomePage() {
                   onDeleteCard={async () => {
                     await deleteCard(card.id);
                   }}
+                  onRemoveFromPawkit={async (slug) => {
+                    const collections = (card.collections || []).filter(s => s !== slug);
+                    await updateCard(card.id, { collections });
+                  }}
+                  onRemoveFromAllPawkits={async () => {
+                    await updateCard(card.id, { collections: [] });
+                  }}
                 />
               ))}
             </div>
@@ -219,14 +226,19 @@ type CardProps = {
   onAddToPawkit: (slug: string) => void;
   onAddToDen: () => void;
   onDeleteCard: () => void;
+  onRemoveFromPawkit: (slug: string) => void;
+  onRemoveFromAllPawkits: () => void;
 };
 
-function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard }: CardProps) {
+function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardProps) {
   return (
     <CardContextMenuWrapper
       onAddToPawkit={onAddToPawkit}
       onAddToDen={onAddToDen}
       onDelete={onDeleteCard}
+      cardCollections={card.collections || []}
+      onRemoveFromPawkit={onRemoveFromPawkit}
+      onRemoveFromAllPawkits={onRemoveFromAllPawkits}
     >
       <article
         onClick={onClick}

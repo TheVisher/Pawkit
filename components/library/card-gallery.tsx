@@ -357,6 +357,20 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
       onAddToPawkit={onAddToPawkit}
       onAddToDen={onAddToDen}
       onDelete={onDeleteCard}
+      cardCollections={card.collections || []}
+      onRemoveFromPawkit={(slug) => {
+        const collections = (card.collections || []).filter(s => s !== slug);
+        updateCardInStore(card.id, { collections });
+        setCards((prev) =>
+          prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
+        );
+      }}
+      onRemoveFromAllPawkits={() => {
+        updateCardInStore(card.id, { collections: [] });
+        setCards((prev) =>
+          prev.map((c) => (c.id === card.id ? { ...c, collections: [] } : c))
+        );
+      }}
     >
       <div
         ref={setNodeRef}

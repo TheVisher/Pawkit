@@ -20,7 +20,7 @@ export default function DenPage() {
 
   // Fetch Den Pawkits
   const { data: denPawkitsData, mutate: mutateDenPawkits } = useSWR("/api/den/pawkits");
-  const denPawkits = denPawkitsData?.collections || [];
+  const denPawkits = useMemo(() => denPawkitsData?.collections || [], [denPawkitsData]);
 
   // Load Den cards on mount (password protection not yet implemented)
   useEffect(() => {
@@ -156,6 +156,15 @@ export default function DenPage() {
                     await deleteCard(card.id);
                     await refreshDenCards();
                   }}
+                  onRemoveFromPawkit={async (slug) => {
+                    const collections = (card.collections || []).filter(s => s !== slug);
+                    await updateCard(card.id, { collections });
+                    await refreshDenCards();
+                  }}
+                  onRemoveFromAllPawkits={async () => {
+                    await updateCard(card.id, { collections: [] });
+                    await refreshDenCards();
+                  }}
                 />
               ))}
             </div>
@@ -228,13 +237,17 @@ function DenCard({
   onClick,
   onAddToDenPawkit,
   onAddToRegularPawkit,
-  onDeleteCard
+  onDeleteCard,
+  onRemoveFromPawkit,
+  onRemoveFromAllPawkits
 }: {
   card: any;
   onClick: () => void;
   onAddToDenPawkit: (slug: string) => void;
   onAddToRegularPawkit: (slug: string) => void;
   onDeleteCard: () => void;
+  onRemoveFromPawkit: (slug: string) => void;
+  onRemoveFromAllPawkits: () => void;
 }) {
   return (
     <CardContextMenuWrapper
@@ -242,6 +255,9 @@ function DenCard({
       onAddToPawkit={onAddToDenPawkit}
       onAddToRegularPawkit={onAddToRegularPawkit}
       onDelete={onDeleteCard}
+      cardCollections={card.collections || []}
+      onRemoveFromPawkit={onRemoveFromPawkit}
+      onRemoveFromAllPawkits={onRemoveFromAllPawkits}
     >
       <div onClick={onClick} className="card-hover group cursor-pointer rounded-2xl border border-subtle bg-surface p-4 transition-all">
       {card.image && (
