@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CardModel, CollectionNode } from "@/lib/types";
@@ -1148,6 +1149,7 @@ type ScheduleTabProps = {
 };
 
 function ScheduleTab({ scheduledDate, onSave }: ScheduleTabProps) {
+  const router = useRouter();
   // Convert scheduledDate (ISO string) to YYYY-MM-DD for date input
   const initialDate = scheduledDate ? scheduledDate.split('T')[0] : "";
   const [date, setDate] = useState(initialDate);
@@ -1162,6 +1164,10 @@ function ScheduleTab({ scheduledDate, onSave }: ScheduleTabProps) {
   const handleClear = () => {
     setDate("");
     onSave(null);
+  };
+
+  const handleViewOnCalendar = () => {
+    router.push('/calendar');
   };
 
   return (
@@ -1189,9 +1195,12 @@ function ScheduleTab({ scheduledDate, onSave }: ScheduleTabProps) {
         <div className="p-3 rounded bg-gray-900 border border-gray-800">
           <p className="text-xs text-gray-400">
             This card will appear on your calendar on{" "}
-            <span className="text-accent font-medium">
+            <button
+              onClick={handleViewOnCalendar}
+              className="text-accent font-medium hover:underline cursor-pointer"
+            >
               {new Date(date).toLocaleDateString()}
-            </span>
+            </button>
           </p>
         </div>
       )}
