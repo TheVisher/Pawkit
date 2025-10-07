@@ -12,7 +12,7 @@ import useSWR from "swr";
 
 export default function DenPage() {
   const { denCards, isUnlocked, loadDenCards, checkExpiry, refreshDenCards } = useDenStore();
-  const { collections, updateCard, deleteCard } = useDataStore();
+  const { collections, deleteCard } = useDataStore();
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showCreatePawkitModal, setShowCreatePawkitModal] = useState(false);
   const [newPawkitName, setNewPawkitName] = useState("");
@@ -75,7 +75,9 @@ export default function DenPage() {
   const handleUpdateCard = async (updated: CardModel) => {
     // Just refresh to get the latest state from server
     // The modal already handles the API calls
+    console.log('[DenPage] handleUpdateCard called with:', updated);
     await refreshDenCards();
+    console.log('[DenPage] refreshDenCards complete');
   };
 
   const handleDeleteCard = async () => {
@@ -222,10 +224,51 @@ export default function DenPage() {
       {activeCard && (
         <CardDetailModal
           card={activeCard as CardModel}
-          collections={collections || []}
+          collections={denPawkits || []}
           onClose={() => setActiveCardId(null)}
           onUpdate={handleUpdateCard}
           onDelete={handleDeleteCard}
+          onAddToPawkit={async (slug: string) => {
+            // Custom handler for Den - add to Den Pawkit and refresh
+            console.log('[DenPage] onAddToPawkit called with slug:', slug);
+            console.log('[DenPage] Current card collections:', activeCard.collections);
+            const currentCollections = activeCard.collections || [];
+            const isRemoving = currentCollections.includes(slug);
+            const newCollections = isRemoving
+              ? currentCollections.filter(s => s !== slug)
+              : Array.from(new Set([slug, ...currentCollections]));
+
+            console.log('[DenPage] New collections:', newCollections);
+
+            // Call API directly instead of going through data store
+            const response = await fetch(`/api/cards/${activeCard.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ collections: newCollections, inDen: true })
+            });
+
+            if (!response.ok) {
+              console.error('[DenPage] Failed to update card');
+              return;
+            }
+
+            const result = await response.json();
+            console.log('[DenPage] Update result:', result);
+
+            // Wait a bit for the database to commit
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Now refresh Den cards
+            await refreshDenCards();
+            console.log('[DenPage] Refresh complete');
+
+            // Update the modal's card data
+            const updatedCard = denCards.find(c => c.id === activeCard.id);
+            console.log('[DenPage] Updated card from store:', updatedCard);
+            if (updatedCard) {
+              handleUpdateCard(updatedCard);
+            }
+          }}
         />
       )}
     </>

@@ -22,7 +22,18 @@ export async function GET() {
       }
     });
 
-    return NextResponse.json({ items: denCards });
+    console.log('[DenCardsAPI] Raw cards from DB:', denCards.map(c => ({ id: c.id, collections: c.collections, collectionsType: typeof c.collections })));
+
+    // Parse collections field if it's a string
+    const parsedCards = denCards.map(card => ({
+      ...card,
+      collections: typeof card.collections === 'string' ? JSON.parse(card.collections) : card.collections,
+      tags: typeof card.tags === 'string' ? JSON.parse(card.tags) : card.tags
+    }));
+
+    console.log('[DenCardsAPI] Parsed cards:', parsedCards.map(c => ({ id: c.id, collections: c.collections })));
+
+    return NextResponse.json({ items: parsedCards });
   } catch (error) {
     return handleApiError(error);
   }

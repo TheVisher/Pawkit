@@ -178,9 +178,12 @@ export async function getCard(userId: string, id: string) {
 }
 
 export async function updateCard(userId: string, id: string, payload: CardUpdateInput): Promise<CardDTO> {
+  console.log('[Server] updateCard called with:', { userId, id, payload });
   const parsed = cardUpdateSchema.parse(payload);
   const normalizedTags = parsed.tags ? normalizeTags(parsed.tags) : undefined;
   const normalizedCollections = parsed.collections ? normalizeCollections(parsed.collections) : undefined;
+
+  console.log('[Server] Normalized collections:', normalizedCollections);
 
   const data: Prisma.CardUpdateInput = {
     ...parsed,
@@ -188,6 +191,8 @@ export async function updateCard(userId: string, id: string, payload: CardUpdate
     collections: normalizedCollections ? serializeCollections(normalizedCollections) : undefined,
     metadata: parsed.metadata ? stringifyNullable(parsed.metadata) : parsed.metadata === undefined ? undefined : null
   };
+
+  console.log('[Server] Data to save (collections):', data.collections);
 
   if (parsed.url) {
     data.domain = safeHost(parsed.url);
@@ -197,6 +202,8 @@ export async function updateCard(userId: string, id: string, payload: CardUpdate
     where: { id, userId },
     data
   });
+
+  console.log('[Server] Card updated in DB. Collections:', updated.collections);
 
   return mapCard(updated);
 }

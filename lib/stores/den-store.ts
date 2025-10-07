@@ -43,14 +43,17 @@ export const useDenStore = create<DenStore>()(
 
       loadDenCards: async () => {
         try {
+          console.log('[DenStore] Fetching Den cards from API...');
           const response = await fetch('/api/den/cards');
           if (response.ok) {
             const data = await response.json();
+            console.log('[DenStore] Received data:', data);
             // Ensure all cards have collections as an array
             const cards = (data.items || []).map((card: any) => ({
               ...card,
               collections: Array.isArray(card.collections) ? card.collections : []
             }));
+            console.log('[DenStore] Processed cards:', cards.map(c => ({ id: c.id, collections: c.collections })));
             set({ denCards: cards });
           }
         } catch (error) {

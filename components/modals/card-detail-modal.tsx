@@ -22,9 +22,10 @@ type CardDetailModalProps = {
   onClose: () => void;
   onUpdate: (card: CardModel) => void;
   onDelete: () => void;
+  onAddToPawkit?: (slug: string) => Promise<void>; // Optional custom handler for adding to Pawkits
 };
 
-export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete }: CardDetailModalProps) {
+export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete, onAddToPawkit: customAddToPawkit }: CardDetailModalProps) {
   const updateCardInStore = useDataStore(state => state.updateCard);
   const isNote = card.type === "md-note" || card.type === "text-note";
   const [activeTab, setActiveTab] = useState<Tab>("pawkits");
@@ -174,16 +175,30 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   };
 
   const handleAddToPawkit = async (slug: string) => {
+    // If custom handler provided (e.g., from Den page), use it instead
+    if (customAddToPawkit) {
+      console.log('[CardDetailModal] Using custom handler for:', slug);
+      await customAddToPawkit(slug);
+      const currentCollections = card.collections || [];
+      const isRemoving = currentCollections.includes(slug);
+      setToast(isRemoving ? "Removed from Pawkit" : "Added to Pawkit");
+      return;
+    }
+
+    // Default behavior for regular context
     const currentCollections = card.collections || [];
     const isAlreadyIn = currentCollections.includes(slug);
     const nextCollections = isAlreadyIn
       ? currentCollections.filter((s) => s !== slug)
       : Array.from(new Set([slug, ...currentCollections]));
 
+    console.log('[CardDetailModal] handleAddToPawkit:', { slug, isAlreadyIn, currentCollections, nextCollections, cardInDen: card.inDen });
+
     const updates: { collections: string[]; inDen?: boolean } = { collections: nextCollections };
 
     // Check if the slug is a Den Pawkit or regular Pawkit
     const isDenPawkit = denPawkitSlugs.has(slug);
+    console.log('[CardDetailModal] isDenPawkit:', isDenPawkit, 'denPawkitSlugs:', Array.from(denPawkitSlugs));
 
     const wasInDen = card.inDen;
 
@@ -196,7 +211,19 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         // Adding to regular Pawkit - ensure inDen is false
         updates.inDen = false;
       }
+    } else {
+      // Removing from a Pawkit - if we're removing from a Den Pawkit and there are no more Den Pawkits, move out of Den
+      if (isDenPawkit) {
+        // Check if there are any other Den Pawkits in the remaining collections
+        const remainingDenPawkits = nextCollections.filter(s => denPawkitSlugs.has(s));
+        if (remainingDenPawkits.length === 0) {
+          updates.inDen = false;
+        }
+      }
     }
+
+    console.log('[CardDetailModal] Updates to apply:', updates);
+    console.log('[CardDetailModal] Collections array:', JSON.stringify(updates.collections));
 
     // Update the global store (optimistic update)
     await updateCardInStore(card.id, updates);
