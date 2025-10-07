@@ -127,7 +127,9 @@ export function CardContextMenuWrapper({
   // Get names for current collections
   const getCurrentPawkitNames = () => {
     const allCollections = filterDenOnly ? [...collections, ...regularCollections] : collections;
-    return cardCollections.map(slug => ({
+    // Ensure cardCollections is an array
+    const collectionsArray = Array.isArray(cardCollections) ? cardCollections : [];
+    return collectionsArray.map(slug => ({
       slug,
       name: findCollectionName(slug, allCollections) || slug
     }));
@@ -183,7 +185,7 @@ export function CardContextMenuWrapper({
         )}
 
         {/* Remove from Pawkits submenu */}
-        {cardCollections.length > 0 && onRemoveFromPawkit && (
+        {Array.isArray(cardCollections) && cardCollections.length > 0 && onRemoveFromPawkit && (
           <ContextMenuSub>
             <ContextMenuSubTrigger>
               <FolderMinus className="mr-2 h-4 w-4" />
