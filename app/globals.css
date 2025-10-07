@@ -459,3 +459,145 @@ textarea:focus-visible {
     @apply bg-background text-foreground;
   }
 }
+
+/* React Big Calendar Dark Theme Styling */
+.pawkit-calendar {
+  color: hsl(var(--foreground));
+}
+
+.pawkit-calendar .rbc-header {
+  background-color: hsl(var(--surface-muted));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+  padding: 12px 8px;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.pawkit-calendar .rbc-month-view,
+.pawkit-calendar .rbc-time-view {
+  background-color: transparent;
+  border-color: hsl(var(--border));
+}
+
+.pawkit-calendar .rbc-day-bg {
+  background-color: hsl(var(--surface));
+  border-color: hsl(var(--border));
+}
+
+.pawkit-calendar .rbc-today {
+  background-color: hsla(var(--accent) / 0.08);
+}
+
+.pawkit-calendar .rbc-off-range-bg {
+  background-color: hsl(var(--surface-muted));
+}
+
+.pawkit-calendar .rbc-date-cell {
+  padding: 6px 8px;
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+}
+
+.pawkit-calendar .rbc-off-range {
+  color: hsl(var(--muted-foreground));
+  opacity: 0.4;
+}
+
+.pawkit-calendar .rbc-current {
+  color: hsl(var(--accent));
+  font-weight: 700;
+}
+
+.pawkit-calendar .rbc-event {
+  background-color: hsla(var(--accent) / 0.2);
+  border: 1px solid hsla(var(--accent) / 0.4);
+  color: hsl(var(--foreground));
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pawkit-calendar .rbc-event:hover {
+  background-color: hsla(var(--accent) / 0.3);
+  border-color: hsla(var(--accent) / 0.6);
+  transform: translateY(-1px);
+}
+
+.pawkit-calendar .rbc-event-label {
+  color: hsl(var(--muted-foreground));
+  font-size: 0.7rem;
+}
+
+.pawkit-calendar .rbc-toolbar {
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.pawkit-calendar .rbc-toolbar button {
+  background-color: hsl(var(--surface-soft));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pawkit-calendar .rbc-toolbar button:hover {
+  background-color: hsl(var(--surface-muted));
+  border-color: hsl(var(--border-strong));
+}
+
+.pawkit-calendar .rbc-toolbar button.rbc-active {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  border-color: hsl(var(--accent));
+}
+
+.pawkit-calendar .rbc-toolbar button.rbc-active:hover {
+  background-color: hsl(var(--accent));
+  opacity: 0.9;
+}
+
+.pawkit-calendar .rbc-toolbar-label {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  font-size: 1.125rem;
+}
+
+.pawkit-calendar .rbc-show-more {
+  background-color: transparent;
+  color: hsl(var(--accent));
+  font-size: 0.75rem;
+  padding: 2px;
+  margin: 0;
+}
+
+.pawkit-calendar .rbc-show-more:hover {
+  text-decoration: underline;
+}
+
+.pawkit-calendar .rbc-overlay {
+  background-color: hsl(var(--surface));
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  padding: 1rem;
+}
+
+.pawkit-calendar .rbc-overlay-header {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid hsl(var(--border));
+}
