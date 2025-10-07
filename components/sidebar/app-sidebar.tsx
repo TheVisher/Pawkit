@@ -115,8 +115,8 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/home">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                  <span className="text-lg">🐾</span>
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
+                  <img src="/logo.png" alt="Pawkit" className="w-8 h-8" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Pawkit</span>
