@@ -15,8 +15,6 @@ import { Badge } from "@/components/ui/badge";
 import { useDataStore } from "@/lib/stores/data-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
 
-type Tab = "pawkits" | "pin" | "notes" | "summary" | "reader" | "actions" | "content" | "schedule";
-
 type CardDetailModalProps = {
   card: CardModel;
   collections: CollectionNode[];
@@ -28,7 +26,6 @@ type CardDetailModalProps = {
 export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete }: CardDetailModalProps) {
   const updateCardInStore = useDataStore(state => state.updateCard);
   const isNote = card.type === "md-note" || card.type === "text-note";
-  const [activeTab, setActiveTab] = useState<Tab>("pawkits");
   const [notes, setNotes] = useState(card.notes ?? "");
   const [content, setContent] = useState(card.content ?? "");
   const [noteMode, setNoteMode] = useState<"preview" | "edit">("preview");
@@ -476,18 +473,22 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   return (
     <>
+      {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
-      >
+      />
+
+      {/* Centered Card Content */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-8 pr-[424px] pointer-events-none">
         <div
-          className={`bg-gray-950 rounded-lg border border-gray-800 shadow-2xl w-full h-[90vh] overflow-hidden flex ${
-            isReaderExpanded ? "max-w-[95vw]" : "max-w-6xl"
+          className={`bg-gray-950 rounded-lg border border-gray-800 shadow-2xl overflow-hidden pointer-events-auto ${
+            isReaderExpanded ? "w-full h-full flex flex-col" : "max-w-full max-h-full"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Left Panel - Image, Reader, or Note Preview/Edit */}
-          <div className="flex-1 flex flex-col bg-gray-900/50 relative">
+          {/* Card Content - Image, Reader, or Note Preview/Edit */}
+          <div className={`bg-gray-900/50 relative ${isReaderExpanded ? "flex-1 flex flex-col overflow-hidden" : ""}`}>
             {isNote ? (
               <>
                 {/* Header with mode toggle and expand */}
@@ -585,15 +586,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   )}
                 </div>
               </>
-            ) : activeTab === "reader" && articleContent ? (
-              <ReaderView
-                title={card.title || card.domain || card.url}
-                content={articleContent}
-                url={card.url}
-                isExpanded={false}
-                onToggleExpand={() => setIsReaderExpanded(true)}
-                onClose={onClose}
-              />
             ) : isYouTubeUrl(card.url) ? (
               <div className="flex-1 flex items-center justify-center p-6">
                 <div className="w-full max-w-4xl aspect-video">
@@ -607,12 +599,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex items-center justify-center p-6 overflow-auto">
+              <div className="p-8">
                 {card.image ? (
                   <img
                     src={card.image}
                     alt={card.title || "Card preview"}
-                    className="max-w-full max-h-full object-contain rounded"
+                    className="max-w-full max-h-[calc(90vh-4rem)] object-contain rounded-lg"
                   />
                 ) : (
                   <div className="text-center space-y-4">
@@ -629,107 +621,103 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               </div>
             )}
           </div>
+        </div>
+      </div>
 
-          {/* Right Sidebar */}
-          <div className="w-96 border-l border-gray-800 flex flex-col min-h-0">
-            {/* Header with Close Button */}
-            <div className="border-b border-gray-800 p-4 flex items-center justify-between flex-shrink-0">
-              <h2 className="font-semibold text-gray-100">Card Details</h2>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-200 text-2xl leading-none"
-              >
-                ×
-              </button>
-            </div>
+      {/* Right Slide-Out Sheet for Details */}
+      <div
+        className="fixed top-0 right-0 h-full w-96 bg-gray-950 border-l border-gray-800 shadow-2xl z-[60] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header with Close Button */}
+        <div className="border-b border-gray-800 p-4 flex items-center justify-between flex-shrink-0">
+          <h2 className="font-semibold text-gray-100">Card Details</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-200 text-2xl leading-none"
+          >
+            ×
+          </button>
+        </div>
 
-            {/* Tab Navigation */}
-            <div className="border-b border-gray-800 px-4 flex gap-1 overflow-x-auto flex-shrink-0">
-              <TabButton
-                active={activeTab === "pawkits"}
-                onClick={() => setActiveTab("pawkits")}
-                label="Pawkits"
-              />
-              <TabButton
-                active={activeTab === "pin"}
-                onClick={() => setActiveTab("pin")}
-                label="Pin"
-              />
-              <TabButton
-                active={activeTab === "notes"}
-                onClick={() => setActiveTab("notes")}
-                label="Notes"
-              />
-              <TabButton
-                active={activeTab === "schedule"}
-                onClick={() => setActiveTab("schedule")}
-                label="Schedule"
-              />
-              {!isNote && (
-                <>
-                  <TabButton
-                    active={activeTab === "reader"}
-                    onClick={() => setActiveTab("reader")}
-                    label="Reader"
-                  />
-                  <TabButton
-                    active={activeTab === "summary"}
-                    onClick={() => setActiveTab("summary")}
-                    label="Summary"
-                  />
-                </>
-              )}
-              <TabButton
-                active={activeTab === "actions"}
-                onClick={() => setActiveTab("actions")}
-                label="Actions"
-              />
-            </div>
+        <Tabs defaultValue="pawkits" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Tab Navigation */}
+          <TabsList className="w-full rounded-none border-b border-gray-800 bg-transparent h-auto p-0 justify-start overflow-x-auto flex-shrink-0 pointer-events-auto">
+            <TabsTrigger value="pawkits" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+              Pawkits
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+              Notes
+            </TabsTrigger>
+            <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+              Schedule
+            </TabsTrigger>
+            {!isNote && (
+              <>
+                <TabsTrigger value="reader" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+                  Reader
+                </TabsTrigger>
+                <TabsTrigger value="summary" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+                  Summary
+                </TabsTrigger>
+              </>
+            )}
+            <TabsTrigger value="actions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+              Actions
+            </TabsTrigger>
+          </TabsList>
 
-            {/* Tab Content */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0 modal-scrollbar">
-              {activeTab === "pawkits" && (
+          {/* Scrollable Container for Tab Content + Metadata + Buttons */}
+          <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
+            <div className="flex-1">
+              <TabsContent value="pawkits" className="p-4 mt-0 h-full">
                 <PawkitsTab
                   collections={collections}
                   currentCollections={card.collections || []}
                   onSelect={handleAddToPawkit}
                 />
-              )}
-              {activeTab === "pin" && (
-                <PinTab isPinned={isPinned} onToggle={handleTogglePin} />
-              )}
-              {activeTab === "notes" && (
+              </TabsContent>
+              <TabsContent value="notes" className="p-4 mt-0 h-full">
                 <NotesTab
                   notes={notes}
                   onChange={setNotes}
                   onSave={handleSaveNotes}
                   saving={saving}
                 />
-              )}
-              {activeTab === "reader" && (
+              </TabsContent>
+              <TabsContent value="reader" className="p-4 mt-0 h-full">
                 <ReaderTab
                   hasContent={!!articleContent}
                   onExtract={handleExtractArticle}
                   extracting={extracting}
                 />
-              )}
-              {activeTab === "summary" && <SummaryTab card={card} />}
-              {activeTab === "actions" && <ActionsTab card={card} onRefreshMetadata={handleRefreshMetadata} />}
-              {activeTab === "schedule" && (
+              </TabsContent>
+              <TabsContent value="summary" className="p-4 mt-0 h-full">
+                <SummaryTab card={card} />
+              </TabsContent>
+              <TabsContent value="actions" className="p-4 mt-0 h-full">
+                <ActionsTab
+                  card={card}
+                  onRefreshMetadata={handleRefreshMetadata}
+                  isPinned={isPinned}
+                  onTogglePin={handleTogglePin}
+                />
+              </TabsContent>
+              <TabsContent value="schedule" className="p-4 mt-0 h-full">
                 <ScheduleTab
                   scheduledDate={card.scheduledDate}
                   onSave={handleSaveScheduledDate}
                 />
-              )}
+              </TabsContent>
             </div>
 
-            {/* Metadata Section - Anchored Above Delete Button */}
-            <div className="border-t border-gray-800 p-4 flex-shrink-0">
+            {/* Metadata Section */}
+            <div className="border-t border-gray-800 p-3 flex-shrink-0">
               <MetadataSection card={card} />
             </div>
 
-            {/* Den and Delete Buttons at Bottom */}
-            <div className="border-t border-gray-800 p-4 flex-shrink-0 space-y-2">
+            {/* Den and Delete Buttons */}
+            <div className="border-t border-gray-800 p-3 flex-shrink-0 space-y-2">
               <Button
                 onClick={handleMoveToDen}
                 variant="outline"
@@ -746,30 +734,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               </Button>
             </div>
           </div>
-        </div>
+        </Tabs>
       </div>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </>
   );
 }
-
-// Tab Button Component
-function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-2 text-xs font-medium transition-colors border-b-2 ${
-        active
-          ? "border-accent text-accent"
-          : "border-transparent text-gray-400 hover:text-gray-200"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
 // Pawkits Tab
 type PawkitsTabProps = {
   collections: CollectionNode[];
@@ -872,30 +843,6 @@ function PawkitTreeItem({ node, depth, currentCollections, onSelect }: PawkitTre
         />
       ))}
     </>
-  );
-}
-
-// Pin Tab
-function PinTab({ isPinned, onToggle }: { isPinned: boolean; onToggle: () => void }) {
-  return (
-    <div className="space-y-4">
-      <p className="text-xs text-gray-500">
-        Pin this card to quick access on your home page
-      </p>
-      <Button
-        onClick={onToggle}
-        variant={isPinned ? "default" : "secondary"}
-        className="w-full"
-        size="lg"
-      >
-        {isPinned ? "📌 Pinned" : "Pin to Home"}
-      </Button>
-      {isPinned && (
-        <p className="text-xs text-gray-500 text-center">
-          This card appears in your home page quick access
-        </p>
-      )}
-    </div>
   );
 }
 
@@ -1017,9 +964,11 @@ function SummaryTab({ card }: { card: CardModel }) {
 type ActionsTabProps = {
   card: CardModel;
   onRefreshMetadata: () => Promise<void>;
+  isPinned: boolean;
+  onTogglePin: () => void;
 };
 
-function ActionsTab({ card, onRefreshMetadata }: ActionsTabProps) {
+function ActionsTab({ card, onRefreshMetadata, isPinned, onTogglePin }: ActionsTabProps) {
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -1033,6 +982,15 @@ function ActionsTab({ card, onRefreshMetadata }: ActionsTabProps) {
       <p className="text-xs text-gray-500 mb-4">
         Additional actions for this card
       </p>
+
+      {/* Pin/Unpin Button */}
+      <Button
+        onClick={onTogglePin}
+        variant={isPinned ? "default" : "secondary"}
+        className="w-full justify-start"
+      >
+        {isPinned ? "📌 Unpin from Home" : "📌 Pin to Home"}
+      </Button>
 
       {/* Only show for URL cards */}
       {card.type === 'url' && (
@@ -1065,11 +1023,11 @@ function ActionsTab({ card, onRefreshMetadata }: ActionsTabProps) {
 // Metadata Section
 function MetadataSection({ card }: { card: CardModel }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <h3 className="text-xs font-medium text-gray-500 uppercase">Details</h3>
 
       <div>
-        <h4 className="text-lg font-semibold text-gray-100 mb-1">
+        <h4 className="text-sm font-semibold text-gray-100 mb-1">
           {card.title || card.domain || "Untitled"}
         </h4>
         <a
