@@ -16,7 +16,8 @@ function mapCard(card: Card): CardDTO {
     metadata: parseJsonObject(card.metadata),
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
-    deletedAt: card.deletedAt?.toISOString() ?? null
+    deletedAt: card.deletedAt?.toISOString() ?? null,
+    scheduledDate: card.scheduledDate?.toISOString() ?? null
   };
 }
 
