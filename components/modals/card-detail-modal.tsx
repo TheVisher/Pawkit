@@ -1199,7 +1199,11 @@ function ScheduleTab({ scheduledDate, onSave }: ScheduleTabProps) {
               onClick={handleViewOnCalendar}
               className="text-accent font-medium hover:underline cursor-pointer"
             >
-              {new Date(date).toLocaleDateString()}
+              {(() => {
+                // Parse YYYY-MM-DD as local date to avoid timezone issues
+                const [year, month, day] = date.split('-').map(Number);
+                return new Date(year, month - 1, day).toLocaleDateString();
+              })()}
             </button>
           </p>
         </div>
