@@ -91,7 +91,8 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
       articleContent: null,
       metadata: undefined,
       inDen: false,
-      encryptedContent: null
+      encryptedContent: null,
+      scheduledDate: null
     });
 
     setLoading(false);

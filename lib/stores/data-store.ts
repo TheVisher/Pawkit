@@ -80,7 +80,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
               articleContent: null,
               metadata: undefined,
               inDen: false,
-              encryptedContent: null
+              encryptedContent: null,
+              scheduledDate: null
             };
             tempCards.push(tempCard);
           }
@@ -305,7 +306,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
       articleContent: null,
       metadata: undefined,
       inDen: false,
-      encryptedContent: null
+      encryptedContent: null,
+      scheduledDate: null
     };
 
     // STEP 1: Persist to queue FIRST (prevents data loss on refresh)
