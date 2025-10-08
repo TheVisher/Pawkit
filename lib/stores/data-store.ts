@@ -139,7 +139,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
             articleContent: null,
             metadata: undefined,
             inDen: false,
-            encryptedContent: null
+            encryptedContent: null,
+            scheduledDate: null
           };
           tempCards.push(tempCard);
         }
@@ -215,7 +216,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
             articleContent: null,
             metadata: undefined,
             inDen: false,
-            encryptedContent: null
+            encryptedContent: null,
+            scheduledDate: null
           };
           tempCards.push(tempCard);
         }
