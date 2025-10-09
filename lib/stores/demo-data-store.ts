@@ -526,26 +526,38 @@ const DEMO_COLLECTIONS: CollectionNode[] = [
   {
     id: 'demo-col-1',
     name: 'Productivity & Workflows',
+    slug: 'productivity-workflows',
     parentId: null,
     pinned: true,
+    deleted: false,
+    userId: 'demo-user',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     children: [],
-    cardCount: 0,
   },
   {
     id: 'demo-col-2',
     name: 'Tools & Resources',
+    slug: 'tools-resources',
     parentId: null,
     pinned: false,
+    deleted: false,
+    userId: 'demo-user',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     children: [],
-    cardCount: 0,
   },
   {
     id: 'demo-col-3',
     name: 'Design Inspiration',
+    slug: 'design-inspiration',
     parentId: null,
     pinned: false,
+    deleted: false,
+    userId: 'demo-user',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
     children: [],
-    cardCount: 0,
   },
 ];
 
@@ -613,13 +625,18 @@ export const useDemoDataStore = create<DemoDataStore>()(
       },
 
       addCollection: (collectionData: { name: string; parentId?: string | null }) => {
+        const slug = collectionData.name.toLowerCase().replace(/\s+/g, '-');
         const newCollection: CollectionNode = {
           id: `demo-col-${Date.now()}`,
           name: collectionData.name,
+          slug,
           parentId: collectionData.parentId || null,
           pinned: false,
+          deleted: false,
+          userId: 'demo-user',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
           children: [],
-          cardCount: 0,
         };
 
         set((state) => ({
