@@ -8,6 +8,29 @@ import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
+import { Calendar, dateFnsLocalizer } from "react-big-calendar";
+import { format, parse, startOfWeek, getDay, addDays, startOfDay } from "date-fns";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+
+const locales = {
+  "en-US": require("date-fns/locale/en-US"),
+};
+
+const localizer = dateFnsLocalizer({
+  format,
+  parse,
+  startOfWeek,
+  getDay,
+  locales,
+});
+
+type CalendarEvent = {
+  id: string;
+  title: string;
+  start: Date;
+  end: Date;
+  resource: CardModel;
+};
 
 const GREETINGS = [
   "Welcome back",
@@ -63,6 +86,27 @@ export default function DemoHomePage() {
   if (quickAccessUnique.length === 0) {
     quickAccessUnique = quickAccess;
   }
+
+  // Calendar events for 7-day view
+  const calendarEvents: CalendarEvent[] = useMemo(() => {
+    return cards
+      .filter((card) => card.scheduledDate && !card.inDen)
+      .map((card) => {
+        const dateStr = card.scheduledDate!.split('T')[0];
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const cardDate = new Date(year, month - 1, day);
+        return {
+          id: card.id,
+          title: card.title || card.domain || card.url,
+          start: cardDate,
+          end: cardDate,
+          resource: card,
+        };
+      });
+  }, [cards]);
+
+  const today = startOfDay(new Date());
+  const weekEnd = addDays(today, 6);
 
   const activeCard = activeCardId ? cards.find(c => c.id === activeCardId) : null;
 
@@ -149,6 +193,44 @@ export default function DemoHomePage() {
         ) : (
           <EmptyState message="Pin cards or Pawkits to surface them here." />
         )}
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-xl font-semibold text-gray-100">This Week</h2>
+          <Link href="/demo/calendar" className="text-sm text-accent hover:text-accent/80">
+            View full calendar
+          </Link>
+        </div>
+        <div className="calendar-container rounded-2xl border border-subtle bg-surface p-6">
+          <Calendar
+            localizer={localizer}
+            events={calendarEvents}
+            startAccessor="start"
+            endAccessor="end"
+            view="week"
+            date={today}
+            toolbar={false}
+            onSelectEvent={(event: CalendarEvent) => setActiveCardId(event.id)}
+            components={{
+              event: ({ event }: { event: CalendarEvent }) => {
+                const card = event.resource;
+                return (
+                  <div className="flex items-center gap-1 overflow-hidden text-xs">
+                    {card.image && (
+                      <div className="h-4 w-4 flex-shrink-0 overflow-hidden rounded">
+                        <img src={card.image} alt="" className="h-full w-full object-cover" />
+                      </div>
+                    )}
+                    <span className="truncate">{event.title}</span>
+                  </div>
+                );
+              },
+            }}
+            style={{ height: 400 }}
+            className="pawkit-calendar"
+          />
+        </div>
       </section>
       </div>
 

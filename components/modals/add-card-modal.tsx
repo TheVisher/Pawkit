@@ -14,7 +14,7 @@ export type AddCardModalProps = {
 };
 
 export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardModalProps) {
-  const addCardToStore = useDemoAwareStore((state) => state.addCard);
+  const { addCard: addCardToStore } = useDemoAwareStore();
   const [url, setUrl] = useState(initialUrl ?? "");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");

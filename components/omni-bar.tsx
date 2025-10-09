@@ -22,7 +22,7 @@ function OmniBarContent() {
   const [showModal, setShowModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
-  const addCardToStore = useDemoAwareStore((state) => state.addCard);
+  const { addCard: addCardToStore } = useDemoAwareStore();
   const lastSearchedRef = useRef(initialQuery);
   const isTypingRef = useRef(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);

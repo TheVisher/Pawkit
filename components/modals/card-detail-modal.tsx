@@ -24,7 +24,7 @@ type CardDetailModalProps = {
 };
 
 export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete }: CardDetailModalProps) {
-  const updateCardInStore = useDemoAwareStore(state => state.updateCard);
+  const { updateCard: updateCardInStore } = useDemoAwareStore();
   const isNote = card.type === "md-note" || card.type === "text-note";
   const [notes, setNotes] = useState(card.notes ?? "");
   const [content, setContent] = useState(card.content ?? "");
