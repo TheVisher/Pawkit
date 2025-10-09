@@ -42,7 +42,7 @@ function DemoDigUpContent() {
   return (
     <DigUpView
       initialCards={filteredCards}
-      initialNextCursor={undefined}
+      initialNextCursor={null}
       initialHasMore={false}
       initialTotalCount={filteredCards.length}
       pawkits={collections}

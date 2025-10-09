@@ -272,15 +272,28 @@ function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, on
         className="card-hover flex h-full cursor-pointer flex-col justify-between rounded-2xl border border-subtle bg-surface p-4 transition"
       >
       {card.image && (
-        <div className="mb-3 overflow-hidden rounded-xl bg-surface-soft">
+        <div className="mb-3 overflow-hidden rounded-xl bg-surface-soft relative">
           <img src={card.image} alt={card.title ?? card.url} className="h-32 w-full object-cover" loading="lazy" />
+          {/* URL Pill Overlay */}
+          {card.url && (
+            <a
+              href={card.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="absolute bottom-2 left-2 right-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center justify-center"
+            >
+              <span className="truncate max-w-full">
+                {card.domain || new URL(card.url).hostname}
+              </span>
+            </a>
+          )}
         </div>
       )}
       <div>
-        <p className="text-sm font-semibold text-foreground truncate" title={card.title ?? card.url}>
+        <p className="text-sm font-semibold text-foreground line-clamp-2" title={card.title ?? card.url}>
           {card.title || card.domain || card.url}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground truncate">{card.url}</p>
       </div>
       <p className="mt-4 text-xs text-muted-foreground/80">Added {formatDate(card.createdAt)}</p>
     </article>
