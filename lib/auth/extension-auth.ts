@@ -1,12 +1,15 @@
 import { prisma } from '@/lib/server/prisma'
 import { User } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
-// Extension tokens expire after 90 days
-const TOKEN_EXPIRY_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
+// Extension tokens expire after 30 days (reduced from 90 for better security)
+const TOKEN_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 /**
  * Validate an extension token and return the associated user
- * Tokens expire after 90 days and must be regenerated
+ * Tokens expire after 30 days and must be regenerated
+ * Note: Tokens are hashed in the database, so we need to check all users
+ * and compare hashes (performance consideration for future: add token index)
  */
 export async function getUserByExtensionToken(token: string): Promise<User | null> {
   if (!token) {
@@ -14,25 +17,36 @@ export async function getUserByExtensionToken(token: string): Promise<User | nul
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { extensionToken: token }
+    // Fetch all users with extension tokens
+    // Note: This is necessary because tokens are hashed and we can't query by hash
+    // For better performance at scale, consider adding a separate tokens table
+    const users = await prisma.user.findMany({
+      where: {
+        extensionToken: { not: null },
+        extensionTokenCreatedAt: { not: null }
+      }
     })
 
-    if (!user) {
-      return null
-    }
+    // Check each user's hashed token
+    for (const user of users) {
+      if (!user.extensionToken || !user.extensionTokenCreatedAt) {
+        continue
+      }
 
-    // Check if token has expired
-    if (user.extensionTokenCreatedAt) {
+      // Check if token has expired first (faster than bcrypt comparison)
       const tokenAge = Date.now() - user.extensionTokenCreatedAt.getTime()
-
       if (tokenAge > TOKEN_EXPIRY_MS) {
-        console.warn(`Extension token expired for user ${user.id} (age: ${Math.floor(tokenAge / (24 * 60 * 60 * 1000))} days)`)
-        return null
+        continue
+      }
+
+      // Compare the provided token with the hashed token
+      const isValid = await bcrypt.compare(token, user.extensionToken)
+      if (isValid) {
+        return user
       }
     }
 
-    return user
+    return null
   } catch (error) {
     console.error('Error validating extension token:', error)
     return null

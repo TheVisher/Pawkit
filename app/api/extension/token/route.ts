@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth/get-user'
 import { prisma } from '@/lib/server/prisma'
 import { randomBytes } from 'crypto'
 import { rateLimit, getRateLimitHeaders } from '@/lib/utils/rate-limit'
+import bcrypt from 'bcryptjs'
 
 /**
  * Generate a new extension token for the authenticated user
@@ -36,15 +37,20 @@ export async function POST(request: NextRequest) {
     // Generate a secure random token (32 bytes = 64 hex characters)
     const token = randomBytes(32).toString('hex')
 
-    // Store token in database
+    // Hash the token before storing (using bcrypt with 10 rounds)
+    const hashedToken = await bcrypt.hash(token, 10)
+
+    // Store hashed token in database
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        extensionToken: token,
+        extensionToken: hashedToken,
         extensionTokenCreatedAt: new Date()
       }
     })
 
+    // Return the plain token to the user (they need this for the extension)
+    // This is the only time they'll see it - it's hashed in the database
     return NextResponse.json({ token }, { headers: rateLimitHeaders })
   } catch (error) {
     console.error('Error generating extension token:', error)

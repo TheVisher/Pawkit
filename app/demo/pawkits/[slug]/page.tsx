@@ -1,14 +1,14 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo, Suspense } from "react";
+import { useMemo, Suspense, use } from "react";
 import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { LibraryView } from "@/components/library/library-view";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 
-function DemoPawkitPageContent({ params }: { params: { slug: string } }) {
+function DemoPawkitPageContent({ params }: { params: Promise<{ slug: string }> }) {
   const searchParams = useSearchParams();
-  const { slug } = params;
+  const { slug } = use(params);
 
   const q = searchParams.get("q") || undefined;
   const layoutParam = searchParams.get("layout") as LayoutMode | null;
@@ -59,7 +59,7 @@ function DemoPawkitPageContent({ params }: { params: { slug: string } }) {
   );
 }
 
-export default function DemoPawkitPage({ params }: { params: { slug: string } }) {
+export default function DemoPawkitPage({ params }: { params: Promise<{ slug: string }> }) {
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <DemoPawkitPageContent params={params} />

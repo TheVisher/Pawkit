@@ -4,10 +4,11 @@ import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { getUserByExtensionToken, extractTokenFromHeader } from "@/lib/auth/extension-auth";
 import { rateLimit, getRateLimitHeaders } from "@/lib/utils/rate-limit";
+import { isAllowedExtensionOrigin } from "@/lib/config/extension-config";
 
 /**
  * Generate CORS headers based on request origin
- * Only allows requests from the same origin or browser extensions
+ * Only allows requests from the same origin or authorized browser extensions
  */
 function getCorsHeaders(request: NextRequest): HeadersInit {
   const origin = request.headers.get('origin') || '';
@@ -23,12 +24,13 @@ function getCorsHeaders(request: NextRequest): HeadersInit {
     };
   }
 
-  // Allow browser extension requests (chrome-extension:// or moz-extension://)
-  if (origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://')) {
+  // Allow authorized browser extension requests only
+  if (isAllowedExtensionOrigin(origin)) {
     return {
       'Access-Control-Allow-Origin': origin,
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Allow-Credentials': 'true',
     };
   }
 

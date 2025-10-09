@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import DOMPurify from "isomorphic-dompurify";
 
 type ReaderViewProps = {
   title: string;
@@ -12,6 +13,15 @@ type ReaderViewProps = {
 };
 
 export function ReaderView({ title, content, url, isExpanded, onToggleExpand, onClose }: ReaderViewProps) {
+  // Sanitize HTML content to prevent XSS attacks
+  const sanitizedContent = useMemo(() => {
+    return DOMPurify.sanitize(content, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'img'],
+      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class'],
+      ALLOW_DATA_ATTR: false,
+    });
+  }, [content]);
+
   return (
     <div className={`flex flex-col h-full ${isExpanded ? "bg-[#fefefe]" : ""}`}>
       {/* Header - only show in expanded mode */}
@@ -80,7 +90,7 @@ export function ReaderView({ title, content, url, isExpanded, onToggleExpand, on
           {/* Article Body */}
           <div
             className="reader-content prose prose-lg prose-gray max-w-none"
-            dangerouslySetInnerHTML={{ __html: content }}
+            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
           />
         </article>
       </div>

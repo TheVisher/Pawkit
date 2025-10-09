@@ -30,7 +30,9 @@
       "Bash(npx prisma generate:*)",
       "Bash(npx tsc:*)",
       "Bash(git checkout:*)",
-      "Bash(npm i:*)"
+      "Bash(npm i:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []

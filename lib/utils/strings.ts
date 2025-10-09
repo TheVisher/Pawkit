@@ -25,6 +25,17 @@ export function ensureUrlProtocol(url: string): string {
     throw new Error("URL is required");
   }
   const trimmed = url.trim();
+
+  // Block dangerous protocols
+  if (/^(javascript|data|vbscript|file|about):/i.test(trimmed)) {
+    throw new Error("Invalid URL protocol");
+  }
+
+  // Enforce maximum URL length (prevent DoS)
+  if (trimmed.length > 2048) {
+    throw new Error("URL too long");
+  }
+
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
     return trimmed;
   }

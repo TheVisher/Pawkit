@@ -1,4 +1,5 @@
 import { parse } from "node-html-parser";
+import { validateUrlForFetch, safeFetch, UrlValidationError } from "@/lib/utils/url-validator";
 
 export type SitePreview = {
   title?: string;
@@ -31,6 +32,17 @@ const TITLE_META_KEYS = ["og:title", "twitter:title", "itemprop:name", "title"];
 const DESCRIPTION_META_KEYS = ["og:description", "description", "twitter:description", "itemprop:description"];
 
 export async function fetchPreviewMetadata(url: string, previewServiceUrl?: string): Promise<SitePreview | undefined> {
+  // Validate URL for SSRF protection
+  try {
+    validateUrlForFetch(url);
+  } catch (error) {
+    if (error instanceof UrlValidationError) {
+      console.error('[Metadata] URL validation failed:', error.message);
+      return undefined;
+    }
+    throw error;
+  }
+
   // Special handling for YouTube - use their reliable thumbnail API
   const youtubeVideoId = extractYouTubeVideoId(url);
   if (youtubeVideoId) {
@@ -126,7 +138,7 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
   const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
   try {
-    const response = await fetch(url, {
+    const response = await safeFetch(url, {
       headers: {
         "User-Agent": USER_AGENT,
         Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
