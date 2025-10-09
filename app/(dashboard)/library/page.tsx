@@ -38,6 +38,9 @@ function LibraryPageContent() {
   const items = useMemo(() => {
     let filtered = cards;
 
+    // Exclude cards in The Den
+    filtered = filtered.filter(card => !card.inDen);
+
     // Search query
     if (q) {
       const query = q.toLowerCase();

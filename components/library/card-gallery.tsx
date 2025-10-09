@@ -357,15 +357,37 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
     return plainText.length > 100 ? plainText.substring(0, 100) + "..." : plainText;
   };
 
-  // Truncate title for cleaner display
-  const truncateTitle = (text: string, maxLength: number = 60) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength).trim() + "…";
+  // Smart title cleaning - removes hashtags and common social media patterns
+  const cleanTitle = (title: string) => {
+    if (!title) return "";
+
+    // Only clean if it's actually a long title with hashtags or TikTok branding
+    // Don't clean short titles or titles that would become empty
+    const hasHashtags = title.includes('#');
+    const hasTikTokBranding = /(\|\s*TikTok|on\s+TikTok|-\s*TikTok)/i.test(title);
+
+    if (!hasHashtags && !hasTikTokBranding) {
+      return title; // Return original if nothing to clean
+    }
+
+    // Remove hashtags and everything after them
+    let cleaned = title.split(/\s+#/)[0];
+
+    // Remove common TikTok patterns only
+    cleaned = cleaned
+      .replace(/\s+\|\s+TikTok/gi, "") // Remove "| TikTok"
+      .replace(/\s+on TikTok/gi, "") // Remove "on TikTok"
+      .replace(/\s*-\s*TikTok/gi, "") // Remove "- TikTok"
+      .replace(/\s{2,}/g, " ") // Collapse multiple spaces
+      .trim();
+
+    // If cleaned title is too short or empty, return original
+    return cleaned.length > 3 ? cleaned : title;
   };
 
   const rawTitle = card.title || (isNote ? "Untitled Note" : card.domain || card.url);
-  const displayTitle = truncateTitle(rawTitle);
-  const displaySubtext = isNote ? getExcerpt() : (isPending ? "Kit is Fetching" : card.domain ?? card.url);
+  const displayTitle = cleanTitle(rawTitle);
+  const displaySubtext = isNote ? getExcerpt() : (isPending ? "Kit is Fetching" : "");
 
   return (
     <CardContextMenuWrapper
@@ -409,35 +431,58 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
               />
             </div>
           ) : card.image ? (
-            <img
-              src={card.image}
-              alt={card.title ?? card.url}
-              className={layout === "masonry" ? "block w-full h-auto" : "block h-full w-full object-cover"}
-              loading="lazy"
-              onError={(e) => {
-                // Fallback to logo on image error
-                const target = e.target as HTMLImageElement;
-                target.onerror = null;
-                target.src = "/logo.png";
-                target.className = "h-16 w-16 opacity-50";
-              }}
-            />
+            <>
+              <img
+                src={card.image}
+                alt={card.title ?? card.url}
+                className={layout === "masonry" ? "block w-full h-auto" : "block h-full w-full object-cover"}
+                loading="lazy"
+                onError={(e) => {
+                  // Fallback to logo on image error
+                  const target = e.target as HTMLImageElement;
+                  target.onerror = null;
+                  target.src = "/logo.png";
+                  target.className = "h-16 w-16 opacity-50";
+                }}
+              />
+              {/* URL Pill Overlay */}
+              {card.url && (
+                <a
+                  href={card.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-2 left-2 right-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center justify-center"
+                >
+                  <span className="truncate max-w-full">
+                    {card.domain || new URL(card.url).hostname}
+                  </span>
+                </a>
+              )}
+            </>
           ) : null}
         </div>
       )}
       <div className="space-y-1 text-sm">
         <div className="flex items-center gap-2">
           {isNote && <span className="text-lg">{card.type === "md-note" ? "📝" : "📄"}</span>}
-          <h3 className="flex-1 font-semibold text-foreground transition-colors">{displayTitle}</h3>
+          <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
         </div>
         <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
         {card.collections && card.collections.length > 0 && layout !== "compact" && (
           <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
-            {card.collections.map((collection) => (
-              <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
-                {collection}
+            {card.collections
+              .filter((collection) => !collection.startsWith('den-'))
+              .map((collection) => (
+                <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
+                  {collection}
+                </span>
+              ))}
+            {card.inDen && (
+              <span className="rounded bg-surface-soft px-2 py-0.5">
+                The Den
               </span>
-            ))}
+            )}
           </div>
         )}
         <div className="flex items-center gap-2">

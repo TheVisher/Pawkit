@@ -587,16 +587,18 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
               </>
             ) : isYouTubeUrl(card.url) ? (
-              <div className="flex-1 flex items-center justify-center p-6">
-                <div className="w-full max-w-4xl aspect-video">
-                  <iframe
-                    src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
-                    title={card.title || "YouTube video"}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full rounded-lg"
-                  />
-                </div>
+              <div className="p-8 flex items-center justify-center min-h-[80vh]">
+                <iframe
+                  src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
+                  title={card.title || "YouTube video"}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="rounded-lg"
+                  style={{
+                    width: 'min(calc(100vw - 424px - 8rem), calc((90vh - 4rem) * 16 / 9))',
+                    height: 'min(calc(90vh - 4rem), calc((100vw - 424px - 8rem) * 9 / 16))'
+                  }}
+                />
               </div>
             ) : (
               <div className="p-8">
@@ -642,7 +644,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
         <Tabs defaultValue="pawkits" className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Tab Navigation */}
-          <TabsList className="w-full rounded-none border-b border-gray-800 bg-transparent h-auto p-0 justify-start overflow-x-auto flex-shrink-0 pointer-events-auto">
+          <TabsList className="w-full rounded-none border-b border-gray-800 bg-transparent h-auto p-1 justify-start flex-shrink-0 pointer-events-auto flex flex-wrap gap-0">
             <TabsTrigger value="pawkits" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
               Pawkits
             </TabsTrigger>
@@ -1022,14 +1024,67 @@ function ActionsTab({ card, onRefreshMetadata, isPinned, onTogglePin }: ActionsT
 
 // Metadata Section
 function MetadataSection({ card }: { card: CardModel }) {
+  const updateCardInStore = useDataStore(state => state.updateCard);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(card.title || "");
+
+  const handleSaveTitle = async () => {
+    if (editedTitle.trim() === card.title) {
+      setIsEditingTitle(false);
+      return;
+    }
+
+    try {
+      await updateCardInStore(card.id, { title: editedTitle.trim() });
+      setIsEditingTitle(false);
+    } catch (error) {
+      console.error("Failed to update title:", error);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleSaveTitle();
+    } else if (e.key === "Escape") {
+      setEditedTitle(card.title || "");
+      setIsEditingTitle(false);
+    }
+  };
+
   return (
     <div className="space-y-2">
       <h3 className="text-xs font-medium text-gray-500 uppercase">Details</h3>
 
       <div>
-        <h4 className="text-sm font-semibold text-gray-100 mb-1">
-          {card.title || card.domain || "Untitled"}
-        </h4>
+        {isEditingTitle ? (
+          <div className="mb-1">
+            <textarea
+              value={editedTitle}
+              onChange={(e) => setEditedTitle(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={handleSaveTitle}
+              autoFocus
+              rows={4}
+              className="w-full text-sm font-semibold text-gray-100 bg-gray-800 border border-gray-700 rounded px-2 py-1 focus:outline-none focus:border-accent resize-y"
+              placeholder="Enter title..."
+            />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 mb-1 group">
+            <h4 className="flex-1 text-sm font-semibold text-gray-100">
+              {card.title || card.domain || "Untitled"}
+            </h4>
+            <button
+              onClick={() => setIsEditingTitle(true)}
+              className="text-gray-500 hover:text-gray-200 transition-colors flex-shrink-0"
+              title="Edit title"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
+          </div>
+        )}
         <a
           href={card.url}
           target="_blank"

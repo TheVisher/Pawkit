@@ -35,10 +35,10 @@ export default function CalendarPage() {
   const [date, setDate] = useState(new Date());
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
-  // Convert cards to calendar events (only cards with scheduledDate)
+  // Convert cards to calendar events (only cards with scheduledDate, excluding Den cards)
   const events: CalendarEvent[] = useMemo(() => {
     return cards
-      .filter((card) => card.scheduledDate) // Only show cards with scheduled dates
+      .filter((card) => card.scheduledDate && !card.inDen) // Only show non-Den cards with scheduled dates
       .map((card) => {
         // Parse the ISO string and create a date at local midnight
         const dateStr = card.scheduledDate!.split('T')[0]; // Get YYYY-MM-DD

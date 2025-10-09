@@ -45,6 +45,7 @@ export default function HomePage() {
   // Compute views from the single source of truth
   const recent = useMemo(() =>
     cards
+      .filter(c => !c.inDen) // Exclude Den cards
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 5),
     [cards]
@@ -52,7 +53,7 @@ export default function HomePage() {
 
   const quickAccess = useMemo(() =>
     cards
-      .filter(c => c.pinned)
+      .filter(c => c.pinned && !c.inDen) // Exclude Den cards
       .slice(0, 8),
     [cards]
   );
@@ -74,12 +75,15 @@ export default function HomePage() {
       .slice(0, 8);
   }, [collections]);
 
-  const counts = useMemo(() => ({
-    total: cards.length,
-    ready: cards.filter(c => c.status === 'READY').length,
-    pending: cards.filter(c => c.status === 'PENDING').length,
-    error: cards.filter(c => c.status === 'ERROR').length
-  }), [cards]);
+  const counts = useMemo(() => {
+    const nonDenCards = cards.filter(c => !c.inDen);
+    return {
+      total: nonDenCards.length,
+      ready: nonDenCards.filter(c => c.status === 'READY').length,
+      pending: nonDenCards.filter(c => c.status === 'PENDING').length,
+      error: nonDenCards.filter(c => c.status === 'ERROR').length
+    };
+  }, [cards]);
 
   const recentIds = new Set(recent.map(card => card.id));
   let quickAccessUnique = quickAccess.filter(item => !recentIds.has(item.id));
