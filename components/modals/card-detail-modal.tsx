@@ -1029,7 +1029,7 @@ function ActionsTab({ card, onRefreshMetadata, isPinned, onTogglePin }: ActionsT
 
 // Metadata Section
 function MetadataSection({ card }: { card: CardModel }) {
-  const updateCardInStore = useDemoAwareStore(state => state.updateCard);
+  const { updateCard: updateCardInStore } = useDemoAwareStore();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(card.title || "");
 
