@@ -6,7 +6,7 @@ import { isProbablyUrl } from "@/lib/utils/strings";
 import { AddCardModal } from "@/components/modals/add-card-modal";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
-import { useDataStore } from "@/lib/stores/data-store";
+import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -22,7 +22,7 @@ function OmniBarContent() {
   const [showModal, setShowModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
-  const addCardToStore = useDataStore((state) => state.addCard);
+  const addCardToStore = useDemoAwareStore((state) => state.addCard);
   const lastSearchedRef = useRef(initialQuery);
   const isTypingRef = useRef(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);

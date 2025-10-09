@@ -1,15 +1,13 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
-import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
 import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardModel, CollectionNode } from "@/lib/types";
-import { useDataStore } from "@/lib/stores/data-store";
+import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
-import { format, addDays, startOfDay } from "date-fns";
 
 const GREETINGS = [
   "Welcome back",
@@ -19,29 +17,12 @@ const GREETINGS = [
   "Great to have you back"
 ];
 
-export default function HomePage() {
+export default function DemoHomePage() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
-  const [displayName, setDisplayName] = useState<string | null>(null);
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
 
-  // Read from global store - instant, no API calls
-  const { cards, collections, updateCard, deleteCard } = useDataStore();
-
-  // Fetch user profile
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const response = await fetch('/api/user');
-        if (response.ok) {
-          const data = await response.json();
-          setDisplayName(data.displayName);
-        }
-      } catch (error) {
-        console.error('Failed to fetch user profile:', error);
-      }
-    };
-    fetchProfile();
-  }, []);
+  // Read from demo store
+  const { cards, collections, updateCard, deleteCard } = useDemoAwareStore();
 
   // Compute views from the single source of truth
   const recent = useMemo(() =>
@@ -76,33 +57,6 @@ export default function HomePage() {
       .slice(0, 8);
   }, [collections]);
 
-  // Get the week starting from Monday
-  const weekDays = useMemo(() => {
-    const now = new Date();
-    const day = now.getDay();
-    const diff = day === 0 ? -6 : 1 - day; // If Sunday (0), go back 6 days, else go to Monday
-    const monday = addDays(startOfDay(now), diff);
-
-    return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
-  }, []);
-
-  // Group cards by date
-  const cardsByDate = useMemo(() => {
-    const map = new Map<string, CardModel[]>();
-
-    cards
-      .filter((card) => card.scheduledDate && !card.inDen)
-      .forEach((card) => {
-        const dateStr = card.scheduledDate!.split('T')[0];
-        if (!map.has(dateStr)) {
-          map.set(dateStr, []);
-        }
-        map.get(dateStr)!.push(card);
-      });
-
-    return map;
-  }, [cards]);
-
   const recentIds = new Set(recent.map(card => card.id));
   let quickAccessUnique = quickAccess.filter(item => !recentIds.has(item.id));
 
@@ -129,14 +83,14 @@ export default function HomePage() {
         <section className="text-center">
           <h1 className="text-4xl font-semibold text-gray-100 sm:text-5xl">
             <span className="mr-3 inline-block" aria-hidden="true">👋</span>
-            {displayName ? `${greeting}, ${displayName}` : "Welcome to Pawkit!"}
+            {greeting}, welcome to the demo!
           </h1>
         </section>
 
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-xl font-semibold text-gray-100">Recent Items</h2>
-            <Link href="/library" className="text-sm text-accent hover:text-accent/80">
+            <Link href="/demo/library" className="text-sm text-accent hover:text-accent/80">
               View library
             </Link>
           </div>
@@ -149,7 +103,6 @@ export default function HomePage() {
                   onClick={() => setActiveCardId(card.id)}
                   onAddToPawkit={async (slug) => {
                     const collections = Array.from(new Set([slug, ...(card.collections || [])]));
-                    // If card is in The Den, remove it when adding to regular Pawkit
                     const updates: { collections: string[]; inDen?: boolean } = { collections };
                     if (card.inDen) {
                       updates.inDen = false;
@@ -157,13 +110,7 @@ export default function HomePage() {
                     await updateCard(card.id, updates);
                   }}
                   onAddToDen={async () => {
-                    const response = await fetch(`/api/cards/${card.id}/move-to-den`, {
-                      method: "PATCH",
-                    });
-                    if (response.ok) {
-                      // Card moved to Den, refresh the page data
-                      window.location.reload();
-                    }
+                    await updateCard(card.id, { inDen: true });
                   }}
                   onDeleteCard={async () => {
                     await deleteCard(card.id);
@@ -186,7 +133,7 @@ export default function HomePage() {
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold text-gray-100">Quick Access</h2>
-          <Link href="/pawkits" className="text-sm text-accent hover:text-accent/80">
+          <Link href="/demo/pawkits" className="text-sm text-accent hover:text-accent/80">
             Manage shortcuts
           </Link>
         </div>
@@ -202,60 +149,6 @@ export default function HomePage() {
         ) : (
           <EmptyState message="Pin cards or Pawkits to surface them here." />
         )}
-      </section>
-
-      <section className="mt-auto space-y-4">
-        <div className="flex items-center justify-between gap-4">
-          <h2 className="text-xl font-semibold text-gray-100">This Week</h2>
-          <Link href="/calendar" className="text-sm text-accent hover:text-accent/80">
-            View full calendar
-          </Link>
-        </div>
-        <div className="grid grid-cols-7 gap-3">
-          {weekDays.map((day, index) => {
-            const dateStr = format(day, 'yyyy-MM-dd');
-            const dayCards = cardsByDate.get(dateStr) || [];
-            const isToday = format(new Date(), 'yyyy-MM-dd') === dateStr;
-
-            return (
-              <div
-                key={dateStr}
-                className={`rounded-2xl border bg-surface p-4 min-h-[200px] flex flex-col ${
-                  isToday ? 'border-accent' : 'border-subtle'
-                }`}
-              >
-                <div className="text-center mb-3">
-                  <p className="text-xs text-muted-foreground uppercase">
-                    {format(day, 'EEE')}
-                  </p>
-                  <p className={`text-2xl font-semibold ${isToday ? 'text-accent' : 'text-foreground'}`}>
-                    {format(day, 'd')}
-                  </p>
-                </div>
-                <div className="space-y-2 flex-1">
-                  {dayCards.map((card) => (
-                    <button
-                      key={card.id}
-                      onClick={() => setActiveCardId(card.id)}
-                      className="w-full text-left p-2 rounded-lg bg-surface-soft hover:bg-surface-soft/80 transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        {card.image && (
-                          <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded">
-                            <img src={card.image} alt="" className="h-full w-full object-cover" />
-                          </div>
-                        )}
-                        <p className="text-xs font-medium text-foreground truncate flex-1">
-                          {card.title || card.domain || card.url}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
       </section>
       </div>
 

@@ -59,8 +59,8 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // Skip auth check for landing page
-  if (request.nextUrl.pathname === '/') {
+  // Skip auth check for landing page and demo
+  if (request.nextUrl.pathname === '/' || request.nextUrl.pathname.startsWith('/demo')) {
     return response
   }
 

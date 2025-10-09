@@ -10,7 +10,7 @@ import { CardModel, CollectionNode } from "@/lib/types";
 import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
-import { useDataStore } from "@/lib/stores/data-store";
+import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
@@ -26,8 +26,8 @@ export type CardGalleryProps = {
 };
 
 function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false }: CardGalleryProps) {
-  const updateCardInStore = useDataStore(state => state.updateCard);
-  const deleteCardFromStore = useDataStore(state => state.deleteCard);
+  const updateCardInStore = useDemoAwareStore(state => state.updateCard);
+  const deleteCardFromStore = useDemoAwareStore(state => state.deleteCard);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);

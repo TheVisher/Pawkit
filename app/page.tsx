@@ -67,10 +67,19 @@ export default function PawkitLanding() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-            <Link href="/home">
+            <Link href="/demo">
               <Button
                 size="lg"
                 className="bg-gradient-to-r from-[#6d5cff] to-[#a36bff] hover:from-[#5d4cef] hover:to-[#9361ef] text-white text-lg px-8 py-6 shadow-lg hover:shadow-xl transition-all"
+              >
+                Try Demo
+              </Button>
+            </Link>
+            <Link href="/home">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-2 border-[#6d5cff] text-[#6d5cff] hover:bg-[#6d5cff] hover:text-white text-lg px-8 py-6 transition-all bg-transparent"
               >
                 Launch Pawkit
               </Button>
@@ -79,7 +88,7 @@ export default function PawkitLanding() {
               <Button
                 size="lg"
                 variant="outline"
-                className="border-2 border-[#6d5cff] text-[#6d5cff] hover:bg-[#6d5cff] hover:text-white text-lg px-8 py-6 transition-all bg-transparent"
+                className="border-2 border-zinc-600 text-zinc-400 hover:bg-zinc-700 hover:text-white text-lg px-8 py-6 transition-all bg-transparent"
               >
                 Get Browser Extension
               </Button>
@@ -180,14 +189,25 @@ export default function PawkitLanding() {
             Ready to Get Your Bookmarks in Order?
           </h2>
           <p className="text-xl text-purple-100 text-balance">Join the pack. Kit is waiting.</p>
-          <Link href="/home">
-            <Button
-              size="lg"
-              className="bg-white text-[#6d5cff] hover:bg-purple-50 text-lg px-10 py-6 shadow-lg hover:shadow-xl transition-all mt-4"
-            >
-              Get Started
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+            <Link href="/demo">
+              <Button
+                size="lg"
+                className="bg-white text-[#6d5cff] hover:bg-purple-50 text-lg px-10 py-6 shadow-lg hover:shadow-xl transition-all"
+              >
+                Try Demo
+              </Button>
+            </Link>
+            <Link href="/home">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-2 border-white text-white hover:bg-white/10 text-lg px-10 py-6 transition-all"
+              >
+                Get Started
+              </Button>
+            </Link>
+          </div>
           <p className="text-sm text-purple-100 pt-4">Free to use. Privacy guaranteed. No tracking, ever.</p>
         </div>
       </section>

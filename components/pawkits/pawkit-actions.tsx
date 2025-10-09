@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useDataStore } from "@/lib/stores/data-store";
+import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 
 type PawkitActionsProps = {
   pawkitId: string;
@@ -25,7 +25,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
   const [pinned, setPinned] = useState(isPinned);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { deleteCollection, updateCollection } = useDataStore();
+  const { deleteCollection, updateCollection } = useDemoAwareStore();
 
   const handleDelete = async () => {
     setLoading(true);

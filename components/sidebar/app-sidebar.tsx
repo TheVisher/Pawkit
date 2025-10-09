@@ -49,6 +49,7 @@ const bottomItems = [
 export function AppSidebar({ username, displayName, collections }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const isDemo = pathname?.startsWith('/demo');
   const [isPawkitsExpanded, setIsPawkitsExpanded] = React.useState(false);
   const [expandedCollections, setExpandedCollections] = React.useState<Set<string>>(new Set());
   const [showProfileModal, setShowProfileModal] = React.useState(false);
@@ -115,13 +116,13 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/home">
+              <Link href={isDemo ? "/demo/home" : "/home"}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
                   <img src="/logo.png" alt="Pawkit" className="w-8 h-8" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Pawkit</span>
-                  <span className="truncate text-xs">Knowledge Manager</span>
+                  <span className="truncate text-xs">{isDemo ? "Demo Mode" : "Knowledge Manager"}</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -134,23 +135,26 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={isActive(item.href)}>
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {navigationItems.map((item) => {
+                const href = isDemo ? `/demo${item.href}` : item.href;
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={isActive(href)}>
+                      <Link href={href}>
+                        <item.icon />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
 
               {/* Pawkits */}
               <Collapsible open={isPawkitsExpanded} onOpenChange={setIsPawkitsExpanded}>
                 <SidebarMenuItem>
                   <div className="flex w-full items-center">
-                    <SidebarMenuButton asChild isActive={isActive("/pawkits")} className="flex-1">
-                      <Link href="/pawkits">
+                    <SidebarMenuButton asChild isActive={isActive(isDemo ? "/demo/pawkits" : "/pawkits")} className="flex-1">
+                      <Link href={isDemo ? "/demo/pawkits" : "/pawkits"}>
                         <FolderOpen />
                         <span>Pawkits</span>
                       </Link>
@@ -176,7 +180,8 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
                       {collections.map((collection) => {
                         const hasChildren = collection.children && collection.children.length > 0;
                         const isExpanded = expandedCollections.has(collection.id);
-                        const isCollectionActive = pathname === `/pawkits/${collection.slug}`;
+                        const pawkitHref = isDemo ? `/demo/pawkits/${collection.id}` : `/pawkits/${collection.slug || collection.id}`;
+                        const isCollectionActive = pathname === pawkitHref;
 
                         return (
                           <Collapsible
@@ -187,7 +192,7 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
                             <SidebarMenuSubItem>
                               <div className="flex w-full items-center">
                                 <SidebarMenuSubButton asChild isActive={isCollectionActive} className="flex-1">
-                                  <Link href={`/pawkits/${collection.slug}`}>
+                                  <Link href={pawkitHref}>
                                     <FolderOpen className="h-4 w-4" />
                                     <span>{collection.name}</span>
                                   </Link>
@@ -210,15 +215,18 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
                             {hasChildren && (
                               <CollapsibleContent>
                                 <SidebarMenuSub className="ml-4">
-                                  {collection.children.map((child) => (
-                                    <SidebarMenuSubItem key={child.id}>
-                                      <SidebarMenuSubButton asChild isActive={pathname === `/pawkits/${child.slug}`}>
-                                        <Link href={`/pawkits/${child.slug}`}>
-                                          <span>{child.name}</span>
-                                        </Link>
-                                      </SidebarMenuSubButton>
-                                    </SidebarMenuSubItem>
-                                  ))}
+                                  {collection.children.map((child) => {
+                                    const childHref = isDemo ? `/demo/pawkits/${child.id}` : `/pawkits/${child.slug || child.id}`;
+                                    return (
+                                      <SidebarMenuSubItem key={child.id}>
+                                        <SidebarMenuSubButton asChild isActive={pathname === childHref}>
+                                          <Link href={childHref}>
+                                            <span>{child.name}</span>
+                                          </Link>
+                                        </SidebarMenuSubButton>
+                                      </SidebarMenuSubItem>
+                                    );
+                                  })}
                                 </SidebarMenuSub>
                               </CollapsibleContent>
                             )}
@@ -250,19 +258,23 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <SidebarSeparator />
-        <SidebarMenu>
-          {bottomItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton asChild size="sm" isActive={isActive(item.href)}>
-                <Link href={item.href}>
-                  <item.icon />
-                  <span>{item.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+        {!isDemo && (
+          <>
+            <SidebarSeparator />
+            <SidebarMenu>
+              {bottomItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild size="sm" isActive={isActive(item.href)}>
+                    <Link href={item.href}>
+                      <item.icon />
+                      <span>{item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </>
+        )}
       </SidebarFooter>
 
       <ProfileModal

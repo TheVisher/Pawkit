@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { CardModel } from "@/lib/types";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
-import { useDataStore } from "@/lib/stores/data-store";
+import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 
 export type AddCardModalProps = {
   open: boolean;
@@ -14,7 +14,7 @@ export type AddCardModalProps = {
 };
 
 export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardModalProps) {
-  const addCardToStore = useDataStore((state) => state.addCard);
+  const addCardToStore = useDemoAwareStore((state) => state.addCard);
   const [url, setUrl] = useState(initialUrl ?? "");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");

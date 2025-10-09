@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useDataStore } from "@/lib/stores/data-store";
+import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
 
 type CardDetailModalProps = {
@@ -24,7 +24,7 @@ type CardDetailModalProps = {
 };
 
 export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete }: CardDetailModalProps) {
-  const updateCardInStore = useDataStore(state => state.updateCard);
+  const updateCardInStore = useDemoAwareStore(state => state.updateCard);
   const isNote = card.type === "md-note" || card.type === "text-note";
   const [notes, setNotes] = useState(card.notes ?? "");
   const [content, setContent] = useState(card.content ?? "");
@@ -307,7 +307,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
       // Simply refresh the entire data store to get the latest state from server
       // This ensures consistency and will properly filter out Den items
-      await useDataStore.getState().refresh();
+      // Note: Demo mode doesn't need refresh since it's all local
+      const pathname = window.location.pathname;
+      if (!pathname.startsWith('/demo')) {
+        const { useDataStore } = await import('@/lib/stores/data-store');
+        await useDataStore.getState().refresh();
+      }
 
       setToast(updated.inDen ? "Moved to The Den" : "Removed from The Den");
 
@@ -1024,7 +1029,7 @@ function ActionsTab({ card, onRefreshMetadata, isPinned, onTogglePin }: ActionsT
 
 // Metadata Section
 function MetadataSection({ card }: { card: CardModel }) {
-  const updateCardInStore = useDataStore(state => state.updateCard);
+  const updateCardInStore = useDemoAwareStore(state => state.updateCard);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(card.title || "");
 
