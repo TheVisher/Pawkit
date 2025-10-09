@@ -8,29 +8,7 @@ import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
-import { Calendar, dateFnsLocalizer } from "react-big-calendar";
-import { format, parse, startOfWeek, getDay, addDays, startOfDay } from "date-fns";
-import "react-big-calendar/lib/css/react-big-calendar.css";
-
-const locales = {
-  "en-US": require("date-fns/locale/en-US"),
-};
-
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek,
-  getDay,
-  locales,
-});
-
-type CalendarEvent = {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-  resource: CardModel;
-};
+import { format, addDays, startOfDay } from "date-fns";
 
 const GREETINGS = [
   "Welcome back",
@@ -80,33 +58,39 @@ export default function DemoHomePage() {
       .slice(0, 8);
   }, [collections]);
 
+  // Get the week starting from Monday
+  const weekDays = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = day === 0 ? -6 : 1 - day; // If Sunday (0), go back 6 days, else go to Monday
+    const monday = addDays(startOfDay(now), diff);
+
+    return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  }, []);
+
+  // Group cards by date
+  const cardsByDate = useMemo(() => {
+    const map = new Map<string, CardModel[]>();
+
+    cards
+      .filter((card) => card.scheduledDate && !card.inDen)
+      .forEach((card) => {
+        const dateStr = card.scheduledDate!.split('T')[0];
+        if (!map.has(dateStr)) {
+          map.set(dateStr, []);
+        }
+        map.get(dateStr)!.push(card);
+      });
+
+    return map;
+  }, [cards]);
+
   const recentIds = new Set(recent.map(card => card.id));
   let quickAccessUnique = quickAccess.filter(item => !recentIds.has(item.id));
 
   if (quickAccessUnique.length === 0) {
     quickAccessUnique = quickAccess;
   }
-
-  // Calendar events for 7-day view
-  const calendarEvents: CalendarEvent[] = useMemo(() => {
-    return cards
-      .filter((card) => card.scheduledDate && !card.inDen)
-      .map((card) => {
-        const dateStr = card.scheduledDate!.split('T')[0];
-        const [year, month, day] = dateStr.split('-').map(Number);
-        const cardDate = new Date(year, month - 1, day);
-        return {
-          id: card.id,
-          title: card.title || card.domain || card.url,
-          start: cardDate,
-          end: cardDate,
-          resource: card,
-        };
-      });
-  }, [cards]);
-
-  const today = startOfDay(new Date());
-  const weekEnd = addDays(today, 6);
 
   const activeCard = activeCardId ? cards.find(c => c.id === activeCardId) : null;
 
@@ -195,41 +179,57 @@ export default function DemoHomePage() {
         )}
       </section>
 
-      <section className="space-y-4">
+      <section className="mt-auto space-y-4">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-xl font-semibold text-gray-100">This Week</h2>
           <Link href="/demo/calendar" className="text-sm text-accent hover:text-accent/80">
             View full calendar
           </Link>
         </div>
-        <div className="calendar-container rounded-2xl border border-subtle bg-surface p-6">
-          <Calendar
-            localizer={localizer}
-            events={calendarEvents}
-            startAccessor="start"
-            endAccessor="end"
-            view="week"
-            date={today}
-            toolbar={false}
-            onSelectEvent={(event: CalendarEvent) => setActiveCardId(event.id)}
-            components={{
-              event: ({ event }: { event: CalendarEvent }) => {
-                const card = event.resource;
-                return (
-                  <div className="flex items-center gap-1 overflow-hidden text-xs">
-                    {card.image && (
-                      <div className="h-4 w-4 flex-shrink-0 overflow-hidden rounded">
-                        <img src={card.image} alt="" className="h-full w-full object-cover" />
+        <div className="grid grid-cols-7 gap-3">
+          {weekDays.map((day, index) => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const dayCards = cardsByDate.get(dateStr) || [];
+            const isToday = format(new Date(), 'yyyy-MM-dd') === dateStr;
+
+            return (
+              <div
+                key={dateStr}
+                className={`rounded-2xl border bg-surface p-4 min-h-[200px] flex flex-col ${
+                  isToday ? 'border-accent' : 'border-subtle'
+                }`}
+              >
+                <div className="text-center mb-3">
+                  <p className="text-xs text-muted-foreground uppercase">
+                    {format(day, 'EEE')}
+                  </p>
+                  <p className={`text-2xl font-semibold ${isToday ? 'text-accent' : 'text-foreground'}`}>
+                    {format(day, 'd')}
+                  </p>
+                </div>
+                <div className="space-y-2 flex-1">
+                  {dayCards.map((card) => (
+                    <button
+                      key={card.id}
+                      onClick={() => setActiveCardId(card.id)}
+                      className="w-full text-left p-2 rounded-lg bg-surface-soft hover:bg-surface-soft/80 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        {card.image && (
+                          <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded">
+                            <img src={card.image} alt="" className="h-full w-full object-cover" />
+                          </div>
+                        )}
+                        <p className="text-xs font-medium text-foreground truncate flex-1">
+                          {card.title || card.domain || card.url}
+                        </p>
                       </div>
-                    )}
-                    <span className="truncate">{event.title}</span>
-                  </div>
-                );
-              },
-            }}
-            style={{ height: 400 }}
-            className="pawkit-calendar"
-          />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
       </div>
