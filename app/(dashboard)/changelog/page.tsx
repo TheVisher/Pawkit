@@ -59,7 +59,7 @@ export default function ChangelogPage() {
     <div className="mx-auto max-w-4xl px-6 py-12">
       <div className="mb-12 text-center">
         <h1 className="text-4xl font-bold text-foreground mb-3">Changelog</h1>
-        <p className="text-muted-foreground">Track all the new features and improvements we've shipped</p>
+        <p className="text-muted-foreground">Track all the new features and improvements we&apos;ve shipped</p>
       </div>
 
       <div className="relative">
