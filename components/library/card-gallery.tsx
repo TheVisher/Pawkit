@@ -26,8 +26,7 @@ export type CardGalleryProps = {
 };
 
 function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false }: CardGalleryProps) {
-  const updateCardInStore = useDemoAwareStore(state => state.updateCard);
-  const deleteCardFromStore = useDemoAwareStore(state => state.deleteCard);
+  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDemoAwareStore();
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
