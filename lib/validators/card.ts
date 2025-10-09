@@ -6,7 +6,8 @@ const nullableString = z
   .trim()
   .transform((value) => (value.length === 0 ? undefined : value))
   .optional()
-  .or(z.literal("").transform(() => undefined));
+  .nullable()
+  .transform((value) => value === null ? undefined : value);
 
 const tagsArray = z
   .array(z.string().min(1).trim())
@@ -49,7 +50,19 @@ export const cardCreateSchema = z.object({
 export const cardUpdateSchema = z
   .object({
     type: z.enum(["url", "md-note", "text-note"]).optional(),
-    url: z.string().min(1).transform(ensureUrlProtocol).optional(),
+    url: z
+      .string()
+      .min(1)
+      .transform((val) => {
+        try {
+          return ensureUrlProtocol(val);
+        } catch (error) {
+          // If URL validation fails, return original value
+          // Server-side logic will handle it appropriately
+          return val;
+        }
+      })
+      .optional(),
     title: nullableString,
     notes: nullableString,
     content: nullableString,

@@ -540,6 +540,12 @@ async function executeUpdateCard(op: QueueOperation, set: any, get: any) {
       throw new Error('Failed to update card on server');
     }
 
+    // Update with server response to get the latest updatedAt timestamp
+    const updatedCard = await response.json();
+    set((state: any) => ({
+      cards: state.cards.map((c: CardDTO) => c.id === targetId ? updatedCard : c)
+    }));
+
     // Remove from queue after successful sync
     if (op.id) {
       await syncQueue.remove(op.id);

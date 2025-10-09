@@ -180,7 +180,15 @@ export async function getCard(userId: string, id: string) {
 }
 
 export async function updateCard(userId: string, id: string, payload: CardUpdateInput): Promise<CardDTO> {
-  const parsed = cardUpdateSchema.parse(payload);
+  let parsed;
+  try {
+    parsed = cardUpdateSchema.parse(payload);
+  } catch (error) {
+    console.error('[updateCard] Validation failed for payload:', JSON.stringify(payload, null, 2));
+    console.error('[updateCard] Validation error:', error);
+    throw error;
+  }
+
   const normalizedTags = parsed.tags ? normalizeTags(parsed.tags) : undefined;
   const normalizedCollections = parsed.collections ? normalizeCollections(parsed.collections) : undefined;
 

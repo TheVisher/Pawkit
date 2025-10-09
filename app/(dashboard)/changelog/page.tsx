@@ -3,6 +3,16 @@
 export default function ChangelogPage() {
   const changes = [
     {
+      dateRange: "October 9, 2025",
+      features: [
+        { title: "Firefox Extension Published", description: "Pawkit Web Clipper v1.0.0 now available on Firefox Add-ons store" },
+        { title: "Extension Icon Update", description: "Updated extension to use new Pawkit logo (blue paw)" },
+        { title: "Security Enhancements", description: "Comprehensive security fixes including XSS prevention, SSRF protection, and CSP headers" },
+        { title: "Token Security", description: "Extension tokens now use bcrypt hashing with 30-day expiry" },
+        { title: "Validation Fixes", description: "Fixed null handling in card updates for better reliability" },
+      ],
+    },
+    {
       dateRange: "October 8, 2025",
       features: [
         { title: "Demo Mode", description: "Full demo experience with sample data for new users" },

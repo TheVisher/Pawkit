@@ -84,7 +84,7 @@ export default function PawkitLanding() {
                 Launch Pawkit
               </Button>
             </Link>
-            <a href="https://github.com/TheVisher/Pawkit/tree/main/packages/extension" target="_blank" rel="noopener noreferrer">
+            <a href="https://addons.mozilla.org/en-US/firefox/addon/pawkit-web-clipper/" target="_blank" rel="noopener noreferrer">
               <Button
                 size="lg"
                 variant="outline"
