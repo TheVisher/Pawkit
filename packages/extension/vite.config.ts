@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
             dest: '.'
           },
           {
-            src: 'src/assets/icons/*',
+            src: 'icons/*',
             dest: 'icons'
           }
         ]

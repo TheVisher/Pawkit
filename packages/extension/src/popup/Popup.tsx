@@ -105,7 +105,7 @@ export function Popup() {
   const openSavedCard = () => {
     // Open home page where saved cards are displayed
     browser.tabs.create({
-      url: `https://pawkit.vercel.app/home`
+      url: `https://getpawkit.com/home`
     })
   }
 

@@ -211,7 +211,7 @@ export default function HomePage() {
             View full calendar
           </Link>
         </div>
-        <div className="grid grid-cols-7 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2 md:gap-3">
           {weekDays.map((day, index) => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayCards = cardsByDate.get(dateStr) || [];
@@ -220,32 +220,32 @@ export default function HomePage() {
             return (
               <div
                 key={dateStr}
-                className={`rounded-2xl border bg-surface p-4 min-h-[200px] flex flex-col ${
+                className={`rounded-2xl border bg-surface p-3 md:p-4 min-h-[160px] md:min-h-[200px] flex flex-col ${
                   isToday ? 'border-accent' : 'border-subtle'
                 }`}
               >
-                <div className="text-center mb-3">
-                  <p className="text-xs text-muted-foreground uppercase">
+                <div className="text-center mb-2 md:mb-3">
+                  <p className="text-[10px] md:text-xs text-muted-foreground uppercase">
                     {format(day, 'EEE')}
                   </p>
-                  <p className={`text-2xl font-semibold ${isToday ? 'text-accent' : 'text-foreground'}`}>
+                  <p className={`text-xl md:text-2xl font-semibold ${isToday ? 'text-accent' : 'text-foreground'}`}>
                     {format(day, 'd')}
                   </p>
                 </div>
-                <div className="space-y-2 flex-1">
+                <div className="space-y-1 md:space-y-2 flex-1">
                   {dayCards.map((card) => (
                     <button
                       key={card.id}
                       onClick={() => setActiveCardId(card.id)}
-                      className="w-full text-left p-2 rounded-lg bg-surface-soft hover:bg-surface-soft/80 transition-colors"
+                      className="w-full text-left p-1.5 md:p-2 rounded-lg bg-surface-soft hover:bg-surface-soft/80 transition-colors"
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5 md:gap-2">
                         {card.image && (
-                          <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded">
+                          <div className="h-6 w-6 md:h-8 md:w-8 flex-shrink-0 overflow-hidden rounded">
                             <img src={card.image} alt="" className="h-full w-full object-cover" />
                           </div>
                         )}
-                        <p className="text-xs font-medium text-foreground truncate flex-1">
+                        <p className="text-[10px] md:text-xs font-medium text-foreground truncate flex-1">
                           {card.title || card.domain || card.url}
                         </p>
                       </div>

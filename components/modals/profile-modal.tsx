@@ -195,8 +195,8 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
         className="bg-gray-950 rounded-lg border border-gray-800 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 border-b border-gray-800 bg-gray-950 p-6 flex items-center justify-between">
-          <h2 className="text-2xl font-semibold text-gray-100">Profile Settings</h2>
+        <div className="sticky top-0 z-10 border-b border-gray-800 bg-gray-950 p-4 md:p-6 flex items-center justify-between">
+          <h2 className="text-xl md:text-2xl font-semibold text-gray-100">Profile Settings</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-200 text-2xl leading-none"
@@ -205,13 +205,13 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
           </button>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 md:p-6">
           <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="general">General</TabsTrigger>
-              <TabsTrigger value="appearance">Appearance</TabsTrigger>
-              <TabsTrigger value="preferences">Preferences</TabsTrigger>
-              <TabsTrigger value="data">Data</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1">
+              <TabsTrigger value="general" className="text-xs md:text-sm">General</TabsTrigger>
+              <TabsTrigger value="appearance" className="text-xs md:text-sm">Appearance</TabsTrigger>
+              <TabsTrigger value="preferences" className="text-xs md:text-sm">Preferences</TabsTrigger>
+              <TabsTrigger value="data" className="text-xs md:text-sm">Data</TabsTrigger>
             </TabsList>
 
             {/* General Tab */}

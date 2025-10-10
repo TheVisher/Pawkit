@@ -7,9 +7,14 @@
   "scripts": {
     "dev": "vite build --watch --mode development",
     "build": "tsc && vite build && BUILD_TARGET=service-worker vite build && BUILD_TARGET=content-script vite build",
+    "build:firefox": "pnpm build && cp manifest.json dist/manifest.json && mkdir -p dist-firefox && cp -r dist/* dist-firefox/",
+    "build:chrome": "pnpm build && cp manifest-chrome.json dist/manifest.json && mkdir -p dist-chrome && cp -r dist/* dist-chrome/",
+    "build:all": "pnpm build:firefox && pnpm build:chrome",
+    "package:firefox": "cd dist-firefox && zip -r ../pawkit-firefox.zip .",
+    "package:chrome": "cd dist-chrome && zip -r ../pawkit-chrome.zip .",
+    "package:all": "pnpm build:all && pnpm package:firefox && pnpm package:chrome",
     "preview": "vite preview",
-    "dev:firefox": "pnpm build && web-ext run --source-dir=./dist",
-    "package:firefox": "pnpm build && web-ext build --source-dir=./dist --overwrite-dest",
+    "dev:firefox": "pnpm build:firefox && web-ext run --source-dir=./dist-firefox",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {

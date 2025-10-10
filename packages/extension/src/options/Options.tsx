@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import type { SetTokenMessage } from '@/shared/types'
 import '../popup/index.css'
 
-const AUTH_URL = 'https://pawkit.vercel.app/extension/auth?source=extension'
+const AUTH_URL = 'https://getpawkit.com/extension/auth?source=extension'
 
 function Options() {
   const [token, setToken] = useState('')
@@ -39,7 +39,7 @@ function Options() {
     // Listen for auth messages from popup
     const handleMessage = (event: MessageEvent) => {
       // Verify origin
-      if (event.origin !== 'https://pawkit.vercel.app') {
+      if (event.origin !== 'https://getpawkit.com') {
         return
       }
 

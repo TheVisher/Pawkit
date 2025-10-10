@@ -37,6 +37,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [extracting, setExtracting] = useState(false);
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
   const [denPawkitSlugs, setDenPawkitSlugs] = useState<Set<string>>(new Set());
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const isTypingNotesRef = useRef(false);
   const isTypingContentRef = useRef(false);
   const lastSavedNotesRef = useRef(card.notes ?? "");
@@ -485,13 +486,29 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       />
 
       {/* Centered Card Content */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-8 pr-[424px] pointer-events-none">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 md:pr-[424px] pointer-events-none">
         <div
-          className={`bg-gray-950 rounded-lg border border-gray-800 shadow-2xl overflow-hidden pointer-events-auto ${
+          className={`bg-gray-950 rounded-lg border border-gray-800 shadow-2xl overflow-hidden pointer-events-auto relative ${
             isReaderExpanded ? "w-full h-full flex flex-col" : "max-w-full max-h-full"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Mobile Details Toggle Button */}
+          <button
+            onClick={() => setIsDetailsOpen(!isDetailsOpen)}
+            className="md:hidden absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-3 shadow-lg border border-gray-700"
+            title={isDetailsOpen ? "Hide details" : "Show details"}
+          >
+            {isDetailsOpen ? (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            )}
+          </button>
           {/* Card Content - Image, Reader, or Note Preview/Edit */}
           <div className={`bg-gray-900/50 relative ${isReaderExpanded ? "flex-1 flex flex-col overflow-hidden" : ""}`}>
             {isNote ? (
@@ -633,23 +650,35 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
       {/* Right Slide-Out Sheet for Details */}
       <div
-        className="fixed top-0 right-0 h-full w-96 bg-gray-950 border-l border-gray-800 shadow-2xl z-[60] flex flex-col"
+        className={`fixed top-0 right-0 h-full w-full md:w-96 bg-gray-950 border-l border-gray-800 shadow-2xl z-[60] flex flex-col transition-transform duration-300 ${
+          isDetailsOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with Close Button */}
         <div className="border-b border-gray-800 p-4 flex items-center justify-between flex-shrink-0">
           <h2 className="font-semibold text-gray-100">Card Details</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-200 text-2xl leading-none"
-          >
-            ×
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsDetailsOpen(false)}
+              className="md:hidden text-gray-400 hover:text-gray-200 text-2xl leading-none"
+              title="Hide details"
+            >
+              ‹
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-200 text-2xl leading-none"
+              title="Close modal"
+            >
+              ×
+            </button>
+          </div>
         </div>
 
         <Tabs defaultValue="pawkits" className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Tab Navigation */}
-          <TabsList className="w-full rounded-none border-b border-gray-800 bg-transparent h-auto p-1 justify-start flex-shrink-0 pointer-events-auto flex flex-wrap gap-0">
+          <TabsList className="w-full rounded-none border-b border-gray-800 bg-transparent h-auto p-1 justify-start flex-shrink-0 flex flex-wrap gap-0">
             <TabsTrigger value="pawkits" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
               Pawkits
             </TabsTrigger>
