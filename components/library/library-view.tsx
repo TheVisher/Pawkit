@@ -6,6 +6,7 @@ import { CardModel, CollectionNode } from "@/lib/types";
 import { LayoutMode, LAYOUTS } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useCardEvents } from "@/lib/hooks/card-events-store";
+import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import {
   DropdownMenu,
@@ -14,9 +15,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { ListFilter, Check, MoreVertical, Calendar, LayoutGrid } from "lucide-react";
+import { ListFilter, Check, MoreVertical, Calendar, LayoutGrid, Sliders } from "lucide-react";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
+import { CardSizeSlider } from "@/components/card-size-slider";
 import { format } from "date-fns";
 
 type TimelineGroup = {
@@ -68,6 +70,8 @@ export function LibraryView({
   const [timelineGroups, setTimelineGroups] = useState<TimelineGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [showCardSizeSlider, setShowCardSizeSlider] = useState(false);
+  const cardSize = useSettingsStore((state) => state.cardSize);
 
   // Sync local state when store updates (important for reactivity!)
   useEffect(() => {
@@ -243,17 +247,47 @@ export function LibraryView({
   };
 
   const layoutClass = (layout: LayoutMode): string => {
+    // Map cardSize (1-5) to complete Tailwind class strings
+    const sizeToClasses: Record<number, { grid: string; masonry: string; compact: string }> = {
+      1: { // Extra small - most columns
+        grid: "grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-7",
+        masonry: "columns-2 gap-4 md:columns-4 xl:columns-7",
+        compact: "grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7"
+      },
+      2: { // Small
+        grid: "grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5",
+        masonry: "columns-2 gap-4 md:columns-3 xl:columns-5",
+        compact: "grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5"
+      },
+      3: { // Medium (default)
+        grid: "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4",
+        masonry: "columns-1 gap-4 md:columns-2 xl:columns-4",
+        compact: "grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4"
+      },
+      4: { // Large
+        grid: "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3",
+        masonry: "columns-1 gap-4 md:columns-2 xl:columns-3",
+        compact: "grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3"
+      },
+      5: { // Extra large - least columns
+        grid: "grid grid-cols-1 gap-4 sm:grid-cols-1 xl:grid-cols-2",
+        masonry: "columns-1 gap-4 md:columns-1 xl:columns-2",
+        compact: "grid grid-cols-1 gap-2 md:grid-cols-1 xl:grid-cols-2"
+      }
+    };
+
+    const classes = sizeToClasses[cardSize] || sizeToClasses[3];
+
     switch (layout) {
-      case "grid":
-        return "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
       case "masonry":
-        return "columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4";
-      case "compact":
-        return "grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8";
+        return classes.masonry;
       case "list":
-        return "flex flex-col gap-2";
+        return "flex flex-col gap-3";
+      case "compact":
+        return classes.compact;
+      case "grid":
       default:
-        return "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+        return classes.grid;
     }
   };
 
@@ -366,6 +400,17 @@ export function LibraryView({
                     {layout}
                   </DropdownMenuItem>
                 ))}
+
+                <DropdownMenuSeparator />
+
+                {/* Card Size Slider */}
+                <DropdownMenuItem
+                  onClick={() => setShowCardSizeSlider(true)}
+                  className="cursor-pointer relative pl-8"
+                >
+                  <Sliders className="absolute left-2 h-4 w-4" />
+                  Card Size
+                </DropdownMenuItem>
 
                 {/* Date Range Filters (only in timeline mode) */}
                 {viewMode === "timeline" && (
@@ -527,6 +572,12 @@ export function LibraryView({
           </div>
         </div>
       )}
+
+      {/* Card Size Slider */}
+      <CardSizeSlider
+        open={showCardSizeSlider}
+        onClose={() => setShowCardSizeSlider(false)}
+      />
     </>
   );
 }

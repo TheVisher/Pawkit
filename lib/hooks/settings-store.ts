@@ -19,6 +19,7 @@ export type SettingsState = {
   compactMode: boolean;
   showPreviews: boolean;
   serverSync: boolean;
+  cardSize: number; // 1-5 scale
   setAutoFetchMetadata: (value: boolean) => void;
   setShowThumbnails: (value: boolean) => void;
   setPreviewServiceUrl: (value: string) => void;
@@ -29,6 +30,7 @@ export type SettingsState = {
   setCompactMode: (value: boolean) => void;
   setShowPreviews: (value: boolean) => void;
   setServerSync: (value: boolean) => void;
+  setCardSize: (value: number) => void;
 };
 
 export const useSettingsStore = create<SettingsState>()(
@@ -44,6 +46,7 @@ export const useSettingsStore = create<SettingsState>()(
       compactMode: false,
       showPreviews: true,
       serverSync: true,
+      cardSize: 3, // Default medium size
       setAutoFetchMetadata: (value) => set({ autoFetchMetadata: value }),
       setShowThumbnails: (value) => set({ showThumbnails: value }),
       setPreviewServiceUrl: (value) => set({ previewServiceUrl: value }),
@@ -53,7 +56,8 @@ export const useSettingsStore = create<SettingsState>()(
       setAutoSave: (value) => set({ autoSave: value }),
       setCompactMode: (value) => set({ compactMode: value }),
       setShowPreviews: (value) => set({ showPreviews: value }),
-      setServerSync: (value) => set({ serverSync: value })
+      setServerSync: (value) => set({ serverSync: value }),
+      setCardSize: (value) => set({ cardSize: value })
     }),
     {
       name: "vbm-settings"
