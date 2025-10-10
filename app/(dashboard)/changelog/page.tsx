@@ -3,6 +3,14 @@
 export default function ChangelogPage() {
   const changes = [
     {
+      dateRange: "October 10, 2025",
+      features: [
+        { title: "Dynamic Card Size Slider", description: "Adjustable card size control with 5 levels on desktop (XS to XL) and 3 levels on mobile (Small to Large)" },
+        { title: "Mobile Optimizations", description: "Card modal with toggleable details sheet, improved profile modal with 2-column tabs, responsive calendar grid" },
+        { title: "Chrome Extension Support", description: "Chrome Web Store submission with Manifest V3 compatibility and service worker background" },
+      ],
+    },
+    {
       dateRange: "October 9, 2025",
       features: [
         { title: "Firefox Extension Published", description: "Pawkit Web Clipper v1.0.0 now available on Firefox Add-ons store" },
