@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { Maximize2, Minimize2 } from "lucide-react";
 
@@ -13,8 +13,21 @@ export function CardSizeSlider({ open, onClose }: CardSizeSliderProps) {
   const cardSize = useSettingsStore((state) => state.cardSize);
   const setCardSize = useSettingsStore((state) => state.setCardSize);
   const [localSize, setLocalSize] = useState(cardSize);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile on mount and window resize
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   if (!open) return null;
+
+  // Mobile uses 1-3, desktop uses 1-5
+  const maxSize = isMobile ? 3 : 5;
+  const steps = isMobile ? [1, 2, 3] : [1, 2, 3, 4, 5];
 
   const handleChange = (value: number) => {
     setLocalSize(value);
@@ -22,6 +35,14 @@ export function CardSizeSlider({ open, onClose }: CardSizeSliderProps) {
   };
 
   const getSizeLabel = (size: number) => {
+    if (isMobile) {
+      switch (size) {
+        case 1: return "Small";
+        case 2: return "Medium";
+        case 3: return "Large";
+        default: return "Medium";
+      }
+    }
     switch (size) {
       case 1: return "Extra Small";
       case 2: return "Small";
@@ -59,18 +80,18 @@ export function CardSizeSlider({ open, onClose }: CardSizeSliderProps) {
             <input
               type="range"
               min="1"
-              max="5"
+              max={maxSize}
               step="1"
               value={localSize}
               onChange={(e) => handleChange(Number(e.target.value))}
               className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider-thumb"
               style={{
-                background: `linear-gradient(to right, rgb(109, 92, 255) 0%, rgb(109, 92, 255) ${((localSize - 1) / 4) * 100}%, rgb(55, 65, 81) ${((localSize - 1) / 4) * 100}%, rgb(55, 65, 81) 100%)`
+                background: `linear-gradient(to right, rgb(109, 92, 255) 0%, rgb(109, 92, 255) ${((localSize - 1) / (maxSize - 1)) * 100}%, rgb(55, 65, 81) ${((localSize - 1) / (maxSize - 1)) * 100}%, rgb(55, 65, 81) 100%)`
               }}
             />
             {/* Step markers */}
             <div className="flex justify-between mt-2 px-1">
-              {[1, 2, 3, 4, 5].map((step) => (
+              {steps.map((step) => (
                 <button
                   key={step}
                   onClick={() => handleChange(step)}
