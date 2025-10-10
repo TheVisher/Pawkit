@@ -523,29 +523,29 @@ const CardCell = memo(CardCellInner, (prevProps, nextProps) => {
 
 function layoutClass(layout: LayoutMode, cardSize: number = 3) {
   // Map cardSize (1-5) to complete Tailwind class strings
-  // 1 = XS (most columns), 5 = XL (least columns)
+  // Mobile: varies 1-3 columns, Tablet: 2-4 columns, Desktop: 2-7 columns
   const sizeToClasses: Record<number, { grid: string; masonry: string; compact: string }> = {
-    1: { // Extra small - most columns
-      grid: "grid grid-cols-2 gap-4 sm:grid-cols-4 xl:grid-cols-7",
-      masonry: "columns-2 gap-4 md:columns-4 xl:columns-7 [&>*]:mb-4",
-      compact: "grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-7"
+    1: { // Extra small - most columns (mobile: 3 cols)
+      grid: "grid grid-cols-3 gap-3 sm:grid-cols-4 xl:grid-cols-7",
+      masonry: "columns-3 gap-3 md:columns-4 xl:columns-7 [&>*]:mb-4",
+      compact: "grid grid-cols-3 gap-2 md:grid-cols-4 xl:grid-cols-7"
     },
-    2: { // Small
-      grid: "grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5",
-      masonry: "columns-2 gap-4 md:columns-3 xl:columns-5 [&>*]:mb-4",
+    2: { // Small (mobile: 2 cols)
+      grid: "grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5",
+      masonry: "columns-2 gap-3 md:columns-3 xl:columns-5 [&>*]:mb-4",
       compact: "grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5"
     },
-    3: { // Medium (default)
+    3: { // Medium (mobile: 1 col - default)
       grid: "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4",
       masonry: "columns-1 gap-4 md:columns-2 xl:columns-4 [&>*]:mb-4",
       compact: "grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-4"
     },
-    4: { // Large
+    4: { // Large (mobile: 1 col)
       grid: "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3",
       masonry: "columns-1 gap-4 md:columns-2 xl:columns-3 [&>*]:mb-4",
       compact: "grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3"
     },
-    5: { // Extra large - least columns
+    5: { // Extra large - least columns (mobile: 1 col)
       grid: "grid grid-cols-1 gap-4 sm:grid-cols-1 xl:grid-cols-2",
       masonry: "columns-1 gap-4 md:columns-1 xl:columns-2 [&>*]:mb-4",
       compact: "grid grid-cols-1 gap-2 md:grid-cols-1 xl:grid-cols-2"
