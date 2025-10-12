@@ -11,6 +11,7 @@ import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { DisplayOverrides } from "@/lib/types";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
@@ -39,6 +40,10 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const clearSelection = useSelection((state) => state.clear);
   const showThumbnails = useSettingsStore((state) => state.showThumbnails);
   const cardSize = useSettingsStore((state) => state.cardSize);
+  const showCardTitles = useSettingsStore((state) => state.showCardTitles);
+  const showCardUrls = useSettingsStore((state) => state.showCardUrls);
+  const showCardTags = useSettingsStore((state) => state.showCardTags);
+  const cardPadding = useSettingsStore((state) => state.cardPadding);
 
   const orderedIds = useMemo(() => cards.map((card) => card.id), [cards]);
 
@@ -218,6 +223,10 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             selected={selectedIds.includes(card.id)}
             showThumbnail={showThumbnails}
             layout={layout}
+            showCardTitles={showCardTitles}
+            showCardUrls={showCardUrls}
+            showCardTags={showCardTags}
+            cardPadding={cardPadding}
             onClick={handleCardClick}
             onAddToPawkit={(slug) => {
               const collections = Array.from(new Set([slug, ...(card.collections || [])]));
@@ -330,11 +339,25 @@ export function CardGallery(props: CardGalleryProps) {
   );
 }
 
+// Helper function to determine if an element should be visible
+// Takes into account both global settings and per-card overrides
+function shouldShow(
+  globalSetting: boolean,
+  override?: { visible: boolean }
+): boolean {
+  // If there's an override, use it; otherwise use global setting
+  return override !== undefined ? override.visible : globalSetting;
+}
+
 type CardCellProps = {
   card: CardModel;
   selected: boolean;
   showThumbnail: boolean;
   layout: LayoutMode;
+  showCardTitles: boolean;
+  showCardUrls: boolean;
+  showCardTags: boolean;
+  cardPadding: number;
   onClick: (event: MouseEvent, card: CardModel) => void;
   onAddToPawkit: (slug: string) => void;
   onAddToDen: () => void;
@@ -343,12 +366,30 @@ type CardCellProps = {
   onRemoveFromAllPawkits: () => void;
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, showCardTitles, showCardUrls, showCardTags, cardPadding, onClick, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
   const isError = card.status === "ERROR";
   const isNote = card.type === "md-note" || card.type === "text-note";
+
+  // Determine visibility based on global settings + per-card overrides
+  const titleVisible = shouldShow(showCardTitles, card.displayOverrides?.title);
+  const urlVisible = shouldShow(showCardUrls, card.displayOverrides?.url);
+  const tagsVisible = shouldShow(showCardTags, card.displayOverrides?.tags);
+
+  // Map padding value to Tailwind classes
+  const paddingClasses = {
+    0: "p-0",
+    1: "p-1",
+    2: "p-2",
+    3: "p-3",
+    4: "p-4"
+  };
+  const paddingClass = paddingClasses[cardPadding as keyof typeof paddingClasses] || "p-4";
+
+  // Check if there's any content to show
+  const hasContent = titleVisible || (card.collections && card.collections.length > 0 && layout !== "compact" && tagsVisible) || isPending || isError || isNote;
 
   // Extract excerpt from content for notes
   const getExcerpt = () => {
@@ -403,15 +444,22 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
         {...listeners}
         {...attributes}
         style={style}
-        className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface p-4 transition-all ${
+        className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface ${paddingClass} transition-all ${
           selected ? "is-selected ring-2 ring-accent border-transparent" : "border-subtle"
         } ${isDragging ? "opacity-50" : ""}`}
         onClick={(event) => onClick(event, card)}
         data-id={card.id}
       >
+      {/* Notes without content - show notepad icon */}
+      {isNote && !hasContent && (
+        <div className="flex h-full w-full items-center justify-center py-8">
+          <div className="text-6xl opacity-30">📝</div>
+        </div>
+      )}
+
       {showThumbnail && layout !== "compact" && !isNote && (
         <div
-          className={`relative mb-3 w-full overflow-hidden rounded-xl bg-surface-soft ${layout === "masonry" ? "" : "aspect-video"}`}
+          className={`relative ${hasContent ? 'mb-3' : ''} w-full overflow-hidden rounded-xl bg-surface-soft ${layout === "masonry" ? "" : "aspect-video"}`}
         >
           {isPending ? (
             <div className="flex h-full w-full items-center justify-center">
@@ -438,15 +486,19 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
                 className={layout === "masonry" ? "block w-full h-auto" : "block h-full w-full object-cover"}
                 loading="lazy"
                 onError={(e) => {
-                  // Fallback to logo on image error
+                  // Fallback to centered logo on image error
                   const target = e.target as HTMLImageElement;
                   target.onerror = null;
+                  const parent = target.parentElement;
+                  if (parent) {
+                    parent.classList.add('flex', 'items-center', 'justify-center');
+                  }
                   target.src = "/logo.png";
                   target.className = "h-16 w-16 opacity-50";
                 }}
               />
               {/* URL Pill Overlay */}
-              {card.url && (
+              {card.url && urlVisible && (
                 <a
                   href={card.url}
                   target="_blank"
@@ -460,16 +512,28 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
                 </a>
               )}
             </>
-          ) : null}
+          ) : (
+            // No image - show centered Pawkit logo
+            <div className="flex h-full w-full items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="No image"
+                className="h-16 w-16 opacity-30"
+              />
+            </div>
+          )}
         </div>
       )}
-      <div className="space-y-1 text-sm">
-        <div className="flex items-center gap-2">
-          {isNote && <span className="text-lg">{card.type === "md-note" ? "📝" : "📄"}</span>}
-          <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
-        </div>
-        <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
-        {card.collections && card.collections.length > 0 && layout !== "compact" && (
+      {hasContent && (
+        <div className="space-y-1 text-sm">
+          {titleVisible && (
+            <div className="flex items-center gap-2">
+              {isNote && <span className="text-lg">{card.type === "md-note" ? "📝" : "📄"}</span>}
+              <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
+            </div>
+          )}
+          {titleVisible && <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>}
+          {card.collections && card.collections.length > 0 && layout !== "compact" && tagsVisible && (
           <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
             {card.collections
               .filter((collection) => !collection.startsWith('den-'))
@@ -503,6 +567,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
           )}
         </div>
       </div>
+      )}
     </div>
     </CardContextMenuWrapper>
   );
@@ -516,7 +581,12 @@ const CardCell = memo(CardCellInner, (prevProps, nextProps) => {
     prevProps.card.status === nextProps.card.status &&
     prevProps.selected === nextProps.selected &&
     prevProps.showThumbnail === nextProps.showThumbnail &&
-    prevProps.layout === nextProps.layout
+    prevProps.layout === nextProps.layout &&
+    prevProps.showCardTitles === nextProps.showCardTitles &&
+    prevProps.showCardUrls === nextProps.showCardUrls &&
+    prevProps.showCardTags === nextProps.showCardTags &&
+    prevProps.cardPadding === nextProps.cardPadding &&
+    JSON.stringify(prevProps.card.displayOverrides) === JSON.stringify(nextProps.card.displayOverrides)
   );
 });
 

@@ -123,8 +123,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const card = await createCard(user.id, body);
 
-    // Auto-fetch metadata for URL cards created via extension
-    if (body.source === 'webext' && card.type === 'url' && card.url) {
+    // Auto-fetch metadata for ALL URL cards (not just extension)
+    if (card.type === 'url' && card.url) {
       // Trigger metadata fetch in background (don't await to avoid blocking response)
       fetchAndUpdateCardMetadata(card.id, card.url).catch(err => {
         console.error('Background metadata fetch failed:', err);

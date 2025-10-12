@@ -79,6 +79,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
               description: null,
               articleContent: null,
               metadata: undefined,
+              displayOverrides: null,
               inDen: false,
               encryptedContent: null,
               scheduledDate: null
@@ -138,6 +139,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
             description: null,
             articleContent: null,
             metadata: undefined,
+            displayOverrides: null,
             inDen: false,
             encryptedContent: null,
             scheduledDate: null
@@ -215,6 +217,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
             description: null,
             articleContent: null,
             metadata: undefined,
+            displayOverrides: null,
             inDen: false,
             encryptedContent: null,
             scheduledDate: null
@@ -307,6 +310,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       description: null,
       articleContent: null,
       metadata: undefined,
+      displayOverrides: null,
       inDen: false,
       encryptedContent: null,
       scheduledDate: null
@@ -505,15 +509,7 @@ async function executeUpdateCard(op: QueueOperation, set: any, get: any) {
       const conflict = await response.json();
       console.warn('[DataStore] Conflict detected:', conflict.message);
 
-      // Notify user about the conflict
-      if (targetId) {
-        useConflictStore.getState().addConflict(
-          targetId,
-          'This card was modified on another device. Your changes were not saved.'
-        );
-      }
-
-      // Update with server version and mark operation as failed
+      // Update with server version (this is the source of truth)
       if (conflict.serverCard) {
         set((state: any) => ({
           cards: state.cards.map((c: CardDTO) =>
@@ -522,12 +518,23 @@ async function executeUpdateCard(op: QueueOperation, set: any, get: any) {
         }));
       }
 
-      // Mark as failed so it doesn't retry endlessly
+      // Remove from queue - server has the correct version, no need to retry
       if (op.id) {
-        await syncQueue.markFailed(op.id);
+        await syncQueue.remove(op.id);
       }
 
-      throw new Error(`Conflict: ${conflict.message}`);
+      // Only notify user if they were actively making changes
+      // Don't show error for background metadata fetches
+      const isBackgroundMetadataUpdate = payload && Object.keys(payload).length === 0;
+      if (targetId && !isBackgroundMetadataUpdate && payload && Object.keys(payload).length > 0) {
+        useConflictStore.getState().addConflict(
+          targetId,
+          'This card was modified on another device. Your changes were not saved.'
+        );
+      }
+
+      // Don't throw - conflict is resolved by accepting server version
+      return;
     }
 
     if (!response.ok) {

@@ -3,6 +3,16 @@ export type CardType = "url" | "md-note" | "text-note";
 
 export type OldCardAgeThreshold = "1 day" | "12 hours" | "6 hours" | "1 hour";
 
+export type DisplayOverride = {
+  visible: boolean;
+};
+
+export type DisplayOverrides = {
+  title?: DisplayOverride;
+  url?: DisplayOverride;
+  tags?: DisplayOverride;
+};
+
 export type CardModel = {
   id: string;
   type: CardType;
@@ -24,6 +34,7 @@ export type CardModel = {
   inDen: boolean;
   encryptedContent: string | null;
   scheduledDate: string | null;
+  displayOverrides?: DisplayOverrides | null;
   createdAt: string;
   updatedAt: string;
 };

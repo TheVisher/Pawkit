@@ -19,6 +19,7 @@ import { ListFilter, Check, MoreVertical, Calendar, LayoutGrid, Sliders } from "
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardSizeSlider } from "@/components/card-size-slider";
+import { CardDisplayToggles, ResetConfirmationModal } from "@/components/card-display-toggles";
 import { format } from "date-fns";
 
 type TimelineGroup = {
@@ -71,6 +72,9 @@ export function LibraryView({
   const [loading, setLoading] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showCardSizeSlider, setShowCardSizeSlider] = useState(false);
+  const [showResetConfirmation, setShowResetConfirmation] = useState(false);
+  const [customizedCount, setCustomizedCount] = useState(0);
+  const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
   const cardSize = useSettingsStore((state) => state.cardSize);
 
   // Sync local state when store updates (important for reactivity!)
@@ -157,6 +161,84 @@ export function LibraryView({
     const params = new URLSearchParams(searchParams?.toString());
     params.set("days", days.toString());
     router.push(`/library?${params.toString()}`);
+  };
+
+  const handleResetAllDisplayOverrides = async () => {
+    // Count cards with customizations
+    const allCards = viewMode === "timeline" ? allTimelineCards : cards;
+    const customized = allCards.filter(card => card.displayOverrides);
+    setCustomizedCount(customized.length);
+    setShowResetConfirmation(true);
+  };
+
+  const handleConfirmReset = async () => {
+    try {
+      const response = await fetch("/api/cards/reset-display-overrides", {
+        method: "POST"
+      });
+
+      if (response.ok) {
+        // Update local state to remove all displayOverrides
+        if (viewMode === "timeline") {
+          setTimelineGroups((prev) =>
+            prev.map((group) => ({
+              ...group,
+              cards: group.cards.map((card) => ({
+                ...card,
+                displayOverrides: null
+              }))
+            }))
+          );
+        } else {
+          setCards((prev) =>
+            prev.map((card) => ({
+              ...card,
+              displayOverrides: null
+            }))
+          );
+        }
+
+        // Also refresh to ensure sync with server
+        router.refresh();
+      }
+    } catch (error) {
+      console.error("Failed to reset display overrides:", error);
+    }
+  };
+
+  const handleFetchMissingMetadata = async () => {
+    if (!confirm("This will fetch metadata for all cards missing images or titles. Continue?")) {
+      return;
+    }
+
+    setIsFetchingMetadata(true);
+    try {
+      const response = await fetch("/api/cards/fetch-missing-metadata", {
+        method: "POST"
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        if (data.count === 0) {
+          alert("No cards found that need metadata!");
+          setIsFetchingMetadata(false);
+          return;
+        }
+
+        alert(`Started fetching metadata for ${data.count} cards.\n\nThe page will refresh in 10 seconds to show updates.\n\nFor best results, wait 15-20 seconds before manually refreshing if you have many cards.`);
+
+        // Refresh after a longer delay to allow metadata fetching to complete
+        setTimeout(() => {
+          router.refresh();
+          setIsFetchingMetadata(false);
+        }, 10000);
+      }
+    } catch (error) {
+      console.error("Failed to fetch missing metadata:", error);
+      alert("Failed to start metadata fetch. Please try again.");
+      setIsFetchingMetadata(false);
+    }
   };
 
   const formatDateHeader = (dateStr: string) => {
@@ -413,6 +495,13 @@ export function LibraryView({
                   Card Size
                 </DropdownMenuItem>
 
+                <DropdownMenuSeparator />
+
+                {/* Card Display Toggles */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <CardDisplayToggles onResetAll={handleResetAllDisplayOverrides} />
+                </div>
+
                 {/* Date Range Filters (only in timeline mode) */}
                 {viewMode === "timeline" && (
                   <>
@@ -438,6 +527,14 @@ export function LibraryView({
                 <MoreVertical className="h-4 w-4" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={handleFetchMissingMetadata}
+                  disabled={isFetchingMetadata}
+                  className="cursor-pointer"
+                >
+                  {isFetchingMetadata ? "Fetching..." : "Fetch Missing Metadata"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={handleBulkMove}
                   disabled={!selectedIds.length}
@@ -573,6 +670,14 @@ export function LibraryView({
           </div>
         </div>
       )}
+
+      {/* Reset Confirmation Modal */}
+      <ResetConfirmationModal
+        open={showResetConfirmation}
+        onClose={() => setShowResetConfirmation(false)}
+        onConfirm={handleConfirmReset}
+        customizedCount={customizedCount}
+      />
 
       {/* Card Size Slider */}
       <CardSizeSlider

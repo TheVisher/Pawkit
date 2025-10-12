@@ -74,6 +74,14 @@ export const cardUpdateSchema = z
     description: nullableString,
     pinned: z.boolean().optional(),
     scheduledDate: z.string().datetime().nullable().optional(),
+    displayOverrides: z
+      .object({
+        title: z.object({ visible: z.boolean() }).optional(),
+        url: z.object({ visible: z.boolean() }).optional(),
+        tags: z.object({ visible: z.boolean() }).optional()
+      })
+      .nullable()
+      .optional(),
     metadata: z
       .record(z.any())
       .nullable()

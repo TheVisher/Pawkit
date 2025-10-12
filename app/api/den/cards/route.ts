@@ -14,6 +14,7 @@ function mapCard(card: Card): CardDTO {
     tags: parseJsonArray(card.tags),
     collections: parseJsonArray(card.collections),
     metadata: parseJsonObject(card.metadata),
+    displayOverrides: parseJsonObject(card.displayOverrides),
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
     deletedAt: card.deletedAt?.toISOString() ?? null,

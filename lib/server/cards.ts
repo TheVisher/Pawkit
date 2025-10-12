@@ -12,12 +12,13 @@ export type CardInput = typeof cardCreateSchema._input;
 export type CardUpdateInput = typeof cardUpdateSchema._input;
 export type CardListQuery = typeof cardListQuerySchema._input;
 
-export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type' | 'status' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'scheduledDate'> & {
+export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'displayOverrides' | 'type' | 'status' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'scheduledDate'> & {
   type: CardType;
   status: CardStatus;
   tags: string[];
   collections: string[];
   metadata: Record<string, unknown> | undefined;
+  displayOverrides: Record<string, unknown> | null | undefined;
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
@@ -42,6 +43,7 @@ function mapCard(card: Card): CardDTO {
     tags: parseJsonArray(card.tags),
     collections: parseJsonArray(card.collections),
     metadata: parseJsonObject(card.metadata),
+    displayOverrides: parseJsonObject(card.displayOverrides),
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
     deletedAt: card.deletedAt?.toISOString() ?? null,
@@ -196,7 +198,8 @@ export async function updateCard(userId: string, id: string, payload: CardUpdate
     ...parsed,
     tags: normalizedTags ? serializeTags(normalizedTags) : undefined,
     collections: normalizedCollections ? serializeCollections(normalizedCollections) : undefined,
-    metadata: parsed.metadata ? stringifyNullable(parsed.metadata) : parsed.metadata === undefined ? undefined : null
+    metadata: parsed.metadata ? stringifyNullable(parsed.metadata) : parsed.metadata === undefined ? undefined : null,
+    displayOverrides: parsed.displayOverrides !== undefined ? stringifyNullable(parsed.displayOverrides) : undefined
   };
 
   if (parsed.url) {

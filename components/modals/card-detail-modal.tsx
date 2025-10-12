@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
+import { CardDisplayControls } from "@/components/modals/card-display-controls";
 
 type CardDetailModalProps = {
   card: CardModel;
@@ -254,16 +255,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         if (updatedCardRes.ok) {
           const updatedCard = await updatedCardRes.json();
 
-          // Update store
-          await updateCardInStore(card.id, {
-            title: updatedCard.title,
-            description: updatedCard.description,
-            image: updatedCard.image,
-            domain: updatedCard.domain,
-            metadata: updatedCard.metadata
-          });
-
-          // Update parent component
+          // Update parent component - this will trigger a state update in the parent
+          // No need to call updateCardInStore as we just fetched fresh data from the server
+          // Calling updateCardInStore would trigger another PATCH which causes 409 conflicts
           onUpdate(updatedCard);
           setToast("Metadata refreshed successfully");
         } else {
@@ -340,6 +334,22 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     } catch (error) {
       console.error("Failed to save scheduled date:", error);
       setToast("Failed to save date");
+    }
+  };
+
+  const handleUpdateDisplayOverrides = async (overrides: any) => {
+    try {
+      // Update store (optimistic)
+      await updateCardInStore(card.id, { displayOverrides: overrides });
+
+      // Update parent component state
+      const updated = { ...card, displayOverrides: overrides };
+      onUpdate(updated);
+
+      setToast("Display settings updated");
+    } catch (error) {
+      console.error("Failed to update display overrides:", error);
+      setToast("Failed to update settings");
     }
   };
 
@@ -688,6 +698,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
               Schedule
             </TabsTrigger>
+            <TabsTrigger value="display" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+              Display
+            </TabsTrigger>
             {!isNote && (
               <>
                 <TabsTrigger value="reader" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
@@ -743,6 +756,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 <ScheduleTab
                   scheduledDate={card.scheduledDate}
                   onSave={handleSaveScheduledDate}
+                />
+              </TabsContent>
+              <TabsContent value="display" className="p-4 mt-0 h-full">
+                <CardDisplayControls
+                  displayOverrides={card.displayOverrides}
+                  onUpdate={handleUpdateDisplayOverrides}
                 />
               </TabsContent>
             </div>

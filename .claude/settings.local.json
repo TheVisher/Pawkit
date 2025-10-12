@@ -32,7 +32,9 @@
       "Bash(git checkout:*)",
       "Bash(npm i:*)",
       "Bash(npm audit:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(pnpm install:*)",
+      "Bash(sqlite3:*)"
     ],
     "deny": [],
     "ask": []
