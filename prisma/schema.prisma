@@ -45,6 +45,7 @@ model Card {
   inDen           Boolean   @default(false)
   encryptedContent String?
   scheduledDate   DateTime?
+  displayOverrides String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   userId          String
