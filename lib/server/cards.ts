@@ -5,6 +5,7 @@ import { fetchPreviewMetadata } from "@/lib/server/metadata";
 import { cardCreateSchema, cardListQuerySchema, cardUpdateSchema } from "@/lib/validators/card";
 import { normalizeCollections, normalizeTags, safeHost } from "@/lib/utils/strings";
 import { parseJsonArray, parseJsonObject, stringifyNullable } from "@/lib/utils/json";
+import { downloadAndStoreImage, isExpiringImageUrl, isStoredImageUrl } from "@/lib/server/image-storage";
 
 const DEFAULT_PREVIEW_TEMPLATE = process.env.NEXT_PUBLIC_PREVIEW_SERVICE_URL;
 
@@ -90,7 +91,7 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
     if (preview) {
       const title = preview.title;
       const description = preview.description;
-      const image = preview.image ?? preview.logo ?? preview.screenshot;
+      let image = preview.image ?? preview.logo ?? preview.screenshot;
 
       if (title) {
         updateData.title = title;
@@ -99,6 +100,17 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
         updateData.description = description;
       }
       if (image) {
+        // Check if this is an expiring URL (like TikTok) that needs to be downloaded and stored
+        if (isExpiringImageUrl(image) && !isStoredImageUrl(image)) {
+          console.log('[fetchAndUpdateCardMetadata] Detected expiring URL, downloading and storing...');
+          const storedImageUrl = await downloadAndStoreImage(image, cardId);
+          if (storedImageUrl) {
+            image = storedImageUrl;
+            console.log('[fetchAndUpdateCardMetadata] Image stored permanently:', storedImageUrl);
+          } else {
+            console.warn('[fetchAndUpdateCardMetadata] Failed to store image, using original URL');
+          }
+        }
         updateData.image = image;
       }
       updateData.metadata = stringifyNullable(preview.raw ?? preview);
