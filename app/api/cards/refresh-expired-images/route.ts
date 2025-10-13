@@ -5,15 +5,15 @@
  * Usage: POST /api/cards/refresh-expired-images
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
 import { prisma } from '@/lib/server/prisma';
 import { fetchAndUpdateCardMetadata } from '@/lib/server/cards';
 import { isExpiringImageUrl, isStoredImageUrl } from '@/lib/server/image-storage';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const user = await getCurrentUser(request);
+    const user = await getCurrentUser();
     if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
