@@ -473,50 +473,62 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
           ) : null}
         </div>
       )}
-      <div className="space-y-1 text-sm">
-        {showCardTitles && (
-          <>
-            <div className="flex items-center gap-2">
-              {isNote && <span className="text-lg">{card.type === "md-note" ? "📝" : "📄"}</span>}
-              <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
+      {/* Show text section only if there's something to display OR if there's no image (fallback) */}
+      {(showCardTitles || showCardTags || isPending || isError || isNote || (!card.image && !showThumbnail)) && (
+        <div className="space-y-1 text-sm">
+          {showCardTitles && (
+            <>
+              <div className="flex items-center gap-2">
+                {isNote && <span className="text-lg">{card.type === "md-note" ? "📝" : "📄"}</span>}
+                <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
+              </div>
+              <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
+            </>
+          )}
+          {/* Fallback for cards without images when titles are hidden */}
+          {!showCardTitles && !card.image && !isNote && (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="text-4xl mb-2">🔗</div>
+                <div className="text-xs text-muted-foreground">{card.domain || "No preview"}</div>
+              </div>
             </div>
-            <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
-          </>
-        )}
-        {showCardTags && card.collections && card.collections.length > 0 && layout !== "compact" && (
-          <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
-            {card.collections
-              .filter((collection) => !collection.startsWith('den-'))
-              .map((collection) => (
-                <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
-                  {collection}
+          )}
+          {showCardTags && card.collections && card.collections.length > 0 && layout !== "compact" && (
+            <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+              {card.collections
+                .filter((collection) => !collection.startsWith('den-'))
+                .map((collection) => (
+                  <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
+                    {collection}
+                  </span>
+                ))}
+              {card.inDen && (
+                <span className="rounded bg-surface-soft px-2 py-0.5">
+                  The Den
                 </span>
-              ))}
-            {card.inDen && (
-              <span className="rounded bg-surface-soft px-2 py-0.5">
-                The Den
+              )}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            {isPending && (
+              <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-blue-300">
+                Kit is Fetching
+              </span>
+            )}
+            {isError && (
+              <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-red-900/40 text-red-300">
+                Fetch Error
+              </span>
+            )}
+            {isNote && (
+              <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-purple-200">
+                {card.type === "md-note" ? "Markdown" : "Text"}
               </span>
             )}
           </div>
-        )}
-        <div className="flex items-center gap-2">
-          {isPending && (
-            <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-blue-300">
-              Kit is Fetching
-            </span>
-          )}
-          {isError && (
-            <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-red-900/40 text-red-300">
-              Fetch Error
-            </span>
-          )}
-          {isNote && (
-            <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-purple-200">
-              {card.type === "md-note" ? "Markdown" : "Text"}
-            </span>
-          )}
         </div>
-      </div>
+      )}
     </div>
     </CardContextMenuWrapper>
   );
