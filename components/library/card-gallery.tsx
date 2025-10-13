@@ -350,6 +350,16 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
   const isError = card.status === "ERROR";
   const isNote = card.type === "md-note" || card.type === "text-note";
 
+  // Display settings
+  const showCardTitles = useSettingsStore((state) => state.showCardTitles);
+  const showCardUrls = useSettingsStore((state) => state.showCardUrls);
+  const showCardTags = useSettingsStore((state) => state.showCardTags);
+  const cardPadding = useSettingsStore((state) => state.cardPadding);
+
+  // Map cardPadding to Tailwind classes: 0=none, 1=xs, 2=sm, 3=md, 4=lg
+  const paddingClasses = ["p-0", "p-1", "p-2", "p-4", "p-6"];
+  const cardPaddingClass = paddingClasses[cardPadding] || "p-4";
+
   // Extract excerpt from content for notes
   const getExcerpt = () => {
     if (!isNote || !card.content) return "";
@@ -403,7 +413,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
         {...listeners}
         {...attributes}
         style={style}
-        className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface p-4 transition-all ${
+        className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface ${cardPaddingClass} transition-all ${
           selected ? "is-selected ring-2 ring-accent border-transparent" : "border-subtle"
         } ${isDragging ? "opacity-50" : ""}`}
         onClick={(event) => onClick(event, card)}
@@ -446,7 +456,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
                 }}
               />
               {/* URL Pill Overlay */}
-              {card.url && (
+              {showCardUrls && card.url && (
                 <a
                   href={card.url}
                   target="_blank"
@@ -464,12 +474,16 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
         </div>
       )}
       <div className="space-y-1 text-sm">
-        <div className="flex items-center gap-2">
-          {isNote && <span className="text-lg">{card.type === "md-note" ? "📝" : "📄"}</span>}
-          <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
-        </div>
-        <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
-        {card.collections && card.collections.length > 0 && layout !== "compact" && (
+        {showCardTitles && (
+          <>
+            <div className="flex items-center gap-2">
+              {isNote && <span className="text-lg">{card.type === "md-note" ? "📝" : "📄"}</span>}
+              <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
+            </div>
+            <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
+          </>
+        )}
+        {showCardTags && card.collections && card.collections.length > 0 && layout !== "compact" && (
           <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
             {card.collections
               .filter((collection) => !collection.startsWith('den-'))

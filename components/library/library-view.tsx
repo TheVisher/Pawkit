@@ -15,10 +15,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { ListFilter, Check, MoreVertical, Calendar, LayoutGrid, Sliders } from "lucide-react";
+import { ListFilter, Check, MoreVertical, Calendar, LayoutGrid, Sliders, Eye } from "lucide-react";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardSizeSlider } from "@/components/card-size-slider";
+import { CardDisplayControls } from "@/components/modals/card-display-controls";
 import { format } from "date-fns";
 
 type TimelineGroup = {
@@ -71,6 +72,7 @@ export function LibraryView({
   const [loading, setLoading] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showCardSizeSlider, setShowCardSizeSlider] = useState(false);
+  const [showCardDisplayControls, setShowCardDisplayControls] = useState(false);
   const cardSize = useSettingsStore((state) => state.cardSize);
 
   // Sync local state when store updates (important for reactivity!)
@@ -413,6 +415,15 @@ export function LibraryView({
                   Card Size
                 </DropdownMenuItem>
 
+                {/* Card Display Controls */}
+                <DropdownMenuItem
+                  onClick={() => setShowCardDisplayControls(true)}
+                  className="cursor-pointer relative pl-8"
+                >
+                  <Eye className="absolute left-2 h-4 w-4" />
+                  Display Options
+                </DropdownMenuItem>
+
                 {/* Date Range Filters (only in timeline mode) */}
                 {viewMode === "timeline" && (
                   <>
@@ -578,6 +589,12 @@ export function LibraryView({
       <CardSizeSlider
         open={showCardSizeSlider}
         onClose={() => setShowCardSizeSlider(false)}
+      />
+
+      {/* Card Display Controls */}
+      <CardDisplayControls
+        open={showCardDisplayControls}
+        onClose={() => setShowCardDisplayControls(false)}
       />
     </>
   );
