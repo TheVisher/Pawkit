@@ -1,144 +1,166 @@
 "use client";
 
-import { useState } from "react";
-import { Eye, EyeOff } from "lucide-react";
-import { DisplayOverrides } from "@/lib/types";
+import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { Eye, EyeOff, Minus, Plus } from "lucide-react";
 
 type CardDisplayControlsProps = {
-  displayOverrides?: DisplayOverrides | null;
-  onUpdate: (overrides: DisplayOverrides | null) => void;
+  open: boolean;
+  onClose: () => void;
 };
 
-export function CardDisplayControls({ displayOverrides, onUpdate }: CardDisplayControlsProps) {
-  const [titleVisible, setTitleVisible] = useState(
-    displayOverrides?.title?.visible ?? true
-  );
-  const [urlVisible, setUrlVisible] = useState(
-    displayOverrides?.url?.visible ?? true
-  );
-  const [tagsVisible, setTagsVisible] = useState(
-    displayOverrides?.tags?.visible ?? true
-  );
+export function CardDisplayControls({ open, onClose }: CardDisplayControlsProps) {
+  const showCardTitles = useSettingsStore((state) => state.showCardTitles);
+  const showCardUrls = useSettingsStore((state) => state.showCardUrls);
+  const showCardTags = useSettingsStore((state) => state.showCardTags);
+  const cardPadding = useSettingsStore((state) => state.cardPadding);
+  const setShowCardTitles = useSettingsStore((state) => state.setShowCardTitles);
+  const setShowCardUrls = useSettingsStore((state) => state.setShowCardUrls);
+  const setShowCardTags = useSettingsStore((state) => state.setShowCardTags);
+  const setCardPadding = useSettingsStore((state) => state.setCardPadding);
 
-  const handleToggleTitle = () => {
-    const newValue = !titleVisible;
-    setTitleVisible(newValue);
-    updateOverrides({ title: { visible: newValue } });
-  };
+  if (!open) return null;
 
-  const handleToggleUrl = () => {
-    const newValue = !urlVisible;
-    setUrlVisible(newValue);
-    updateOverrides({ url: { visible: newValue } });
-  };
+  const paddingLabels = ["None", "XS", "SM", "MD", "LG"];
 
-  const handleToggleTags = () => {
-    const newValue = !tagsVisible;
-    setTagsVisible(newValue);
-    updateOverrides({ tags: { visible: newValue } });
-  };
-
-  const updateOverrides = (update: Partial<DisplayOverrides>) => {
-    const newOverrides: DisplayOverrides = {
-      title: displayOverrides?.title || { visible: true },
-      url: displayOverrides?.url || { visible: true },
-      tags: displayOverrides?.tags || { visible: true },
-      ...update
-    };
-    onUpdate(newOverrides);
-  };
-
-  const handleResetToGlobal = () => {
-    setTitleVisible(true);
-    setUrlVisible(true);
-    setTagsVisible(true);
-    onUpdate(null);
+  const handleResetAll = () => {
+    setShowCardTitles(true);
+    setShowCardUrls(true);
+    setShowCardTags(true);
+    setCardPadding(2); // Default SM
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h4 className="text-sm font-medium text-gray-200 mb-2">Card Display Overrides</h4>
-        <p className="text-xs text-gray-400 mb-4">
-          Customize what information is shown on this specific card. These settings override global display preferences.
-        </p>
+    <>
+      {/* Backdrop - click to close */}
+      <div
+        className="fixed inset-0 z-40"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="fixed bottom-4 left-1/2 z-50 w-full max-w-md -translate-x-1/2 rounded-2xl border border-gray-800 bg-gray-950 p-6 shadow-2xl">
+        <div className="space-y-4">
+          <div>
+            <h4 className="text-lg font-semibold text-gray-100 mb-1">Display Options</h4>
+            <p className="text-xs text-gray-500">
+              Customize what information is shown on cards
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {/* Title Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowCardTitles(!showCardTitles)}
+                  className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                >
+                  {showCardTitles ? (
+                    <Eye className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <EyeOff className="h-5 w-5 text-gray-500" />
+                  )}
+                </button>
+                <div>
+                  <div className="text-sm font-medium text-gray-200">Titles</div>
+                  <div className="text-xs text-gray-500">
+                    {showCardTitles ? "Visible" : "Hidden"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* URL Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowCardUrls(!showCardUrls)}
+                  className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                >
+                  {showCardUrls ? (
+                    <Eye className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <EyeOff className="h-5 w-5 text-gray-500" />
+                  )}
+                </button>
+                <div>
+                  <div className="text-sm font-medium text-gray-200">URLs</div>
+                  <div className="text-xs text-gray-500">
+                    {showCardUrls ? "Visible" : "Hidden"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Tags Toggle */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowCardTags(!showCardTags)}
+                  className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
+                >
+                  {showCardTags ? (
+                    <Eye className="h-5 w-5 text-green-500" />
+                  ) : (
+                    <EyeOff className="h-5 w-5 text-gray-500" />
+                  )}
+                </button>
+                <div>
+                  <div className="text-sm font-medium text-gray-200">Tags/Pawkits</div>
+                  <div className="text-xs text-gray-500">
+                    {showCardTags ? "Visible" : "Hidden"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Padding Control */}
+            <div className="p-3 rounded-lg bg-gray-900/50 border border-gray-800">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <div className="text-sm font-medium text-gray-200">Card Padding</div>
+                  <div className="text-xs text-gray-500">{paddingLabels[cardPadding]}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCardPadding(Math.max(0, cardPadding - 1))}
+                  disabled={cardPadding === 0}
+                  className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <div className="flex-1 flex gap-1">
+                  {paddingLabels.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCardPadding(index)}
+                      className={`flex-1 h-2 rounded-full transition-colors ${
+                        index <= cardPadding ? "bg-purple-500" : "bg-gray-800"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={() => setCardPadding(Math.min(4, cardPadding + 1))}
+                  disabled={cardPadding === 4}
+                  className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Reset Button */}
+          <button
+            onClick={handleResetAll}
+            className="w-full py-2.5 text-sm font-medium text-gray-400 hover:text-gray-200 transition-colors border border-gray-800 rounded-lg hover:bg-gray-900/50"
+          >
+            Reset to Defaults
+          </button>
+        </div>
       </div>
-
-      <div className="space-y-3">
-        {/* Title Toggle */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleToggleTitle}
-              className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
-            >
-              {titleVisible ? (
-                <Eye className="h-5 w-5 text-green-500" />
-              ) : (
-                <EyeOff className="h-5 w-5 text-gray-500" />
-              )}
-            </button>
-            <div>
-              <div className="text-sm font-medium text-gray-200">Title</div>
-              <div className="text-xs text-gray-500">
-                {titleVisible ? "Visible" : "Hidden"}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* URL Toggle */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleToggleUrl}
-              className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
-            >
-              {urlVisible ? (
-                <Eye className="h-5 w-5 text-green-500" />
-              ) : (
-                <EyeOff className="h-5 w-5 text-gray-500" />
-              )}
-            </button>
-            <div>
-              <div className="text-sm font-medium text-gray-200">URL</div>
-              <div className="text-xs text-gray-500">
-                {urlVisible ? "Visible" : "Hidden"}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tags Toggle */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleToggleTags}
-              className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
-            >
-              {tagsVisible ? (
-                <Eye className="h-5 w-5 text-green-500" />
-              ) : (
-                <EyeOff className="h-5 w-5 text-gray-500" />
-              )}
-            </button>
-            <div>
-              <div className="text-sm font-medium text-gray-200">Tags/Pawkits</div>
-              <div className="text-xs text-gray-500">
-                {tagsVisible ? "Visible" : "Hidden"}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Reset Button */}
-      <button
-        onClick={handleResetToGlobal}
-        className="w-full py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors border border-gray-800 rounded-lg hover:bg-gray-900/50"
-      >
-        Reset to Global Settings
-      </button>
-    </div>
+    </>
   );
 }
