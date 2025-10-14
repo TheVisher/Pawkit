@@ -514,6 +514,7 @@ export function LibraryView({
             collectionsTree={collectionsTree}
             hideControls={true}
             storageKey="library-layout"
+            area="library"
           />
         )}
       </div>
@@ -595,6 +596,7 @@ export function LibraryView({
       <CardDisplayControls
         open={showCardDisplayControls}
         onClose={() => setShowCardDisplayControls(false)}
+        area="library"
       />
     </>
   );

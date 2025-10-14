@@ -4,10 +4,19 @@ import { useState, useEffect, useMemo } from "react";
 import { CardModel } from "@/lib/types";
 import { useDenStore } from "@/lib/stores/den-store";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
+import { CardDisplayControls } from "@/components/modals/card-display-controls";
 import { DogHouseIcon } from "@/components/icons/dog-house";
 import { DenPawkitsGrid } from "@/components/den/den-pawkits-grid";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Eye, MoreVertical } from "lucide-react";
 import useSWR from "swr";
 
 export default function DenPage() {
@@ -15,6 +24,7 @@ export default function DenPage() {
   const { collections, deleteCard } = useDataStore();
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showCreatePawkitModal, setShowCreatePawkitModal] = useState(false);
+  const [showCardDisplayControls, setShowCardDisplayControls] = useState(false);
   const [newPawkitName, setNewPawkitName] = useState("");
   const [creating, setCreating] = useState(false);
 
@@ -100,6 +110,24 @@ export default function DenPage() {
                 Your private, secure storage
               </p>
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Options Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
+                <MoreVertical className="h-4 w-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {/* Card Display Controls */}
+                <DropdownMenuItem
+                  onClick={() => setShowCardDisplayControls(true)}
+                  className="cursor-pointer relative pl-8"
+                >
+                  <Eye className="absolute left-2 h-4 w-4" />
+                  Display Options
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -224,6 +252,13 @@ export default function DenPage() {
           onDelete={handleDeleteCard}
         />
       )}
+
+      {/* Card Display Controls */}
+      <CardDisplayControls
+        open={showCardDisplayControls}
+        onClose={() => setShowCardDisplayControls(false)}
+        area="den"
+      />
     </>
   );
 }
@@ -245,6 +280,17 @@ function DenCard({
   onRemoveFromPawkit: (slug: string) => void;
   onRemoveFromAllPawkits: () => void;
 }) {
+  // Get display settings for den area
+  const displaySettings = useSettingsStore((state) => state.displaySettings.den);
+  const { showCardTitles, showCardUrls, showCardTags, cardPadding } = displaySettings;
+
+  // Map cardPadding to Tailwind classes: 0=none, 1=xs, 2=sm, 3=md, 4=lg
+  const paddingClasses = ["p-0", "p-1", "p-2", "p-4", "p-6"];
+  const cardPaddingClass = paddingClasses[cardPadding] || "p-4";
+
+  // Check if text section will render (used for conditional thumbnail margin)
+  const hasTextSection = showCardTitles || showCardTags || !card.image;
+
   return (
     <CardContextMenuWrapper
       filterDenOnly={true}
@@ -255,27 +301,61 @@ function DenCard({
       onRemoveFromPawkit={onRemoveFromPawkit}
       onRemoveFromAllPawkits={onRemoveFromAllPawkits}
     >
-      <div onClick={onClick} className="card-hover group cursor-pointer rounded-2xl border border-subtle bg-surface p-4 transition-all">
+      <div onClick={onClick} className={`card-hover group cursor-pointer rounded-2xl border border-subtle bg-surface ${cardPaddingClass} transition-all`}>
       {card.image && (
-        <div className="relative mb-3 w-full overflow-hidden rounded-xl bg-surface-soft aspect-video">
+        <div className={`relative ${hasTextSection ? "mb-3" : ""} w-full overflow-hidden rounded-xl bg-surface-soft aspect-video`}>
           <img
             src={card.image}
             alt={card.title ?? card.url}
             className="block h-full w-full object-cover"
             loading="lazy"
           />
+          {/* URL Pill Overlay */}
+          {showCardUrls && card.url && (
+            <div className="absolute bottom-2 left-2 right-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white flex items-center justify-center">
+              <span className="truncate max-w-full">
+                {card.domain || card.url}
+              </span>
+            </div>
+          )}
         </div>
       )}
-      <div className="space-y-1 text-sm">
-        <div className="flex items-center gap-2">
-          <h3 className="flex-1 font-semibold text-foreground transition-colors">
-            {card.title || card.domain || card.url}
-          </h3>
+      {(showCardTitles || showCardTags || !card.image) && (
+        <div className="space-y-1 text-sm">
+          {showCardTitles && (
+            <>
+              <div className="flex items-center gap-2">
+                <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">
+                  {card.title || card.domain || card.url}
+                </h3>
+              </div>
+              <p className="text-xs text-muted-foreground/80 line-clamp-2">
+                {card.domain || card.url}
+              </p>
+            </>
+          )}
+          {/* Fallback for cards without images when titles are hidden */}
+          {!showCardTitles && !card.image && (
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="text-4xl mb-2">🔗</div>
+                <div className="text-xs text-muted-foreground">{card.domain || "No preview"}</div>
+              </div>
+            </div>
+          )}
+          {showCardTags && card.collections && card.collections.length > 0 && (
+            <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+              {card.collections
+                .filter((collection: string) => !collection.startsWith('den-'))
+                .map((collection: string) => (
+                  <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
+                    {collection}
+                  </span>
+                ))}
+            </div>
+          )}
         </div>
-        <p className="text-xs text-muted-foreground/80 line-clamp-2">
-          {card.domain || card.url}
-        </p>
-      </div>
+      )}
     </div>
     </CardContextMenuWrapper>
   );

@@ -142,6 +142,7 @@ export function NotesView({ initialCards, initialLayout, collectionsTree, query 
           collectionsTree={collectionsTree}
           hideControls={true}
           storageKey="notes-layout"
+          area="library"
         />
       </div>
 

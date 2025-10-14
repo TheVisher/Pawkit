@@ -1,18 +1,16 @@
 "use client";
 
-import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { useSettingsStore, type Area } from "@/lib/hooks/settings-store";
 import { Eye, EyeOff, Minus, Plus } from "lucide-react";
 
 type CardDisplayControlsProps = {
   open: boolean;
   onClose: () => void;
+  area: Area;
 };
 
-export function CardDisplayControls({ open, onClose }: CardDisplayControlsProps) {
-  const showCardTitles = useSettingsStore((state) => state.showCardTitles);
-  const showCardUrls = useSettingsStore((state) => state.showCardUrls);
-  const showCardTags = useSettingsStore((state) => state.showCardTags);
-  const cardPadding = useSettingsStore((state) => state.cardPadding);
+export function CardDisplayControls({ open, onClose, area }: CardDisplayControlsProps) {
+  const displaySettings = useSettingsStore((state) => state.displaySettings[area]);
   const setShowCardTitles = useSettingsStore((state) => state.setShowCardTitles);
   const setShowCardUrls = useSettingsStore((state) => state.setShowCardUrls);
   const setShowCardTags = useSettingsStore((state) => state.setShowCardTags);
@@ -20,13 +18,14 @@ export function CardDisplayControls({ open, onClose }: CardDisplayControlsProps)
 
   if (!open) return null;
 
+  const { showCardTitles, showCardUrls, showCardTags, cardPadding } = displaySettings;
   const paddingLabels = ["None", "XS", "SM", "MD", "LG"];
 
   const handleResetAll = () => {
-    setShowCardTitles(true);
-    setShowCardUrls(true);
-    setShowCardTags(true);
-    setCardPadding(2); // Default SM
+    setShowCardTitles(area, true);
+    setShowCardUrls(area, true);
+    setShowCardTags(area, true);
+    setCardPadding(area, 2); // Default SM
   };
 
   return (
@@ -52,7 +51,7 @@ export function CardDisplayControls({ open, onClose }: CardDisplayControlsProps)
             <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowCardTitles(!showCardTitles)}
+                  onClick={() => setShowCardTitles(area, !showCardTitles)}
                   className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
                 >
                   {showCardTitles ? (
@@ -74,7 +73,7 @@ export function CardDisplayControls({ open, onClose }: CardDisplayControlsProps)
             <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowCardUrls(!showCardUrls)}
+                  onClick={() => setShowCardUrls(area, !showCardUrls)}
                   className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
                 >
                   {showCardUrls ? (
@@ -96,7 +95,7 @@ export function CardDisplayControls({ open, onClose }: CardDisplayControlsProps)
             <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowCardTags(!showCardTags)}
+                  onClick={() => setShowCardTags(area, !showCardTags)}
                   className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
                 >
                   {showCardTags ? (
@@ -124,7 +123,7 @@ export function CardDisplayControls({ open, onClose }: CardDisplayControlsProps)
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setCardPadding(Math.max(0, cardPadding - 1))}
+                  onClick={() => setCardPadding(area, Math.max(0, cardPadding - 1))}
                   disabled={cardPadding === 0}
                   className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
@@ -134,7 +133,7 @@ export function CardDisplayControls({ open, onClose }: CardDisplayControlsProps)
                   {paddingLabels.map((_, index) => (
                     <button
                       key={index}
-                      onClick={() => setCardPadding(index)}
+                      onClick={() => setCardPadding(area, index)}
                       className={`flex-1 h-2 rounded-full transition-colors ${
                         index <= cardPadding ? "bg-purple-500" : "bg-gray-800"
                       }`}
@@ -142,7 +141,7 @@ export function CardDisplayControls({ open, onClose }: CardDisplayControlsProps)
                   ))}
                 </div>
                 <button
-                  onClick={() => setCardPadding(Math.min(4, cardPadding + 1))}
+                  onClick={() => setCardPadding(area, Math.min(4, cardPadding + 1))}
                   disabled={cardPadding === 4}
                   className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >

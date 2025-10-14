@@ -7,6 +7,7 @@ import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
+import { CardDisplayControls } from "@/components/modals/card-display-controls";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +15,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import { ListFilter, Check, MoreVertical } from "lucide-react";
+import { ListFilter, Check, MoreVertical, Eye } from "lucide-react";
 
 function CollectionPageContent() {
   const params = useParams();
@@ -28,6 +29,7 @@ function CollectionPageContent() {
   const [showRenamePawkitModal, setShowRenamePawkitModal] = useState(false);
   const [showMovePawkitModal, setShowMovePawkitModal] = useState(false);
   const [showDeletePawkitConfirm, setShowDeletePawkitConfirm] = useState(false);
+  const [showCardDisplayControls, setShowCardDisplayControls] = useState(false);
   const [pawkitName, setPawkitName] = useState("");
   const [renameValue, setRenameValue] = useState("");
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<string | null>(null);
@@ -332,6 +334,14 @@ function CollectionPageContent() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
+                  onClick={() => setShowCardDisplayControls(true)}
+                  className="cursor-pointer relative pl-8"
+                >
+                  <Eye className="absolute left-2 h-4 w-4" />
+                  Display Options
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
                   onSelect={() => {
                     setShowCreateModal(true);
                   }}
@@ -369,6 +379,7 @@ function CollectionPageContent() {
           collectionName={currentCollection.name}
           storageKey={`pawkit-${slug}-layout`}
           hideControls={true}
+          area="pawkit"
         />
       </div>
 
@@ -609,6 +620,13 @@ function CollectionPageContent() {
           </div>
         </div>
       )}
+
+      {/* Card Display Controls */}
+      <CardDisplayControls
+        open={showCardDisplayControls}
+        onClose={() => setShowCardDisplayControls(false)}
+        area="pawkit"
+      />
     </>
   );
 }

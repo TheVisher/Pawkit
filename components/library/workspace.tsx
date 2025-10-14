@@ -21,9 +21,10 @@ export type LibraryWorkspaceProps = {
   collectionName?: string;
   hideControls?: boolean;
   storageKey?: string; // Key for localStorage, e.g. "library-layout" or "pawkit-movies-layout"
+  area: "library" | "home" | "den" | "pawkit";
 };
 
-function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery, collectionsTree, collectionName, hideControls = false, storageKey = "library-layout" }: LibraryWorkspaceProps) {
+function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery, collectionsTree, collectionName, hideControls = false, storageKey = "library-layout", area }: LibraryWorkspaceProps) {
   const [cards, setCards] = useState<CardModel[]>(initialCards);
   const [nextCursor, setNextCursor] = useState<string | undefined>(initialNextCursor);
   const [activeCollectionSlug, setActiveCollectionSlug] = useState<string | null>(null);
@@ -140,6 +141,7 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
         setCards={setCards}
         setNextCursor={setNextCursor}
         hideControls={hideControls}
+        area={area}
       />
     </DndContext>
   );

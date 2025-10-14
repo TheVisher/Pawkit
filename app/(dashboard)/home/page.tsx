@@ -6,10 +6,18 @@ import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
 import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
+import { CardDisplayControls } from "@/components/modals/card-display-controls";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { format, addDays, startOfDay } from "date-fns";
+import { Eye, MoreVertical } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const GREETINGS = [
   "Welcome back",
@@ -23,6 +31,7 @@ export default function HomePage() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
+  const [showCardDisplayControls, setShowCardDisplayControls] = useState(false);
 
   // Read from global store - instant, no API calls
   const { cards, collections, updateCard, deleteCard } = useDataStore();
@@ -126,11 +135,29 @@ export default function HomePage() {
   return (
     <>
       <div className="flex flex-1 flex-col gap-12 pb-16">
-        <section className="text-center">
+        <section className="relative text-center">
           <h1 className="text-4xl font-semibold text-gray-100 sm:text-5xl">
             <span className="mr-3 inline-block" aria-hidden="true">👋</span>
             {displayName ? `${greeting}, ${displayName}` : "Welcome to Pawkit!"}
           </h1>
+
+          {/* Settings Dropdown */}
+          <div className="absolute right-0 top-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger className="rounded-lg p-2 hover:bg-surface transition-colors">
+                <MoreVertical className="h-5 w-5 text-muted-foreground" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => setShowCardDisplayControls(true)}
+                  className="cursor-pointer relative pl-8"
+                >
+                  <Eye className="absolute left-2 h-4 w-4" />
+                  Display Options
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </section>
 
         <section className="space-y-4">
@@ -268,6 +295,13 @@ export default function HomePage() {
           onDelete={handleDeleteCard}
         />
       )}
+
+      {/* Card Display Controls */}
+      <CardDisplayControls
+        open={showCardDisplayControls}
+        onClose={() => setShowCardDisplayControls(false)}
+        area="home"
+      />
     </>
   );
 }

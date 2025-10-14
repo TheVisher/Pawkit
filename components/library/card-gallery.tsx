@@ -23,9 +23,10 @@ export type CardGalleryProps = {
   setCards: Dispatch<SetStateAction<CardModel[]>>;
   setNextCursor: Dispatch<SetStateAction<string | undefined>>;
   hideControls?: boolean;
+  area: "library" | "home" | "den" | "pawkit";
 };
 
-function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false }: CardGalleryProps) {
+function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false, area }: CardGalleryProps) {
   const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDemoAwareStore();
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
@@ -218,6 +219,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             selected={selectedIds.includes(card.id)}
             showThumbnail={showThumbnails}
             layout={layout}
+            area={area}
             onClick={handleCardClick}
             onAddToPawkit={(slug) => {
               const collections = Array.from(new Set([slug, ...(card.collections || [])]));
@@ -335,6 +337,7 @@ type CardCellProps = {
   selected: boolean;
   showThumbnail: boolean;
   layout: LayoutMode;
+  area: "library" | "home" | "den" | "pawkit";
   onClick: (event: MouseEvent, card: CardModel) => void;
   onAddToPawkit: (slug: string) => void;
   onAddToDen: () => void;
@@ -343,22 +346,23 @@ type CardCellProps = {
   onRemoveFromAllPawkits: () => void;
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
   const isError = card.status === "ERROR";
   const isNote = card.type === "md-note" || card.type === "text-note";
 
-  // Display settings
-  const showCardTitles = useSettingsStore((state) => state.showCardTitles);
-  const showCardUrls = useSettingsStore((state) => state.showCardUrls);
-  const showCardTags = useSettingsStore((state) => state.showCardTags);
-  const cardPadding = useSettingsStore((state) => state.cardPadding);
+  // Display settings for this area
+  const displaySettings = useSettingsStore((state) => state.displaySettings[area]);
+  const { showCardTitles, showCardUrls, showCardTags, cardPadding } = displaySettings;
 
   // Map cardPadding to Tailwind classes: 0=none, 1=xs, 2=sm, 3=md, 4=lg
   const paddingClasses = ["p-0", "p-1", "p-2", "p-4", "p-6"];
   const cardPaddingClass = paddingClasses[cardPadding] || "p-4";
+
+  // Check if text section will render (used for conditional thumbnail margin)
+  const hasTextSection = showCardTitles || showCardTags || isPending || isError || isNote || (!card.image && !showThumbnail);
 
   // Extract excerpt from content for notes
   const getExcerpt = () => {
@@ -421,7 +425,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
       >
       {showThumbnail && layout !== "compact" && !isNote && (
         <div
-          className={`relative mb-3 w-full overflow-hidden rounded-xl bg-surface-soft ${layout === "masonry" ? "" : "aspect-video"}`}
+          className={`relative ${hasTextSection ? "mb-3" : ""} w-full overflow-hidden rounded-xl bg-surface-soft ${layout === "masonry" ? "" : "aspect-video"}`}
         >
           {isPending ? (
             <div className="flex h-full w-full items-center justify-center">
@@ -510,23 +514,25 @@ function CardCellInner({ card, selected, showThumbnail, layout, onClick, onAddTo
               )}
             </div>
           )}
-          <div className="flex items-center gap-2">
-            {isPending && (
-              <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-blue-300">
-                Kit is Fetching
-              </span>
-            )}
-            {isError && (
-              <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-red-900/40 text-red-300">
-                Fetch Error
-              </span>
-            )}
-            {isNote && (
-              <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-purple-200">
-                {card.type === "md-note" ? "Markdown" : "Text"}
-              </span>
-            )}
-          </div>
+          {(isPending || isError || isNote) && (
+            <div className="flex items-center gap-2">
+              {isPending && (
+                <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-blue-300">
+                  Kit is Fetching
+                </span>
+              )}
+              {isError && (
+                <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-red-900/40 text-red-300">
+                  Fetch Error
+                </span>
+              )}
+              {isNote && (
+                <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-purple-200">
+                  {card.type === "md-note" ? "Markdown" : "Text"}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -542,7 +548,8 @@ const CardCell = memo(CardCellInner, (prevProps, nextProps) => {
     prevProps.card.status === nextProps.card.status &&
     prevProps.selected === nextProps.selected &&
     prevProps.showThumbnail === nextProps.showThumbnail &&
-    prevProps.layout === nextProps.layout
+    prevProps.layout === nextProps.layout &&
+    prevProps.area === nextProps.area
   );
 });
 
