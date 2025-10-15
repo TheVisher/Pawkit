@@ -27,6 +27,7 @@ export type SettingsState = {
   compactMode: boolean;
   showPreviews: boolean;
   serverSync: boolean;
+  autoSyncOnReconnect: boolean; // Auto-sync pending changes when re-enabling server sync
   cardSize: number; // 1-5 scale
   // Per-area display settings
   displaySettings: Record<Area, DisplaySettings>;
@@ -40,6 +41,7 @@ export type SettingsState = {
   setCompactMode: (value: boolean) => void;
   setShowPreviews: (value: boolean) => void;
   setServerSync: (value: boolean) => void;
+  setAutoSyncOnReconnect: (value: boolean) => void;
   setCardSize: (value: number) => void;
   // Per-area display setters
   setShowCardTitles: (area: Area, value: boolean) => void;
@@ -68,6 +70,7 @@ export const useSettingsStore = create<SettingsState>()(
       compactMode: false,
       showPreviews: true,
       serverSync: true,
+      autoSyncOnReconnect: true, // Default to auto-syncing when re-enabled
       cardSize: 3, // Default medium size
       // Initialize display settings for all areas
       displaySettings: {
@@ -85,7 +88,21 @@ export const useSettingsStore = create<SettingsState>()(
       setAutoSave: (value) => set({ autoSave: value }),
       setCompactMode: (value) => set({ compactMode: value }),
       setShowPreviews: (value) => set({ showPreviews: value }),
-      setServerSync: (value) => set({ serverSync: value }),
+      setServerSync: async (value) => {
+        set({ serverSync: value });
+
+        // Sync to database
+        try {
+          await fetch('/api/user', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ serverSync: value }),
+          });
+        } catch (error) {
+          console.error('[Settings] Failed to sync serverSync to database:', error);
+        }
+      },
+      setAutoSyncOnReconnect: (value) => set({ autoSyncOnReconnect: value }),
       setCardSize: (value) => set({ cardSize: value }),
       setShowCardTitles: (area, value) =>
         set((state) => ({

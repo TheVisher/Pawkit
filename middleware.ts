@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { prisma } from '@/lib/server/prisma'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -54,8 +55,58 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Skip auth check for API routes - they handle their own authentication
+  // Handle API routes - check server sync for write operations
   if (request.nextUrl.pathname.startsWith('/api/')) {
+    // Get user for API routes that need serverSync check
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (user) {
+      // Check if this is a write operation (POST, PUT, PATCH, DELETE)
+      const isWriteOperation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
+
+      if (isWriteOperation) {
+        // Exceptions: These endpoints are allowed even in local-only mode
+        const allowedPaths = [
+          '/api/cards/[id]/fetch-metadata', // Metadata fetching (stores locally)
+          '/api/user', // User profile updates (includes serverSync toggle itself)
+          '/api/extension/token', // Extension token management
+        ]
+
+        const isAllowedException = allowedPaths.some(path => {
+          // Convert Next.js dynamic route patterns to regex
+          const pattern = path.replace(/\[id\]/g, '[^/]+')
+          return new RegExp(`^${pattern}$`).test(request.nextUrl.pathname)
+        })
+
+        if (!isAllowedException) {
+          // Check user's serverSync setting from database
+          try {
+            const dbUser = await prisma.user.findUnique({
+              where: { id: user.id },
+              select: { serverSync: true },
+            })
+
+            if (dbUser && !dbUser.serverSync) {
+              // User has local-only mode enabled - block the write operation
+              return NextResponse.json(
+                {
+                  error: 'Local-Only Mode Active',
+                  message: 'Server sync is disabled. This operation cannot be performed in local-only mode. Please enable server sync in settings to sync your data to the cloud.',
+                  localOnly: true,
+                },
+                { status: 403 }
+              )
+            }
+          } catch (error) {
+            console.error('[Middleware] Failed to check serverSync setting:', error)
+            // On error, allow the operation to proceed (fail open for availability)
+          }
+        }
+      }
+    }
+
     return response
   }
 

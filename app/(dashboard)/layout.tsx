@@ -9,6 +9,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useNetworkSync } from "@/lib/hooks/use-network-sync";
+import { useSyncSettings } from "@/lib/hooks/use-sync-settings";
 import { ConflictNotifications } from "@/components/conflict-notifications";
 import { Button } from "@/components/ui/button";
 
@@ -40,6 +41,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   // Network sync hook handles queue draining on reconnection + periodic retries
   useNetworkSync();
+
+  // Sync settings hook ensures localStorage serverSync is synced to database
+  useSyncSettings();
 
   const username = userData?.email || "";
   const displayName = userData?.displayName || null;

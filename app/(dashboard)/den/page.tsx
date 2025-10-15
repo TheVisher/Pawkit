@@ -312,11 +312,17 @@ function DenCard({
           />
           {/* URL Pill Overlay */}
           {showCardUrls && card.url && (
-            <div className="absolute bottom-2 left-2 right-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white flex items-center justify-center">
+            <a
+              href={card.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="absolute bottom-2 left-2 right-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center justify-center"
+            >
               <span className="truncate max-w-full">
                 {card.domain || card.url}
               </span>
-            </div>
+            </a>
           )}
         </div>
       )}

@@ -33,7 +33,8 @@
       "Bash(npm i:*)",
       "Bash(npm audit:*)",
       "Bash(npm run build:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(npx prisma migrate:*)"
     ],
     "deny": [],
     "ask": []

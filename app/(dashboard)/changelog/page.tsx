@@ -3,6 +3,18 @@
 export default function ChangelogPage() {
   const changes = [
     {
+      dateRange: "October 14, 2025",
+      features: [
+        { title: "Local-Only Mode", description: "Complete server-side enforcement of local-only mode with middleware-based protection for all write operations" },
+        { title: "Auto-Sync Control", description: "Optional auto-sync toggle to control whether pending changes sync when server sync is re-enabled" },
+        { title: "Settings Migration", description: "Automatic migration of localStorage settings to database for server-side enforcement" },
+        { title: "Den Card URL Fix", description: "Made URLs in Den cards directly clickable like Library cards without opening the modal" },
+        { title: "Per-Area Display Settings", description: "Independent display customization for Library, Home, Den, and Pawkits with show/hide controls for titles, URLs, and tags" },
+        { title: "Card Padding Control", description: "Adjustable card padding with 5 levels (None, XS, SM, MD, LG) for each area" },
+        { title: "Image Storage System", description: "Automatic Supabase image storage for expiring URLs to prevent broken thumbnails" },
+      ],
+    },
+    {
       dateRange: "October 10, 2025",
       features: [
         { title: "Dynamic Card Size Slider", description: "Adjustable card size control with 5 levels on desktop (XS to XL) and 3 levels on mobile (Small to Large)" },

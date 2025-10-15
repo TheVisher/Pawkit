@@ -50,6 +50,7 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   const showThumbnails = useSettingsStore((state) => state.showThumbnails);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
   const serverSync = useSettingsStore((state) => state.serverSync);
+  const autoSyncOnReconnect = useSettingsStore((state) => state.autoSyncOnReconnect);
 
   const setTheme = useSettingsStore((state) => state.setTheme);
   const setAccentColor = useSettingsStore((state) => state.setAccentColor);
@@ -61,6 +62,7 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   const setShowThumbnails = useSettingsStore((state) => state.setShowThumbnails);
   const setPreviewServiceUrl = useSettingsStore((state) => state.setPreviewServiceUrl);
   const setServerSync = useSettingsStore((state) => state.setServerSync);
+  const setAutoSyncOnReconnect = useSettingsStore((state) => state.setAutoSyncOnReconnect);
 
   if (!open || typeof document === 'undefined') return null;
 
@@ -500,19 +502,39 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                     Control how your data is synced
                   </p>
                 </div>
-                <div className="flex items-center justify-between p-4 rounded-lg border border-gray-800 bg-gray-900/50">
-                  <div>
-                    <Label className="text-gray-300">Server Sync</Label>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Keep data local-only or sync with server
-                    </p>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-gray-800 bg-gray-900/50">
+                    <div>
+                      <Label className="text-gray-300">Server Sync</Label>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Keep data local-only or sync with server
+                      </p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 rounded"
+                      checked={serverSync}
+                      onChange={(e) => setServerSync(e.target.checked)}
+                    />
                   </div>
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 rounded"
-                    checked={serverSync}
-                    onChange={(e) => setServerSync(e.target.checked)}
-                  />
+
+                  {/* Sub-toggle: Auto-sync when re-enabled */}
+                  {!serverSync && (
+                    <div className="flex items-center justify-between p-4 pl-8 rounded-lg border border-gray-700/50 bg-gray-900/30">
+                      <div>
+                        <Label className="text-gray-400 text-sm">Auto-sync when re-enabled</Label>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Sync pending local changes when you turn server sync back on
+                        </p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded"
+                        checked={autoSyncOnReconnect}
+                        onChange={(e) => setAutoSyncOnReconnect(e.target.checked)}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
 

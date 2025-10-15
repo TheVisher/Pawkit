@@ -21,6 +21,7 @@ import { useSettingsStore } from "@/lib/hooks/settings-store";
 export function useNetworkSync() {
   const drainQueue = useDataStore((state) => state.drainQueue);
   const serverSync = useSettingsStore((state) => state.serverSync);
+  const autoSyncOnReconnect = useSettingsStore((state) => state.autoSyncOnReconnect);
   const isDrainingRef = useRef(false);
   const lastDrainRef = useRef(0);
 
@@ -28,6 +29,13 @@ export function useNetworkSync() {
     // Skip all syncing if server sync is disabled
     if (!serverSync) {
       console.log('[NetworkSync] Server sync disabled - running in local-only mode');
+      return;
+    }
+
+    // If server sync is enabled but autoSyncOnReconnect is disabled, skip automatic draining
+    // (User must manually trigger sync)
+    if (!autoSyncOnReconnect) {
+      console.log('[NetworkSync] Server sync enabled but auto-sync on reconnect disabled - manual sync required');
       return;
     }
     const MIN_DRAIN_INTERVAL = 5000; // Don't drain more than once per 5 seconds
@@ -86,5 +94,5 @@ export function useNetworkSync() {
       window.removeEventListener('offline', handleOffline);
       clearInterval(intervalId);
     };
-  }, [drainQueue, serverSync]);
+  }, [drainQueue, serverSync, autoSyncOnReconnect]);
 }

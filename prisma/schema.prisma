@@ -15,6 +15,7 @@ model User {
   denPasswordHash       String?
   denEncryptionEnabled  Boolean  @default(false)
   denSyncEnabled        Boolean  @default(true)
+  serverSync            Boolean  @default(true) // Local-only mode when false
   extensionToken        String?  @unique
   extensionTokenCreatedAt DateTime?
   createdAt             DateTime @default(now())

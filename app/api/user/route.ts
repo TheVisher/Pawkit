@@ -13,12 +13,13 @@ export async function GET() {
     // Get user profile from database
     const profile = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { email: true, displayName: true }
+      select: { email: true, displayName: true, serverSync: true }
     });
 
     return NextResponse.json({
       email: user.email,
-      displayName: profile?.displayName || null
+      displayName: profile?.displayName || null,
+      serverSync: profile?.serverSync ?? true
     });
   } catch (error) {
     return handleApiError(error);
@@ -33,13 +34,22 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { displayName } = body;
+    const { displayName, serverSync } = body;
+
+    // Build update data object
+    const updateData: any = {};
+    if (displayName !== undefined) {
+      updateData.displayName = displayName || null;
+    }
+    if (serverSync !== undefined) {
+      updateData.serverSync = serverSync;
+    }
 
     // Update user profile
     const updated = await prisma.user.update({
       where: { id: user.id },
-      data: { displayName: displayName || null },
-      select: { email: true, displayName: true }
+      data: updateData,
+      select: { email: true, displayName: true, serverSync: true }
     });
 
     return NextResponse.json(updated);
