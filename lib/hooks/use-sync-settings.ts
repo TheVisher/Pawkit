@@ -38,5 +38,6 @@ export function useSyncSettings() {
     };
 
     syncSettings();
-  }, [serverSync, setServerSync]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run once on mount, prevent infinite loop
 }

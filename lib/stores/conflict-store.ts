@@ -14,6 +14,9 @@ type ConflictStore = {
   clearAll: () => void;
 };
 
+// Track active timeouts for cleanup
+const activeTimeouts = new Map<string, NodeJS.Timeout>();
+
 export const useConflictStore = create<ConflictStore>((set) => ({
   conflicts: [],
 
@@ -29,21 +32,36 @@ export const useConflictStore = create<ConflictStore>((set) => ({
       conflicts: [...state.conflicts, conflict]
     }));
 
-    // Auto-remove after 10 seconds
-    setTimeout(() => {
+    // Auto-remove after 10 seconds with cleanup tracking
+    const timeoutId = setTimeout(() => {
       set((state) => ({
         conflicts: state.conflicts.filter((c) => c.id !== conflict.id)
       }));
+      activeTimeouts.delete(conflict.id);
     }, 10000);
+
+    // Store timeout ID for potential cleanup
+    activeTimeouts.set(conflict.id, timeoutId);
   },
 
   removeConflict: (id: string) => {
+    // Clear any pending timeout
+    const timeoutId = activeTimeouts.get(id);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      activeTimeouts.delete(id);
+    }
+
     set((state) => ({
       conflicts: state.conflicts.filter((c) => c.id !== id)
     }));
   },
 
   clearAll: () => {
+    // Clear all pending timeouts
+    activeTimeouts.forEach((timeoutId) => clearTimeout(timeoutId));
+    activeTimeouts.clear();
+
     set({ conflicts: [] });
   }
 }));
