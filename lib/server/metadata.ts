@@ -184,6 +184,10 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
       }
     }
 
+    // Log some key meta tags for debugging
+    const keyTags = ['og:image', 'og:title', 'og:description', 'twitter:image', 'twitter:title', 'description', 'title'];
+    console.log('[Metadata] Key meta tags found:', keyTags.map(tag => ({ [tag]: metaMap[tag] })).filter(obj => Object.values(obj)[0]));
+
     const baseUrl = response.url || url;
 
     const heroImages = collectHeroImages(metaMap, baseUrl);
@@ -201,8 +205,10 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
       title: title?.substring(0, 50),
       description: description?.substring(0, 50),
       hasImage: !!image,
+      imageUrl: image?.substring(0, 100),
       heroImages: heroImages.length,
-      logoImages: logoImages.length
+      logoImages: logoImages.length,
+      metaMapKeys: Object.keys(metaMap).filter(key => key.includes('image') || key.includes('og:') || key.includes('twitter:')).slice(0, 10)
     });
 
     return {
