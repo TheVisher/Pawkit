@@ -861,6 +861,48 @@ function extractYouTubeVideoId(url: string): string | null {
   }
 }
 
+// BACKUP - Original function (for rollback if needed):
+// async function fetchYouTubeMetadata(url: string, videoId: string): Promise<SitePreview> {
+//   // YouTube's reliable thumbnail API - always works
+//   // Try maxresdefault (1280x720) first, fallback to hqdefault (480x360)
+//   const maxResThumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+//   const hqThumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+//   // Check if maxresdefault exists (not all videos have it)
+//   let thumbnail = maxResThumbnail;
+//   try {
+//     const response = await fetch(maxResThumbnail, { method: 'HEAD' });
+//     if (!response.ok || response.headers.get('content-length') === '0') {
+//       thumbnail = hqThumbnail;
+//     }
+//   } catch {
+//     thumbnail = hqThumbnail;
+//   }
+//   // Try to get title/description from scraping (best effort)
+//   let title: string | undefined = undefined;
+//   let description: string | undefined = undefined;
+//   try {
+//     const scraped = await scrapeSiteMetadata(url).catch(() => undefined);
+//     if (scraped) {
+//       title = scraped.title;
+//       description = scraped.description;
+//     }
+//   } catch {
+//     // Scraping failed, use defaults
+//   }
+//   return {
+//     title: title || `YouTube Video - ${videoId}`,
+//     description: description || 'Watch on YouTube',
+//     image: thumbnail,
+//     logo: LOGO_ENDPOINT(url),
+//     screenshot: SCREENSHOT_ENDPOINT(url),
+//     raw: {
+//       videoId,
+//       thumbnailUrl: thumbnail,
+//       source: 'youtube-api'
+//     }
+//   };
+// }
+
 async function fetchYouTubeMetadata(url: string, videoId: string): Promise<SitePreview> {
   // YouTube's reliable thumbnail API - always works
   // Try maxresdefault (1280x720) first, fallback to hqdefault (480x360)
@@ -878,18 +920,39 @@ async function fetchYouTubeMetadata(url: string, videoId: string): Promise<SiteP
     thumbnail = hqThumbnail;
   }
 
-  // Try to get title/description from scraping (best effort)
+  // Try YouTube's oEmbed API for reliable title/description
   let title: string | undefined = undefined;
   let description: string | undefined = undefined;
 
   try {
-    const scraped = await scrapeSiteMetadata(url).catch(() => undefined);
-    if (scraped) {
-      title = scraped.title;
-      description = scraped.description;
+    const oEmbedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    const oEmbedResponse = await fetch(oEmbedUrl, { 
+      method: 'GET',
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    });
+    
+    if (oEmbedResponse.ok) {
+      const oEmbedData = await oEmbedResponse.json();
+      title = oEmbedData.title;
+      description = oEmbedData.author_name ? `by ${oEmbedData.author_name}` : undefined;
+      console.log('[YouTube] oEmbed success:', { title, description });
     }
-  } catch {
-    // Scraping failed, use defaults
+  } catch (error) {
+    console.log('[YouTube] oEmbed failed, falling back to scraping:', error instanceof Error ? error.message : String(error));
+  }
+
+  // Fallback to scraping if oEmbed fails
+  if (!title) {
+    try {
+      const scraped = await scrapeSiteMetadata(url).catch(() => undefined);
+      if (scraped) {
+        title = scraped.title;
+        description = scraped.description;
+        console.log('[YouTube] Scraping fallback success:', { title, description });
+      }
+    } catch {
+      console.log('[YouTube] Scraping fallback failed');
+    }
   }
 
   return {
