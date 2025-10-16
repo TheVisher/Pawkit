@@ -63,8 +63,12 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
     const params = await segmentData.params;
 
     // Conflict detection: Check if client has stale version
+    // Skip conflict detection for metadata updates (server-side operations)
+    const body = await request.json();
+    const isMetadataUpdate = body.metadata || body.title || body.description || body.image;
+    
     const ifUnmodifiedSince = request.headers.get('If-Unmodified-Since');
-    if (ifUnmodifiedSince) {
+    if (ifUnmodifiedSince && !isMetadataUpdate) {
       const currentCard = await getCard(user.id, params.id);
       if (currentCard) {
         const clientTimestamp = new Date(ifUnmodifiedSince).getTime();
@@ -84,7 +88,6 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
       }
     }
 
-    const body = await request.json();
     const card = await updateCard(user.id, params.id, body);
     return NextResponse.json(card);
   } catch (error) {
