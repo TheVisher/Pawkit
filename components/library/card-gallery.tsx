@@ -344,6 +344,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 prev.map((c) => (c.id === card.id ? { ...c, collections: [] } : c))
               );
             }}
+            onFetchMetadata={handleFetchMetadata}
           />
         ))}
       </div>
@@ -430,9 +431,10 @@ type CardCellProps = {
   onDeleteCard: () => void;
   onRemoveFromPawkit: (slug: string) => void;
   onRemoveFromAllPawkits: () => void;
+  onFetchMetadata: (cardId: string) => void;
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
