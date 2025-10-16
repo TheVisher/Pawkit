@@ -3,6 +3,12 @@
 export default function ChangelogPage() {
   const changes = [
     {
+      dateRange: "October 16, 2025",
+      features: [
+        { title: "YouTube Video Embedding Fixed", description: "Fixed YouTube videos not playing in card modals - videos now embed correctly with proper CSP configuration and responsive 16:9 aspect ratio" },
+      ],
+    },
+    {
       dateRange: "October 15, 2025",
       features: [
         { title: "Unified Top Bar Controls", description: "Consolidated all view controls into a consistent top bar with View Options, Sort/Filter, and Actions menus" },
