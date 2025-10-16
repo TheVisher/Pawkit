@@ -213,6 +213,24 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
       image = image.replace('http://', 'https://');
       console.log('[Metadata] Converted HTTP image to HTTPS:', image.substring(0, 100));
     }
+    
+    // Validate that the image URL is actually an image (not a 404 page)
+    if (image && image !== screenshot && image !== logo) {
+      try {
+        const imageResponse = await fetch(image, { 
+          method: 'HEAD',
+          signal: AbortSignal.timeout(3000) // 3 second timeout
+        });
+        
+        if (!imageResponse.ok || !imageResponse.headers.get('content-type')?.startsWith('image/')) {
+          console.log('[Metadata] Image URL returned non-image response, falling back to screenshot:', image.substring(0, 100));
+          image = screenshot;
+        }
+      } catch (error) {
+        console.log('[Metadata] Image URL validation failed, falling back to screenshot:', image.substring(0, 100));
+        image = screenshot;
+      }
+    }
 
     console.log('[Metadata] Scraping results:', {
       title: title?.substring(0, 50),
