@@ -217,17 +217,32 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
     // Validate that the image URL is actually an image (not a 404 page)
     if (image && image !== screenshot && image !== logo) {
       try {
+        console.log('[Metadata] Validating image URL:', image.substring(0, 100));
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2 second timeout
+        
         const imageResponse = await fetch(image, { 
           method: 'HEAD',
-          signal: AbortSignal.timeout(3000) // 3 second timeout
+          signal: controller.signal
         });
         
-        if (!imageResponse.ok || !imageResponse.headers.get('content-type')?.startsWith('image/')) {
-          console.log('[Metadata] Image URL returned non-image response, falling back to screenshot:', image.substring(0, 100));
+        clearTimeout(timeoutId);
+        
+        const contentType = imageResponse.headers.get('content-type');
+        console.log('[Metadata] Image validation response:', {
+          status: imageResponse.status,
+          contentType: contentType,
+          ok: imageResponse.ok
+        });
+        
+        if (!imageResponse.ok || !contentType?.startsWith('image/')) {
+          console.log('[Metadata] Image URL returned non-image response, falling back to screenshot');
           image = screenshot;
+        } else {
+          console.log('[Metadata] Image URL validation passed');
         }
       } catch (error) {
-        console.log('[Metadata] Image URL validation failed, falling back to screenshot:', image.substring(0, 100));
+        console.log('[Metadata] Image URL validation failed, falling back to screenshot:', error.message);
         image = screenshot;
       }
     }

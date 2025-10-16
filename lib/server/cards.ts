@@ -85,6 +85,16 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
     console.log('[fetchAndUpdateCardMetadata] Starting for card:', cardId, 'URL:', url);
     const preview = await fetchPreviewMetadata(url, previewServiceUrl ?? DEFAULT_PREVIEW_TEMPLATE);
     console.log('[fetchAndUpdateCardMetadata] Preview result:', preview ? 'SUCCESS' : 'FAILED');
+    
+    if (preview) {
+      console.log('[fetchAndUpdateCardMetadata] Preview details:', {
+        title: preview.title,
+        hasImage: !!preview.image,
+        imageUrl: preview.image?.substring(0, 100),
+        hasLogo: !!preview.logo,
+        hasScreenshot: !!preview.screenshot
+      });
+    }
 
     const updateData: Prisma.CardUpdateInput = {
       status: "READY"
