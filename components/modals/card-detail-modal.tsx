@@ -676,7 +676,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           </div>
         </div>
 
-        <Tabs defaultValue="pawkits" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+        <Tabs defaultValue={isYouTubeUrl(card.url) ? "reader" : "pawkits"} className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Tab Navigation */}
           <TabsList className="w-full rounded-none border-b border-gray-800 bg-transparent h-auto p-1 justify-start flex-shrink-0 flex flex-wrap gap-0">
             <TabsTrigger value="pawkits" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
