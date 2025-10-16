@@ -710,7 +710,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                       />
                     </TabsContent>
                     <TabsContent value="actions" className="p-4 mt-0 h-full">
-                      <ActionsTab card={card} />
+                      <ActionsTab
+                        card={card}
+                        onRefreshMetadata={handleRefreshMetadata}
+                        isPinned={isPinned}
+                        onTogglePin={handleTogglePin}
+                      />
                     </TabsContent>
                   </div>
                 </div>
