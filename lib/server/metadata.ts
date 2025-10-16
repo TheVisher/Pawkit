@@ -199,7 +199,13 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
     const screenshot = SCREENSHOT_ENDPOINT(url);
     const logo = logoImages[0] ?? LOGO_ENDPOINT(url);
     // Prefer screenshot over logo if no hero image - shows actual content
-    const image = heroImages[0] ?? screenshot ?? logo;
+    let image = heroImages[0] ?? screenshot ?? logo;
+    
+    // Convert HTTP image URLs to HTTPS to avoid mixed content issues
+    if (image && image.startsWith('http://')) {
+      image = image.replace('http://', 'https://');
+      console.log('[Metadata] Converted HTTP image to HTTPS:', image.substring(0, 100));
+    }
 
     console.log('[Metadata] Scraping results:', {
       title: title?.substring(0, 50),
@@ -233,9 +239,11 @@ function collectHeroImages(metaMap: Record<string, string>, baseUrl: string) {
   const set = new Set<string>();
   for (const key of HERO_META_KEYS) {
     const value = metaMap[key];
-    const resolved = resolveUrl(baseUrl, value);
+    const resolved = resolveUrl(value, baseUrl);
     if (resolved) {
-      set.add(resolved);
+      // Convert HTTP to HTTPS to avoid mixed content issues
+      const httpsUrl = resolved.startsWith('http://') ? resolved.replace('http://', 'https://') : resolved;
+      set.add(httpsUrl);
     }
   }
   return Array.from(set);
@@ -248,9 +256,11 @@ function collectLogos(root: ReturnType<typeof parse>, baseUrl: string) {
     const rel = (link.getAttribute("rel") || "").toLowerCase();
     if (!rel.includes("icon") && !rel.includes("apple-touch")) continue;
     const href = link.getAttribute("href");
-    const resolved = resolveUrl(baseUrl, href);
+    const resolved = resolveUrl(href, baseUrl);
     if (resolved) {
-      set.add(resolved);
+      // Convert HTTP to HTTPS to avoid mixed content issues
+      const httpsUrl = resolved.startsWith('http://') ? resolved.replace('http://', 'https://') : resolved;
+      set.add(httpsUrl);
     }
   }
   return Array.from(set);
