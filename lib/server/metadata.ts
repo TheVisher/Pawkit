@@ -201,6 +201,13 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
     // Prefer screenshot over logo if no hero image - shows actual content
     let image = heroImages[0] ?? screenshot ?? logo;
     
+    console.log('[Metadata] Image selection debug:', {
+      heroImages: heroImages,
+      screenshot: screenshot,
+      logo: logo,
+      selectedImage: image
+    });
+    
     // Convert HTTP image URLs to HTTPS to avoid mixed content issues
     if (image && image.startsWith('http://')) {
       image = image.replace('http://', 'https://');

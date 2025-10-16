@@ -490,7 +490,10 @@ async function executeUpdateCard(op: QueueOperation, set: any, get: any) {
       'Content-Type': 'application/json'
     };
 
-    if (oldCard?.updatedAt) {
+    // Skip conflict detection for metadata updates (server-side operations)
+    const isMetadataUpdate = payload.metadata || payload.title || payload.description || payload.image;
+    
+    if (oldCard?.updatedAt && !isMetadataUpdate) {
       headers['If-Unmodified-Since'] = oldCard.updatedAt;
     }
 
