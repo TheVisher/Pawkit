@@ -45,7 +45,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   // Map area to view type for settings
   const viewType: ViewType = area === "pawkit" ? "pawkits" : (area as ViewType);
   const viewSettings = useViewSettingsStore((state) => state.getSettings(viewType));
-  const cardSize = viewSettings.cardSize;
+  const cardSize = viewSettings.cardSize || 3; // Default to 3 for consistent SSR
 
   const orderedIds = useMemo(() => cards.map((card) => card.id), [cards]);
 
@@ -503,7 +503,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       cardCollections={card.collections || []}
       onRemoveFromPawkit={onRemoveFromPawkit}
       onRemoveFromAllPawkits={onRemoveFromAllPawkits}
-      onFetchMetadata={() => handleFetchMetadata(card.id)}
+      onFetchMetadata={() => onFetchMetadata(card.id)}
     >
       <div
         ref={setNodeRef}
