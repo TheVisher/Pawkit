@@ -489,7 +489,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 md:pr-[424px] pointer-events-none">
         <div
           className={`bg-gray-950 rounded-lg border border-gray-800 shadow-2xl overflow-hidden pointer-events-auto relative ${
-            isReaderExpanded ? "w-full h-full flex flex-col" : "max-w-full max-h-full"
+            isReaderExpanded ? "w-full h-full flex flex-col" : isYouTubeUrl(card.url) ? "w-full max-w-6xl" : "max-w-full max-h-full"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
@@ -509,7 +509,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               </svg>
             )}
           </button>
-          {/* Card Content - Image, Reader, or Note Preview/Edit */}
+          {/* Card Content - Image, Reader, YouTube Player, or Note Preview/Edit */}
           <div className={`bg-gray-900/50 relative ${isReaderExpanded ? "flex-1 flex flex-col overflow-hidden" : ""}`}>
             {isNote ? (
               <>
@@ -608,6 +608,22 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   )}
                 </div>
               </>
+            ) : isYouTubeUrl(card.url) ? (
+              // YouTube video embed in main content area
+              <div className="p-8 flex items-center justify-center min-h-[500px]">
+                <div className="w-full max-w-4xl">
+                  <div className="relative w-full bg-black" style={{ paddingBottom: '56.25%' }}>
+                    <iframe
+                      src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
+                      title={card.title || "YouTube video"}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="absolute top-0 left-0 w-full h-full rounded-lg border-0"
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="p-8">
                 {card.image ? (
@@ -662,94 +678,33 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           </div>
         </div>
 
-        {isYouTubeUrl(card.url) ? (
-          // YouTube cards: Show embedded player directly
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <div className="flex-1 flex items-center justify-center p-8">
-              <iframe
-                src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
-                title={card.title || "YouTube video"}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="rounded-lg"
-                style={{
-                  width: 'min(calc(100vw - 424px - 8rem), calc((90vh - 4rem) * 16 / 9))',
-                  height: 'min(calc(90vh - 4rem), calc((100vw - 424px - 8rem) * 9 / 16))'
-                }}
-              />
-            </div>
-            {/* Bottom section with tabs for YouTube cards */}
-            <div className="border-t border-gray-800">
-              <Tabs defaultValue="pawkits" className="flex flex-col min-h-0">
-                <TabsList className="w-full rounded-none border-b border-gray-800 bg-transparent h-auto p-1 justify-start flex-shrink-0 flex flex-wrap gap-0">
-                  <TabsTrigger value="pawkits" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                    Pawkits
-                  </TabsTrigger>
-                  <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                    Notes
-                  </TabsTrigger>
-                  <TabsTrigger value="actions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                    Actions
-                  </TabsTrigger>
-                </TabsList>
-                <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
-                  <div className="flex-1">
-                    <TabsContent value="pawkits" className="p-4 mt-0 h-full">
-                      <PawkitsTab
-                        collections={collections}
-                        currentCollections={card.collections || []}
-                        onSelect={handleAddToPawkit}
-                      />
-                    </TabsContent>
-                    <TabsContent value="notes" className="p-4 mt-0 h-full">
-                      <NotesTab
-                        notes={notes}
-                        onChange={setNotes}
-                        onSave={handleSaveNotes}
-                        saving={saving}
-                      />
-                    </TabsContent>
-                    <TabsContent value="actions" className="p-4 mt-0 h-full">
-                      <ActionsTab
-                        card={card}
-                        onRefreshMetadata={handleRefreshMetadata}
-                        isPinned={isPinned}
-                        onTogglePin={handleTogglePin}
-                      />
-                    </TabsContent>
-                  </div>
-                </div>
-              </Tabs>
-            </div>
-          </div>
-        ) : (
-          // Non-YouTube cards: Show normal tabs
-          <Tabs defaultValue="pawkits" className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {/* Tab Navigation */}
-            <TabsList className="w-full rounded-none border-b border-gray-800 bg-transparent h-auto p-1 justify-start flex-shrink-0 flex flex-wrap gap-0">
-              <TabsTrigger value="pawkits" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                Pawkits
-              </TabsTrigger>
-              <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                Notes
-              </TabsTrigger>
-              <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                Schedule
-              </TabsTrigger>
-              {!isNote && (
-                <>
-                  <TabsTrigger value="reader" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                    Reader
-                  </TabsTrigger>
-                  <TabsTrigger value="summary" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                    Summary
-                  </TabsTrigger>
-                </>
-              )}
-              <TabsTrigger value="actions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                Actions
-              </TabsTrigger>
-            </TabsList>
+        {/* Unified Tabs for All Cards */}
+        <Tabs defaultValue="pawkits" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Tab Navigation */}
+          <TabsList className="w-full rounded-none border-b border-gray-800 bg-transparent h-auto p-1 justify-start flex-shrink-0 flex flex-wrap gap-0">
+            <TabsTrigger value="pawkits" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+              Pawkits
+            </TabsTrigger>
+            <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+              Notes
+            </TabsTrigger>
+            <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+              Schedule
+            </TabsTrigger>
+            {!isNote && !isYouTubeUrl(card.url) && (
+              <>
+                <TabsTrigger value="reader" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+                  Reader
+                </TabsTrigger>
+                <TabsTrigger value="summary" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+                  Summary
+                </TabsTrigger>
+              </>
+            )}
+            <TabsTrigger value="actions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+              Actions
+            </TabsTrigger>
+          </TabsList>
 
           {/* Scrollable Container for Tab Content + Metadata + Buttons */}
           <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
@@ -769,16 +724,20 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   saving={saving}
                 />
               </TabsContent>
-              <TabsContent value="reader" className="p-4 mt-0 h-full">
-                <ReaderTab
-                  hasContent={!!articleContent}
-                  onExtract={handleExtractArticle}
-                  extracting={extracting}
-                />
-              </TabsContent>
-              <TabsContent value="summary" className="p-4 mt-0 h-full">
-                <SummaryTab card={card} />
-              </TabsContent>
+              {!isYouTubeUrl(card.url) && (
+                <>
+                  <TabsContent value="reader" className="p-4 mt-0 h-full">
+                    <ReaderTab
+                      hasContent={!!articleContent}
+                      onExtract={handleExtractArticle}
+                      extracting={extracting}
+                    />
+                  </TabsContent>
+                  <TabsContent value="summary" className="p-4 mt-0 h-full">
+                    <SummaryTab card={card} />
+                  </TabsContent>
+                </>
+              )}
               <TabsContent value="actions" className="p-4 mt-0 h-full">
                 <ActionsTab
                   card={card}
@@ -819,7 +778,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             </div>
           </div>
         </Tabs>
-        )}
       </div>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
