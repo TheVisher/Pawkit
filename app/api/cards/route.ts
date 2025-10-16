@@ -6,6 +6,9 @@ import { getUserByExtensionToken, extractTokenFromHeader } from "@/lib/auth/exte
 import { rateLimit, getRateLimitHeaders } from "@/lib/utils/rate-limit";
 import { isAllowedExtensionOrigin } from "@/lib/config/extension-config";
 
+// Force Node.js runtime for Prisma compatibility
+export const runtime = 'nodejs';
+
 /**
  * Generate CORS headers based on request origin
  * Only allows requests from the same origin or authorized browser extensions
