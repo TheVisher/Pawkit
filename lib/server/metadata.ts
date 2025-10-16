@@ -32,6 +32,8 @@ const TITLE_META_KEYS = ["og:title", "twitter:title", "itemprop:name", "title"];
 const DESCRIPTION_META_KEYS = ["og:description", "description", "twitter:description", "itemprop:description"];
 
 export async function fetchPreviewMetadata(url: string, previewServiceUrl?: string): Promise<SitePreview | undefined> {
+  console.log('[Metadata] Starting metadata fetch for:', url);
+  
   // Validate URL for SSRF protection
   try {
     validateUrlForFetch(url);
@@ -90,21 +92,33 @@ export async function fetchPreviewMetadata(url: string, previewServiceUrl?: stri
   const results: SitePreview[] = [];
 
   if (previewServiceUrl) {
-    const remote = await fetchRemotePreview(url, previewServiceUrl).catch(() => undefined);
+    console.log('[Metadata] Trying remote preview service...');
+    const remote = await fetchRemotePreview(url, previewServiceUrl).catch((err) => {
+      console.log('[Metadata] Remote preview failed:', err.message);
+      return undefined;
+    });
     if (remote) {
+      console.log('[Metadata] Remote preview success');
       results.push(remote);
     }
   }
 
-  const scraped = await scrapeSiteMetadata(url).catch(() => undefined);
+  console.log('[Metadata] Trying general scraping...');
+  const scraped = await scrapeSiteMetadata(url).catch((err) => {
+    console.log('[Metadata] General scraping failed:', err.message);
+    return undefined;
+  });
   if (scraped) {
+    console.log('[Metadata] General scraping success');
     results.push(scraped);
   }
 
   if (!results.length) {
+    console.log('[Metadata] No results from any method');
     return undefined;
   }
 
+  console.log('[Metadata] Merging results from', results.length, 'sources');
   return mergeMetadata(results, url);
 }
 
@@ -134,6 +148,7 @@ async function fetchRemotePreview(url: string, template: string): Promise<SitePr
 }
 
 async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined> {
+  console.log('[Metadata] Starting general scraping for:', url);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
@@ -147,13 +162,16 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
     });
     clearTimeout(timeoutId);
 
+    console.log('[Metadata] Response status:', response.status, response.statusText);
     if (!response.ok) {
       throw new Error(`metadata request failed with ${response.status}`);
     }
     const html = await response.text();
+    console.log('[Metadata] HTML length:', html.length);
     const root = parse(html);
 
     const metaTags = root.querySelectorAll("meta");
+    console.log('[Metadata] Found meta tags:', metaTags.length);
     const metaMap: Record<string, string> = {};
     for (const tag of metaTags) {
       const property = tag.getAttribute("property") || tag.getAttribute("name") || tag.getAttribute("itemprop");
@@ -178,6 +196,14 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
     const logo = logoImages[0] ?? LOGO_ENDPOINT(url);
     // Prefer screenshot over logo if no hero image - shows actual content
     const image = heroImages[0] ?? screenshot ?? logo;
+
+    console.log('[Metadata] Scraping results:', {
+      title: title?.substring(0, 50),
+      description: description?.substring(0, 50),
+      hasImage: !!image,
+      heroImages: heroImages.length,
+      logoImages: logoImages.length
+    });
 
     return {
       title,
