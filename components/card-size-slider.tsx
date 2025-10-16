@@ -1,29 +1,36 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { createPortal } from "react-dom";
+import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
 import { Maximize2, Minimize2 } from "lucide-react";
 
 type CardSizeSliderProps = {
   open: boolean;
   onClose: () => void;
+  view: ViewType;
 };
 
-export function CardSizeSlider({ open, onClose }: CardSizeSliderProps) {
-  const cardSize = useSettingsStore((state) => state.cardSize);
-  const setCardSize = useSettingsStore((state) => state.setCardSize);
-  const [localSize, setLocalSize] = useState(cardSize);
+export function CardSizeSlider({ open, onClose, view }: CardSizeSliderProps) {
+  const settings = useViewSettingsStore((state) => state.getSettings(view));
+  const setCardSize = useViewSettingsStore((state) => state.setCardSize);
+  const [localSize, setLocalSize] = useState(settings.cardSize);
   const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   // Detect mobile on mount and window resize
   useEffect(() => {
+    setMounted(true);
     const checkMobile = () => setIsMobile(window.innerWidth < 640);
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  if (!open) return null;
+  // Update local size when settings change
+  useEffect(() => {
+    setLocalSize(settings.cardSize);
+  }, [settings.cardSize]);
 
   // Mobile uses 1-3, desktop uses 1-5
   const maxSize = isMobile ? 3 : 5;
@@ -31,8 +38,10 @@ export function CardSizeSlider({ open, onClose }: CardSizeSliderProps) {
 
   const handleChange = (value: number) => {
     setLocalSize(value);
-    setCardSize(value);
+    setCardSize(view, value);
   };
+
+  if (!open || !mounted) return null;
 
   const getSizeLabel = (size: number) => {
     if (isMobile) {
@@ -53,7 +62,7 @@ export function CardSizeSlider({ open, onClose }: CardSizeSliderProps) {
     }
   };
 
-  return (
+  const sliderContent = (
     <>
       {/* Backdrop - click to close */}
       <div
@@ -62,7 +71,10 @@ export function CardSizeSlider({ open, onClose }: CardSizeSliderProps) {
       />
 
       {/* Floating Slider */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md">
+      <div 
+        className="fixed left-1/2 w-[90%] max-w-md"
+        style={{ bottom: '24px', transform: 'translateX(-50%)', zIndex: 9999 }}
+      >
         <div className="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -148,4 +160,6 @@ export function CardSizeSlider({ open, onClose }: CardSizeSliderProps) {
       `}</style>
     </>
   );
+
+  return createPortal(sliderContent, document.body);
 }

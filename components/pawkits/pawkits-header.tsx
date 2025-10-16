@@ -135,8 +135,8 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
       <div className="flex items-center justify-between mb-6">
         {!isSubPawkit && (
           <div>
-            <h1 className="text-3xl font-semibold text-gray-100">Pawkits</h1>
-            <p className="text-sm text-gray-400">
+            <h1 className="text-2xl font-semibold text-foreground">Pawkits</h1>
+            <p className="text-sm text-muted-foreground">
               Organize cards into visual groups. Open a Pawkit to filter the library or manage the hierarchy below.
             </p>
           </div>

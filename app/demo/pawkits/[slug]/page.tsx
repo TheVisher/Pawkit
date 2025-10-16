@@ -50,7 +50,6 @@ function DemoPawkitPageContent({ params }: { params: Promise<{ slug: string }> }
     <LibraryView
       initialCards={items}
       initialNextCursor={undefined}
-      initialLayout={layout}
       collectionsTree={collections}
       query={{ q, collection: slug }}
       viewMode="normal"

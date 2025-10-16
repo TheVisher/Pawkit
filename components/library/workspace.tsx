@@ -21,7 +21,7 @@ export type LibraryWorkspaceProps = {
   collectionName?: string;
   hideControls?: boolean;
   storageKey?: string; // Key for localStorage, e.g. "library-layout" or "pawkit-movies-layout"
-  area: "library" | "home" | "den" | "pawkit";
+  area: "library" | "home" | "den" | "pawkit" | "notes";
 };
 
 function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery, collectionsTree, collectionName, hideControls = false, storageKey = "library-layout", area }: LibraryWorkspaceProps) {

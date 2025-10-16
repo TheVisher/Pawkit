@@ -613,7 +613,10 @@ function isEcommerceSite(url: string): boolean {
       'alibaba.com',
       'vans.com',
       'nike.com',
-      'adidas.com'
+      'adidas.com',
+      'makerworld.com',      // 3D printing models
+      'thingiverse.com',     // 3D printing models
+      'printables.com'       // 3D printing models
     ];
 
     return ecommerceDomains.some(domain => hostname.includes(domain));
@@ -650,6 +653,10 @@ async function fetchEcommerceMetadata(url: string): Promise<SitePreview> {
       '.visual-product img',
       '.product-visual img',
       '.hero-product-image img',
+      // MakerWorld/3D printing site selectors
+      '.model-image img',
+      '.model-preview img',
+      '.thumbnail img',
       // Generic product image selectors
       'meta[property="product:image"]',
       '[itemprop="image"] img',
@@ -661,8 +668,9 @@ async function fetchEcommerceMetadata(url: string): Promise<SitePreview> {
       '#product-image img',
       '#main-image img',
       'img[class*="product"]',
+      'img[class*="model"]',
       'img[class*="hero"]',
-      // Fallback to meta tags last (often low quality)
+      // Fallback to meta tags (often low quality but better than nothing)
       'meta[property="og:image"]',
       'meta[name="twitter:image"]'
     ];

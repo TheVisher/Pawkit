@@ -47,7 +47,6 @@ function DemoPawkitsPageContent() {
     <LibraryView
       initialCards={items}
       initialNextCursor={undefined}
-      initialLayout={layout}
       collectionsTree={collections}
       query={{ q }}
       viewMode="normal"

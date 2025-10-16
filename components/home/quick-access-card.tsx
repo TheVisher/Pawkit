@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CardDTO } from "@/lib/server/cards";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 
 type QuickAccessCardProps = {
   card: CardDTO;
@@ -14,6 +15,10 @@ export function QuickAccessCard({ card }: QuickAccessCardProps) {
   const [isPinned, setIsPinned] = useState(card.pinned);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  
+  // Get display settings for home view
+  const viewSettings = useViewSettingsStore((state) => state.getSettings('home'));
+  const { showTitles, showUrls } = viewSettings;
 
   const handlePinToggle = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -63,10 +68,14 @@ export function QuickAccessCard({ card }: QuickAccessCardProps) {
         </div>
       )}
       <div>
-        <p className="text-sm font-semibold text-foreground truncate" title={card.title ?? card.url}>
-          {card.title || card.domain || card.url}
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground truncate">{card.url}</p>
+        {showTitles && (
+          <p className="text-sm font-semibold text-foreground truncate" title={card.title ?? card.url}>
+            {card.title || card.domain || card.url}
+          </p>
+        )}
+        {showUrls && (
+          <p className="mt-1 text-xs text-muted-foreground truncate">{card.url}</p>
+        )}
       </div>
       <p className="mt-4 text-xs text-muted-foreground/80">Updated {formatDate(card.updatedAt)}</p>
     </article>

@@ -1,34 +1,41 @@
 "use client";
 
-import { useSettingsStore, type Area } from "@/lib/hooks/settings-store";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
 import { Eye, EyeOff, Minus, Plus } from "lucide-react";
 
 type CardDisplayControlsProps = {
   open: boolean;
   onClose: () => void;
-  area: Area;
+  view: ViewType;
 };
 
-export function CardDisplayControls({ open, onClose, area }: CardDisplayControlsProps) {
-  const displaySettings = useSettingsStore((state) => state.displaySettings[area]);
-  const setShowCardTitles = useSettingsStore((state) => state.setShowCardTitles);
-  const setShowCardUrls = useSettingsStore((state) => state.setShowCardUrls);
-  const setShowCardTags = useSettingsStore((state) => state.setShowCardTags);
-  const setCardPadding = useSettingsStore((state) => state.setCardPadding);
+export function CardDisplayControls({ open, onClose, view }: CardDisplayControlsProps) {
+  const settings = useViewSettingsStore((state) => state.getSettings(view));
+  const setShowTitles = useViewSettingsStore((state) => state.setShowTitles);
+  const setShowUrls = useViewSettingsStore((state) => state.setShowUrls);
+  const setShowTags = useViewSettingsStore((state) => state.setShowTags);
+  const setCardPadding = useViewSettingsStore((state) => state.setCardPadding);
+  const [mounted, setMounted] = useState(false);
 
-  if (!open) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  const { showCardTitles, showCardUrls, showCardTags, cardPadding } = displaySettings;
+  if (!open || !mounted) return null;
+
+  const { showTitles, showUrls, showTags, cardPadding } = settings;
   const paddingLabels = ["None", "XS", "SM", "MD", "LG"];
 
   const handleResetAll = () => {
-    setShowCardTitles(area, true);
-    setShowCardUrls(area, true);
-    setShowCardTags(area, true);
-    setCardPadding(area, 2); // Default SM
+    setShowTitles(view, true);
+    setShowUrls(view, true);
+    setShowTags(view, true);
+    setCardPadding(view, 2); // Default SM
   };
 
-  return (
+  const modalContent = (
     <>
       {/* Backdrop - click to close */}
       <div
@@ -37,7 +44,10 @@ export function CardDisplayControls({ open, onClose, area }: CardDisplayControls
       />
 
       {/* Modal */}
-      <div className="fixed bottom-4 left-1/2 z-50 w-full max-w-md -translate-x-1/2 rounded-2xl border border-gray-800 bg-gray-950 p-6 shadow-2xl">
+      <div 
+        className="fixed left-1/2 w-[90%] max-w-md rounded-2xl border border-gray-800 bg-gray-950 p-6 shadow-2xl"
+        style={{ bottom: '24px', transform: 'translateX(-50%)', zIndex: 9999 }}
+      >
         <div className="space-y-4">
           <div>
             <h4 className="text-lg font-semibold text-gray-100 mb-1">Display Options</h4>
@@ -51,10 +61,10 @@ export function CardDisplayControls({ open, onClose, area }: CardDisplayControls
             <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowCardTitles(area, !showCardTitles)}
+                  onClick={() => setShowTitles(view, !showTitles)}
                   className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
                 >
-                  {showCardTitles ? (
+                  {showTitles ? (
                     <Eye className="h-5 w-5 text-green-500" />
                   ) : (
                     <EyeOff className="h-5 w-5 text-gray-500" />
@@ -63,7 +73,7 @@ export function CardDisplayControls({ open, onClose, area }: CardDisplayControls
                 <div>
                   <div className="text-sm font-medium text-gray-200">Titles</div>
                   <div className="text-xs text-gray-500">
-                    {showCardTitles ? "Visible" : "Hidden"}
+                    {showTitles ? "Visible" : "Hidden"}
                   </div>
                 </div>
               </div>
@@ -73,10 +83,10 @@ export function CardDisplayControls({ open, onClose, area }: CardDisplayControls
             <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowCardUrls(area, !showCardUrls)}
+                  onClick={() => setShowUrls(view, !showUrls)}
                   className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
                 >
-                  {showCardUrls ? (
+                  {showUrls ? (
                     <Eye className="h-5 w-5 text-green-500" />
                   ) : (
                     <EyeOff className="h-5 w-5 text-gray-500" />
@@ -85,7 +95,7 @@ export function CardDisplayControls({ open, onClose, area }: CardDisplayControls
                 <div>
                   <div className="text-sm font-medium text-gray-200">URLs</div>
                   <div className="text-xs text-gray-500">
-                    {showCardUrls ? "Visible" : "Hidden"}
+                    {showUrls ? "Visible" : "Hidden"}
                   </div>
                 </div>
               </div>
@@ -95,10 +105,10 @@ export function CardDisplayControls({ open, onClose, area }: CardDisplayControls
             <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowCardTags(area, !showCardTags)}
+                  onClick={() => setShowTags(view, !showTags)}
                   className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
                 >
-                  {showCardTags ? (
+                  {showTags ? (
                     <Eye className="h-5 w-5 text-green-500" />
                   ) : (
                     <EyeOff className="h-5 w-5 text-gray-500" />
@@ -107,7 +117,7 @@ export function CardDisplayControls({ open, onClose, area }: CardDisplayControls
                 <div>
                   <div className="text-sm font-medium text-gray-200">Tags/Pawkits</div>
                   <div className="text-xs text-gray-500">
-                    {showCardTags ? "Visible" : "Hidden"}
+                    {showTags ? "Visible" : "Hidden"}
                   </div>
                 </div>
               </div>
@@ -123,7 +133,7 @@ export function CardDisplayControls({ open, onClose, area }: CardDisplayControls
               </div>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setCardPadding(area, Math.max(0, cardPadding - 1))}
+                  onClick={() => setCardPadding(view, Math.max(0, cardPadding - 1))}
                   disabled={cardPadding === 0}
                   className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
@@ -133,7 +143,7 @@ export function CardDisplayControls({ open, onClose, area }: CardDisplayControls
                   {paddingLabels.map((_, index) => (
                     <button
                       key={index}
-                      onClick={() => setCardPadding(area, index)}
+                      onClick={() => setCardPadding(view, index)}
                       className={`flex-1 h-2 rounded-full transition-colors ${
                         index <= cardPadding ? "bg-purple-500" : "bg-gray-800"
                       }`}
@@ -141,7 +151,7 @@ export function CardDisplayControls({ open, onClose, area }: CardDisplayControls
                   ))}
                 </div>
                 <button
-                  onClick={() => setCardPadding(area, Math.min(4, cardPadding + 1))}
+                  onClick={() => setCardPadding(view, Math.min(4, cardPadding + 1))}
                   disabled={cardPadding === 4}
                   className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
@@ -162,4 +172,6 @@ export function CardDisplayControls({ open, onClose, area }: CardDisplayControls
       </div>
     </>
   );
+
+  return createPortal(modalContent, document.body);
 }

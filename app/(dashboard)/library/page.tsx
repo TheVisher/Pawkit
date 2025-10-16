@@ -70,7 +70,6 @@ function LibraryPageContent() {
     <LibraryView
       initialCards={items}
       initialNextCursor={undefined}
-      initialLayout={layout}
       collectionsTree={collections}
       query={{ q, collection, status }}
       viewMode={viewMode}

@@ -43,7 +43,6 @@ function NotesPageContent() {
   return (
     <NotesView
       initialCards={allNotes}
-      initialLayout={layout}
       collectionsTree={collections}
       query={q}
     />

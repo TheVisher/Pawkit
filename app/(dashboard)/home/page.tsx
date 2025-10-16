@@ -6,18 +6,11 @@ import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
 import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
-import { CardDisplayControls } from "@/components/modals/card-display-controls";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { format, addDays, startOfDay } from "date-fns";
-import { Eye, MoreVertical } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 const GREETINGS = [
   "Welcome back",
@@ -31,7 +24,6 @@ export default function HomePage() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
-  const [showCardDisplayControls, setShowCardDisplayControls] = useState(false);
 
   // Read from global store - instant, no API calls
   const { cards, collections, updateCard, deleteCard } = useDataStore();
@@ -140,24 +132,6 @@ export default function HomePage() {
             <span className="mr-3 inline-block" aria-hidden="true">👋</span>
             {displayName ? `${greeting}, ${displayName}` : "Welcome to Pawkit!"}
           </h1>
-
-          {/* Settings Dropdown */}
-          <div className="absolute right-0 top-0">
-            <DropdownMenu>
-              <DropdownMenuTrigger className="rounded-lg p-2 hover:bg-surface transition-colors">
-                <MoreVertical className="h-5 w-5 text-muted-foreground" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => setShowCardDisplayControls(true)}
-                  className="cursor-pointer relative pl-8"
-                >
-                  <Eye className="absolute left-2 h-4 w-4" />
-                  Display Options
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
         </section>
 
         <section className="space-y-4">
@@ -295,13 +269,6 @@ export default function HomePage() {
           onDelete={handleDeleteCard}
         />
       )}
-
-      {/* Card Display Controls */}
-      <CardDisplayControls
-        open={showCardDisplayControls}
-        onClose={() => setShowCardDisplayControls(false)}
-        area="home"
-      />
     </>
   );
 }
@@ -317,6 +284,10 @@ type CardProps = {
 };
 
 function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardProps) {
+  // Get display settings for home view
+  const viewSettings = useViewSettingsStore((state) => state.getSettings('home'));
+  const { showTitles, showUrls } = viewSettings;
+
   return (
     <CardContextMenuWrapper
       onAddToPawkit={onAddToPawkit}
@@ -334,7 +305,7 @@ function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, on
         <div className="mb-3 overflow-hidden rounded-xl bg-surface-soft relative">
           <img src={card.image} alt={card.title ?? card.url} className="h-32 w-full object-cover" loading="lazy" />
           {/* URL Pill Overlay */}
-          {card.url && (
+          {showUrls && card.url && (
             <a
               href={card.url}
               target="_blank"
@@ -350,9 +321,11 @@ function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, on
         </div>
       )}
       <div>
-        <p className="text-sm font-semibold text-foreground line-clamp-2" title={card.title ?? card.url}>
-          {card.title || card.domain || card.url}
-        </p>
+        {showTitles && (
+          <p className="text-sm font-semibold text-foreground line-clamp-2" title={card.title ?? card.url}>
+            {card.title || card.domain || card.url}
+          </p>
+        )}
       </div>
       <p className="mt-4 text-xs text-muted-foreground/80">Added {formatDate(card.createdAt)}</p>
     </article>

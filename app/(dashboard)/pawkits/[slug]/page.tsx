@@ -5,17 +5,8 @@ import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useDataStore } from "@/lib/stores/data-store";
-import { useSelection } from "@/lib/hooks/selection-store";
-import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
-import { CardDisplayControls } from "@/components/modals/card-display-controls";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
-import { ListFilter, Check, MoreVertical, Eye } from "lucide-react";
+import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
+import { Folder } from "lucide-react";
 
 function CollectionPageContent() {
   const params = useParams();
@@ -24,21 +15,30 @@ function CollectionPageContent() {
   const slug = params.slug as string;
 
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showMoveCardsModal, setShowMoveCardsModal] = useState(false);
-  const [showDeleteCardsConfirm, setShowDeleteCardsConfirm] = useState(false);
   const [showRenamePawkitModal, setShowRenamePawkitModal] = useState(false);
   const [showMovePawkitModal, setShowMovePawkitModal] = useState(false);
   const [showDeletePawkitConfirm, setShowDeletePawkitConfirm] = useState(false);
-  const [showCardDisplayControls, setShowCardDisplayControls] = useState(false);
   const [pawkitName, setPawkitName] = useState("");
   const [renameValue, setRenameValue] = useState("");
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  
+  const { setPawkitActions } = usePawkitActions();
 
-  const selectedIds = useSelection((state) => state.selectedIds);
-  const clearSelection = useSelection((state) => state.clear);
+  // Set Pawkit actions for the top bar
+  useEffect(() => {
+    setPawkitActions({
+      onCreateSubPawkit: () => setShowCreateModal(true),
+      onRenamePawkit: () => setShowRenamePawkitModal(true),
+      onMovePawkit: () => setShowMovePawkitModal(true),
+      onDeletePawkit: () => setShowDeletePawkitConfirm(true),
+    });
+
+    // Clean up when component unmounts
+    return () => setPawkitActions(null);
+  }, [setPawkitActions]);
 
   // Focus input when modal opens
   useEffect(() => {
@@ -122,36 +122,6 @@ function CollectionPageContent() {
     const params = new URLSearchParams(searchParams.toString());
     params.set("layout", newLayout);
     router.push(`/pawkits/${slug}?${params.toString()}`);
-  };
-
-  // Card actions
-  const handleBulkMoveCards = () => {
-    if (!selectedIds.length) return;
-    setShowMoveCardsModal(true);
-  };
-
-  const handleConfirmMoveCards = async (targetSlug: string) => {
-    if (!selectedIds.length) return;
-    await Promise.all(
-      selectedIds.map((id) => {
-        const card = cards.find((item) => item.id === id);
-        const collections = card ? Array.from(new Set([targetSlug, ...card.collections])) : [targetSlug];
-        return updateCard(id, { collections });
-      })
-    );
-    clearSelection();
-    setShowMoveCardsModal(false);
-  };
-
-  const handleBulkDeleteCards = () => {
-    if (!selectedIds.length) return;
-    setShowDeleteCardsConfirm(true);
-  };
-
-  const handleConfirmDeleteCards = async () => {
-    await Promise.all(selectedIds.map((id) => deleteCard(id)));
-    clearSelection();
-    setShowDeleteCardsConfirm(false);
   };
 
   // Pawkit actions
@@ -290,85 +260,13 @@ function CollectionPageContent() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-foreground">{currentCollection.name}</h1>
-            <p className="text-sm text-muted-foreground">{items.length} card(s)</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
-                <ListFilter className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {LAYOUTS.map((layoutOption) => (
-                  <DropdownMenuItem
-                    key={layoutOption}
-                    onClick={() => handleLayoutChange(layoutOption)}
-                    className="capitalize cursor-pointer relative pl-8"
-                  >
-                    {layout === layoutOption && (
-                      <Check className="absolute left-2 h-4 w-4" />
-                    )}
-                    {layoutOption}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
-                <MoreVertical className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={handleBulkMoveCards}
-                  disabled={!selectedIds.length}
-                  className="cursor-pointer"
-                >
-                  Move to Pawkit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleBulkDeleteCards}
-                  disabled={!selectedIds.length}
-                  className="cursor-pointer text-rose-400"
-                >
-                  Delete selected
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => setShowCardDisplayControls(true)}
-                  className="cursor-pointer relative pl-8"
-                >
-                  <Eye className="absolute left-2 h-4 w-4" />
-                  Display Options
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setShowCreateModal(true);
-                  }}
-                  className="cursor-pointer"
-                >
-                  Create Sub-Pawkit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setShowRenamePawkitModal(true)}
-                  className="cursor-pointer"
-                >
-                  Rename Pawkit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setShowMovePawkitModal(true)}
-                  className="cursor-pointer"
-                >
-                  Move Pawkit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => setShowDeletePawkitConfirm(true)}
-                  className="cursor-pointer text-rose-400"
-                >
-                  Delete Pawkit
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
+              <Folder className="h-5 w-5 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-foreground">{currentCollection.name}</h1>
+              <p className="text-sm text-muted-foreground">{items.length} card(s)</p>
+            </div>
           </div>
         </div>
         <LibraryWorkspace
@@ -382,45 +280,6 @@ function CollectionPageContent() {
           area="pawkit"
         />
       </div>
-
-      {/* Move Cards Modal */}
-      <MoveToPawkitModal
-        open={showMoveCardsModal}
-        onClose={() => setShowMoveCardsModal(false)}
-        onConfirm={handleConfirmMoveCards}
-      />
-
-      {/* Delete Cards Confirmation Modal */}
-      {showDeleteCardsConfirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowDeleteCardsConfirm(false)}
-        >
-          <div
-            className="bg-gray-950 rounded-lg p-6 w-full max-w-md shadow-xl border border-gray-800"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-xl font-semibold text-gray-100 mb-4">Delete Cards?</h2>
-            <p className="text-sm text-gray-400 mb-4">
-              Move {selectedIds.length} selected card{selectedIds.length !== 1 ? 's' : ''} to Trash? You can restore them within 30 days.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteCardsConfirm(false)}
-                className="flex-1 rounded bg-gray-900 px-4 py-2 text-sm font-medium text-gray-100 hover:bg-gray-800 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmDeleteCards}
-                className="flex-1 rounded bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 transition-colors"
-              >
-                Move to Trash
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Create Sub-Pawkit Modal */}
       {showCreateModal && (
@@ -621,12 +480,6 @@ function CollectionPageContent() {
         </div>
       )}
 
-      {/* Card Display Controls */}
-      <CardDisplayControls
-        open={showCardDisplayControls}
-        onClose={() => setShowCardDisplayControls(false)}
-        area="pawkit"
-      />
     </>
   );
 }

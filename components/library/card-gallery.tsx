@@ -10,6 +10,7 @@ import { CardModel, CollectionNode } from "@/lib/types";
 import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
@@ -23,7 +24,7 @@ export type CardGalleryProps = {
   setCards: Dispatch<SetStateAction<CardModel[]>>;
   setNextCursor: Dispatch<SetStateAction<string | undefined>>;
   hideControls?: boolean;
-  area: "library" | "home" | "den" | "pawkit";
+  area: "library" | "home" | "den" | "pawkit" | "notes";
 };
 
 function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false, area }: CardGalleryProps) {
@@ -32,6 +33,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collections, setCollections] = useState<CollectionNode[]>([]);
+  const [imageLoadCount, setImageLoadCount] = useState(0);
   const searchParams = useSearchParams();
   const selectedIds = useSelection((state) => state.selectedIds);
   const toggleSelection = useSelection((state) => state.toggle);
@@ -39,9 +41,57 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const selectRange = useSelection((state) => state.selectRange);
   const clearSelection = useSelection((state) => state.clear);
   const showThumbnails = useSettingsStore((state) => state.showThumbnails);
-  const cardSize = useSettingsStore((state) => state.cardSize);
+  
+  // Map area to view type for settings
+  const viewType: ViewType = area === "pawkit" ? "pawkits" : (area as ViewType);
+  const viewSettings = useViewSettingsStore((state) => state.getSettings(viewType));
+  const cardSize = viewSettings.cardSize;
 
   const orderedIds = useMemo(() => cards.map((card) => card.id), [cards]);
+
+  // Handle image loading for masonry layout
+  const handleImageLoad = () => {
+    setImageLoadCount(prev => prev + 1);
+  };
+
+  // Trigger reflow for masonry when images load
+  useEffect(() => {
+    if (layout === "masonry" && imageLoadCount > 0) {
+      // Force a reflow by temporarily changing a CSS property
+      const gallery = document.querySelector('[data-masonry-gallery]');
+      if (gallery) {
+        const element = gallery as HTMLElement;
+        const originalColumns = element.style.columns;
+        element.style.columns = 'auto';
+        // Force reflow
+        element.offsetHeight;
+        element.style.columns = originalColumns;
+      }
+    }
+  }, [layout, imageLoadCount]);
+
+  // Additional safeguard: Use ResizeObserver to detect layout changes
+  useEffect(() => {
+    if (layout !== "masonry") return;
+
+    const gallery = document.querySelector('[data-masonry-gallery]');
+    if (!gallery) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      // Force a reflow when the container size changes
+      const element = gallery as HTMLElement;
+      const originalColumns = element.style.columns;
+      element.style.columns = 'auto';
+      element.offsetHeight;
+      element.style.columns = originalColumns;
+    });
+
+    resizeObserver.observe(gallery);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, [layout]);
 
   // Fetch collections for the modal
   useEffect(() => {
@@ -211,7 +261,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           </div>
         </div>
       )}
-      <div className={layoutClass(layout, cardSize)}>
+      <div className={layoutClass(layout, cardSize)} data-masonry-gallery>
         {cards.map((card) => (
           <CardCell
             key={card.id}
@@ -221,6 +271,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             layout={layout}
             area={area}
             onClick={handleCardClick}
+            onImageLoad={handleImageLoad}
             onAddToPawkit={(slug) => {
               const collections = Array.from(new Set([slug, ...(card.collections || [])]));
               // If card is in The Den, remove it when adding to regular Pawkit
@@ -337,8 +388,9 @@ type CardCellProps = {
   selected: boolean;
   showThumbnail: boolean;
   layout: LayoutMode;
-  area: "library" | "home" | "den" | "pawkit";
+  area: "library" | "home" | "den" | "pawkit" | "notes";
   onClick: (event: MouseEvent, card: CardModel) => void;
+  onImageLoad?: () => void;
   onAddToPawkit: (slug: string) => void;
   onAddToDen: () => void;
   onDeleteCard: () => void;
@@ -346,16 +398,20 @@ type CardCellProps = {
   onRemoveFromAllPawkits: () => void;
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
   const isError = card.status === "ERROR";
   const isNote = card.type === "md-note" || card.type === "text-note";
 
-  // Display settings for this area
-  const displaySettings = useSettingsStore((state) => state.displaySettings[area]);
-  const { showCardTitles, showCardUrls, showCardTags, cardPadding } = displaySettings;
+  // Map area to view type and get display settings from new view settings store
+  const viewType: ViewType = area === "pawkit" ? "pawkits" : (area as ViewType);
+  const viewSettings = useViewSettingsStore((state) => state.getSettings(viewType));
+  const showCardTitles = viewSettings.showTitles;
+  const showCardUrls = viewSettings.showUrls;
+  const showCardTags = viewSettings.showTags;
+  const cardPadding = viewSettings.cardPadding;
 
   // Map cardPadding to Tailwind classes: 0=none, 1=xs, 2=sm, 3=md, 4=lg
   const paddingClasses = ["p-0", "p-1", "p-2", "p-4", "p-6"];
@@ -451,12 +507,15 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                 alt={card.title ?? card.url}
                 className={layout === "masonry" ? "block w-full h-auto" : "block h-full w-full object-cover"}
                 loading="lazy"
+                onLoad={onImageLoad}
                 onError={(e) => {
                   // Fallback to logo on image error
                   const target = e.target as HTMLImageElement;
                   target.onerror = null;
                   target.src = "/logo.png";
                   target.className = "h-16 w-16 opacity-50";
+                  // Still call onImageLoad for the fallback image
+                  onImageLoad?.();
                 }}
               />
               {/* URL Pill Overlay */}
@@ -474,7 +533,20 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                 </a>
               )}
             </>
-          ) : null}
+          ) : (
+            // Fallback placeholder when no image is available
+            <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6">
+              <div className="text-5xl">🔗</div>
+              <div className="text-center space-y-1">
+                <div className="text-sm font-medium text-foreground">{card.domain || "Link"}</div>
+                {showCardUrls && (
+                  <div className="text-xs text-muted-foreground max-w-full truncate px-2">
+                    {card.url}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
       {/* Show text section only if there's something to display OR if there's no image (fallback) */}
@@ -491,10 +563,13 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           )}
           {/* Fallback for cards without images when titles are hidden */}
           {!showCardTitles && !card.image && !isNote && (
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <div className="text-4xl mb-2">🔗</div>
-                <div className="text-xs text-muted-foreground">{card.domain || "No preview"}</div>
+            <div className="flex flex-col items-center justify-center py-12 bg-surface-soft/50 rounded-lg">
+              <div className="text-center space-y-3">
+                <div className="text-6xl">🔗</div>
+                <div className="text-sm font-medium text-foreground">{card.domain || "Link"}</div>
+                <div className="text-xs text-muted-foreground max-w-[200px] truncate px-4">
+                  {card.url}
+                </div>
               </div>
             </div>
           )}

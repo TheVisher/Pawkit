@@ -7,7 +7,7 @@ const DEFAULT_PREVIEW_URL = process.env.NEXT_PUBLIC_PREVIEW_SERVICE_URL ?? "http
 
 export type Theme = "dark" | "light" | "auto";
 export type AccentColor = "purple" | "blue" | "green" | "red" | "orange";
-export type Area = "library" | "home" | "den" | "pawkit";
+export type Area = "library" | "home" | "den" | "pawkit" | "notes";
 
 export type DisplaySettings = {
   showCardTitles: boolean;
@@ -78,6 +78,7 @@ export const useSettingsStore = create<SettingsState>()(
         home: { ...defaultDisplaySettings },
         den: { ...defaultDisplaySettings },
         pawkit: { ...defaultDisplaySettings },
+        notes: { ...defaultDisplaySettings },
       },
       setAutoFetchMetadata: (value) => set({ autoFetchMetadata: value }),
       setShowThumbnails: (value) => set({ showThumbnails: value }),

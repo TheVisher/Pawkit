@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, ListFilter, Check, MoreVertical } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
@@ -344,55 +344,11 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
             <p className="text-sm text-muted-foreground">{totalCards} card(s)</p>
           </div>
           <div className="flex items-center gap-2">
-            {/* Time Range Dropdown */}
+            {/* Time Range Dropdown - Timeline-specific control */}
             <TimeRangeDropdown
               selectedRange={selectedRange}
               onRangeChange={handleRangeChange}
             />
-
-            {/* Layout Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
-                <ListFilter className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {LAYOUTS.map((layoutOption) => (
-                  <DropdownMenuItem
-                    key={layoutOption}
-                    onClick={() => handleLayoutChange(layoutOption)}
-                    className="capitalize cursor-pointer relative pl-8"
-                  >
-                    {layout === layoutOption && (
-                      <Check className="absolute left-2 h-4 w-4" />
-                    )}
-                    {layoutOption}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Actions Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
-                <MoreVertical className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={handleBulkMove}
-                  disabled={!selectedIds.length}
-                  className="cursor-pointer"
-                >
-                  Move to Pawkit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={handleBulkDelete}
-                  disabled={!selectedIds.length}
-                  className="cursor-pointer text-rose-400"
-                >
-                  Delete selected
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
 

@@ -5,28 +5,27 @@ import { CardModel } from "@/lib/types";
 import { useDenStore } from "@/lib/stores/den-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
-import { CardDisplayControls } from "@/components/modals/card-display-controls";
 import { DogHouseIcon } from "@/components/icons/dog-house";
 import { DenPawkitsGrid } from "@/components/den/den-pawkits-grid";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Eye, MoreVertical } from "lucide-react";
 import useSWR from "swr";
 
 export default function DenPage() {
   const { denCards, isUnlocked, loadDenCards, checkExpiry, refreshDenCards, updateDenCard } = useDenStore();
   const { collections, deleteCard } = useDataStore();
+  const { setOnCreatePawkit } = usePawkitActions();
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showCreatePawkitModal, setShowCreatePawkitModal] = useState(false);
-  const [showCardDisplayControls, setShowCardDisplayControls] = useState(false);
   const [newPawkitName, setNewPawkitName] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // Set the create action for the top bar
+  useEffect(() => {
+    setOnCreatePawkit(() => () => setShowCreatePawkitModal(true));
+    return () => setOnCreatePawkit(null);
+  }, [setOnCreatePawkit]);
 
   // Fetch Den Pawkits
   const { data: denPawkitsData, mutate: mutateDenPawkits } = useSWR("/api/den/pawkits");
@@ -105,43 +104,17 @@ export default function DenPage() {
               <DogHouseIcon className="h-5 w-5 text-accent" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-gray-100">The Den</h1>
+              <h1 className="text-2xl font-semibold text-foreground">The Den</h1>
               <p className="text-sm text-muted-foreground">
                 Your private, secure storage
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Options Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-2 rounded-lg bg-surface-soft px-3 py-2 text-sm text-foreground hover:bg-surface transition-colors">
-                <MoreVertical className="h-4 w-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {/* Card Display Controls */}
-                <DropdownMenuItem
-                  onClick={() => setShowCardDisplayControls(true)}
-                  className="cursor-pointer relative pl-8"
-                >
-                  <Eye className="absolute left-2 h-4 w-4" />
-                  Display Options
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
         </div>
 
         {/* Den Pawkits Section */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-100">Den Pawkits</h2>
-            <button
-              onClick={() => setShowCreatePawkitModal(true)}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-gray-950 hover:bg-accent/90 transition-colors"
-            >
-              + Create Pawkit
-            </button>
-          </div>
+          <h2 className="text-lg font-semibold text-gray-100">Den Pawkits</h2>
           <DenPawkitsGrid
             collections={denPawkitsGridItems}
             allPawkits={denPawkits}
@@ -253,12 +226,6 @@ export default function DenPage() {
         />
       )}
 
-      {/* Card Display Controls */}
-      <CardDisplayControls
-        open={showCardDisplayControls}
-        onClose={() => setShowCardDisplayControls(false)}
-        area="den"
-      />
     </>
   );
 }
