@@ -246,7 +246,7 @@ function collectHeroImages(metaMap: Record<string, string>, baseUrl: string) {
   const set = new Set<string>();
   for (const key of HERO_META_KEYS) {
     const value = metaMap[key];
-    const resolved = resolveUrl(value, baseUrl);
+    const resolved = resolveUrl(baseUrl, value);
     if (resolved) {
       // Convert HTTP to HTTPS to avoid mixed content issues
       const httpsUrl = resolved.startsWith('http://') ? resolved.replace('http://', 'https://') : resolved;
