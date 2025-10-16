@@ -1,6 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { prisma } from '@/lib/server/prisma'
 
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({
@@ -81,28 +80,9 @@ export async function middleware(request: NextRequest) {
         })
 
         if (!isAllowedException) {
-          // Check user's serverSync setting from database
-          try {
-            const dbUser = await prisma.user.findUnique({
-              where: { id: user.id },
-              select: { serverSync: true },
-            })
-
-            if (dbUser && !dbUser.serverSync) {
-              // User has local-only mode enabled - block the write operation
-              return NextResponse.json(
-                {
-                  error: 'Local-Only Mode Active',
-                  message: 'Server sync is disabled. This operation cannot be performed in local-only mode. Please enable server sync in settings to sync your data to the cloud.',
-                  localOnly: true,
-                },
-                { status: 403 }
-              )
-            }
-          } catch (error) {
-            console.error('[Middleware] Failed to check serverSync setting:', error)
-            // On error, allow the operation to proceed (fail open for availability)
-          }
+          // Note: ServerSync check moved to individual API routes
+          // Middleware can't access PrismaClient in Edge Runtime
+          // Each API route will handle its own serverSync validation
         }
       }
     }

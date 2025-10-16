@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { deleteCard, getCard, updateCard, softDeleteCard } from "@/lib/server/cards";
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { prisma } from "@/lib/server/prisma";
+
+// Force Node.js runtime for Prisma compatibility
+export const runtime = 'nodejs';
 
 interface RouteParams {
   params: Promise<{
@@ -32,6 +36,28 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Check serverSync setting for write operations
+    try {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { serverSync: true },
+      });
+
+      if (dbUser && !dbUser.serverSync) {
+        return NextResponse.json(
+          {
+            error: 'Local-Only Mode Active',
+            message: 'Server sync is disabled. This operation cannot be performed in local-only mode. Please enable server sync in settings to sync your data to the cloud.',
+            localOnly: true,
+          },
+          { status: 403 }
+        );
+      }
+    } catch (error) {
+      console.error('[API] Failed to check serverSync setting:', error);
+      // On error, allow the operation to proceed (fail open for availability)
     }
 
     const params = await segmentData.params;
