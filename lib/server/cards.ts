@@ -82,7 +82,9 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
 
 export async function fetchAndUpdateCardMetadata(cardId: string, url: string, previewServiceUrl?: string): Promise<CardDTO> {
   try {
+    console.log('[fetchAndUpdateCardMetadata] Starting for card:', cardId, 'URL:', url);
     const preview = await fetchPreviewMetadata(url, previewServiceUrl ?? DEFAULT_PREVIEW_TEMPLATE);
+    console.log('[fetchAndUpdateCardMetadata] Preview result:', preview ? 'SUCCESS' : 'FAILED');
 
     const updateData: Prisma.CardUpdateInput = {
       status: "READY"
