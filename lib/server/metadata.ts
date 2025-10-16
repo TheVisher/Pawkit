@@ -256,6 +256,7 @@ function collectLogos(root: ReturnType<typeof parse>, baseUrl: string) {
     const rel = (link.getAttribute("rel") || "").toLowerCase();
     if (!rel.includes("icon") && !rel.includes("apple-touch")) continue;
     const href = link.getAttribute("href");
+    if (!href) continue;
     const resolved = resolveUrl(href, baseUrl);
     if (resolved) {
       // Convert HTTP to HTTPS to avoid mixed content issues
