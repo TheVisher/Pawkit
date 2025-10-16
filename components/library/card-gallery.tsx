@@ -533,8 +533,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                 </a>
               )}
             </>
-          ) : (
-            // Fallback placeholder when no image is available
+          ) : !isPending ? (
+            // Fallback placeholder when no image is available (but not loading)
             <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6">
               <div className="text-5xl">🔗</div>
               <div className="text-center space-y-1">
@@ -546,7 +546,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                 )}
               </div>
             </div>
-          )}
+          ) : null}
         </div>
       )}
       {/* Show text section only if there's something to display OR if there's no image (fallback) */}
@@ -561,8 +561,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
             </>
           )}
-          {/* Fallback for cards without images when titles are hidden */}
-          {!showCardTitles && !card.image && !isNote && (
+          {/* Fallback for cards without images when titles are hidden (but not loading) */}
+          {!showCardTitles && !card.image && !isNote && !isPending && (
             <div className="flex flex-col items-center justify-center py-12 bg-surface-soft/50 rounded-lg">
               <div className="text-center space-y-3">
                 <div className="text-6xl">🔗</div>
