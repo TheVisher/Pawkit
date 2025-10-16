@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Check } from "lucide-react";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
