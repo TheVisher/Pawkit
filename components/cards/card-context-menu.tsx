@@ -11,7 +11,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { FolderPlus, Trash2, Home, FolderMinus } from "lucide-react";
+import { FolderPlus, Trash2, Home, FolderMinus, RefreshCw } from "lucide-react";
 import { CollectionNode } from "@/lib/types";
 
 type CardContextMenuWrapperProps = {
@@ -24,6 +24,7 @@ type CardContextMenuWrapperProps = {
   cardCollections?: string[]; // Current Pawkits the card is in
   onRemoveFromPawkit?: (slug: string) => void; // Remove from a specific Pawkit
   onRemoveFromAllPawkits?: () => void; // Remove from all Pawkits
+  onFetchMetadata?: () => void; // Fetch metadata for the card
 };
 
 export function CardContextMenuWrapper({
@@ -36,6 +37,7 @@ export function CardContextMenuWrapper({
   cardCollections = [],
   onRemoveFromPawkit,
   onRemoveFromAllPawkits,
+  onFetchMetadata,
 }: CardContextMenuWrapperProps) {
   const [collections, setCollections] = useState<CollectionNode[]>([]);
   const [regularCollections, setRegularCollections] = useState<CollectionNode[]>([]);
@@ -213,6 +215,13 @@ export function CardContextMenuWrapper({
               )}
             </ContextMenuSubContent>
           </ContextMenuSub>
+        )}
+
+        {onFetchMetadata && (
+          <ContextMenuItem onClick={onFetchMetadata}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Fetch metadata
+          </ContextMenuItem>
         )}
 
         <ContextMenuSeparator />

@@ -236,6 +236,40 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     setShowDeleteConfirm(false);
   };
 
+  const handleFetchMetadata = async (cardId: string) => {
+    try {
+      const response = await fetch(`/api/cards/${cardId}/fetch-metadata`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: cards.find(c => c.id === cardId)?.url })
+      });
+
+      if (response.ok) {
+        // Fetch the updated card to get fresh metadata
+        const updatedCardRes = await fetch(`/api/cards/${cardId}`);
+        if (updatedCardRes.ok) {
+          const updatedCard = await updatedCardRes.json();
+
+          // Update store
+          await updateCardInStore(cardId, {
+            title: updatedCard.title,
+            description: updatedCard.description,
+            image: updatedCard.image,
+            domain: updatedCard.domain,
+            metadata: updatedCard.metadata
+          });
+
+          // Update local state
+          setCards((prev) => prev.map(card => 
+            card.id === cardId ? { ...card, ...updatedCard } : card
+          ));
+        }
+      }
+    } catch (error) {
+      console.error("Failed to refresh metadata:", error);
+    }
+  };
+
   const activeCard = cards.find((card) => card.id === activeCardId) ?? null;
 
   return (
@@ -467,6 +501,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       cardCollections={card.collections || []}
       onRemoveFromPawkit={onRemoveFromPawkit}
       onRemoveFromAllPawkits={onRemoveFromAllPawkits}
+      onFetchMetadata={() => handleFetchMetadata(card.id)}
     >
       <div
         ref={setNodeRef}
