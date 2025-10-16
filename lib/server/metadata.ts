@@ -242,7 +242,7 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
           console.log('[Metadata] Image URL validation passed');
         }
       } catch (error) {
-        console.log('[Metadata] Image URL validation failed, falling back to screenshot:', error.message);
+        console.log('[Metadata] Image URL validation failed, falling back to screenshot:', error instanceof Error ? error.message : String(error));
         image = screenshot;
       }
     }
