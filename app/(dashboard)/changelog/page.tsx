@@ -3,6 +3,20 @@
 export default function ChangelogPage() {
   const changes = [
     {
+      dateRange: "October 15, 2025",
+      features: [
+        { title: "Unified Top Bar Controls", description: "Consolidated all view controls into a consistent top bar with View Options, Sort/Filter, and Actions menus" },
+        { title: "Persistent View Settings", description: "View-specific settings now sync across sessions with database storage and local-only mode support" },
+        { title: "Standardized Page Headers", description: "All pages now have consistent headers with matching icons and formatting" },
+        { title: "Enhanced Card Fallbacks", description: "Improved display for cards without thumbnails with better fallback UI and domain information" },
+        { title: "3D Printing Site Support", description: "Added MakerWorld, Thingiverse, and Printables to e-commerce metadata for better thumbnails" },
+        { title: "Masonry Layout Fix", description: "Fixed masonry layout breaking on page refresh with automatic image load tracking and reflow" },
+        { title: "Quick Access Improvements", description: "Home screen Pawkits now show card preview thumbnails instead of generic folder icons" },
+        { title: "Pawkit Management Integration", description: "Moved all Pawkit creation and management actions into the unified top bar menu" },
+        { title: "Automatic Layout Recovery", description: "Added ResizeObserver for automatic masonry layout recalculation when content changes" },
+      ],
+    },
+    {
       dateRange: "October 14, 2025",
       features: [
         { title: "Local-Only Mode", description: "Complete server-side enforcement of local-only mode with middleware-based protection for all write operations" },
