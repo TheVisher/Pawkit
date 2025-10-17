@@ -72,10 +72,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
     try {
       // ALWAYS load from local IndexedDB first
-      const [cards, collections] = await Promise.all([
+      const [allCards, allCollections] = await Promise.all([
         localStorage.getAllCards(),
         localStorage.getAllCollections(),
       ]);
+
+      // Filter out deleted cards and collections (soft-deleted items go to trash)
+      const cards = allCards.filter(c => !c.deleted);
+      const collections = allCollections.filter(c => !c.deleted);
 
       set({
         cards,
@@ -128,15 +132,19 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
       if (result.success) {
         // Reload from local storage (which now has merged data)
-        const [cards, collections] = await Promise.all([
+        const [allCards, allCollections] = await Promise.all([
           localStorage.getAllCards(),
           localStorage.getAllCollections(),
         ]);
 
+        // Filter out deleted items (they belong in trash, not active lists)
+        const cards = allCards.filter(c => !c.deleted);
+        const collections = allCollections.filter(c => !c.deleted);
+
         set({ cards, collections });
 
         console.log('[DataStore V2] Sync complete:', result);
-      } else {
+      } else{
         console.error('[DataStore V2] Sync failed:', result.errors);
       }
     } catch (error) {
@@ -163,10 +171,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
     set({ isLoading: true });
 
     try {
-      const [cards, collections] = await Promise.all([
+      const [allCards, allCollections] = await Promise.all([
         localStorage.getAllCards(),
         localStorage.getAllCollections(),
       ]);
+
+      // Filter out deleted items
+      const cards = allCards.filter(c => !c.deleted);
+      const collections = allCollections.filter(c => !c.deleted);
 
       set({ cards, collections, isLoading: false });
 
@@ -354,28 +366,47 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   /**
-   * Delete card: Remove from local first, then sync to server
+   * Delete card: Soft delete (mark as deleted), don't remove from storage
    */
   deleteCard: async (id: string) => {
     try {
-      // STEP 1: Remove from local storage
-      await localStorage.deleteCard(id);
+      // STEP 1: Soft delete in local storage (mark as deleted)
+      const card = await localStorage.getCard(id);
+      if (!card) {
+        console.warn('[DataStore V2] Card not found:', id);
+        return;
+      }
 
-      // STEP 2: Update Zustand for instant UI
+      const deletedCard = {
+        ...card,
+        deleted: true,
+        deletedAt: new Date().toISOString(),
+      };
+
+      await localStorage.saveCard(deletedCard, { localOnly: true });
+
+      // STEP 2: Update Zustand - remove from active cards list
       set((state) => ({
         cards: state.cards.filter(c => c.id !== id),
       }));
 
-      console.log('[DataStore V2] Card deleted from local storage:', id);
+      console.log('[DataStore V2] Card soft-deleted in local storage:', id);
 
       // STEP 3: Sync to server (if enabled and not a temp card)
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync && !id.startsWith('temp_')) {
         try {
-          await fetch(`/api/cards/${id}`, {
+          const response = await fetch(`/api/cards/${id}`, {
             method: 'DELETE',
           });
-          console.log('[DataStore V2] Card deleted from server:', id);
+
+          if (response.ok) {
+            // Server returns the soft-deleted card or just { ok: true }
+            // Update local storage to match server state
+            const updatedCard = { ...deletedCard };
+            await localStorage.saveCard(updatedCard, { fromServer: true });
+            console.log('[DataStore V2] Card soft-deleted on server:', id);
+          }
         } catch (error) {
           console.error('[DataStore V2] Failed to sync card deletion:', error);
           // Deletion is safe in local storage
