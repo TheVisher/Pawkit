@@ -39,7 +39,6 @@ type DataStore = {
   // Actions
   initialize: () => Promise<void>;
   sync: () => Promise<void>;
-  drainQueue: () => Promise<void>; // For compatibility
   addCard: (cardData: Partial<CardDTO>) => Promise<void>;
   updateCard: (id: string, updates: Partial<CardDTO>) => Promise<void>;
   deleteCard: (id: string) => Promise<void>;
@@ -144,15 +143,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
     } finally {
       set({ isSyncing: false });
     }
-  },
-
-  /**
-   * Drain queue: For compatibility with old data-store
-   * Just calls sync()
-   */
-  drainQueue: async () => {
-    console.log('[DataStore V2] drainQueue() called - redirecting to sync()');
-    await get().sync();
   },
 
   /**
@@ -491,6 +481,15 @@ export const useDataStore = create<DataStore>((set, get) => ({
       console.error('[DataStore V2] Failed to delete collection:', error);
       throw error;
     }
+  },
+
+  /**
+   * Drain queue: For compatibility with old data-store
+   * Just calls sync()
+   */
+  drainQueue: async () => {
+    console.log('[DataStore V2] drainQueue() called - redirecting to sync()');
+    await get().sync();
   },
 
   /**

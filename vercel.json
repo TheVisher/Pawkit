@@ -1,0 +1,20 @@
+{
+  "buildCommand": "npm run build",
+  "env": {
+    "ALLOW_PRODUCTION_MIGRATION": "true"
+  },
+  "github": {
+    "silent": false
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Pawkit-Architecture",
+          "value": "local-first"
+        }
+      ]
+    }
+  ]
+}
