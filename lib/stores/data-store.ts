@@ -499,6 +499,28 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
   deleteCollection: async (id: string, deleteCards = false) => {
     try {
+      // STEP 1: Soft delete in local storage first
+      const collections = await localStorage.getAllCollections();
+      const collection = collections.find(c => c.id === id);
+
+      if (collection) {
+        const deletedCollection: any = {
+          ...collection,
+          deleted: true,
+          deletedAt: new Date().toISOString(),
+        };
+
+        await localStorage.saveCollection(deletedCollection, { localOnly: true });
+
+        // Update Zustand - remove from active collections
+        set((state) => ({
+          collections: state.collections.filter(c => c.id !== id),
+        }));
+
+        console.log('[DataStore V2] Collection soft-deleted in local storage:', id);
+      }
+
+      // STEP 2: Sync to server (if enabled and not a temp collection)
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync && !id.startsWith('temp_')) {
         try {
@@ -511,11 +533,17 @@ export const useDataStore = create<DataStore>((set, get) => ({
           });
 
           if (response.ok) {
-            await get().refresh();
-            console.log('[DataStore V2] Collection deleted:', id);
+            console.log('[DataStore V2] Collection soft-deleted on server:', id);
+
+            // If deleteCards was true, refresh to get updated card list
+            if (deleteCards) {
+              await get().sync();
+            }
+          } else {
+            console.error('[DataStore V2] Server delete failed:', await response.text());
           }
         } catch (error) {
-          console.error('[DataStore V2] Failed to delete collection:', error);
+          console.error('[DataStore V2] Failed to delete collection on server:', error);
         }
       }
     } catch (error) {
