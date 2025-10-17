@@ -6,6 +6,7 @@ export default function ChangelogPage() {
       dateRange: "October 16, 2025",
       features: [
         { title: "YouTube Video Embedding Fixed", description: "Fixed YouTube videos not playing in card modals - videos now embed correctly with proper CSP configuration and responsive 16:9 aspect ratio" },
+        { title: "Notes Modal Scrolling Fixed", description: "Notes are now immediately scrollable without requiring preview/edit mode selection - consistent modal sizing with proper overflow behavior" },
       ],
     },
     {
