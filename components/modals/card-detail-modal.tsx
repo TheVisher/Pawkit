@@ -489,7 +489,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8 md:pr-[424px] pointer-events-none">
         <div
           className={`bg-gray-950 rounded-lg border border-gray-800 shadow-2xl overflow-hidden pointer-events-auto relative ${
-            isReaderExpanded ? "w-full h-full flex flex-col" : isYouTubeUrl(card.url) ? "w-full max-w-6xl" : "max-w-full max-h-full"
+            isReaderExpanded ? "w-full h-full flex flex-col" : isYouTubeUrl(card.url) ? "w-full max-w-6xl" : isNote ? "w-full max-w-3xl h-[80vh] flex flex-col" : "max-w-full max-h-full"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
@@ -510,11 +510,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             )}
           </button>
           {/* Card Content - Image, Reader, YouTube Player, or Note Preview/Edit */}
-          <div className={`bg-gray-900/50 relative ${isReaderExpanded ? "flex-1 flex flex-col overflow-hidden" : ""}`}>
+          <div className={`bg-gray-900/50 relative ${isReaderExpanded || isNote ? "flex-1 flex flex-col overflow-hidden" : ""}`}>
             {isNote ? (
               <>
                 {/* Header with mode toggle and expand */}
-                <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between">
+                <div className="flex-shrink-0 top-0 left-0 right-0 z-10 p-4 flex items-center justify-between border-b border-gray-800 bg-gray-950/95 backdrop-blur-sm">
                   <div className="flex gap-2">
                     <Button
                       onClick={() => setNoteMode("preview")}
@@ -543,7 +543,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   </Button>
                 </div>
                 {/* Note content area */}
-                <div className="flex-1 overflow-auto p-8 pt-20">
+                <div className="flex-1 overflow-y-auto p-8 min-h-0">
                   {noteMode === "preview" ? (
                     <div className="prose prose-invert prose-sm max-w-none">
                       {content ? (
