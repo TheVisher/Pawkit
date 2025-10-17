@@ -131,6 +131,44 @@ class LocalStorage {
     console.log('[LocalStorage] Deleted card:', id);
   }
 
+  async permanentlyDeleteCard(id: string): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    await this.db.delete('cards', id);
+    console.log('[LocalStorage] Permanently deleted card:', id);
+  }
+
+  async emptyTrash(): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    // Get all deleted cards and collections
+    const allCards = await this.db.getAll('cards');
+    const allCollections = await this.db.getAll('collections');
+
+    const deletedCards = allCards.filter(card => card.deleted === true);
+    const deletedCollections = allCollections.filter(col => col.deleted === true);
+
+    // Delete them from IndexedDB
+    const tx = this.db.transaction(['cards', 'collections'], 'readwrite');
+
+    for (const card of deletedCards) {
+      await tx.objectStore('cards').delete(card.id);
+    }
+
+    for (const collection of deletedCollections) {
+      await tx.objectStore('collections').delete(collection.id);
+    }
+
+    await tx.done;
+
+    console.log('[LocalStorage] Emptied trash:', {
+      cards: deletedCards.length,
+      collections: deletedCollections.length
+    });
+  }
+
   async getModifiedCards(): Promise<CardDTO[]> {
     await this.init();
     if (!this.db) return [];
@@ -195,6 +233,14 @@ class LocalStorage {
 
     await this.db.delete('collections', id);
     console.log('[LocalStorage] Deleted collection:', id);
+  }
+
+  async permanentlyDeleteCollection(id: string): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    await this.db.delete('collections', id);
+    console.log('[LocalStorage] Permanently deleted collection:', id);
   }
 
   // ==================== METADATA ====================

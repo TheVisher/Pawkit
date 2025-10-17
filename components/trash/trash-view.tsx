@@ -5,6 +5,7 @@ import { CardDTO } from "@/lib/server/cards";
 import { CollectionDTO } from "@/lib/server/collections";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
+import { localStorage } from "@/lib/services/local-storage";
 
 type CardTrashItem = CardDTO & { itemType: "card" };
 type PawkitTrashItem = CollectionDTO & { itemType: "pawkit" };
@@ -70,6 +71,13 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
 
       if (!response.ok) throw new Error("Failed to delete");
 
+      // Also delete from IndexedDB
+      if (deleteConfirm.itemType === "card") {
+        await localStorage.permanentlyDeleteCard(deleteConfirm.id);
+      } else {
+        await localStorage.permanentlyDeleteCollection(deleteConfirm.id);
+      }
+
       router.refresh();
     } catch (error) {
       alert(`Failed to permanently delete ${deleteConfirm.itemType}`);
@@ -88,6 +96,9 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
     try {
       const response = await fetch("/api/trash/empty", { method: "POST" });
       if (!response.ok) throw new Error("Failed to empty trash");
+
+      // Also empty trash from IndexedDB
+      await localStorage.emptyTrash();
 
       router.refresh();
     } catch (error) {
