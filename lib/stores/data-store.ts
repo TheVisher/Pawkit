@@ -473,7 +473,33 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
   updateCollection: async (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean }) => {
     try {
-      // For now, just sync to server directly since we don't have collections in local storage fully implemented
+      // STEP 1: Update in local storage first
+      const collections = await localStorage.getAllCollections();
+      const collection = collections.find(c => c.id === id);
+
+      if (collection) {
+        const updatedCollection: any = {
+          ...collection,
+          ...updates,
+          updatedAt: new Date().toISOString(),
+        };
+
+        // If name changed, update slug
+        if (updates.name) {
+          updatedCollection.slug = updates.name.toLowerCase().replace(/\s+/g, '-');
+        }
+
+        await localStorage.saveCollection(updatedCollection, { localOnly: true });
+
+        // STEP 2: Update Zustand for instant UI
+        const allCollections = await localStorage.getAllCollections();
+        const activeCollections = allCollections.filter(c => !c.deleted);
+        set({ collections: activeCollections });
+
+        console.log('[DataStore V2] Collection updated in local storage:', id);
+      }
+
+      // STEP 3: Sync to server (if enabled and not temp)
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync && !id.startsWith('temp_')) {
         try {
@@ -484,11 +510,13 @@ export const useDataStore = create<DataStore>((set, get) => ({
           });
 
           if (response.ok) {
-            await get().refresh();
-            console.log('[DataStore V2] Collection updated:', id);
+            console.log('[DataStore V2] Collection updated on server:', id);
+          } else {
+            console.error('[DataStore V2] Server update failed:', await response.text());
           }
         } catch (error) {
-          console.error('[DataStore V2] Failed to update collection:', error);
+          console.error('[DataStore V2] Failed to sync collection update:', error);
+          // Update is safe in local storage
         }
       }
     } catch (error) {
