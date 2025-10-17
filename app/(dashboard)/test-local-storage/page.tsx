@@ -246,7 +246,7 @@ export default function TestLocalStoragePage() {
         <h2 className="text-xl font-bold mb-4">📦 Cards in IndexedDB ({cards.length})</h2>
         {cards.length === 0 ? (
           <p className="text-gray-500 text-center py-8">
-            No cards yet. Click "Add Test Card" to create one.
+            No cards yet. Click &quot;Add Test Card&quot; to create one.
           </p>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -304,12 +304,12 @@ export default function TestLocalStoragePage() {
       <div className="mt-8 border border-blue-800 rounded-lg p-6 bg-blue-950/20">
         <h3 className="font-bold mb-2">🧪 Testing Instructions:</h3>
         <ol className="space-y-2 text-sm text-gray-300">
-          <li>1. Click "Add Test Card" to save a card to IndexedDB</li>
+          <li>1. Click &quot;Add Test Card&quot; to save a card to IndexedDB</li>
           <li>2. Check the stats update (total cards should increase)</li>
           <li>3. Open DevTools → Application → IndexedDB → pawkit-local-storage → cards</li>
           <li>4. <strong>Refresh this page (F5)</strong> - cards should still be here!</li>
-          <li>5. Click "Export Data" to download a JSON backup</li>
-          <li>6. Click "Delete All" then check IndexedDB (should be empty)</li>
+          <li>5. Click &quot;Export Data&quot; to download a JSON backup</li>
+          <li>6. Click &quot;Delete All&quot; then check IndexedDB (should be empty)</li>
         </ol>
       </div>
     </div>
