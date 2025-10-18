@@ -2,6 +2,7 @@ node_modules/
 .next/
 .env
 .env.local
+.env.production
 .env.production.local
 .env.development.local
 *.log
@@ -9,3 +10,16 @@ node_modules/
 dev.db
 dev.db-journal
 nul
+
+# Keep backups local only - NEVER commit actual database backups
+backups/
+
+# Keep environment templates in git, but not actual env files
+!.env.*.template
+
+# DO NOT ignore these safety files - they must be in git:
+# .claude/instructions.md
+# scripts/protect-production-db.js
+# scripts/pre-migration-check.js
+# scripts/auto-backup.sh
+# SAFETY.md

@@ -441,9 +441,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
     try {
       await localStorage.saveCollection(newCollection, { localOnly: true });
 
-      // Refresh collections from local storage to get proper tree structure
-      const collections = await localStorage.getAllCollections();
-      set({ collections });
+      // Refresh collections from local storage (filtered for non-deleted)
+      const allCollections = await localStorage.getAllCollections();
+      const activeCollections = allCollections.filter(c => !c.deleted);
+      set({ collections: activeCollections });
 
       console.log('[DataStore V2] Collection added to local storage:', newCollection.id);
 
@@ -458,8 +459,18 @@ export const useDataStore = create<DataStore>((set, get) => ({
           });
 
           if (response.ok) {
-            await get().refresh();
-            console.log('[DataStore V2] Collection synced to server');
+            const serverCollection = await response.json();
+
+            // Replace temp collection with server collection
+            await localStorage.deleteCollection(tempId);
+            await localStorage.saveCollection(serverCollection, { fromServer: true });
+
+            // Refresh collections from local storage (filtered for non-deleted)
+            const allCollections = await localStorage.getAllCollections();
+            const activeCollections = allCollections.filter(c => !c.deleted);
+            set({ collections: activeCollections });
+
+            console.log('[DataStore V2] Collection synced to server:', serverCollection.id);
           }
         } catch (error) {
           console.error('[DataStore V2] Failed to sync collection:', error);

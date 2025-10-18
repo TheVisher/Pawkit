@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, Suspense } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CollectionNode } from "@/lib/types";
+import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 
 export type CollectionsSidebarProps = {
   tree: CollectionNode[];
@@ -38,6 +39,7 @@ function CollectionsSidebarContent({
 
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { addCollection, updateCollection, deleteCollection: deleteCollectionFromStore } = useDemoAwareStore();
 
   // Save collections expansion state to localStorage whenever it changes
   useEffect(() => {
@@ -48,49 +50,28 @@ function CollectionsSidebarContent({
     setNodes(tree);
   }, [tree]);
 
-  const refresh = async () => {
-    const response = await fetch("/api/pawkits");
-    if (!response.ok) {
-      setError("Failed to refresh collections");
-      return;
-    }
-    const data = await response.json();
-    setNodes(data.tree);
-    setError(null);
-  };
-
   const createCollection = async (parentId?: string) => {
     if (!showManagementControls) return;
     const name = window.prompt("Collection name");
     if (!name) return;
-    const response = await fetch("/api/pawkits", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, parentId })
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      setError(body.message || "Unable to create collection");
-      return;
+    try {
+      await addCollection({ name, parentId });
+      setError(null);
+    } catch (err) {
+      setError("Unable to create collection");
     }
-    await refresh();
   };
 
   const renameCollection = async (node: CollectionNode) => {
     if (!showManagementControls) return;
     const name = window.prompt("Rename collection", node.name);
     if (!name || name === node.name) return;
-    const response = await fetch(`/api/pawkits/${node.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name })
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      setError(body.message || "Unable to rename collection");
-      return;
+    try {
+      await updateCollection(node.id, { name });
+      setError(null);
+    } catch (err) {
+      setError("Unable to rename collection");
     }
-    await refresh();
   };
 
   const findBySlug = (slug: string, list: CollectionNode[]): CollectionNode | undefined => {
@@ -116,30 +97,24 @@ function CollectionsSidebarContent({
       }
       parentId = target.id;
     }
-    const response = await fetch(`/api/pawkits/${node.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ parentId })
-    });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      setError(body.message || "Unable to move collection");
-      return;
+    try {
+      await updateCollection(node.id, { parentId });
+      setError(null);
+    } catch (err) {
+      setError("Unable to move collection");
     }
-    await refresh();
   };
 
   const deleteCollection = async (node: CollectionNode) => {
     if (!showManagementControls) return;
     const confirmed = window.confirm(`Delete collection "${node.name}"?`);
     if (!confirmed) return;
-    const response = await fetch(`/api/pawkits/${node.id}`, { method: "DELETE" });
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      setError(body.message || "Unable to delete collection");
-      return;
+    try {
+      await deleteCollectionFromStore(node.id);
+      setError(null);
+    } catch (err) {
+      setError("Unable to delete collection");
     }
-    await refresh();
   };
 
   const handleSelect = (slug: string | null) => {

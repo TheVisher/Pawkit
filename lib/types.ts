@@ -40,3 +40,36 @@ export type CollectionNode = {
   updatedAt: string;
   children: CollectionNode[];
 };
+
+// Note linking types
+export type NoteLink = {
+  id: string;
+  sourceNoteId: string;
+  targetNoteId: string;
+  linkText: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NoteCardLink = {
+  id: string;
+  noteId: string;
+  cardId: string;
+  context: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type NoteTag = {
+  id: string;
+  noteId: string;
+  tag: string;
+  createdAt: string;
+};
+
+export type NoteWithLinks = CardModel & {
+  noteLinks?: NoteLink[];
+  cardLinks?: NoteCardLink[];
+  tags?: NoteTag[];
+  backlinks?: NoteLink[]; // Notes that link to this note
+};
