@@ -52,8 +52,11 @@ export const cardUpdateSchema = z
     type: z.enum(["url", "md-note", "text-note"]).optional(),
     url: z
       .string()
-      .min(1)
       .transform((val) => {
+        // Empty strings are valid for note cards
+        if (!val || val.trim().length === 0) {
+          return val;
+        }
         try {
           return ensureUrlProtocol(val);
         } catch (error) {
