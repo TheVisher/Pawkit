@@ -29,7 +29,16 @@ type CardDetailModalProps = {
 
 export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete, onNavigateToCard }: CardDetailModalProps) {
   const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDemoAwareStore();
-  const allCards = useDataStore((state) => state.cards);
+  const dataStore = useDataStore();
+  const allCards = dataStore.cards;
+
+  // Initialize data store if not already initialized
+  useEffect(() => {
+    if (!dataStore.isInitialized) {
+      dataStore.initialize();
+    }
+  }, [dataStore]);
+
   const isNote = card.type === "md-note" || card.type === "text-note";
   const [notes, setNotes] = useState(card.notes ?? "");
   const [content, setContent] = useState(card.content ?? "");
