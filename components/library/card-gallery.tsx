@@ -332,13 +332,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               );
             }}
             onAddToDen={async () => {
-              // Move card to The Den
-              const response = await fetch(`/api/cards/${card.id}/move-to-den`, {
-                method: "PATCH",
-              });
-              if (response.ok) {
-                setCards((prev) => prev.filter((c) => c.id !== card.id));
-              }
+              // ✅ Move card to The Den via data store
+              await updateCardInStore(card.id, { inDen: true });
+              setCards((prev) => prev.filter((c) => c.id !== card.id));
             }}
             onDeleteCard={async () => {
               await deleteCardFromStore(card.id);

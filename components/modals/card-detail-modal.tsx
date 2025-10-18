@@ -24,7 +24,7 @@ type CardDetailModalProps = {
 };
 
 export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete }: CardDetailModalProps) {
-  const { updateCard: updateCardInStore } = useDemoAwareStore();
+  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDemoAwareStore();
   const isNote = card.type === "md-note" || card.type === "text-note";
   const [notes, setNotes] = useState(card.notes ?? "");
   const [content, setContent] = useState(card.content ?? "");
@@ -141,16 +141,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const handleSaveNotes = async () => {
     setSaving(true);
     try {
-      const response = await fetch(`/api/cards/${card.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes })
-      });
-      if (response.ok) {
-        const updated = await response.json();
-        onUpdate(updated);
-        setToast("Notes saved");
-      }
+      // ✅ Use data store to update IndexedDB first
+      await updateCardInStore(card.id, { notes });
+      onUpdate({ ...card, notes });
+      setToast("Notes saved");
     } catch (error) {
       console.error("Failed to save notes:", error);
       setToast("Failed to save notes");
@@ -224,8 +218,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       if (response.ok) {
         const data = await response.json();
         setArticleContent(data.articleContent);
-        const updated = { ...card, articleContent: data.articleContent };
-        onUpdate(updated);
+
+        // ✅ Save to IndexedDB via data store
+        await updateCardInStore(card.id, { articleContent: data.articleContent });
+        onUpdate({ ...card, articleContent: data.articleContent });
         setToast("Article extracted successfully");
       } else {
         const error = await response.json();
@@ -280,12 +276,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   const handleDelete = async () => {
     try {
-      const response = await fetch(`/api/cards/${card.id}`, { method: "DELETE" });
-      if (response.ok) {
-        onDelete();
-      } else {
-        setToast("Failed to delete card");
-      }
+      // ✅ Use data store for soft delete
+      await deleteCardFromStore(card.id);
+      onDelete();
     } catch (error) {
       console.error("Failed to delete card:", error);
       setToast("Failed to delete card");
@@ -294,17 +287,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   const handleMoveToDen = async () => {
     try {
-      const endpoint = card.inDen ? `/api/cards/${card.id}/remove-from-den` : `/api/cards/${card.id}/move-to-den`;
-      const response = await fetch(endpoint, { method: "PATCH" });
+      // ✅ Use data store to update IndexedDB
+      const newInDen = !card.inDen;
+      await updateCardInStore(card.id, { inDen: newInDen });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Den API error:", errorText);
-        setToast("Failed to update card");
-        return;
-      }
-
-      const updated = await response.json();
+      const updated = { ...card, inDen: newInDen };
 
       // Simply refresh the entire data store to get the latest state from server
       // This ensures consistency and will properly filter out Den items
