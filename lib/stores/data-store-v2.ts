@@ -26,6 +26,52 @@ import { useSettingsStore } from '@/lib/hooks/settings-store';
  * - User never loses anything!
  */
 
+/**
+ * Extract wiki-links from note content and save to IndexedDB
+ * Wiki-link syntax: [[Note Title]]
+ */
+async function extractAndSaveLinks(sourceId: string, content: string, allCards: CardDTO[]): Promise<void> {
+  // Extract all [[...]] patterns from content
+  const linkRegex = /\[\[([^\]]+)\]\]/g;
+  const matches = [...content.matchAll(linkRegex)];
+
+  // Get existing links to avoid duplicates
+  const existingLinks = await localStorage.getNoteLinks(sourceId);
+  const existingTargets = new Set(existingLinks.map(l => l.targetNoteId));
+
+  // Track which links we found in current content
+  const foundTargetIds = new Set<string>();
+
+  for (const match of matches) {
+    const linkText = match[1].trim();
+
+    // Find note by fuzzy title match (case-insensitive, partial match)
+    const targetNote = allCards.find(c =>
+      (c.type === 'md-note' || c.type === 'text-note') &&
+      c.title &&
+      c.title.toLowerCase().includes(linkText.toLowerCase())
+    );
+
+    if (targetNote && targetNote.id !== sourceId) {
+      foundTargetIds.add(targetNote.id);
+
+      // Only add link if it doesn't exist yet
+      if (!existingTargets.has(targetNote.id)) {
+        await localStorage.addNoteLink(sourceId, targetNote.id, linkText);
+        console.log('[DataStore V2] Created link:', sourceId, '->', targetNote.id);
+      }
+    }
+  }
+
+  // Remove links that no longer exist in content
+  for (const existingLink of existingLinks) {
+    if (!foundTargetIds.has(existingLink.targetNoteId)) {
+      await localStorage.deleteNoteLink(existingLink.id);
+      console.log('[DataStore V2] Removed link:', existingLink.id);
+    }
+  }
+}
+
 type DataStore = {
   // Data
   cards: CardDTO[];
@@ -235,6 +281,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
           if (response.ok) {
             const serverCard = await response.json();
 
+            // Update link references if this was a temp card
+            if (tempId.startsWith('temp_')) {
+              await localStorage.updateLinkReferences(tempId, serverCard.id);
+            }
+
             // Replace temp card with server card
             await localStorage.deleteCard(tempId);
             await localStorage.saveCard(serverCard, { fromServer: true });
@@ -293,6 +344,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
       // STEP 1: Save to local storage FIRST
       await localStorage.saveCard(updatedCard, { localOnly: true });
 
+      // STEP 1.5: Extract and save wiki-links if this is a note
+      if ((updatedCard.type === 'md-note' || updatedCard.type === 'text-note') && 'content' in updates) {
+        await extractAndSaveLinks(id, updatedCard.content || '', get().cards);
+      }
+
       // STEP 2: Update Zustand for instant UI
       set((state) => ({
         cards: state.cards.map(c => c.id === id ? updatedCard : c),
@@ -348,6 +404,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
    */
   deleteCard: async (id: string) => {
     try {
+      // STEP 0: Delete all note links for this card
+      await localStorage.deleteAllLinksForNote(id);
+
       // STEP 1: Remove from local storage
       await localStorage.deleteCard(id);
 

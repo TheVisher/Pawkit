@@ -47,12 +47,26 @@ interface LocalStorageDB extends DBSchema {
       updatedAt: number;
     };
   };
+  noteLinks: {
+    key: string; // link.id
+    value: {
+      id: string;
+      sourceNoteId: string;
+      targetNoteId: string;
+      linkText: string;
+      createdAt: string;
+    };
+    indexes: {
+      'by-source': string;
+      'by-target': string;
+    };
+  };
 }
 
 class LocalStorage {
   private db: IDBPDatabase<LocalStorageDB> | null = null;
   private readonly DB_NAME = 'pawkit-local-storage';
-  private readonly DB_VERSION = 2; // Bumped for new schema
+  private readonly DB_VERSION = 3; // Bumped for note links support
 
   async init(): Promise<void> {
     if (this.db) return;
@@ -76,6 +90,13 @@ class LocalStorage {
         // Create metadata store
         if (!db.objectStoreNames.contains('metadata')) {
           db.createObjectStore('metadata', { keyPath: 'key' });
+        }
+
+        // Create note links store (added in v3)
+        if (!db.objectStoreNames.contains('noteLinks')) {
+          const noteLinksStore = db.createObjectStore('noteLinks', { keyPath: 'id' });
+          noteLinksStore.createIndex('by-source', 'sourceNoteId');
+          noteLinksStore.createIndex('by-target', 'targetNoteId');
         }
       },
     });
@@ -347,6 +368,114 @@ class LocalStorage {
     await tx.done;
 
     console.log('[LocalStorage] Cleared all data');
+  }
+
+  // ==================== NOTE LINKS ====================
+
+  async addNoteLink(sourceId: string, targetId: string, linkText: string): Promise<void> {
+    await this.init();
+    if (!this.db) throw new Error('Database not initialized');
+
+    const link = {
+      id: `${sourceId}-${targetId}`,
+      sourceNoteId: sourceId,
+      targetNoteId: targetId,
+      linkText,
+      createdAt: new Date().toISOString(),
+    };
+
+    await this.db.put('noteLinks', link);
+    console.log('[LocalStorage] Added note link:', sourceId, '->', targetId);
+  }
+
+  async getNoteLinks(noteId: string): Promise<Array<{ id: string; targetNoteId: string; linkText: string; createdAt: string }>> {
+    await this.init();
+    if (!this.db) return [];
+
+    const links = await this.db.getAllFromIndex('noteLinks', 'by-source', noteId);
+    return links;
+  }
+
+  async getBacklinks(noteId: string): Promise<Array<{ id: string; sourceNoteId: string; linkText: string; createdAt: string }>> {
+    await this.init();
+    if (!this.db) return [];
+
+    const backlinks = await this.db.getAllFromIndex('noteLinks', 'by-target', noteId);
+    return backlinks;
+  }
+
+  async deleteNoteLink(linkId: string): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    await this.db.delete('noteLinks', linkId);
+    console.log('[LocalStorage] Deleted note link:', linkId);
+  }
+
+  async deleteAllLinksForNote(noteId: string): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    // Delete all outgoing links (where this note is the source)
+    const outgoingLinks = await this.getNoteLinks(noteId);
+    // Delete all incoming links (where this note is the target)
+    const incomingLinks = await this.getBacklinks(noteId);
+
+    const tx = this.db.transaction(['noteLinks'], 'readwrite');
+    const store = tx.objectStore('noteLinks');
+
+    for (const link of outgoingLinks) {
+      await store.delete(link.id);
+    }
+
+    for (const link of incomingLinks) {
+      await store.delete(link.id);
+    }
+
+    await tx.done;
+
+    console.log('[LocalStorage] Deleted all links for note:', noteId, {
+      outgoing: outgoingLinks.length,
+      incoming: incomingLinks.length,
+    });
+  }
+
+  async updateLinkReferences(oldNoteId: string, newNoteId: string): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    const outgoingLinks = await this.getNoteLinks(oldNoteId);
+    const incomingLinks = await this.getBacklinks(oldNoteId);
+
+    const tx = this.db.transaction(['noteLinks'], 'readwrite');
+    const store = tx.objectStore('noteLinks');
+
+    // Update outgoing links (where oldNoteId is the source)
+    for (const link of outgoingLinks) {
+      await store.delete(link.id);
+      await store.put({
+        ...link,
+        id: `${newNoteId}-${link.targetNoteId}`,
+        sourceNoteId: newNoteId,
+      });
+    }
+
+    // Update incoming links (where oldNoteId is the target)
+    for (const link of incomingLinks) {
+      await store.delete(link.id);
+      await store.put({
+        ...link,
+        id: `${link.sourceNoteId}-${newNoteId}`,
+        targetNoteId: newNoteId,
+      });
+    }
+
+    await tx.done;
+
+    console.log('[LocalStorage] Updated link references:', oldNoteId, '->', newNoteId, {
+      outgoing: outgoingLinks.length,
+      incoming: incomingLinks.length,
+    });
   }
 
   // ==================== STATS ====================

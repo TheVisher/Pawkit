@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkWikiLink from "remark-wiki-link";
 import { CardModel, CollectionNode } from "@/lib/types";
+import { useDataStore } from "@/lib/stores/data-store-v2";
 import { Toast } from "@/components/ui/toast";
 import { ReaderView } from "@/components/reader/reader-view";
 import { MDEditor } from "@/components/notes/md-editor";
+import { BacklinksPanel } from "@/components/notes/backlinks-panel";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -21,14 +24,60 @@ type CardDetailModalProps = {
   onClose: () => void;
   onUpdate: (card: CardModel) => void;
   onDelete: () => void;
+  onNavigateToCard?: (cardId: string) => void;
 };
 
-export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete }: CardDetailModalProps) {
+export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete, onNavigateToCard }: CardDetailModalProps) {
   const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDemoAwareStore();
+  const allCards = useDataStore((state) => state.cards);
   const isNote = card.type === "md-note" || card.type === "text-note";
   const [notes, setNotes] = useState(card.notes ?? "");
   const [content, setContent] = useState(card.content ?? "");
   const [noteMode, setNoteMode] = useState<"preview" | "edit">("preview");
+
+  // Create a map of note titles to IDs for wiki-link resolution
+  const noteTitleMap = useMemo(() => {
+    const map = new Map<string, string>();
+    allCards.forEach((c) => {
+      if ((c.type === 'md-note' || c.type === 'text-note') && c.title) {
+        map.set(c.title.toLowerCase(), c.id);
+      }
+    });
+    return map;
+  }, [allCards]);
+
+  // Custom renderer for wiki-links
+  const wikiLinkComponents = useMemo(() => ({
+    a: ({ node, href, children, ...props }: any) => {
+      // Check if this is a wiki-link (starts with #/wiki/)
+      if (href?.startsWith('#/wiki/')) {
+        const linkText = href.replace('#/wiki/', '').replace(/-/g, ' ');
+        const noteId = noteTitleMap.get(linkText.toLowerCase());
+
+        if (noteId && onNavigateToCard) {
+          return (
+            <button
+              onClick={() => onNavigateToCard(noteId)}
+              className="text-accent hover:underline cursor-pointer inline-flex items-center gap-1"
+              {...props}
+            >
+              {children}
+            </button>
+          );
+        } else {
+          // Note doesn't exist - show as broken link
+          return (
+            <span className="text-gray-500 italic" title="Note not found">
+              {children}
+            </span>
+          );
+        }
+      }
+
+      // Regular link
+      return <a href={href} className="text-accent hover:underline" target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
+    },
+  }), [noteTitleMap, onNavigateToCard]);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [isPinned, setIsPinned] = useState(card.pinned ?? false);
@@ -399,11 +448,16 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   <div className="prose prose-invert prose-lg max-w-none">
                     {content ? (
                       <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
+                        remarkPlugins={[
+                          remarkGfm,
+                          [remarkWikiLink, {
+                            aliasDivider: '|',
+                            pageResolver: (name: string) => [name.replace(/ /g, '-')],
+                            hrefTemplate: (permalink: string) => `#/wiki/${permalink}`,
+                          }],
+                        ]}
                         components={{
-                          a: ({ node, ...props }) => (
-                            <a {...props} target="_blank" rel="noopener noreferrer" />
-                          ),
+                          ...wikiLinkComponents,
                           input: ({ node, checked, ...props }) => {
                             if (props.type === 'checkbox') {
                               return (
@@ -539,11 +593,16 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     <div className="prose prose-invert prose-sm max-w-none">
                       {content ? (
                         <ReactMarkdown
-                          remarkPlugins={[remarkGfm]}
+                          remarkPlugins={[
+                            remarkGfm,
+                            [remarkWikiLink, {
+                              aliasDivider: '|',
+                              pageResolver: (name: string) => [name.replace(/ /g, '-')],
+                              hrefTemplate: (permalink: string) => `#/wiki/${permalink}`,
+                            }],
+                          ]}
                           components={{
-                            a: ({ node, ...props }) => (
-                              <a {...props} target="_blank" rel="noopener noreferrer" />
-                            ),
+                            ...wikiLinkComponents,
                             input: ({ node, checked, ...props }) => {
                               if (props.type === 'checkbox') {
                                 return (
@@ -679,6 +738,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
               Notes
             </TabsTrigger>
+            {isNote && (
+              <TabsTrigger value="links" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+                Links
+              </TabsTrigger>
+            )}
             <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
               Schedule
             </TabsTrigger>
@@ -715,6 +779,18 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   saving={saving}
                 />
               </TabsContent>
+              {isNote && (
+                <TabsContent value="links" className="p-4 mt-0 h-full">
+                  <BacklinksPanel
+                    noteId={card.id}
+                    onNavigate={(noteId) => {
+                      if (onNavigateToCard) {
+                        onNavigateToCard(noteId);
+                      }
+                    }}
+                  />
+                </TabsContent>
+              )}
               {!isYouTubeUrl(card.url) && (
                 <>
                   <TabsContent value="reader" className="p-4 mt-0 h-full">

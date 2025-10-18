@@ -413,6 +413,10 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             clearSelection();
             setActiveCardId(null);
           }}
+          onNavigateToCard={(cardId) => {
+            // Navigate to the clicked note by changing the active card
+            setActiveCardId(cardId);
+          }}
         />
       )}
     </div>

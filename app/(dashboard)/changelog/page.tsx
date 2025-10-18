@@ -5,6 +5,9 @@ export default function ChangelogPage() {
     {
       dateRange: "October 17, 2025",
       features: [
+        { title: "Wiki-Style Note Linking", description: "Connect your notes using [[Note Title]] syntax with automatic backlink tracking. Click links in preview mode to navigate between notes, view incoming and outgoing links in the new Links tab, and build your personal knowledge graph - all stored locally in IndexedDB for instant, offline access." },
+        { title: "Bidirectional Link Visualization", description: "New Links tab in note modals displays both backlinks (notes linking TO this note) and outgoing links (notes this note links TO) with real-time updates and one-click navigation between connected notes." },
+        { title: "Smart Link Resolution", description: "Fuzzy title matching automatically finds notes as you type wiki-links, with broken links clearly marked when target notes don't exist. Links update automatically when you rename notes or edit content." },
         { title: "Local-First Architecture Enforcement", description: "Fixed critical violations where Den Pawkits, Timeline, and Dig Up operations were bypassing IndexedDB and writing directly to server. All operations now update local database first, then sync to server in background for fast, responsive updates without duplicates." },
         { title: "Den Pawkit Data Integrity", description: "Create, rename, and delete operations for Den Pawkits now properly use the data store with intelligent routing to the correct API endpoint, ensuring data consistency across devices." },
         { title: "Timeline Bulk Operations Fix", description: "Bulk move and delete operations in Timeline view now follow local-first pattern, updating IndexedDB immediately while server sync happens in background." },
