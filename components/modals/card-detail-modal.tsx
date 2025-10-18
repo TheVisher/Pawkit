@@ -45,9 +45,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     if (isNote && card.content && allCards.length > 0) {
       // Trigger link extraction
       console.log('[Wiki-Link] Triggering link extraction for card:', card.id);
-      updateCardInStore(card.id, { content: card.content }).catch(err => {
-        console.error('[Wiki-Link] Failed to extract links:', err);
-      });
+      const updatePromise = updateCardInStore(card.id, { content: card.content });
+      if (updatePromise && typeof updatePromise.catch === 'function') {
+        updatePromise.catch(err => {
+          console.error('[Wiki-Link] Failed to extract links:', err);
+        });
+      }
     }
   }, [card.id, isNote, card.content, allCards.length, updateCardInStore]); // Run when card or cards change
   const [notes, setNotes] = useState(card.notes ?? "");
