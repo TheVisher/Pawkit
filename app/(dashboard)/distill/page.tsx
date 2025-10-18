@@ -9,8 +9,8 @@ import { useDataStore } from "@/lib/stores/data-store";
 
 function DigUpContent() {
   const searchParams = useSearchParams();
-  const [filterMode, setFilterMode] = useState<"uncategorized" | "all" | "unseen" | "seen">(
-    (searchParams.get("mode") as "uncategorized" | "all" | "unseen" | "seen") || "uncategorized"
+  const [filterMode, setFilterMode] = useState<"uncategorized" | "all">(
+    (searchParams.get("mode") as "uncategorized" | "all") || "uncategorized"
   );
 
   // Get data from local store instead of API calls
@@ -19,8 +19,6 @@ function DigUpContent() {
   // Filter cards based on mode (simplified for now)
   const digUpResult = {
     cards: cards.filter(card => {
-      if (filterMode === 'unseen') return !card.seen;
-      if (filterMode === 'seen') return card.seen;
       if (filterMode === 'uncategorized') return !card.collections || card.collections.length === 0;
       return true; // all
     }).slice(0, 20),
