@@ -38,11 +38,21 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   // Create a map of note titles to IDs for wiki-link resolution
   const noteTitleMap = useMemo(() => {
     const map = new Map<string, string>();
+    console.log('[Wiki-Link] Building title map from cards:', {
+      totalCards: allCards.length,
+      noteCards: allCards.filter(c => c.type === 'md-note' || c.type === 'text-note').length,
+      notesWithTitles: allCards.filter(c => (c.type === 'md-note' || c.type === 'text-note') && c.title).length,
+      allNotes: allCards.filter(c => c.type === 'md-note' || c.type === 'text-note').map(c => ({ id: c.id, title: c.title, type: c.type })),
+    });
+
     allCards.forEach((c) => {
       if ((c.type === 'md-note' || c.type === 'text-note') && c.title) {
         map.set(c.title.toLowerCase(), c.id);
+        console.log('[Wiki-Link] Added to map:', c.title.toLowerCase(), '->', c.id);
       }
     });
+
+    console.log('[Wiki-Link] Final title map:', Array.from(map.entries()));
     return map;
   }, [allCards]);
 
