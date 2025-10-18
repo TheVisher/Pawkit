@@ -71,8 +71,23 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [content, setContent] = useState(card.content ?? "");
   const [noteMode, setNoteMode] = useState<"preview" | "edit">("preview");
 
+  // Wait for cards to load before building title map
+  const [cardsReady, setCardsReady] = useState(false);
+
+  useEffect(() => {
+    if (allCards.length > 0 && !cardsReady) {
+      console.log('[Wiki-Link] Cards loaded, setting ready');
+      setCardsReady(true);
+    }
+  }, [allCards.length, cardsReady]);
+
   // Create a map of note titles to IDs for wiki-link resolution
   const noteTitleMap = useMemo(() => {
+    if (!cardsReady) {
+      console.log('[Wiki-Link] Cards not ready yet, returning empty map');
+      return new Map<string, string>();
+    }
+
     const map = new Map<string, string>();
     console.log('[Wiki-Link] Building title map from cards:', {
       totalCards: allCards.length,
@@ -90,7 +105,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
     console.log('[Wiki-Link] Final title map:', Array.from(map.entries()));
     return map;
-  }, [allCards]);
+  }, [allCards, cardsReady]);
 
   // Custom renderer for wiki-links
   const wikiLinkComponents = useMemo(() => ({
