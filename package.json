@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/pre-migration-check.js && prisma migrate deploy && next build",
+    "build": "node scripts/vercel-build.js",
+    "build:local": "node scripts/pre-migration-check.js && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
     "prisma:generate": "prisma generate",
