@@ -32,6 +32,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [isPinned, setIsPinned] = useState(card.pinned ?? false);
+  const [isInDen, setIsInDen] = useState(card.inDen ?? false);
   const [isReaderExpanded, setIsReaderExpanded] = useState(false);
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const [extracting, setExtracting] = useState(false);
@@ -288,8 +289,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const handleMoveToDen = async () => {
     try {
       // ✅ Use data store to update IndexedDB
-      const newInDen = !card.inDen;
+      const newInDen = !isInDen;
       await updateCardInStore(card.id, { inDen: newInDen });
+
+      // Update local state immediately
+      setIsInDen(newInDen);
 
       const updated = { ...card, inDen: newInDen };
 
@@ -753,7 +757,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 variant="outline"
                 className="w-full"
               >
-                🏠 {card.inDen ? "Remove from The Den" : "Move to The Den"}
+                🏠 {isInDen ? "Remove from The Den" : "Move to The Den"}
               </Button>
               <Button
                 onClick={handleDelete}
