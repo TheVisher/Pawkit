@@ -17,12 +17,16 @@ function DigUpContent() {
   const { cards, collections } = useDataStore();
   
   // Filter cards based on mode (simplified for now)
+  const filteredCards = cards.filter(card => {
+    if (filterMode === 'uncategorized') return !card.collections || card.collections.length === 0;
+    return true; // all
+  });
+  
   const digUpResult = {
-    cards: cards.filter(card => {
-      if (filterMode === 'uncategorized') return !card.collections || card.collections.length === 0;
-      return true; // all
-    }).slice(0, 20),
-    hasMore: false
+    cards: filteredCards.slice(0, 20),
+    hasMore: filteredCards.length > 20,
+    nextCursor: null,
+    totalCount: filteredCards.length
   };
   
   const pawkits = collections;
