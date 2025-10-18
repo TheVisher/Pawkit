@@ -31,19 +31,29 @@ import { useSettingsStore } from '@/lib/hooks/settings-store';
  * Wiki-link syntax: [[Note Title]]
  */
 async function extractAndSaveLinks(sourceId: string, content: string, allCards: CardDTO[]): Promise<void> {
+  console.log('[extractAndSaveLinks] Starting extraction for:', sourceId);
+  console.log('[extractAndSaveLinks] Content:', content);
+  console.log('[extractAndSaveLinks] Available cards:', allCards.length);
+
   // Extract all [[...]] patterns from content
   const linkRegex = /\[\[([^\]]+)\]\]/g;
   const matches = [...content.matchAll(linkRegex)];
 
+  console.log('[extractAndSaveLinks] Found matches:', matches.map(m => m[1]));
+
   // Get existing links to avoid duplicates
   const existingLinks = await localStorage.getNoteLinks(sourceId);
   const existingTargets = new Set(existingLinks.map(l => l.targetNoteId));
+
+  console.log('[extractAndSaveLinks] Existing links:', existingLinks.length);
 
   // Track which links we found in current content
   const foundTargetIds = new Set<string>();
 
   for (const match of matches) {
     const linkText = match[1].trim();
+
+    console.log('[extractAndSaveLinks] Looking for note titled:', linkText);
 
     // Find note by fuzzy title match (case-insensitive, partial match)
     const targetNote = allCards.find(c =>
@@ -52,6 +62,8 @@ async function extractAndSaveLinks(sourceId: string, content: string, allCards: 
       c.title.toLowerCase().includes(linkText.toLowerCase())
     );
 
+    console.log('[extractAndSaveLinks] Found target note:', targetNote ? targetNote.id : 'NOT FOUND');
+
     if (targetNote && targetNote.id !== sourceId) {
       foundTargetIds.add(targetNote.id);
 
@@ -59,6 +71,8 @@ async function extractAndSaveLinks(sourceId: string, content: string, allCards: 
       if (!existingTargets.has(targetNote.id)) {
         await localStorage.addNoteLink(sourceId, targetNote.id, linkText);
         console.log('[DataStore V2] Created link:', sourceId, '->', targetNote.id);
+      } else {
+        console.log('[extractAndSaveLinks] Link already exists:', sourceId, '->', targetNote.id);
       }
     }
   }
@@ -70,6 +84,8 @@ async function extractAndSaveLinks(sourceId: string, content: string, allCards: 
       console.log('[DataStore V2] Removed link:', existingLink.id);
     }
   }
+
+  console.log('[extractAndSaveLinks] Extraction complete. Created/kept:', foundTargetIds.size, 'links');
 }
 
 type DataStore = {
