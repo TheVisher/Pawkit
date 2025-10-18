@@ -2,9 +2,10 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import useSWR from "swr";
+// Removed useSWR - using local-first data store instead
 import { DigUpView } from "@/components/dig-up/dig-up-view";
 import { CollectionNode } from "@/lib/types";
+import { useDataStore } from "@/lib/stores/data-store";
 
 function DigUpContent() {
   const searchParams = useSearchParams();
@@ -12,12 +13,22 @@ function DigUpContent() {
     (searchParams.get("mode") as "uncategorized" | "all") || "uncategorized"
   );
 
-  const { data: digUpResult, isLoading: isLoadingCards } = useSWR(`/api/distill?mode=${filterMode}&limit=20`);
-  const { data: collectionsData } = useSWR<{ tree: CollectionNode[] }>("/api/pawkits");
+  // Get data from local store instead of API calls
+  const { cards, collections } = useDataStore();
+  
+  // Filter cards based on mode (simplified for now)
+  const digUpResult = {
+    cards: cards.filter(card => {
+      if (filterMode === 'unseen') return !card.seen;
+      if (filterMode === 'seen') return card.seen;
+      return true; // all
+    }).slice(0, 20),
+    hasMore: false
+  };
+  
+  const pawkits = collections;
 
-  const pawkits = collectionsData?.tree || [];
-
-  if (isLoadingCards || !digUpResult) {
+  if (!digUpResult) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
         <div className="bg-gray-950 rounded-lg p-12 max-w-md text-center border border-gray-800">

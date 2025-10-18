@@ -61,12 +61,27 @@ interface LocalStorageDB extends DBSchema {
       'by-target': string;
     };
   };
+  noteCardLinks: {
+    key: string; // link.id
+    value: {
+      id: string;
+      sourceNoteId: string;
+      targetCardId: string;
+      linkText: string;
+      linkType: 'card' | 'url'; // 'card' for [[card:Title]], 'url' for [[URL]]
+      createdAt: string;
+    };
+    indexes: {
+      'by-source': string;
+      'by-target': string;
+    };
+  };
 }
 
 class LocalStorage {
   private db: IDBPDatabase<LocalStorageDB> | null = null;
   private readonly DB_NAME = 'pawkit-local-storage';
-  private readonly DB_VERSION = 3; // Bumped for note links support
+  private readonly DB_VERSION = 4; // Bumped for note card links support
 
   async init(): Promise<void> {
     if (this.db) return;
@@ -97,6 +112,13 @@ class LocalStorage {
           const noteLinksStore = db.createObjectStore('noteLinks', { keyPath: 'id' });
           noteLinksStore.createIndex('by-source', 'sourceNoteId');
           noteLinksStore.createIndex('by-target', 'targetNoteId');
+        }
+
+        // Create note card links store (added in v4)
+        if (!db.objectStoreNames.contains('noteCardLinks')) {
+          const noteCardLinksStore = db.createObjectStore('noteCardLinks', { keyPath: 'id' });
+          noteCardLinksStore.createIndex('by-source', 'sourceNoteId');
+          noteCardLinksStore.createIndex('by-target', 'targetCardId');
         }
       },
     });
@@ -141,7 +163,7 @@ class LocalStorage {
     };
 
     await this.db.put('cards', cardToSave);
-    console.log('[LocalStorage] Saved card:', card.id, options);
+    // console.log('[LocalStorage] Saved card:', card.id, options);
   }
 
   async deleteCard(id: string): Promise<void> {
@@ -149,7 +171,7 @@ class LocalStorage {
     if (!this.db) return;
 
     await this.db.delete('cards', id);
-    console.log('[LocalStorage] Deleted card:', id);
+    // console.log('[LocalStorage] Deleted card:', id);
   }
 
   async permanentlyDeleteCard(id: string): Promise<void> {
@@ -473,6 +495,75 @@ class LocalStorage {
     await tx.done;
 
     console.log('[LocalStorage] Updated link references:', oldNoteId, '->', newNoteId, {
+      outgoing: outgoingLinks.length,
+      incoming: incomingLinks.length,
+    });
+  }
+
+  // ==================== NOTE CARD LINKS ====================
+
+  async addNoteCardLink(sourceId: string, targetCardId: string, linkText: string, linkType: 'card' | 'url'): Promise<void> {
+    await this.init();
+    if (!this.db) throw new Error('Database not initialized');
+
+    const link = {
+      id: `${sourceId}-card-${targetCardId}`,
+      sourceNoteId: sourceId,
+      targetCardId: targetCardId,
+      linkText,
+      linkType,
+      createdAt: new Date().toISOString(),
+    };
+
+    await this.db.put('noteCardLinks', link);
+    console.log('[LocalStorage] Added note card link:', sourceId, '->', targetCardId, `(${linkType})`);
+  }
+
+  async getNoteCardLinks(noteId: string): Promise<Array<{ id: string; targetCardId: string; linkText: string; linkType: 'card' | 'url'; createdAt: string }>> {
+    await this.init();
+    if (!this.db) return [];
+
+    const links = await this.db.getAllFromIndex('noteCardLinks', 'by-source', noteId);
+    return links;
+  }
+
+  async getCardBacklinks(cardId: string): Promise<Array<{ id: string; sourceNoteId: string; linkText: string; linkType: 'card' | 'url'; createdAt: string }>> {
+    await this.init();
+    if (!this.db) return [];
+
+    const backlinks = await this.db.getAllFromIndex('noteCardLinks', 'by-target', cardId);
+    return backlinks;
+  }
+
+  async deleteNoteCardLink(linkId: string): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    await this.db.delete('noteCardLinks', linkId);
+    console.log('[LocalStorage] Deleted note card link:', linkId);
+  }
+
+  async deleteAllCardLinksForNote(noteId: string): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    const outgoingLinks = await this.getNoteCardLinks(noteId);
+    const incomingLinks = await this.getCardBacklinks(noteId);
+
+    const tx = this.db.transaction(['noteCardLinks'], 'readwrite');
+    const store = tx.objectStore('noteCardLinks');
+
+    for (const link of outgoingLinks) {
+      await store.delete(link.id);
+    }
+
+    for (const link of incomingLinks) {
+      await store.delete(link.id);
+    }
+
+    await tx.done;
+
+    console.log('[LocalStorage] Deleted all card links for note:', noteId, {
       outgoing: outgoingLinks.length,
       incoming: incomingLinks.length,
     });

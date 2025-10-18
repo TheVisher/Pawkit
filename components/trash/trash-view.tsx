@@ -6,6 +6,7 @@ import { CollectionDTO } from "@/lib/server/collections";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { localStorage } from "@/lib/services/local-storage";
+import { FileText, Folder } from "lucide-react";
 
 type CardTrashItem = CardDTO & { itemType: "card" };
 type PawkitTrashItem = CollectionDTO & { itemType: "pawkit" };
@@ -192,8 +193,8 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
               >
                 {/* Icon */}
                 <div className={`flex h-10 w-10 items-center justify-center rounded ${isCard ? "bg-blue-900/20" : "bg-purple-900/20"}`}>
-                  <span className="text-lg">
-                    {isCard ? "📄" : "📁"}
+                  <span className="text-gray-500">
+                    {isCard ? <FileText size={20} /> : <Folder size={20} />}
                   </span>
                 </div>
 

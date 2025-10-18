@@ -5,9 +5,43 @@ const nextConfig = {
       "@dnd-kit/core",
       "@dnd-kit/modifiers",
       "@dnd-kit/sortable",
-      "zustand"
-    ]
+      "zustand",
+      "lucide-react",
+      "date-fns"
+    ],
+    // Enable faster refresh in development
+    turbo: {
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
+
+  // Development optimizations
+  ...(process.env.NODE_ENV === 'development' && {
+    // Disable source maps in development for faster builds
+    productionBrowserSourceMaps: false,
+    
+    // Optimize development server - more aggressive memory management
+    onDemandEntries: {
+      // Period (in ms) where the server will keep pages in the buffer
+      maxInactiveAge: 10 * 1000, // Reduced from 25s to 10s
+      // Number of pages that should be kept simultaneously without being disposed
+      pagesBufferLength: 1, // Reduced from 2 to 1
+    },
+    
+    // Additional development optimizations
+    swcMinify: true,
+    compiler: {
+      // Remove console logs in development for better performance
+      removeConsole: process.env.NODE_ENV === 'development' ? {
+        exclude: ['error', 'warn']
+      } : false,
+    },
+  }),
 
   // Security headers
   async headers() {

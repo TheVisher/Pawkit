@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import useSWR from "swr";
+// Removed useSWR - using local-first data store instead
 import { OmniBar } from "@/components/omni-bar";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
@@ -15,9 +15,25 @@ import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { PawkitActionsProvider } from "@/lib/contexts/pawkit-actions-context";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
-  const { data: userData } = useSWR<{ email: string; displayName?: string | null }>("/api/user");
+  const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
   const { collections, initialize, isInitialized, refresh } = useDataStore();
   const { loadFromServer } = useViewSettingsStore();
+
+  // Fetch user data once on mount (no SWR polling)
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await fetch('/api/user');
+        if (response.ok) {
+          const data = await response.json();
+          setUserData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch user data:', error);
+      }
+    };
+    fetchUser();
+  }, []);
 
   // Initialize data store on mount - fetches from server ONCE
   useEffect(() => {

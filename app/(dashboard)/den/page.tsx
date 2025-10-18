@@ -10,7 +10,7 @@ import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { DogHouseIcon } from "@/components/icons/dog-house";
 import { DenPawkitsGrid } from "@/components/den/den-pawkits-grid";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
-import useSWR from "swr";
+// Removed useSWR - using local-first data store instead
 
 export default function DenPage() {
   const { denCards, isUnlocked, loadDenCards, checkExpiry, refreshDenCards, updateDenCard } = useDenStore();
@@ -27,9 +27,11 @@ export default function DenPage() {
     return () => setOnCreatePawkit(null);
   }, [setOnCreatePawkit]);
 
-  // Fetch Den Pawkits
-  const { data: denPawkitsData, mutate: mutateDenPawkits } = useSWR("/api/den/pawkits");
-  const denPawkits = useMemo(() => denPawkitsData?.collections || [], [denPawkitsData]);
+  // Get Den Pawkits from local data store (no API calls)
+  const denPawkits = useMemo(() => 
+    collections.filter(c => c.inDen), 
+    [collections]
+  );
 
   // Load Den cards on mount (password protection not yet implemented)
   useEffect(() => {

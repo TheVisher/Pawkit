@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
+import remarkBreaks from "remark-breaks";
 import { useDataStore } from "@/lib/stores/data-store";
 
 type MDEditorProps = {
@@ -102,6 +103,7 @@ export function MDEditor({ content, onChange, placeholder, onNavigate }: MDEdito
               <ReactMarkdown
                 remarkPlugins={[
                   remarkGfm,
+                  remarkBreaks,
                   [remarkWikiLink, {
                     aliasDivider: '|',
                     pageResolver: (name: string) => [name.replace(/ /g, '-')],

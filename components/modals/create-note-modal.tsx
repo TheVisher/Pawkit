@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FileText, Bookmark } from "lucide-react";
 import { createPortal } from "react-dom";
 import { CardType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -90,7 +91,8 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
                 className="flex-1"
                 size="lg"
               >
-                📝 Markdown Note
+                <FileText size={16} className="mr-2" />
+                Markdown Note
               </Button>
               <Button
                 onClick={() => setNoteType("text-note")}
@@ -98,7 +100,8 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
                 className="flex-1"
                 size="lg"
               >
-                📄 Plain Text Note
+                <FileText size={16} className="mr-2" />
+                Plain Text Note
               </Button>
             </div>
           </div>

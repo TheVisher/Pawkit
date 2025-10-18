@@ -11,6 +11,7 @@ import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
+import { FileText, Bookmark } from "lucide-react";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
@@ -45,7 +46,18 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   // Map area to view type for settings
   const viewType: ViewType = area === "pawkit" ? "pawkits" : (area as ViewType);
   const viewSettings = useViewSettingsStore((state) => state.getSettings(viewType));
-  const cardSize = viewSettings.cardSize || 3; // Default to 3 for consistent SSR
+  // Use a state to ensure consistent SSR and prevent hydration mismatches
+  const [cardSize, setCardSize] = useState(3);
+  const [isHydrated, setIsHydrated] = useState(false);
+  
+  // Mark as hydrated after component mounts
+  useEffect(() => {
+    setIsHydrated(true);
+    setCardSize(viewSettings.cardSize || 3);
+  }, [viewSettings.cardSize]);
+  
+  // Always use the default cardSize during SSR to prevent hydration mismatches
+  const effectiveCardSize = isHydrated ? cardSize : 3;
 
   const orderedIds = useMemo(() => cards.map((card) => card.id), [cards]);
 
@@ -109,63 +121,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     fetchCollections();
   }, []);
 
-  // Poll for pending cards to update their metadata
-  useEffect(() => {
-    // Only poll for PENDING cards that have real IDs (not temp IDs)
-    const pendingCards = cards.filter(
-      (card) => card.status === "PENDING" && !card.id.startsWith("temp_")
-    );
-
-    if (pendingCards.length === 0) return;
-
-    let isMounted = true;
-    const intervalId = setInterval(async () => {
-      // Get fresh pending card IDs to avoid stale requests (exclude temp IDs)
-      const currentPendingIds = cards
-        .filter((card) => card.status === "PENDING" && !card.id.startsWith("temp_"))
-        .map((card) => card.id);
-
-      if (currentPendingIds.length === 0) {
-        clearInterval(intervalId);
-        return;
-      }
-
-      // Fetch updated cards
-      const updates = await Promise.all(
-        currentPendingIds.map(async (id) => {
-          try {
-            const response = await fetch(`/api/cards/${id}`);
-            if (response.ok) {
-              const updated = await response.json();
-              return updated;
-            }
-          } catch {
-            // Ignore errors - card might not exist yet
-          }
-          return null;
-        })
-      );
-
-      // Only update state if component is still mounted
-      if (!isMounted) return;
-
-      // Update cards that changed
-      setCards((prev) =>
-        prev.map((card) => {
-          const update = updates.find((u) => u?.id === card.id);
-          if (update && update.status !== "PENDING") {
-            return update;
-          }
-          return card;
-        })
-      );
-    }, 3000); // Poll every 3 seconds
-
-    return () => {
-      isMounted = false;
-      clearInterval(intervalId);
-    };
-  }, [cards, setCards]);
+  // Removed polling - cards are updated via the data store sync queue
+  // The data store handles pending card updates automatically
 
   const handleCardClick = (event: MouseEvent, card: CardModel) => {
     if (event.shiftKey) {
@@ -308,7 +265,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           </div>
         </div>
       )}
-      <div className={layoutClass(layout, cardSize)} data-masonry-gallery>
+      <div className={layoutClass(layout, effectiveCardSize)} data-masonry-gallery>
         {cards.map((card) => (
           <CardCell
             key={card.id}
@@ -535,20 +492,13 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         >
           {isPending ? (
             <div className="flex h-full w-full items-center justify-center">
-              <img
-                src="/logo.png"
-                alt="Loading..."
-                className="h-16 w-16 animate-spin"
-                style={{ animationDuration: "2s" }}
-              />
+              <div className="h-16 w-16 rounded-full border-4 border-gray-600 border-t-purple-500 animate-spin"></div>
             </div>
           ) : isError ? (
             <div className="flex h-full w-full items-center justify-center">
-              <img
-                src="/logo.png"
-                alt="Failed to load"
-                className="h-16 w-16 opacity-50"
-              />
+              <div className="h-16 w-16 rounded-full bg-gray-600 flex items-center justify-center">
+                <span className="text-white text-2xl">⚠️</span>
+              </div>
             </div>
           ) : card.image ? (
             <>
@@ -586,7 +536,9 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           ) : !isPending ? (
             // Fallback placeholder when no image is available (but not loading)
             <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-6">
-              <div className="text-5xl">🔗</div>
+              <div className="text-gray-500">
+                <Bookmark size={48} />
+              </div>
               <div className="text-center space-y-1">
                 <div className="text-sm font-medium text-foreground">{card.domain || "Link"}</div>
                 {showCardUrls && (
@@ -605,7 +557,13 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           {showCardTitles && (
             <>
               <div className="flex items-center gap-2">
-                {isNote && <span className="text-lg">{card.type === "md-note" ? "📝" : "📄"}</span>}
+                <span className="text-gray-500">
+                  {isNote ? (
+                    <FileText size={16} />
+                  ) : (
+                    <Bookmark size={16} />
+                  )}
+                </span>
                 <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
               </div>
               <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
@@ -615,7 +573,9 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           {!showCardTitles && !card.image && !isNote && !isPending && (
             <div className="flex flex-col items-center justify-center py-12 bg-surface-soft/50 rounded-lg">
               <div className="text-center space-y-3">
-                <div className="text-6xl">🔗</div>
+                <div className="text-gray-500">
+                  <Bookmark size={48} />
+                </div>
                 <div className="text-sm font-medium text-foreground">{card.domain || "Link"}</div>
                 <div className="text-xs text-muted-foreground max-w-[200px] truncate px-4">
                   {card.url}

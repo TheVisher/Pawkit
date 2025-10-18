@@ -6,67 +6,176 @@ import { syncService } from '@/lib/services/sync-service';
 import { syncQueue } from '@/lib/services/sync-queue';
 import { useConflictStore } from '@/lib/stores/conflict-store';
 import { useSettingsStore } from '@/lib/hooks/settings-store';
+import { findBestFuzzyMatch, areTitlesSimilar } from '@/lib/utils/fuzzy-match';
+
+/**
+ * Update link text in notes when a card title changes
+ */
+async function updateLinkTextInNotes(cardId: string, oldTitle: string, newTitle: string): Promise<void> {
+  // console.log('[updateLinkTextInNotes] Updating links for card:', cardId, 'from:', oldTitle, 'to:', newTitle);
+  
+  // Get all notes that link to this card
+  const cardBacklinks = await localStorage.getCardBacklinks(cardId);
+  
+  for (const backlink of cardBacklinks) {
+    try {
+      // Get the note content
+      const note = await localStorage.getCard(backlink.sourceNoteId);
+      if (!note || !note.content) continue;
+      
+      let updatedContent = note.content;
+      let hasChanges = false;
+      
+      // Update different types of links
+      if (backlink.linkType === 'card' && backlink.linkText.startsWith('card:')) {
+        // Update [[card:OldTitle]] to [[card:NewTitle]]
+        const oldLinkText = `[[${backlink.linkText}]]`;
+        const newLinkText = `[[card:${newTitle}]]`;
+        
+        if (updatedContent.includes(oldLinkText)) {
+          updatedContent = updatedContent.replace(oldLinkText, newLinkText);
+          hasChanges = true;
+        }
+      } else if (backlink.linkType === 'card') {
+        // Update [[OldTitle]] to [[NewTitle]]
+        const oldLinkText = `[[${backlink.linkText}]]`;
+        const newLinkText = `[[${newTitle}]]`;
+        
+        if (updatedContent.includes(oldLinkText)) {
+          updatedContent = updatedContent.replace(oldLinkText, newLinkText);
+          hasChanges = true;
+        }
+      }
+      
+      // Save the updated content if there were changes
+      if (hasChanges) {
+        await localStorage.saveCard({ ...note, content: updatedContent }, { localOnly: true });
+        // console.log('[updateLinkTextInNotes] Updated note:', backlink.sourceNoteId);
+      }
+    } catch (error) {
+      console.error('[updateLinkTextInNotes] Failed to update note:', backlink.sourceNoteId, error);
+    }
+  }
+}
 
 /**
  * Extract wiki-links from note content and save to IndexedDB
  */
 async function extractAndSaveLinks(sourceId: string, content: string, allCards: CardDTO[]): Promise<void> {
-  console.log('[extractAndSaveLinks] Starting extraction for:', sourceId);
-  console.log('[extractAndSaveLinks] Content:', content);
-  console.log('[extractAndSaveLinks] Available cards:', allCards.length);
+  // console.log('[extractAndSaveLinks] Starting extraction for:', sourceId);
+  // console.log('[extractAndSaveLinks] Content:', content);
+  // console.log('[extractAndSaveLinks] Available cards:', allCards.length);
 
   // Extract all [[...]] patterns from content
   const linkRegex = /\[\[([^\]]+)\]\]/g;
   const matches = [...content.matchAll(linkRegex)];
 
-  console.log('[extractAndSaveLinks] Found matches:', matches.map(m => m[1]));
+  // console.log('[extractAndSaveLinks] Found matches:', matches.map(m => m[1]));
 
   // Get existing links to avoid duplicates
   const existingLinks = await localStorage.getNoteLinks(sourceId);
+  const existingCardLinks = await localStorage.getNoteCardLinks(sourceId);
   const existingTargets = new Set(existingLinks.map(l => l.targetNoteId));
+  const existingCardTargets = new Set(existingCardLinks.map(l => l.targetCardId));
 
-  console.log('[extractAndSaveLinks] Existing links:', existingLinks.length);
+  // console.log('[extractAndSaveLinks] Existing note links:', existingLinks.length);
+  // console.log('[extractAndSaveLinks] Existing card links:', existingCardLinks.length);
 
   // Track which links we found in current content
   const foundTargetIds = new Set<string>();
+  const foundCardTargetIds = new Set<string>();
+
+  // Early exit if no links found and no existing links
+  if (matches.length === 0 && existingLinks.length === 0 && existingCardLinks.length === 0) {
+    return;
+  }
 
   for (const match of matches) {
     const linkText = match[1].trim();
 
-    console.log('[extractAndSaveLinks] Looking for note titled:', linkText);
+    // Check if this is a card reference: [[card:Title]]
+    if (linkText.startsWith('card:')) {
+      const cardTitle = linkText.substring(5).trim(); // Remove 'card:' prefix
 
-    // Find note by fuzzy title match (case-insensitive, partial match)
-    const targetNote = allCards.find(c =>
-      (c.type === 'md-note' || c.type === 'text-note') &&
-      c.title &&
-      c.title.toLowerCase().includes(linkText.toLowerCase())
-    );
+      // Find card by improved fuzzy title match
+      const targetCard = findBestFuzzyMatch(
+        cardTitle,
+        allCards.filter(c => c.title && c.title.trim() !== '') as Array<{ title: string; id: string }>,
+        0.6 // Lower threshold for card: prefix matches
+      );
 
-    console.log('[extractAndSaveLinks] Found target note:', targetNote ? targetNote.id : 'NOT FOUND');
+      if (targetCard) {
+        foundCardTargetIds.add(targetCard.id);
 
-    if (targetNote && targetNote.id !== sourceId) {
-      foundTargetIds.add(targetNote.id);
+        // Only add link if it doesn't exist yet
+        if (!existingCardTargets.has(targetCard.id)) {
+          await localStorage.addNoteCardLink(sourceId, targetCard.id, linkText, 'card');
+        }
+      }
+    }
+    // Check if this is a URL: [[https://...]] or [[http://...]]
+    else if (linkText.startsWith('http://') || linkText.startsWith('https://')) {
+      // Find card by exact URL match
+      const targetCard = allCards.find(c => c.url === linkText);
 
-      // Only add link if it doesn't exist yet
-      if (!existingTargets.has(targetNote.id)) {
-        await localStorage.addNoteLink(sourceId, targetNote.id, linkText);
-        console.log('[DataStore] Created link:', sourceId, '->', targetNote.id);
+      if (targetCard) {
+        foundCardTargetIds.add(targetCard.id);
+
+        // Only add link if it doesn't exist yet
+        if (!existingCardTargets.has(targetCard.id)) {
+          await localStorage.addNoteCardLink(sourceId, targetCard.id, linkText, 'url');
+        }
+      }
+    }
+    // Otherwise, treat as note/card reference: [[Title]]
+    else {
+      // First try to find a note with this title using improved fuzzy matching
+      const notes = allCards.filter(c => 
+        (c.type === 'md-note' || c.type === 'text-note') && c.title && c.title.trim() !== ''
+      ) as Array<{ title: string; id: string }>;
+      let targetNote = findBestFuzzyMatch(linkText, notes, 0.7);
+
+      // If no note found, try to find a card (bookmark) with this title
+      if (!targetNote) {
+        const cards = allCards.filter(c => c.title && c.title.trim() !== '') as Array<{ title: string; id: string }>;
+        const targetCard = findBestFuzzyMatch(linkText, cards, 0.7);
+
+        if (targetCard) {
+          foundCardTargetIds.add(targetCard.id);
+
+          // Only add link if it doesn't exist yet
+          if (!existingCardTargets.has(targetCard.id)) {
+            await localStorage.addNoteCardLink(sourceId, targetCard.id, linkText, 'card');
+          }
+        }
       } else {
-        console.log('[extractAndSaveLinks] Link already exists:', sourceId, '->', targetNote.id);
+        if (targetNote.id !== sourceId) {
+          foundTargetIds.add(targetNote.id);
+
+          // Only add link if it doesn't exist yet
+          if (!existingTargets.has(targetNote.id)) {
+            await localStorage.addNoteLink(sourceId, targetNote.id, linkText);
+          }
+        }
       }
     }
   }
 
-  // Remove links that no longer exist in content
-  for (const existingLink of existingLinks) {
-    if (!foundTargetIds.has(existingLink.targetNoteId)) {
-      await localStorage.deleteNoteLink(existingLink.id);
-      console.log('[DataStore] Removed link:', existingLink.id);
-    }
+  // Batch remove note links that no longer exist in content
+  const noteLinksToRemove = existingLinks.filter(link => !foundTargetIds.has(link.targetNoteId));
+  for (const link of noteLinksToRemove) {
+    await localStorage.deleteNoteLink(link.id);
   }
 
-  console.log('[extractAndSaveLinks] Extraction complete. Created/kept:', foundTargetIds.size, 'links');
+  // Batch remove card links that no longer exist in content
+  const cardLinksToRemove = existingCardLinks.filter(link => !foundCardTargetIds.has(link.targetCardId));
+  for (const link of cardLinksToRemove) {
+    await localStorage.deleteNoteCardLink(link.id);
+  }
 }
+
+// Debounce map for link extraction
+const extractionTimeouts = new Map<string, NodeJS.Timeout>();
 
 /**
  * LOCAL-FIRST DATA STORE V2
@@ -376,7 +485,17 @@ export const useDataStore = create<DataStore>((set, get) => ({
       // STEP 1: Save to local storage FIRST
       await localStorage.saveCard(updatedCard, { localOnly: true });
 
-      // STEP 1.5: Extract and save wiki-links if this is a note with content update
+      // STEP 1.5: Update link text in notes if title changed
+      if ('title' in updates && oldCard.title !== updatedCard.title) {
+        console.log('[DataStore] Title changed, updating link text in notes');
+        try {
+          await updateLinkTextInNotes(id, oldCard.title || '', updatedCard.title || '');
+        } catch (error) {
+          console.error('[DataStore] Failed to update link text in notes:', error);
+        }
+      }
+
+      // STEP 1.6: Extract and save wiki-links if this is a note with content update
       console.log('[DataStore] Checking extraction condition:', {
         cardType: updatedCard.type,
         isNote: updatedCard.type === 'md-note' || updatedCard.type === 'text-note',
@@ -385,10 +504,30 @@ export const useDataStore = create<DataStore>((set, get) => ({
       });
 
       if ((updatedCard.type === 'md-note' || updatedCard.type === 'text-note') && 'content' in updates) {
-        console.log('[DataStore] CALLING extractAndSaveLinks');
-        await extractAndSaveLinks(id, updatedCard.content || '', get().cards);
-      } else {
-        console.log('[DataStore] SKIPPED extraction - condition not met');
+        // Only run extraction if content actually changed
+        const oldContent = oldCard.content || '';
+        const newContent = updatedCard.content || '';
+        
+        if (oldContent !== newContent) {
+          // Clear existing timeout for this card
+          const existingTimeout = extractionTimeouts.get(id);
+          if (existingTimeout) {
+            clearTimeout(existingTimeout);
+          }
+          
+          // Set new debounced timeout
+          const timeout = setTimeout(async () => {
+            try {
+              await extractAndSaveLinks(id, updatedCard.content || '', get().cards);
+              extractionTimeouts.delete(id);
+            } catch (error) {
+              console.error('[DataStore] Link extraction failed:', error);
+              extractionTimeouts.delete(id);
+            }
+          }, 1000); // 1 second debounce
+          
+          extractionTimeouts.set(id, timeout);
+        }
       }
 
       // STEP 2: Update Zustand for instant UI
@@ -396,7 +535,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
         cards: state.cards.map(c => c.id === id ? updatedCard : c),
       }));
 
-      console.log('[DataStore V2] Card updated in local storage:', id);
 
       // STEP 3: Sync to server in background (if enabled)
       const serverSync = useSettingsStore.getState().serverSync;

@@ -7,7 +7,7 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { DogHouseIcon } from "@/components/icons/dog-house";
 import { useRouter, useParams } from "next/navigation";
-import useSWR from "swr";
+// Removed useSWR - using local-first data store instead
 
 export default function DenPawkitPage() {
   const params = useParams();
@@ -17,9 +17,8 @@ export default function DenPawkitPage() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const router = useRouter();
 
-  // Fetch Den Pawkits
-  const { data: denPawkitsData } = useSWR("/api/den/pawkits");
-  const denPawkits = denPawkitsData?.collections || [];
+  // Get Den Pawkits from local data store (no API calls)
+  const denPawkits = collections.filter(c => c.inDen);
 
   // Find the current pawkit
   const currentPawkit = denPawkits.find((p: any) => p.slug === slug);

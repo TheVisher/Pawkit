@@ -267,6 +267,10 @@ export default function HomePage() {
           onClose={() => setActiveCardId(null)}
           onUpdate={handleUpdateCard}
           onDelete={handleDeleteCard}
+          onNavigateToCard={(cardId) => {
+            // Navigate to the clicked note/card by changing the active card
+            setActiveCardId(cardId);
+          }}
         />
       )}
     </>

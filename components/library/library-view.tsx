@@ -60,7 +60,16 @@ export function LibraryView({
   
   // Get view settings from the store
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
-  const { layout, cardSize, sortBy, sortOrder } = viewSettings;
+  const { cardSize, sortBy, sortOrder } = viewSettings;
+  
+  // Use hydration-safe layout to prevent SSR mismatches
+  const [layout, setLayout] = useState<LayoutMode>("grid");
+  const [isHydrated, setIsHydrated] = useState(false);
+  
+  useEffect(() => {
+    setIsHydrated(true);
+    setLayout(viewSettings.layout || "grid");
+  }, [viewSettings.layout]);
 
   // Sync local state when store updates (important for reactivity!)
   useEffect(() => {

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { LibraryWorkspace } from "@/components/library/workspace";
-import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
+import { useViewSettingsStore, type LayoutMode } from "@/lib/hooks/view-settings-store";
 import { sortCards } from "@/lib/utils/sort-cards";
 import { FileText } from "lucide-react";
 
@@ -18,7 +18,16 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
 
   // Get view settings from the store
   const viewSettings = useViewSettingsStore((state) => state.getSettings("notes"));
-  const { layout, sortBy, sortOrder } = viewSettings;
+  const { sortBy, sortOrder } = viewSettings;
+  
+  // Use hydration-safe layout to prevent SSR mismatches
+  const [layout, setLayout] = useState<LayoutMode>("grid");
+  const [isHydrated, setIsHydrated] = useState(false);
+  
+  useEffect(() => {
+    setIsHydrated(true);
+    setLayout(viewSettings.layout || "grid");
+  }, [viewSettings.layout]);
 
   // Sync local state when store updates (important for reactivity!)
   useEffect(() => {

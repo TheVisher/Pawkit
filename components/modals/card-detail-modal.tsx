@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
+import remarkBreaks from "remark-breaks";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
+import { localStorage } from "@/lib/services/local-storage";
 import { Toast } from "@/components/ui/toast";
 import { ReaderView } from "@/components/reader/reader-view";
 import { MDEditor } from "@/components/notes/md-editor";
@@ -17,6 +19,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
+import { FileText, Bookmark, Globe } from "lucide-react";
+import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 
 type CardDetailModalProps = {
   card: CardModel;
@@ -41,32 +45,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   }, [dataStore]);
 
   // Extract links when modal opens if this is a note with content
-  useEffect(() => {
-    console.log('[Wiki-Link Modal] useEffect running', {
-      isNote,
-      hasContent: !!card.content,
-      cardsLength: allCards.length,
-      cardId: card.id,
-      content: card.content?.substring(0, 100),
-    });
-
-    if (isNote && card.content && allCards.length > 0) {
-      // Trigger link extraction
-      console.log('[Wiki-Link] Triggering link extraction for card:', card.id);
-      const updatePromise = updateCardInStore(card.id, { content: card.content });
-      if (updatePromise && typeof updatePromise.catch === 'function') {
-        updatePromise.catch(err => {
-          console.error('[Wiki-Link] Failed to extract links:', err);
-        });
-      }
-    } else {
-      console.log('[Wiki-Link Modal] Skipping extraction because:', {
-        isNote,
-        hasContent: !!card.content,
-        cardsLength: allCards.length,
-      });
-    }
-  }, [card.id, isNote, card.content, allCards.length, updateCardInStore]); // Run when card or cards change
+  // Note: Link extraction is now handled automatically by the data store
+  // when content is updated via the auto-save mechanism
   const [notes, setNotes] = useState(card.notes ?? "");
   const [content, setContent] = useState(card.content ?? "");
   const [noteMode, setNoteMode] = useState<"preview" | "edit">("preview");
@@ -107,48 +87,146 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     return map;
   }, [allCards, cardsReady]);
 
+  // Create a map of card titles to IDs for card reference resolution
+  const cardTitleMap = useMemo(() => {
+    if (!cardsReady) {
+      return new Map<string, string>();
+    }
+
+    const map = new Map<string, string>();
+    allCards.forEach((c) => {
+      if (c.title) {
+        map.set(c.title.toLowerCase(), c.id);
+      }
+    });
+    return map;
+  }, [allCards, cardsReady]);
+
   // Custom renderer for wiki-links
   const wikiLinkComponents = useMemo(() => ({
     a: ({ node, href, children, ...props }: any) => {
       // Check if this is a wiki-link (starts with #/wiki/)
       if (href?.startsWith('#/wiki/')) {
         const linkText = href.replace('#/wiki/', '').replace(/-/g, ' ');
-        const noteId = noteTitleMap.get(linkText.toLowerCase());
+        
+        // Check if this is a card reference: card:Title
+        if (linkText.startsWith('card:')) {
+          const cardTitle = linkText.substring(5).trim();
+          const cardId = cardTitleMap.get(cardTitle.toLowerCase());
+          
+          if (cardId && onNavigateToCard) {
+            return (
+              <button
+                onClick={() => onNavigateToCard(cardId)}
+                className="!text-blue-400 hover:!text-blue-300 !underline !decoration-blue-400/50 hover:!decoration-blue-300 cursor-pointer !font-bold transition-colors"
+                style={{ color: '#60a5fa', textDecoration: 'underline', textDecorationColor: '#60a5fa80' }}
+                {...props}
+              >
+                <Bookmark size={14} className="inline mr-1" />
+                {children}
+              </button>
+            );
+          } else {
+            return (
+              <span className="!text-gray-500 italic !underline !decoration-gray-500/30" title="Card not found" style={{ color: '#6b7280', textDecoration: 'underline' }}>
+                <Bookmark size={14} className="inline mr-1" />
+                {children}
+              </span>
+            );
+          }
+        }
+        // Check if this is a URL reference
+        else if (linkText.startsWith('http://') || linkText.startsWith('https://')) {
+          const targetCard = allCards.find(c => c.url === linkText);
+          
+          if (targetCard && onNavigateToCard) {
+            return (
+              <button
+                onClick={() => onNavigateToCard(targetCard.id)}
+                className="!text-green-400 hover:!text-green-300 !underline !decoration-green-400/50 hover:!decoration-green-300 cursor-pointer !font-bold transition-colors"
+                style={{ color: '#4ade80', textDecoration: 'underline', textDecorationColor: '#4ade8080' }}
+                {...props}
+              >
+                <Globe size={14} className="inline mr-1" />
+                {children}
+              </button>
+            );
+          } else {
+            return (
+              <span className="!text-gray-500 italic !underline !decoration-gray-500/30" title="URL not found" style={{ color: '#6b7280', textDecoration: 'underline' }}>
+                <Globe size={14} className="inline mr-1" />
+                {children}
+              </span>
+            );
+          }
+        }
+        // Otherwise, treat as note/card reference
+        else {
+          // Use fuzzy matching to find the best match
+          const notes = allCards.filter(c => 
+            (c.type === 'md-note' || c.type === 'text-note') && c.title && c.title.trim() !== ''
+          ) as Array<{ title: string; id: string }>;
+          const cards = allCards.filter(c => c.title && c.title.trim() !== '') as Array<{ title: string; id: string }>;
+          
+          // Try to find a note first
+          const matchedNote = findBestFuzzyMatch(linkText, notes, 0.7);
+          const noteId = matchedNote?.id;
+          
+          // If no note found, try to find a card
+          const matchedCard = !matchedNote ? findBestFuzzyMatch(linkText, cards, 0.7) : null;
+          const cardId = matchedCard?.id;
 
-        console.log('[Wiki-Link Debug]', {
-          href,
-          linkText,
-          linkTextLower: linkText.toLowerCase(),
-          noteId,
-          hasNavigateCallback: !!onNavigateToCard,
-          availableTitles: Array.from(noteTitleMap.keys()),
-        });
+          console.log('[Wiki-Link Debug]', {
+            href,
+            linkText,
+            linkTextLower: linkText.toLowerCase(),
+            noteId,
+            cardId,
+            hasNavigateCallback: !!onNavigateToCard,
+            availableNoteTitles: Array.from(noteTitleMap.keys()),
+            availableCardTitles: Array.from(cardTitleMap.keys()),
+          });
 
-        if (noteId && onNavigateToCard) {
-          return (
-            <button
-              onClick={() => onNavigateToCard(noteId)}
-              className="!text-purple-400 hover:!text-purple-300 !underline !decoration-purple-400/50 hover:!decoration-purple-300 cursor-pointer !inline !font-bold transition-colors"
-              style={{ color: '#c084fc', textDecoration: 'underline', textDecorationColor: '#c084fc80' }}
-              {...props}
-            >
-              {children}
-            </button>
-          );
-        } else {
-          // Note doesn't exist - show as broken link
-          return (
-            <span className="!text-gray-500 italic !underline !decoration-gray-500/30" title="Note not found" style={{ color: '#6b7280', textDecoration: 'underline' }}>
-              {children}
-            </span>
-          );
+          if (noteId && onNavigateToCard) {
+            return (
+              <button
+                onClick={() => onNavigateToCard(noteId)}
+                className="!text-purple-400 hover:!text-purple-300 !underline !decoration-purple-400/50 hover:!decoration-purple-300 cursor-pointer !font-bold transition-colors"
+                style={{ color: '#c084fc', textDecoration: 'underline', textDecorationColor: '#c084fc80' }}
+                {...props}
+              >
+                <FileText size={14} className="inline mr-1" />
+                {children}
+              </button>
+            );
+          } else if (cardId && onNavigateToCard) {
+            return (
+              <button
+                onClick={() => onNavigateToCard(cardId)}
+                className="!text-blue-400 hover:!text-blue-300 !underline !decoration-blue-400/50 hover:!decoration-blue-300 cursor-pointer !font-bold transition-colors"
+                style={{ color: '#60a5fa', textDecoration: 'underline', textDecorationColor: '#60a5fa80' }}
+                {...props}
+              >
+                <Bookmark size={14} className="inline mr-1" />
+                {children}
+              </button>
+            );
+          } else {
+            // Neither note nor card found - show as broken link
+            return (
+              <span className="!text-gray-500 italic !underline !decoration-gray-500/30" title="Note or card not found" style={{ color: '#6b7280', textDecoration: 'underline' }}>
+                <FileText size={14} className="inline mr-1" />
+                {children}
+              </span>
+            );
+          }
         }
       }
 
       // Regular link
       return <a href={href} className="text-accent hover:underline" target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
     },
-  }), [noteTitleMap, onNavigateToCard]);
+  }), [noteTitleMap, cardTitleMap, allCards, onNavigateToCard]);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [isPinned, setIsPinned] = useState(card.pinned ?? false);
@@ -159,8 +237,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
   const [denPawkitSlugs, setDenPawkitSlugs] = useState<Set<string>>(new Set());
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const isTypingNotesRef = useRef(false);
-  const isTypingContentRef = useRef(false);
   const lastSavedNotesRef = useRef(card.notes ?? "");
   const lastSavedContentRef = useRef(card.content ?? "");
 
@@ -218,47 +294,86 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  // Auto-save notes with debounce
-  useEffect(() => {
-    const timeout = setTimeout(async () => {
-      // Only save if notes have changed from last saved value
-      if (notes === lastSavedNotesRef.current) {
-        return;
+  // Save on modal close to ensure nothing is lost
+  const handleClose = async () => {
+    // Save any pending changes before closing
+    if (notes !== lastSavedNotesRef.current) {
+      try {
+        const updatedCard = { ...card, notes, updatedAt: new Date().toISOString() };
+        await localStorage.saveCard(updatedCard, { localOnly: true });
+        await updateCardInStore(card.id, { notes });
+        lastSavedNotesRef.current = notes;
+      } catch (error) {
+        console.error('Failed to save notes on close:', error);
       }
-      setSaving(true);
+    }
+    
+    if (isNote && content !== lastSavedContentRef.current) {
+      try {
+        const updatedCard = { ...card, content, updatedAt: new Date().toISOString() };
+        await localStorage.saveCard(updatedCard, { localOnly: true });
+        await updateCardInStore(card.id, { content });
+        lastSavedContentRef.current = content;
+      } catch (error) {
+        console.error('Failed to save content on close:', error);
+      }
+    }
+    
+    onClose();
+  };
 
-      // Update store (optimistic)
-      await updateCardInStore(card.id, { notes });
-      lastSavedNotesRef.current = notes;
+  // Debounced save notes to prevent constant re-renders
+  useEffect(() => {
+    // Only save if notes have changed from last saved value
+    if (notes === lastSavedNotesRef.current) {
+      return;
+    }
 
-      // Update parent component state
-      onUpdate({ ...card, notes });
-      setSaving(false);
-    }, 1000);
-    return () => clearTimeout(timeout);
-  }, [notes, card.id, onUpdate, updateCardInStore, card]);
+    // Clear any existing timeout
+    const timeoutId = setTimeout(async () => {
+      try {
+        // Save directly to IndexedDB first
+        const updatedCard = { ...card, notes, updatedAt: new Date().toISOString() };
+        await localStorage.saveCard(updatedCard, { localOnly: true });
+        
+        // Then update the store to keep UI in sync
+        await updateCardInStore(card.id, { notes });
+        lastSavedNotesRef.current = notes;
+      } catch (error) {
+        console.error('Failed to save notes locally:', error);
+      }
+    }, 2000); // 2 second debounce to prevent constant saves
 
-  // Auto-save content with debounce (for MD/text notes)
+    return () => clearTimeout(timeoutId);
+  }, [notes, card.id, card, updateCardInStore]);
+
+  // Debounced save content to prevent constant re-renders
   useEffect(() => {
     if (!isNote) return;
-    const timeout = setTimeout(async () => {
-      // Only save if content has changed from last saved value
-      if (content === lastSavedContentRef.current) {
-        return;
+    
+    // Only save if content has changed from last saved value
+    if (content === lastSavedContentRef.current) {
+      return;
+    }
+
+    // Clear any existing timeout
+    const timeoutId = setTimeout(async () => {
+      try {
+        console.log('[Wiki-Link] Debounced saving content locally');
+        // Save directly to IndexedDB first
+        const updatedCard = { ...card, content, updatedAt: new Date().toISOString() };
+        await localStorage.saveCard(updatedCard, { localOnly: true });
+        
+        // Then update the store to keep UI in sync
+        await updateCardInStore(card.id, { content });
+        lastSavedContentRef.current = content;
+      } catch (error) {
+        console.error('Failed to save content locally:', error);
       }
-      setSaving(true);
+    }, 2000); // 2 second debounce to prevent constant saves
 
-      // Update store (optimistic) - this triggers link extraction
-      console.log('[Wiki-Link] Auto-saving content, will trigger extraction');
-      await updateCardInStore(card.id, { content });
-      lastSavedContentRef.current = content;
-
-      // Update parent component state
-      onUpdate({ ...card, content });
-      setSaving(false);
-    }, 1000);
-    return () => clearTimeout(timeout);
-  }, [content, card.id, onUpdate, isNote, updateCardInStore, card]);
+    return () => clearTimeout(timeoutId);
+  }, [content, card.id, isNote, card, updateCardInStore]);
 
   const handleSaveNotes = async () => {
     setSaving(true);
@@ -522,9 +637,17 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                       <ReactMarkdown
                         remarkPlugins={[
                           remarkGfm,
+                          remarkBreaks,
                           [remarkWikiLink, {
                             aliasDivider: '|',
-                            pageResolver: (name: string) => [name.replace(/ /g, '-')],
+                            pageResolver: (name: string) => {
+                              // Preserve special syntax for card references and URLs
+                              if (name.startsWith('card:') || name.startsWith('http://') || name.startsWith('https://')) {
+                                return [name];
+                              }
+                              // Convert note titles to slugs
+                              return [name.replace(/ /g, '-')];
+                            },
                             hrefTemplate: (permalink: string) => `#/wiki/${permalink}`,
                           }],
                         ]}
@@ -599,7 +722,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
+        onClick={handleClose}
       />
 
       {/* Centered Card Content */}
@@ -667,11 +790,19 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                         <ReactMarkdown
                           remarkPlugins={[
                             remarkGfm,
-                            [remarkWikiLink, {
-                              aliasDivider: '|',
-                              pageResolver: (name: string) => [name.replace(/ /g, '-')],
-                              hrefTemplate: (permalink: string) => `#/wiki/${permalink}`,
-                            }],
+                            remarkBreaks,
+                          [remarkWikiLink, {
+                            aliasDivider: '|',
+                            pageResolver: (name: string) => {
+                              // Preserve special syntax for card references and URLs
+                              if (name.startsWith('card:') || name.startsWith('http://') || name.startsWith('https://')) {
+                                return [name];
+                              }
+                              // Convert note titles to slugs
+                              return [name.replace(/ /g, '-')];
+                            },
+                            hrefTemplate: (permalink: string) => `#/wiki/${permalink}`,
+                          }],
                           ]}
                           components={{
                             ...wikiLinkComponents,
@@ -756,11 +887,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   />
                 ) : (
                   <div className="text-center space-y-4">
-                    <img
-                      src="/logo.png"
-                      alt="Pawkit"
-                      className="w-32 h-32 mx-auto opacity-50"
-                    />
+                    <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center">
+                      <span className="text-white text-4xl">🔗</span>
+                    </div>
                     <h3 className="text-xl font-semibold text-gray-300">
                       {card.title || card.domain || card.url}
                     </h3>
@@ -791,7 +920,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               ‹
             </button>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="text-gray-400 hover:text-gray-200 text-2xl leading-none"
               title="Close modal"
             >
@@ -810,11 +939,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
               Notes
             </TabsTrigger>
-            {isNote && (
-              <TabsTrigger value="links" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                Links
-              </TabsTrigger>
-            )}
+            <TabsTrigger value="links" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+              Links
+            </TabsTrigger>
             <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
               Schedule
             </TabsTrigger>
@@ -851,18 +978,16 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   saving={saving}
                 />
               </TabsContent>
-              {isNote && (
-                <TabsContent value="links" className="p-4 mt-0 h-full">
-                  <BacklinksPanel
-                    noteId={card.id}
-                    onNavigate={(noteId) => {
-                      if (onNavigateToCard) {
-                        onNavigateToCard(noteId);
-                      }
-                    }}
-                  />
-                </TabsContent>
-              )}
+              <TabsContent value="links" className="p-4 mt-0 h-full">
+                <BacklinksPanel
+                  noteId={card.id}
+                  onNavigate={(noteId) => {
+                    if (onNavigateToCard) {
+                      onNavigateToCard(noteId);
+                    }
+                  }}
+                />
+              </TabsContent>
               {!isYouTubeUrl(card.url) && (
                 <>
                   <TabsContent value="reader" className="p-4 mt-0 h-full">
@@ -1050,7 +1175,7 @@ function NotesTab({
       />
       <div className="flex items-center justify-between">
         <span className="text-xs text-gray-500">
-          {saving ? "Saving..." : "Auto-saves as you type"}
+          {saving ? "Saving..." : "Auto-saves after 2s pause"}
         </span>
         <Button
           onClick={onSave}
@@ -1114,7 +1239,9 @@ function ReaderTab({
         )}
       </Button>
       <div className="text-center py-8">
-        <div className="text-4xl mb-2">📄</div>
+        <div className="text-gray-500 mb-2">
+          <Bookmark size={48} />
+        </div>
         <p className="text-sm text-gray-500">No article content yet</p>
       </div>
     </div>
@@ -1187,7 +1314,8 @@ function ActionsTab({ card, onRefreshMetadata, isPinned, onTogglePin }: ActionsT
       )}
 
       <Button variant="secondary" className="w-full justify-start">
-        🔗 Copy Link
+        <Globe size={16} className="mr-2" />
+        Copy Link
       </Button>
       <Button variant="secondary" className="w-full justify-start">
         📤 Share

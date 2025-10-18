@@ -34,16 +34,11 @@ export function QuickAccessPawkitCard({ pawkit }: QuickAccessPawkitCardProps) {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/pawkits/${pawkit.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pinned: !isPinned })
-      });
-
-      if (response.ok) {
-        setIsPinned(!isPinned);
-        router.refresh();
-      }
+      // Use data store to update collection (local-first)
+      const { updateCollection } = useDataStore.getState();
+      await updateCollection(pawkit.id, { pinned: !isPinned });
+      setIsPinned(!isPinned);
+      // No router.refresh() needed - data store handles UI updates
     } catch (error) {
       console.error("Failed to toggle pin:", error);
     } finally {
