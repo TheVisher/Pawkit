@@ -42,6 +42,14 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   // Extract links when modal opens if this is a note with content
   useEffect(() => {
+    console.log('[Wiki-Link Modal] useEffect running', {
+      isNote,
+      hasContent: !!card.content,
+      cardsLength: allCards.length,
+      cardId: card.id,
+      content: card.content?.substring(0, 100),
+    });
+
     if (isNote && card.content && allCards.length > 0) {
       // Trigger link extraction
       console.log('[Wiki-Link] Triggering link extraction for card:', card.id);
@@ -51,6 +59,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           console.error('[Wiki-Link] Failed to extract links:', err);
         });
       }
+    } else {
+      console.log('[Wiki-Link Modal] Skipping extraction because:', {
+        isNote,
+        hasContent: !!card.content,
+        cardsLength: allCards.length,
+      });
     }
   }, [card.id, isNote, card.content, allCards.length, updateCardInStore]); // Run when card or cards change
   const [notes, setNotes] = useState(card.notes ?? "");
