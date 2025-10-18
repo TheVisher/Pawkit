@@ -128,7 +128,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           return (
             <button
               onClick={() => onNavigateToCard(noteId)}
-              className="text-purple-400 hover:text-purple-300 underline decoration-purple-400/50 hover:decoration-purple-300 cursor-pointer inline font-medium transition-colors"
+              className="!text-purple-400 hover:!text-purple-300 !underline !decoration-purple-400/50 hover:!decoration-purple-300 cursor-pointer !inline !font-bold transition-colors"
+              style={{ color: '#c084fc', textDecoration: 'underline', textDecorationColor: '#c084fc80' }}
               {...props}
             >
               {children}
@@ -137,7 +138,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         } else {
           // Note doesn't exist - show as broken link
           return (
-            <span className="text-gray-500 italic underline decoration-gray-500/30" title="Note not found">
+            <span className="!text-gray-500 italic !underline !decoration-gray-500/30" title="Note not found" style={{ color: '#6b7280', textDecoration: 'underline' }}>
               {children}
             </span>
           );
@@ -247,7 +248,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       }
       setSaving(true);
 
-      // Update store (optimistic)
+      // Update store (optimistic) - this triggers link extraction
+      console.log('[Wiki-Link] Auto-saving content, will trigger extraction');
       await updateCardInStore(card.id, { content });
       lastSavedContentRef.current = content;
 
