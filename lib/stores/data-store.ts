@@ -8,6 +8,67 @@ import { useConflictStore } from '@/lib/stores/conflict-store';
 import { useSettingsStore } from '@/lib/hooks/settings-store';
 
 /**
+ * Extract wiki-links from note content and save to IndexedDB
+ */
+async function extractAndSaveLinks(sourceId: string, content: string, allCards: CardDTO[]): Promise<void> {
+  console.log('[extractAndSaveLinks] Starting extraction for:', sourceId);
+  console.log('[extractAndSaveLinks] Content:', content);
+  console.log('[extractAndSaveLinks] Available cards:', allCards.length);
+
+  // Extract all [[...]] patterns from content
+  const linkRegex = /\[\[([^\]]+)\]\]/g;
+  const matches = [...content.matchAll(linkRegex)];
+
+  console.log('[extractAndSaveLinks] Found matches:', matches.map(m => m[1]));
+
+  // Get existing links to avoid duplicates
+  const existingLinks = await localStorage.getNoteLinks(sourceId);
+  const existingTargets = new Set(existingLinks.map(l => l.targetNoteId));
+
+  console.log('[extractAndSaveLinks] Existing links:', existingLinks.length);
+
+  // Track which links we found in current content
+  const foundTargetIds = new Set<string>();
+
+  for (const match of matches) {
+    const linkText = match[1].trim();
+
+    console.log('[extractAndSaveLinks] Looking for note titled:', linkText);
+
+    // Find note by fuzzy title match (case-insensitive, partial match)
+    const targetNote = allCards.find(c =>
+      (c.type === 'md-note' || c.type === 'text-note') &&
+      c.title &&
+      c.title.toLowerCase().includes(linkText.toLowerCase())
+    );
+
+    console.log('[extractAndSaveLinks] Found target note:', targetNote ? targetNote.id : 'NOT FOUND');
+
+    if (targetNote && targetNote.id !== sourceId) {
+      foundTargetIds.add(targetNote.id);
+
+      // Only add link if it doesn't exist yet
+      if (!existingTargets.has(targetNote.id)) {
+        await localStorage.addNoteLink(sourceId, targetNote.id, linkText);
+        console.log('[DataStore] Created link:', sourceId, '->', targetNote.id);
+      } else {
+        console.log('[extractAndSaveLinks] Link already exists:', sourceId, '->', targetNote.id);
+      }
+    }
+  }
+
+  // Remove links that no longer exist in content
+  for (const existingLink of existingLinks) {
+    if (!foundTargetIds.has(existingLink.targetNoteId)) {
+      await localStorage.deleteNoteLink(existingLink.id);
+      console.log('[DataStore] Removed link:', existingLink.id);
+    }
+  }
+
+  console.log('[extractAndSaveLinks] Extraction complete. Created/kept:', foundTargetIds.size, 'links');
+}
+
+/**
  * LOCAL-FIRST DATA STORE V2
  *
  * Architecture:
@@ -315,6 +376,21 @@ export const useDataStore = create<DataStore>((set, get) => ({
       // STEP 1: Save to local storage FIRST
       await localStorage.saveCard(updatedCard, { localOnly: true });
 
+      // STEP 1.5: Extract and save wiki-links if this is a note with content update
+      console.log('[DataStore] Checking extraction condition:', {
+        cardType: updatedCard.type,
+        isNote: updatedCard.type === 'md-note' || updatedCard.type === 'text-note',
+        hasContentInUpdates: 'content' in updates,
+        updatesKeys: Object.keys(updates),
+      });
+
+      if ((updatedCard.type === 'md-note' || updatedCard.type === 'text-note') && 'content' in updates) {
+        console.log('[DataStore] CALLING extractAndSaveLinks');
+        await extractAndSaveLinks(id, updatedCard.content || '', get().cards);
+      } else {
+        console.log('[DataStore] SKIPPED extraction - condition not met');
+      }
+
       // STEP 2: Update Zustand for instant UI
       set((state) => ({
         cards: state.cards.map(c => c.id === id ? updatedCard : c),
@@ -375,6 +451,12 @@ export const useDataStore = create<DataStore>((set, get) => ({
       if (!card) {
         console.warn('[DataStore V2] Card not found:', id);
         return;
+      }
+
+      // STEP 1.5: Delete all links associated with this note
+      if (card.type === 'md-note' || card.type === 'text-note') {
+        await localStorage.deleteAllLinksForNote(id);
+        console.log('[DataStore] Deleted all links for note:', id);
       }
 
       const deletedCard = {

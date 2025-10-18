@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { localStorage } from "@/lib/services/local-storage";
-import { useDataStore } from "@/lib/stores/data-store-v2";
+import { useDataStore } from "@/lib/stores/data-store";
 
 type BacklinksPanelProps = {
   noteId: string;

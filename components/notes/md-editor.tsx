@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
-import { useDataStore } from "@/lib/stores/data-store-v2";
+import { useDataStore } from "@/lib/stores/data-store";
 
 type MDEditorProps = {
   content: string;

@@ -361,8 +361,19 @@ export const useDataStore = create<DataStore>((set, get) => ({
       await localStorage.saveCard(updatedCard, { localOnly: true });
 
       // STEP 1.5: Extract and save wiki-links if this is a note
+      console.log('[DataStore V2] Checking extraction condition:', {
+        cardType: updatedCard.type,
+        isNote: updatedCard.type === 'md-note' || updatedCard.type === 'text-note',
+        hasContentInUpdates: 'content' in updates,
+        updatesKeys: Object.keys(updates),
+        content: updatedCard.content?.substring(0, 100) + '...'
+      });
+
       if ((updatedCard.type === 'md-note' || updatedCard.type === 'text-note') && 'content' in updates) {
+        console.log('[DataStore V2] CALLING extractAndSaveLinks');
         await extractAndSaveLinks(id, updatedCard.content || '', get().cards);
+      } else {
+        console.log('[DataStore V2] SKIPPED extraction - condition not met');
       }
 
       // STEP 2: Update Zustand for instant UI

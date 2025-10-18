@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import { CardModel, CollectionNode } from "@/lib/types";
-import { useDataStore } from "@/lib/stores/data-store-v2";
+import { useDataStore } from "@/lib/stores/data-store";
 import { Toast } from "@/components/ui/toast";
 import { ReaderView } from "@/components/reader/reader-view";
 import { MDEditor } from "@/components/notes/md-editor";
