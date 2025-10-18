@@ -32,6 +32,7 @@
     "page": "src/options/index.html",
     "open_in_tab": true
   },
+  "homepage_url": "https://www.getpawkit.com/privacy",
   "browser_specific_settings": {
     "gecko": {
       "id": "pawkit@local",
