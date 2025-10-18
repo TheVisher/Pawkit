@@ -35,6 +35,7 @@ export type CollectionNode = {
   parentId?: string | null;
   pinned: boolean;
   deleted: boolean;
+  inDen?: boolean;
   userId: string;
   createdAt: string;
   updatedAt: string;

@@ -14,7 +14,7 @@ import useSWR from "swr";
 
 export default function DenPage() {
   const { denCards, isUnlocked, loadDenCards, checkExpiry, refreshDenCards, updateDenCard } = useDenStore();
-  const { collections, deleteCard } = useDataStore();
+  const { collections, deleteCard, addCollection } = useDataStore();
   const { setOnCreatePawkit } = usePawkitActions();
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showCreatePawkitModal, setShowCreatePawkitModal] = useState(false);
@@ -61,17 +61,12 @@ export default function DenPage() {
 
     setCreating(true);
     try {
-      const response = await fetch("/api/den/pawkits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newPawkitName.trim() })
-      });
-
-      if (!response.ok) throw new Error("Failed to create");
+      // Use data store - creates locally first, then syncs to server
+      await addCollection({ name: newPawkitName.trim(), inDen: true });
 
       setNewPawkitName("");
       setShowCreatePawkitModal(false);
-      await mutateDenPawkits();
+      // No need to mutate - data store handles refresh
     } catch (error) {
       alert("Failed to create Den Pawkit");
     } finally {

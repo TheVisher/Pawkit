@@ -43,7 +43,7 @@ type DataStore = {
   addCard: (cardData: Partial<CardDTO>) => Promise<void>;
   updateCard: (id: string, updates: Partial<CardDTO>) => Promise<void>;
   deleteCard: (id: string) => Promise<void>;
-  addCollection: (collectionData: { name: string; parentId?: string | null }) => Promise<void>;
+  addCollection: (collectionData: { name: string; parentId?: string | null; inDen?: boolean }) => Promise<void>;
   updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean }) => Promise<void>;
   deleteCollection: (id: string, deleteCards?: boolean) => Promise<void>;
   refresh: () => Promise<void>;
@@ -421,7 +421,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
   /**
    * Add collection: Save to local first, then sync
    */
-  addCollection: async (collectionData: { name: string; parentId?: string | null }) => {
+  addCollection: async (collectionData: { name: string; parentId?: string | null; inDen?: boolean }) => {
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     const newCollection: any = {
@@ -431,7 +431,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       parentId: collectionData.parentId || null,
       pinned: false,
       deleted: false,
-      inDen: false,
+      inDen: collectionData.inDen || false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       userId: '',
@@ -452,7 +452,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync) {
         try {
-          const response = await fetch('/api/pawkits', {
+          // Use Den API if inDen flag is set
+          const apiPath = collectionData.inDen ? '/api/den/pawkits' : '/api/pawkits';
+          const response = await fetch(apiPath, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(collectionData),
@@ -514,7 +516,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync && !id.startsWith('temp_')) {
         try {
-          const response = await fetch(`/api/pawkits/${id}`, {
+          // Use Den API if collection is in Den
+          const collection = collections.find(c => c.id === id);
+          const apiPath = collection?.inDen ? `/api/den/pawkits/${id}` : `/api/pawkits/${id}`;
+          const response = await fetch(apiPath, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updates),
@@ -563,9 +568,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync && !id.startsWith('temp_')) {
         try {
-          const url = deleteCards
-            ? `/api/pawkits/${id}?deleteCards=true`
-            : `/api/pawkits/${id}`;
+          // Use Den API if collection is in Den
+          const baseUrl = collection?.inDen ? `/api/den/pawkits/${id}` : `/api/pawkits/${id}`;
+          const url = deleteCards ? `${baseUrl}?deleteCards=true` : baseUrl;
 
           const response = await fetch(url, {
             method: 'DELETE',

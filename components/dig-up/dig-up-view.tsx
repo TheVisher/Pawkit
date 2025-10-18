@@ -67,6 +67,9 @@ export function DigUpView({
   const [totalCount, setTotalCount] = useState(initialTotalCount);
   const router = useRouter();
 
+  // Get data store methods for local-first operations
+  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDataStore();
+
   // Re-sort cards when they change or when coming back to the view
   useEffect(() => {
     setCards(sortCardsBySeenStatus(initialCards));
@@ -122,7 +125,8 @@ export function DigUpView({
 
     setLoading(true);
     try {
-      await fetch(`/api/cards/${currentCard.id}`, { method: "DELETE" });
+      // Use data store - updates IndexedDB first, then syncs to server
+      await deleteCardFromStore(currentCard.id);
 
       // Mark as seen when deleted
       const seenCards = getSeenCards();
@@ -146,14 +150,8 @@ export function DigUpView({
       const currentCollections = currentCard.collections || [];
       const nextCollections = Array.from(new Set([slug, ...currentCollections]));
 
-      await fetch(`/api/cards/${currentCard.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ collections: nextCollections })
-      });
-
-      // Refresh the data store so changes appear immediately
-      await useDataStore.getState().refresh();
+      // Use data store - updates IndexedDB first, then syncs to server
+      await updateCardInStore(currentCard.id, { collections: nextCollections });
 
       // Mark as seen when added to Pawkit
       const seenCards = getSeenCards();

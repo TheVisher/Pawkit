@@ -16,6 +16,7 @@ import { ChevronDown, Check } from "lucide-react";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
+import { useDataStore } from "@/lib/stores/data-store";
 
 type TimelineGroup = {
   date: string;
@@ -172,6 +173,8 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
   const selectRange = useSelection((state) => state.selectRange);
   const clearSelection = useSelection((state) => state.clear);
 
+  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDataStore();
+
   // Flatten all cards into ordered array for shift-select
   const orderedIds = useMemo(
     () => groups.flatMap((group) => group.cards.map((card) => card.id)),
@@ -286,15 +289,12 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
     // Get all cards from all groups
     const allCards = groups.flatMap(group => group.cards);
 
+    // Use data store - updates IndexedDB first, then syncs to server
     await Promise.all(
       selectedIds.map((id) => {
         const card = allCards.find((item) => item.id === id);
         const collections = card ? Array.from(new Set([slug, ...card.collections])) : [slug];
-        return fetch(`/api/cards/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ collections })
-        });
+        return updateCardInStore(id, { collections });
       })
     );
 
@@ -318,7 +318,8 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
   };
 
   const handleConfirmDelete = async () => {
-    await Promise.all(selectedIds.map((id) => fetch(`/api/cards/${id}`, { method: "DELETE" })));
+    // Use data store - updates IndexedDB first, then syncs to server
+    await Promise.all(selectedIds.map((id) => deleteCardFromStore(id)));
 
     // Remove deleted cards from groups
     setGroups((prev) =>

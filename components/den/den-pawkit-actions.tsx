@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useDataStore } from "@/lib/stores/data-store";
 
 type DenPawkitActionsProps = {
   pawkitId: string;
@@ -21,20 +22,16 @@ export function DenPawkitActions({ pawkitId, pawkitName, isPinned = false, hasCh
   const [deleteCards, setDeleteCards] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { updateCollection, deleteCollection } = useDataStore();
 
   const handleDelete = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/den/pawkits/${pawkitId}`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ deleteCards })
-      });
-
-      if (!response.ok) throw new Error("Failed to delete");
+      // Use data store - updates IndexedDB first, then syncs to server
+      await deleteCollection(pawkitId, deleteCards);
 
       setShowDeleteConfirm(false);
-      onUpdate?.();
+      // No need to call onUpdate - data store handles refresh
     } catch (err) {
       alert("Failed to delete Den Pawkit");
     } finally {
@@ -47,16 +44,11 @@ export function DenPawkitActions({ pawkitId, pawkitName, isPinned = false, hasCh
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/den/pawkits/${pawkitId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: renameValue.trim() })
-      });
-
-      if (!response.ok) throw new Error("Failed to rename");
+      // Use data store - updates IndexedDB first, then syncs to server
+      await updateCollection(pawkitId, { name: renameValue.trim() });
 
       setShowRenameModal(false);
-      onUpdate?.();
+      // No need to call onUpdate - data store handles refresh
     } catch (err) {
       alert("Failed to rename Den Pawkit");
     } finally {
