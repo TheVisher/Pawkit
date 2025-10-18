@@ -54,6 +54,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         const linkText = href.replace('#/wiki/', '').replace(/-/g, ' ');
         const noteId = noteTitleMap.get(linkText.toLowerCase());
 
+        console.log('[Wiki-Link Debug]', {
+          href,
+          linkText,
+          linkTextLower: linkText.toLowerCase(),
+          noteId,
+          hasNavigateCallback: !!onNavigateToCard,
+          availableTitles: Array.from(noteTitleMap.keys()),
+        });
+
         if (noteId && onNavigateToCard) {
           return (
             <button
