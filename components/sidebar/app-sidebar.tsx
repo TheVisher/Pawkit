@@ -212,7 +212,7 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
                                 )}
                               </div>
                             </SidebarMenuSubItem>
-                            {hasChildren && (
+                            {hasChildren && collection.children && (
                               <CollapsibleContent>
                                 <SidebarMenuSub className="ml-4">
                                   {collection.children.map((child) => {

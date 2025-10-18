@@ -240,7 +240,7 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
                                 </button>
                               )}
                             </div>
-                            {hasChildren && isExpanded && (
+                            {hasChildren && isExpanded && collection.children && (
                               <div className="ml-4 mt-1 space-y-1">
                                 {collection.children.map((child) => (
                                   <button
