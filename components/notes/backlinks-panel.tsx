@@ -178,7 +178,7 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
                     {ref.linkType === 'card' ? <Bookmark size={14} /> : <Globe size={14} />}
                   </span>
                   <button
-                    onClick={() => onNavigate(ref.targetCardId)}
+                    onClick={() => onNavigate && onNavigate(ref.targetCardId)}
                     className="text-sm text-blue-400 hover:text-blue-300 truncate hover:underline cursor-pointer text-left"
                   >
                     {getCardTitle(ref.targetCardId)}
