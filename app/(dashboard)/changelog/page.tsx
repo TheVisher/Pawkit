@@ -3,6 +3,17 @@
 export default function ChangelogPage() {
   const changes = [
     {
+      dateRange: "October 17, 2025",
+      features: [
+        { title: "Local-First Architecture Enforcement", description: "Fixed critical violations where Den Pawkits, Timeline, and Dig Up operations were bypassing IndexedDB and writing directly to server. All operations now update local database first, then sync to server in background for fast, responsive updates without duplicates." },
+        { title: "Den Pawkit Data Integrity", description: "Create, rename, and delete operations for Den Pawkits now properly use the data store with intelligent routing to the correct API endpoint, ensuring data consistency across devices." },
+        { title: "Timeline Bulk Operations Fix", description: "Bulk move and delete operations in Timeline view now follow local-first pattern, updating IndexedDB immediately while server sync happens in background." },
+        { title: "Dig Up Improvements", description: "Delete and add-to-collection operations now use data store for instant updates and proper sync, eliminating delays and potential data loss." },
+        { title: "Sidebar Crash Fix", description: "Fixed critical null reference error that caused sidebar to crash after PostgreSQL migration when collections were missing children property - added proper null safety checks." },
+        { title: "Type Safety Enhancements", description: "Added inDen property to CollectionNode type and extended data store type signatures for full Den Pawkit support with TypeScript validation." },
+      ],
+    },
+    {
       dateRange: "October 16, 2025",
       features: [
         { title: "YouTube Video Embedding Fixed", description: "Fixed YouTube videos not playing in card modals - videos now embed correctly with proper CSP configuration and responsive 16:9 aspect ratio" },
