@@ -31,6 +31,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDemoAwareStore();
   const dataStore = useDataStore();
   const allCards = dataStore.cards;
+  const isNote = card.type === "md-note" || card.type === "text-note";
 
   // Initialize data store if not already initialized
   useEffect(() => {
@@ -39,7 +40,16 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }
   }, [dataStore]);
 
-  const isNote = card.type === "md-note" || card.type === "text-note";
+  // Extract links when modal opens if this is a note with content
+  useEffect(() => {
+    if (isNote && card.content && allCards.length > 0) {
+      // Trigger link extraction
+      console.log('[Wiki-Link] Triggering link extraction for card:', card.id);
+      updateCardInStore(card.id, { content: card.content }).catch(err => {
+        console.error('[Wiki-Link] Failed to extract links:', err);
+      });
+    }
+  }, [card.id, isNote, card.content, allCards.length, updateCardInStore]); // Run when card or cards change
   const [notes, setNotes] = useState(card.notes ?? "");
   const [content, setContent] = useState(card.content ?? "");
   const [noteMode, setNoteMode] = useState<"preview" | "edit">("preview");
@@ -86,7 +96,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           return (
             <button
               onClick={() => onNavigateToCard(noteId)}
-              className="text-accent hover:underline cursor-pointer inline-flex items-center gap-1"
+              className="text-purple-400 hover:text-purple-300 underline decoration-purple-400/50 hover:decoration-purple-300 cursor-pointer inline font-medium transition-colors"
               {...props}
             >
               {children}
@@ -95,7 +105,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         } else {
           // Note doesn't exist - show as broken link
           return (
-            <span className="text-gray-500 italic" title="Note not found">
+            <span className="text-gray-500 italic underline decoration-gray-500/30" title="Note not found">
               {children}
             </span>
           );
