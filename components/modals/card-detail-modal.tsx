@@ -299,8 +299,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     // Save any pending changes before closing
     if (notes !== lastSavedNotesRef.current) {
       try {
-        const updatedCard = { ...card, notes, updatedAt: new Date().toISOString() };
-        await localStorage.saveCard(updatedCard, { localOnly: true });
         await updateCardInStore(card.id, { notes });
         lastSavedNotesRef.current = notes;
       } catch (error) {
@@ -310,8 +308,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     
     if (isNote && content !== lastSavedContentRef.current) {
       try {
-        const updatedCard = { ...card, content, updatedAt: new Date().toISOString() };
-        await localStorage.saveCard(updatedCard, { localOnly: true });
         await updateCardInStore(card.id, { content });
         lastSavedContentRef.current = content;
       } catch (error) {
@@ -332,11 +328,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     // Clear any existing timeout
     const timeoutId = setTimeout(async () => {
       try {
-        // Save directly to IndexedDB first
-        const updatedCard = { ...card, notes, updatedAt: new Date().toISOString() };
-        await localStorage.saveCard(updatedCard, { localOnly: true });
-        
-        // Then update the store to keep UI in sync
+        // Update the store (which handles IndexedDB saving)
         await updateCardInStore(card.id, { notes });
         lastSavedNotesRef.current = notes;
       } catch (error) {
@@ -360,11 +352,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     const timeoutId = setTimeout(async () => {
       try {
         console.log('[Wiki-Link] Debounced saving content locally');
-        // Save directly to IndexedDB first
-        const updatedCard = { ...card, content, updatedAt: new Date().toISOString() };
-        await localStorage.saveCard(updatedCard, { localOnly: true });
-        
-        // Then update the store to keep UI in sync
+        // Update the store (which handles IndexedDB saving)
         await updateCardInStore(card.id, { content });
         lastSavedContentRef.current = content;
       } catch (error) {
