@@ -408,7 +408,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     };
 
     extractLinks();
-  }, [card.id, isNote, cardsReady]); // Only run when card changes or modal opens
+  }, [card.id, isNote, cardsReady, allCards, content]); // Include all dependencies
 
   // Debounced save content to prevent constant re-renders
   useEffect(() => {

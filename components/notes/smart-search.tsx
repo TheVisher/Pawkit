@@ -177,7 +177,7 @@ export function SmartSearch({ onSelectCard, placeholder = "Search notes, cards, 
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, searchResults, selectedIndex]);
+  }, [isOpen, searchResults, selectedIndex, handleSelectCard]);
 
   const handleSelectCard = (card: CardModel) => {
     if (onSelectCard) {
@@ -248,7 +248,7 @@ export function SmartSearch({ onSelectCard, placeholder = "Search notes, cards, 
           {searchResults.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground">
               <Search size={24} className="mx-auto mb-2 opacity-50" />
-              <p>No results found for "{query}"</p>
+              <p>No results found for &quot;{query}&quot;</p>
             </div>
           ) : (
             <div className="py-2">
