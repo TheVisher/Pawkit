@@ -551,18 +551,64 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           ) : null}
         </div>
       )}
-      {/* Show text section only if there's something to display OR if there's no image (fallback) */}
-      {(showCardTitles || showCardTags || isPending || isError || isNote || (!card.image && !showThumbnail)) && (
+      {/* Notes: Always show a fixed-size container with icon background */}
+      {isNote && (
+        <div className="relative min-h-[100px] flex items-center justify-center py-6 bg-surface-soft/50 rounded-lg">
+          {/* Background icon - always present, opacity changes based on content visibility */}
+          <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
+            showCardTitles || showCardTags ? 'opacity-20' : 'opacity-60'
+          }`}>
+            <FileText size={40} strokeWidth={1.5} className="text-purple-400" />
+          </div>
+
+          {/* Content layer - titles and tags */}
+          <div className="relative z-10 w-full space-y-1 text-sm px-4">
+            {showCardTitles && (
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-500">
+                    <FileText size={16} />
+                  </span>
+                  <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
+                </div>
+                <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
+              </>
+            )}
+            {showCardTags && card.collections && card.collections.length > 0 && layout !== "compact" && (
+              <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground pt-1">
+                {card.collections
+                  .filter((collection) => !collection.startsWith('den-'))
+                  .map((collection) => (
+                    <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
+                      {collection}
+                    </span>
+                  ))}
+                {card.inDen && (
+                  <span className="rounded bg-surface-soft px-2 py-0.5">
+                    The Den
+                  </span>
+                )}
+              </div>
+            )}
+            {showCardTags && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-purple-200">
+                  {card.type === "md-note" ? "Markdown" : "Text"}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Show text section for non-notes */}
+      {!isNote && (showCardTitles || showCardTags || isPending || isError || (!card.image && !showThumbnail)) && (
         <div className="space-y-1 text-sm">
           {showCardTitles && (
             <>
               <div className="flex items-center gap-2">
                 <span className="text-gray-500">
-                  {isNote ? (
-                    <FileText size={16} />
-                  ) : (
-                    <Bookmark size={16} />
-                  )}
+                  <Bookmark size={16} />
                 </span>
                 <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
               </div>
@@ -599,7 +645,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               )}
             </div>
           )}
-          {(isPending || isError || isNote) && (
+          {(isPending || isError) && (
             <div className="flex items-center gap-2">
               {isPending && (
                 <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-blue-300">
@@ -609,11 +655,6 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               {isError && (
                 <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-red-900/40 text-red-300">
                   Fetch Error
-                </span>
-              )}
-              {isNote && (
-                <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-purple-200">
-                  {card.type === "md-note" ? "Markdown" : "Text"}
                 </span>
               )}
             </div>

@@ -11,6 +11,8 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { format, addDays, startOfDay } from "date-fns";
+import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
+import { Plus, FileText, CalendarIcon } from "lucide-react";
 
 const GREETINGS = [
   "Welcome back",
@@ -24,9 +26,10 @@ export default function HomePage() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   // Read from global store - instant, no API calls
-  const { cards, collections, updateCard, deleteCard } = useDataStore();
+  const { cards, collections, updateCard, deleteCard, addCard } = useDataStore();
 
   // Fetch user profile
   useEffect(() => {
@@ -124,6 +127,73 @@ export default function HomePage() {
     }
   };
 
+  const handleCreateQuickNote = async (date: Date) => {
+    try {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+
+      const title = `${year}-${month}-${day} - ${dayName}`;
+      const content = `# ${dayName}, ${date.toLocaleDateString('en-US', { month: 'long' })} ${day}, ${year}
+
+## Today's Focus
+- [ ]
+
+## Notes & Thoughts
+-
+
+## Tasks
+- [ ]
+
+## Highlights
+-
+
+## Tomorrow's Plan
+- [ ]
+
+#daily #${year} #${date.toLocaleDateString('en-US', { month: 'long' }).toLowerCase()}`;
+
+      await addCard({
+        type: 'md-note',
+        title,
+        content,
+        tags: ['daily'],
+        collections: []
+      });
+
+      // Find the newly created card from the updated store
+      const dataStore = useDataStore.getState();
+      const newCard = dataStore.cards.find(c => c.title === title);
+      if (newCard) {
+        setActiveCardId(newCard.id);
+        setSelectedDate(null);
+      }
+    } catch (error) {
+      console.error('Failed to create daily note:', error);
+    }
+  };
+
+  // Get cards scheduled for a specific date
+  const getCardsForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return cards.filter(card =>
+      card.scheduledDate &&
+      card.scheduledDate.split('T')[0] === dateStr &&
+      !card.inDen
+    );
+  };
+
+  // Get daily note for a specific date
+  const getDailyNoteForDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+    const title = `${year}-${month}-${day} - ${dayName}`;
+    return cards.find(c => c.title === title && !c.inDen);
+  };
+
   return (
     <>
       <div className="flex flex-1 flex-col gap-12 pb-16">
@@ -217,13 +287,22 @@ export default function HomePage() {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayCards = cardsByDate.get(dateStr) || [];
             const isToday = format(new Date(), 'yyyy-MM-dd') === dateStr;
+            
+            // Check if there's a daily note for this date
+            const dailyNote = cards.find(card => {
+              if (!isDailyNote(card)) return false;
+              const noteDate = extractDateFromTitle(card.title!);
+              const noteDateStr = noteDate ? getDateString(noteDate) : null;
+              return noteDateStr === dateStr;
+            });
 
             return (
               <div
                 key={dateStr}
-                className={`rounded-2xl border bg-surface p-3 md:p-4 min-h-[160px] md:min-h-[200px] flex flex-col ${
+                className={`card-hover rounded-2xl border bg-surface p-3 md:p-4 min-h-[160px] md:min-h-[200px] flex flex-col relative cursor-pointer transition-all ${
                   isToday ? 'border-accent' : 'border-subtle'
                 }`}
+                onClick={() => setSelectedDate(day)}
               >
                 <div className="text-center mb-2 md:mb-3">
                   <p className="text-[10px] md:text-xs text-muted-foreground uppercase">
@@ -237,7 +316,10 @@ export default function HomePage() {
                   {dayCards.map((card) => (
                     <button
                       key={card.id}
-                      onClick={() => setActiveCardId(card.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveCardId(card.id);
+                      }}
                       className="w-full text-left p-1.5 md:p-2 rounded-lg bg-surface-soft hover:bg-surface-soft/80 transition-colors"
                     >
                       <div className="flex items-center gap-1.5 md:gap-2">
@@ -253,12 +335,147 @@ export default function HomePage() {
                     </button>
                   ))}
                 </div>
+                
+                {/* Daily Note Pill or Add Button - anchored to bottom */}
+                <div className="absolute bottom-2 left-2 right-2 flex justify-center">
+                  {dailyNote && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveCardId(dailyNote.id);
+                      }}
+                      className="px-3 py-1.5 rounded-full bg-purple-500/20 backdrop-blur-md border border-purple-400/30 text-xs text-purple-200 hover:bg-purple-500/30 transition-colors flex items-center gap-1.5"
+                    >
+                      <FileText size={12} />
+                      <span>Daily Note</span>
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
       </section>
       </div>
+
+      {/* Expanded Day View Modal */}
+      {selectedDate && !activeCard && (() => {
+        const scheduledCards = getCardsForDate(selectedDate);
+        const dailyNote = getDailyNoteForDate(selectedDate);
+
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setSelectedDate(null)}
+          >
+            <div
+              className="bg-surface rounded-2xl p-6 w-full max-w-2xl shadow-xl border border-subtle max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <h2 className="text-xl font-semibold text-foreground mb-2">
+                {selectedDate.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                {scheduledCards.length + (dailyNote ? 1 : 0)} item(s) for this day
+              </p>
+
+              {/* Daily Note Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <CalendarIcon size={16} />
+                  Daily Note
+                </h3>
+                {dailyNote ? (
+                  <button
+                    onClick={() => {
+                      setActiveCardId(dailyNote.id);
+                      setSelectedDate(null);
+                    }}
+                    className="w-full text-left p-4 rounded-lg bg-purple-500/20 border border-purple-400/30 hover:bg-purple-500/30 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-purple-200">{dailyNote.title}</div>
+                        <div className="text-sm text-purple-300/70 mt-1">
+                          {dailyNote.content?.substring(0, 100)}...
+                        </div>
+                      </div>
+                      <div className="text-purple-300">→</div>
+                    </div>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleCreateQuickNote(selectedDate)}
+                    className="w-full text-left p-4 rounded-lg border border-dashed border-subtle hover:border-accent hover:bg-accent/5 transition-colors"
+                  >
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span>+ Create daily note for this day</span>
+                    </div>
+                  </button>
+                )}
+              </div>
+
+              {/* Scheduled Cards Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3">
+                  Scheduled Cards ({scheduledCards.length})
+                </h3>
+                {scheduledCards.length > 0 ? (
+                  <div className="space-y-2">
+                    {scheduledCards.map((card) => (
+                      <button
+                        key={card.id}
+                        onClick={() => {
+                          setActiveCardId(card.id);
+                          setSelectedDate(null);
+                        }}
+                        className="w-full text-left p-3 rounded-lg bg-surface-soft hover:bg-surface transition-colors border border-subtle flex items-center gap-3"
+                      >
+                        {card.image && (
+                          <img
+                            src={card.image}
+                            alt=""
+                            className="w-12 h-12 rounded object-cover flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground truncate">
+                            {card.title || card.domain || card.url}
+                          </div>
+                          <div className="text-sm text-muted-foreground truncate">
+                            {card.domain || card.url}
+                          </div>
+                        </div>
+                        <div className="text-muted-foreground">→</div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-subtle rounded-lg">
+                    No cards scheduled for this day
+                  </div>
+                )}
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setSelectedDate(null)}
+                  className="rounded-lg bg-surface-soft px-4 py-2 text-sm font-medium text-foreground hover:bg-surface-muted transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {activeCard && (
         <CardDetailModal
@@ -292,6 +509,8 @@ function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, on
   const viewSettings = useViewSettingsStore((state) => state.getSettings('home'));
   const { showTitles, showUrls } = viewSettings;
 
+  const isNote = card.type === 'md-note' || card.type === 'text-note';
+
   return (
     <CardContextMenuWrapper
       onAddToPawkit={onAddToPawkit}
@@ -303,9 +522,16 @@ function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, on
     >
       <article
         onClick={onClick}
-        className="card-hover flex h-full cursor-pointer flex-col justify-between rounded-2xl border border-subtle bg-surface p-4 transition"
+        className="card-hover flex h-full cursor-pointer flex-col justify-between rounded-2xl border border-subtle bg-surface p-4 transition relative"
       >
-      {card.image && (
+      {/* Note icon background for notes */}
+      {isNote && (
+        <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+          <FileText size={40} strokeWidth={1.5} className="text-purple-400" />
+        </div>
+      )}
+
+      {card.image && !isNote && (
         <div className="mb-3 overflow-hidden rounded-xl bg-surface-soft relative">
           <img src={card.image} alt={card.title ?? card.url} className="h-32 w-full object-cover" loading="lazy" />
           {/* URL Pill Overlay */}
@@ -324,14 +550,28 @@ function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, on
           )}
         </div>
       )}
-      <div>
+      <div className="relative z-10">
         {showTitles && (
-          <p className="text-sm font-semibold text-foreground line-clamp-2" title={card.title ?? card.url}>
-            {card.title || card.domain || card.url}
-          </p>
+          <>
+            <p className="text-sm font-semibold text-foreground line-clamp-2" title={card.title ?? card.url}>
+              {card.title || card.domain || card.url}
+            </p>
+            {isNote && card.content && (
+              <p className="text-xs text-muted-foreground/70 line-clamp-[10] mt-1 whitespace-pre-line">
+                {card.content
+                  .replace(/^#{1,6}\s+/gm, '') // Remove markdown headers (# ## ### etc) but keep the text
+                  .replace(/\[x\]/gi, '☑') // Convert [x] to checked checkbox
+                  .replace(/\[ \]/g, '☐') // Convert [ ] to unchecked checkbox
+                  .replace(/^[\s]*[-*]\s+/gm, '• ') // Convert - or * bullets to •
+                  .replace(/[*_~`]/g, '') // Remove markdown formatting
+                  .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Convert [text](url) to just text
+                  .trim()}
+              </p>
+            )}
+          </>
         )}
       </div>
-      <p className="mt-4 text-xs text-muted-foreground/80">Added {formatDate(card.createdAt)}</p>
+      <p className="mt-4 text-xs text-muted-foreground/80 relative z-10">Added {formatDate(card.createdAt)}</p>
     </article>
     </CardContextMenuWrapper>
   );
