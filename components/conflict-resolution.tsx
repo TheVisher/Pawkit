@@ -160,7 +160,7 @@ export function ConflictResolutionModal({
   const getCardIcon = (card: CardModel) => {
     if (card.type === 'md-note' || card.type === 'text-note') {
       return <FileText size={16} className="text-purple-400" />;
-    } else if (card.type === 'bookmark') {
+    } else if (card.type === 'url') {
       return <Bookmark size={16} className="text-blue-400" />;
     } else {
       return <Globe size={16} className="text-green-400" />;
