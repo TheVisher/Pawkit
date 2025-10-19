@@ -60,15 +60,17 @@
   color: #f9fafb !important;
 }
 
-/* Ensure preview doesn't overlay edit mode when preview="edit" */
-.w-md-editor[data-color-mode="dark"] .w-md-editor-preview {
-  display: none !important;
-}
-
-/* Make sure edit area is visible */
+/* Make sure edit area is visible and interactive */
 .w-md-editor-content {
   z-index: 1 !important;
   position: relative !important;
+}
+
+/* Ensure textarea is above preview but still clickable */
+.w-md-editor-input {
+  z-index: 2 !important;
+  position: relative !important;
+  pointer-events: auto !important;
 }
 
 /* Additional textarea styling - more aggressive targeting */
@@ -80,6 +82,8 @@
   background-color: #1a1a1a !important;
   color: #f9fafb !important;
   font-family: 'ui-monospace', 'SFMono-Regular', 'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace !important;
+  pointer-events: auto !important;
+  cursor: text !important;
 }
 
 /* Ensure text is visible in all editor states */
