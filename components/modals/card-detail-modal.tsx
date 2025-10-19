@@ -7,7 +7,7 @@ import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
 import { CardModel, CollectionNode } from "@/lib/types";
-import { useDataStore } from "@/lib/stores/data-store";
+import { useDataStore, extractAndSaveLinks } from "@/lib/stores/data-store";
 import { localStorage } from "@/lib/services/local-storage";
 import { Toast } from "@/components/ui/toast";
 import { ReaderView } from "@/components/reader/reader-view";
@@ -357,21 +357,21 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   // Extract links when modal opens if this is a note with content
   useEffect(() => {
-    if (!isNote || !content || !cardsReady) return;
+    if (!isNote || !content || !cardsReady || !allCards.length) return;
 
     // Trigger link extraction immediately when opening a note
     // This ensures the Links tab is populated
     const extractLinks = async () => {
       try {
-        // Trigger a silent update to extract links
-        await updateCardInStore(card.id, { content });
+        // Call extraction function directly to ensure it runs even if content hasn't changed
+        await extractAndSaveLinks(card.id, content, allCards);
       } catch (error) {
         console.error('Failed to extract links on open:', error);
       }
     };
 
     extractLinks();
-  }, [card.id, isNote]); // Only run when card changes or modal opens
+  }, [card.id, isNote, cardsReady]); // Only run when card changes or modal opens
 
   // Debounced save content to prevent constant re-renders
   useEffect(() => {
