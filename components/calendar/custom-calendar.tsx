@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { addDays, startOfWeek, startOfMonth, endOfMonth, isSameMonth, format, isSameDay, isToday } from "date-fns";
 import { CardModel } from "@/lib/types";
-import { isDailyNote, extractDateFromTitle } from "@/lib/utils/daily-notes";
+import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
 import { ChevronLeft, ChevronRight, Plus, FileText } from "lucide-react";
 
 type CustomCalendarProps = {
@@ -58,7 +58,7 @@ export function CustomCalendar({ cards, onDayClick, onCardClick, onCreateDailyNo
       .forEach((card) => {
         const date = extractDateFromTitle(card.title!);
         if (date) {
-          const dateStr = format(date, 'yyyy-MM-dd');
+          const dateStr = getDateString(date);
           map.set(dateStr, card);
         }
       });
