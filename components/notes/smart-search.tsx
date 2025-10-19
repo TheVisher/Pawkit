@@ -4,7 +4,6 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useDataStore } from "@/lib/stores/data-store";
 import { CardModel } from "@/lib/types";
 import { Search, X, FileText, Bookmark, Globe, Tag, Hash } from "lucide-react";
-import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 
 type SearchResult = {
@@ -77,9 +76,13 @@ export function SmartSearch({ onSelectCard, placeholder = "Search notes, cards, 
             matchType = 'title';
             matchedText = card.title;
           } else {
-            // Fuzzy match on title
-            const fuzzyMatch = findBestFuzzyMatch(queryLower, [titleLower]);
-            if (fuzzyMatch && fuzzyMatch.score > 0.6) {
+            // Simple fuzzy match on title using includes with some tolerance
+            const words = queryLower.split(' ');
+            const titleWords = titleLower.split(' ');
+            const matchingWords = words.filter(word => 
+              titleWords.some(titleWord => titleWord.includes(word) || word.includes(titleWord))
+            );
+            if (matchingWords.length >= Math.ceil(words.length * 0.6)) {
               score += 70;
               matchType = 'title';
               matchedText = card.title;
