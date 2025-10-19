@@ -31,7 +31,7 @@ export function SmartSearch({ onSelectCard, placeholder = "Search notes, cards, 
   // Filter cards to only include notes and cards with content
   const searchableCards = useMemo(() => {
     return cards.filter(card => 
-      (card.type === 'md-note' || card.type === 'text-note' || card.type === 'bookmark') &&
+      (card.type === 'md-note' || card.type === 'text-note' || card.type === 'url') &&
       (card.title || card.content || card.notes)
     );
   }, [cards]);
@@ -191,7 +191,7 @@ export function SmartSearch({ onSelectCard, placeholder = "Search notes, cards, 
   const getIcon = (card: CardModel) => {
     if (card.type === 'md-note' || card.type === 'text-note') {
       return <FileText size={16} className="text-purple-400" />;
-    } else if (card.type === 'bookmark') {
+    } else if (card.type === 'url') {
       return <Bookmark size={16} className="text-blue-400" />;
     } else {
       return <Globe size={16} className="text-green-400" />;
