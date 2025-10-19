@@ -33,6 +33,7 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   const [avatarPreview, setAvatarPreview] = useState(avatarUrl || "");
   const [saving, setSaving] = useState(false);
   const [dataMessage, setDataMessage] = useState<string | null>(null);
+  const [includeDenInExport, setIncludeDenInExport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -111,22 +112,24 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   };
 
   const handleExport = async () => {
-    const response = await fetch("/api/import");
+    const url = includeDenInExport ? "/api/import?includeDen=true" : "/api/import";
+    const response = await fetch(url);
     if (!response.ok) {
       setDataMessage("Failed to export data");
       return;
     }
     const data = await response.json();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+    const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = url;
+    link.href = blobUrl;
     link.download = `bookmark-export-${new Date().toISOString()}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setDataMessage("Exported data");
+    URL.revokeObjectURL(blobUrl);
+    const denStatus = includeDenInExport ? " (including Den)" : "";
+    setDataMessage(`Exported data${denStatus}`);
   };
 
   const handleImport = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -544,6 +547,20 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                   <p className="text-sm text-gray-500 mt-1">
                     Manage your bookmark data
                   </p>
+                </div>
+                <div className="flex items-center justify-between p-4 rounded-lg border border-gray-800 bg-gray-900/50">
+                  <div>
+                    <Label className="text-gray-300">Include Den in Export</Label>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Include Den cards and collections when exporting
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 rounded"
+                    checked={includeDenInExport}
+                    onChange={(e) => setIncludeDenInExport(e.target.checked)}
+                  />
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <Button onClick={handleExport} variant="outline">

@@ -11,25 +11,28 @@ export function SettingsPanel() {
   const setShowThumbnails = useSettingsStore((state) => state.setShowThumbnails);
   const setPreviewServiceUrl = useSettingsStore((state) => state.setPreviewServiceUrl);
   const [message, setMessage] = useState<string | null>(null);
+  const [includeDenInExport, setIncludeDenInExport] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleExport = async () => {
-    const response = await fetch("/api/import");
+    const url = includeDenInExport ? "/api/import?includeDen=true" : "/api/import";
+    const response = await fetch(url);
     if (!response.ok) {
       setMessage("Failed to export data");
       return;
     }
     const data = await response.json();
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+    const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.href = url;
+    link.href = blobUrl;
     link.download = `bookmark-export-${new Date().toISOString()}.json`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setMessage("Exported data");
+    URL.revokeObjectURL(blobUrl);
+    const denStatus = includeDenInExport ? " (including Den)" : "";
+    setMessage(`Exported data${denStatus}`);
   };
 
   const handleImport = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -107,6 +110,14 @@ export function SettingsPanel() {
       </section>
       <section id="data" className="space-y-3">
         <h2 className="text-lg font-semibold text-gray-100">Data</h2>
+        <label className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            checked={includeDenInExport}
+            onChange={(event) => setIncludeDenInExport(event.target.checked)}
+          />
+          Include Den in export
+        </label>
         <div className="flex flex-wrap gap-3">
           <button className="rounded bg-gray-900 px-4 py-2" onClick={handleExport}>
             Export JSON

@@ -25,6 +25,7 @@ export async function POST() {
       where: {
         userId,
         deleted: false,
+        inDen: false,
         image: { not: null }
       }
     });

@@ -4,10 +4,18 @@ import { exportPayloadSchema } from "@/lib/validators/import";
 import { normalizeCollections, normalizeTags, ensureUrlProtocol, safeHost } from "@/lib/utils/strings";
 import { stringifyNullable } from "@/lib/utils/json";
 
-export async function exportData(userId: string) {
+export async function exportData(userId: string, includeDen = false) {
+  const cardWhere = includeDen
+    ? { userId, deleted: false }
+    : { userId, deleted: false, inDen: false };
+
+  const collectionWhere = includeDen
+    ? { userId, deleted: false }
+    : { userId, deleted: false, inDen: false };
+
   const [cards, collections] = await Promise.all([
-    prisma.card.findMany({ where: { userId }, orderBy: { createdAt: "asc" } }),
-    prisma.collection.findMany({ where: { userId }, orderBy: { createdAt: "asc" } })
+    prisma.card.findMany({ where: cardWhere, orderBy: { createdAt: "asc" } }),
+    prisma.collection.findMany({ where: collectionWhere, orderBy: { createdAt: "asc" } })
   ]);
 
   return {

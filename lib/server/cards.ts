@@ -240,7 +240,7 @@ export async function deleteCard(userId: string, id: string) {
 }
 
 export async function countCards(userId: string) {
-  const baseWhere: Prisma.CardWhereInput = { userId, deleted: false };
+  const baseWhere: Prisma.CardWhereInput = { userId, deleted: false, inDen: false };
 
   const [total, ready, pending, error] = await Promise.all([
     prisma.card.count({ where: baseWhere }),
@@ -253,7 +253,7 @@ export async function countCards(userId: string) {
 }
 
 export async function quickAccessCards(userId: string, limit = 8) {
-  const baseWhere: Prisma.CardWhereInput = { userId, deleted: false };
+  const baseWhere: Prisma.CardWhereInput = { userId, deleted: false, inDen: false };
 
   // Get pinned cards first
   const pinnedCards = await prisma.card.findMany({
@@ -294,7 +294,7 @@ export async function collectionPreviewCards(userId: string, slug: string, limit
 
 export async function recentCards(userId: string, limit = 6) {
   const items = await prisma.card.findMany({
-    where: { userId, deleted: false },
+    where: { userId, deleted: false, inDen: false },
     orderBy: { createdAt: "desc" },
     take: limit
   });
@@ -345,7 +345,8 @@ export async function getTimelineCards(userId: string, days = 30): Promise<Timel
       createdAt: {
         gte: startDate
       },
-      deleted: false
+      deleted: false,
+      inDen: false
     },
     orderBy: { createdAt: "desc" }
   });

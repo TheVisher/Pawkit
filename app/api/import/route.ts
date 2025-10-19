@@ -3,14 +3,17 @@ import { exportData, importData } from "@/lib/server/import";
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const data = await exportData(user.id);
+    const { searchParams } = new URL(request.url);
+    const includeDen = searchParams.get('includeDen') === 'true';
+
+    const data = await exportData(user.id, includeDen);
     return NextResponse.json(data);
   } catch (error) {
     return handleApiError(error);

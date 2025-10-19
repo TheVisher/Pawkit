@@ -35,7 +35,7 @@ export async function GET() {
 
     // Batch fetch all cards at once to avoid N+1 queries
     const allCardsRaw = await prisma.card.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id, deleted: false, inDen: false },
       orderBy: { createdAt: "desc" }
     });
 
