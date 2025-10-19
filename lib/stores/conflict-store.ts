@@ -5,11 +5,12 @@ export type ConflictNotification = {
   message: string;
   cardId: string;
   timestamp: number;
+  type: 'sync' | 'edit' | 'delete' | 'metadata';
 };
 
 type ConflictStore = {
   conflicts: ConflictNotification[];
-  addConflict: (cardId: string, message: string) => void;
+  addConflict: (cardId: string, message: string, type?: 'sync' | 'edit' | 'delete' | 'metadata') => void;
   removeConflict: (id: string) => void;
   clearAll: () => void;
 };
@@ -20,12 +21,13 @@ const activeTimeouts = new Map<string, NodeJS.Timeout>();
 export const useConflictStore = create<ConflictStore>((set) => ({
   conflicts: [],
 
-  addConflict: (cardId: string, message: string) => {
+  addConflict: (cardId: string, message: string, type: 'sync' | 'edit' | 'delete' | 'metadata' = 'sync') => {
     const conflict: ConflictNotification = {
       id: `conflict_${Date.now()}_${Math.random()}`,
       message,
       cardId,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      type
     };
 
     set((state) => ({
