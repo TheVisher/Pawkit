@@ -355,10 +355,28 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     return () => clearTimeout(timeoutId);
   }, [notes, card.id, card, updateCardInStore]);
 
+  // Extract links when modal opens if this is a note with content
+  useEffect(() => {
+    if (!isNote || !content || !cardsReady) return;
+
+    // Trigger link extraction immediately when opening a note
+    // This ensures the Links tab is populated
+    const extractLinks = async () => {
+      try {
+        // Trigger a silent update to extract links
+        await updateCardInStore(card.id, { content });
+      } catch (error) {
+        console.error('Failed to extract links on open:', error);
+      }
+    };
+
+    extractLinks();
+  }, [card.id, isNote]); // Only run when card changes or modal opens
+
   // Debounced save content to prevent constant re-renders
   useEffect(() => {
     if (!isNote) return;
-    
+
     // Only save if content has changed from last saved value
     if (content === lastSavedContentRef.current) {
       return;
