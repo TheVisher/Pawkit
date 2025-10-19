@@ -103,7 +103,11 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
                     )}
                   </span>
                   <button
-                    onClick={() => onNavigate && onNavigate(backlink.sourceNoteId)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onNavigate && onNavigate(backlink.sourceNoteId);
+                    }}
                     className="text-sm text-accent hover:underline text-left flex-1"
                   >
                     {getCardTitle(backlink.sourceNoteId)}
@@ -138,7 +142,11 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
                 className="p-3 rounded border border-gray-800 bg-gray-900/50 hover:bg-gray-800/50 transition-colors"
               >
                 <button
-                  onClick={() => onNavigate && onNavigate(link.targetNoteId)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onNavigate && onNavigate(link.targetNoteId);
+                  }}
                   className="text-sm text-accent hover:underline text-left w-full"
                 >
                   {getCardTitle(link.targetNoteId)}
@@ -178,7 +186,11 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
                     {ref.linkType === 'card' ? <Bookmark size={14} /> : <Globe size={14} />}
                   </span>
                   <button
-                    onClick={() => onNavigate && onNavigate(ref.targetCardId)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onNavigate && onNavigate(ref.targetCardId);
+                    }}
                     className="text-sm text-blue-400 hover:text-blue-300 truncate hover:underline cursor-pointer text-left"
                   >
                     {getCardTitle(ref.targetCardId)}
