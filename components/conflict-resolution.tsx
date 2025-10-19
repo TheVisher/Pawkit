@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useConflictStore } from "@/lib/stores/conflict-store";
+import { useDataStore } from "@/lib/stores/data-store";
 import { CardModel } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ type ConflictResolutionProps = {
 export function ConflictResolution({ onResolve, className = "" }: ConflictResolutionProps) {
   const conflicts = useConflictStore((state) => state.conflicts);
   const removeConflict = useConflictStore((state) => state.removeConflict);
+  const cards = useDataStore((state) => state.cards);
   const [resolving, setResolving] = useState<string | null>(null);
 
   const handleResolve = async (cardId: string, resolution: 'local' | 'server' | 'merge') => {
@@ -56,7 +58,7 @@ export function ConflictResolution({ onResolve, className = "" }: ConflictResolu
                 <div className="flex items-center gap-2 mb-1">
                   <FileText size={14} className="text-yellow-500" />
                   <span className="font-medium text-foreground truncate">
-                    {conflict.cardTitle || 'Untitled Card'}
+                    {cards.find(c => c.id === conflict.cardId)?.title || 'Untitled Card'}
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">

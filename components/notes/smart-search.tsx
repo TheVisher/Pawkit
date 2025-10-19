@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useDataStore } from "@/lib/stores/data-store";
 import { CardModel } from "@/lib/types";
 import { Search, X, FileText, Bookmark, Globe, Tag, Hash } from "lucide-react";
@@ -179,14 +179,14 @@ export function SmartSearch({ onSelectCard, placeholder = "Search notes, cards, 
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, searchResults, selectedIndex, handleSelectCard]);
 
-  const handleSelectCard = (card: CardModel) => {
+  const handleSelectCard = useCallback((card: CardModel) => {
     if (onSelectCard) {
       onSelectCard(card);
     }
     setIsOpen(false);
     setQuery('');
     setSelectedIndex(0);
-  };
+  }, [onSelectCard]);
 
   const getIcon = (card: CardModel) => {
     if (card.type === 'md-note' || card.type === 'text-note') {
