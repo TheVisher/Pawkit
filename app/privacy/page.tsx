@@ -4,13 +4,14 @@ export const revalidate = false;
 
 export default function PrivacyPage() {
   return (
-    <html lang="en">
+    <html lang="en" style={{ background: '#fff' }}>
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Pawkit Privacy Policy</title>
       </head>
       <body style={{
+        background: '#fff',
         maxWidth: '760px',
         margin: '40px auto',
         padding: '0 20px',
