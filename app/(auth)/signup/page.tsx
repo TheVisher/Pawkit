@@ -40,7 +40,14 @@ export default function SignupPage() {
       setSuccess(true)
       setLoading(false)
       // Auto-redirect to home after signup (Supabase may auto-confirm or send email)
-      setTimeout(() => router.push('/home'), 1000)
+      setTimeout(() => {
+        router.refresh()
+        router.push('/home')
+        // Fallback: force reload if push doesn't work
+        setTimeout(() => {
+          window.location.href = '/home'
+        }, 500)
+      }, 1000)
     }
   }
 

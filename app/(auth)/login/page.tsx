@@ -24,7 +24,13 @@ export default function LoginPage() {
       setError(error.message)
       setLoading(false)
     } else {
+      // Force a full page refresh to ensure middleware picks up auth state
+      router.refresh()
       router.push('/home')
+      // Fallback: force reload if push doesn't work
+      setTimeout(() => {
+        window.location.href = '/home'
+      }, 500)
     }
   }
 
