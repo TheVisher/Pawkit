@@ -6,7 +6,7 @@
 import browser from 'webextension-polyfill'
 import type { CardPayload } from '@/shared/types'
 
-const API_BASE = 'https://getpawkit.com/api'
+const API_BASE = 'https://www.getpawkit.com/api'
 
 /**
  * Get stored auth token from browser.storage
