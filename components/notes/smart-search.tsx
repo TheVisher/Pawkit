@@ -150,6 +150,15 @@ export function SmartSearch({ onSelectCard, placeholder = "Search notes, cards, 
     return results.sort((a, b) => b.score - a.score).slice(0, 10);
   }, [query, searchableCards]);
 
+  const handleSelectCard = useCallback((card: CardModel) => {
+    if (onSelectCard) {
+      onSelectCard(card);
+    }
+    setIsOpen(false);
+    setQuery('');
+    setSelectedIndex(0);
+  }, [onSelectCard]);
+
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -181,15 +190,6 @@ export function SmartSearch({ onSelectCard, placeholder = "Search notes, cards, 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, searchResults, selectedIndex, handleSelectCard]);
-
-  const handleSelectCard = useCallback((card: CardModel) => {
-    if (onSelectCard) {
-      onSelectCard(card);
-    }
-    setIsOpen(false);
-    setQuery('');
-    setSelectedIndex(0);
-  }, [onSelectCard]);
 
   const getIcon = (card: CardModel) => {
     if (card.type === 'md-note' || card.type === 'text-note') {
