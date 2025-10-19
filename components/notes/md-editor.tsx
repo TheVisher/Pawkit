@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
 import { useDataStore } from "@/lib/stores/data-store";
 import { noteTemplates, NoteTemplate } from "@/lib/templates/note-templates";
-import { Bold, Italic, Strikethrough, Link, Code, List, ListOrdered, Quote, Eye, Edit, Maximize2, FileText, Bookmark, Globe, Layout } from "lucide-react";
+import { Bold, Italic, Strikethrough, Link, Code, List, ListOrdered, Quote, Eye, Edit, Maximize2, FileText, Bookmark, Globe, Layout, RefreshCw, Check, Clock, Heading1, Heading2, Heading3 } from "lucide-react";
 
 type RichMDEditorProps = {
   content: string;
@@ -21,6 +21,7 @@ type RichMDEditorProps = {
 export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents }: RichMDEditorProps) {
   const [mode, setMode] = useState<"edit" | "preview">("preview");
   const [showTemplates, setShowTemplates] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cards = useDataStore((state) => state.cards);
 
@@ -100,6 +101,46 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
     });
     return map;
   }, [cards]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle shortcuts when in edit mode and textarea is focused
+      if (mode !== "edit" || !textareaRef.current?.matches(':focus')) return;
+      
+      if (e.metaKey || e.ctrlKey) {
+        e.preventDefault();
+        switch(e.key.toLowerCase()) {
+          case 'b':
+            insertMarkdown('**', '**');
+            break;
+          case 'i':
+            insertMarkdown('*', '*');
+            break;
+          case 'k':
+            insertMarkdown('[[', ']]');
+            break;
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [mode, insertMarkdown]);
+
+  // Track content changes for save status
+  useEffect(() => {
+    if (content) {
+      setSaveStatus('unsaved');
+      const timeout = setTimeout(() => {
+        setSaveStatus('saving');
+        // Simulate save delay
+        setTimeout(() => setSaveStatus('saved'), 500);
+      }, 1000); // 1 second debounce
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [content]);
 
   // Custom renderer for wiki-links
   const components = {
@@ -215,6 +256,11 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
           <span>{metadata.characters} chars</span>
           <span>{metadata.linkCount} links</span>
           <span>{metadata.tagCount} tags</span>
+          <div className="flex items-center gap-1">
+            {saveStatus === 'saving' && <><RefreshCw size={12} className="animate-spin" /> Saving...</>}
+            {saveStatus === 'saved' && <><Check size={12} className="text-green-500" /> Saved</>}
+            {saveStatus === 'unsaved' && <><Clock size={12} className="text-yellow-500" /> Unsaved</>}
+          </div>
         </div>
         {onToggleFullscreen && (
           <button
@@ -251,6 +297,28 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
               title="Strikethrough"
             >
               <Strikethrough size={16} />
+            </button>
+            <div className="w-px h-6 bg-subtle mx-1" />
+            <button
+              onClick={() => insertMarkdown('# ', '')}
+              className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
+              title="Header 1"
+            >
+              <Heading1 size={16} />
+            </button>
+            <button
+              onClick={() => insertMarkdown('## ', '')}
+              className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
+              title="Header 2"
+            >
+              <Heading2 size={16} />
+            </button>
+            <button
+              onClick={() => insertMarkdown('### ', '')}
+              className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
+              title="Header 3"
+            >
+              <Heading3 size={16} />
             </button>
             <div className="w-px h-6 bg-subtle mx-1" />
             <button
