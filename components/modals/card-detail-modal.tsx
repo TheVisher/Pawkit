@@ -586,116 +586,25 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-gray-800">
               <h2 className="text-xl font-semibold text-gray-100">{card.title || "Untitled Note"}</h2>
-              <div className="flex items-center gap-3">
-                {/* Mode Toggle */}
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => setNoteMode("preview")}
-                    variant={noteMode === "preview" ? "default" : "outline"}
-                    size="sm"
-                  >
-                    👁️ Preview
-                  </Button>
-                  <Button
-                    onClick={() => setNoteMode("edit")}
-                    variant={noteMode === "edit" ? "default" : "outline"}
-                    size="sm"
-                  >
-                    ✏️ Edit
-                  </Button>
-                </div>
-                <Button
-                  onClick={() => setIsNoteExpanded(false)}
-                  variant="ghost"
-                  size="icon"
-                  title="Exit fullscreen"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9l6 6m0-6l-6 6m12-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </Button>
-              </div>
+              <Button
+                onClick={() => setIsNoteExpanded(false)}
+                variant="ghost"
+                size="icon"
+                title="Exit fullscreen"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9l6 6m0-6l-6 6m12-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </Button>
             </div>
             {/* Content */}
-            <div className="flex-1 overflow-auto p-8">
-              {noteMode === "preview" ? (
-                <div className="max-w-4xl mx-auto">
-                  <div className="prose prose-invert prose-lg max-w-none">
-                    {content ? (
-                      <ReactMarkdown
-                        remarkPlugins={[
-                          remarkGfm,
-                          remarkBreaks,
-                          [remarkWikiLink, {
-                            aliasDivider: '|',
-                            pageResolver: (name: string) => {
-                              // Preserve special syntax for card references and URLs
-                              if (name.startsWith('card:') || name.startsWith('http://') || name.startsWith('https://')) {
-                                return [name];
-                              }
-                              // Convert note titles to slugs
-                              return [name.replace(/ /g, '-')];
-                            },
-                            hrefTemplate: (permalink: string) => `#/wiki/${permalink}`,
-                          }],
-                        ]}
-                        components={{
-                          ...wikiLinkComponents,
-                          input: ({ node, checked, ...props }) => {
-                            if (props.type === 'checkbox') {
-                              return (
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  readOnly
-                                  className="cursor-pointer mr-2"
-                                  onClick={(e) => {
-                                    const checkbox = e.currentTarget;
-                                    const newChecked = !checked;
-
-                                    // Find the text content of the parent li
-                                    const li = checkbox.closest('li');
-                                    if (!li) return;
-
-                                    const text = li.textContent || '';
-                                    const lines = content.split('\n');
-
-                                    // Find the line with this exact text
-                                    for (let i = 0; i < lines.length; i++) {
-                                      if (lines[i].includes(text)) {
-                                        if (newChecked) {
-                                          lines[i] = lines[i].replace(/- \[ \]/, '- [x]');
-                                        } else {
-                                          lines[i] = lines[i].replace(/- \[x\]/i, '- [ ]');
-                                        }
-                                        setContent(lines.join('\n'));
-                                        return;
-                                      }
-                                    }
-                                  }}
-                                />
-                              );
-                            }
-                            return <input {...props} />;
-                          }
-                        }}
-                      >
-                        {content}
-                      </ReactMarkdown>
-                    ) : (
-                      <p className="text-gray-500 italic">No content yet. Switch to Edit mode to start writing.</p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="max-w-4xl mx-auto h-full">
-                  <RichMDEditor
-                    content={content}
-                    onChange={setContent}
-                    placeholder="Start writing your note..."
-                  />
-                </div>
-              )}
+            <div className="flex-1 overflow-hidden p-4">
+              <RichMDEditor
+                content={content}
+                onChange={setContent}
+                placeholder="Start writing your note..."
+                onNavigate={onNavigateToCard}
+              />
             </div>
           </div>
         </div>
@@ -740,111 +649,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           <div className={`bg-gray-900/50 relative ${isReaderExpanded || isNote ? "flex-1 flex flex-col overflow-hidden" : ""}`}>
             {isNote ? (
               <>
-                {/* Header with mode toggle and expand */}
-                <div className="flex-shrink-0 top-0 left-0 right-0 z-10 p-4 flex items-center justify-between border-b border-gray-800 bg-gray-950/95 backdrop-blur-sm">
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => setNoteMode("preview")}
-                      variant={noteMode === "preview" ? "default" : "outline"}
-                      size="sm"
-                    >
-                      👁️ Preview
-                    </Button>
-                    <Button
-                      onClick={() => setNoteMode("edit")}
-                      variant={noteMode === "edit" ? "default" : "outline"}
-                      size="sm"
-                    >
-                      ✏️ Edit
-                    </Button>
-                  </div>
-                  <Button
-                    onClick={() => setIsNoteExpanded(true)}
-                    variant="ghost"
-                    size="icon"
-                    title="Expand fullscreen"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                    </svg>
-                  </Button>
-                </div>
                 {/* Note content area */}
-                <div className="flex-1 overflow-y-auto p-8 min-h-0">
-                  {noteMode === "preview" ? (
-                    <div className="prose prose-invert prose-sm max-w-none">
-                      {content ? (
-                        <ReactMarkdown
-                          remarkPlugins={[
-                            remarkGfm,
-                            remarkBreaks,
-                          [remarkWikiLink, {
-                            aliasDivider: '|',
-                            pageResolver: (name: string) => {
-                              // Preserve special syntax for card references and URLs
-                              if (name.startsWith('card:') || name.startsWith('http://') || name.startsWith('https://')) {
-                                return [name];
-                              }
-                              // Convert note titles to slugs
-                              return [name.replace(/ /g, '-')];
-                            },
-                            hrefTemplate: (permalink: string) => `#/wiki/${permalink}`,
-                          }],
-                          ]}
-                          components={{
-                            ...wikiLinkComponents,
-                            input: ({ node, checked, ...props }) => {
-                              if (props.type === 'checkbox') {
-                                return (
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    readOnly
-                                    className="cursor-pointer mr-2"
-                                    onClick={(e) => {
-                                      const checkbox = e.currentTarget;
-                                      const newChecked = !checked;
-
-                                      // Find the text content of the parent li
-                                      const li = checkbox.closest('li');
-                                      if (!li) return;
-
-                                      const text = li.textContent || '';
-                                      const lines = content.split('\n');
-
-                                      // Find the line with this exact text
-                                      for (let i = 0; i < lines.length; i++) {
-                                        if (lines[i].includes(text)) {
-                                          if (newChecked) {
-                                            lines[i] = lines[i].replace(/- \[ \]/, '- [x]');
-                                          } else {
-                                            lines[i] = lines[i].replace(/- \[x\]/i, '- [ ]');
-                                          }
-                                          setContent(lines.join('\n'));
-                                          return;
-                                        }
-                                      }
-                                    }}
-                                  />
-                                );
-                              }
-                              return <input {...props} />;
-                            }
-                          }}
-                        >
-                          {content}
-                        </ReactMarkdown>
-                      ) : (
-                        <p className="text-gray-500 italic">No content yet. Switch to Edit mode to start writing.</p>
-                      )}
-                    </div>
-                  ) : (
-                    <RichMDEditor
-                      content={content}
-                      onChange={setContent}
-                      placeholder="Start writing your note..."
-                    />
-                  )}
+                <div className="flex-1 overflow-hidden p-4 min-h-0">
+                  <RichMDEditor
+                    content={content}
+                    onChange={setContent}
+                    placeholder="Start writing your note..."
+                    onNavigate={onNavigateToCard}
+                    onToggleFullscreen={() => setIsNoteExpanded(true)}
+                  />
                 </div>
               </>
             ) : isYouTubeUrl(card.url) ? (

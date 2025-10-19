@@ -6,17 +6,18 @@ import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
 import { useDataStore } from "@/lib/stores/data-store";
-import { Bold, Italic, Strikethrough, Link, Code, List, ListOrdered, Quote, Eye, Edit } from "lucide-react";
+import { Bold, Italic, Strikethrough, Link, Code, List, ListOrdered, Quote, Eye, Edit, Maximize2 } from "lucide-react";
 
 type RichMDEditorProps = {
   content: string;
   onChange: (content: string) => void;
   placeholder?: string;
   onNavigate?: (noteId: string) => void;
+  onToggleFullscreen?: () => void;
 };
 
-export function RichMDEditor({ content, onChange, placeholder, onNavigate }: RichMDEditorProps) {
-  const [mode, setMode] = useState<"edit" | "preview">("edit");
+export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen }: RichMDEditorProps) {
+  const [mode, setMode] = useState<"edit" | "preview">("preview");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cards = useDataStore((state) => state.cards);
 
@@ -87,29 +88,40 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate }: Ric
   return (
     <div className="flex flex-col h-full bg-surface rounded-lg border border-subtle overflow-hidden">
       {/* Mode Toggle */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-surface-muted border-b border-subtle">
-        <button
-          onClick={() => setMode("edit")}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-            mode === "edit"
-              ? "bg-accent text-accent-foreground"
-              : "text-muted-foreground hover:bg-surface-soft"
-          }`}
-        >
-          <Edit size={14} />
-          Edit
-        </button>
-        <button
-          onClick={() => setMode("preview")}
-          className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-            mode === "preview"
-              ? "bg-accent text-accent-foreground"
-              : "text-muted-foreground hover:bg-surface-soft"
-          }`}
-        >
-          <Eye size={14} />
-          Preview
-        </button>
+      <div className="flex items-center justify-between px-3 py-2 bg-surface-muted border-b border-subtle">
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setMode("edit")}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              mode === "edit"
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-surface-soft"
+            }`}
+          >
+            <Edit size={14} />
+            Edit
+          </button>
+          <button
+            onClick={() => setMode("preview")}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+              mode === "preview"
+                ? "bg-accent text-accent-foreground"
+                : "text-muted-foreground hover:bg-surface-soft"
+            }`}
+          >
+            <Eye size={14} />
+            Preview
+          </button>
+        </div>
+        {onToggleFullscreen && (
+          <button
+            onClick={onToggleFullscreen}
+            className="p-2 rounded text-muted-foreground hover:bg-surface-soft hover:text-foreground transition-colors"
+            title="Toggle fullscreen"
+          >
+            <Maximize2 size={16} />
+          </button>
+        )}
       </div>
 
       {mode === "edit" ? (
