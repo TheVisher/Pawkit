@@ -19,8 +19,45 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
+import { extractTags } from "@/lib/stores/data-store";
+
+type TagsTabProps = {
+  content: string;
+};
+
+function TagsTab({ content }: TagsTabProps) {
+  const tags = extractTags(content);
+  
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Tag size={16} className="text-purple-400" />
+        <h3 className="text-sm font-semibold text-gray-300">Tags</h3>
+        <span className="text-xs text-gray-500">({tags.length})</span>
+      </div>
+      
+      {tags.length === 0 ? (
+        <p className="text-xs text-gray-500 italic">
+          No tags found. Add #hashtags in your content to create tags.
+        </p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {tags.map((tag) => (
+            <Badge key={tag} variant="secondary" className="bg-purple-900/30 text-purple-300 border-purple-700/50">
+              #{tag}
+            </Badge>
+          ))}
+        </div>
+      )}
+      
+      <div className="text-xs text-gray-500">
+        <p>Tags are automatically extracted from hashtags (#tag) in your content.</p>
+      </div>
+    </div>
+  );
+}
 
 type CardDetailModalProps = {
   card: CardModel;
@@ -777,6 +814,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             <TabsTrigger value="links" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
               Links
             </TabsTrigger>
+            {isNote && (
+              <TabsTrigger value="tags" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
+                Tags
+              </TabsTrigger>
+            )}
             <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
               Schedule
             </TabsTrigger>
@@ -827,6 +869,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   }}
                 />
               </TabsContent>
+              {isNote && (
+                <TabsContent value="tags" className="p-4 mt-0 h-full">
+                  <TagsTab content={content} />
+                </TabsContent>
+              )}
               {!isYouTubeUrl(card.url) && (
                 <>
                   <TabsContent value="reader" className="p-4 mt-0 h-full">

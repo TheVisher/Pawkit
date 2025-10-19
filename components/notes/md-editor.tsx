@@ -6,7 +6,8 @@ import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
 import { useDataStore } from "@/lib/stores/data-store";
-import { Bold, Italic, Strikethrough, Link, Code, List, ListOrdered, Quote, Eye, Edit, Maximize2 } from "lucide-react";
+import { noteTemplates, NoteTemplate } from "@/lib/templates/note-templates";
+import { Bold, Italic, Strikethrough, Link, Code, List, ListOrdered, Quote, Eye, Edit, Maximize2, FileText, Bookmark, Globe, Layout } from "lucide-react";
 
 type RichMDEditorProps = {
   content: string;
@@ -19,8 +20,26 @@ type RichMDEditorProps = {
 
 export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents }: RichMDEditorProps) {
   const [mode, setMode] = useState<"edit" | "preview">("preview");
+  const [showTemplates, setShowTemplates] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cards = useDataStore((state) => state.cards);
+
+  // Calculate metadata
+  const metadata = useMemo(() => {
+    const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+    const characters = content.length;
+    const lines = content.split('\n').length;
+    
+    // Count links
+    const linkMatches = content.match(/\[\[([^\]]+)\]\]/g) || [];
+    const linkCount = linkMatches.length;
+    
+    // Count tags
+    const tagMatches = content.match(/#([a-zA-Z0-9_-]+)/g) || [];
+    const tagCount = tagMatches.length;
+    
+    return { words, characters, lines, linkCount, tagCount };
+  }, [content]);
 
   // Create a map of note titles to IDs for quick lookup
   const noteTitleMap = useMemo(() => {
@@ -53,28 +72,105 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
     }, 0);
   };
 
+  // Insert template
+  const insertTemplate = (template: NoteTemplate) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const newText = content.substring(0, start) + template.content + content.substring(start);
+    onChange(newText);
+    setShowTemplates(false);
+
+    // Restore focus
+    setTimeout(() => {
+      textarea.focus();
+      const newPosition = start + template.content.length;
+      textarea.setSelectionRange(newPosition, newPosition);
+    }, 0);
+  };
+
+  // Create a map of card titles to IDs for card reference resolution
+  const cardTitleMap = useMemo(() => {
+    const map = new Map<string, string>();
+    cards.forEach((card) => {
+      if (card.title) {
+        map.set(card.title.toLowerCase(), card.id);
+      }
+    });
+    return map;
+  }, [cards]);
+
   // Custom renderer for wiki-links
   const components = {
     a: ({ node, href, children, ...props }: any) => {
       // Check if this is a wiki-link (starts with #/wiki/)
       if (href?.startsWith('#/wiki/')) {
         const linkText = href.replace('#/wiki/', '').replace(/-/g, ' ');
+        
+        // Check if this is a card reference: card:Title
+        if (linkText.startsWith('card:')) {
+          const cardTitle = linkText.substring(5).trim();
+          const cardId = cardTitleMap.get(cardTitle.toLowerCase());
+          
+          if (cardId && onNavigate) {
+            return (
+              <button
+                onClick={() => onNavigate(cardId)}
+                className="!text-blue-400 hover:!text-blue-300 !underline !decoration-blue-400/50 hover:!decoration-blue-300 cursor-pointer !font-bold transition-colors inline-flex items-center gap-1"
+                style={{ color: '#60a5fa', textDecoration: 'underline', textDecorationColor: '#60a5fa80' }}
+                {...props}
+              >
+                <Bookmark size={14} />
+                {children}
+              </button>
+            );
+          } else {
+            return (
+              <span className="text-gray-500 italic inline-flex items-center gap-1" title="Card not found">
+                <Bookmark size={14} />
+                {children}
+              </span>
+            );
+          }
+        }
+        
+        // Check if this is a URL reference
+        if (linkText.startsWith('http://') || linkText.startsWith('https://')) {
+          return (
+            <a
+              href={linkText}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="!text-green-400 hover:!text-green-300 !underline !decoration-green-400/50 hover:!decoration-green-300 cursor-pointer !font-bold transition-colors inline-flex items-center gap-1"
+              style={{ color: '#4ade80', textDecoration: 'underline', textDecorationColor: '#4ade8080' }}
+              {...props}
+            >
+              <Globe size={14} />
+              {children}
+            </a>
+          );
+        }
+        
+        // Regular note link
         const noteId = noteTitleMap.get(linkText.toLowerCase());
-
         if (noteId && onNavigate) {
           return (
             <button
               onClick={() => onNavigate(noteId)}
-              className="text-accent hover:underline cursor-pointer inline-flex items-center gap-1"
+              className="!text-purple-400 hover:!text-purple-300 !underline !decoration-purple-400/50 hover:!decoration-purple-300 cursor-pointer !font-bold transition-colors inline-flex items-center gap-1"
+              style={{ color: '#a78bfa', textDecoration: 'underline', textDecorationColor: '#a78bfa80' }}
               {...props}
             >
+              <FileText size={14} />
               {children}
             </button>
           );
         } else {
           // Note doesn't exist - show as broken link
           return (
-            <span className="text-gray-500 italic" title="Note not found">
+            <span className="text-gray-500 italic inline-flex items-center gap-1" title="Note not found">
+              <FileText size={14} />
               {children}
             </span>
           );
@@ -113,6 +209,12 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
             <Eye size={14} />
             Preview
           </button>
+        </div>
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span>{metadata.words} words</span>
+          <span>{metadata.characters} chars</span>
+          <span>{metadata.linkCount} links</span>
+          <span>{metadata.tagCount} tags</span>
         </div>
         {onToggleFullscreen && (
           <button
@@ -187,7 +289,39 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
             >
               <Quote size={16} />
             </button>
+            <div className="w-px h-6 bg-subtle mx-1" />
+            <button
+              onClick={() => setShowTemplates(!showTemplates)}
+              className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
+              title="Templates"
+            >
+              <Layout size={16} />
+            </button>
           </div>
+
+          {/* Template Dropdown */}
+          {showTemplates && (
+            <div className="border-b border-subtle bg-surface-muted p-3">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-foreground">Choose a Template</h4>
+                <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+                  {noteTemplates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => insertTemplate(template)}
+                      className="text-left p-2 rounded border border-subtle hover:bg-surface-soft transition-colors"
+                    >
+                      <div className="font-medium text-sm text-foreground">{template.name}</div>
+                      <div className="text-xs text-muted-foreground">{template.description}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {template.tags.map(tag => `#${tag}`).join(' ')}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Editor */}
           <div className="flex-1 overflow-hidden">

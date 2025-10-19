@@ -7,6 +7,61 @@ import { syncQueue } from '@/lib/services/sync-queue';
 import { useConflictStore } from '@/lib/stores/conflict-store';
 import { useSettingsStore } from '@/lib/hooks/settings-store';
 import { findBestFuzzyMatch, areTitlesSimilar } from '@/lib/utils/fuzzy-match';
+import { withRetry, CircuitBreaker, RateLimiter } from '@/lib/utils/retry';
+
+// Idempotency token management
+const idempotencyTokens = new Map<string, { timestamp: number; result?: any }>();
+const TOKEN_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes
+
+// Retry and resilience components
+const circuitBreaker = new CircuitBreaker(5, 60000, 30000); // 5 failures, 1min timeout, 30s reset
+const rateLimiter = new RateLimiter(10, 60000); // 10 requests per minute
+
+function generateIdempotencyToken(): string {
+  return crypto.randomUUID();
+}
+
+function isTokenValid(token: string): boolean {
+  const tokenData = idempotencyTokens.get(token);
+  if (!tokenData) return false;
+  
+  const now = Date.now();
+  if (now - tokenData.timestamp > TOKEN_EXPIRY_MS) {
+    idempotencyTokens.delete(token);
+    return false;
+  }
+  
+  return true;
+}
+
+function getOrCreateToken(operation: string, data: any): string {
+  // Create a hash of the operation and data to check for duplicates
+  const operationHash = btoa(JSON.stringify({ operation, data })).slice(0, 16);
+  
+  // Check if we have a recent token for this operation
+  for (const [token, tokenData] of idempotencyTokens.entries()) {
+    if (isTokenValid(token) && token.startsWith(operationHash)) {
+      return token;
+    }
+  }
+  
+  // Create new token
+  const token = generateIdempotencyToken();
+  idempotencyTokens.set(token, { timestamp: Date.now() });
+  return token;
+}
+
+function setTokenResult(token: string, result: any): void {
+  const tokenData = idempotencyTokens.get(token);
+  if (tokenData) {
+    tokenData.result = result;
+  }
+}
+
+function getTokenResult(token: string): any {
+  const tokenData = idempotencyTokens.get(token);
+  return tokenData?.result;
+}
 
 /**
  * Update link text in notes when a card title changes
@@ -59,6 +114,16 @@ async function updateLinkTextInNotes(cardId: string, oldTitle: string, newTitle:
 }
 
 /**
+ * Extract hashtags from note content
+ */
+export function extractTags(content: string): string[] {
+  const tagRegex = /#([a-zA-Z0-9_-]+)/g;
+  const matches = [...content.matchAll(tagRegex)];
+  const tags = matches.map(match => match[1].toLowerCase());
+  return [...new Set(tags)]; // Remove duplicates
+}
+
+/**
  * Extract wiki-links from note content and save to IndexedDB
  */
 export async function extractAndSaveLinks(sourceId: string, content: string, allCards: CardDTO[]): Promise<void> {
@@ -70,7 +135,11 @@ export async function extractAndSaveLinks(sourceId: string, content: string, all
   const linkRegex = /\[\[([^\]]+)\]\]/g;
   const matches = [...content.matchAll(linkRegex)];
 
+  // Extract hashtags
+  const tags = extractTags(content);
+
   // console.log('[extractAndSaveLinks] Found matches:', matches.map(m => m[1]));
+  // console.log('[extractAndSaveLinks] Found tags:', tags);
 
   // Get existing links to avoid duplicates
   const existingLinks = await localStorage.getNoteLinks(sourceId);
@@ -84,6 +153,19 @@ export async function extractAndSaveLinks(sourceId: string, content: string, all
   // Track which links we found in current content
   const foundTargetIds = new Set<string>();
   const foundCardTargetIds = new Set<string>();
+
+  // Save tags to the card
+  if (tags.length > 0) {
+    try {
+      const card = await localStorage.getCard(sourceId);
+      if (card) {
+        await localStorage.saveCard({ ...card, tags: tags }, { localOnly: true });
+        // console.log('[extractAndSaveLinks] Saved tags:', tags);
+      }
+    } catch (error) {
+      console.error('[extractAndSaveLinks] Failed to save tags:', error);
+    }
+  }
 
   // Early exit if no links found and no existing links
   if (matches.length === 0 && existingLinks.length === 0 && existingCardLinks.length === 0) {
@@ -475,6 +557,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
     const oldCard = get().cards.find(c => c.id === id);
     if (!oldCard) return;
 
+    // Check for idempotency
+    const token = getOrCreateToken('updateCard', { id, updates });
+    const existingResult = getTokenResult(token);
+    if (existingResult) {
+      console.log('[DataStore] Idempotent operation detected, returning cached result');
+      return existingResult;
+    }
+
     const updatedCard = {
       ...oldCard,
       ...updates,
@@ -536,18 +626,31 @@ export const useDataStore = create<DataStore>((set, get) => ({
       }));
 
 
-      // STEP 3: Sync to server in background (if enabled)
+      // STEP 3: Sync to server in background with retry logic (if enabled)
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync && !id.startsWith('temp_')) {
         try {
-          const response = await fetch(`/api/cards/${id}`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              'If-Unmodified-Since': oldCard.updatedAt,
-            },
-            body: JSON.stringify(updates),
-          });
+          const response = await withRetry(
+            () => fetch(`/api/cards/${id}`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'If-Unmodified-Since': oldCard.updatedAt,
+              },
+              body: JSON.stringify(updates),
+            }),
+            {
+              maxAttempts: 3,
+              baseDelay: 1000,
+              maxDelay: 5000,
+              retryCondition: (error) => {
+                // Retry on network errors and 5xx errors, but not on 409 conflicts
+                return error?.code === 'NETWORK_ERROR' || 
+                       error?.status >= 500 || 
+                       error?.status === 429;
+              }
+            }
+          );
 
           if (response.status === 409) {
             // Conflict - server has newer version
@@ -569,13 +672,16 @@ export const useDataStore = create<DataStore>((set, get) => ({
             console.log('[DataStore V2] Card synced to server:', id);
           }
         } catch (error) {
-          console.error('[DataStore V2] Failed to sync card update:', error);
+          console.error('[DataStore V2] Failed to sync card update after retries:', error);
           // Card is safe in local storage - will sync later
         }
       }
     } catch (error) {
       console.error('[DataStore V2] Failed to update card:', error);
       throw error;
+    } finally {
+      // Cache the result for idempotency
+      setTokenResult(token, updatedCard);
     }
   },
 

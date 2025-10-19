@@ -106,9 +106,15 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      onNavigate && onNavigate(backlink.sourceNoteId);
+                      console.log('[BacklinksPanel] Backlink clicked:', backlink.sourceNoteId);
+                      if (onNavigate) {
+                        console.log('[BacklinksPanel] Calling onNavigate with:', backlink.sourceNoteId);
+                        onNavigate(backlink.sourceNoteId);
+                      } else {
+                        console.log('[BacklinksPanel] onNavigate is not defined');
+                      }
                     }}
-                    className="text-sm text-accent hover:underline text-left flex-1"
+                    className="text-sm text-accent hover:underline text-left flex-1 cursor-pointer"
                   >
                     {getCardTitle(backlink.sourceNoteId)}
                   </button>
@@ -145,9 +151,15 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    onNavigate && onNavigate(link.targetNoteId);
+                    console.log('[BacklinksPanel] Outgoing link clicked:', link.targetNoteId);
+                    if (onNavigate) {
+                      console.log('[BacklinksPanel] Calling onNavigate with:', link.targetNoteId);
+                      onNavigate(link.targetNoteId);
+                    } else {
+                      console.log('[BacklinksPanel] onNavigate is not defined');
+                    }
                   }}
-                  className="text-sm text-accent hover:underline text-left w-full"
+                  className="text-sm text-accent hover:underline text-left w-full cursor-pointer"
                 >
                   {getCardTitle(link.targetNoteId)}
                 </button>
