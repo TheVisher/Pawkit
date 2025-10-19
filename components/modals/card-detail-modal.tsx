@@ -11,7 +11,7 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { localStorage } from "@/lib/services/local-storage";
 import { Toast } from "@/components/ui/toast";
 import { ReaderView } from "@/components/reader/reader-view";
-import { MDEditor } from "@/components/notes/md-editor";
+import { RichMDEditor } from "@/components/notes/md-editor";
 import { BacklinksPanel } from "@/components/notes/backlinks-panel";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -689,11 +689,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
               ) : (
                 <div className="max-w-4xl mx-auto h-full">
-                  <textarea
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
+                  <RichMDEditor
+                    content={content}
+                    onChange={setContent}
                     placeholder="Start writing your note..."
-                    className="w-full h-full rounded border border-gray-800 bg-gray-900 p-4 text-sm text-gray-100 placeholder-gray-500 resize-none focus:border-accent focus:outline-none font-mono"
                   />
                 </div>
               )}
@@ -840,11 +839,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                       )}
                     </div>
                   ) : (
-                    <textarea
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
+                    <RichMDEditor
+                      content={content}
+                      onChange={setContent}
                       placeholder="Start writing your note..."
-                      className="w-full h-full min-h-[500px] rounded border border-gray-800 bg-gray-900 p-4 text-sm text-gray-100 placeholder-gray-500 resize-none focus:border-accent focus:outline-none font-mono"
                     />
                   )}
                 </div>

@@ -71,11 +71,12 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate }: Ric
           value={content}
           onChange={(val) => onChange(val || '')}
           height={400}
+          visibleDragbar={false}
+          preview="edit"
+          hideToolbar={false}
           textareaProps={{
             placeholder: placeholder || "Start writing in Markdown...\n\nUse [[Note Title]] to link to other notes.\nUse #tag for hashtags.\nUse **bold** and *italic* for formatting.",
           }}
-          preview="edit"
-          hideToolbar={false}
         />
       </div>
     </div>
