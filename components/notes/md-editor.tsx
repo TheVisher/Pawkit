@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
-import MDEditor from '@uiw/react-md-editor';
 import { useDataStore } from "@/lib/stores/data-store";
+import { Bold, Italic, Strikethrough, Link, Code, List, ListOrdered, Quote, Eye, Edit } from "lucide-react";
 
 type RichMDEditorProps = {
   content: string;
@@ -17,6 +17,7 @@ type RichMDEditorProps = {
 
 export function RichMDEditor({ content, onChange, placeholder, onNavigate }: RichMDEditorProps) {
   const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cards = useDataStore((state) => state.cards);
 
   // Create a map of note titles to IDs for quick lookup
@@ -29,6 +30,26 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate }: Ric
     });
     return map;
   }, [cards]);
+
+  // Insert markdown formatting
+  const insertMarkdown = (before: string, after: string = '') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    const newText = content.substring(0, start) + before + selectedText + after + content.substring(end);
+
+    onChange(newText);
+
+    // Restore focus and selection
+    setTimeout(() => {
+      textarea.focus();
+      const newPosition = start + before.length + selectedText.length;
+      textarea.setSelectionRange(newPosition, newPosition);
+    }, 0);
+  };
 
   // Custom renderer for wiki-links
   const components = {
@@ -64,21 +85,126 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate }: Ric
   };
 
   return (
-    <div className="flex flex-col h-full" data-color-mode="dark">
-      {/* Rich Markdown Editor */}
-      <div className="flex-1 overflow-hidden">
-        <MDEditor
-          value={content}
-          onChange={(val) => onChange(val || '')}
-          height={400}
-          visibleDragbar={false}
-          preview="edit"
-          hideToolbar={false}
-          textareaProps={{
-            placeholder: placeholder || "Start writing in Markdown...\n\nUse [[Note Title]] to link to other notes.\nUse #tag for hashtags.\nUse **bold** and *italic* for formatting.",
-          }}
-        />
+    <div className="flex flex-col h-full bg-surface rounded-lg border border-subtle overflow-hidden">
+      {/* Mode Toggle */}
+      <div className="flex items-center gap-2 px-3 py-2 bg-surface-muted border-b border-subtle">
+        <button
+          onClick={() => setMode("edit")}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+            mode === "edit"
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground hover:bg-surface-soft"
+          }`}
+        >
+          <Edit size={14} />
+          Edit
+        </button>
+        <button
+          onClick={() => setMode("preview")}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+            mode === "preview"
+              ? "bg-accent text-accent-foreground"
+              : "text-muted-foreground hover:bg-surface-soft"
+          }`}
+        >
+          <Eye size={14} />
+          Preview
+        </button>
       </div>
+
+      {mode === "edit" ? (
+        <>
+          {/* Toolbar */}
+          <div className="flex items-center gap-1 px-3 py-2 bg-surface-muted border-b border-subtle flex-wrap">
+            <button
+              onClick={() => insertMarkdown('**', '**')}
+              className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
+              title="Bold"
+            >
+              <Bold size={16} />
+            </button>
+            <button
+              onClick={() => insertMarkdown('*', '*')}
+              className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
+              title="Italic"
+            >
+              <Italic size={16} />
+            </button>
+            <button
+              onClick={() => insertMarkdown('~~', '~~')}
+              className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
+              title="Strikethrough"
+            >
+              <Strikethrough size={16} />
+            </button>
+            <div className="w-px h-6 bg-subtle mx-1" />
+            <button
+              onClick={() => insertMarkdown('`', '`')}
+              className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
+              title="Code"
+            >
+              <Code size={16} />
+            </button>
+            <button
+              onClick={() => insertMarkdown('[', '](url)')}
+              className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
+              title="Link"
+            >
+              <Link size={16} />
+            </button>
+            <div className="w-px h-6 bg-subtle mx-1" />
+            <button
+              onClick={() => insertMarkdown('\n- ', '')}
+              className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
+              title="Bullet List"
+            >
+              <List size={16} />
+            </button>
+            <button
+              onClick={() => insertMarkdown('\n1. ', '')}
+              className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
+              title="Numbered List"
+            >
+              <ListOrdered size={16} />
+            </button>
+            <button
+              onClick={() => insertMarkdown('\n> ', '')}
+              className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
+              title="Quote"
+            >
+              <Quote size={16} />
+            </button>
+          </div>
+
+          {/* Editor */}
+          <div className="flex-1 overflow-hidden">
+            <textarea
+              ref={textareaRef}
+              value={content}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={placeholder || "Start writing in Markdown...\n\nUse [[Note Title]] to link to other notes.\nUse #tag for hashtags.\nUse **bold** and *italic* for formatting."}
+              className="w-full h-full p-4 bg-surface text-foreground font-mono text-sm resize-none focus:outline-none"
+              style={{
+                lineHeight: '1.6',
+              }}
+            />
+          </div>
+        </>
+      ) : (
+        /* Preview */
+        <div className="flex-1 overflow-y-auto p-4 prose prose-invert max-w-none">
+          <ReactMarkdown
+            remarkPlugins={[
+              remarkGfm,
+              remarkBreaks,
+              [remarkWikiLink, { pageResolver: (name: string) => [name.replace(/ /g, '-').toLowerCase()], hrefTemplate: (permalink: string) => `#/wiki/${permalink}` }]
+            ]}
+            components={components}
+          >
+            {content || '*No content to preview*'}
+          </ReactMarkdown>
+        </div>
+      )}
     </div>
   );
 }
