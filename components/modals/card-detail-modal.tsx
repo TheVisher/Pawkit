@@ -117,7 +117,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           if (cardId && onNavigateToCard) {
             return (
               <button
-                onClick={() => onNavigateToCard(cardId)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onNavigateToCard(cardId);
+                }}
                 className="!text-blue-400 hover:!text-blue-300 !underline !decoration-blue-400/50 hover:!decoration-blue-300 cursor-pointer !font-bold transition-colors"
                 style={{ color: '#60a5fa', textDecoration: 'underline', textDecorationColor: '#60a5fa80' }}
                 {...props}
@@ -142,7 +146,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           if (targetCard && onNavigateToCard) {
             return (
               <button
-                onClick={() => onNavigateToCard(targetCard.id)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onNavigateToCard(targetCard.id);
+                }}
                 className="!text-green-400 hover:!text-green-300 !underline !decoration-green-400/50 hover:!decoration-green-300 cursor-pointer !font-bold transition-colors"
                 style={{ color: '#4ade80', textDecoration: 'underline', textDecorationColor: '#4ade8080' }}
                 {...props}
@@ -190,7 +198,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           if (noteId && onNavigateToCard) {
             return (
               <button
-                onClick={() => onNavigateToCard(noteId)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onNavigateToCard(noteId);
+                }}
                 className="!text-purple-400 hover:!text-purple-300 !underline !decoration-purple-400/50 hover:!decoration-purple-300 cursor-pointer !font-bold transition-colors"
                 style={{ color: '#c084fc', textDecoration: 'underline', textDecorationColor: '#c084fc80' }}
                 {...props}
@@ -202,7 +214,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           } else if (cardId && onNavigateToCard) {
             return (
               <button
-                onClick={() => onNavigateToCard(cardId)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onNavigateToCard(cardId);
+                }}
                 className="!text-blue-400 hover:!text-blue-300 !underline !decoration-blue-400/50 hover:!decoration-blue-300 cursor-pointer !font-bold transition-colors"
                 style={{ color: '#60a5fa', textDecoration: 'underline', textDecorationColor: '#60a5fa80' }}
                 {...props}
