@@ -604,6 +604,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 onChange={setContent}
                 placeholder="Start writing your note..."
                 onNavigate={onNavigateToCard}
+                customComponents={wikiLinkComponents}
               />
             </div>
           </div>
@@ -657,6 +658,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     placeholder="Start writing your note..."
                     onNavigate={onNavigateToCard}
                     onToggleFullscreen={() => setIsNoteExpanded(true)}
+                    customComponents={wikiLinkComponents}
                   />
                 </div>
               </>

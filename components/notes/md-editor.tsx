@@ -14,9 +14,10 @@ type RichMDEditorProps = {
   placeholder?: string;
   onNavigate?: (noteId: string) => void;
   onToggleFullscreen?: () => void;
+  customComponents?: any; // Custom ReactMarkdown components for wiki-links
 };
 
-export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen }: RichMDEditorProps) {
+export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents }: RichMDEditorProps) {
   const [mode, setMode] = useState<"edit" | "preview">("preview");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cards = useDataStore((state) => state.cards);
@@ -209,9 +210,20 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
             remarkPlugins={[
               remarkGfm,
               remarkBreaks,
-              [remarkWikiLink, { pageResolver: (name: string) => [name.replace(/ /g, '-').toLowerCase()], hrefTemplate: (permalink: string) => `#/wiki/${permalink}` }]
+              [remarkWikiLink, {
+                aliasDivider: '|',
+                pageResolver: (name: string) => {
+                  // Preserve special syntax for card references and URLs
+                  if (name.startsWith('card:') || name.startsWith('http://') || name.startsWith('https://')) {
+                    return [name];
+                  }
+                  // Convert note titles to slugs
+                  return [name.replace(/ /g, '-')];
+                },
+                hrefTemplate: (permalink: string) => `#/wiki/${permalink}`
+              }]
             ]}
-            components={components}
+            components={customComponents || components}
           >
             {content || '*No content to preview*'}
           </ReactMarkdown>
