@@ -187,9 +187,15 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
                   </span>
                   <button
                     onClick={(e) => {
+                      console.log('[BacklinksPanel] Card reference clicked:', ref.targetCardId);
                       e.preventDefault();
                       e.stopPropagation();
-                      onNavigate && onNavigate(ref.targetCardId);
+                      if (onNavigate) {
+                        console.log('[BacklinksPanel] Calling onNavigate with:', ref.targetCardId);
+                        onNavigate(ref.targetCardId);
+                      } else {
+                        console.log('[BacklinksPanel] onNavigate is not defined');
+                      }
                     }}
                     className="text-sm text-blue-400 hover:text-blue-300 truncate hover:underline cursor-pointer text-left"
                   >

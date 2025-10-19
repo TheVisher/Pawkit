@@ -816,9 +816,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               <TabsContent value="links" className="p-4 mt-0 h-full">
                 <BacklinksPanel
                   noteId={card.id}
-                  onNavigate={(noteId) => {
+                  onNavigate={(cardId) => {
+                    console.log('[CardDetailModal] onNavigate called with cardId:', cardId);
                     if (onNavigateToCard) {
-                      onNavigateToCard(noteId);
+                      console.log('[CardDetailModal] Calling onNavigateToCard');
+                      onNavigateToCard(cardId);
+                    } else {
+                      console.log('[CardDetailModal] onNavigateToCard is not defined');
                     }
                   }}
                 />
