@@ -14,11 +14,11 @@ type CustomCalendarProps = {
 };
 
 export function CustomCalendar({ cards, onDayClick, onCardClick, onCreateDailyNote }: CustomCalendarProps) {
-  // Use a stable initial date that won't cause hydration mismatches
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
   const [isClient, setIsClient] = useState(false);
 
   // Mark as client-side after mount to prevent hydration issues
+  // This ensures the calendar uses the OS date/time consistently
   useEffect(() => {
     setIsClient(true);
   }, []);
