@@ -184,18 +184,20 @@ class LocalStorage {
 
   // Sanitize strings for IndexedDB compatibility
   private sanitizeForIndexedDB(str: string): string {
-    try {
-      // Test if structuredClone can handle this string
-      structuredClone(str);
-      return str; // If it works, return as-is
-    } catch (e) {
-      // If structuredClone fails, we need to fix the string
-      console.warn('[LocalStorage] String contains characters that structuredClone cannot handle, sanitizing...');
+    // Remove characters that cause structuredClone to fail
+    // This includes:
+    // - Null bytes (\x00)
+    // - Unpaired surrogate halves (broken emoji encoding)
+    // - Some control characters
 
-      // Remove surrogate pairs (emoji and other characters outside BMP)
-      // This preserves most text but removes problematic emoji
-      return str.replace(/[\uD800-\uDFFF]/g, '?');
-    }
+    // First remove null bytes
+    let cleaned = str.replace(/\x00/g, '');
+
+    // Then fix unpaired surrogates (common cause of structuredClone errors)
+    // This regex matches lone surrogate halves that aren't part of a proper pair
+    cleaned = cleaned.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]/g, '?');
+
+    return cleaned;
   }
 
   async deleteCard(id: string): Promise<void> {
