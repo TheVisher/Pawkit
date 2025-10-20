@@ -163,7 +163,8 @@ export async function extractAndSaveLinks(sourceId: string, content: string, all
         // console.log('[extractAndSaveLinks] Saved tags:', tags);
       }
     } catch (error) {
-      console.error('[extractAndSaveLinks] Failed to save tags:', error);
+      console.warn('[extractAndSaveLinks] Failed to save tags (non-critical):', error);
+      // Don't throw - tag extraction failure shouldn't block the whole operation
     }
   }
 
@@ -597,25 +598,30 @@ export const useDataStore = create<DataStore>((set, get) => ({
         // Only run extraction if content actually changed
         const oldContent = oldCard.content || '';
         const newContent = updatedCard.content || '';
-        
+
         if (oldContent !== newContent) {
           // Clear existing timeout for this card
           const existingTimeout = extractionTimeouts.get(id);
           if (existingTimeout) {
             clearTimeout(existingTimeout);
           }
-          
+
           // Set new debounced timeout
           const timeout = setTimeout(async () => {
             try {
+              // Try to extract links - but don't let it fail the whole save operation
               await extractAndSaveLinks(id, updatedCard.content || '', get().cards);
               extractionTimeouts.delete(id);
             } catch (error) {
-              console.error('[DataStore] Link extraction failed:', error);
+              // Link extraction can fail due to structuredClone issues with certain characters
+              // This is non-critical - the content is already saved, just the links won't be indexed
+              console.warn('[DataStore] Link extraction failed (non-critical):', error);
+              console.warn('[DataStore] Content is saved, but wiki-links may not be indexed for this note');
               extractionTimeouts.delete(id);
+              // Don't throw - we don't want to block the save operation
             }
           }, 1000); // 1 second debounce
-          
+
           extractionTimeouts.set(id, timeout);
         }
       }
