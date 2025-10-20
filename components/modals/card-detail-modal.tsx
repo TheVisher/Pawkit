@@ -338,22 +338,29 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   // Save on modal close to ensure nothing is lost
   const handleClose = async () => {
+    console.log('[CardDetail] handleClose called');
+
     // Save any pending changes before closing
     if (notes !== lastSavedNotesRef.current) {
+      console.log('[CardDetail] Saving notes on close, length:', notes.length);
       try {
         await updateCardInStore(card.id, { notes });
         lastSavedNotesRef.current = notes;
+        console.log('[CardDetail] Notes saved on close');
       } catch (error) {
-        console.error('Failed to save notes on close:', error);
+        console.error('[CardDetail] Failed to save notes on close:', error);
       }
     }
 
     if (isNote && content !== lastSavedContentRef.current) {
+      console.log('[CardDetail] Saving content on close, length:', content.length);
       try {
         await updateCardInStore(card.id, { content });
         lastSavedContentRef.current = content;
+        console.log('[CardDetail] Content saved on close');
       } catch (error) {
-        console.error('Failed to save content on close:', error);
+        console.error('[CardDetail] Failed to save content on close:', error);
+        alert('Failed to save content on close: ' + (error instanceof Error ? error.message : 'Unknown error'));
       }
     }
 
@@ -420,15 +427,19 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       return;
     }
 
+    console.log('[CardDetail] Content changed, scheduling save. Length:', content.length);
+
     // Clear any existing timeout
     const timeoutId = setTimeout(async () => {
       try {
-        console.log('[Wiki-Link] Debounced saving content locally');
+        console.log('[CardDetail] Saving content to store. Card ID:', card.id, 'Content length:', content.length);
         // Update the store (which handles IndexedDB saving)
         await updateCardInStore(card.id, { content });
+        console.log('[CardDetail] Content saved successfully!');
         lastSavedContentRef.current = content;
       } catch (error) {
-        console.error('Failed to save content locally:', error);
+        console.error('[CardDetail] SAVE FAILED:', error);
+        alert('Failed to save note content: ' + (error instanceof Error ? error.message : 'Unknown error'));
       }
     }, 2000); // 2 second debounce to prevent constant saves
 
