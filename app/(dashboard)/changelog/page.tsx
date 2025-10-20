@@ -3,6 +3,23 @@
 export default function ChangelogPage() {
   const changes = [
     {
+      dateRange: "October 18-19, 2025",
+      features: [
+        { title: "Daily Notes System", description: "Automatic daily note creation and management with YYYY-MM-DD format titles. Daily notes appear as colored pills at the bottom of calendar cells, with timezone-safe date handling to prevent display issues across different regions." },
+        { title: "Enhanced Note Previews", description: "Improved markdown preview in note modals with better formatting, consistent styling, and proper content rendering. Notes view now includes rich previews with metadata display and improved card gallery integration." },
+        { title: "Image Context Menu", description: "Right-click on any image in your browser to save it directly to Pawkit with automatic page context - includes the page title, URL, and timestamp for better organization and searchability." },
+        { title: "Calendar UI Enhancements", description: "Redesigned calendar view with improved daily note pills, better event positioning, and enhanced visual consistency. Custom styling ensures daily notes are prominently displayed without interfering with other calendar events." },
+        { title: "Public Privacy Policy", description: "Added publicly accessible privacy policy pages at /privacy and /privacy.html for compliance with browser extension store requirements, with proper routing that bypasses authentication middleware." },
+        { title: "Extension Security Improvements", description: "Relaxed extension ID requirements to support multiple browser extensions, and fixed CORS redirect issues by using www.getpawkit.com consistently across all API requests." },
+        { title: "Authentication Flow Fixes", description: "Improved login/signup redirect behavior with forced page reloads to ensure proper state initialization and prevent stale data issues after authentication." },
+        { title: "Knowledge Graph Visualization", description: "Interactive graph view of note connections showing how your notes link together, with visual representation of backlinks and outgoing links for better knowledge discovery." },
+        { title: "Note Templates System", description: "Pre-built templates for common note types including daily notes, meeting notes, project plans, and more - accessible from the note creation interface for faster note-taking." },
+        { title: "Smart Note Search", description: "Intelligent search that finds notes by title, content, and tags with fuzzy matching and instant results as you type." },
+        { title: "Conflict Resolution UI", description: "Visual conflict detection and resolution when the same card is edited on multiple devices, allowing you to choose which version to keep or merge changes manually." },
+        { title: "Enhanced Markdown Editor", description: "Custom markdown editor with preview mode by default, consolidated controls, and improved editing experience - replaced heavy third-party editor with lightweight custom implementation." },
+      ],
+    },
+    {
       dateRange: "October 17, 2025",
       features: [
         { title: "Wiki-Style Note Linking", description: "Connect your notes using [[Note Title]] syntax with automatic backlink tracking. Click links in preview mode to navigate between notes, view incoming and outgoing links in the new Links tab, and build your personal knowledge graph - all stored locally in IndexedDB for instant, offline access." },
