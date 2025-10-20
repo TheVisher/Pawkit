@@ -14,7 +14,8 @@ type CustomCalendarProps = {
 };
 
 export function CustomCalendar({ cards, onDayClick, onCardClick, onCreateDailyNote }: CustomCalendarProps) {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  // Always use local timezone by creating a fresh Date object
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
 
   // Get all days to display (including days from prev/next month to fill the grid)
   const calendarDays = useMemo(() => {
@@ -133,7 +134,9 @@ export function CustomCalendar({ cards, onDayClick, onCardClick, onCreateDailyNo
           const dayCards = cardsByDate.get(dateStr) || [];
           const dailyNote = dailyNotesByDate.get(dateStr);
           const isCurrentMonth = isSameMonth(day, currentMonth);
-          const isCurrentDay = isToday(day);
+          // Use local date comparison to determine if this is today
+          const now = new Date();
+          const isCurrentDay = isSameDay(day, now);
 
           return (
             <div
