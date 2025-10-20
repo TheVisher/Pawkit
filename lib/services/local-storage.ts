@@ -155,15 +155,38 @@ class LocalStorage {
 
     const existing = await this.db.get('cards', card.id);
 
-    const cardToSave = {
+    // Sanitize content to remove any characters that cause IndexedDB errors
+    // Some browsers/platforms have issues with certain Unicode characters
+    const sanitizedCard = {
       ...card,
+      content: card.content ? this.sanitizeForIndexedDB(card.content) : card.content,
+      notes: card.notes ? this.sanitizeForIndexedDB(card.notes) : card.notes,
+      title: card.title ? this.sanitizeForIndexedDB(card.title) : card.title,
+    };
+
+    const cardToSave = {
+      ...sanitizedCard,
       _locallyModified: options?.localOnly ? true : (existing?._locallyModified || false),
       _locallyCreated: options?.localOnly && !options?.fromServer ? true : (existing?._locallyCreated || false),
       _serverVersion: options?.fromServer ? card.updatedAt : existing?._serverVersion,
     };
 
-    await this.db.put('cards', cardToSave);
-    // console.log('[LocalStorage] Saved card:', card.id, options);
+    try {
+      await this.db.put('cards', cardToSave);
+      // console.log('[LocalStorage] Saved card:', card.id, options);
+    } catch (error) {
+      console.error('[LocalStorage] Failed to save card to IndexedDB:', error);
+      console.error('[LocalStorage] Card content length:', card.content?.length);
+      console.error('[LocalStorage] Problematic card:', { id: card.id, title: card.title });
+      throw error;
+    }
+  }
+
+  // Sanitize strings for IndexedDB compatibility
+  private sanitizeForIndexedDB(str: string): string {
+    // Replace problematic null bytes and other control characters that IndexedDB doesn't like
+    // But preserve emojis and normal Unicode - only remove actual problematic characters
+    return str.replace(/\x00/g, ''); // Remove null bytes
   }
 
   async deleteCard(id: string): Promise<void> {
