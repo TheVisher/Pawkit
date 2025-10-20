@@ -36,15 +36,24 @@ function isTokenValid(token: string): boolean {
 
 function getOrCreateToken(operation: string, data: any): string {
   // Create a hash of the operation and data to check for duplicates
-  const operationHash = btoa(JSON.stringify({ operation, data })).slice(0, 16);
-  
+  // Use a simple hash instead of btoa to avoid Unicode/emoji issues
+  let operationHash: string;
+  try {
+    // Try to create a simple hash from operation + data keys (not full content)
+    const dataKeys = data && typeof data === 'object' ? Object.keys(data).join(',') : '';
+    operationHash = `${operation}_${dataKeys}`.substring(0, 16);
+  } catch (e) {
+    // Fallback to just operation name
+    operationHash = operation.substring(0, 16);
+  }
+
   // Check if we have a recent token for this operation
   for (const [token, tokenData] of idempotencyTokens.entries()) {
     if (isTokenValid(token) && token.startsWith(operationHash)) {
       return token;
     }
   }
-  
+
   // Create new token
   const token = generateIdempotencyToken();
   idempotencyTokens.set(token, { timestamp: Date.now() });
