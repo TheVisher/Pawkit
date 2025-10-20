@@ -4,7 +4,6 @@ import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 // Removed useSWR - using local-first data store instead
 import { DigUpView } from "@/components/dig-up/dig-up-view";
-import { CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
 
 function DigUpContent() {
@@ -15,9 +14,12 @@ function DigUpContent() {
 
   // Get data from local store instead of API calls
   const { cards, collections } = useDataStore();
-  
-  // Filter cards based on mode (simplified for now)
+
+  // Filter cards based on mode - ALWAYS exclude Den cards
   const filteredCards = cards.filter(card => {
+    // CRITICAL: Exclude all Den cards from Dig Up
+    if (card.inDen) return false;
+
     if (filterMode === 'uncategorized') return !card.collections || card.collections.length === 0;
     return true; // all
   });

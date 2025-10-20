@@ -44,7 +44,9 @@ export function KnowledgeGraph({ onSelectCard, className = "" }: KnowledgeGraphP
     async function loadGraphData() {
       setLoading(true);
       try {
-        const notes = cards.filter(card => card.type === 'md-note' || card.type === 'text-note');
+        const notes = cards.filter(card =>
+          (card.type === 'md-note' || card.type === 'text-note') && !card.inDen
+        );
         const graphNodes: GraphNode[] = [];
         const graphLinks: GraphLink[] = [];
 
@@ -85,7 +87,7 @@ export function KnowledgeGraph({ onSelectCard, className = "" }: KnowledgeGraphP
 
             // Add links to cards
             for (const cardLink of cardLinks) {
-              const targetCard = cards.find(c => c.id === cardLink.targetCardId);
+              const targetCard = cards.find(c => c.id === cardLink.targetCardId && !c.inDen);
               if (targetCard) {
                 // Create node for card if it doesn't exist
                 if (!graphNodes.find(n => n.id === cardLink.targetCardId)) {
@@ -298,7 +300,7 @@ export function KnowledgeGraph({ onSelectCard, className = "" }: KnowledgeGraphP
                   strokeWidth={2}
                   className="cursor-pointer hover:r-6 transition-all"
                   onClick={() => {
-                    const card = cards.find(c => c.id === node.id);
+                    const card = cards.find(c => c.id === node.id && !c.inDen);
                     if (card && onSelectCard) {
                       onSelectCard(card);
                     }

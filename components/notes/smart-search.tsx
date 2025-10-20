@@ -27,9 +27,10 @@ export function SmartSearch({ onSelectCard, placeholder = "Search notes, cards, 
   const inputRef = useRef<HTMLInputElement>(null);
   const cards = useDataStore((state) => state.cards);
 
-  // Filter cards to only include notes and cards with content
+  // Filter cards to only include notes and cards with content, excluding Den cards
   const searchableCards = useMemo(() => {
-    return cards.filter(card => 
+    return cards.filter(card =>
+      !card.inDen &&
       (card.type === 'md-note' || card.type === 'text-note' || card.type === 'url') &&
       (card.title || card.content || card.notes)
     );

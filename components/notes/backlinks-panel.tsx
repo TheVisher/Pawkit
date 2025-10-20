@@ -69,7 +69,7 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
   }, [noteId]); // Removed cards dependency to reduce re-renders
 
   const getCardTitle = (cardId: string) => {
-    const card = cards.find((c) => c.id === cardId);
+    const card = cards.find((c) => c.id === cardId && !c.inDen);
     return card?.title || 'Untitled Note';
   };
 
