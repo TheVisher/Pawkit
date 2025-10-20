@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { addDays, startOfWeek, startOfMonth, endOfMonth, isSameMonth, format, isSameDay, isToday } from "date-fns";
 import { CardModel } from "@/lib/types";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
@@ -14,8 +14,14 @@ type CustomCalendarProps = {
 };
 
 export function CustomCalendar({ cards, onDayClick, onCardClick, onCreateDailyNote }: CustomCalendarProps) {
-  // Always use local timezone by creating a fresh Date object
+  // Use a stable initial date that won't cause hydration mismatches
   const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [isClient, setIsClient] = useState(false);
+
+  // Mark as client-side after mount to prevent hydration issues
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Get all days to display (including days from prev/next month to fill the grid)
   const calendarDays = useMemo(() => {
@@ -134,9 +140,8 @@ export function CustomCalendar({ cards, onDayClick, onCardClick, onCreateDailyNo
           const dayCards = cardsByDate.get(dateStr) || [];
           const dailyNote = dailyNotesByDate.get(dateStr);
           const isCurrentMonth = isSameMonth(day, currentMonth);
-          // Use local date comparison to determine if this is today
-          const now = new Date();
-          const isCurrentDay = isSameDay(day, now);
+          // Only check if it's today on the client to prevent hydration mismatch
+          const isCurrentDay = isClient ? isSameDay(day, new Date()) : false;
 
           return (
             <div
