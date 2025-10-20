@@ -69,14 +69,19 @@ export function extractDateFromTitle(title: string): Date | null {
   const dateMatch = title.match(/^(\d{4}-\d{2}-\d{2})/);
   if (!dateMatch) return null;
   
-  return new Date(dateMatch[1]);
+  // Parse the date components and create a local date to avoid timezone issues
+  const [year, month, day] = dateMatch[1].split('-').map(Number);
+  return new Date(year, month - 1, day); // month is 0-indexed
 }
 
 /**
  * Get date string in YYYY-MM-DD format
  */
 export function getDateString(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 /**
@@ -84,13 +89,13 @@ export function getDateString(date: Date): string {
  */
 export function isDailyNote(card: { title: string | null; tags?: string[] }): boolean {
   if (!card.title) return false;
-  
+
   // Check by title format
   if (isDailyNoteTitle(card.title)) return true;
-  
+
   // Check by tags
   if (card.tags?.includes('daily')) return true;
-  
+
   return false;
 }
 
@@ -98,16 +103,23 @@ export function isDailyNote(card: { title: string | null; tags?: string[] }): bo
  * Get all daily notes from a list of cards
  */
 export function getDailyNotes(cards: Array<{ id: string; title: string | null; content: string | null; tags?: string[]; createdAt: string }>): DailyNote[] {
-  return cards
+  const dailyNotes = cards
     .filter(card => isDailyNote(card))
-    .map(card => ({
-      id: card.id,
-      title: card.title!,
-      date: extractDateFromTitle(card.title!)?.toISOString().split('T')[0] || card.createdAt.split('T')[0],
-      content: card.content || '',
-      tags: card.tags || []
-    }))
+    .map(card => {
+      const extractedDate = extractDateFromTitle(card.title!);
+      const date = extractedDate ? getDateString(extractedDate) : card.createdAt.split('T')[0];
+      
+      return {
+        id: card.id,
+        title: card.title!,
+        date,
+        content: card.content || '',
+        tags: card.tags || []
+      };
+    })
     .sort((a, b) => b.date.localeCompare(a.date)); // Most recent first
+  
+  return dailyNotes;
 }
 
 /**
