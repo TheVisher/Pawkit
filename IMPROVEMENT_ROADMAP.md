@@ -28,11 +28,11 @@ This roadmap focuses on **perfecting existing features** rather than adding new 
 - [x] `Cmd/Ctrl + B` for bold
 - [x] `Cmd/Ctrl + I` for italic
 - [x] `Cmd/Ctrl + K` for links (wiki-links with autocomplete)
-- [x] `Cmd/Ctrl + E` for code blocks
+- [x] `Cmd/Ctrl + E` for inline code
 - [x] `Cmd/Ctrl + /` to toggle preview mode
-- [x] **File to modify**: `components/notes/md-editor.tsx`
+- [x] **File modified**: `components/notes/md-editor.tsx`
 
-**Current Issue**: Must click toolbar buttons, no keyboard shortcuts ✅ **COMPLETED**
+**Status**: ✅ **COMPLETED** - All shortcuts working, cursor positioning fixed, inline code rendering fixed for ReactMarkdown v10
 
 #### C. Daily Notes Quick Access ⭐⭐
 - [ ] Add "Today's Note" button at top of sidebar
