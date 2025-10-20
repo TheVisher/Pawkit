@@ -9,6 +9,38 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { noteTemplates, NoteTemplate } from "@/lib/templates/note-templates";
 import { Bold, Italic, Strikethrough, Link, Code, List, ListOrdered, Quote, Eye, Edit, Maximize2, FileText, Bookmark, Globe, Layout, RefreshCw, Check, Clock, Heading1, Heading2, Heading3 } from "lucide-react";
 
+// Fuzzy search function for note titles
+function fuzzySearch(query: string, text: string): number {
+  const queryLower = query.toLowerCase();
+  const textLower = text.toLowerCase();
+
+  // Exact match gets highest score
+  if (textLower === queryLower) return 1000;
+
+  // Starts with gets high score
+  if (textLower.startsWith(queryLower)) return 900;
+
+  // Contains gets medium score
+  if (textLower.includes(queryLower)) return 500;
+
+  // Fuzzy match - check if all query chars appear in order
+  let queryIndex = 0;
+  let matchScore = 0;
+
+  for (let i = 0; i < textLower.length && queryIndex < queryLower.length; i++) {
+    if (textLower[i] === queryLower[queryIndex]) {
+      matchScore += (100 - i); // Earlier matches score higher
+      queryIndex++;
+    }
+  }
+
+  if (queryIndex === queryLower.length) {
+    return matchScore;
+  }
+
+  return 0; // No match
+}
+
 type RichMDEditorProps = {
   content: string;
   onChange: (content: string) => void;
@@ -24,6 +56,15 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const cards = useDataStore((state) => state.cards);
+
+  // Wiki-link autocomplete state
+  const [autocompleteOpen, setAutocompleteOpen] = useState(false);
+  const [autocompleteQuery, setAutocompleteQuery] = useState('');
+  const [autocompletePosition, setAutocompletePosition] = useState({ top: 0, left: 0 });
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [wikiLinkStartPos, setWikiLinkStartPos] = useState<number | null>(null);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
+  const justClosedRef = useRef(false);
 
   // Calculate metadata
   const metadata = useMemo(() => {
@@ -53,8 +94,42 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
     return map;
   }, [cards]);
 
+  // Get all notes for autocomplete (sorted by most recently updated)
+  const allNotes = useMemo(() => {
+    return cards
+      .filter(card => (card.type === 'md-note' || card.type === 'text-note') && card.title && !card.inDen)
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [cards]);
+
+  // Filter and sort autocomplete suggestions
+  const autocompleteSuggestions = useMemo(() => {
+    if (!autocompleteQuery) {
+      // Show recent notes when no query
+      return allNotes.slice(0, 10);
+    }
+
+    // Fuzzy search through all notes
+    const scored = allNotes
+      .map(note => ({
+        note,
+        score: fuzzySearch(autocompleteQuery, note.title || '')
+      }))
+      .filter(item => item.score > 0)
+      .sort((a, b) => b.score - a.score);
+
+    return scored.slice(0, 10).map(item => item.note);
+  }, [autocompleteQuery, allNotes]);
+
+  // Close autocomplete when no suggestions
+  useEffect(() => {
+    if (autocompleteOpen && autocompleteSuggestions.length === 0) {
+      setAutocompleteOpen(false);
+      setWikiLinkStartPos(null);
+    }
+  }, [autocompleteOpen, autocompleteSuggestions.length]);
+
   // Insert markdown formatting
-  const insertMarkdown = (before: string, after: string = '') => {
+  const insertMarkdown = (before: string, after: string = '', openAutocomplete: boolean = false) => {
     const textarea = textareaRef.current;
     if (!textarea) return;
 
@@ -70,6 +145,25 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
       textarea.focus();
       const newPosition = start + before.length + selectedText.length;
       textarea.setSelectionRange(newPosition, newPosition);
+
+      // Trigger autocomplete for wiki-links
+      if (openAutocomplete && before === '[[' && after === ']]') {
+        setWikiLinkStartPos(start);
+        setAutocompleteQuery('');
+        setSelectedIndex(0);
+        setAutocompleteOpen(true);
+
+        // Calculate position for dropdown
+        const textareaRect = textarea.getBoundingClientRect();
+        const lineHeight = 1.6 * 14;
+        const textBeforeCursor = newText.substring(0, start);
+        const lines = textBeforeCursor.split('\n');
+        const currentLine = lines.length - 1;
+        const top = textareaRect.top + (currentLine * lineHeight) + lineHeight * 2 + 4;
+        const left = textareaRect.left + 16;
+
+        setAutocompletePosition({ top, left });
+      }
     }, 0);
   };
 
@@ -91,6 +185,36 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
     }, 0);
   };
 
+  // Insert autocomplete suggestion
+  const insertAutocompleteSuggestion = (noteTitle: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea || wikiLinkStartPos === null) return;
+
+    const currentPos = textarea.selectionStart;
+    const before = content.substring(0, wikiLinkStartPos);
+    let after = content.substring(currentPos);
+
+    // Check if there's a trailing ]] after cursor (from Cmd+K insertion)
+    // Remove it if present to avoid duplicate ]]
+    if (after.startsWith(']]')) {
+      after = after.substring(2);
+    }
+
+    const newText = before + `[[${noteTitle}]]` + after;
+
+    onChange(newText);
+    setAutocompleteOpen(false);
+    setWikiLinkStartPos(null);
+    setAutocompleteQuery('');
+
+    // Restore focus and place cursor after the inserted link
+    setTimeout(() => {
+      textarea.focus();
+      const newPosition = wikiLinkStartPos + noteTitle.length + 4; // +4 for [[ and ]]
+      textarea.setSelectionRange(newPosition, newPosition);
+    }, 0);
+  };
+
   // Create a map of card titles to IDs for card reference resolution
   const cardTitleMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -102,12 +226,59 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
     return map;
   }, [cards]);
 
-  // Keyboard shortcuts
+  // Scroll selected item into view
+  useEffect(() => {
+    if (autocompleteOpen && autocompleteRef.current) {
+      const container = autocompleteRef.current;
+      const selectedButton = container.querySelectorAll('button')[selectedIndex];
+      if (selectedButton) {
+        selectedButton.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      }
+    }
+  }, [selectedIndex, autocompleteOpen]);
+
+  // Keyboard shortcuts and autocomplete navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle shortcuts when in edit mode and textarea is focused
       if (mode !== "edit" || !textareaRef.current?.matches(':focus')) return;
-      
+
+      // Handle autocomplete navigation
+      if (autocompleteOpen) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedIndex(prev => (prev + 1) % autocompleteSuggestions.length);
+          return;
+        }
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedIndex(prev => (prev - 1 + autocompleteSuggestions.length) % autocompleteSuggestions.length);
+          return;
+        }
+        if (e.key === 'Enter' && autocompleteSuggestions.length > 0) {
+          e.preventDefault();
+          const selected = autocompleteSuggestions[selectedIndex];
+          if (selected?.title) {
+            insertAutocompleteSuggestion(selected.title);
+          }
+          return;
+        }
+        if (e.key === 'Escape') {
+          // IMPORTANT: stopPropagation prevents this from bubbling to parent modal
+          e.preventDefault();
+          e.stopPropagation();
+          setAutocompleteOpen(false);
+          setWikiLinkStartPos(null);
+          setAutocompleteQuery('');
+          // Set flag to prevent immediate reopening
+          justClosedRef.current = true;
+          setTimeout(() => {
+            justClosedRef.current = false;
+          }, 100);
+          return;
+        }
+      }
+
       if (e.metaKey || e.ctrlKey) {
         e.preventDefault();
         switch(e.key.toLowerCase()) {
@@ -118,7 +289,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
             insertMarkdown('*', '*');
             break;
           case 'k':
-            insertMarkdown('[[', ']]');
+            insertMarkdown('[[', ']]', true); // true = open autocomplete
             break;
         }
       }
@@ -126,7 +297,62 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [mode, insertMarkdown]);
+  }, [mode, autocompleteOpen, autocompleteSuggestions, selectedIndex, insertMarkdown]);
+
+  // Detect [[ for autocomplete
+  useEffect(() => {
+    if (mode !== 'edit') return;
+
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const cursorPos = textarea.selectionStart;
+    const textBeforeCursor = content.substring(0, cursorPos);
+
+    // Check if we just typed [[
+    const lastTwoChars = textBeforeCursor.slice(-2);
+    if (lastTwoChars === '[[' && !autocompleteOpen && !justClosedRef.current) {
+      // Only open if not already open and not just closed (prevents re-opening after ESC)
+      // Find the position of [[
+      const wikiLinkStart = cursorPos - 2;
+      setWikiLinkStartPos(wikiLinkStart);
+      setAutocompleteQuery('');
+      setSelectedIndex(0);
+      setAutocompleteOpen(true);
+
+      // Calculate position for dropdown - position below current line
+      const textareaRect = textarea.getBoundingClientRect();
+      const lineHeight = 1.6 * 14; // line-height * font-size (from textarea style)
+      const lines = textBeforeCursor.split('\n');
+      const currentLine = lines.length - 1;
+
+      // Position below the current line (add full lineHeight plus gap)
+      const top = textareaRect.top + (currentLine * lineHeight) + lineHeight * 2 + 4;
+      const left = textareaRect.left + 16; // padding offset
+
+      setAutocompletePosition({ top, left });
+    }
+    // Check if we're typing inside a [[ ]] and autocomplete is open
+    else if (wikiLinkStartPos !== null && cursorPos > wikiLinkStartPos && autocompleteOpen) {
+      const query = content.substring(wikiLinkStartPos + 2, cursorPos);
+
+      // Close autocomplete if we encounter ]] or newline
+      if (query.includes(']]') || query.includes('\n')) {
+        setAutocompleteOpen(false);
+        setWikiLinkStartPos(null);
+        setAutocompleteQuery('');
+      } else {
+        setAutocompleteQuery(query);
+        setSelectedIndex(0); // Reset selection when query changes
+      }
+    }
+    // Close if cursor moved outside wiki-link
+    else if (wikiLinkStartPos !== null && cursorPos <= wikiLinkStartPos && autocompleteOpen) {
+      setAutocompleteOpen(false);
+      setWikiLinkStartPos(null);
+      setAutocompleteQuery('');
+    }
+  }, [content, mode, wikiLinkStartPos, autocompleteOpen]);
 
   // Track content changes for save status
   useEffect(() => {
@@ -137,7 +363,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
         // Simulate save delay
         setTimeout(() => setSaveStatus('saved'), 500);
       }, 1000); // 1 second debounce
-      
+
       return () => clearTimeout(timeout);
     }
   }, [content]);
@@ -392,7 +618,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
           )}
 
           {/* Editor */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden relative">
             <textarea
               ref={textareaRef}
               value={content}
@@ -403,6 +629,63 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
                 lineHeight: '1.6',
               }}
             />
+
+            {/* Autocomplete Dropdown */}
+            {autocompleteOpen && autocompleteSuggestions.length > 0 && (
+              <div
+                ref={autocompleteRef}
+                className="fixed z-50 bg-surface-muted border border-accent shadow-lg flex flex-col overflow-hidden"
+                style={{
+                  top: `${autocompletePosition.top}px`,
+                  left: `${autocompletePosition.left}px`,
+                  minWidth: '300px',
+                  maxWidth: '400px',
+                  maxHeight: '256px',
+                  borderRadius: '0.5rem',
+                }}
+              >
+                {/* Sticky header */}
+                <div className="border-b border-subtle px-3 py-2 bg-surface-muted text-xs text-muted-foreground flex-shrink-0">
+                  {autocompleteQuery ? `Search: "${autocompleteQuery}"` : 'Recent notes'}
+                </div>
+
+                {/* Scrollable content area */}
+                <div className="p-2 overflow-y-auto flex-1" style={{ scrollbarGutter: 'stable' }}>
+                  {autocompleteSuggestions.map((note, index) => (
+                    <button
+                      key={note.id}
+                      onClick={() => note.title && insertAutocompleteSuggestion(note.title)}
+                      className={`w-full text-left px-3 py-2 rounded transition-colors ${
+                        index === selectedIndex
+                          ? 'bg-accent text-accent-foreground'
+                          : 'hover:bg-surface-soft text-foreground'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <FileText size={14} className="flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-sm truncate">{note.title}</div>
+                          {note.content && (
+                            <div className="text-xs text-muted-foreground truncate mt-0.5">
+                              {note.content.substring(0, 60)}...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Sticky footer */}
+                <div className="border-t border-subtle px-3 py-2 bg-surface-muted text-xs text-muted-foreground flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    <span>↑↓ navigate</span>
+                    <span>Enter to select</span>
+                    <span>Esc to close</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </>
       ) : (
