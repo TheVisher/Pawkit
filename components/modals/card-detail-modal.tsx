@@ -336,17 +336,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     setExtracting(false);
   }, [card.id]);
 
-  // Close on Escape key
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
   // Save on modal close to ensure nothing is lost
   const handleClose = async () => {
     // Save any pending changes before closing
@@ -358,7 +347,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         console.error('Failed to save notes on close:', error);
       }
     }
-    
+
     if (isNote && content !== lastSavedContentRef.current) {
       try {
         await updateCardInStore(card.id, { content });
@@ -367,9 +356,21 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         console.error('Failed to save content on close:', error);
       }
     }
-    
+
     onClose();
   };
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        handleClose();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notes, content, isNote]);
 
   // Debounced save notes to prevent constant re-renders
   useEffect(() => {
@@ -498,7 +499,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     if (wasInDen && updates.inDen === false) {
       setToast("Moved out of The Den");
       // Close modal after a brief delay to show the toast
-      setTimeout(() => onClose(), 500);
+      setTimeout(() => handleClose(), 500);
       return;
     }
 
@@ -605,7 +606,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
       // Close modal after moving to Den
       if (updated.inDen) {
-        setTimeout(() => onClose(), 500);
+        setTimeout(() => handleClose(), 500);
       }
     } catch (error) {
       console.error("Failed to move card:", error);
