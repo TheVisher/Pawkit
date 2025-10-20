@@ -143,7 +143,8 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
     // Restore focus and selection
     setTimeout(() => {
       textarea.focus();
-      const newPosition = start + before.length + selectedText.length;
+      // Place cursor AFTER the closing marker (after both selected text AND after string)
+      const newPosition = start + before.length + selectedText.length + after.length;
       textarea.setSelectionRange(newPosition, newPosition);
 
       // Trigger autocomplete for wiki-links
@@ -240,7 +241,14 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
   // Keyboard shortcuts and autocomplete navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle shortcuts when in edit mode and textarea is focused
+      // Handle Cmd+/ for mode toggle - works in BOTH edit and preview modes
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        e.preventDefault();
+        setMode(mode === 'edit' ? 'preview' : 'edit');
+        return;
+      }
+
+      // Only handle other shortcuts when in edit mode and textarea is focused
       if (mode !== "edit" || !textareaRef.current?.matches(':focus')) return;
 
       // Handle autocomplete navigation
@@ -290,6 +298,9 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
             break;
           case 'k':
             insertMarkdown('[[', ']]', true); // true = open autocomplete
+            break;
+          case 'e':
+            insertMarkdown('`', '`');
             break;
         }
       }
@@ -368,8 +379,38 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
     }
   }, [content]);
 
-  // Custom renderer for wiki-links
+  // Custom renderer for wiki-links and code
   const components = {
+    code: ({ node, inline, className, children, ...props }: any) => {
+      // In ReactMarkdown v10, we need to check multiple ways:
+      // 1. Check if inline prop exists and is true
+      // 2. Check if className contains "language-" (block code marker)
+      // 3. Check if there's no className (usually inline code)
+      const isInline = inline ?? !className;
+
+      if (isInline) {
+        return (
+          <code
+            className="px-2 py-1 rounded font-mono text-sm border"
+            style={{
+              backgroundColor: 'rgba(139, 92, 246, 0.1)', // Purple tint
+              borderColor: 'rgba(139, 92, 246, 0.3)',
+              color: '#c4b5fd', // Light purple
+            }}
+            {...props}
+          >
+            {children}
+          </code>
+        );
+      }
+
+      // Block code (triple backticks)
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    },
     a: ({ node, href, children, ...props }: any) => {
       // Check if this is a wiki-link (starts with #/wiki/)
       if (href?.startsWith('#/wiki/')) {
@@ -694,7 +735,6 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
           <ReactMarkdown
             remarkPlugins={[
               remarkGfm,
-              remarkBreaks,
               [remarkWikiLink, {
                 aliasDivider: '|',
                 pageResolver: (name: string) => {

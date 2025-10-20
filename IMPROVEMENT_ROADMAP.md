@@ -15,24 +15,24 @@ This roadmap focuses on **perfecting existing features** rather than adding new 
 ### 1. Note-Taking Experience (Highest Impact)
 
 #### A. Wiki-Link Auto-completion ⭐⭐⭐
-- [ ] Add autocomplete dropdown after typing `[[`
-- [ ] Implement fuzzy search through note titles
-- [ ] Add arrow key navigation in dropdown
-- [ ] Show recent notes first
-- [ ] Enter key to insert selected note
-- [ ] **File to modify**: `components/notes/md-editor.tsx`
+- [x] Add autocomplete dropdown after typing `[[`
+- [x] Implement fuzzy search through note titles
+- [x] Add arrow key navigation in dropdown
+- [x] Show recent notes first
+- [x] Enter key to insert selected note
+- [x] **File to modify**: `components/notes/md-editor.tsx`
 
-**Impact**: Massive UX improvement for linking workflow
+**Impact**: Massive UX improvement for linking workflow ✅ **COMPLETED**
 
 #### B. Markdown Keyboard Shortcuts ⭐⭐⭐
-- [ ] `Cmd/Ctrl + B` for bold
-- [ ] `Cmd/Ctrl + I` for italic
-- [ ] `Cmd/Ctrl + K` for links
-- [ ] `Cmd/Ctrl + E` for code blocks
-- [ ] `Cmd/Ctrl + /` to toggle preview mode
-- [ ] **File to modify**: `components/notes/md-editor.tsx`
+- [x] `Cmd/Ctrl + B` for bold
+- [x] `Cmd/Ctrl + I` for italic
+- [x] `Cmd/Ctrl + K` for links (wiki-links with autocomplete)
+- [x] `Cmd/Ctrl + E` for code blocks
+- [x] `Cmd/Ctrl + /` to toggle preview mode
+- [x] **File to modify**: `components/notes/md-editor.tsx`
 
-**Current Issue**: Must click toolbar buttons, no keyboard shortcuts
+**Current Issue**: Must click toolbar buttons, no keyboard shortcuts ✅ **COMPLETED**
 
 #### C. Daily Notes Quick Access ⭐⭐
 - [ ] Add "Today's Note" button at top of sidebar

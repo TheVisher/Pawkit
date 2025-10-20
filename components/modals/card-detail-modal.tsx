@@ -141,6 +141,36 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   // Custom renderer for wiki-links
   const wikiLinkComponents = useMemo(() => ({
+    code: ({ node, inline, className, children, ...props }: any) => {
+      // In ReactMarkdown v10, we need to check multiple ways:
+      // 1. Check if inline prop exists and is true
+      // 2. Check if className contains "language-" (block code marker)
+      // 3. Check if there's no className (usually inline code)
+      const isInline = inline ?? !className;
+      
+      if (isInline) {
+        return (
+          <code
+            className="px-2 py-1 rounded font-mono text-sm border"
+            style={{
+              backgroundColor: 'rgba(139, 92, 246, 0.1)', // Purple tint
+              borderColor: 'rgba(139, 92, 246, 0.3)',
+              color: '#c4b5fd', // Light purple
+            }}
+            {...props}
+          >
+            {children}
+          </code>
+        );
+      }
+      
+      // Block code (triple backticks)
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    },
     a: ({ node, href, children, ...props }: any) => {
       // Check if this is a wiki-link (starts with #/wiki/)
       if (href?.startsWith('#/wiki/')) {
