@@ -477,7 +477,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         {...listeners}
         {...attributes}
         style={style}
-        className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface ${cardPaddingClass} transition-all ${
+        className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface ${cardPaddingClass} transition-all select-none ${
           selected ? "is-selected ring-2 ring-accent border-transparent" : "border-subtle"
         } ${isDragging ? "opacity-50" : ""}`}
         onClick={(event) => onClick(event, card)}
