@@ -341,7 +341,7 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={goToTodaysNote}>
                   <CalendarDays />
-                  <span>Today's Note</span>
+                  <span>Today&apos;s Note</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
@@ -349,7 +349,7 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
               <SidebarMenuItem>
                 <SidebarMenuButton onClick={goToYesterdaysNote}>
                   <CalendarClock />
-                  <span>Yesterday's Note</span>
+                  <span>Yesterday&apos;s Note</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 

@@ -308,7 +308,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [mode, autocompleteOpen, autocompleteSuggestions, selectedIndex, insertMarkdown]);
+  }, [mode, autocompleteOpen, autocompleteSuggestions, selectedIndex, insertMarkdown, insertAutocompleteSuggestion]);
 
   // Detect [[ for autocomplete
   useEffect(() => {
