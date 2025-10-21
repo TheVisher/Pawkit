@@ -27,28 +27,12 @@ export function SelectionDrawer({ cards, onBulkDelete, onBulkMove, onBulkTag, on
   // Get selected cards
   const selectedCards = cards.filter((card) => selectedIds.includes(card.id));
 
-  // Handle backdrop click - only close if NOT holding Cmd/Ctrl (not actively selecting)
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    // Don't close if user is holding Cmd/Ctrl (they're selecting more items)
-    if (e.metaKey || e.ctrlKey) {
-      return;
-    }
-    // Otherwise, close the drawer
-    clear();
-  };
-
   // Don't render if not visible
   if (!isVisible) return null;
 
   return (
     <>
-      {/* Backdrop - less obtrusive, allows continued selection */}
-      <div
-        className="fixed inset-0 bg-black/10 z-40 transition-opacity duration-300"
-        onClick={handleBackdropClick}
-      />
-
-      {/* Drawer */}
+      {/* Drawer - no backdrop, allows free interaction with cards */}
       <div
         className="fixed right-0 top-0 bottom-0 w-80 bg-surface border-l border-subtle z-50 shadow-2xl flex flex-col animate-slide-in-right"
         onClick={(e) => e.stopPropagation()}
