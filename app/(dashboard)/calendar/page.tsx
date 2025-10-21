@@ -6,6 +6,7 @@ import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CustomCalendar } from "@/components/calendar/custom-calendar";
 import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/daily-notes";
 import { CalendarIcon } from "lucide-react";
+import { GlowButton } from "@/components/ui/glow-button";
 
 export default function CalendarPage() {
   const { cards, collections, addCard } = useDataStore();
@@ -93,7 +94,7 @@ export default function CalendarPage() {
             onClick={() => setSelectedDate(null)}
           >
             <div
-              className="bg-surface rounded-2xl p-6 w-full max-w-2xl shadow-xl border border-subtle max-h-[80vh] overflow-y-auto"
+              className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg p-6 w-full max-w-2xl shadow-xl max-h-[80vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -116,14 +117,15 @@ export default function CalendarPage() {
                   Daily Note
                 </h3>
                 {dailyNote ? (
-                  <button
+                  <GlowButton
                     onClick={() => {
                       setActiveCardId(dailyNote.id);
                       setSelectedDate(null);
                     }}
-                    className="w-full text-left p-4 rounded-lg bg-purple-500/20 border border-purple-400/30 hover:bg-purple-500/30 transition-colors"
+                    variant="primary"
+                    className="w-full text-left p-4 rounded-xl justify-start"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between w-full">
                       <div>
                         <div className="font-medium text-purple-200">{dailyNote.title}</div>
                         <div className="text-sm text-purple-300/70 mt-1">
@@ -132,16 +134,17 @@ export default function CalendarPage() {
                       </div>
                       <div className="text-purple-300">→</div>
                     </div>
-                  </button>
+                  </GlowButton>
                 ) : (
-                  <button
+                  <GlowButton
                     onClick={() => handleCreateDailyNote(selectedDate)}
-                    className="w-full text-left p-4 rounded-lg border border-dashed border-subtle hover:border-accent hover:bg-accent/5 transition-colors"
+                    variant="primary"
+                    className="w-full text-left p-4 rounded-xl justify-start"
                   >
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <span>+ Create daily note for this day</span>
                     </div>
-                  </button>
+                  </GlowButton>
                 )}
               </div>
 
@@ -189,12 +192,13 @@ export default function CalendarPage() {
 
               {/* Close Button */}
               <div className="flex justify-end">
-                <button
+                <GlowButton
                   onClick={() => setSelectedDate(null)}
-                  className="rounded-lg bg-surface-soft px-4 py-2 text-sm font-medium text-foreground hover:bg-surface-muted transition-colors"
+                  variant="primary"
+                  size="md"
                 >
                   Close
-                </button>
+                </GlowButton>
               </div>
             </div>
           </div>

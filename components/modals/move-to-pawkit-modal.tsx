@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Collection } from "@prisma/client";
+import { GlowButton } from "@/components/ui/glow-button";
 
 export type MoveToPawkitModalProps = {
   open: boolean;
@@ -64,9 +65,9 @@ export function MoveToPawkitModal({ open, onClose, onConfirm }: MoveToPawkitModa
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-lg border border-gray-800 bg-gray-950 p-6 shadow-xl"
+        className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="mb-4 text-xl font-semibold text-gray-100">Move to Pawkit</h2>
@@ -107,19 +108,21 @@ export function MoveToPawkitModal({ open, onClose, onConfirm }: MoveToPawkitModa
         </div>
 
         <div className="flex justify-end gap-2">
-          <button
+          <GlowButton
             onClick={onClose}
-            className="rounded bg-gray-800 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+            variant="primary"
+            size="md"
           >
             Cancel
-          </button>
-          <button
+          </GlowButton>
+          <GlowButton
             onClick={handleConfirm}
             disabled={!selectedSlug}
-            className="rounded bg-accent px-4 py-2 text-sm text-gray-900 font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-accent/90"
+            variant="primary"
+            size="md"
           >
             Move
-          </button>
+          </GlowButton>
         </div>
       </div>
     </div>

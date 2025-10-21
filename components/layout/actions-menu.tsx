@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
+import { GlowButton } from "@/components/ui/glow-button";
 import type { ViewType } from "@/lib/hooks/view-settings-store";
 
 type PawkitActions = {
@@ -233,7 +234,7 @@ export function ActionsMenu({ view, onRefresh, pawkitActions, onCreatePawkit }: 
           onClick={() => setShowDeleteConfirm(false)}
         >
           <div
-            className="bg-gray-950 rounded-lg p-6 w-full max-w-md shadow-xl"
+            className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg p-6 w-full max-w-md shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-semibold text-gray-100 mb-4">
@@ -243,18 +244,22 @@ export function ActionsMenu({ view, onRefresh, pawkitActions, onCreatePawkit }: 
               This will move the selected cards to trash. You can restore them later from the trash.
             </p>
             <div className="flex gap-3">
-              <button
+              <GlowButton
                 onClick={() => setShowDeleteConfirm(false)}
-                className="flex-1 rounded bg-gray-900 px-4 py-2 text-sm font-medium text-gray-100 hover:bg-gray-800 transition-colors"
+                variant="primary"
+                size="md"
+                className="flex-1"
               >
                 Cancel
-              </button>
-              <button
+              </GlowButton>
+              <GlowButton
                 onClick={handleConfirmDelete}
-                className="flex-1 rounded bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors"
+                variant="danger"
+                size="md"
+                className="flex-1"
               >
                 Delete
-              </button>
+              </GlowButton>
             </div>
           </div>
         </div>
