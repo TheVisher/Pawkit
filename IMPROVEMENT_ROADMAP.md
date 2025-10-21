@@ -453,14 +453,17 @@ async function importAllBookmarks() {
 - [x] **Bulk Delete** - Move multiple items to trash with confirmation
 - [x] **Bulk Move to Pawkit** - Move selected items to any pawkit
 - [x] **Individual Deselection** - Remove items from selection via X button
-- [x] **Smooth Animations** - Slide-in drawer with backdrop
+- [x] **Smooth Animations** - Slide-in drawer animation
+- [x] **No Backdrop Blocking** - Free card selection while drawer is open
+- [x] **Text Selection Prevention** - Clean shift-click range selection without highlight
 - [ ] Bulk tag editing for selected cards (future)
 - [ ] Bulk date scheduling (future)
 - [ ] Bulk export (JSON, Markdown, HTML) (future)
+- [ ] Drag-to-select box (future enhancement)
 - [x] **Files created**: `components/selection-drawer/selection-drawer.tsx`
 - [x] **Files modified**: `components/library/card-gallery.tsx`, `tailwind.config.ts`
 
-**Status**: ✅ **COMPLETED** - Beautiful selection drawer slides from right showing thumbnails of selected items, prevents accidental deletions with visual confirmation. Includes bulk delete, move to pawkit, and individual item removal.
+**Status**: ✅ **COMPLETED** - Beautiful selection drawer slides from right showing thumbnails of selected items, prevents accidental deletions with visual confirmation. Works as a live status panel without blocking card interaction. Users can freely select/deselect cards (Cmd/Ctrl+click, Shift+click for ranges) while drawer updates in real-time. Includes bulk delete, move to pawkit, and individual item removal. No backdrop interference, clean UX.
 
 #### D. Card Preview on Hover ⭐
 - [ ] Show tooltip preview on card hover
