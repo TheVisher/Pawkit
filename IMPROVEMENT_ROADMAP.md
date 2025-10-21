@@ -45,14 +45,14 @@ This roadmap focuses on **perfecting existing features** rather than adding new 
 **Status**: ✅ **COMPLETED** - All features working, includes hash-based navigation and fixed layout persistence
 
 #### D. Note Templates UX ⭐⭐
-- [ ] Show template picker when creating new note
-- [ ] Add "Apply Template" button in empty notes
-- [ ] Create keyboard shortcut to open templates menu
-- [ ] Remember last used template per user
-- [ ] Allow saving custom user templates
-- [ ] **File to modify**: `components/modals/create-note-modal.tsx`
+- [x] Show template picker when creating new note
+- [x] Add "Apply Template" button in empty notes
+- [x] Create keyboard shortcut to open templates menu (Cmd/Ctrl + Shift + T)
+- [x] Remember last used template per user
+- [ ] Allow saving custom user templates (future enhancement)
+- [x] **Files modified**: `components/modals/create-note-modal.tsx`, `components/notes/md-editor.tsx`
 
-**Current Issue**: Template dropdown in editor is buried and hard to find
+**Status**: ✅ **COMPLETED** - Template picker in create modal, empty state button, keyboard shortcuts, and template memory all working
 
 ---
 
@@ -409,7 +409,7 @@ async function importAllBookmarks() {
 #### A. Keyboard Shortcuts ⭐⭐⭐ (MOST REQUESTED)
 
 **Global Shortcuts to Add**:
-- [ ] `Cmd/Ctrl + K` - Open command palette
+- [x] `Cmd/Ctrl + K` - Open command palette ✅ DONE
 - [ ] `Cmd/Ctrl + N` - New note
 - [ ] `Cmd/Ctrl + T` - Today's note
 - [ ] `Cmd/Ctrl + P` - New card/bookmark
@@ -425,31 +425,45 @@ async function importAllBookmarks() {
 - [ ] `lib/hooks/use-keyboard-shortcuts.ts`
 - [ ] `components/modals/keyboard-shortcuts-modal.tsx`
 
-**Current Issue**: Almost no keyboard navigation exists
+**Status**: Partially complete - Cmd+K works for Command Palette
 
 #### B. Command Palette ⭐⭐⭐ (HIGHEST IMPACT)
-- [ ] Create VSCode-style command palette
-- [ ] Quick actions (New Note, New Card, Dig Up, etc.)
-- [ ] Show recent notes/cards
-- [ ] Search everything in one place
-- [ ] Navigate to pawkits
-- [ ] Execute common actions
-- [ ] Fuzzy search commands
-- [ ] **New file**: `components/command-palette/command-palette.tsx`
+- [x] Create VSCode-style command palette
+- [x] Quick actions (New Note, New Card, Dig Up, etc.)
+- [x] Show recent notes/cards
+- [x] Search everything in one place
+- [x] Navigate to pawkits
+- [x] Execute common actions
+- [x] Fuzzy search commands
+- [x] Pinned commands (right-click to pin)
+- [x] Frequently used tracking (auto-shows top 3)
+- [x] Beautiful gradient highlight effect
+- [x] Arrow key navigation
+- [x] `Cmd/Ctrl + K` keyboard shortcut
+- [x] **File created**: `components/command-palette/command-palette.tsx`
+- [x] **File modified**: `app/(dashboard)/layout.tsx`
 
-**Impact**: THE most impactful UX addition - makes app feel professional
+**Status**: ✅ **COMPLETED** - Full VSCode-style command palette with fuzzy search, pinning, frequency tracking, and beautiful UX. Opens daily notes, creates notes/cards, navigates to all pages and pawkits.
+
+**Impact**: THE most impactful UX addition - makes app feel professional ✨
 
 #### C. Bulk Operations ⭐⭐
-- [ ] Bulk tag editing for selected cards
-- [ ] Bulk date scheduling
-- [ ] Bulk export (JSON, Markdown, HTML)
-- [ ] "Select all in current view" button
-- [ ] "Select all matching filter" option
-- [ ] Bulk delete with confirmation
-- [ ] Bulk move to pawkit (already exists, polish it)
-- [ ] **File to modify**: `components/library/card-gallery.tsx`
+- [x] **Selection Drawer UI** - Slides from right when 2+ items selected
+- [x] **Visual Confirmation** - Shows thumbnails of all selected items
+- [x] **Bulk Delete** - Move multiple items to trash with confirmation
+- [x] **Bulk Move to Pawkit** - Move selected items to any pawkit
+- [x] **Individual Deselection** - Remove items from selection via X button
+- [x] **Smooth Animations** - Slide-in drawer animation
+- [x] **No Backdrop Blocking** - Free card selection while drawer is open
+- [x] **Text Selection Prevention** - Clean shift-click range selection without highlight
+- [ ] Bulk tag editing for selected cards (future)
+- [ ] Bulk date scheduling (future)
+- [ ] Bulk export (JSON, Markdown, HTML) (future)
+- [ ] Drag-to-select box (future enhancement)
+- [x] **Files created**: `components/selection-drawer/selection-drawer.tsx`
+- [x] **Files modified**: `components/library/card-gallery.tsx`, `tailwind.config.ts`
 
-**Current**: Multi-select exists but limited actions available
+**Status**: ✅ **COMPLETED** - Beautiful selection drawer slides from right showing thumbnails of selected items, prevents accidental deletions with visual confirmation. Works as a live status panel without blocking card interaction. Users can freely select/deselect cards (Cmd/Ctrl+click, Shift+click for ranges) while drawer updates in real-time. Includes bulk delete, move to pawkit, and individual item removal. No backdrop interference, clean UX.
 
 #### D. Card Preview on Hover ⭐
 - [ ] Show tooltip preview on card hover
@@ -614,10 +628,10 @@ async function importAllBookmarks() {
 ## 🚀 IMPLEMENTATION PRIORITY
 
 ### Week 1 - Biggest Impact (20 hours)
-1. [ ] **Command Palette** (8h) - Game changer ⭐⭐⭐
+1. [x] **Command Palette** (8h) - Game changer ⭐⭐⭐ ✅ COMPLETED
 2. [ ] **Global Keyboard Shortcuts** (4h) - Power users ⭐⭐⭐
-3. [ ] **Wiki-link Autocomplete** (4h) - Most used feature ⭐⭐⭐
-4. [ ] **Bulk Operations UI** (2h) - Selection already exists ⭐⭐
+3. [x] **Wiki-link Autocomplete** (4h) - Most used feature ⭐⭐⭐ ✅ COMPLETED
+4. [x] **Bulk Operations UI** (2h) - Selection already exists ⭐⭐ ✅ COMPLETED
 5. [ ] **Remove Debug Logs** (2h) - Production cleanup ⭐
 
 ### Week 2 - Polish (16 hours)

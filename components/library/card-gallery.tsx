@@ -16,6 +16,7 @@ import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
+import { SelectionDrawer } from "@/components/selection-drawer/selection-drawer";
 
 export type CardGalleryProps = {
   cards: CardModel[];
@@ -247,22 +248,11 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
       {!hideControls && (
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs text-muted-foreground">{cards.length} card(s)</span>
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              className="rounded-lg bg-surface-soft px-3 py-1 text-sm text-muted-foreground transition hover:text-foreground disabled:opacity-40"
-              disabled={!selectedIds.length}
-              onClick={handleBulkMove}
-            >
-              Move to Pawkit
-            </button>
-            <button
-              className="rounded bg-rose-500 px-3 py-1 text-sm text-gray-950 disabled:opacity-40"
-              disabled={!selectedIds.length}
-              onClick={handleBulkDelete}
-            >
-              Delete selected
-            </button>
-          </div>
+          {selectedIds.length > 0 && (
+            <span className="text-xs text-accent font-medium">
+              {selectedIds.length} selected
+            </span>
+          )}
         </div>
       )}
       <div className={layoutClass(layout, effectiveCardSize)} data-masonry-gallery>
@@ -376,6 +366,13 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           }}
         />
       )}
+
+      {/* Selection Drawer */}
+      <SelectionDrawer
+        cards={cards}
+        onBulkDelete={handleBulkDelete}
+        onBulkMove={handleBulkMove}
+      />
     </div>
   );
 }
@@ -480,7 +477,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         {...listeners}
         {...attributes}
         style={style}
-        className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface ${cardPaddingClass} transition-all ${
+        className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface ${cardPaddingClass} transition-all select-none ${
           selected ? "is-selected ring-2 ring-accent border-transparent" : "border-subtle"
         } ${isDragging ? "opacity-50" : ""}`}
         onClick={(event) => onClick(event, card)}

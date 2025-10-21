@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { FileText, Bookmark } from "lucide-react";
+import { useState, useEffect } from "react";
+import { FileText, Bookmark, Layout, ChevronRight, ChevronLeft } from "lucide-react";
 import { createPortal } from "react-dom";
 import { CardType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { noteTemplates, NoteTemplate, getTemplatesByCategory, getTemplateById } from "@/lib/templates/note-templates";
+
+const LAST_TEMPLATE_KEY = "pawkit-last-used-template";
 
 type CreateNoteModalProps = {
   open: boolean;
@@ -18,6 +21,21 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
   const [title, setTitle] = useState("");
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<NoteTemplate | null>(null);
+  const [showTemplates, setShowTemplates] = useState(false);
+
+  // Load last used template on open
+  useEffect(() => {
+    if (open && typeof window !== 'undefined') {
+      const lastTemplateId = localStorage.getItem(LAST_TEMPLATE_KEY);
+      if (lastTemplateId) {
+        const template = getTemplateById(lastTemplateId);
+        if (template) {
+          setSelectedTemplate(template);
+        }
+      }
+    }
+  }, [open]);
 
   if (!open || typeof document === 'undefined') return null;
 
@@ -29,13 +47,23 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
 
     setError(null);
     try {
+      // Use template content if selected
+      const content = selectedTemplate ? selectedTemplate.content : "";
+
+      // Save last used template
+      if (selectedTemplate && typeof window !== 'undefined') {
+        localStorage.setItem(LAST_TEMPLATE_KEY, selectedTemplate.id);
+      }
+
       await onConfirm({
         type: noteType,
         title: title.trim(),
-        content: ""
+        content
       });
       setTitle("");
       setNoteType("md-note");
+      setSelectedTemplate(null);
+      setShowTemplates(false);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create note");
@@ -105,6 +133,71 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
               </Button>
             </div>
           </div>
+
+          {/* Template Selection Toggle */}
+          <div>
+            <Button
+              onClick={() => setShowTemplates(!showTemplates)}
+              variant="outline"
+              className="w-full justify-between"
+              size="lg"
+            >
+              <div className="flex items-center gap-2">
+                <Layout size={16} />
+                {selectedTemplate ? (
+                  <span>Template: {selectedTemplate.name}</span>
+                ) : (
+                  <span>Choose a Template (Optional)</span>
+                )}
+              </div>
+              {showTemplates ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+            </Button>
+          </div>
+
+          {/* Template Picker */}
+          {showTemplates && (
+            <div className="border border-gray-700 rounded-lg p-3 bg-gray-900/40 max-h-64 overflow-y-auto">
+              <div className="space-y-2">
+                {/* None option */}
+                <button
+                  onClick={() => {
+                    setSelectedTemplate(null);
+                    setShowTemplates(false);
+                  }}
+                  className={`w-full text-left p-3 rounded border transition-colors ${
+                    selectedTemplate === null
+                      ? 'border-purple-500 bg-purple-500/20'
+                      : 'border-gray-700 hover:bg-gray-800/50'
+                  }`}
+                >
+                  <div className="font-medium text-sm text-gray-100">No Template</div>
+                  <div className="text-xs text-gray-400">Start with a blank note</div>
+                </button>
+
+                {/* Template options */}
+                {noteTemplates.map((template) => (
+                  <button
+                    key={template.id}
+                    onClick={() => {
+                      setSelectedTemplate(template);
+                      setShowTemplates(false);
+                    }}
+                    className={`w-full text-left p-3 rounded border transition-colors ${
+                      selectedTemplate?.id === template.id
+                        ? 'border-purple-500 bg-purple-500/20'
+                        : 'border-gray-700 hover:bg-gray-800/50'
+                    }`}
+                  >
+                    <div className="font-medium text-sm text-gray-100">{template.name}</div>
+                    <div className="text-xs text-gray-400">{template.description}</div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {template.category} • {template.tags.map(tag => `#${tag}`).join(' ')}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Title Input */}
           <div>

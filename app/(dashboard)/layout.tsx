@@ -13,11 +13,19 @@ import { ConflictNotifications } from "@/components/conflict-notifications";
 import { ViewControls } from "@/components/layout/view-controls";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { PawkitActionsProvider } from "@/lib/contexts/pawkit-actions-context";
+import { CommandPalette } from "@/components/command-palette/command-palette";
+import { CreateNoteModal } from "@/components/modals/create-note-modal";
+import { AddCardModal } from "@/components/modals/add-card-modal";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
-  const { collections, initialize, isInitialized, refresh } = useDataStore();
+  const { collections, initialize, isInitialized, refresh, addCard } = useDataStore();
   const { loadFromServer } = useViewSettingsStore();
+
+  // Command Palette state
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
+  const [showCreateCardModal, setShowCreateCardModal] = useState(false);
 
   // Fetch user data once on mount (no SWR polling)
   useEffect(() => {
@@ -75,6 +83,30 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     await refresh();
   };
 
+  // Command Palette keyboard shortcut (Cmd/Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(true);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Handle create note from command palette
+  const handleCreateNote = async (data: { type: string; title: string; content?: string }) => {
+    setShowCreateNoteModal(false);
+    await addCard({
+      type: data.type as 'md-note' | 'text-note',
+      title: data.title,
+      content: data.content || "",
+      url: "",
+    });
+  };
+
   return (
     <SelectionStoreProvider>
       <PawkitActionsProvider>
@@ -99,6 +131,33 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </main>
           </SidebarInset>
           <ConflictNotifications />
+
+          {/* Command Palette */}
+          <CommandPalette
+            open={showCommandPalette}
+            onClose={() => setShowCommandPalette(false)}
+            onOpenCreateNote={() => {
+              setShowCommandPalette(false);
+              setShowCreateNoteModal(true);
+            }}
+            onOpenCreateCard={() => {
+              setShowCommandPalette(false);
+              setShowCreateCardModal(true);
+            }}
+          />
+
+          {/* Create Note Modal */}
+          <CreateNoteModal
+            open={showCreateNoteModal}
+            onClose={() => setShowCreateNoteModal(false)}
+            onConfirm={handleCreateNote}
+          />
+
+          {/* Add Card Modal */}
+          <AddCardModal
+            open={showCreateCardModal}
+            onClose={() => setShowCreateCardModal(false)}
+          />
         </SidebarProvider>
       </PawkitActionsProvider>
     </SelectionStoreProvider>

@@ -288,6 +288,13 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
       }
 
       if (e.metaKey || e.ctrlKey) {
+        // Cmd/Ctrl + Shift + T for templates
+        if (e.shiftKey && e.key.toLowerCase() === 't') {
+          e.preventDefault();
+          setShowTemplates(!showTemplates);
+          return;
+        }
+
         e.preventDefault();
         switch(e.key.toLowerCase()) {
           case 'b':
@@ -628,7 +635,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
             <button
               onClick={() => setShowTemplates(!showTemplates)}
               className="p-2 rounded hover:bg-surface-soft text-foreground transition-colors"
-              title="Templates"
+              title="Templates (Cmd/Ctrl + Shift + T)"
             >
               <Layout size={16} />
             </button>
@@ -660,6 +667,23 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
 
           {/* Editor */}
           <div className="flex-1 overflow-hidden relative">
+            {/* Empty State with Template Button */}
+            {content.trim().length === 0 && !showTemplates && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                <div className="text-center space-y-4 pointer-events-auto">
+                  <p className="text-muted-foreground text-sm">Your note is empty</p>
+                  <button
+                    onClick={() => setShowTemplates(true)}
+                    className="px-6 py-3 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-colors flex items-center gap-2 mx-auto font-medium"
+                  >
+                    <Layout size={18} />
+                    Apply a Template
+                  </button>
+                  <p className="text-muted-foreground text-xs">or just start typing</p>
+                </div>
+              </div>
+            )}
+
             <textarea
               ref={textareaRef}
               value={content}
