@@ -1,7 +1,15 @@
-export function DogHouseIcon({ className = "h-5 w-5" }: { className?: string }) {
+export function DogHouseIcon({
+  className = "",
+  size = 24
+}: {
+  className?: string;
+  size?: number;
+}) {
   return (
     <svg
       className={className}
+      width={size}
+      height={size}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
