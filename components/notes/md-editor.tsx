@@ -679,7 +679,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
                     <Layout size={18} />
                     Apply a Template
                   </button>
-                  <p className="text-muted-foreground text-xs">or just start typing below</p>
+                  <p className="text-muted-foreground text-xs">or just start typing</p>
                 </div>
               </div>
             )}

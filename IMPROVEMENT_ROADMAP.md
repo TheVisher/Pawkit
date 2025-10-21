@@ -45,14 +45,14 @@ This roadmap focuses on **perfecting existing features** rather than adding new 
 **Status**: ✅ **COMPLETED** - All features working, includes hash-based navigation and fixed layout persistence
 
 #### D. Note Templates UX ⭐⭐
-- [ ] Show template picker when creating new note
-- [ ] Add "Apply Template" button in empty notes
-- [ ] Create keyboard shortcut to open templates menu
-- [ ] Remember last used template per user
-- [ ] Allow saving custom user templates
-- [ ] **File to modify**: `components/modals/create-note-modal.tsx`
+- [x] Show template picker when creating new note
+- [x] Add "Apply Template" button in empty notes
+- [x] Create keyboard shortcut to open templates menu (Cmd/Ctrl + Shift + T)
+- [x] Remember last used template per user
+- [ ] Allow saving custom user templates (future enhancement)
+- [x] **Files modified**: `components/modals/create-note-modal.tsx`, `components/notes/md-editor.tsx`
 
-**Current Issue**: Template dropdown in editor is buried and hard to find
+**Status**: ✅ **COMPLETED** - Template picker in create modal, empty state button, keyboard shortcuts, and template memory all working
 
 ---
 
