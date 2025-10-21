@@ -59,12 +59,22 @@ const config: Config = {
   				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
   				border: 'hsl(var(--sidebar-border))',
   				ring: 'hsl(var(--sidebar-ring))'
-  			}
+  			},
+  			'glass-surface': 'rgba(255, 255, 255, 0.05)',
+  			'glass-border': 'rgba(255, 255, 255, 0.08)',
+  			'success-glow': '#22c55e',
+  			'danger-glow': '#ef4444',
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
-  			sm: 'calc(var(--radius) - 4px)'
+  			sm: 'calc(var(--radius) - 4px)',
+  			'3xl': '24px',
+  		},
+  		boxShadow: {
+  			'glow-accent': '0 0 25px rgba(124, 58, 237, 0.45)',
+  			'glow-success': '0 0 25px rgba(34, 197, 94, 0.45)',
+  			'glow-danger': '0 0 25px rgba(239, 68, 68, 0.45)',
   		},
   		keyframes: {
   			'slide-in-right': {

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Check } from "lucide-react";
 import { useDataStore } from "@/lib/stores/data-store";
+import { GlowButton } from "@/components/ui/glow-button";
 
 type DigUpViewProps = {
   initialCards: CardModel[];
@@ -175,18 +176,19 @@ export function DigUpView({
   if (!currentCard) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div className="bg-gray-950 rounded-lg p-12 max-w-md text-center border border-gray-800">
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-12 max-w-md text-center backdrop-blur-lg shadow-lg">
           <div className="text-6xl mb-4">🐕</div>
           <h2 className="text-2xl font-semibold text-gray-100 mb-2">All Caught Up!</h2>
           <p className="text-gray-400 mb-6">
             Kit could not find any more cards to dig up.
           </p>
-          <button
+          <GlowButton
             onClick={handleClose}
-            className="rounded bg-accent px-6 py-2 text-sm font-medium text-gray-900 hover:bg-accent/90"
+            variant="primary"
+            size="lg"
           >
             Back to Library
-          </button>
+          </GlowButton>
         </div>
       </div>
     );
@@ -198,7 +200,7 @@ export function DigUpView({
       onClick={handleClose}
     >
       <div
-        className="bg-gray-950 rounded-lg border border-gray-800 shadow-2xl max-w-5xl w-full h-[90vh] overflow-hidden flex"
+        className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl max-w-5xl w-full h-[90vh] overflow-hidden flex"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Main Card Area */}
@@ -257,9 +259,9 @@ export function DigUpView({
                     : `Card ${reviewed + 1}`}
                 </span>
               </div>
-              <div className="w-full bg-gray-800 rounded-full h-2">
+              <div className="w-full bg-white/10 rounded-full h-2">
                 <div
-                  className="bg-accent rounded-full h-2 transition-all duration-300"
+                  className="bg-accent rounded-full h-2 transition-all duration-300 shadow-glow-accent"
                   style={{
                     width: totalCount > 0
                       ? `${((reviewed + 1) / totalCount) * 100}%`
@@ -318,37 +320,43 @@ export function DigUpView({
           </div>
 
           {/* Actions */}
-          <div className="border-t border-gray-800 p-6">
+          <div className="border-t border-white/10 p-6">
             <div className="flex gap-3">
-              <button
+              <GlowButton
                 onClick={handleKeep}
                 disabled={loading || loadingMore}
-                className="flex-1 rounded bg-gray-800 px-6 py-3 text-sm font-medium text-gray-100 hover:bg-gray-700 transition-colors disabled:opacity-50"
+                variant="primary"
+                size="lg"
+                className="flex-1"
               >
                 {loadingMore ? "Loading..." : "Keep"}
-              </button>
-              <button
+              </GlowButton>
+              <GlowButton
                 onClick={() => setShowPawkitSelector(!showPawkitSelector)}
                 disabled={loading || loadingMore}
-                className="flex-1 rounded bg-accent px-6 py-3 text-sm font-medium text-gray-900 hover:bg-accent/90 transition-colors disabled:opacity-50"
+                variant="primary"
+                size="lg"
+                className="flex-1"
               >
                 Add to Pawkit
-              </button>
-              <button
+              </GlowButton>
+              <GlowButton
                 onClick={handleDelete}
                 disabled={loading || loadingMore}
-                className="flex-1 rounded bg-rose-600 px-6 py-3 text-sm font-medium text-white hover:bg-rose-700 transition-colors disabled:opacity-50"
+                variant="danger"
+                size="lg"
+                className="flex-1"
               >
                 {loading ? "Deleting..." : "Delete"}
-              </button>
+              </GlowButton>
             </div>
           </div>
         </div>
 
         {/* Pawkit Selector Sidebar */}
         {showPawkitSelector && (
-          <div className="w-80 border-l border-gray-800 bg-gray-900/50 flex flex-col">
-            <div className="p-4 border-b border-gray-800">
+          <div className="w-80 border-l border-white/10 bg-white/5 backdrop-blur-lg flex flex-col">
+            <div className="p-4 border-b border-white/10">
               <h3 className="font-medium text-gray-100">Add to Pawkit</h3>
               <p className="text-xs text-gray-500 mt-1">Select a Pawkit to organize this card</p>
             </div>
@@ -387,14 +395,16 @@ function PawkitTreeItem({ node, depth, onSelect, loading }: PawkitTreeItemProps)
 
   return (
     <>
-      <button
+      <GlowButton
         onClick={() => onSelect(node.slug)}
         disabled={loading}
         style={{ paddingLeft: `${paddingLeft}px` }}
-        className="w-full text-left rounded pr-4 py-2.5 text-sm bg-gray-800 text-gray-200 hover:bg-gray-700 transition-colors disabled:opacity-50"
+        variant="primary"
+        size="sm"
+        className="w-full text-left rounded-full pr-4 py-2.5 text-sm disabled:opacity-50 justify-start"
       >
         📁 {node.name}
-      </button>
+      </GlowButton>
       {hasChildren && node.children.map((child) => (
         <PawkitTreeItem
           key={child.id}
