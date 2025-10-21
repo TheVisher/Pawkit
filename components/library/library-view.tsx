@@ -270,11 +270,6 @@ export function LibraryView({
   return (
     <>
       <div className="space-y-4">
-        {/* TEST BANNER */}
-        <div className="text-center">
-          <h1 className="text-6xl font-bold text-red-600">TEST</h1>
-        </div>
-
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
