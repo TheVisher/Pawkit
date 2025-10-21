@@ -50,6 +50,28 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
     setCards(initialCards);
   }, [initialCards]);
 
+  // Handle hash-based navigation to open specific notes
+  useEffect(() => {
+    if (!isHydrated) return;
+
+    const handleHashChange = () => {
+      const hash = window.location.hash.substring(1); // Remove the '#'
+      if (hash) {
+        const card = cards.find(c => c.id === hash);
+        if (card) {
+          setSelectedCard(card);
+        }
+      }
+    };
+
+    // Check hash on mount
+    handleHashChange();
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [cards, isHydrated]);
+
   // Sort cards based on view settings
   const sortedCards = useMemo(() => {
     return sortCards(cards, sortBy, sortOrder);

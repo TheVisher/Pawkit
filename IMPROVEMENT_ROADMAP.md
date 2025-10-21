@@ -35,14 +35,14 @@ This roadmap focuses on **perfecting existing features** rather than adding new 
 **Status**: ✅ **COMPLETED** - All shortcuts working, cursor positioning fixed, inline code rendering fixed for ReactMarkdown v10
 
 #### C. Daily Notes Quick Access ⭐⭐
-- [ ] Add "Today's Note" button at top of sidebar
-- [ ] Create keyboard shortcut `Cmd/Ctrl + T` for today's note
-- [ ] Auto-create today's note if it doesn't exist
-- [ ] Add "Yesterday's Note" quick link
-- [ ] Show streak counter for consecutive daily notes
-- [ ] **Files to modify**: `components/sidebar/app-sidebar.tsx`, `app/(dashboard)/notes/page.tsx`
+- [x] Add "Today's Note" button at top of sidebar
+- [x] Create keyboard shortcut `Cmd/Ctrl + Shift + D` for today's note
+- [x] Auto-create today's note if it doesn't exist
+- [x] Add "Yesterday's Note" quick link
+- [x] Show streak counter for consecutive daily notes
+- [x] **Files modified**: `components/sidebar/app-sidebar.tsx`, `components/notes/notes-view.tsx`, `components/library/workspace.tsx`
 
-**Current Issue**: Must navigate to Calendar, then click day - too many steps
+**Status**: ✅ **COMPLETED** - All features working, includes hash-based navigation and fixed layout persistence
 
 #### D. Note Templates UX ⭐⭐
 - [ ] Show template picker when creating new note

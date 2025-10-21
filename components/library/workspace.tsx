@@ -7,6 +7,7 @@ import { CardModel, CollectionNode } from "@/lib/types";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { CardGallery } from "@/components/library/card-gallery";
 import { LayoutMode } from "@/lib/constants";
+import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
 
 export type LibraryWorkspaceProps = {
   initialCards: CardModel[];
@@ -36,11 +37,16 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
   const selectedIds = useSelection((state) => state.selectedIds);
   const clearSelection = useSelection((state) => state.clear);
 
+  // Get view settings from the store
+  const viewType = area as ViewType;
+  const viewSettings = useViewSettingsStore((state) => state.getSettings(viewType));
+  const setViewLayout = useViewSettingsStore((state) => state.setLayout);
+
   const selectedCollection = useMemo(() => searchParams?.get("collection") ?? null, [searchParams]);
 
-  // Load saved layout preference on mount
+  // Load saved layout preference from view settings store on mount
   useEffect(() => {
-    const savedLayout = localStorage.getItem(storageKey) as LayoutMode;
+    const savedLayout = viewSettings.layout;
     if (savedLayout && ["grid", "masonry", "compact", "list"].includes(savedLayout)) {
       setLayout(savedLayout);
       // Update URL with saved preference if not already set
@@ -51,7 +57,7 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
         router.replace(`${currentPath}?${params.toString()}`);
       }
     }
-  }, [router, searchParams, storageKey]);
+  }, [router, searchParams, viewSettings.layout]);
 
   useEffect(() => {
     setCards(initialCards);
@@ -67,7 +73,8 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
 
   const handleLayoutChange = (nextLayout: LayoutMode) => {
     setLayout(nextLayout);
-    localStorage.setItem(storageKey, nextLayout);
+    // Save to view settings store instead of localStorage
+    setViewLayout(viewType, nextLayout);
     const params = new URLSearchParams(searchParams?.toString());
     params.set("layout", nextLayout);
     const currentPath = window.location.pathname;

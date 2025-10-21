@@ -3,10 +3,12 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, HelpCircle, User, Layers, Calendar } from "lucide-react";
+import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, HelpCircle, User, Layers, Calendar, CalendarDays, CalendarClock, Flame } from "lucide-react";
 import { type CollectionNode } from "@/lib/types";
 import { ProfileModal } from "@/components/modals/profile-modal";
 import { DogHouseIcon } from "@/components/icons/dog-house";
+import { useDataStore } from "@/lib/stores/data-store";
+import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
 import {
   Sidebar,
   SidebarContent,
@@ -53,6 +55,10 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
   const [isPawkitsExpanded, setIsPawkitsExpanded] = React.useState(false);
   const [expandedCollections, setExpandedCollections] = React.useState<Set<string>>(new Set());
   const [showProfileModal, setShowProfileModal] = React.useState(false);
+
+  // Get cards from data store for daily notes
+  const cards = useDataStore((state) => state.cards);
+  const addCard = useDataStore((state) => state.addCard);
 
   // Load Pawkits expansion state from localStorage
   React.useEffect(() => {
@@ -109,6 +115,90 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
       return next;
     });
   };
+
+  // Calculate daily note streak
+  const dailyNoteStreak = React.useMemo(() => {
+    const dailyNotes = getDailyNotes(cards);
+    if (dailyNotes.length === 0) return 0;
+
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (let i = 0; i < 365; i++) {
+      const checkDate = new Date(today);
+      checkDate.setDate(today.getDate() - i);
+      const dateString = checkDate.toISOString().split('T')[0];
+
+      const hasNote = dailyNotes.some(note => note.date === dateString);
+      if (hasNote) {
+        streak++;
+      } else if (i > 0) {
+        // Stop counting if we hit a day without a note (but allow today to be missing)
+        break;
+      }
+    }
+
+    return streak;
+  }, [cards]);
+
+  // Navigate to today's note (create if doesn't exist)
+  const goToTodaysNote = React.useCallback(async () => {
+    const today = new Date();
+    const existingNote = findDailyNoteForDate(cards, today);
+
+    if (existingNote) {
+      router.push(`/notes#${existingNote.id}`);
+    } else {
+      // Create today's note
+      const title = generateDailyNoteTitle(today);
+      const content = generateDailyNoteContent(today);
+
+      await addCard({
+        type: 'md-note',
+        title,
+        content,
+        tags: ['daily'],
+        inDen: false,
+      });
+
+      // Wait a bit for the card to be added to the store, then find it and navigate
+      setTimeout(() => {
+        const newNote = findDailyNoteForDate(useDataStore.getState().cards, today);
+        if (newNote) {
+          router.push(`/notes#${newNote.id}`);
+        }
+      }, 100);
+    }
+  }, [cards, addCard, router]);
+
+  // Navigate to yesterday's note
+  const goToYesterdaysNote = () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const existingNote = findDailyNoteForDate(cards, yesterday);
+
+    if (existingNote) {
+      router.push(`/notes#${existingNote.id}`);
+    } else {
+      // Just go to calendar if yesterday's note doesn't exist
+      router.push('/calendar');
+    }
+  };
+
+  // Keyboard shortcut: Cmd+Shift+D for today's note
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for both 'd' and 'D' to handle different browser behaviors
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+        e.preventDefault();
+        goToTodaysNote();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [goToTodaysNote]);
 
   return (
     <Sidebar collapsible="icon">
@@ -237,6 +327,41 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
                   </CollapsibleContent>
                 )}
               </Collapsible>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Daily Notes Quick Access */}
+        <SidebarSeparator />
+        <SidebarGroup>
+          <SidebarGroupLabel>Daily Notes</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {/* Today's Note */}
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={goToTodaysNote}>
+                  <CalendarDays />
+                  <span>Today's Note</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Yesterday's Note */}
+              <SidebarMenuItem>
+                <SidebarMenuButton onClick={goToYesterdaysNote}>
+                  <CalendarClock />
+                  <span>Yesterday's Note</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Streak Counter */}
+              {dailyNoteStreak > 0 && (
+                <SidebarMenuItem>
+                  <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground">
+                    <Flame className="h-4 w-4 text-orange-500" />
+                    <span>{dailyNoteStreak} day streak</span>
+                  </div>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
