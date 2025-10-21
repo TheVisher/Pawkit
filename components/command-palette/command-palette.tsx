@@ -12,7 +12,6 @@ import {
   Calendar,
   Layers,
   Bookmark,
-  Star,
   Clock,
   TrendingUp,
   Pin,
@@ -21,7 +20,7 @@ import {
   Zap,
 } from "lucide-react";
 import { DogHouseIcon } from "@/components/icons/dog-house";
-import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/daily-notes";
+import { generateDailyNoteTitle, generateDailyNoteContent, findDailyNoteForDate } from "@/lib/utils/daily-notes";
 
 // LocalStorage keys
 const PINNED_COMMANDS_KEY = "pawkit-pinned-commands";
@@ -153,22 +152,32 @@ export function CommandPalette({
     localStorage.setItem(PINNED_COMMANDS_KEY, JSON.stringify(newPinned));
   }, [pinnedIds]);
 
-  // Create today's daily note
+  // Create or open today's daily note
   const createDailyNote = useCallback(async () => {
     const today = new Date();
-    const title = generateDailyNoteTitle(today);
-    const content = generateDailyNoteContent(today);
 
-    await addCard({
-      type: "md-note",
-      title,
-      content,
-      tags: ["daily"],
-      collections: [],
-    });
+    // Check if daily note already exists
+    const existingNote = findDailyNoteForDate(cards, today);
 
-    router.push("/notes");
-  }, [addCard, router]);
+    if (existingNote) {
+      // Open existing note
+      router.push(`/notes#${existingNote.id}`);
+    } else {
+      // Create new daily note
+      const title = generateDailyNoteTitle(today);
+      const content = generateDailyNoteContent(today);
+
+      await addCard({
+        type: "md-note",
+        title,
+        content,
+        tags: ["daily"],
+        collections: [],
+      });
+
+      router.push("/notes");
+    }
+  }, [cards, addCard, router]);
 
   // Define all commands
   const allCommands = useMemo(() => {
@@ -300,7 +309,7 @@ export function CommandPalette({
         label: `Go to "${collection.name}" Pawkit`,
         description: `Open the ${collection.name} collection`,
         icon: FolderOpen,
-        action: () => router.push(`/library?collection=${collection.id}`),
+        action: () => router.push(`/pawkits/${collection.slug || collection.id}`),
         keywords: [collection.name, "pawkit", "collection"],
       });
     });
@@ -348,8 +357,8 @@ export function CommandPalette({
       };
     }
 
-    // Get frequency scores
-    const frequencyScores = Object.entries(commandFrequency)
+    // Get top 3 most frequent command IDs
+    const topFrequentIds = Object.entries(commandFrequency)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 3)
       .map(([id]) => id);
@@ -358,13 +367,20 @@ export function CommandPalette({
     filteredCommands.forEach((command) => {
       if (pinnedIds.includes(command.id)) {
         pinned.push(command);
-      } else if (frequencyScores.includes(command.id)) {
+      } else if (topFrequentIds.includes(command.id)) {
         frequent.push(command);
       } else if (recentItems.includes(command.id)) {
         recent.push(command);
       } else {
         other.push(command);
       }
+    });
+
+    // Sort frequent by count (descending)
+    frequent.sort((a, b) => {
+      const aCount = commandFrequency[a.id] || 0;
+      const bCount = commandFrequency[b.id] || 0;
+      return bCount - aCount;
     });
 
     // Sort recent by recency
@@ -442,8 +458,8 @@ export function CommandPalette({
 
   const renderCommand = (command: Command, index: number, sectionType?: string) => {
     const Icon = command.icon;
-    const isPinned = pinnedIds.includes(command.id);
     const frequency = commandFrequency[command.id] || 0;
+    const isSelected = index === selectedIndex;
 
     return (
       <button
@@ -454,11 +470,21 @@ export function CommandPalette({
           e.preventDefault();
           togglePin(command.id);
         }}
-        className={`group w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-          index === selectedIndex
-            ? "bg-accent text-accent-foreground"
-            : "hover:bg-surface-soft text-foreground"
+        className={`relative group w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all overflow-hidden rounded-lg ${
+          isSelected
+            ? "text-foreground"
+            : "hover:bg-surface-soft/50 text-foreground"
         }`}
+        style={{
+          background: isSelected
+            ? "linear-gradient(180deg, hsla(var(--accent) / 0.08) 0%, hsla(var(--accent) / 0.15) 100%)"
+            : undefined,
+          borderColor: isSelected ? "hsla(var(--accent) / 0.35)" : "transparent",
+          borderWidth: isSelected ? "1px" : "0",
+          boxShadow: isSelected
+            ? "0 0 20px -5px hsla(var(--accent) / 0.3), inset 0 1px 1px 0 hsla(var(--accent) / 0.1)"
+            : undefined,
+        }}
       >
         <Icon size={18} className="flex-shrink-0" />
         <div className="flex-1 min-w-0">
@@ -469,14 +495,13 @@ export function CommandPalette({
             </div>
           )}
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-          {sectionType === "frequent" && frequency > 0 && (
+        {sectionType === "frequent" && frequency > 0 && (
+          <div className="flex items-center gap-2 flex-shrink-0">
             <span className="text-xs text-muted-foreground">
               {frequency}×
             </span>
-          )}
-          {isPinned && <Star size={14} className="text-accent" fill="currentColor" />}
-        </div>
+          </div>
+        )}
       </button>
     );
   };
