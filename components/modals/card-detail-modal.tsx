@@ -816,7 +816,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         {/* Unified Tabs with Vertical Sidebar */}
         <Tabs defaultValue="pawkits" className="flex-1 flex min-h-0 overflow-hidden">
           {/* Vertical Tab Navigation Sidebar */}
-          <div className="w-16 border-r border-white/10 flex flex-col items-center py-4 gap-2 flex-shrink-0">
+          <TabsList className="w-16 border-r border-white/10 flex flex-col items-center py-4 gap-2 flex-shrink-0 bg-transparent rounded-none h-auto">
             <TabsTrigger
               value="pawkits"
               className="w-12 h-12 rounded-xl flex items-center justify-center border border-transparent data-[state=active]:border-accent data-[state=active]:bg-white/10 data-[state=active]:shadow-glow-accent hover:bg-white/5 transition-all"
@@ -896,7 +896,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             >
               <span className="text-2xl">×</span>
             </button>
-          </div>
+          </TabsList>
 
           {/* Scrollable Container for Tab Content + Metadata + Buttons */}
           <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
