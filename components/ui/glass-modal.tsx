@@ -1,6 +1,5 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
 
 export interface GlassModalProps {
   open: boolean;
@@ -21,6 +20,8 @@ const maxWidthClasses = {
 
 export const GlassModal = React.forwardRef<HTMLDivElement, GlassModalProps>(
   ({ open, onClose, children, className, maxWidth = "md" }, ref) => {
+    const [isVisible, setIsVisible] = React.useState(false);
+
     // Close on escape key
     React.useEffect(() => {
       const handleEscape = (e: KeyboardEvent) => {
@@ -32,41 +33,45 @@ export const GlassModal = React.forwardRef<HTMLDivElement, GlassModalProps>(
       return () => document.removeEventListener("keydown", handleEscape);
     }, [open, onClose]);
 
-    return (
-      <AnimatePresence>
-        {open && (
-          <>
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
-              onClick={onClose}
-            />
+    // Handle animations
+    React.useEffect(() => {
+      if (open) {
+        setIsVisible(true);
+      } else {
+        const timer = setTimeout(() => setIsVisible(false), 200);
+        return () => clearTimeout(timer);
+      }
+    }, [open]);
 
-            {/* Modal */}
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <motion.div
-                ref={ref}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-                onClick={(e) => e.stopPropagation()}
-                className={cn(
-                  "w-full rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur-lg",
-                  maxWidthClasses[maxWidth],
-                  className
-                )}
-              >
-                {children}
-              </motion.div>
-            </div>
-          </>
-        )}
-      </AnimatePresence>
+    if (!isVisible && !open) return null;
+
+    return (
+      <>
+        {/* Backdrop */}
+        <div
+          className={cn(
+            "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm transition-opacity duration-200",
+            open ? "opacity-100" : "opacity-0"
+          )}
+          onClick={onClose}
+        />
+
+        {/* Modal */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+          <div
+            ref={ref}
+            onClick={(e) => e.stopPropagation()}
+            className={cn(
+              "w-full rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur-lg transition-all duration-200 pointer-events-auto",
+              open ? "opacity-100 scale-100" : "opacity-0 scale-95",
+              maxWidthClasses[maxWidth],
+              className
+            )}
+          >
+            {children}
+          </div>
+        </div>
+      </>
     );
   }
 );
