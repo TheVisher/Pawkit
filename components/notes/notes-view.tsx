@@ -11,6 +11,8 @@ import { KnowledgeGraph } from "@/components/notes/knowledge-graph";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { useDataStore } from "@/lib/stores/data-store";
 import { generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
+import { GlowButton } from "@/components/ui/glow-button";
+import { CardSurface } from "@/components/ui/card-surface";
 
 type NotesViewProps = {
   initialCards: CardModel[];
@@ -155,40 +157,34 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <GlowButton
             onClick={createDailyNote}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-              hasTodaysNote 
-                ? 'bg-purple-500/20 text-purple-200 border border-purple-400/30 hover:bg-purple-500/30' 
-                : 'bg-accent text-accent-foreground hover:bg-accent/90'
-            }`}
+            variant="primary"
+            size="md"
+            className="flex items-center gap-2"
             title={hasTodaysNote ? "Open today's daily note" : "Create today's daily note"}
           >
             <Calendar size={16} />
             Daily Note
-          </button>
-          <button
+          </GlowButton>
+          <GlowButton
             onClick={() => setShowTimeline(!showTimeline)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-              showTimeline 
-                ? 'bg-accent text-accent-foreground' 
-                : 'bg-surface-soft text-muted-foreground hover:text-foreground'
-            }`}
+            variant="primary"
+            size="md"
+            className="flex items-center gap-2"
           >
             <FileText size={16} />
             {showTimeline ? 'Hide Timeline' : 'Show Timeline'}
-          </button>
-          <button
+          </GlowButton>
+          <GlowButton
             onClick={() => setShowGraph(!showGraph)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
-              showGraph 
-                ? 'bg-accent text-accent-foreground' 
-                : 'bg-surface-soft text-muted-foreground hover:text-foreground'
-            }`}
+            variant="primary"
+            size="md"
+            className="flex items-center gap-2"
           >
             <Network size={16} />
             {showGraph ? 'Hide Graph' : 'Show Graph'}
-          </button>
+          </GlowButton>
         </div>
       </div>
       
@@ -204,7 +200,7 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
       
       {/* Timeline View */}
       {showTimeline && (
-        <div className="bg-surface rounded-lg border border-subtle p-4">
+        <CardSurface hover={false} className="p-4">
           <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
             <FileText size={20} />
             Daily Notes Timeline
@@ -249,7 +245,7 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
               })}
             </div>
           )}
-        </div>
+        </CardSurface>
       )}
 
       {/* Knowledge Graph */}

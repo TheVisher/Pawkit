@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { CardModel } from "@/lib/types";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { GlowButton } from "@/components/ui/glow-button";
 
 export type AddCardModalProps = {
   open: boolean;
@@ -110,14 +111,14 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
     >
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md space-y-4 rounded-2xl border border-subtle bg-surface shadow-panel p-6"
+        className="w-full max-w-md space-y-4 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-lg p-6"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">Add Card</h2>
-          <button type="button" className="rounded-lg bg-surface-muted px-2 py-1 text-sm text-muted-foreground transition hover:text-foreground" onClick={onClose}>
+          <GlowButton type="button" variant="primary" size="sm" onClick={onClose}>
             Close
-          </button>
+          </GlowButton>
         </div>
         <div className="space-y-3 text-sm">
           <div>
@@ -179,9 +180,9 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
           </div>
         </div>
         {error && <p className="text-xs text-rose-400">{error}</p>}
-        <button type="submit" className="w-full rounded-lg bg-accent py-2 text-sm font-medium text-accent-foreground transition hover:brightness-110" disabled={loading}>
+        <GlowButton type="submit" variant="primary" size="lg" className="w-full" disabled={loading}>
           {loading ? "Saving…" : "Save"}
-        </button>
+        </GlowButton>
       </form>
     </div>
   );

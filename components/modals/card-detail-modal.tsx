@@ -19,9 +19,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen, Sparkles } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
+import { GlowButton } from "@/components/ui/glow-button";
 
 type TagsTabProps = {
   content: string;
@@ -807,67 +808,95 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
       {/* Right Slide-Out Sheet for Details */}
       <div
-        className={`fixed top-0 right-0 h-full w-full md:w-96 bg-gray-950 border-l border-gray-800 shadow-2xl z-[60] flex flex-col transition-transform duration-300 ${
+        className={`fixed top-0 right-0 h-full w-full md:w-[480px] border-l border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl z-[60] flex transition-transform duration-300 ${
           isDetailsOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header with Close Button */}
-        <div className="border-b border-gray-800 p-4 flex items-center justify-between flex-shrink-0">
-          <h2 className="font-semibold text-gray-100">Card Details</h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsDetailsOpen(false)}
-              className="md:hidden text-gray-400 hover:text-gray-200 text-2xl leading-none"
-              title="Hide details"
+        {/* Unified Tabs with Vertical Sidebar */}
+        <Tabs defaultValue="pawkits" className="flex-1 flex min-h-0 overflow-hidden">
+          {/* Vertical Tab Navigation Sidebar */}
+          <div className="w-16 border-r border-white/10 flex flex-col items-center py-4 gap-2 flex-shrink-0">
+            <TabsTrigger
+              value="pawkits"
+              className="w-12 h-12 rounded-xl flex items-center justify-center border border-transparent data-[state=active]:border-accent data-[state=active]:bg-white/10 data-[state=active]:shadow-glow-accent hover:bg-white/5 transition-all"
+              title="Pawkits"
             >
-              ‹
-            </button>
-            <button
-              onClick={handleClose}
-              className="text-gray-400 hover:text-gray-200 text-2xl leading-none"
-              title="Close modal"
+              <FolderOpen className="h-5 w-5" />
+            </TabsTrigger>
+            <TabsTrigger
+              value="notes"
+              className="w-12 h-12 rounded-xl flex items-center justify-center border border-transparent data-[state=active]:border-accent data-[state=active]:bg-white/10 data-[state=active]:shadow-glow-accent hover:bg-white/5 transition-all"
+              title="Notes"
             >
-              ×
-            </button>
-          </div>
-        </div>
-
-        {/* Unified Tabs for All Cards */}
-        <Tabs defaultValue="pawkits" className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {/* Tab Navigation */}
-          <TabsList className="w-full rounded-none border-b border-gray-800 bg-transparent h-auto p-1 justify-start flex-shrink-0 flex flex-wrap gap-0">
-            <TabsTrigger value="pawkits" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-              Pawkits
+              <FileText className="h-5 w-5" />
             </TabsTrigger>
-            <TabsTrigger value="notes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-              Notes
-            </TabsTrigger>
-            <TabsTrigger value="links" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-              Links
+            <TabsTrigger
+              value="links"
+              className="w-12 h-12 rounded-xl flex items-center justify-center border border-transparent data-[state=active]:border-accent data-[state=active]:bg-white/10 data-[state=active]:shadow-glow-accent hover:bg-white/5 transition-all"
+              title="Links"
+            >
+              <Link2 className="h-5 w-5" />
             </TabsTrigger>
             {isNote && (
-              <TabsTrigger value="tags" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                Tags
+              <TabsTrigger
+                value="tags"
+                className="w-12 h-12 rounded-xl flex items-center justify-center border border-transparent data-[state=active]:border-accent data-[state=active]:bg-white/10 data-[state=active]:shadow-glow-accent hover:bg-white/5 transition-all"
+                title="Tags"
+              >
+                <Tag className="h-5 w-5" />
               </TabsTrigger>
             )}
-            <TabsTrigger value="schedule" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-              Schedule
+            <TabsTrigger
+              value="schedule"
+              className="w-12 h-12 rounded-xl flex items-center justify-center border border-transparent data-[state=active]:border-accent data-[state=active]:bg-white/10 data-[state=active]:shadow-glow-accent hover:bg-white/5 transition-all"
+              title="Schedule"
+            >
+              <Clock className="h-5 w-5" />
             </TabsTrigger>
             {!isNote && !isYouTubeUrl(card.url) && (
               <>
-                <TabsTrigger value="reader" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                  Reader
+                <TabsTrigger
+                  value="reader"
+                  className="w-12 h-12 rounded-xl flex items-center justify-center border border-transparent data-[state=active]:border-accent data-[state=active]:bg-white/10 data-[state=active]:shadow-glow-accent hover:bg-white/5 transition-all"
+                  title="Reader"
+                >
+                  <BookOpen className="h-5 w-5" />
                 </TabsTrigger>
-                <TabsTrigger value="summary" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-                  Summary
+                <TabsTrigger
+                  value="summary"
+                  className="w-12 h-12 rounded-xl flex items-center justify-center border border-transparent data-[state=active]:border-accent data-[state=active]:bg-white/10 data-[state=active]:shadow-glow-accent hover:bg-white/5 transition-all"
+                  title="Summary"
+                >
+                  <Sparkles className="h-5 w-5" />
                 </TabsTrigger>
               </>
             )}
-            <TabsTrigger value="actions" className="rounded-none border-b-2 border-transparent data-[state=active]:border-purple-500">
-              Actions
+            <TabsTrigger
+              value="actions"
+              className="w-12 h-12 rounded-xl flex items-center justify-center border border-transparent data-[state=active]:border-accent data-[state=active]:bg-white/10 data-[state=active]:shadow-glow-accent hover:bg-white/5 transition-all"
+              title="Actions"
+            >
+              <Zap className="h-5 w-5" />
             </TabsTrigger>
-          </TabsList>
+
+            {/* Close button at the bottom */}
+            <div className="flex-1" />
+            <button
+              onClick={() => setIsDetailsOpen(false)}
+              className="md:hidden w-12 h-12 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all"
+              title="Hide details"
+            >
+              <span className="text-2xl">‹</span>
+            </button>
+            <button
+              onClick={handleClose}
+              className="w-12 h-12 rounded-xl flex items-center justify-center text-gray-400 hover:text-gray-200 hover:bg-white/5 transition-all"
+              title="Close modal"
+            >
+              <span className="text-2xl">×</span>
+            </button>
+          </div>
 
           {/* Scrollable Container for Tab Content + Metadata + Buttons */}
           <div className="flex-1 overflow-y-auto min-h-0 flex flex-col">
@@ -937,26 +966,28 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             </div>
 
             {/* Metadata Section */}
-            <div className="border-t border-gray-800 p-3 flex-shrink-0">
+            <div className="border-t border-white/10 p-3 flex-shrink-0">
               <MetadataSection card={card} />
             </div>
 
             {/* Den and Delete Buttons */}
-            <div className="border-t border-gray-800 p-3 flex-shrink-0 space-y-2">
-              <Button
+            <div className="border-t border-white/10 p-3 flex-shrink-0 space-y-2">
+              <GlowButton
                 onClick={handleMoveToDen}
-                variant="outline"
+                variant="primary"
+                size="md"
                 className="w-full"
               >
                 🏠 {isInDen ? "Remove from The Den" : "Move to The Den"}
-              </Button>
-              <Button
+              </GlowButton>
+              <GlowButton
                 onClick={handleDelete}
-                variant="destructive"
+                variant="danger"
+                size="md"
                 className="w-full"
               >
                 Delete Card
-              </Button>
+              </GlowButton>
             </div>
           </div>
         </Tabs>
