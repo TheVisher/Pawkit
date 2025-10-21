@@ -213,7 +213,198 @@ This roadmap focuses on **perfecting existing features** rather than adding new 
 
 ---
 
-### 8. UX Polish & Power Features
+### 8. Browser Extension & Integration
+
+#### A. Browser Bookmark Sync ⭐⭐⭐ (GATEWAY FEATURE)
+
+**The Vision:**
+Automatically sync all browser bookmarks to Pawkit. Users install extension, bookmarks instantly populate their library. Background sync means users bookmark normally in browser, content appears in Pawkit automatically.
+
+**Key Benefits:**
+- [ ] Instant value on install - entire bookmark library in Pawkit immediately
+- [ ] Zero friction - users bookmark normally, sync happens in background
+- [ ] Full metadata - favicons, thumbnails, descriptions fetched automatically
+- [ ] Folder mapping - browser folders become Pawkits
+- [ ] Cross-browser - works on Chrome & Firefox via existing extension
+
+**Implementation Details:**
+
+**Bookmark API Capabilities:**
+- ✅ Provides: `id`, `title`, `url`, `dateAdded`, `parentId`, `children` (folder structure)
+- ❌ Does NOT provide: favicons, metadata, descriptions, preview images
+- ✅ Solution: Two-step process
+  1. Create card with URL + title (fast import)
+  2. Fetch metadata via existing `/api/cards/fetch-metadata` (rich previews)
+
+**Sync Architecture:**
+- [ ] Initial bulk import on first install (with progress indicator)
+- [ ] Real-time sync via event listeners:
+  - `chrome.bookmarks.onCreated` - New bookmark added
+  - `chrome.bookmarks.onChanged` - Bookmark title/URL edited
+  - `chrome.bookmarks.onRemoved` - Bookmark deleted
+  - `chrome.bookmarks.onMoved` - Bookmark moved between folders
+- [ ] Metadata fetching piggybacks on existing Pawkit infrastructure
+- [ ] Background service worker handles everything automatically
+
+**User Experience Flow:**
+
+1. **First Install:**
+   ```
+   ┌─────────────────────────────────────┐
+   │  Pawkit Extension Setup             │
+   ├─────────────────────────────────────┤
+   │  📚 Import Your Bookmarks           │
+   │                                     │
+   │  ✓ 247 bookmarks found              │
+   │  ✓ 12 folders will become Pawkits  │
+   │                                     │
+   │  [Start Sync] [Skip]                │
+   └─────────────────────────────────────┘
+   ```
+
+2. **During Sync:**
+   ```
+   ┌─────────────────────────────────────┐
+   │  Syncing Bookmarks...               │
+   │  ████████░░░░░░░░ 52%              │
+   │  Imported: 129/247                  │
+   │  Fetching metadata...               │
+   └─────────────────────────────────────┘
+   ```
+
+3. **After Sync:**
+   ```
+   ┌─────────────────────────────────────┐
+   │  ✓ Bookmark Sync Active             │
+   │  Last synced: Just now              │
+   │  247 bookmarks synced               │
+   │                                     │
+   │  Your bookmarks will automatically  │
+   │  sync to Pawkit in the background.  │
+   └─────────────────────────────────────┘
+   ```
+
+4. **Ongoing Background Sync:**
+   - User bookmarks page in browser (Cmd+D)
+   - Extension detects new bookmark instantly
+   - Sends to Pawkit API in background
+   - 2 seconds later: appears in Pawkit with full metadata
+   - **User never opened Pawkit** - it just works!
+
+**Design Decisions:**
+
+1. **Folder Mapping Strategy:**
+   - Browser "Work" folder → "Work" Pawkit in Pawkit
+   - Browser "Reading List" folder → "Reading List" Pawkit
+   - Auto-create Pawkits from folder names on first sync
+   - Settings to customize folder-to-Pawkit mappings
+   - Ungrouped bookmarks → "Imported Bookmarks" Pawkit
+
+2. **Bi-directional Sync (Phased):**
+   - Phase 1: One-way (browser → Pawkit) - Simpler, safer
+   - Phase 2: Two-way (Pawkit ↔ browser) - Advanced feature
+   - Edit in Pawkit → Updates bookmark in browser
+   - Delete in Pawkit → Deletes bookmark
+
+3. **Duplicate Handling:**
+   - If URL already exists in Pawkit: Add to collections (don't duplicate)
+   - Track bookmark source to prevent sync loops
+   - Settings option: "Skip duplicates" vs "Add to collections"
+
+4. **Metadata Fetching Strategy:**
+   - Create cards fast (instant import feedback)
+   - Fetch metadata in background queue (10 at a time)
+   - Avoids rate limits, provides progressive enhancement
+   - User sees bookmarks immediately, metadata fills in over minutes
+
+**Files to Modify:**
+- [ ] `packages/extension/manifest-chrome.json` - Add "bookmarks" permission
+- [ ] `packages/extension/pawkit-firefox/manifest.json` - Add "bookmarks" permission
+- [ ] `packages/extension/src/service-worker.ts` - Add bookmark event listeners + sync logic
+- [ ] `packages/extension/src/background/api.ts` - Add `syncBookmarks()`, `updateBookmark()`, `deleteBookmark()`
+- [ ] `packages/extension/src/popup/Popup.tsx` - Add sync UI, progress indicator, settings
+- [ ] `app/api/bookmarks/route.ts` - **NEW**: Endpoint to receive bookmark batches
+- [ ] `app/api/bookmarks/sync/route.ts` - **NEW**: Handle bi-directional sync (Phase 2)
+
+**Technical Implementation Notes:**
+
+```typescript
+// Example: Get all bookmarks
+const tree = await chrome.bookmarks.getTree();
+// Returns: BookmarkTreeNode with nested children
+
+// Example: Listen for new bookmarks
+chrome.bookmarks.onCreated.addListener((id, bookmark) => {
+  syncToServer({
+    url: bookmark.url,
+    title: bookmark.title,
+    folder: bookmark.parentId,
+    source: 'bookmark_sync'
+  });
+});
+
+// Example: Batch import
+async function importAllBookmarks() {
+  const tree = await chrome.bookmarks.getTree();
+  const bookmarks = flattenTree(tree);
+
+  // Send in batches of 50
+  for (let i = 0; i < bookmarks.length; i += 50) {
+    const batch = bookmarks.slice(i, i + 50);
+    await fetch('/api/bookmarks', {
+      method: 'POST',
+      body: JSON.stringify({ bookmarks: batch })
+    });
+    updateProgress(i / bookmarks.length);
+  }
+}
+```
+
+**Future Enhancements (Desktop/Mobile Apps):**
+
+**Desktop App Features (Post-Roadmap):**
+- [ ] Filesystem watch for `.md` files - auto-sync notes
+- [ ] Native file protocol (`pawkit://file/path/to/note.md`)
+- [ ] Word doc parsing and sync
+- [ ] PDF text extraction and indexing
+- [ ] Access bookmarks from ALL browsers simultaneously (Chrome, Firefox, Safari, Edge)
+- [ ] System tray integration
+- [ ] Bi-directional file sync (edit in Pawkit or local editor)
+
+**Mobile App Features (Following Desktop):**
+- [ ] iOS Files integration (iCloud Drive, Dropbox, Google Drive)
+- [ ] Android Storage Access Framework
+- [ ] Share extension (Save to Pawkit from any app)
+- [ ] Home screen widget for daily notes
+- [ ] Offline-first with background sync
+- [ ] Camera integration (scan documents to notes)
+
+**Technology Stack (Future):**
+- **Desktop:** Tauri (Rust + Web) - Small size (~10MB), fast, secure
+- **Mobile:** React Native - Maximum code reuse with existing web app
+- **Shared:** API and business logic reused across all platforms
+
+**Why This is a Gateway Feature:**
+1. **Instant Value** - Users see their entire bookmark library in Pawkit within seconds
+2. **Zero Friction** - No behavior change required, works in background
+3. **Trust Building** - Users see data flowing automatically, builds confidence
+4. **Differentiation** - Competitors require manual import or browser-specific solutions
+5. **Network Effects** - Once bookmarks sync, users naturally start using Pawkit more
+
+**Impact:** ⭐⭐⭐ **HIGHEST PRIORITY EXTENSION FEATURE**
+
+**Status:** 🔜 **PLANNED - Implement after core roadmap features completed**
+
+**Estimated Implementation:** 3-5 days
+- Day 1: Extension bookmark API integration + event listeners
+- Day 2: Server endpoints + batch import logic
+- Day 3: UI (popup, progress, settings)
+- Day 4: Testing (Chrome + Firefox)
+- Day 5: Metadata fetching optimization + polish
+
+---
+
+### 9. UX Polish & Power Features
 
 #### A. Keyboard Shortcuts ⭐⭐⭐ (MOST REQUESTED)
 
