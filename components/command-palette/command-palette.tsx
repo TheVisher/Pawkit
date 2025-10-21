@@ -161,7 +161,16 @@ export function CommandPalette({
 
     if (existingNote) {
       // Open existing note
-      router.push(`/notes#${existingNote.id}`);
+      // If already on /notes, force hash change by going to /notes first, then to hash
+      if (pathname === '/notes') {
+        // Clear hash first, then set it
+        window.location.hash = '';
+        setTimeout(() => {
+          window.location.hash = existingNote.id;
+        }, 10);
+      } else {
+        router.push(`/notes#${existingNote.id}`);
+      }
     } else {
       // Create new daily note
       const title = generateDailyNoteTitle(today);
@@ -177,7 +186,7 @@ export function CommandPalette({
 
       router.push("/notes");
     }
-  }, [cards, addCard, router]);
+  }, [cards, addCard, router, pathname]);
 
   // Define all commands
   const allCommands = useMemo(() => {
