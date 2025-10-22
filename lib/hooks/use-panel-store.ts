@@ -121,7 +121,8 @@ export const usePanelStore = create<PanelState>()(
         const { previousContentType, isOpen } = get();
         // Only restore if panel was open
         if (isOpen && previousContentType !== "closed") {
-          set({ contentType: previousContentType, activeCardId: null });
+          // Don't clear activeCardId here - let the layout handle it after transition
+          set({ contentType: previousContentType });
         }
       },
     }),
