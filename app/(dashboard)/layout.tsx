@@ -37,7 +37,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
   // Global Control Panel state
-  const { isOpen: isPanelOpen, mode: panelMode, contentType, close: closePanel, setMode: setPanelMode } = usePanelStore();
+  const { isOpen: isPanelOpen, mode: panelMode, contentType, close: closePanel, setMode: setPanelMode, setActiveCardId } = usePanelStore();
 
   // Track content type changes for animation
   const [animatingContentType, setAnimatingContentType] = useState(contentType);
@@ -50,10 +50,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       const timer = setTimeout(() => {
         setAnimatingContentType(contentType);
         setIsTransitioning(false);
+
+        // Clear activeCardId after transition completes (only if not switching to card-details)
+        if (contentType !== "card-details") {
+          setActiveCardId(null);
+        }
       }, 300); // Match animation duration
       return () => clearTimeout(timer);
     }
-  }, [contentType, animatingContentType]);
+  }, [contentType, animatingContentType, setActiveCardId]);
 
   // Fetch user data once on mount (no SWR polling)
   useEffect(() => {
