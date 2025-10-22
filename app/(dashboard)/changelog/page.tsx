@@ -3,6 +3,20 @@
 export default function ChangelogPage() {
   const changes = [
     {
+      dateRange: "October 21, 2025",
+      features: [
+        { title: "Unified Frosted Glass Design System", description: "Complete visual redesign with cohesive frosted glass and glow aesthetic throughout the entire app. All modals, buttons, and UI elements now feature a consistent glass-morphism style with purple, green, and red glow effects on hover." },
+        { title: "Vertical Icon Navigation", description: "Redesigned Card Detail Modal with vertical icon-based tab navigation on the right side, replacing horizontal tabs for a cleaner, more intuitive interface with better space utilization." },
+        { title: "GlowButton Component", description: "New unified button component with three variants (primary, success, danger) featuring pill-shaped design and glow effects. All buttons across the app now use this consistent styling with smooth hover animations." },
+        { title: "Modal Portal Rendering", description: "Fixed modal positioning issues across all views by rendering modals via React portals directly to document.body, eliminating z-index and stacking context problems that caused modals to appear shifted or blocked." },
+        { title: "Profile Settings Redesign", description: "Updated Profile Settings modal with frosted glass styling, consistent tab heights to prevent layout shifts, and GlowButton components throughout for a polished user experience." },
+        { title: "Command Palette Glass Styling", description: "Applied frosted glass aesthetic to the Command Palette for visual consistency with the rest of the app." },
+        { title: "Browser Compatibility Fix", description: "Added script-src-elem CSP directive to fix white screen issues in Atlas browser (ChatGPT's Chromium-based browser) and other strict browsers that enforce granular Content Security Policy directives." },
+        { title: "Design Token System", description: "Created centralized design tokens file with standardized colors, shadows, and border radii for consistent theming across the application." },
+        { title: "Tailwind Theme Extensions", description: "Extended Tailwind configuration with custom glass colors (glass-surface, glass-border) and glow shadow effects (glow-accent, glow-success, glow-danger) for streamlined development." },
+      ],
+    },
+    {
       dateRange: "October 18-19, 2025",
       features: [
         { title: "Daily Notes System", description: "Automatic daily note creation and management with YYYY-MM-DD format titles. Daily notes appear as colored pills at the bottom of calendar cells, with timezone-safe date handling to prevent display issues across different regions." },
