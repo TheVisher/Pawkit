@@ -22,15 +22,15 @@ export function ContentPanel({
   const hasAnchoredRight = rightOpen && rightMode === "anchored";
 
   // Calculate exact positioning
-  // Floating panels: 400px width + 16px margin on each side = 432px total space
-  // Anchored panels: 400px width, flush to edge
+  // Floating panels: 250px width + 16px margin on each side = 282px total space
+  // Anchored panels: 250px width, flush to edge
   // Default: 16px margin
   const leftPosition = leftOpen
-    ? (leftMode === "floating" ? "432px" : "400px")
+    ? (leftMode === "floating" ? "282px" : "250px")
     : "16px";
 
   const rightPosition = rightOpen
-    ? (rightMode === "floating" ? "432px" : "400px")
+    ? (rightMode === "floating" ? "282px" : "250px")
     : "16px";
 
   // Build border classes dynamically
