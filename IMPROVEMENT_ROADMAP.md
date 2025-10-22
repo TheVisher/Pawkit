@@ -584,16 +584,19 @@ async function importAllBookmarks() {
 
 ## 🎨 UI/UX CONSISTENCY
 
-- [ ] Standardize button variants (primary, secondary, ghost)
-- [ ] Consistent modal sizing across app
+- [x] **Standardize button variants** - ✅ COMPLETED (GlowButton with primary, success, danger variants)
+- [x] **Consistent modal sizing across app** - ✅ COMPLETED (Frosted glass design with fixed heights)
+- [x] **Convert all hardcoded colors to CSS variables** - ✅ COMPLETED (Design tokens in lib/styles/theme.ts)
+- [x] **Consistent hover states** - ✅ COMPLETED (Glow effects on all interactive elements)
+- [x] **Unified glass-morphism design system** - ✅ COMPLETED (October 21, 2025)
 - [ ] Unify loading spinner implementations
-- [ ] Convert all hardcoded colors to CSS variables
 - [ ] Standardize icon set (all Lucide, no emoji mix)
 - [ ] Use toast notifications everywhere (not window.alert)
 - [ ] Consistent spacing with Tailwind scale
 - [ ] Standardize form field styling
-- [ ] Consistent hover states
 - [ ] Unified focus indicators for accessibility
+
+**Status**: Major progress - unified design system with frosted glass and glow effects implemented across all modals, buttons, and UI components. Remaining tasks are polish items.
 
 ---
 
