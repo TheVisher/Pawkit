@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
@@ -13,6 +14,7 @@ import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { format, addDays, startOfDay } from "date-fns";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
 import { Plus, FileText, CalendarIcon } from "lucide-react";
+import { GlowButton } from "@/components/ui/glow-button";
 
 const GREETINGS = [
   "Welcome back",
@@ -27,6 +29,13 @@ export default function HomePage() {
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Track if component is mounted (for portal rendering)
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   // Read from global store - instant, no API calls
   const { cards, collections, updateCard, deleteCard, addCard } = useDataStore();
@@ -359,17 +368,17 @@ export default function HomePage() {
       </div>
 
       {/* Expanded Day View Modal */}
-      {selectedDate && !activeCard && (() => {
+      {selectedDate && !activeCard && isMounted && (() => {
         const scheduledCards = getCardsForDate(selectedDate);
         const dailyNote = getDailyNoteForDate(selectedDate);
 
-        return (
+        const modalContent = (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => setSelectedDate(null)}
           >
             <div
-              className="bg-surface rounded-2xl p-6 w-full max-w-2xl shadow-xl border border-subtle max-h-[80vh] overflow-y-auto"
+              className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg p-6 w-full max-w-2xl shadow-xl max-h-[80vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -392,14 +401,15 @@ export default function HomePage() {
                   Daily Note
                 </h3>
                 {dailyNote ? (
-                  <button
+                  <GlowButton
                     onClick={() => {
                       setActiveCardId(dailyNote.id);
                       setSelectedDate(null);
                     }}
-                    className="w-full text-left p-4 rounded-lg bg-purple-500/20 border border-purple-400/30 hover:bg-purple-500/30 transition-colors"
+                    variant="primary"
+                    className="w-full text-left p-4 rounded-xl justify-start"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between w-full">
                       <div>
                         <div className="font-medium text-purple-200">{dailyNote.title}</div>
                         <div className="text-sm text-purple-300/70 mt-1">
@@ -408,16 +418,17 @@ export default function HomePage() {
                       </div>
                       <div className="text-purple-300">→</div>
                     </div>
-                  </button>
+                  </GlowButton>
                 ) : (
-                  <button
+                  <GlowButton
                     onClick={() => handleCreateQuickNote(selectedDate)}
-                    className="w-full text-left p-4 rounded-lg border border-dashed border-subtle hover:border-accent hover:bg-accent/5 transition-colors"
+                    variant="primary"
+                    className="w-full text-left p-4 rounded-xl justify-start"
                   >
                     <div className="flex items-center gap-2 text-muted-foreground">
                       <span>+ Create daily note for this day</span>
                     </div>
-                  </button>
+                  </GlowButton>
                 )}
               </div>
 
@@ -465,16 +476,19 @@ export default function HomePage() {
 
               {/* Close Button */}
               <div className="flex justify-end">
-                <button
+                <GlowButton
                   onClick={() => setSelectedDate(null)}
-                  className="rounded-lg bg-surface-soft px-4 py-2 text-sm font-medium text-foreground hover:bg-surface-muted transition-colors"
+                  variant="primary"
+                  size="md"
                 >
                   Close
-                </button>
+                </GlowButton>
               </div>
             </div>
           </div>
         );
+
+        return createPortal(modalContent, document.body);
       })()}
 
       {activeCard && (
