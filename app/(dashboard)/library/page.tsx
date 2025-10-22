@@ -11,6 +11,7 @@ function LibraryPageContent() {
 
   const q = searchParams.get("q") || undefined;
   const collection = searchParams.get("collection") || undefined;
+  const tag = searchParams.get("tag") || undefined;
   const statusParam = searchParams.get("status") || undefined;
   const status = statusParam && ["PENDING", "READY", "ERROR"].includes(statusParam) ? statusParam as "PENDING" | "READY" | "ERROR" : undefined;
   const layoutParam = searchParams.get("layout") as LayoutMode | null;
@@ -58,20 +59,27 @@ function LibraryPageContent() {
       );
     }
 
+    // Tag filter
+    if (tag) {
+      filtered = filtered.filter(card =>
+        card.tags?.includes(tag)
+      );
+    }
+
     // Status filter
     if (status) {
       filtered = filtered.filter(card => card.status === status);
     }
 
     return filtered;
-  }, [cards, q, collection, status]);
+  }, [cards, q, collection, tag, status]);
 
   return (
     <LibraryView
       initialCards={items}
       initialNextCursor={undefined}
       collectionsTree={collections}
-      query={{ q, collection, status }}
+      query={{ q, collection, tag, status }}
       viewMode={viewMode}
       timelineDays={days}
     />

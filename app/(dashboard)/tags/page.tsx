@@ -106,7 +106,7 @@ export default function TagsPage() {
   };
 
   const handleViewCards = (tag: TagInfo) => {
-    router.push(`/library?q=tag:${tag.name}`);
+    router.push(`/library?tag=${encodeURIComponent(tag.name)}`);
   };
 
   return (

@@ -32,6 +32,7 @@ type LibraryViewProps = {
   query?: {
     q?: string;
     collection?: string;
+    tag?: string;
     status?: string;
   };
   viewMode?: "normal" | "timeline";
