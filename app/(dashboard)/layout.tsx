@@ -230,6 +230,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             onClose={closeLeft}
             mode={leftMode}
             onModeChange={setLeftMode}
+            username={username}
+            displayName={displayName}
+            collections={collections}
           />
 
           {/* Global Control Panel (Right) */}
