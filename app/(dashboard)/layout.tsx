@@ -25,7 +25,7 @@ import { CardDetailsPanel } from "@/components/control-panel/card-details-panel"
 import { LeftNavigationPanel } from "@/components/navigation/left-navigation-panel";
 import { ContentPanel } from "@/components/layout/content-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
-import { Menu } from "lucide-react";
+import { Menu, Settings, ChevronRight, ChevronLeft } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
@@ -40,7 +40,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
   // Global Control Panel state (right panel)
-  const { isOpen: isPanelOpen, mode: panelMode, contentType, close: closePanel, setMode: setPanelMode, setActiveCardId } = usePanelStore();
+  const { isOpen: isPanelOpen, mode: panelMode, contentType, close: closePanel, setMode: setPanelMode, setActiveCardId, toggle: togglePanel } = usePanelStore();
 
   // Left Navigation Panel state
   const isLeftOpen = usePanelStore((state) => state.isLeftOpen);
@@ -205,7 +205,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 rightOpen={isPanelOpen}
                 rightMode={panelMode}
               >
-                <div className="mx-auto flex w-full max-w-6xl flex-col px-6 py-8">
+                <div className="mx-auto flex w-full max-w-6xl flex-col">
                   {children}
                 </div>
               </ContentPanel>
@@ -245,6 +245,42 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             open={showKeyboardShortcuts}
             onClose={() => setShowKeyboardShortcuts(false)}
           />
+
+          {/* Left Panel Toggle Button - Only show when closed */}
+          {!isLeftOpen && (
+            <button
+              onClick={toggleLeft}
+              className="fixed left-4 top-1/2 -translate-y-1/2 z-[101]
+                w-10 h-10 rounded-full
+                bg-white/5 backdrop-blur-lg border border-white/10
+                flex items-center justify-center
+                hover:bg-white/10 hover:shadow-lg
+                transition-all duration-300
+                animate-fade-in"
+              aria-label="Open navigation panel"
+              title="Open navigation panel"
+            >
+              <ChevronRight size={20} className="text-muted-foreground" />
+            </button>
+          )}
+
+          {/* Right Panel Toggle Button - Only show when closed */}
+          {!isPanelOpen && (
+            <button
+              onClick={togglePanel}
+              className="fixed right-4 top-1/2 -translate-y-1/2 z-[101]
+                w-10 h-10 rounded-full
+                bg-white/5 backdrop-blur-lg border border-white/10
+                flex items-center justify-center
+                hover:bg-white/10 hover:shadow-lg
+                transition-all duration-300
+                animate-fade-in"
+              aria-label="Open controls panel"
+              title="Open controls panel"
+            >
+              <ChevronLeft size={20} className="text-muted-foreground" />
+            </button>
+          )}
 
           {/* Left Navigation Panel */}
           <LeftNavigationPanel

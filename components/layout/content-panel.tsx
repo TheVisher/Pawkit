@@ -59,10 +59,17 @@ export function ContentPanel({
       style={{
         left: leftPosition,
         right: rightPosition,
+        boxShadow: "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
       }}
     >
       {/* Content container with scrolling */}
-      <div className="relative z-20 flex-1 overflow-y-auto">
+      <div
+        className="relative z-20 flex-1 overflow-y-auto px-6 py-6"
+        style={{
+          maskImage: "linear-gradient(to bottom, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%)"
+        }}
+      >
         {children}
       </div>
     </div>

@@ -171,6 +171,11 @@ export function LeftNavigationPanel({
             : "border-r border-white/10"
           }
         `}
+        style={{
+          boxShadow: mode === "floating"
+            ? "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
+            : "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -202,7 +207,12 @@ export function LeftNavigationPanel({
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
+          style={{
+            maskImage: "linear-gradient(to bottom, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%)"
+          }}
+        >
           {/* Navigation Section */}
           <PanelSection id="left-navigation" title="Navigation" icon={<Home className="h-4 w-4 text-accent" />}>
             <div className="space-y-1">
