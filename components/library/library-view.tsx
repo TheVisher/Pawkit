@@ -64,9 +64,6 @@ export function LibraryView({
   // Global Control Panel
   const openLibraryControls = usePanelStore((state) => state.openLibraryControls);
 
-  // Local state for tag filtering
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-
   // Get view settings from the store
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
   const setLayoutInStore = useViewSettingsStore((state) => state.setLayout);
@@ -75,6 +72,9 @@ export function LibraryView({
   const setShowUrls = useViewSettingsStore((state) => state.setShowUrls);
   const setSortBy = useViewSettingsStore((state) => state.setSortBy);
   const { cardSize, sortBy, sortOrder, showTitles, showUrls } = viewSettings;
+
+  // Get selected tags from store (managed by control panel)
+  const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
 
   // Get global settings (thumbnails)
   const showThumbnails = useSettingsStore((state) => state.showThumbnails);
