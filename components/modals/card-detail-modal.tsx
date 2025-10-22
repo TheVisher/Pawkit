@@ -25,6 +25,7 @@ import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 import { GlowButton } from "@/components/ui/glow-button";
 import { useTrackCardView } from "@/lib/hooks/use-recent-history";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 type TagsTabProps = {
   content: string;
@@ -78,6 +79,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const isNote = card.type === "md-note" || card.type === "text-note";
   const [isMounted, setIsMounted] = useState(false);
 
+  // Open control panel with card details when modal opens
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const closePanel = usePanelStore((state) => state.close);
+
   // Track card view for recent history
   useTrackCardView(card);
 
@@ -86,6 +91,18 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     setIsMounted(true);
     return () => setIsMounted(false);
   }, []);
+
+  // Open control panel when card modal opens
+  useEffect(() => {
+    openCardDetails(card.id);
+
+    // Clean up: close panel when modal closes
+    return () => {
+      // Optional: you could restore previous panel state here
+      // For now, just close it
+      closePanel();
+    };
+  }, [card.id, openCardDetails, closePanel]);
 
   // Initialize data store if not already initialized
   useEffect(() => {
@@ -740,7 +757,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         onClick={handleClose}
       />
 
-      {/* Centered Card Content */}
+      {/* Centered Card Content - no right padding since sidebar moved to control panel */}
       <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 md:p-8 md:pr-[424px] pointer-events-none">
         <div
           className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative ${
@@ -820,8 +837,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         </div>
       </div>
 
-      {/* Right Slide-Out Sheet for Details */}
-      <div
+      {/* Right Slide-Out Sheet for Details - HIDDEN: Now using global control panel */}
+      {false && (<div
         className={`fixed top-0 right-0 h-full w-full md:w-[480px] border-l border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl z-[102] flex transition-transform duration-300 ${
           isDetailsOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
         }`}
@@ -1005,7 +1022,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             </div>
           </div>
         </Tabs>
-      </div>
+      </div>)}
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </>

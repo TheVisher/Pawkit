@@ -21,6 +21,7 @@ import { useKeyboardShortcuts } from "@/lib/hooks/use-keyboard-shortcuts";
 import { useRouter } from "next/navigation";
 import { ControlPanel } from "@/components/control-panel/control-panel";
 import { LibraryControls } from "@/components/control-panel/library-controls";
+import { CardDetailsPanel } from "@/components/control-panel/card-details-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -201,11 +202,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             onModeChange={setPanelMode}
           >
             {contentType === "library-controls" && <LibraryControls />}
-            {contentType === "card-details" && (
-              <div className="p-4">
-                <p className="text-sm text-muted-foreground">Card details panel coming soon...</p>
-              </div>
-            )}
+            {contentType === "card-details" && <CardDetailsPanel />}
             {contentType === "notes-controls" && (
               <div className="p-4">
                 <p className="text-sm text-muted-foreground">Notes controls coming soon...</p>
