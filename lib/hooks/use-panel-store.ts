@@ -19,6 +19,9 @@ export type PanelState = {
   // Active card ID (when showing card details)
   activeCardId: string | null;
 
+  // Collapsed sections (persisted)
+  collapsedSections: Record<string, boolean>;
+
   // Actions
   open: (contentType?: PanelContentType) => void;
   close: () => void;
@@ -26,6 +29,7 @@ export type PanelState = {
   setMode: (mode: ControlPanelMode) => void;
   setContentType: (contentType: PanelContentType) => void;
   setActiveCardId: (cardId: string | null) => void;
+  toggleSection: (sectionId: string) => void;
 
   // Open specific content types
   openLibraryControls: () => void;
@@ -41,6 +45,7 @@ export const usePanelStore = create<PanelState>()(
       mode: "floating",
       contentType: "closed",
       activeCardId: null,
+      collapsedSections: {},
 
       open: (contentType = "library-controls") => {
         set({ isOpen: true, contentType });
@@ -71,6 +76,15 @@ export const usePanelStore = create<PanelState>()(
         set({ activeCardId: cardId });
       },
 
+      toggleSection: (sectionId) => {
+        set((state) => ({
+          collapsedSections: {
+            ...state.collapsedSections,
+            [sectionId]: !state.collapsedSections[sectionId],
+          },
+        }));
+      },
+
       openLibraryControls: () => {
         set({ isOpen: true, contentType: "library-controls", activeCardId: null });
       },
@@ -90,7 +104,8 @@ export const usePanelStore = create<PanelState>()(
     {
       name: "control-panel-state",
       partialize: (state) => ({
-        mode: state.mode, // Only persist mode, not open state or content
+        mode: state.mode,
+        collapsedSections: state.collapsedSections, // Persist collapsed state
       }),
     }
   )

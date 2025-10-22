@@ -1,7 +1,8 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { X, Settings } from "lucide-react";
+import { X, Settings, ChevronDown } from "lucide-react";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 export type ControlPanelMode = "floating" | "anchored";
 
@@ -105,21 +106,39 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
 
 // Panel Section Component
 export type PanelSectionProps = {
+  id: string; // Unique identifier for persisting collapse state
   title: string;
   children: ReactNode;
   icon?: ReactNode;
 };
 
-export function PanelSection({ title, children, icon }: PanelSectionProps) {
+export function PanelSection({ id, title, children, icon }: PanelSectionProps) {
+  const collapsedSections = usePanelStore((state) => state.collapsedSections);
+  const toggleSection = usePanelStore((state) => state.toggleSection);
+
+  const isCollapsed = collapsedSections[id] || false;
+
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      <button
+        onClick={() => toggleSection(id)}
+        className="w-full flex items-center gap-2 hover:opacity-80 transition-opacity"
+      >
+        <ChevronDown
+          className={`h-4 w-4 text-accent transition-transform duration-200 ${
+            isCollapsed ? "-rotate-90" : ""
+          }`}
+        />
         {icon}
         <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
           {title}
         </h3>
-      </div>
-      <div className="space-y-2">
+      </button>
+      <div
+        className={`space-y-2 transition-all duration-200 overflow-hidden ${
+          isCollapsed ? "max-h-0 opacity-0" : "max-h-[2000px] opacity-100"
+        }`}
+      >
         {children}
       </div>
     </div>

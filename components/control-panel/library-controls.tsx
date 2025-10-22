@@ -119,10 +119,18 @@ export function LibraryControls() {
     setShowUrls("library", show);
   };
 
+  // Get card padding
+  const cardPadding = viewSettings.cardPadding;
+
+  const handleCardPaddingChange = (padding: number) => {
+    const paddingValue = Math.round(padding); // Round to nearest integer
+    useViewSettingsStore.getState().setCardPadding("library", paddingValue);
+  };
+
   return (
     <>
       {/* View Section */}
-      <PanelSection title="View" icon={<Eye className="h-4 w-4 text-accent" />}>
+      <PanelSection id="library-view" title="View" icon={<Eye className="h-4 w-4 text-accent" />}>
         <PanelButton
           active={layout === "grid"}
           onClick={() => handleLayoutChange("grid")}
@@ -154,7 +162,7 @@ export function LibraryControls() {
       </PanelSection>
 
       {/* Sort Section */}
-      <PanelSection title="Sort" icon={<SortAsc className="h-4 w-4 text-accent" />}>
+      <PanelSection id="library-sort" title="Sort" icon={<SortAsc className="h-4 w-4 text-accent" />}>
         <PanelButton
           active={sortBy === "modified"}
           onClick={() => handleSortChange("modified")}
@@ -183,7 +191,7 @@ export function LibraryControls() {
 
       {/* Tags Filter Section */}
       {allTags.length > 0 && (
-        <PanelSection title="Filter by Tags" icon={<Tag className="h-4 w-4 text-accent" />}>
+        <PanelSection id="library-tags" title="Filter by Tags" icon={<Tag className="h-4 w-4 text-accent" />}>
           {selectedTags.length > 0 && (
             <button
               onClick={handleClearTags}
@@ -192,7 +200,7 @@ export function LibraryControls() {
               Clear all filters
             </button>
           )}
-          <div className="space-y-1 max-h-64 overflow-y-auto">
+          <div className="space-y-1 max-h-96 overflow-y-auto">
             {allTags.map((tag) => (
               <PanelToggle
                 key={tag.name}
@@ -211,7 +219,7 @@ export function LibraryControls() {
       )}
 
       {/* Display Options Section */}
-      <PanelSection title="Display" icon={<Maximize2 className="h-4 w-4 text-accent" />}>
+      <PanelSection id="library-display" title="Display" icon={<Maximize2 className="h-4 w-4 text-accent" />}>
         {/* Card Size Slider */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -222,8 +230,34 @@ export function LibraryControls() {
             type="range"
             min="1"
             max="5"
+            step="0.01"
             value={cardSizeValue}
-            onChange={(e) => handleCardSizeChange(parseInt(e.target.value))}
+            onChange={(e) => {
+              const value = parseFloat(e.target.value);
+              const rounded = Math.round(value);
+              handleCardSizeChange(rounded);
+            }}
+            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer
+              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+              [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent
+              [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4
+              [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-accent [&::-moz-range-thumb]:border-0"
+          />
+        </div>
+
+        {/* Card Padding Slider */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Card Padding</span>
+            <span>{cardPadding === 0 ? "None" : cardPadding === 1 ? "XS" : cardPadding === 2 ? "S" : cardPadding === 3 ? "M" : "L"}</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="4"
+            step="0.01"
+            value={cardPadding}
+            onChange={(e) => handleCardPaddingChange(parseFloat(e.target.value))}
             className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer
               [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent
