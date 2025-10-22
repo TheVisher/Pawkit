@@ -16,16 +16,21 @@ import { PawkitActionsProvider } from "@/lib/contexts/pawkit-actions-context";
 import { CommandPalette } from "@/components/command-palette/command-palette";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
 import { AddCardModal } from "@/components/modals/add-card-modal";
+import { KeyboardShortcutsModal } from "@/components/modals/keyboard-shortcuts-modal";
+import { useKeyboardShortcuts } from "@/lib/hooks/use-keyboard-shortcuts";
+import { useRouter } from "next/navigation";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
   const { collections, initialize, isInitialized, refresh, addCard } = useDataStore();
   const { loadFromServer } = useViewSettingsStore();
+  const router = useRouter();
 
   // Command Palette state
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
   const [showCreateCardModal, setShowCreateCardModal] = useState(false);
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
   // Fetch user data once on mount (no SWR polling)
   useEffect(() => {
@@ -83,18 +88,33 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     await refresh();
   };
 
-  // Command Palette keyboard shortcut (Cmd/Ctrl + K)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        setShowCommandPalette(true);
+  // Global keyboard shortcuts
+  useKeyboardShortcuts({
+    onCommandPalette: () => setShowCommandPalette(true),
+    onNewNote: () => setShowCreateNoteModal(true),
+    onNewCard: () => setShowCreateCardModal(true),
+    onTodayNote: () => {
+      // Navigate to today's note
+      const today = new Date().toISOString().split('T')[0];
+      router.push(`/notes#daily-${today}`);
+    },
+    onSearch: () => {
+      // Focus the omnibar search input
+      const searchInput = document.querySelector('input[placeholder*="search"]') as HTMLInputElement;
+      if (searchInput) {
+        searchInput.focus();
       }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+    },
+    onEscape: () => {
+      // Close any open modals
+      setShowCommandPalette(false);
+      setShowCreateNoteModal(false);
+      setShowCreateCardModal(false);
+      setShowKeyboardShortcuts(false);
+    },
+    onHelp: () => setShowKeyboardShortcuts(true),
+    enableNavigation: true,
+  });
 
   // Handle create note from command palette
   const handleCreateNote = async (data: { type: string; title: string; content?: string }) => {
@@ -157,6 +177,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <AddCardModal
             open={showCreateCardModal}
             onClose={() => setShowCreateCardModal(false)}
+          />
+
+          {/* Keyboard Shortcuts Help Modal */}
+          <KeyboardShortcutsModal
+            open={showKeyboardShortcuts}
+            onClose={() => setShowKeyboardShortcuts(false)}
           />
         </SidebarProvider>
       </PawkitActionsProvider>
