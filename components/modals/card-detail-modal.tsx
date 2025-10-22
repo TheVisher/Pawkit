@@ -729,7 +729,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       {/* Centered Card Content */}
       <div className="fixed inset-0 z-[61] flex items-center justify-center p-4 md:p-8 md:pr-[424px] pointer-events-none">
         <div
-          className={`bg-gray-950 rounded-lg border border-gray-800 shadow-2xl overflow-hidden pointer-events-auto relative ${
+          className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative ${
             isReaderExpanded ? "w-full h-full flex flex-col" : isYouTubeUrl(card.url) ? "w-full max-w-6xl" : isNote ? "w-full max-w-3xl h-[80vh] flex flex-col" : "max-w-full max-h-full"
           }`}
           onClick={(e) => e.stopPropagation()}
@@ -751,11 +751,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             )}
           </button>
           {/* Card Content - Image, Reader, YouTube Player, or Note Preview/Edit */}
-          <div className={`bg-gray-900/50 relative ${isReaderExpanded || isNote ? "flex-1 flex flex-col overflow-hidden" : ""}`}>
+          <div className={`relative ${isReaderExpanded || isNote ? "flex-1 flex flex-col overflow-hidden" : ""}`}>
             {isNote ? (
               <>
                 {/* Note content area */}
-                <div className="flex-1 overflow-hidden p-4 min-h-0">
+                <div className="flex-1 overflow-hidden p-8 min-h-0">
                   <RichMDEditor
                     content={content}
                     onChange={setContent}
@@ -768,8 +768,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               </>
             ) : isYouTubeUrl(card.url) ? (
               // YouTube video embed in main content area
-              <div className="p-8 flex items-center justify-center min-h-[500px]">
-                <div className="w-full max-w-4xl">
+              <div className="p-4 flex items-center justify-center min-h-[500px]">
+                <div className="w-full">
                   <div className="relative w-full bg-black" style={{ paddingBottom: '56.25%' }}>
                     <iframe
                       src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
