@@ -768,15 +768,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               </>
             ) : isYouTubeUrl(card.url) ? (
               // YouTube video embed in main content area
-              <div className="p-4 flex items-center justify-center min-h-[500px]">
+              <div className="p-8 flex items-center justify-center min-h-[500px]">
                 <div className="w-full">
-                  <div className="relative w-full bg-black" style={{ paddingBottom: '56.25%' }}>
+                  <div className="relative w-full bg-black rounded-2xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
                     <iframe
                       src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
                       title={card.title || "YouTube video"}
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                       allowFullScreen
-                      className="absolute top-0 left-0 w-full h-full rounded-lg border-0"
+                      className="absolute top-0 left-0 w-full h-full border-0"
                       loading="lazy"
                     />
                   </div>
