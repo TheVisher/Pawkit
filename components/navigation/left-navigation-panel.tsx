@@ -135,7 +135,7 @@ export function LeftNavigationPanel({ open, onClose, mode = "floating", onModeCh
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
               >
                 <Calendar size={16} className="flex-shrink-0" />
-                <span className="flex-1 text-left">Today's Note</span>
+                <span className="flex-1 text-left">Today&apos;s Note</span>
               </button>
               <p className="text-xs text-muted-foreground px-3">
                 Quick access to daily notes coming soon...

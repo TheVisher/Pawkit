@@ -74,7 +74,10 @@ export function LibraryView({
   const { cardSize, sortBy, sortOrder, showTitles, showUrls } = viewSettings;
 
   // Get selected tags from store (managed by control panel)
-  const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
+  // Memoize to prevent changing on every render
+  const selectedTags = useMemo(() => {
+    return (viewSettings.viewSpecific?.selectedTags as string[]) || [];
+  }, [viewSettings.viewSpecific?.selectedTags]);
 
   // Get global settings (thumbnails)
   const showThumbnails = useSettingsStore((state) => state.showThumbnails);
