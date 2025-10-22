@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useDataStore } from "@/lib/stores/data-store";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CustomCalendar } from "@/components/calendar/custom-calendar";
@@ -12,6 +13,13 @@ export default function CalendarPage() {
   const { cards, collections, addCard } = useDataStore();
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Track if component is mounted (for portal rendering)
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   const activeCard = useMemo(() => {
     return cards.find((card) => card.id === activeCardId) ?? null;
@@ -84,11 +92,11 @@ export default function CalendarPage() {
       />
 
       {/* Expanded Day View Modal */}
-      {selectedDate && !activeCard && (() => {
+      {selectedDate && !activeCard && isMounted && (() => {
         const scheduledCards = getCardsForDate(selectedDate);
         const dailyNote = getDailyNoteForDate(selectedDate);
 
-        return (
+        const modalContent = (
           <div
             className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => setSelectedDate(null)}
@@ -203,6 +211,8 @@ export default function CalendarPage() {
             </div>
           </div>
         );
+
+        return createPortal(modalContent, document.body);
       })()}
 
       {/* Card Detail Modal */}
