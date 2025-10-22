@@ -191,9 +191,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </div>
               </div>
             </header>
-            <main className={`flex flex-1 bg-transparent transition-all duration-300 ${
-              (isLeftOpen && leftMode === "anchored" ? "pl-[400px]" : "") + " " +
-              (isPanelOpen && panelMode === "anchored" ? "pr-[400px]" : "")
+            <main className={`flex h-[calc(100vh-73px)] bg-transparent transition-all duration-300 ${
+              isLeftOpen ? "pl-[432px]" : ""
+            } ${
+              isPanelOpen ? "pr-[432px]" : ""
             }`}>
               <ContentPanel
                 leftOpen={isLeftOpen}
