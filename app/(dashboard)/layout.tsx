@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import { ControlPanel } from "@/components/control-panel/control-panel";
 import { LibraryControls } from "@/components/control-panel/library-controls";
 import { CardDetailsPanel } from "@/components/control-panel/card-details-panel";
+import { LeftNavigationPanel } from "@/components/navigation/left-navigation-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -36,8 +37,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [showCreateCardModal, setShowCreateCardModal] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
-  // Global Control Panel state
+  // Global Control Panel state (right panel)
   const { isOpen: isPanelOpen, mode: panelMode, contentType, close: closePanel, setMode: setPanelMode, setActiveCardId } = usePanelStore();
+
+  // Left Navigation Panel state
+  const isLeftOpen = usePanelStore((state) => state.isLeftOpen);
+  const leftMode = usePanelStore((state) => state.leftMode);
+  const closeLeft = usePanelStore((state) => state.closeLeft);
+  const setLeftMode = usePanelStore((state) => state.setLeftMode);
 
   // Track content type changes for animation
   const [animatingContentType, setAnimatingContentType] = useState(contentType);
@@ -159,11 +166,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <SelectionStoreProvider>
       <PawkitActionsProvider>
         <SidebarProvider>
-          <AppSidebar username={username} displayName={displayName} collections={collections} />
+          {/* Hide old sidebar for now - replaced by left panel */}
+          {false && <AppSidebar username={username} displayName={displayName} collections={collections} />}
           <SidebarInset className="bg-transparent">
             <header className="sticky top-0 z-20 border-b border-subtle bg-surface-90 backdrop-blur-xl">
               <div className="flex items-center gap-2 px-6 py-4">
-                <SidebarTrigger className="mr-2" />
+                {false && <SidebarTrigger className="mr-2" />}
                 <div className="mx-auto w-full max-w-6xl">
                   <OmniBar />
                 </div>
@@ -173,7 +181,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               </div>
             </header>
             <main className={`flex flex-1 overflow-y-auto bg-transparent transition-all duration-300 ${
-              isPanelOpen && panelMode === "anchored" ? "pr-[400px]" : ""
+              (isLeftOpen && leftMode === "anchored" ? "pl-[400px]" : "") + " " +
+              (isPanelOpen && panelMode === "anchored" ? "pr-[400px]" : "")
             }`}>
               <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
                 {children}
@@ -215,7 +224,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             onClose={() => setShowKeyboardShortcuts(false)}
           />
 
-          {/* Global Control Panel */}
+          {/* Left Navigation Panel */}
+          <LeftNavigationPanel
+            open={isLeftOpen}
+            onClose={closeLeft}
+            mode={leftMode}
+            onModeChange={setLeftMode}
+          />
+
+          {/* Global Control Panel (Right) */}
           <ControlPanel
             open={isPanelOpen}
             onClose={closePanel}
