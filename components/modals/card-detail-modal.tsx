@@ -722,12 +722,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
         onClick={handleClose}
       />
 
       {/* Centered Card Content */}
-      <div className="fixed inset-0 z-[61] flex items-center justify-center p-4 md:p-8 md:pr-[424px] pointer-events-none">
+      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 md:p-8 md:pr-[424px] pointer-events-none">
         <div
           className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative ${
             isReaderExpanded ? "w-full h-full flex flex-col" : isYouTubeUrl(card.url) ? "w-full max-w-6xl" : isNote ? "w-full max-w-3xl h-[80vh] flex flex-col" : "max-w-full max-h-full"
@@ -808,7 +808,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
       {/* Right Slide-Out Sheet for Details */}
       <div
-        className={`fixed top-0 right-0 h-full w-full md:w-[480px] border-l border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl z-[62] flex transition-transform duration-300 ${
+        className={`fixed top-0 right-0 h-full w-full md:w-[480px] border-l border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl z-[102] flex transition-transform duration-300 ${
           isDetailsOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
         }`}
         onClick={(e) => e.stopPropagation()}
