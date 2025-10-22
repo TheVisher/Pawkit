@@ -31,9 +31,12 @@ export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Track if component is mounted (for portal rendering)
+  // Track if component is mounted and document.body is available (for portal rendering)
   useEffect(() => {
-    setIsMounted(true);
+    // Double-check document.body exists before setting mounted
+    if (typeof document !== 'undefined' && document.body) {
+      setIsMounted(true);
+    }
     return () => setIsMounted(false);
   }, []);
 
@@ -368,7 +371,7 @@ export default function HomePage() {
       </div>
 
       {/* Expanded Day View Modal */}
-      {selectedDate && !activeCard && isMounted && (() => {
+      {selectedDate && !activeCard && isMounted && typeof document !== 'undefined' && document.body && (() => {
         const scheduledCards = getCardsForDate(selectedDate);
         const dailyNote = getDailyNoteForDate(selectedDate);
 
@@ -488,7 +491,12 @@ export default function HomePage() {
           </div>
         );
 
-        return createPortal(modalContent, document.body);
+        try {
+          return createPortal(modalContent, document.body);
+        } catch (error) {
+          console.error('[HomePage] Failed to create portal:', error);
+          return null;
+        }
       })()}
 
       {activeCard && (

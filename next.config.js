@@ -53,16 +53,36 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval needed for Next.js dev
-              "script-src-elem 'self' 'unsafe-inline'", // Required for strict browsers like Atlas
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https: blob:",
-              "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co https://s.wordpress.com https://www.google.com https://img.youtube.com https://www.reddit.com https://www.tiktok.com",
+              // Script sources - needed for Next.js and dynamic imports
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+              "script-src-elem 'self' 'unsafe-inline' blob:",
+              // Styles
+              "style-src 'self' 'unsafe-inline' blob:",
+              "style-src-elem 'self' 'unsafe-inline'",
+              // Images - support all user content
+              "img-src 'self' data: https: http: blob:",
+              // Fonts
+              "font-src 'self' data: blob:",
+              // API connections - more permissive for user content
+              "connect-src 'self' https: http: blob: data: wss: ws:",
+              // Frames for embeds
               "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+              // Workers
+              "worker-src 'self' blob:",
+              // Objects
+              "object-src 'none'",
+              // Media
+              "media-src 'self' https: http: blob: data:",
+              // Manifest
+              "manifest-src 'self'",
+              // Frame ancestors
               "frame-ancestors 'none'",
+              // Base URI
               "base-uri 'self'",
-              "form-action 'self'"
+              // Form actions
+              "form-action 'self'",
+              // Report CSP violations (only in production)
+              ...(process.env.NODE_ENV === 'production' ? ["report-uri /api/csp-report"] : [])
             ].join('; ')
           },
           {
