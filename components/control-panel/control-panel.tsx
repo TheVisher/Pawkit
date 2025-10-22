@@ -56,7 +56,7 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
       {/* Control Panel */}
       <div
         className={`
-          fixed top-0 right-0 bottom-0 w-[250px] z-[102]
+          fixed top-0 right-0 bottom-0 w-[325px] z-[102]
           bg-white/5 backdrop-blur-lg
           flex flex-col
           animate-slide-in-right
