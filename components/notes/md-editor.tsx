@@ -315,7 +315,8 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [mode, autocompleteOpen, autocompleteSuggestions, selectedIndex, insertMarkdown, insertAutocompleteSuggestion]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, autocompleteOpen, autocompleteSuggestions, selectedIndex]);
 
   // Detect [[ for autocomplete
   useEffect(() => {

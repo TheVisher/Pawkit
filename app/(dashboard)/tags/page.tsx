@@ -226,7 +226,7 @@ export default function TagsPage() {
         <h4 className="mb-2 font-semibold text-foreground">About Tags</h4>
         <ul className="space-y-1 text-sm text-muted-foreground">
           <li>• Tags are automatically extracted when you use #hashtags in card titles or notes</li>
-          <li>• Click "View Cards" to see all cards with a specific tag</li>
+          <li>• Click &quot;View Cards&quot; to see all cards with a specific tag</li>
           <li>• Rename a tag to update it across all cards</li>
           <li>• Delete a tag to remove it from all cards</li>
         </ul>

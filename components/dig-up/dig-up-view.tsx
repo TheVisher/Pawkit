@@ -238,6 +238,7 @@ export function DigUpView({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCard, showPawkitSelector, showSnoozeMenu, loading, loadingMore]);
 
   if (!currentCard) {
