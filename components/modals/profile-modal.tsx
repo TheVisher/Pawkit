@@ -221,7 +221,7 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
             </TabsList>
 
             {/* General Tab */}
-            <TabsContent value="general" className="space-y-6 mt-6 min-h-[550px]">
+            <TabsContent value="general" className="space-y-6 mt-6 h-[550px] overflow-y-auto">
               {/* Avatar Section */}
               <div className="space-y-4">
                 <Label className="text-gray-300">Profile Picture</Label>
@@ -305,7 +305,7 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
             </TabsContent>
 
             {/* Appearance Tab */}
-            <TabsContent value="appearance" className="space-y-6 mt-6 min-h-[550px]">
+            <TabsContent value="appearance" className="space-y-6 mt-6 h-[550px] overflow-y-auto">
               <div className="space-y-4">
                 <div>
                   <Label className="text-gray-300">Theme</Label>
@@ -387,7 +387,7 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
             </TabsContent>
 
             {/* Preferences Tab */}
-            <TabsContent value="preferences" className="space-y-6 mt-6 min-h-[550px]">
+            <TabsContent value="preferences" className="space-y-6 mt-6 h-[550px] overflow-y-auto">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -497,7 +497,7 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
             </TabsContent>
 
             {/* Data Tab */}
-            <TabsContent value="data" className="space-y-6 mt-6 min-h-[550px]">
+            <TabsContent value="data" className="space-y-6 mt-6 h-[550px] overflow-y-auto">
               <div className="space-y-4">
                 <div>
                   <Label className="text-gray-300">Sync Settings</Label>
