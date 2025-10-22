@@ -12,8 +12,7 @@ import { sortCards } from "@/lib/utils/sort-cards";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { format } from "date-fns";
 import { Library, Settings } from "lucide-react";
-import { ControlPanel, ControlPanelMode } from "@/components/control-panel/control-panel";
-import { LibraryControls } from "@/components/control-panel/library-controls";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 type TimelineGroup = {
   date: string;
@@ -62,9 +61,10 @@ export function LibraryView({
   const [loading, setLoading] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
-  // Control Panel state
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [panelMode, setPanelMode] = useState<ControlPanelMode>("floating");
+  // Global Control Panel
+  const openLibraryControls = usePanelStore((state) => state.openLibraryControls);
+
+  // Local state for tag filtering
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // Get view settings from the store
@@ -315,7 +315,7 @@ export function LibraryView({
 
           {/* Controls Button */}
           <button
-            onClick={() => setIsPanelOpen(true)}
+            onClick={openLibraryControls}
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-foreground"
           >
             <Settings size={18} />
@@ -402,42 +402,6 @@ export function LibraryView({
           }}
         />
       )}
-
-      {/* Control Panel */}
-      <ControlPanel
-        open={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
-        mode={panelMode}
-        onModeChange={setPanelMode}
-      >
-        <LibraryControls
-          layout={layout}
-          onLayoutChange={(newLayout) => {
-            setLayout(newLayout);
-            setLayoutInStore("library", newLayout);
-          }}
-          sortBy={sortBy as "date" | "modified" | "title" | "domain"}
-          onSortChange={(newSort) => {
-            const sortByMap: Record<string, any> = {
-              date: "createdAt",
-              modified: "updatedAt",
-              title: "title",
-              domain: "url"
-            };
-            setSortBy("library", sortByMap[newSort] || "createdAt");
-          }}
-          selectedTags={selectedTags}
-          onTagsChange={setSelectedTags}
-          cardSize={cardSize}
-          onCardSizeChange={(size) => setCardSizeInStore("library", size)}
-          showThumbnails={showThumbnails}
-          onShowThumbnailsChange={setShowThumbnails}
-          showTitles={showTitles}
-          onShowTitlesChange={(show) => setShowTitles("library", show)}
-          showUrls={showUrls}
-          onShowUrlsChange={(show) => setShowUrls("library", show)}
-        />
-      </ControlPanel>
     </>
   );
 }
