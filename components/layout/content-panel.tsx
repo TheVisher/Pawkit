@@ -41,9 +41,9 @@ export function ContentPanel({
   return (
     <div
       className={`
-        relative flex flex-1 flex-col
+        relative flex flex-col
+        h-full
         bg-white/5 backdrop-blur-lg
-        overflow-hidden
         z-10
         ${borderClasses}
         ${roundedClasses}
@@ -51,7 +51,7 @@ export function ContentPanel({
       `}
     >
       {/* Content container with higher z-index for interactivity */}
-      <div className="relative z-20 flex-1 overflow-y-auto">
+      <div className="relative z-20 h-full overflow-y-auto">
         {children}
       </div>
     </div>
