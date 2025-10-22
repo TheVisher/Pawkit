@@ -53,13 +53,15 @@ export function ContentPanel({
         flex flex-col
         overflow-hidden
         z-10
+        transition-all duration-300
         ${borderClasses}
         ${roundedClasses}
       `}
       style={{
         left: leftPosition,
         right: rightPosition,
-        boxShadow: "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
+        boxShadow: "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)",
+        transition: "left 0.3s ease-out, right 0.3s ease-out"
       }}
     >
       {/* Content container with scrolling */}
