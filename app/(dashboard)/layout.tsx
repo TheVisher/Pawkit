@@ -23,6 +23,7 @@ import { ControlPanel } from "@/components/control-panel/control-panel";
 import { LibraryControls } from "@/components/control-panel/library-controls";
 import { CardDetailsPanel } from "@/components/control-panel/card-details-panel";
 import { LeftNavigationPanel } from "@/components/navigation/left-navigation-panel";
+import { ContentPanel } from "@/components/layout/content-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
@@ -180,13 +181,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </div>
               </div>
             </header>
-            <main className={`flex flex-1 overflow-y-auto bg-transparent transition-all duration-300 ${
+            <main className={`flex flex-1 bg-transparent transition-all duration-300 ${
               (isLeftOpen && leftMode === "anchored" ? "pl-[400px]" : "") + " " +
               (isPanelOpen && panelMode === "anchored" ? "pr-[400px]" : "")
             }`}>
-              <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
-                {children}
-              </div>
+              <ContentPanel
+                leftOpen={isLeftOpen}
+                leftMode={leftMode}
+                rightOpen={isPanelOpen}
+                rightMode={panelMode}
+              >
+                <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
+                  {children}
+                </div>
+              </ContentPanel>
             </main>
           </SidebarInset>
           <ConflictNotifications />
