@@ -22,6 +22,9 @@ export type PanelState = {
   // Collapsed sections (persisted)
   collapsedSections: Record<string, boolean>;
 
+  // Previous content type (for restoring after card closes)
+  previousContentType: PanelContentType;
+
   // Actions
   open: (contentType?: PanelContentType) => void;
   close: () => void;
@@ -36,6 +39,7 @@ export type PanelState = {
   openCardDetails: (cardId: string) => void;
   openNotesControls: () => void;
   openCalendarControls: () => void;
+  restorePreviousContent: () => void;
 };
 
 export const usePanelStore = create<PanelState>()(
@@ -46,6 +50,7 @@ export const usePanelStore = create<PanelState>()(
       contentType: "closed",
       activeCardId: null,
       collapsedSections: {},
+      previousContentType: "closed",
 
       open: (contentType = "library-controls") => {
         set({ isOpen: true, contentType });
@@ -90,7 +95,18 @@ export const usePanelStore = create<PanelState>()(
       },
 
       openCardDetails: (cardId) => {
-        set({ isOpen: true, contentType: "card-details", activeCardId: cardId });
+        const currentState = get();
+        // Store current content type as previous (if it's not already card-details)
+        const previousContentType = currentState.contentType !== "card-details"
+          ? currentState.contentType
+          : currentState.previousContentType;
+
+        set({
+          isOpen: true,
+          contentType: "card-details",
+          activeCardId: cardId,
+          previousContentType,
+        });
       },
 
       openNotesControls: () => {
@@ -99,6 +115,14 @@ export const usePanelStore = create<PanelState>()(
 
       openCalendarControls: () => {
         set({ isOpen: true, contentType: "calendar-controls", activeCardId: null });
+      },
+
+      restorePreviousContent: () => {
+        const { previousContentType, isOpen } = get();
+        // Only restore if panel was open
+        if (isOpen && previousContentType !== "closed") {
+          set({ contentType: previousContentType, activeCardId: null });
+        }
       },
     }),
     {

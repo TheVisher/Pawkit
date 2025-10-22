@@ -39,6 +39,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Global Control Panel state
   const { isOpen: isPanelOpen, mode: panelMode, contentType, close: closePanel, setMode: setPanelMode } = usePanelStore();
 
+  // Track content type changes for animation
+  const [animatingContentType, setAnimatingContentType] = useState(contentType);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  useEffect(() => {
+    if (contentType !== animatingContentType) {
+      setIsTransitioning(true);
+      // Wait for exit animation, then switch content
+      const timer = setTimeout(() => {
+        setAnimatingContentType(contentType);
+        setIsTransitioning(false);
+      }, 300); // Match animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [contentType, animatingContentType]);
+
   // Fetch user data once on mount (no SWR polling)
   useEffect(() => {
     const fetchUser = async () => {
@@ -201,18 +217,24 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             mode={panelMode}
             onModeChange={setPanelMode}
           >
-            {contentType === "library-controls" && <LibraryControls />}
-            {contentType === "card-details" && <CardDetailsPanel />}
-            {contentType === "notes-controls" && (
-              <div className="p-4">
-                <p className="text-sm text-muted-foreground">Notes controls coming soon...</p>
-              </div>
-            )}
-            {contentType === "calendar-controls" && (
-              <div className="p-4">
-                <p className="text-sm text-muted-foreground">Calendar controls coming soon...</p>
-              </div>
-            )}
+            <div
+              className={`transition-all duration-300 ${
+                isTransitioning ? "translate-y-full opacity-0" : "translate-y-0 opacity-100"
+              }`}
+            >
+              {animatingContentType === "library-controls" && <LibraryControls />}
+              {animatingContentType === "card-details" && <CardDetailsPanel />}
+              {animatingContentType === "notes-controls" && (
+                <div className="p-4">
+                  <p className="text-sm text-muted-foreground">Notes controls coming soon...</p>
+                </div>
+              )}
+              {animatingContentType === "calendar-controls" && (
+                <div className="p-4">
+                  <p className="text-sm text-muted-foreground">Calendar controls coming soon...</p>
+                </div>
+              )}
+            </div>
           </ControlPanel>
         </SidebarProvider>
       </PawkitActionsProvider>
