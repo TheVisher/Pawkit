@@ -160,6 +160,8 @@ export const usePanelStore = create<PanelState>()(
       name: "control-panel-state",
       partialize: (state) => ({
         mode: state.mode,
+        isOpen: state.isOpen, // Persist right panel open state
+        contentType: state.contentType, // Persist right panel content type
         collapsedSections: state.collapsedSections, // Persist collapsed state
         leftMode: state.leftMode, // Persist left panel mode
         isLeftOpen: state.isLeftOpen, // Persist left panel open state
