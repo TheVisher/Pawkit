@@ -45,7 +45,7 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
 
   return (
     <>
-      {/* Subtle backdrop - doesn't block clicks */}
+      {/* Subtle backdrop - only in floating mode */}
       {mode === "floating" && (
         <div
           className="fixed inset-0 bg-black/10 z-40 pointer-events-none"
@@ -55,11 +55,14 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
       {/* Control Panel */}
       <div
         className={`
-          fixed top-4 right-4 bottom-4 w-[400px] z-50
-          bg-white/5 backdrop-blur-lg border border-white/10
+          fixed top-0 right-0 bottom-0 w-[400px] z-50
+          bg-white/5 backdrop-blur-lg
           flex flex-col
           animate-slide-in-right
-          ${mode === "floating" ? "rounded-2xl shadow-2xl" : "rounded-l-2xl"}
+          ${mode === "floating"
+            ? "m-4 rounded-2xl shadow-2xl border border-white/10"
+            : "border-l border-white/10"
+          }
         `}
         onClick={(e) => e.stopPropagation()}
       >
