@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -74,6 +75,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const dataStore = useDataStore();
   const allCards = dataStore.cards;
   const isNote = card.type === "md-note" || card.type === "text-note";
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Track if component is mounted (for portal rendering)
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   // Initialize data store if not already initialized
   useEffect(() => {
@@ -718,7 +726,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     );
   }
 
-  return (
+  if (!isMounted) return null;
+
+  const modalContent = (
     <>
       {/* Backdrop */}
       <div
@@ -996,6 +1006,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </>
   );
+
+  return createPortal(modalContent, document.body);
 }
 // Pawkits Tab
 type PawkitsTabProps = {
