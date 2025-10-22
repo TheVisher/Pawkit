@@ -172,30 +172,34 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {/* Hide old sidebar for now - replaced by left panel */}
           {false && <AppSidebar username={username} displayName={displayName} collections={collections} />}
           <SidebarInset className="bg-transparent">
-            <header className="sticky top-0 z-20 border-b border-subtle bg-surface-90 backdrop-blur-xl">
-              <div className="flex items-center gap-2 px-6 py-4">
-                {/* Left Panel Toggle Button */}
-                <button
-                  onClick={toggleLeft}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                  aria-label="Toggle navigation panel"
-                  title="Toggle navigation panel"
-                >
-                  <Menu size={20} />
-                </button>
-                <div className="mx-auto w-full max-w-6xl">
-                  <OmniBar />
+            {/* TEMPORARILY REMOVED - Components to re-add later:
+              - Left Panel Toggle Button (Menu icon)
+              - OmniBar
+              - ViewControls with refresh handler
+            */}
+            {false && (
+              <header className="sticky top-0 z-20 border-b border-subtle bg-surface-90 backdrop-blur-xl">
+                <div className="flex items-center gap-2 px-6 py-4">
+                  {/* Left Panel Toggle Button */}
+                  <button
+                    onClick={toggleLeft}
+                    className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                    aria-label="Toggle navigation panel"
+                    title="Toggle navigation panel"
+                  >
+                    <Menu size={20} />
+                  </button>
+                  <div className="mx-auto w-full max-w-6xl">
+                    <OmniBar />
+                  </div>
+                  <div className="ml-2">
+                    <ViewControls onRefresh={handleManualSync} />
+                  </div>
                 </div>
-                <div className="ml-2">
-                  <ViewControls onRefresh={handleManualSync} />
-                </div>
-              </div>
-            </header>
-            <main className={`flex h-[calc(100vh-73px)] bg-transparent transition-all duration-300 ${
-              isLeftOpen ? "pl-[432px]" : ""
-            } ${
-              isPanelOpen ? "pr-[432px]" : ""
-            }`}>
+              </header>
+            )}
+            <main className="flex h-screen bg-transparent"
+>
               <ContentPanel
                 leftOpen={isLeftOpen}
                 leftMode={leftMode}

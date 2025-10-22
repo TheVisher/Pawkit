@@ -23,26 +23,39 @@ export function ContentPanel({
   const hasAnchoredLeft = leftOpen && leftMode === "anchored";
   const hasAnchoredRight = rightOpen && rightMode === "anchored";
 
-  // When panels are anchored, we need to be flush with them (no border on that side)
-  // When panels are floating, we need margins and full borders
-  const hasAnyFloating = hasFloatingLeft || hasFloatingRight;
-
   // Build border classes dynamically
-  const borderClasses = hasAnyFloating
-    ? "border border-white/10" // Full border when floating
-    : `${hasAnchoredLeft ? "border-l-0" : "border-l"} ${hasAnchoredRight ? "border-r-0" : "border-r"} border-t border-b border-white/10`; // No border on anchored sides
+  // When panels are anchored, we need to be flush with them (no border on that side)
+  const borderClasses = `
+    ${hasAnchoredLeft ? "border-l-0" : "border-l"}
+    ${hasAnchoredRight ? "border-r-0" : "border-r"}
+    border-t border-b border-white/10
+  `;
 
-  // Border radius - only when we have floating panels
-  const roundedClasses = hasAnyFloating ? "rounded-2xl" : "rounded-none";
+  // Border radius - when floating panels are present
+  const roundedClasses = (hasFloatingLeft || hasFloatingRight) ? "rounded-2xl" : "rounded-none";
 
-  // Margins - only when we have floating panels
-  const marginClasses = hasAnyFloating ? "m-4" : "";
+  // Margin classes - account for panel positions
+  // Floating panels: 400px width + 16px margin on each side = 432px total space
+  // Anchored panels: 400px width, flush to edge
+  let marginClasses = "my-4"; // Always have top/bottom margin
+
+  if (leftOpen) {
+    marginClasses += leftMode === "floating" ? " ml-[432px]" : " ml-[400px]";
+  } else {
+    marginClasses += " ml-4"; // No left panel, use default margin
+  }
+
+  if (rightOpen) {
+    marginClasses += rightMode === "floating" ? " mr-[432px]" : " mr-[400px]";
+  } else {
+    marginClasses += " mr-4"; // No right panel, use default margin
+  }
 
   return (
     <div
       className={`
         relative flex flex-col
-        h-full
+        h-full w-full
         bg-white/5 backdrop-blur-lg
         z-10
         ${borderClasses}
