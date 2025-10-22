@@ -61,6 +61,7 @@ export function DigUpView({
   const [cards, setCards] = useState(() => sortCardsBySeenStatus(initialCards));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showPawkitSelector, setShowPawkitSelector] = useState(false);
+  const [showSnoozeMenu, setShowSnoozeMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
@@ -172,6 +173,72 @@ export function DigUpView({
   const handleClose = () => {
     router.push("/library");
   };
+
+  const handleSnooze = (days: number) => {
+    if (!currentCard) return;
+
+    // Mark card as snoozed by storing future timestamp
+    const snoozeUntil = Date.now() + (days * 24 * 60 * 60 * 1000);
+    const seenCards = getSeenCards();
+    seenCards[currentCard.id] = snoozeUntil;
+    localStorage.setItem('digup-seen-cards', JSON.stringify(seenCards));
+
+    setShowSnoozeMenu(false);
+    moveToNext();
+  };
+
+  const handleNeverShow = () => {
+    if (!currentCard) return;
+
+    // Mark card as permanently hidden with a very far future date
+    const neverShow = Date.now() + (365 * 24 * 60 * 60 * 1000 * 10); // 10 years
+    const seenCards = getSeenCards();
+    seenCards[currentCard.id] = neverShow;
+    localStorage.setItem('digup-seen-cards', JSON.stringify(seenCards));
+
+    moveToNext();
+  };
+
+  // Keyboard shortcuts for Dig Up
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      const target = e.target as HTMLElement;
+      if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") return;
+
+      switch (e.key.toLowerCase()) {
+        case 'k':
+          e.preventDefault();
+          handleKeep();
+          break;
+        case 'd':
+          e.preventDefault();
+          handleDelete();
+          break;
+        case 'p':
+          e.preventDefault();
+          setShowPawkitSelector(!showPawkitSelector);
+          break;
+        case 's':
+          e.preventDefault();
+          setShowSnoozeMenu(!showSnoozeMenu);
+          break;
+        case 'escape':
+          e.preventDefault();
+          if (showPawkitSelector) {
+            setShowPawkitSelector(false);
+          } else if (showSnoozeMenu) {
+            setShowSnoozeMenu(false);
+          } else {
+            handleClose();
+          }
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [currentCard, showPawkitSelector, showSnoozeMenu, loading, loadingMore]);
 
   if (!currentCard) {
     return (
@@ -321,7 +388,7 @@ export function DigUpView({
 
           {/* Actions */}
           <div className="border-t border-white/10 p-6">
-            <div className="flex gap-3">
+            <div className="flex gap-3 mb-3">
               <GlowButton
                 onClick={handleKeep}
                 disabled={loading || loadingMore}
@@ -329,7 +396,7 @@ export function DigUpView({
                 size="lg"
                 className="flex-1"
               >
-                {loadingMore ? "Loading..." : "Keep"}
+                {loadingMore ? "Loading..." : "Keep (K)"}
               </GlowButton>
               <GlowButton
                 onClick={() => setShowPawkitSelector(!showPawkitSelector)}
@@ -338,7 +405,7 @@ export function DigUpView({
                 size="lg"
                 className="flex-1"
               >
-                Add to Pawkit
+                Pawkit (P)
               </GlowButton>
               <GlowButton
                 onClick={handleDelete}
@@ -347,11 +414,88 @@ export function DigUpView({
                 size="lg"
                 className="flex-1"
               >
-                {loading ? "Deleting..." : "Delete"}
+                {loading ? "Deleting..." : "Delete (D)"}
+              </GlowButton>
+            </div>
+            <div className="flex gap-3">
+              <GlowButton
+                onClick={() => setShowSnoozeMenu(!showSnoozeMenu)}
+                disabled={loading || loadingMore}
+                variant="primary"
+                size="sm"
+                className="flex-1"
+              >
+                Snooze (S)
+              </GlowButton>
+              <GlowButton
+                onClick={handleNeverShow}
+                disabled={loading || loadingMore}
+                variant="danger"
+                size="sm"
+                className="flex-1"
+              >
+                Never Show
               </GlowButton>
             </div>
           </div>
         </div>
+
+        {/* Snooze Menu Sidebar */}
+        {showSnoozeMenu && (
+          <div className="w-80 border-l border-white/10 bg-white/5 backdrop-blur-lg flex flex-col">
+            <div className="p-4 border-b border-white/10">
+              <h3 className="font-medium text-gray-100">Snooze Card</h3>
+              <p className="text-xs text-gray-500 mt-1">See this card again later</p>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              <GlowButton
+                onClick={() => handleSnooze(1)}
+                disabled={loading}
+                variant="primary"
+                size="lg"
+                className="w-full justify-start"
+              >
+                Tomorrow
+              </GlowButton>
+              <GlowButton
+                onClick={() => handleSnooze(3)}
+                disabled={loading}
+                variant="primary"
+                size="lg"
+                className="w-full justify-start"
+              >
+                In 3 Days
+              </GlowButton>
+              <GlowButton
+                onClick={() => handleSnooze(7)}
+                disabled={loading}
+                variant="primary"
+                size="lg"
+                className="w-full justify-start"
+              >
+                In 1 Week
+              </GlowButton>
+              <GlowButton
+                onClick={() => handleSnooze(30)}
+                disabled={loading}
+                variant="primary"
+                size="lg"
+                className="w-full justify-start"
+              >
+                In 1 Month
+              </GlowButton>
+              <GlowButton
+                onClick={() => handleSnooze(90)}
+                disabled={loading}
+                variant="primary"
+                size="lg"
+                className="w-full justify-start"
+              >
+                In 3 Months
+              </GlowButton>
+            </div>
+          </div>
+        )}
 
         {/* Pawkit Selector Sidebar */}
         {showPawkitSelector && (
