@@ -81,7 +81,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   // Open control panel with card details when modal opens
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
-  const closePanel = usePanelStore((state) => state.close);
+  const restorePreviousContent = usePanelStore((state) => state.restorePreviousContent);
 
   // Track card view for recent history
   useTrackCardView(card);
@@ -96,13 +96,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   useEffect(() => {
     openCardDetails(card.id);
 
-    // Clean up: close panel when modal closes
+    // Clean up: restore previous panel content when modal closes
     return () => {
-      // Optional: you could restore previous panel state here
-      // For now, just close it
-      closePanel();
+      restorePreviousContent();
     };
-  }, [card.id, openCardDetails, closePanel]);
+  }, [card.id, openCardDetails, restorePreviousContent]);
 
   // Initialize data store if not already initialized
   useEffect(() => {
