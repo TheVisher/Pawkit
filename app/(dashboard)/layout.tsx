@@ -198,15 +198,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </div>
               </header>
             )}
-            <main className="flex h-screen bg-transparent"
->
+            <main className="relative h-screen bg-transparent">
               <ContentPanel
                 leftOpen={isLeftOpen}
                 leftMode={leftMode}
                 rightOpen={isPanelOpen}
                 rightMode={panelMode}
               >
-                <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
+                <div className="mx-auto flex w-full max-w-6xl flex-col px-6 py-8">
                   {children}
                 </div>
               </ContentPanel>
