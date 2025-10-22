@@ -162,7 +162,7 @@ export function LeftNavigationPanel({
       {/* Left Navigation Panel */}
       <div
         className={`
-          fixed top-0 left-0 bottom-0 w-[400px] z-[102]
+          fixed top-0 left-0 bottom-0 w-[250px] z-[102]
           bg-white/5 backdrop-blur-lg
           flex flex-col
           animate-slide-in-left
