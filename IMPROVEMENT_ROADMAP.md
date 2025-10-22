@@ -745,3 +745,30 @@ async function importAllBookmarks() {
 **Priority**: Start with Week 1 tasks
 
 #roadmap #improvements #pkm #productivity
+
+---
+
+## UI/UX Improvements
+
+### A. Modal Shell Consistency ⭐⭐
+- [ ] Convert legacy modals (`components/modals/create-note-modal.tsx`, `components/modals/card-display-controls.tsx`, `components/pawkits/pawkit-actions.tsx`, `components/pawkits/pawkits-header.tsx`, `components/library/card-gallery.tsx`, `components/trash/trash-view.tsx`, `components/timeline/timeline-view.tsx`) to use `GlassModal` or the shared frosted glass class stack.
+- [ ] Align backdrop opacity and z-index handling across all portal modals with the pattern used in `components/ui/glass-modal.tsx`.
+
+### B. Action & Icon Button Alignment ⭐⭐
+- [ ] Standardize modal header actions on `GlowButton` variants or a shared icon-button style; replace raw `<button>` usages (e.g., close buttons in `components/modals/create-note-modal.tsx`, `components/modals/card-display-controls.tsx`).
+- [ ] Ensure destructive or secondary actions use `GlowButton` danger/success variants for consistent color/elevation.
+
+### C. Form Field Styling ⭐⭐
+- [ ] Replace ad-hoc `<input>`/`<textarea>` elements in modals (`components/modals/add-card-modal.tsx`, `components/modals/create-note-modal.tsx`) with shared `<Input>`/`<Textarea>` components or introduce a glass-themed variant.
+
+### D. Tabs & Navigation Patterns ⭐
+- [ ] Decide on vertical icon rail vs. horizontal tab bars; refactor `TabsList` usage in `card-detail-modal`, `card-display-controls`, and other tabbed panels to match.
+
+### E. Legacy Card Surfaces ⭐
+- [ ] Refactor remaining `bg-gray-950 rounded-lg` panels (`components/den/den-pawkit-actions.tsx`, `components/pawkits/pawkit-actions.tsx`, `components/pawkits/pawkits-header.tsx`, `components/library/card-gallery.tsx`, `components/trash/trash-view.tsx`, `components/timeline/timeline-view.tsx`) to use `card-surface` or the glass treatment.
+
+### F. Portal Mount Safeguards ⭐
+- [ ] Add `isMounted` guards (similar to `card-detail-modal`) to other portal-based modals to avoid hydration flicker and ensure consistent entrance animations.
+
+### G. Corner Radius Alignment ⭐
+- [ ] Audit embedded media (YouTube iframes, card preview images) for mismatched radii and update to match parent shells (e.g., upgrade from `rounded-lg` to `rounded-2xl/3xl` where needed).
