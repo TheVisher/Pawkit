@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
+import { GlowButton } from "@/components/ui/glow-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -197,10 +198,10 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
       onClick={onClose}
     >
       <div
-        className="bg-gray-950 rounded-lg border border-gray-800 shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 border-b border-gray-800 bg-gray-950 p-4 md:p-6 flex items-center justify-between">
+        <div className="sticky top-0 z-10 border-b border-white/10 bg-white/5 backdrop-blur-lg p-4 md:p-6 flex items-center justify-between">
           <h2 className="text-xl md:text-2xl font-semibold text-gray-100">Profile Settings</h2>
           <button
             onClick={onClose}
@@ -229,22 +230,21 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                     {getAvatarDisplay()}
                   </div>
                   <div className="flex flex-col gap-2">
-                    <Button
-                      variant="outline"
+                    <GlowButton
+                      variant="primary"
                       size="sm"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       Upload Photo
-                    </Button>
+                    </GlowButton>
                     {avatarPreview && (
-                      <Button
-                        variant="ghost"
+                      <GlowButton
+                        variant="danger"
                         size="sm"
                         onClick={handleRemoveAvatar}
-                        className="text-red-400 hover:text-red-300"
                       >
                         Remove Photo
-                      </Button>
+                      </GlowButton>
                     )}
                     <p className="text-xs text-gray-500">
                       JPG, PNG or GIF. Max 2MB.
@@ -563,15 +563,16 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                   />
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <Button onClick={handleExport} variant="outline">
+                  <GlowButton onClick={handleExport} variant="primary" size="md">
                     Export JSON
-                  </Button>
-                  <Button
-                    variant="outline"
+                  </GlowButton>
+                  <GlowButton
+                    variant="primary"
+                    size="md"
                     onClick={() => importFileInputRef.current?.click()}
                   >
                     Import JSON
-                  </Button>
+                  </GlowButton>
                   <input
                     ref={importFileInputRef}
                     type="file"
@@ -599,9 +600,9 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                           Delete all cards and collections permanently
                         </p>
                       </div>
-                      <Button variant="destructive" size="sm" onClick={handleClear}>
+                      <GlowButton variant="danger" size="sm" onClick={handleClear}>
                         Clear Data
-                      </Button>
+                      </GlowButton>
                     </div>
                     <div className="flex items-center justify-between pt-4 border-t border-red-900/30">
                       <div>
@@ -610,9 +611,9 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                           Permanently delete your account and all data
                         </p>
                       </div>
-                      <Button variant="destructive" size="sm" disabled>
+                      <GlowButton variant="danger" size="sm" disabled>
                         Delete
-                      </Button>
+                      </GlowButton>
                     </div>
                   </div>
                 </div>
@@ -621,22 +622,22 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
           </Tabs>
         </div>
 
-        <div className="sticky bottom-0 border-t border-gray-800 bg-gray-950 p-6 flex justify-between items-center">
-          <Button
+        <div className="sticky bottom-0 border-t border-white/10 bg-white/5 backdrop-blur-lg p-6 flex justify-between items-center">
+          <GlowButton
             onClick={() => signOut()}
-            variant="ghost"
-            className="text-red-400 hover:text-red-300 hover:bg-red-950/20"
+            variant="danger"
+            size="md"
           >
             <LogOut className="mr-2 h-4 w-4" />
             Sign Out
-          </Button>
+          </GlowButton>
           <div className="flex gap-3">
-            <Button onClick={onClose} variant="outline">
+            <GlowButton onClick={onClose} variant="primary" size="md">
               Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            </GlowButton>
+            <GlowButton onClick={handleSave} variant="success" size="md" disabled={saving}>
               {saving ? "Saving..." : "Save Changes"}
-            </Button>
+            </GlowButton>
           </div>
         </div>
       </div>
