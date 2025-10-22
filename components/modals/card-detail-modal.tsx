@@ -24,6 +24,7 @@ import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 import { GlowButton } from "@/components/ui/glow-button";
+import { useTrackCardView } from "@/lib/hooks/use-recent-history";
 
 type TagsTabProps = {
   content: string;
@@ -76,6 +77,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const allCards = dataStore.cards;
   const isNote = card.type === "md-note" || card.type === "text-note";
   const [isMounted, setIsMounted] = useState(false);
+
+  // Track card view for recent history
+  useTrackCardView(card);
 
   // Track if component is mounted (for portal rendering)
   useEffect(() => {

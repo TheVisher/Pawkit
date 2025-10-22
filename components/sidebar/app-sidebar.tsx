@@ -3,12 +3,13 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, HelpCircle, User, Layers, Calendar, CalendarDays, CalendarClock, Flame } from "lucide-react";
+import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, HelpCircle, User, Layers, Calendar, CalendarDays, CalendarClock, Flame, Clock } from "lucide-react";
 import { type CollectionNode } from "@/lib/types";
 import { ProfileModal } from "@/components/modals/profile-modal";
 import { DogHouseIcon } from "@/components/icons/dog-house";
 import { useDataStore } from "@/lib/stores/data-store";
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
+import { useRecentHistory } from "@/lib/hooks/use-recent-history";
 import {
   Sidebar,
   SidebarContent,
@@ -59,6 +60,9 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
   // Get cards from data store for daily notes
   const cards = useDataStore((state) => state.cards);
   const addCard = useDataStore((state) => state.addCard);
+
+  // Recent history
+  const { recentItems } = useRecentHistory();
 
   // Load Pawkits expansion state from localStorage
   React.useEffect(() => {
@@ -365,6 +369,30 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Recently Viewed */}
+        {recentItems.length > 0 && (
+          <>
+            <SidebarSeparator />
+            <SidebarGroup>
+              <SidebarGroupLabel>Recently Viewed</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {recentItems.slice(0, 5).map((item) => (
+                    <SidebarMenuItem key={item.id}>
+                      <SidebarMenuButton asChild>
+                        <Link href={item.type === "note" ? `/notes#${item.id}` : `/library?q=${encodeURIComponent(item.title)}`}>
+                          <Clock className="h-4 w-4" />
+                          <span className="truncate">{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        )}
 
         <SidebarSeparator />
       </SidebarContent>
