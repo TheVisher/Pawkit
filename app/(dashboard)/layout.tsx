@@ -25,6 +25,7 @@ import { CardDetailsPanel } from "@/components/control-panel/card-details-panel"
 import { LeftNavigationPanel } from "@/components/navigation/left-navigation-panel";
 import { ContentPanel } from "@/components/layout/content-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { Menu } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
@@ -46,6 +47,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const leftMode = usePanelStore((state) => state.leftMode);
   const closeLeft = usePanelStore((state) => state.closeLeft);
   const setLeftMode = usePanelStore((state) => state.setLeftMode);
+  const toggleLeft = usePanelStore((state) => state.toggleLeft);
 
   // Track content type changes for animation
   const [animatingContentType, setAnimatingContentType] = useState(contentType);
@@ -172,7 +174,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <SidebarInset className="bg-transparent">
             <header className="sticky top-0 z-20 border-b border-subtle bg-surface-90 backdrop-blur-xl">
               <div className="flex items-center gap-2 px-6 py-4">
-                {false && <SidebarTrigger className="mr-2" />}
+                {/* Left Panel Toggle Button */}
+                <button
+                  onClick={toggleLeft}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label="Toggle navigation panel"
+                  title="Toggle navigation panel"
+                >
+                  <Menu size={20} />
+                </button>
                 <div className="mx-auto w-full max-w-6xl">
                   <OmniBar />
                 </div>
