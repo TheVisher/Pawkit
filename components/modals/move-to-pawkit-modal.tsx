@@ -65,7 +65,7 @@ export function MoveToPawkitModal({ open, onClose, onConfirm }: MoveToPawkitModa
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
         className="w-full max-w-md rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}

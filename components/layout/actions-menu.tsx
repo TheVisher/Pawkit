@@ -230,7 +230,7 @@ export function ActionsMenu({ view, onRefresh, pawkitActions, onCreatePawkit }: 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setShowDeleteConfirm(false)}
         >
           <div

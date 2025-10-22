@@ -175,7 +175,7 @@ export function DigUpView({
 
   if (!currentCard) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
         <div className="rounded-3xl border border-white/10 bg-white/5 p-12 max-w-md text-center backdrop-blur-lg shadow-lg">
           <div className="text-6xl mb-4">🐕</div>
           <h2 className="text-2xl font-semibold text-gray-100 mb-2">All Caught Up!</h2>
@@ -196,7 +196,7 @@ export function DigUpView({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
       onClick={handleClose}
     >
       <div
