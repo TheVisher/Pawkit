@@ -60,27 +60,29 @@ export default function HomePage() {
   }, []);
 
   // Compute views from the single source of truth
-  const recent = useMemo(() =>
-    cards
+  const recent = useMemo(() => {
+    if (!cards || !Array.isArray(cards)) return [];
+    return cards
       .filter(c => !c.inDen) // Exclude Den cards
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5),
-    [cards]
-  );
+      .slice(0, 5);
+  }, [cards]);
 
-  const quickAccess = useMemo(() =>
-    cards
+  const quickAccess = useMemo(() => {
+    if (!cards || !Array.isArray(cards)) return [];
+    return cards
       .filter(c => c.pinned && !c.inDen) // Exclude Den cards
-      .slice(0, 8),
-    [cards]
-  );
+      .slice(0, 8);
+  }, [cards]);
 
   // Get pinned pawkits from collections (flatten tree and filter)
   const pinnedPawkits = useMemo(() => {
+    if (!collections || !Array.isArray(collections)) return [];
+
     const flattenCollections = (nodes: CollectionNode[]): CollectionNode[] => {
       return nodes.reduce<CollectionNode[]>((acc, node) => {
         acc.push(node);
-        if (node.children.length > 0) {
+        if (node.children && Array.isArray(node.children) && node.children.length > 0) {
           acc.push(...flattenCollections(node.children));
         }
         return acc;
@@ -106,6 +108,8 @@ export default function HomePage() {
   const cardsByDate = useMemo(() => {
     const map = new Map<string, CardModel[]>();
 
+    if (!cards || !Array.isArray(cards)) return map;
+
     cards
       .filter((card) => card.scheduledDate && !card.inDen)
       .forEach((card) => {
@@ -126,7 +130,7 @@ export default function HomePage() {
     quickAccessUnique = quickAccess;
   }
 
-  const activeCard = activeCardId ? cards.find(c => c.id === activeCardId) : null;
+  const activeCard = activeCardId && cards && Array.isArray(cards) ? cards.find(c => c.id === activeCardId) : null;
 
   const handleUpdateCard = async (updated: CardModel) => {
     await updateCard(updated.id, updated);
@@ -188,6 +192,7 @@ export default function HomePage() {
 
   // Get cards scheduled for a specific date
   const getCardsForDate = (date: Date) => {
+    if (!cards || !Array.isArray(cards)) return [];
     const dateStr = date.toISOString().split('T')[0];
     return cards.filter(card =>
       card.scheduledDate &&
@@ -198,6 +203,7 @@ export default function HomePage() {
 
   // Get daily note for a specific date
   const getDailyNoteForDate = (date: Date) => {
+    if (!cards || !Array.isArray(cards)) return undefined;
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -301,12 +307,12 @@ export default function HomePage() {
             const isToday = format(new Date(), 'yyyy-MM-dd') === dateStr;
             
             // Check if there's a daily note for this date
-            const dailyNote = cards.find(card => {
+            const dailyNote = cards && Array.isArray(cards) ? cards.find(card => {
               if (!isDailyNote(card)) return false;
               const noteDate = extractDateFromTitle(card.title!);
               const noteDateStr = noteDate ? getDateString(noteDate) : null;
               return noteDateStr === dateStr;
-            });
+            }) : undefined;
 
             return (
               <div
