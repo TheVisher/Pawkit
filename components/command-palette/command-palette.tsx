@@ -521,11 +521,11 @@ export function CommandPalette({
       onClick={onClose}
     >
       <div
-        className="bg-surface rounded-lg border border-subtle shadow-2xl w-full max-w-2xl overflow-hidden"
+        className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl w-full max-w-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input */}
-        <div className="border-b border-subtle px-4 py-3">
+        <div className="border-b border-white/10 px-4 py-3">
           <div className="flex items-center gap-3">
             <Zap size={20} className="text-accent flex-shrink-0" />
             <input
@@ -615,7 +615,7 @@ export function CommandPalette({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-subtle px-4 py-2 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="border-t border-white/10 px-4 py-2 flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 bg-surface-soft border border-subtle rounded">↑</kbd>
