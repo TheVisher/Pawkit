@@ -200,14 +200,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             mode={panelMode}
             onModeChange={setPanelMode}
           >
-            {contentType === "library-controls" && (
-              <LibraryControls
-                layout="grid"
-                onLayoutChange={() => {}}
-                sortBy="modified"
-                onSortChange={() => {}}
-              />
-            )}
+            {contentType === "library-controls" && <LibraryControls />}
             {contentType === "card-details" && (
               <div className="p-4">
                 <p className="text-sm text-muted-foreground">Card details panel coming soon...</p>
