@@ -141,11 +141,13 @@ export function filterCardsWithOperators(
           switch (operator.value.toLowerCase()) {
             case "favorite":
             case "starred":
-              return card.isFavorite === true;
-            case "archived":
-              return card.isArchived === true;
+            case "pinned":
+              return card.pinned === true;
             case "trashed":
-              return card.isTrashed === true;
+            case "deleted":
+              return card.deleted === true;
+            case "den":
+              return card.inDen === true;
             default:
               return true;
           }
