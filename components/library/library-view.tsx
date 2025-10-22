@@ -6,11 +6,14 @@ import { CardModel, CollectionNode } from "@/lib/types";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useCardEvents } from "@/lib/hooks/card-events-store";
 import { useViewSettingsStore, type LayoutMode } from "@/lib/hooks/view-settings-store";
+import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import { sortCards } from "@/lib/utils/sort-cards";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { format } from "date-fns";
-import { Library } from "lucide-react";
+import { Library, Settings } from "lucide-react";
+import { ControlPanel, ControlPanelMode } from "@/components/control-panel/control-panel";
+import { LibraryControls } from "@/components/control-panel/library-controls";
 
 type TimelineGroup = {
   date: string;
@@ -58,11 +61,25 @@ export function LibraryView({
   const [timelineGroups, setTimelineGroups] = useState<TimelineGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
-  
+
+  // Control Panel state
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [panelMode, setPanelMode] = useState<ControlPanelMode>("floating");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
   // Get view settings from the store
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
-  const { cardSize, sortBy, sortOrder } = viewSettings;
-  
+  const setLayoutInStore = useViewSettingsStore((state) => state.setLayout);
+  const setCardSizeInStore = useViewSettingsStore((state) => state.setCardSize);
+  const setShowTitles = useViewSettingsStore((state) => state.setShowTitles);
+  const setShowUrls = useViewSettingsStore((state) => state.setShowUrls);
+  const setSortBy = useViewSettingsStore((state) => state.setSortBy);
+  const { cardSize, sortBy, sortOrder, showTitles, showUrls } = viewSettings;
+
+  // Get global settings (thumbnails)
+  const showThumbnails = useSettingsStore((state) => state.showThumbnails);
+  const setShowThumbnails = useSettingsStore((state) => state.setShowThumbnails);
+
   // Use hydration-safe layout to prevent SSR mismatches
   const [layout, setLayout] = useState<LayoutMode>("grid");
   const [isHydrated, setIsHydrated] = useState(false);
@@ -77,10 +94,19 @@ export function LibraryView({
     setCards(initialCards);
   }, [initialCards]);
 
-  // Sort cards based on view settings
+  // Sort and filter cards based on view settings and selected tags
   const sortedCards = useMemo(() => {
-    return sortCards(cards, sortBy, sortOrder);
-  }, [cards, sortBy, sortOrder]);
+    let filtered = cards;
+
+    // Filter by selected tags
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter((card) =>
+        selectedTags.some((tag) => card.tags?.includes(tag))
+      );
+    }
+
+    return sortCards(filtered, sortBy, sortOrder);
+  }, [cards, sortBy, sortOrder, selectedTags]);
 
   const newCard = useCardEvents((state) => state.newCard);
   const clearNewCard = useCardEvents((state) => state.clearNewCard);
@@ -282,9 +308,19 @@ export function LibraryView({
                 {viewMode === "timeline"
                   ? `${timelineGroups.reduce((sum, g) => sum + g.cards.length, 0)} card(s)`
                   : `${sortedCards.length} card(s)`}
+                {selectedTags.length > 0 && ` · ${selectedTags.length} tag filter(s)`}
               </p>
             </div>
           </div>
+
+          {/* Controls Button */}
+          <button
+            onClick={() => setIsPanelOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 transition-colors text-foreground"
+          >
+            <Settings size={18} />
+            <span className="text-sm font-medium">Controls</span>
+          </button>
         </div>
 
         {/* Timeline View */}
@@ -366,6 +402,42 @@ export function LibraryView({
           }}
         />
       )}
+
+      {/* Control Panel */}
+      <ControlPanel
+        open={isPanelOpen}
+        onClose={() => setIsPanelOpen(false)}
+        mode={panelMode}
+        onModeChange={setPanelMode}
+      >
+        <LibraryControls
+          layout={layout}
+          onLayoutChange={(newLayout) => {
+            setLayout(newLayout);
+            setLayoutInStore("library", newLayout);
+          }}
+          sortBy={sortBy as "date" | "modified" | "title" | "domain"}
+          onSortChange={(newSort) => {
+            const sortByMap: Record<string, any> = {
+              date: "createdAt",
+              modified: "updatedAt",
+              title: "title",
+              domain: "url"
+            };
+            setSortBy("library", sortByMap[newSort] || "createdAt");
+          }}
+          selectedTags={selectedTags}
+          onTagsChange={setSelectedTags}
+          cardSize={cardSize}
+          onCardSizeChange={(size) => setCardSizeInStore("library", size)}
+          showThumbnails={showThumbnails}
+          onShowThumbnailsChange={setShowThumbnails}
+          showTitles={showTitles}
+          onShowTitlesChange={(show) => setShowTitles("library", show)}
+          showUrls={showUrls}
+          onShowUrlsChange={(show) => setShowUrls("library", show)}
+        />
+      </ControlPanel>
     </>
   );
 }
