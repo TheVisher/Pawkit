@@ -19,6 +19,9 @@ import { AddCardModal } from "@/components/modals/add-card-modal";
 import { KeyboardShortcutsModal } from "@/components/modals/keyboard-shortcuts-modal";
 import { useKeyboardShortcuts } from "@/lib/hooks/use-keyboard-shortcuts";
 import { useRouter } from "next/navigation";
+import { ControlPanel } from "@/components/control-panel/control-panel";
+import { LibraryControls } from "@/components/control-panel/library-controls";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
@@ -31,6 +34,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
   const [showCreateCardModal, setShowCreateCardModal] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+
+  // Global Control Panel state
+  const { isOpen: isPanelOpen, mode: panelMode, contentType, close: closePanel, setMode: setPanelMode } = usePanelStore();
 
   // Fetch user data once on mount (no SWR polling)
   useEffect(() => {
@@ -144,7 +150,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 </div>
               </div>
             </header>
-            <main className="flex flex-1 overflow-y-auto bg-transparent">
+            <main className={`flex flex-1 overflow-y-auto bg-transparent transition-all duration-300 ${
+              isPanelOpen && panelMode === "anchored" ? "pr-[400px]" : ""
+            }`}>
               <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 py-8">
                 {children}
               </div>
@@ -184,6 +192,38 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             open={showKeyboardShortcuts}
             onClose={() => setShowKeyboardShortcuts(false)}
           />
+
+          {/* Global Control Panel */}
+          <ControlPanel
+            open={isPanelOpen}
+            onClose={closePanel}
+            mode={panelMode}
+            onModeChange={setPanelMode}
+          >
+            {contentType === "library-controls" && (
+              <LibraryControls
+                layout="grid"
+                onLayoutChange={() => {}}
+                sortBy="modified"
+                onSortChange={() => {}}
+              />
+            )}
+            {contentType === "card-details" && (
+              <div className="p-4">
+                <p className="text-sm text-muted-foreground">Card details panel coming soon...</p>
+              </div>
+            )}
+            {contentType === "notes-controls" && (
+              <div className="p-4">
+                <p className="text-sm text-muted-foreground">Notes controls coming soon...</p>
+              </div>
+            )}
+            {contentType === "calendar-controls" && (
+              <div className="p-4">
+                <p className="text-sm text-muted-foreground">Calendar controls coming soon...</p>
+              </div>
+            )}
+          </ControlPanel>
         </SidebarProvider>
       </PawkitActionsProvider>
     </SelectionStoreProvider>
