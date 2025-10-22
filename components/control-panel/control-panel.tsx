@@ -41,42 +41,25 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
     return () => document.removeEventListener("keydown", handleEscape);
   }, [open, onClose]);
 
-  // Prevent body scroll when floating mode is open
-  useEffect(() => {
-    if (open && mode === "floating") {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [open, mode]);
-
   if (!open) return null;
 
   return (
     <>
-      {/* Backdrop (only in floating mode) */}
+      {/* Subtle backdrop - doesn't block clicks */}
       {mode === "floating" && (
         <div
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-300"
-          onClick={onClose}
+          className="fixed inset-0 bg-black/10 z-40 pointer-events-none"
         />
       )}
 
       {/* Control Panel */}
       <div
         className={`
-          ${mode === "floating"
-            ? "fixed top-4 right-4 bottom-4 w-[400px] rounded-2xl shadow-2xl z-50"
-            : "relative w-[400px] flex-shrink-0 border-l"
-          }
-          bg-white/5 backdrop-blur-lg border-white/10
-          ${mode === "floating" ? "border" : "border-l"}
+          fixed top-4 right-4 bottom-4 w-[400px] z-50
+          bg-white/5 backdrop-blur-lg border border-white/10
           flex flex-col
           animate-slide-in-right
+          ${mode === "floating" ? "rounded-2xl shadow-2xl" : "rounded-l-2xl"}
         `}
         onClick={(e) => e.stopPropagation()}
       >
