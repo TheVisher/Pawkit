@@ -7,6 +7,8 @@ import { Tag, Edit2, Trash2, Merge, Search } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/lib/hooks/use-toast";
+import { ToastContainer } from "@/components/ui/toast";
 
 interface TagInfo {
   name: string;
@@ -23,6 +25,7 @@ export default function TagsPage() {
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState("");
   const router = useRouter();
+  const { toasts, dismissToast, success, error } = useToast();
 
   useEffect(() => {
     // Extract all tags from cards and count usage
@@ -63,33 +66,43 @@ export default function TagsPage() {
     const tag = tags.find((t) => t.name === oldName);
     if (!tag) return;
 
-    // Update all cards with this tag
-    const { updateCard } = useDataStore.getState();
-    for (const card of tag.cards) {
-      const updatedTags = card.tags?.map((t) => (t === oldName ? newName : t)) || [];
-      await updateCard(card.id, { tags: updatedTags });
-    }
+    try {
+      // Update all cards with this tag
+      const { updateCard } = useDataStore.getState();
+      for (const card of tag.cards) {
+        const updatedTags = card.tags?.map((t) => (t === oldName ? newName : t)) || [];
+        await updateCard(card.id, { tags: updatedTags });
+      }
 
-    setEditingTag(null);
-    setNewTagName("");
+      setEditingTag(null);
+      setNewTagName("");
+      success(`Renamed "${oldName}" to "${newName}" across ${tag.cards.length} cards`);
+    } catch (err) {
+      error("Failed to rename tag");
+    }
   };
 
   const handleDeleteTag = async (tagName: string) => {
-    if (!confirm(`Are you sure you want to delete the tag "${tagName}"? This will remove it from ${tags.find(t => t.name === tagName)?.count} cards.`)) {
-      return;
-    }
-
     const tag = tags.find((t) => t.name === tagName);
     if (!tag) return;
 
-    // Remove tag from all cards
-    const { updateCard } = useDataStore.getState();
-    for (const card of tag.cards) {
-      const updatedTags = card.tags?.filter((t) => t !== tagName) || [];
-      await updateCard(card.id, { tags: updatedTags });
+    if (!confirm(`Are you sure you want to delete the tag "${tagName}"? This will remove it from ${tag.count} cards.`)) {
+      return;
     }
 
-    setSelectedTag(null);
+    try {
+      // Remove tag from all cards
+      const { updateCard } = useDataStore.getState();
+      for (const card of tag.cards) {
+        const updatedTags = card.tags?.filter((t) => t !== tagName) || [];
+        await updateCard(card.id, { tags: updatedTags });
+      }
+
+      setSelectedTag(null);
+      success(`Deleted tag "${tagName}" from ${tag.cards.length} cards`);
+    } catch (err) {
+      error("Failed to delete tag");
+    }
   };
 
   const handleViewCards = (tag: TagInfo) => {
@@ -218,6 +231,9 @@ export default function TagsPage() {
           <li>• Delete a tag to remove it from all cards</li>
         </ul>
       </div>
+
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }
