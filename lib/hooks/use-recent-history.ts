@@ -92,5 +92,6 @@ export function useTrackCardView(card: CardModel | null) {
       url: card.url,
       image: card.image,
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.id]); // Only track when card ID changes
 }

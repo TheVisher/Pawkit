@@ -27,6 +27,7 @@ export function useToast() {
     }, 3000);
 
     return id;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const dismissToast = useCallback((id: string) => {
