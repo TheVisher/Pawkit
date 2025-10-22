@@ -90,7 +90,7 @@ export function useTrackCardView(card: CardModel | null) {
       title: card.title || card.url || "Untitled",
       type: isNote ? "note" : "card",
       url: card.url,
-      image: card.image,
+      image: card.image || undefined,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.id]); // Only track when card ID changes
