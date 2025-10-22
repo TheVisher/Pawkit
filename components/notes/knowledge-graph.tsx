@@ -4,7 +4,8 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { useDataStore } from "@/lib/stores/data-store";
 import { CardModel } from "@/lib/types";
 import { localStorage } from "@/lib/services/local-storage";
-import { FileText, Bookmark, Globe, Tag, Network, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, Network, ZoomIn, ZoomOut, RotateCcw, Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 
 type GraphNode = {
   id: string;
@@ -36,8 +37,32 @@ export function KnowledgeGraph({ onSelectCard, className = "" }: KnowledgeGraphP
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const cards = useDataStore((state) => state.cards);
+
+  // Filter nodes based on search query
+  const filteredNodes = useMemo(() => {
+    if (!searchQuery) return nodes;
+    return nodes.filter(node =>
+      node.label.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [nodes, searchQuery]);
+
+  // Get connected node IDs for highlighting
+  const connectedNodeIds = useMemo(() => {
+    const hoveredId = hoveredNodeId || selectedNodeId;
+    if (!hoveredId) return new Set<string>();
+
+    const connected = new Set<string>([hoveredId]);
+    links.forEach(link => {
+      if (link.source === hoveredId) connected.add(link.target);
+      if (link.target === hoveredId) connected.add(link.source);
+    });
+    return connected;
+  }, [hoveredNodeId, selectedNodeId, links]);
 
   // Load graph data
   useEffect(() => {
@@ -199,39 +224,61 @@ export function KnowledgeGraph({ onSelectCard, className = "" }: KnowledgeGraphP
   return (
     <div className={`bg-surface rounded-lg border border-subtle overflow-hidden ${className}`}>
       {/* Controls */}
-      <div className="flex items-center justify-between p-4 border-b border-subtle">
-        <div className="flex items-center gap-2">
-          <Network size={20} className="text-accent" />
-          <h3 className="font-semibold text-foreground">Knowledge Graph</h3>
-          <span className="text-sm text-muted-foreground">
-            {nodes.length} nodes, {links.length} connections
-          </span>
+      <div className="space-y-3 p-4 border-b border-subtle">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Network size={20} className="text-accent" />
+            <h3 className="font-semibold text-foreground">Knowledge Graph</h3>
+            <span className="text-sm text-muted-foreground">
+              {filteredNodes.length} nodes, {links.length} connections
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleZoomOut}
+              className="p-2 rounded hover:bg-surface-soft text-muted-foreground hover:text-foreground transition-colors"
+              title="Zoom out"
+            >
+              <ZoomOut size={16} />
+            </button>
+            <span className="text-sm text-muted-foreground min-w-[3rem] text-center">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              onClick={handleZoomIn}
+              className="p-2 rounded hover:bg-surface-soft text-muted-foreground hover:text-foreground transition-colors"
+              title="Zoom in"
+            >
+              <ZoomIn size={16} />
+            </button>
+            <button
+              onClick={handleReset}
+              className="p-2 rounded hover:bg-surface-soft text-muted-foreground hover:text-foreground transition-colors"
+              title="Reset view"
+            >
+              <RotateCcw size={16} />
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleZoomOut}
-            className="p-2 rounded hover:bg-surface-soft text-muted-foreground hover:text-foreground transition-colors"
-            title="Zoom out"
-          >
-            <ZoomOut size={16} />
-          </button>
-          <span className="text-sm text-muted-foreground min-w-[3rem] text-center">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            onClick={handleZoomIn}
-            className="p-2 rounded hover:bg-surface-soft text-muted-foreground hover:text-foreground transition-colors"
-            title="Zoom in"
-          >
-            <ZoomIn size={16} />
-          </button>
-          <button
-            onClick={handleReset}
-            className="p-2 rounded hover:bg-surface-soft text-muted-foreground hover:text-foreground transition-colors"
-            title="Reset view"
-          >
-            <RotateCcw size={16} />
-          </button>
+
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <Input
+            type="text"
+            placeholder="Search nodes..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-8"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-surface-soft text-muted-foreground hover:text-foreground"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </div>
 
@@ -270,8 +317,13 @@ export function KnowledgeGraph({ onSelectCard, className = "" }: KnowledgeGraphP
             {links.map((link, index) => {
               const sourceNode = nodes.find(n => n.id === link.source);
               const targetNode = nodes.find(n => n.id === link.target);
-              
+
               if (!sourceNode || !targetNode) return null;
+
+              // Highlight connected links
+              const isConnected = connectedNodeIds.size > 0 &&
+                (connectedNodeIds.has(link.source) || connectedNodeIds.has(link.target));
+              const isHighlighted = connectedNodeIds.size === 0 || isConnected;
 
               return (
                 <line
@@ -281,53 +333,66 @@ export function KnowledgeGraph({ onSelectCard, className = "" }: KnowledgeGraphP
                   x2={targetNode.x}
                   y2={targetNode.y}
                   stroke={getLinkColor(link.type)}
-                  strokeWidth={link.strength * 2}
-                  opacity={0.6}
+                  strokeWidth={isConnected ? link.strength * 3 : link.strength * 2}
+                  opacity={isHighlighted ? 0.8 : 0.2}
                   markerEnd="url(#arrowhead)"
                 />
               );
             })}
 
             {/* Nodes */}
-            {nodes.map((node) => (
-              <g key={node.id}>
-                <circle
-                  cx={node.x}
-                  cy={node.y}
-                  r={node.size}
-                  fill={node.color}
-                  stroke="#fff"
-                  strokeWidth={2}
-                  className="cursor-pointer hover:r-6 transition-all"
-                  onClick={() => {
-                    const card = cards.find(c => c.id === node.id && !c.inDen);
-                    if (card && onSelectCard) {
-                      onSelectCard(card);
-                    }
-                  }}
-                />
-                <text
-                  x={node.x}
-                  y={node.y + 4}
-                  textAnchor="middle"
-                  fontSize="10"
-                  fill="#fff"
-                  className="pointer-events-none"
-                >
-                  {getNodeIcon(node.type)}
-                </text>
-                <text
-                  x={node.x}
-                  y={node.y + node.size + 15}
-                  textAnchor="middle"
-                  fontSize="12"
-                  fill="#666"
-                  className="pointer-events-none"
-                >
-                  {node.label.length > 15 ? node.label.substring(0, 15) + '...' : node.label}
-                </text>
-              </g>
-            ))}
+            {filteredNodes.map((node) => {
+              const isConnected = connectedNodeIds.has(node.id);
+              const isHighlighted = connectedNodeIds.size === 0 || isConnected;
+              const nodeSize = isConnected ? node.size * 1.3 : node.size;
+
+              return (
+                <g key={node.id}>
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={nodeSize}
+                    fill={node.color}
+                    stroke="#fff"
+                    strokeWidth={isConnected ? 3 : 2}
+                    opacity={isHighlighted ? 1 : 0.3}
+                    className="cursor-pointer transition-all"
+                    onClick={() => {
+                      setSelectedNodeId(selectedNodeId === node.id ? null : node.id);
+                      const card = cards.find(c => c.id === node.id && !c.inDen);
+                      if (card && onSelectCard) {
+                        onSelectCard(card);
+                      }
+                    }}
+                    onMouseEnter={() => setHoveredNodeId(node.id)}
+                    onMouseLeave={() => setHoveredNodeId(null)}
+                  />
+                  <text
+                    x={node.x}
+                    y={node.y + 4}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fill="#fff"
+                    className="pointer-events-none"
+                    opacity={isHighlighted ? 1 : 0.3}
+                  >
+                    {getNodeIcon(node.type)}
+                  </text>
+                  <text
+                    x={node.x}
+                    y={node.y + nodeSize + 15}
+                    textAnchor="middle"
+                    fontSize={isConnected ? "14" : "12"}
+                    fontWeight={isConnected ? "600" : "400"}
+                    fill={isConnected ? "#fff" : "#666"}
+                    className="pointer-events-none"
+                    opacity={isHighlighted ? 1 : 0.3}
+                  >
+                    {node.label.length > 15 ? node.label.substring(0, 15) + '...' : node.label}
+                  </text>
+                </g>
+              );
+            })}
           </g>
         </svg>
       </div>
