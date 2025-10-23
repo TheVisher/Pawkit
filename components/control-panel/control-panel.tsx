@@ -191,7 +191,7 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
         </TooltipProvider>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6"
+        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
           style={{
             maskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
             WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)"
