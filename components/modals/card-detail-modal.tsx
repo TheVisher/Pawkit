@@ -83,6 +83,23 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const restorePreviousContent = usePanelStore((state) => state.restorePreviousContent);
 
+  // Get panel states for modal positioning
+  const isLeftOpen = usePanelStore((state) => state.isLeftOpen);
+  const leftMode = usePanelStore((state) => state.leftMode);
+  const isPanelOpen = usePanelStore((state) => state.isOpen);
+  const panelMode = usePanelStore((state) => state.mode);
+
+  // Calculate modal offset based on panel states
+  // Floating panels: 325px width + 16px margin on each side = 357px total space
+  // Anchored panels: 325px width, flush to edge
+  const leftOffset = isLeftOpen
+    ? (leftMode === "floating" ? "357px" : "325px")
+    : "0px";
+
+  const rightOffset = isPanelOpen
+    ? (panelMode === "floating" ? "357px" : "325px")
+    : "0px";
+
   // Track card view for recent history
   useTrackCardView(card);
 
@@ -755,8 +772,14 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         onClick={handleClose}
       />
 
-      {/* Centered Card Content - centered over content panel */}
-      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 md:p-8 pointer-events-none">
+      {/* Centered Card Content - dynamically centered over content panel */}
+      <div
+        className="fixed inset-0 z-[101] flex items-center justify-center p-4 md:p-8 pointer-events-none"
+        style={{
+          left: leftOffset,
+          right: rightOffset,
+        }}
+      >
         <div
           className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative ${
             isReaderExpanded ? "w-full h-full flex flex-col" : isYouTubeUrl(card.url) ? "w-full max-w-6xl" : isNote ? "w-full max-w-3xl h-[80vh] flex flex-col" : "max-w-full max-h-full"
