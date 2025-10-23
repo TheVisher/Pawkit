@@ -295,7 +295,7 @@ export function CommandPalette({
         icon: Layers,
         action: () => router.push("/distill"),
         keywords: ["dig", "up", "review", "distill"],
-      }
+      },
     );
 
     // Add notes to commands

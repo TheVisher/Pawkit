@@ -47,7 +47,7 @@ function LibraryPageContent() {
       const query = q.toLowerCase();
       filtered = filtered.filter(card =>
         card.title?.toLowerCase().includes(query) ||
-        card.url.toLowerCase().includes(query) ||
+        card.url?.toLowerCase().includes(query) ||
         card.notes?.toLowerCase().includes(query)
       );
     }
