@@ -63,57 +63,9 @@ export function CardDetailsPanel() {
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      {/* Main Content Area with Tabs */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Vertical Tab Content */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {/* Tab Content */}
-          {activeTab === "pawkits" && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground">Pawkits</h3>
-              <p className="text-xs text-muted-foreground">
-                Pawkits tab content coming soon...
-              </p>
-            </div>
-          )}
-          {activeTab === "notes" && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground">Notes</h3>
-              <textarea
-                value={card.notes || ""}
-                placeholder="Add notes about this card..."
-                className="w-full min-h-[200px] rounded border border-white/10 bg-white/5 p-3 text-sm text-foreground placeholder-muted-foreground resize-none focus:border-accent focus:outline-none"
-              />
-            </div>
-          )}
-          {activeTab === "links" && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground">Links</h3>
-              <p className="text-xs text-muted-foreground">
-                Backlinks and references coming soon...
-              </p>
-            </div>
-          )}
-          {activeTab === "schedule" && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground">Schedule</h3>
-              <p className="text-xs text-muted-foreground">
-                Schedule for calendar coming soon...
-              </p>
-            </div>
-          )}
-          {activeTab === "actions" && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-foreground">Actions</h3>
-              <p className="text-xs text-muted-foreground">
-                Card actions coming soon...
-              </p>
-            </div>
-          )}
-        </div>
-
-        {/* Vertical Navigation Sidebar */}
-        <div className="w-14 border-l border-white/10 flex flex-col items-center py-4 gap-2 flex-shrink-0">
+      {/* Horizontal Tab Navigation at Top */}
+      <div className="border-b border-white/10 px-2 py-2 flex-shrink-0 overflow-x-auto">
+        <div className="flex gap-1 min-w-max">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -122,20 +74,68 @@ export function CardDetailsPanel() {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`
-                  w-11 h-11 rounded-xl flex items-center justify-center border transition-all
+                  flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium transition-all whitespace-nowrap
                   ${
                     isActive
-                      ? "border-accent bg-white/10 shadow-glow-accent text-accent"
-                      : "border-transparent hover:bg-white/5 text-muted-foreground hover:text-foreground"
+                      ? "bg-accent/20 text-accent border border-accent/50"
+                      : "hover:bg-white/5 text-muted-foreground hover:text-foreground"
                   }
                 `}
                 title={tab.label}
               >
-                <Icon className="h-5 w-5" />
+                <Icon className="h-4 w-4" />
+                <span>{tab.label}</span>
               </button>
             );
           })}
         </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {/* Tab Content */}
+        {activeTab === "pawkits" && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Pawkits</h3>
+            <p className="text-xs text-muted-foreground">
+              Pawkits tab content coming soon...
+            </p>
+          </div>
+        )}
+        {activeTab === "notes" && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Notes</h3>
+            <textarea
+              value={card.notes || ""}
+              placeholder="Add notes about this card..."
+              className="w-full min-h-[200px] rounded border border-white/10 bg-white/5 p-3 text-sm text-foreground placeholder-muted-foreground resize-none focus:border-accent focus:outline-none"
+            />
+          </div>
+        )}
+        {activeTab === "links" && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Links</h3>
+            <p className="text-xs text-muted-foreground">
+              Backlinks and references coming soon...
+            </p>
+          </div>
+        )}
+        {activeTab === "schedule" && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Schedule</h3>
+            <p className="text-xs text-muted-foreground">
+              Schedule for calendar coming soon...
+            </p>
+          </div>
+        )}
+        {activeTab === "actions" && (
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Actions</h3>
+            <p className="text-xs text-muted-foreground">
+              Card actions coming soon...
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Bottom Details Section - Always Visible */}
@@ -172,14 +172,17 @@ export function CardDetailsPanel() {
               </button>
             </div>
           )}
-          <a
-            href={card.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-accent hover:underline break-all line-clamp-1"
-          >
-            {card.url}
-          </a>
+          {card.url && card.domain && (
+            <a
+              href={card.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={card.url}
+              className="text-xs text-accent hover:underline truncate block"
+            >
+              {card.domain}
+            </a>
+          )}
         </div>
 
         {/* Pawkits */}
@@ -224,10 +227,6 @@ export function CardDetailsPanel() {
               <Badge variant="destructive" className="text-xs">Error</Badge>
             </div>
           )}
-          <div className="flex justify-between">
-            <span>Domain</span>
-            <span className="text-foreground truncate ml-2">{card.domain || "—"}</span>
-          </div>
           <div className="flex justify-between">
             <span>Created</span>
             <span className="text-foreground">
