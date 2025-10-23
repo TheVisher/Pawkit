@@ -17,36 +17,44 @@ export function ContentPanel({
   rightOpen,
   rightMode,
 }: ContentPanelProps) {
+  // Content panel mode is always tied to left panel mode
+  const contentIsAnchored = leftMode === "anchored";
+
   // Determine if we have floating or anchored panels
   const hasAnchoredLeft = leftOpen && leftMode === "anchored";
   const hasAnchoredRight = rightOpen && rightMode === "anchored";
 
   // Calculate exact positioning
-  // Floating panels: 325px width + 16px margin on each side = 357px total space
-  // Anchored panels: 325px width, flush to edge
-  // Default: 16px margin
-  const leftPosition = leftOpen
-    ? (leftMode === "floating" ? "357px" : "325px")
-    : "16px";
+  // When content is anchored:
+  //   - Left: 0 or 325px (if left panel is open)
+  //   - Right: 0, 325px (if right is anchored), or 16px (if right is floating/closed)
+  // When content is floating:
+  //   - Normal spacing: 357px (floating panel) or 325px (anchored panel) or 16px (closed)
 
-  const rightPosition = rightOpen
-    ? (rightMode === "floating" ? "357px" : "325px")
-    : "16px";
+  const leftPosition = contentIsAnchored
+    ? (leftOpen ? "325px" : "0")
+    : (leftOpen ? (leftMode === "floating" ? "357px" : "325px") : "16px");
+
+  const rightPosition = contentIsAnchored
+    ? (rightOpen && rightMode === "anchored" ? "325px" : "0")
+    : (rightOpen ? (rightMode === "floating" ? "357px" : "325px") : "16px");
 
   // Build border classes dynamically
-  // When panels are anchored, we need to be flush with them (no border on that side)
-  const borderClasses = `
-    ${hasAnchoredLeft ? "border-l-0" : "border-l"}
-    ${hasAnchoredRight ? "border-r-0" : "border-r"}
-    border-t border-b border-white/10
-  `;
+  // When content is anchored, remove all borders
+  // When content is floating, show borders except where anchored panels are
+  const borderClasses = contentIsAnchored
+    ? "border-0"
+    : `
+      ${hasAnchoredLeft ? "border-l-0" : "border-l"}
+      ${hasAnchoredRight ? "border-r-0" : "border-r"}
+      border-t border-b border-white/10
+    `;
 
-  // Border radius - when floating panels are present or no panels
-  const roundedClasses = (leftMode === "floating" || rightMode === "floating" || (!leftOpen && !rightOpen)) ? "rounded-2xl" : "rounded-none";
+  // Border radius - only rounded when content is floating
+  const roundedClasses = contentIsAnchored ? "rounded-none" : "rounded-2xl";
 
-  // When both panels are anchored, remove top/bottom gaps to make content panel fully anchored
-  const bothAnchored = hasAnchoredLeft && hasAnchoredRight;
-  const verticalClasses = bothAnchored ? "top-0 bottom-0" : "top-4 bottom-4";
+  // Vertical positioning - anchored content takes full height
+  const verticalClasses = contentIsAnchored ? "top-0 bottom-0" : "top-4 bottom-4";
 
   return (
     <div
