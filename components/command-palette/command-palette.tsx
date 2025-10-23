@@ -71,6 +71,7 @@ type CommandPaletteProps = {
   onClose: () => void;
   onOpenCreateNote: () => void;
   onOpenCreateCard: () => void;
+  footer?: React.ReactNode;
 };
 
 export function CommandPalette({
@@ -78,6 +79,7 @@ export function CommandPalette({
   onClose,
   onOpenCreateNote,
   onOpenCreateCard,
+  footer,
 }: CommandPaletteProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -615,19 +617,23 @@ export function CommandPalette({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-white/10 px-4 py-2 flex items-center justify-between text-xs text-muted-foreground">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-surface-soft border border-subtle rounded">↑</kbd>
-              <kbd className="px-1.5 py-0.5 bg-surface-soft border border-subtle rounded">↓</kbd>
-              navigate
-            </span>
-            <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-surface-soft border border-subtle rounded">↵</kbd>
-              select
-            </span>
-          </div>
-          <span>Right-click to pin</span>
+        <div className="border-t border-white/10 px-4 py-2 text-xs text-muted-foreground">
+          {footer || (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-surface-soft border border-subtle rounded">↑</kbd>
+                  <kbd className="px-1.5 py-0.5 bg-surface-soft border border-subtle rounded">↓</kbd>
+                  navigate
+                </span>
+                <span className="flex items-center gap-1">
+                  <kbd className="px-1.5 py-0.5 bg-surface-soft border border-subtle rounded">↵</kbd>
+                  select
+                </span>
+              </div>
+              <span>Right-click to pin</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
