@@ -112,6 +112,20 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
               <TooltipContent side="bottom" className="z-[200]">Close</TooltipContent>
             </Tooltip>
 
+            {/* Float/Anchor Toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleModeToggle}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label={mode === "floating" ? "Anchor panel" : "Float panel"}
+                >
+                  {mode === "floating" ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="z-[200]">{mode === "floating" ? "Anchor" : "Float"}</TooltipContent>
+            </Tooltip>
+
             {/* Help */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -152,20 +166,6 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="z-[200]">Changelog</TooltipContent>
-            </Tooltip>
-
-            {/* Float/Anchor Toggle */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handleModeToggle}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                  aria-label={mode === "floating" ? "Anchor panel" : "Float panel"}
-                >
-                  {mode === "floating" ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="z-[200]">{mode === "floating" ? "Anchor" : "Float"}</TooltipContent>
             </Tooltip>
 
             {/* Profile */}

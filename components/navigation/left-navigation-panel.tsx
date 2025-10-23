@@ -180,15 +180,16 @@ export function LeftNavigationPanel({
       >
         {/* Header - Icon-only controls */}
         <TooltipProvider>
-          <div className="flex items-center justify-evenly p-3 border-b border-white/10">
-            {/* Workspace Selector */}
+          <div className="flex items-center justify-between gap-2 p-3 border-b border-white/10">
+            {/* Workspace Selector - Pill Shape */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  className="flex items-center gap-2 px-4 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
                   aria-label="Workspace"
                 >
-                  <Briefcase size={18} />
+                  <Briefcase size={16} className="text-muted-foreground" />
+                  <span className="text-sm font-medium text-foreground">Personal</span>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="z-[200]">
@@ -199,33 +200,36 @@ export function LeftNavigationPanel({
               </TooltipContent>
             </Tooltip>
 
-            {/* Float/Anchor Toggle */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={handleModeToggle}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                  aria-label={mode === "floating" ? "Anchor panel" : "Float panel"}
-                >
-                  {mode === "floating" ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="z-[200]">{mode === "floating" ? "Anchor" : "Float"}</TooltipContent>
-            </Tooltip>
+            {/* Right side buttons */}
+            <div className="flex items-center gap-1">
+              {/* Float/Anchor Toggle */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleModeToggle}
+                    className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                    aria-label={mode === "floating" ? "Anchor panel" : "Float panel"}
+                  >
+                    {mode === "floating" ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="z-[200]">{mode === "floating" ? "Anchor" : "Float"}</TooltipContent>
+              </Tooltip>
 
-            {/* Close Button */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                  aria-label="Close panel"
-                >
-                  <X size={18} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="z-[200]">Close</TooltipContent>
-            </Tooltip>
+              {/* Close Button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={onClose}
+                    className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                    aria-label="Close panel"
+                  >
+                    <X size={18} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="z-[200]">Close</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
         </TooltipProvider>
 
