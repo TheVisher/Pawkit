@@ -44,11 +44,15 @@ export function ContentPanel({
   // Border radius - when floating panels are present or no panels
   const roundedClasses = (leftMode === "floating" || rightMode === "floating" || (!leftOpen && !rightOpen)) ? "rounded-2xl" : "rounded-none";
 
+  // When both panels are anchored, remove top/bottom gaps to make content panel fully anchored
+  const bothAnchored = hasAnchoredLeft && hasAnchoredRight;
+  const verticalClasses = bothAnchored ? "top-0 bottom-0" : "top-4 bottom-4";
+
   return (
     <div
       className={`
         absolute
-        top-4 bottom-4
+        ${verticalClasses}
         bg-white/5 backdrop-blur-lg
         flex flex-col
         overflow-hidden
