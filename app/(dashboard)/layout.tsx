@@ -302,6 +302,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             mode={panelMode}
             onModeChange={setPanelMode}
             embedded={isRightPanelEmbedded}
+            username={username}
+            displayName={displayName}
           >
             <div
               className={`${animatingContentType === "card-details" ? "relative h-full" : ""} transition-all duration-300 ${
