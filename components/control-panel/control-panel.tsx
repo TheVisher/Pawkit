@@ -97,102 +97,99 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
       >
         {/* Header - Icon-only controls */}
         <TooltipProvider>
-          <div className="flex items-center justify-between gap-2 p-3 border-b border-white/10">
-            {/* Left side buttons */}
-            <div className="flex items-center gap-1">
-              {/* Close Button */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={onClose}
-                    className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                    aria-label="Close panel"
-                  >
-                    <X size={18} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="z-[200]">Close</TooltipContent>
-              </Tooltip>
+          <div className="flex items-center gap-1 p-3 border-b border-white/10">
+            {/* Close Button */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label="Close panel"
+                >
+                  <X size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="z-[200]">Close</TooltipContent>
+            </Tooltip>
 
-              {/* Help */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => router.push('/help')}
-                    className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                    aria-label="Help"
-                  >
-                    <HelpCircle size={18} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="z-[200]">Help</TooltipContent>
-              </Tooltip>
+            {/* Help */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => router.push('/help')}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label="Help"
+                >
+                  <HelpCircle size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="z-[200]">Help</TooltipContent>
+            </Tooltip>
 
-              {/* Trash */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => router.push('/trash')}
-                    className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                    aria-label="Trash"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="z-[200]">Trash</TooltipContent>
-              </Tooltip>
+            {/* Trash */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => router.push('/trash')}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label="Trash"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="z-[200]">Trash</TooltipContent>
+            </Tooltip>
 
-              {/* Changelog */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => router.push('/changelog')}
-                    className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                    aria-label="Changelog"
-                  >
-                    <BookOpen size={18} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="z-[200]">Changelog</TooltipContent>
-              </Tooltip>
-            </div>
+            {/* Changelog */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => router.push('/changelog')}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label="Changelog"
+                >
+                  <BookOpen size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="z-[200]">Changelog</TooltipContent>
+            </Tooltip>
 
-            {/* Right side buttons */}
-            <div className="flex items-center gap-1">
-              {/* Float/Anchor Toggle */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={handleModeToggle}
-                    className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                    aria-label={mode === "floating" ? "Anchor panel" : "Float panel"}
-                  >
-                    {mode === "floating" ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="z-[200]">{mode === "floating" ? "Anchor" : "Float"}</TooltipContent>
-              </Tooltip>
+            {/* Spacer */}
+            <div className="flex-1" />
 
-              {/* Profile */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    className="ml-2 rounded-full hover:ring-2 hover:ring-white/20 transition-all"
-                    aria-label="Profile"
-                  >
-                    <div className="flex aspect-square size-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold text-base">
-                      {(displayName || username || "U").charAt(0).toUpperCase()}
-                    </div>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom" className="z-[200]">
-                  <div className="text-center">
-                    <div className="font-semibold">{displayName || username || "User"}</div>
-                    <div className="text-xs text-muted-foreground">View profile</div>
+            {/* Float/Anchor Toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleModeToggle}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label={mode === "floating" ? "Anchor panel" : "Float panel"}
+                >
+                  {mode === "floating" ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="z-[200]">{mode === "floating" ? "Anchor" : "Float"}</TooltipContent>
+            </Tooltip>
+
+            {/* Profile */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="ml-1 rounded-full hover:ring-2 hover:ring-white/20 transition-all"
+                  aria-label="Profile"
+                >
+                  <div className="flex aspect-square size-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold text-base">
+                    {(displayName || username || "U").charAt(0).toUpperCase()}
                   </div>
-                </TooltipContent>
-              </Tooltip>
-            </div>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="z-[200]">
+                <div className="text-center">
+                  <div className="font-semibold">{displayName || username || "User"}</div>
+                  <div className="text-xs text-muted-foreground">View profile</div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
           </div>
         </TooltipProvider>
 
