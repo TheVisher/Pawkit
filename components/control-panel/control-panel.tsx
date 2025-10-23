@@ -97,7 +97,7 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
       >
         {/* Header - Icon-only controls */}
         <TooltipProvider>
-          <div className="flex items-center gap-1 p-3 border-b border-white/10">
+          <div className="flex items-center justify-evenly p-3 border-b border-white/10">
             {/* Close Button */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -154,9 +154,6 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
               <TooltipContent side="bottom" className="z-[200]">Changelog</TooltipContent>
             </Tooltip>
 
-            {/* Spacer */}
-            <div className="flex-1" />
-
             {/* Float/Anchor Toggle */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -175,7 +172,7 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="ml-1 rounded-full hover:ring-2 hover:ring-white/20 transition-all"
+                  className="rounded-full hover:ring-2 hover:ring-white/20 transition-all"
                   aria-label="Profile"
                 >
                   <div className="flex aspect-square size-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold text-base">
