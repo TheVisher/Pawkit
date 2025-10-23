@@ -205,9 +205,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 rightOpen={isPanelOpen}
                 rightMode={panelMode}
               >
-                <div className="mx-auto flex w-full max-w-6xl flex-col">
-                  {children}
-                </div>
+                {children}
               </ContentPanel>
             </main>
           </SidebarInset>

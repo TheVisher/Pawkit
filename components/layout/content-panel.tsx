@@ -66,15 +66,13 @@ export function ContentPanel({
     >
       {/* Content container with scrolling and fade mask */}
       <div
-        className="relative flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto px-6 py-6"
         style={{
           maskImage: "linear-gradient(to bottom, transparent 0%, black 32px, black calc(100% - 32px), transparent 100%)",
           WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 32px, black calc(100% - 32px), transparent 100%)"
         }}
       >
-        <div className="px-6 py-6">
-          {children}
-        </div>
+        {children}
       </div>
     </div>
   );
