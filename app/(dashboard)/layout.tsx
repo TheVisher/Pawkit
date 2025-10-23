@@ -19,6 +19,8 @@ import { AddCardModal } from "@/components/modals/add-card-modal";
 import { KeyboardShortcutsModal } from "@/components/modals/keyboard-shortcuts-modal";
 import { useKeyboardShortcuts } from "@/lib/hooks/use-keyboard-shortcuts";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { HelpCircle, Keyboard } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
@@ -164,6 +166,33 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               setShowCommandPalette(false);
               setShowCreateCardModal(true);
             }}
+            footer={
+              <div className="mt-4 flex items-center justify-between gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <HelpCircle className="h-3.5 w-3.5" />
+                  <span>
+                    Need a refresher? Visit the{' '}
+                    <Link
+                      href="/help"
+                      onClick={() => setShowCommandPalette(false)}
+                      className="font-medium text-foreground underline decoration-dotted underline-offset-4"
+                    >
+                      Help Center
+                    </Link>
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCommandPalette(false);
+                    setShowKeyboardShortcuts(true);
+                  }}
+                  className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/10 px-3 py-1 font-medium text-foreground transition hover:border-accent hover:text-accent"
+                >
+                  <Keyboard className="h-3.5 w-3.5" />
+                  View shortcuts
+                </button>
+              </div>
+            }
           />
 
           {/* Create Note Modal */}
@@ -183,6 +212,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <KeyboardShortcutsModal
             open={showKeyboardShortcuts}
             onClose={() => setShowKeyboardShortcuts(false)}
+            title="Keyboard Shortcuts"
+            footer={
+              <span className="text-muted-foreground">
+                Press <kbd className="rounded bg-white/10 px-2 py-1 font-mono">?</kbd> anywhere to toggle this guide
+              </span>
+            }
           />
         </SidebarProvider>
       </PawkitActionsProvider>
