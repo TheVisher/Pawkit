@@ -402,54 +402,56 @@ export function LeftNavigationPanel({
 
                             {/* Action buttons - only show when card modal is open */}
                             {activeCard && (
-                              <div className="relative flex items-center gap-1 flex-shrink-0">
-                                {/* Purple expanding circle animation */}
-                                {isAnimating && (
-                                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div
-                                      className="animate-ping-once absolute h-8 w-8 rounded-full"
-                                      style={{
-                                        background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                      }}
-                                    />
-                                    <Check size={14} className="text-white relative z-10" />
-                                  </div>
-                                )}
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                <div className="relative">
+                                  {/* Purple expanding circle animation */}
+                                  {isAnimating && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                      <div
+                                        className="animate-ping-once absolute h-8 w-8 rounded-full"
+                                        style={{
+                                          background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                                        }}
+                                      />
+                                      <Check size={14} className="text-white relative z-10" />
+                                    </div>
+                                  )}
 
-                                {/* Show button when not animating */}
-                                {!isAnimating && (
-                                  <>
-                                    {cardInCollection ? (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (isHovered) {
-                                            removeFromCollection(collection.id, collection.name);
-                                          }
-                                        }}
-                                        className="p-1 rounded hover:bg-white/20 transition-colors"
-                                        title={isHovered ? "Remove from pawkit" : "In this pawkit"}
-                                      >
-                                        {isHovered ? (
-                                          <Minus size={14} className="text-red-400" />
-                                        ) : (
-                                          <Check size={14} className="text-muted-foreground" />
-                                        )}
-                                      </button>
-                                    ) : isHovered && (
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          addToCollection(collection.id, collection.name);
-                                        }}
-                                        className="p-1 rounded hover:bg-white/20 transition-colors"
-                                        title="Add to pawkit"
-                                      >
-                                        <Plus size={14} className="text-purple-400" />
-                                      </button>
-                                    )}
-                                  </>
-                                )}
+                                  {/* Show button when not animating */}
+                                  {!isAnimating && (
+                                    <>
+                                      {cardInCollection ? (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (isHovered) {
+                                              removeFromCollection(collection.id, collection.name);
+                                            }
+                                          }}
+                                          className="p-1 rounded hover:bg-white/20 transition-colors"
+                                          title={isHovered ? "Remove from pawkit" : "In this pawkit"}
+                                        >
+                                          {isHovered ? (
+                                            <Minus size={14} className="text-red-400" />
+                                          ) : (
+                                            <Check size={14} className="text-muted-foreground" />
+                                          )}
+                                        </button>
+                                      ) : isHovered && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            addToCollection(collection.id, collection.name);
+                                          }}
+                                          className="p-1 rounded hover:bg-white/20 transition-colors"
+                                          title="Add to pawkit"
+                                        >
+                                          <Plus size={14} className="text-purple-400" />
+                                        </button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </button>
@@ -495,54 +497,56 @@ export function LeftNavigationPanel({
 
                                   {/* Action buttons - only show when card modal is open */}
                                   {activeCard && (
-                                    <div className="relative flex items-center gap-1 flex-shrink-0">
-                                      {/* Purple expanding circle animation */}
-                                      {isChildAnimating && (
-                                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                          <div
-                                            className="animate-ping-once absolute h-6 w-6 rounded-full"
-                                            style={{
-                                              background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                            }}
-                                          />
-                                          <Check size={12} className="text-white relative z-10" />
-                                        </div>
-                                      )}
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                      <div className="relative">
+                                        {/* Purple expanding circle animation */}
+                                        {isChildAnimating && (
+                                          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                            <div
+                                              className="animate-ping-once absolute h-6 w-6 rounded-full"
+                                              style={{
+                                                background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                                              }}
+                                            />
+                                            <Check size={12} className="text-white relative z-10" />
+                                          </div>
+                                        )}
 
-                                      {/* Show button when not animating */}
-                                      {!isChildAnimating && (
-                                        <>
-                                          {childInCollection ? (
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (isChildHovered) {
-                                                  removeFromCollection(child.id, child.name);
-                                                }
-                                              }}
-                                              className="p-0.5 rounded hover:bg-white/20 transition-colors"
-                                              title={isChildHovered ? "Remove from pawkit" : "In this pawkit"}
-                                            >
-                                              {isChildHovered ? (
-                                                <Minus size={12} className="text-red-400" />
-                                              ) : (
-                                                <Check size={12} className="text-muted-foreground" />
-                                              )}
-                                            </button>
-                                          ) : isChildHovered && (
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                addToCollection(child.id, child.name);
-                                              }}
-                                              className="p-0.5 rounded hover:bg-white/20 transition-colors"
-                                              title="Add to pawkit"
-                                            >
-                                              <Plus size={12} className="text-purple-400" />
-                                            </button>
-                                          )}
-                                        </>
-                                      )}
+                                        {/* Show button when not animating */}
+                                        {!isChildAnimating && (
+                                          <>
+                                            {childInCollection ? (
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  if (isChildHovered) {
+                                                    removeFromCollection(child.id, child.name);
+                                                  }
+                                                }}
+                                                className="p-0.5 rounded hover:bg-white/20 transition-colors"
+                                                title={isChildHovered ? "Remove from pawkit" : "In this pawkit"}
+                                              >
+                                                {isChildHovered ? (
+                                                  <Minus size={12} className="text-red-400" />
+                                                ) : (
+                                                  <Check size={12} className="text-muted-foreground" />
+                                                )}
+                                              </button>
+                                            ) : isChildHovered && (
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  addToCollection(child.id, child.name);
+                                                }}
+                                                className="p-0.5 rounded hover:bg-white/20 transition-colors"
+                                                title="Add to pawkit"
+                                              >
+                                                <Plus size={12} className="text-purple-400" />
+                                              </button>
+                                            )}
+                                          </>
+                                        )}
+                                      </div>
                                     </div>
                                   )}
                                 </button>
