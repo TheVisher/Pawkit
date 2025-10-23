@@ -2,11 +2,17 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useMemo, useCallback } from "react";
-import { Home, Library, FileText, Calendar, Tag, Settings, BookOpen, Clock, Trash2, HelpCircle, X, FolderOpen, ChevronRight, Layers, CalendarDays, CalendarClock, Flame, User } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame } from "lucide-react";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
 import { DogHouseIcon } from "@/components/icons/dog-house";
 import { type CollectionNode } from "@/lib/types";
@@ -26,12 +32,6 @@ const navigationItems: NavItem[] = [
   { id: "calendar", label: "Calendar", icon: Calendar, href: "/calendar" },
   { id: "den", label: "The Den", icon: DogHouseIcon, href: "/den" },
   { id: "distill", label: "Dig Up", icon: Layers, href: "/distill" },
-];
-
-const bottomItems: NavItem[] = [
-  { id: "changelog", label: "Changelog", icon: BookOpen, href: "/changelog" },
-  { id: "trash", label: "Trash", icon: Trash2, href: "/trash" },
-  { id: "help", label: "Help", icon: HelpCircle, href: "/help" },
 ];
 
 export type LeftPanelMode = "floating" | "anchored";
@@ -178,33 +178,56 @@ export function LeftNavigationPanel({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-accent" />
-            <h2 className="text-lg font-semibold text-foreground">Navigation</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Mode Toggle Button */}
-            <button
-              onClick={handleModeToggle}
-              className="px-3 py-1 rounded-lg text-xs font-medium transition-colors
-                bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground border border-white/10"
-              title={mode === "floating" ? "Anchor panel" : "Float panel"}
-            >
-              {mode === "floating" ? "Anchor" : "Float"}
-            </button>
+        {/* Header - Icon-only controls */}
+        <TooltipProvider>
+          <div className="flex items-center justify-evenly p-3 border-b border-white/10">
+            {/* Workspace Selector */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label="Workspace"
+                >
+                  <Briefcase size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="z-[200]">
+                <div className="text-center">
+                  <div className="font-semibold">Personal</div>
+                  <div className="text-xs text-muted-foreground">Switch workspace</div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+
+            {/* Float/Anchor Toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleModeToggle}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label={mode === "floating" ? "Anchor panel" : "Float panel"}
+                >
+                  {mode === "floating" ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="z-[200]">{mode === "floating" ? "Anchor" : "Float"}</TooltipContent>
+            </Tooltip>
 
             {/* Close Button */}
-            <button
-              onClick={onClose}
-              className="p-1 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-              aria-label="Close panel"
-            >
-              <X size={20} />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label="Close panel"
+                >
+                  <X size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="z-[200]">Close</TooltipContent>
+            </Tooltip>
           </div>
-        </div>
+        </TooltipProvider>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
@@ -362,47 +385,6 @@ export function LeftNavigationPanel({
               </div>
             </PanelSection>
           )}
-
-          {/* Bottom Section */}
-          <PanelSection id="left-bottom" title="More" icon={<HelpCircle className="h-4 w-4 text-accent" />}>
-            <div className="space-y-1">
-              {bottomItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = pathname === item.href;
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavigate(item.href)}
-                    className={`
-                      w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
-                      ${isActive
-                        ? "bg-accent text-accent-foreground font-medium"
-                        : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
-                      }
-                    `}
-                  >
-                    <Icon size={16} className="flex-shrink-0" />
-                    <span className="flex-1 text-left">{item.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </PanelSection>
-
-          {/* User Profile */}
-          <div className="pt-2 border-t border-white/10">
-            <button
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10"
-            >
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold text-sm flex-shrink-0">
-                {(displayName || username).charAt(0).toUpperCase()}
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                <div className="text-sm font-semibold text-foreground truncate">{displayName || username}</div>
-                <div className="text-xs text-muted-foreground">View profile</div>
-              </div>
-            </button>
-          </div>
         </div>
       </div>
     </>
