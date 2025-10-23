@@ -65,15 +65,23 @@ export function ContentPanel({
       }}
     >
       {/* Content container with scrolling */}
-      <div
-        className="relative z-20 flex-1 overflow-y-auto px-6 py-6"
-        style={{
-          maskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)"
-        }}
-      >
+      <div className="relative flex-1 overflow-y-auto px-6 py-6">
         {children}
       </div>
+
+      {/* Scroll shadow overlays */}
+      <div
+        className="absolute top-0 left-0 right-0 h-24 pointer-events-none z-30"
+        style={{
+          background: "linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, transparent 100%)"
+        }}
+      />
+      <div
+        className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-30"
+        style={{
+          background: "linear-gradient(to top, rgba(0, 0, 0, 0.3) 0%, transparent 100%)"
+        }}
+      />
     </div>
   );
 }
