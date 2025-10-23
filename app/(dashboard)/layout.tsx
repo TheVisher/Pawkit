@@ -35,6 +35,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   // Command Palette state
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [commandPaletteInitialValue, setCommandPaletteInitialValue] = useState("");
   const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
   const [showCreateCardModal, setShowCreateCardModal] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
@@ -130,9 +131,33 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     await refresh();
   };
 
+  // Handle paste events when nothing is focused (Cmd/Ctrl+V quick capture)
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable;
+
+      // Only intercept paste when NOT in an input field
+      if (!isInput && !showCommandPalette) {
+        const pastedText = e.clipboardData?.getData('text');
+        if (pastedText) {
+          e.preventDefault();
+          setCommandPaletteInitialValue(pastedText);
+          setShowCommandPalette(true);
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [showCommandPalette]);
+
   // Global keyboard shortcuts
   useKeyboardShortcuts({
-    onCommandPalette: () => setShowCommandPalette(true),
+    onCommandPalette: () => {
+      setCommandPaletteInitialValue("");
+      setShowCommandPalette(true);
+    },
     onNewNote: () => setShowCreateNoteModal(true),
     onNewCard: () => setShowCreateCardModal(true),
     onTodayNote: () => {
@@ -141,18 +166,27 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       router.push(`/notes#daily-${today}`);
     },
     onSearch: () => {
-      // Focus the omnibar search input
-      const searchInput = document.querySelector('input[placeholder*="search"]') as HTMLInputElement;
-      if (searchInput) {
-        searchInput.focus();
-      }
+      // Open command palette (changed from focusing omnibar)
+      setCommandPaletteInitialValue("");
+      setShowCommandPalette(true);
     },
     onEscape: () => {
-      // Close any open modals
-      setShowCommandPalette(false);
-      setShowCreateNoteModal(false);
-      setShowCreateCardModal(false);
-      setShowKeyboardShortcuts(false);
+      // Priority: Close modals first before closing panels
+      if (showCommandPalette) {
+        setShowCommandPalette(false);
+      } else if (showCreateNoteModal) {
+        setShowCreateNoteModal(false);
+      } else if (showCreateCardModal) {
+        setShowCreateCardModal(false);
+      } else if (showKeyboardShortcuts) {
+        setShowKeyboardShortcuts(false);
+      } else if (isPanelOpen) {
+        // Close right panel if no modals are open
+        closePanel();
+      } else if (isLeftOpen) {
+        // Close left panel if no modals or right panel are open
+        closeLeft();
+      }
     },
     onHelp: () => setShowKeyboardShortcuts(true),
     enableNavigation: true,
@@ -176,6 +210,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {/* Hide old sidebar for now - replaced by left panel */}
           {false && <AppSidebar username={username} displayName={displayName} collections={collections} />}
           <SidebarInset className="bg-transparent">
+            {/* Mobile-only OmniBar - Shows on screens smaller than lg (1024px) */}
+            <div className="sticky top-0 z-30 lg:hidden border-b border-white/10 bg-surface-80/95 backdrop-blur-xl">
+              <div className="px-4 py-3">
+                <OmniBar />
+              </div>
+            </div>
+
             {/* TEMPORARILY REMOVED - Components to re-add later:
               - Left Panel Toggle Button (Menu icon)
               - OmniBar
@@ -218,7 +259,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           {/* Command Palette */}
           <CommandPalette
             open={showCommandPalette}
-            onClose={() => setShowCommandPalette(false)}
+            onClose={() => {
+              setShowCommandPalette(false);
+              setCommandPaletteInitialValue("");
+            }}
             onOpenCreateNote={() => {
               setShowCommandPalette(false);
               setShowCreateNoteModal(true);
@@ -227,6 +271,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               setShowCommandPalette(false);
               setShowCreateCardModal(true);
             }}
+            initialValue={commandPaletteInitialValue}
           />
 
           {/* Create Note Modal */}

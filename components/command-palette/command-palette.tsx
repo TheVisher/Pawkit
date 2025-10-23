@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { DogHouseIcon } from "@/components/icons/dog-house";
 import { generateDailyNoteTitle, generateDailyNoteContent, findDailyNoteForDate } from "@/lib/utils/daily-notes";
+import { isProbablyUrl } from "@/lib/utils/strings";
 
 // LocalStorage keys
 const PINNED_COMMANDS_KEY = "pawkit-pinned-commands";
@@ -71,6 +72,7 @@ type CommandPaletteProps = {
   onClose: () => void;
   onOpenCreateNote: () => void;
   onOpenCreateCard: () => void;
+  initialValue?: string;
 };
 
 export function CommandPalette({
@@ -78,6 +80,7 @@ export function CommandPalette({
   onClose,
   onOpenCreateNote,
   onOpenCreateCard,
+  initialValue = "",
 }: CommandPaletteProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -115,13 +118,16 @@ export function CommandPalette({
     }
   }, [open]);
 
-  // Reset state when closed
+  // Reset state when closed or set initial value when opened
   useEffect(() => {
     if (!open) {
       setQuery("");
       setSelectedIndex(0);
+    } else if (initialValue) {
+      setQuery(initialValue);
+      setSelectedIndex(0);
     }
-  }, [open]);
+  }, [open, initialValue]);
 
   // Execute command and track usage
   const executeCommand = useCallback((command: Command) => {
@@ -190,7 +196,29 @@ export function CommandPalette({
 
   // Define all commands
   const allCommands = useMemo(() => {
-    const commands: Command[] = [
+    const commands: Command[] = [];
+
+    // If query is a URL, add quick-add command at the top
+    if (query.trim() && isProbablyUrl(query.trim())) {
+      commands.push({
+        id: "quick-add-url",
+        type: "action",
+        label: `Quick Add: ${query.trim()}`,
+        description: "Save this URL to your library",
+        icon: Zap,
+        action: async () => {
+          await addCard({ url: query.trim(), type: 'url' });
+          setQuery("");
+          if (pathname !== "/library") {
+            router.push("/library");
+          }
+        },
+        keywords: ["quick", "add", "url", "save"],
+      });
+    }
+
+    // Regular commands
+    commands.push(
       // Actions
       {
         id: "create-note",
@@ -267,8 +295,8 @@ export function CommandPalette({
         icon: Layers,
         action: () => router.push("/distill"),
         keywords: ["dig", "up", "review", "distill"],
-      },
-    ];
+      }
+    );
 
     // Add notes to commands
     const notes = cards.filter((c) => c.type === "md-note" || c.type === "text-note");
@@ -324,7 +352,7 @@ export function CommandPalette({
     });
 
     return commands;
-  }, [cards, collections, router, onOpenCreateNote, onOpenCreateCard, createDailyNote]);
+  }, [cards, collections, router, onOpenCreateNote, onOpenCreateCard, createDailyNote, query, pathname, addCard]);
 
   // Filter and score commands based on query
   const filteredCommands = useMemo(() => {
@@ -439,6 +467,7 @@ export function CommandPalette({
         }
       } else if (e.key === "Escape") {
         e.preventDefault();
+        e.stopPropagation();
         onClose();
       }
     };

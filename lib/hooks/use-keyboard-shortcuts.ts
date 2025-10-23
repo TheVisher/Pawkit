@@ -67,12 +67,13 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
         return;
       }
 
-      // Focus Search (/)
+      // Open Command Palette with / (changed from search focus)
       if (e.key === "/" && !isInput) {
         e.preventDefault();
-        options.onSearch?.();
+        options.onCommandPalette?.();
         return;
       }
+
 
       // Escape key
       if (e.key === "Escape") {
@@ -183,7 +184,13 @@ export function getAllShortcuts(): KeyboardShortcut[] {
     },
     {
       key: "/",
-      description: "Focus search bar",
+      description: "Open command palette",
+      action: () => {},
+      group: "General",
+    },
+    {
+      key: "Cmd/Ctrl + V",
+      description: "Quick paste to command palette",
       action: () => {},
       group: "General",
     },
