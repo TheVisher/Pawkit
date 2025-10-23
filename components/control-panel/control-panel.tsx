@@ -219,7 +219,7 @@ export function PanelSection({ id, title, children, icon }: PanelSectionProps) {
   const isCollapsed = collapsedSections[id] || false;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 pb-3">
       <button
         onClick={() => toggleSection(id)}
         className="w-full flex items-center gap-2 hover:opacity-80 transition-opacity"
