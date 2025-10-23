@@ -107,7 +107,7 @@ const config: Config = {
   			'slide-in-left': 'slide-in-left 0.3s ease-out',
   			'fade-in': 'fade-in 0.3s ease-out',
   			'ping-once': 'ping-once 0.5s ease-out',
-  			'expand-contract-fade': 'expand-contract-fade 1.5s ease-in-out'
+  			'expand-contract-fade': 'expand-contract-fade 1.5s ease-in-out forwards'
   		}
   	}
   },
