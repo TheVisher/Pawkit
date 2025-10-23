@@ -146,7 +146,7 @@ export function CustomCalendar({ cards, onDayClick, onCardClick, onCreateDailyNo
           return (
             <div
               key={index}
-              className={`card-hover relative min-h-[140px] rounded-2xl border transition-all cursor-pointer ${
+              className={`card-hover relative min-h-[180px] rounded-2xl border transition-all cursor-pointer ${
                 isCurrentDay
                   ? 'border-accent bg-accent/5'
                   : isCurrentMonth
