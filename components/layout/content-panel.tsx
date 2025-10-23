@@ -24,12 +24,17 @@ export function ContentPanel({
   const hasAnchoredLeft = leftOpen && leftMode === "anchored";
   const hasAnchoredRight = rightOpen && rightMode === "anchored";
 
+  // Special case: left floating + content floating + right anchored
+  // = Right panel embeds INSIDE content panel
+  const isRightEmbedded = !contentIsAnchored && hasAnchoredRight;
+
   // Calculate exact positioning
   // When content is anchored:
   //   - Left: 0 or 325px (if left panel is open)
   //   - Right: 0, 325px (if right is anchored), or 16px (if right is floating/closed)
   // When content is floating:
-  //   - Normal spacing: 357px (floating panel) or 325px (anchored panel) or 16px (closed)
+  //   - Special case (right embedded): Right margin is 16px
+  //   - Normal: 357px (floating panel) or 325px (anchored panel) or 16px (closed)
 
   const leftPosition = contentIsAnchored
     ? (leftOpen ? "325px" : "0")
@@ -37,7 +42,7 @@ export function ContentPanel({
 
   const rightPosition = contentIsAnchored
     ? (rightOpen && rightMode === "anchored" ? "325px" : "0")
-    : (rightOpen ? (rightMode === "floating" ? "357px" : "325px") : "16px");
+    : (isRightEmbedded ? "16px" : (rightOpen ? (rightMode === "floating" ? "357px" : "325px") : "16px"));
 
   // Build border classes dynamically
   // When content is anchored, remove all borders
@@ -75,9 +80,15 @@ export function ContentPanel({
         boxShadow: "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)",
         transition: "left 0.3s ease-out, right 0.3s ease-out"
       }}
+      data-right-embedded={isRightEmbedded}
     >
       {/* Content container with scrolling */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div
+        className={`flex-1 overflow-y-auto px-6 py-6 ${isRightEmbedded ? "pr-[341px]" : ""}`}
+        style={isRightEmbedded ? {
+          transition: "padding-right 0.3s ease-out"
+        } : undefined}
+      >
         {children}
       </div>
     </div>

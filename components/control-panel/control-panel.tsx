@@ -12,9 +12,10 @@ export type ControlPanelProps = {
   mode?: ControlPanelMode;
   onModeChange?: (mode: ControlPanelMode) => void;
   children: ReactNode;
+  embedded?: boolean; // Special mode: embedded inside content panel
 };
 
-export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange, children }: ControlPanelProps) {
+export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange, children, embedded = false }: ControlPanelProps) {
   // Mode can be controlled or uncontrolled
   const [internalMode, setInternalMode] = useState<ControlPanelMode>("floating");
   const mode = controlledMode ?? internalMode;
@@ -44,10 +45,22 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
 
   if (!open) return null;
 
+  // When embedded, the panel is positioned within the content panel
+  // Otherwise it's fixed to the viewport
+  const positionClasses = embedded
+    ? "absolute top-4 right-4 bottom-4 w-[325px] z-20"
+    : `fixed top-0 right-0 bottom-0 w-[325px] z-[102] ${mode === "floating" ? "m-4" : ""}`;
+
+  const styleClasses = embedded
+    ? "rounded-xl border-l-2 border-white/20 shadow-xl"
+    : mode === "floating"
+      ? "rounded-2xl shadow-2xl border border-white/10"
+      : "border-l border-white/10";
+
   return (
     <>
-      {/* Subtle backdrop - only in floating mode */}
-      {mode === "floating" && (
+      {/* Subtle backdrop - only in floating mode and not embedded */}
+      {mode === "floating" && !embedded && (
         <div
           className="fixed inset-0 bg-black/10 z-40 pointer-events-none"
         />
@@ -56,19 +69,18 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
       {/* Control Panel */}
       <div
         className={`
-          fixed top-0 right-0 bottom-0 w-[325px] z-[102]
+          ${positionClasses}
           bg-white/5 backdrop-blur-lg
           flex flex-col
           animate-slide-in-right
-          ${mode === "floating"
-            ? "m-4 rounded-2xl shadow-2xl border border-white/10"
-            : "border-l border-white/10"
-          }
+          ${styleClasses}
         `}
         style={{
-          boxShadow: mode === "floating"
-            ? "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
-            : "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
+          boxShadow: embedded
+            ? "0 10px 25px -5px rgba(0, 0, 0, 0.3), inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
+            : mode === "floating"
+              ? "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
+              : "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
         }}
         onClick={(e) => e.stopPropagation()}
       >

@@ -53,6 +53,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [animatingContentType, setAnimatingContentType] = useState(contentType);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  // Determine if right panel should be embedded inside content panel
+  // Special case: left floating + right anchored = embedded mode
+  const isRightPanelEmbedded = leftMode === "floating" && panelMode === "anchored" && isPanelOpen;
+
   useEffect(() => {
     if (contentType !== animatingContentType) {
       setIsTransitioning(true);
@@ -297,6 +301,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             onClose={closePanel}
             mode={panelMode}
             onModeChange={setPanelMode}
+            embedded={isRightPanelEmbedded}
           >
             <div
               className={`${animatingContentType === "card-details" ? "relative h-full" : ""} transition-all duration-300 ${
