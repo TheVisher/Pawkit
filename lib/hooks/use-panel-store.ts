@@ -177,11 +177,19 @@ export const usePanelStore = create<PanelState>()(
       partialize: (state) => ({
         mode: state.mode,
         isOpen: state.isOpen, // Persist right panel open state
-        contentType: state.contentType, // Persist right panel content type
+        // Only persist contentType if it's not card-details (card-details requires activeCardId)
+        contentType: state.contentType === "card-details" ? "library-controls" : state.contentType,
         collapsedSections: state.collapsedSections, // Persist collapsed state
         leftMode: state.leftMode, // Persist left panel mode
         isLeftOpen: state.isLeftOpen, // Persist left panel open state
       }),
+      onRehydrateStorage: () => (state) => {
+        // Fix any stale "card-details" contentType that might be in localStorage from before the fix
+        if (state && state.contentType === "card-details") {
+          state.contentType = "library-controls";
+          state.activeCardId = null;
+        }
+      },
     }
   )
 );
