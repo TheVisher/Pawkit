@@ -73,13 +73,13 @@ export function ContentPanel({
       <div
         className="absolute top-0 left-0 right-0 h-24 pointer-events-none z-30"
         style={{
-          background: "linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, transparent 100%)"
+          background: "linear-gradient(to bottom, rgba(0, 0, 0, 0.1) 0%, transparent 100%)"
         }}
       />
       <div
         className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none z-30"
         style={{
-          background: "linear-gradient(to top, rgba(0, 0, 0, 0.3) 0%, transparent 100%)"
+          background: "linear-gradient(to top, rgba(0, 0, 0, 0.1) 0%, transparent 100%)"
         }}
       />
     </div>
