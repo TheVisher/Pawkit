@@ -778,6 +778,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         style={{
           left: leftOffset,
           right: rightOffset,
+          transition: "left 0.3s ease-out, right 0.3s ease-out",
         }}
       >
         <div
