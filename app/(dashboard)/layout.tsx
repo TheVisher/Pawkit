@@ -299,7 +299,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             onModeChange={setPanelMode}
           >
             <div
-              className={`transition-all duration-300 ${
+              className={`${animatingContentType === "card-details" ? "relative h-full" : ""} transition-all duration-300 ${
                 isTransitioning ? "translate-y-full opacity-0" : "translate-y-0 opacity-100"
               }`}
             >

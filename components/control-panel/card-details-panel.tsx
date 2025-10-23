@@ -62,7 +62,7 @@ export function CardDetailsPanel() {
   ].filter((tab) => tab.show);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="absolute inset-0 flex flex-col">
       {/* Main Content Area with Tabs */}
       <div className="flex flex-1 overflow-hidden">
         {/* Vertical Tab Content */}
@@ -139,7 +139,7 @@ export function CardDetailsPanel() {
       </div>
 
       {/* Bottom Details Section - Always Visible */}
-      <div className="border-t border-white/10 bg-white/5 p-4 space-y-3">
+      <div className="border-t border-white/10 p-4 space-y-3 flex-shrink-0">
         <h3 className="text-xs font-medium text-muted-foreground uppercase">Details</h3>
 
         {/* Title with Edit */}
