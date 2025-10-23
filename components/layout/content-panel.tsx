@@ -64,16 +64,28 @@ export function ContentPanel({
         transition: "left 0.3s ease-out, right 0.3s ease-out"
       }}
     >
-      {/* Content container with scrolling and fade mask */}
-      <div
-        className="flex-1 overflow-y-auto px-6 py-6"
-        style={{
-          maskImage: "linear-gradient(to bottom, transparent 0%, black 32px, black calc(100% - 32px), transparent 100%)",
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 32px, black calc(100% - 32px), transparent 100%)"
-        }}
-      >
+      {/* Content container with scrolling */}
+      <div className="flex-1 overflow-y-auto px-6 py-6">
         {children}
       </div>
+
+      {/* Top fade overlay - positioned relative to panel */}
+      <div
+        className="absolute top-0 left-0 right-0 h-32 pointer-events-none"
+        style={{
+          background: "linear-gradient(to bottom, rgba(0, 0, 0, 0.2), transparent)",
+          zIndex: 100
+        }}
+      />
+
+      {/* Bottom fade overlay - positioned relative to panel */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none"
+        style={{
+          background: "linear-gradient(to top, rgba(0, 0, 0, 0.2), transparent)",
+          zIndex: 100
+        }}
+      />
     </div>
   );
 }
