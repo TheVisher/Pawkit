@@ -26,6 +26,9 @@ export type PanelState = {
   // Previous content type (for restoring after card closes)
   previousContentType: PanelContentType;
 
+  // Track if panel was auto-opened by card modal
+  wasAutoOpened: boolean;
+
   // Left panel (navigation panel)
   isLeftOpen: boolean;
   leftMode: ControlPanelMode;
@@ -62,11 +65,12 @@ export const usePanelStore = create<PanelState>()(
       activeCardId: null,
       collapsedSections: {},
       previousContentType: "closed",
+      wasAutoOpened: false,
       isLeftOpen: true, // Default to open
       leftMode: "anchored", // Default to anchored
 
       open: (contentType = "library-controls") => {
-        set({ isOpen: true, contentType });
+        set({ isOpen: true, contentType, wasAutoOpened: false });
       },
 
       close: () => {
@@ -78,7 +82,8 @@ export const usePanelStore = create<PanelState>()(
         if (isOpen) {
           get().close();
         } else {
-          get().open();
+          // Manual toggle should mark as not auto-opened
+          set({ isOpen: true, contentType: "library-controls", wasAutoOpened: false });
         }
       },
 
@@ -121,7 +126,7 @@ export const usePanelStore = create<PanelState>()(
       },
 
       openLibraryControls: () => {
-        set({ isOpen: true, contentType: "library-controls", activeCardId: null });
+        set({ isOpen: true, contentType: "library-controls", activeCardId: null, wasAutoOpened: false });
       },
 
       openCardDetails: (cardId) => {
@@ -131,28 +136,39 @@ export const usePanelStore = create<PanelState>()(
           ? currentState.contentType
           : currentState.previousContentType;
 
+        // Track if we're auto-opening a closed panel
+        const wasAutoOpened = !currentState.isOpen;
+
         set({
           isOpen: true,
           contentType: "card-details",
           activeCardId: cardId,
           previousContentType,
+          wasAutoOpened,
         });
       },
 
       openNotesControls: () => {
-        set({ isOpen: true, contentType: "notes-controls", activeCardId: null });
+        set({ isOpen: true, contentType: "notes-controls", activeCardId: null, wasAutoOpened: false });
       },
 
       openCalendarControls: () => {
-        set({ isOpen: true, contentType: "calendar-controls", activeCardId: null });
+        set({ isOpen: true, contentType: "calendar-controls", activeCardId: null, wasAutoOpened: false });
       },
 
       restorePreviousContent: () => {
-        const { previousContentType, isOpen } = get();
-        // Only restore if panel was open
+        const { previousContentType, isOpen, wasAutoOpened } = get();
+
+        // If panel was auto-opened by a card, close it when card is dismissed
+        if (wasAutoOpened) {
+          set({ isOpen: false, contentType: "closed", activeCardId: null, wasAutoOpened: false });
+          return;
+        }
+
+        // Otherwise, restore previous content if panel was open
         if (isOpen && previousContentType !== "closed") {
           // Don't clear activeCardId here - let the layout handle it after transition
-          set({ contentType: previousContentType });
+          set({ contentType: previousContentType, activeCardId: null });
         }
       },
     }),
