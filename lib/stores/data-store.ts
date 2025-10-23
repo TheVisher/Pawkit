@@ -667,20 +667,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
             }
           );
 
-          if (response.status === 409) {
-            // Conflict - server has newer version
-            const conflict = await response.json();
-            console.warn('[DataStore V2] Conflict detected:', conflict.message);
-
-            useConflictStore.getState().addConflict(
-              id,
-              'This card was modified on another device. Your changes were saved locally.'
-            );
-
-            // Keep local version but mark it for manual resolution
-          } else if (response.status === 412) {
-            // Precondition failed - card was modified on server
-            console.warn('[DataStore V2] Card was modified on server, fetching latest and retrying...');
+          if (response.status === 409 || response.status === 412) {
+            // Conflict - server has newer version, fetch and retry
+            const conflict = response.status === 409 ? await response.json() : null;
+            console.warn('[DataStore V2] Conflict detected, fetching latest and retrying...');
 
             try {
               // Fetch latest version from server
@@ -714,14 +704,13 @@ export const useDataStore = create<DataStore>((set, get) => ({
                   set((state) => ({
                     cards: state.cards.map(c => c.id === id ? serverCard : c),
                   }));
-                  console.log('[DataStore V2] Card updated successfully after retry:', id);
+                  console.log('[DataStore V2] Card updated successfully after conflict resolution:', id);
                 } else {
                   console.warn('[DataStore V2] Retry failed, keeping local changes');
                 }
               }
             } catch (retryError) {
-              console.error('[DataStore V2] Failed to fetch latest and retry:', retryError);
-              // Local changes are already saved
+              console.error('[DataStore V2] Error during conflict resolution:', retryError);
             }
           } else if (response.ok) {
             const serverCard = await response.json();

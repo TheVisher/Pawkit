@@ -61,6 +61,21 @@ export function LibraryView({
   const [loading, setLoading] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
+  // Create a map from collection ID to collection name
+  const collectionIdToName = useMemo(() => {
+    const map = new Map<string, string>();
+    const addToMap = (nodes: CollectionNode[]) => {
+      nodes.forEach(node => {
+        map.set(node.id, node.name);
+        if (node.children) {
+          addToMap(node.children);
+        }
+      });
+    };
+    addToMap(collectionsTree);
+    return map;
+  }, [collectionsTree]);
+
   // Get view settings from the store
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
   const setLayoutInStore = useViewSettingsStore((state) => state.setLayout);
@@ -282,9 +297,9 @@ export function LibraryView({
           )}
           {card.collections && card.collections.length > 0 && !isCompact && (
             <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
-              {card.collections.map((collection) => (
-                <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
-                  {collection}
+              {card.collections.map((collectionId) => (
+                <span key={collectionId} className="rounded bg-surface-soft px-2 py-0.5">
+                  {collectionIdToName.get(collectionId) || collectionId}
                 </span>
               ))}
             </div>

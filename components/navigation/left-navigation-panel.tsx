@@ -70,7 +70,9 @@ export function LeftNavigationPanel({
   // Get active card from panel store
   const activeCardId = usePanelStore((state) => state.activeCardId);
   const activeCard = useMemo(() => {
-    return cards.find((card) => card.id === activeCardId) ?? null;
+    const found = cards.find((card) => card.id === activeCardId) ?? null;
+    console.log('[LEFT NAV] Active card:', { activeCardId, found: found?.title, totalCards: cards.length });
+    return found;
   }, [cards, activeCardId]);
 
   // Calculate daily note streak
@@ -161,7 +163,7 @@ export function LeftNavigationPanel({
   };
 
   // Add card to collection
-  const addToCollection = async (collectionId: string, collectionName: string) => {
+  const addToCollection = async (collectionSlug: string, collectionName: string) => {
     if (!activeCard) {
       console.log('[addToCollection] No active card');
       return;
@@ -170,18 +172,18 @@ export function LeftNavigationPanel({
     console.log('[addToCollection] Adding card to collection:', {
       cardId: activeCard.id,
       cardTitle: activeCard.title,
-      collectionId,
+      collectionSlug,
       collectionName,
       currentCollections: activeCard.collections
     });
 
-    // Start animation
-    setAnimatingPawkit(collectionId);
+    // Start animation (use slug for consistency)
+    setAnimatingPawkit(collectionSlug);
 
     // Add collection to card
     const currentCollections = activeCard.collections || [];
-    if (!currentCollections.includes(collectionId)) {
-      const newCollections = [...currentCollections, collectionId];
+    if (!currentCollections.includes(collectionSlug)) {
+      const newCollections = [...currentCollections, collectionSlug];
       console.log('[addToCollection] Updating card with collections:', newCollections);
 
       await updateCard(activeCard.id, {
@@ -209,13 +211,13 @@ export function LeftNavigationPanel({
   };
 
   // Remove card from collection
-  const removeFromCollection = async (collectionId: string, collectionName: string) => {
+  const removeFromCollection = async (collectionSlug: string, collectionName: string) => {
     if (!activeCard) return;
 
     const currentCollections = activeCard.collections || [];
-    if (currentCollections.includes(collectionId)) {
+    if (currentCollections.includes(collectionSlug)) {
       await updateCard(activeCard.id, {
-        collections: currentCollections.filter((id) => id !== collectionId)
+        collections: currentCollections.filter((slug) => slug !== collectionSlug)
       });
 
       // Show toast
@@ -230,9 +232,9 @@ export function LeftNavigationPanel({
   };
 
   // Check if active card is in a collection
-  const isCardInCollection = (collectionId: string) => {
+  const isCardInCollection = (collectionSlug: string) => {
     if (!activeCard) return false;
-    return activeCard.collections?.includes(collectionId) || false;
+    return activeCard.collections?.includes(collectionSlug) || false;
   };
 
   if (!open) return null;
@@ -375,18 +377,14 @@ export function LeftNavigationPanel({
                   const isCollectionActive = pathname === pawkitHref;
 
                   // Check if card is in this collection
-                  const cardInCollection = isCardInCollection(collection.id);
-                  const isHovered = hoveredPawkit === collection.id;
-                  const isAnimating = animatingPawkit === collection.id;
+                  const cardInCollection = isCardInCollection(collection.slug);
+                  const isHovered = hoveredPawkit === collection.slug;
+                  const isAnimating = animatingPawkit === collection.slug;
 
                   return (
                     <div key={collection.id}>
                       <div className="flex items-center gap-1">
-                        <div
-                          className="relative flex-1"
-                          onMouseEnter={() => activeCard && setHoveredPawkit(collection.id)}
-                          onMouseLeave={() => setHoveredPawkit(null)}
-                        >
+                        <div className="relative flex-1">
                           <button
                             onClick={() => handleNavigate(pawkitHref)}
                             className={`
@@ -405,14 +403,22 @@ export function LeftNavigationPanel({
                               <div className="flex items-center gap-1 flex-shrink-0">
                                 {cardInCollection ? (
                                   <div className="relative">
-                                    <button
+                                    <div
+                                      role="button"
+                                      tabIndex={0}
+                                      onMouseEnter={() => setHoveredPawkit(collection.slug)}
+                                      onMouseLeave={() => setHoveredPawkit(null)}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        if (isHovered) {
-                                          removeFromCollection(collection.id, collection.name);
+                                        removeFromCollection(collection.slug, collection.name);
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                          e.stopPropagation();
+                                          removeFromCollection(collection.slug, collection.name);
                                         }
                                       }}
-                                      className="p-1 rounded transition-colors relative"
+                                      className="p-1 rounded transition-colors relative cursor-pointer"
                                       title={isHovered ? "Remove from pawkit" : "In this pawkit"}
                                     >
                                       {isHovered ? (
@@ -432,18 +438,38 @@ export function LeftNavigationPanel({
                                           <Check size={14} className="text-white relative z-10" />
                                         </div>
                                       )}
-                                    </button>
+                                    </div>
                                   </div>
-                                ) : isHovered && (
-                                  <div className="relative">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        addToCollection(collection.id, collection.name);
-                                      }}
-                                      className="p-1 rounded transition-colors relative"
-                                      title="Add to pawkit"
-                                    >
+                                ) : (
+                                  <div
+                                    className="relative"
+                                    onMouseEnter={() => setHoveredPawkit(collection.slug)}
+                                    onMouseLeave={() => setHoveredPawkit(null)}
+                                  >
+                                    {isHovered && (
+                                      <div
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={(e) => {
+                                          console.log('[CLICK] ========== PLUS BUTTON CLICKED ==========');
+                                          console.log('[CLICK] Collection:', collection.slug, collection.name);
+                                          console.log('[CLICK] Active card:', activeCard);
+                                          console.log('[CLICK] Event:', e);
+                                          e.stopPropagation();
+                                          console.log('[CLICK] About to call addToCollection...');
+                                          addToCollection(collection.slug, collection.name);
+                                          console.log('[CLICK] addToCollection called!');
+                                        }}
+                                        onKeyDown={(e) => {
+                                          if (e.key === 'Enter' || e.key === ' ') {
+                                            console.log('[KEYDOWN] Plus button keydown!', { collectionSlug: collection.slug, activeCard });
+                                            e.stopPropagation();
+                                            addToCollection(collection.slug, collection.name);
+                                          }
+                                        }}
+                                        className="p-1 rounded transition-colors relative cursor-pointer"
+                                        title="Add to pawkit"
+                                      >
                                       <Plus size={14} className="text-purple-400" />
                                       {/* Purple expanding circle animation - overlays the icon */}
                                       {isAnimating && (
@@ -457,7 +483,8 @@ export function LeftNavigationPanel({
                                           <Check size={14} className="text-white relative z-10" />
                                         </div>
                                       )}
-                                    </button>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -480,15 +507,15 @@ export function LeftNavigationPanel({
                         <div className="ml-6 mt-1 space-y-1">
                           {collection.children.map((child) => {
                             const childHref = `/pawkits/${child.slug || child.id}`;
-                            const childInCollection = isCardInCollection(child.id);
-                            const isChildHovered = hoveredPawkit === child.id;
-                            const isChildAnimating = animatingPawkit === child.id;
+                            const childInCollection = isCardInCollection(child.slug);
+                            const isChildHovered = hoveredPawkit === child.slug;
+                            const isChildAnimating = animatingPawkit === child.slug;
 
                             return (
                               <div
                                 key={child.id}
                                 className="relative"
-                                onMouseEnter={() => activeCard && setHoveredPawkit(child.id)}
+                                onMouseEnter={() => activeCard && setHoveredPawkit(child.slug)}
                                 onMouseLeave={() => setHoveredPawkit(null)}
                               >
                                 <button
@@ -508,14 +535,24 @@ export function LeftNavigationPanel({
                                     <div className="flex items-center gap-1 flex-shrink-0">
                                       {childInCollection ? (
                                         <div className="relative">
-                                          <button
+                                          <div
+                                            role="button"
+                                            tabIndex={0}
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               if (isChildHovered) {
-                                                removeFromCollection(child.id, child.name);
+                                                removeFromCollection(child.slug, child.name);
                                               }
                                             }}
-                                            className="p-0.5 rounded transition-colors relative"
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter' || e.key === ' ') {
+                                                e.stopPropagation();
+                                                if (isChildHovered) {
+                                                  removeFromCollection(child.slug, child.name);
+                                                }
+                                              }
+                                            }}
+                                            className="p-0.5 rounded transition-colors relative cursor-pointer"
                                             title={isChildHovered ? "Remove from pawkit" : "In this pawkit"}
                                           >
                                             {isChildHovered ? (
@@ -529,22 +566,32 @@ export function LeftNavigationPanel({
                                                 <div
                                                   className="animate-expand-contract-fade absolute h-6 w-6 rounded-full"
                                                   style={{
-                                                    background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                                                    background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.6) 100%)'
                                                   }}
                                                 />
                                                 <Check size={12} className="text-white relative z-10" />
                                               </div>
                                             )}
-                                          </button>
+                                          </div>
                                         </div>
                                       ) : isChildHovered && (
                                         <div className="relative">
-                                          <button
+                                          <div
+                                            role="button"
+                                            tabIndex={0}
                                             onClick={(e) => {
+                                              console.log('[CLICK] Child plus button clicked!', { childSlug: child.slug, activeCard });
                                               e.stopPropagation();
-                                              addToCollection(child.id, child.name);
+                                              addToCollection(child.slug, child.name);
                                             }}
-                                            className="p-0.5 rounded transition-colors relative"
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter' || e.key === ' ') {
+                                                console.log('[KEYDOWN] Child plus button keydown!', { childSlug: child.slug, activeCard });
+                                                e.stopPropagation();
+                                                addToCollection(child.slug, child.name);
+                                              }
+                                            }}
+                                            className="p-0.5 rounded transition-colors relative cursor-pointer"
                                             title="Add to pawkit"
                                           >
                                             <Plus size={12} className="text-purple-400" />
@@ -560,7 +607,7 @@ export function LeftNavigationPanel({
                                                 <Check size={12} className="text-white relative z-10" />
                                               </div>
                                             )}
-                                          </button>
+                                          </div>
                                         </div>
                                       )}
                                     </div>
