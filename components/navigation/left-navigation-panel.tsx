@@ -209,8 +209,8 @@ export function LeftNavigationPanel({
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
           style={{
-            maskImage: "linear-gradient(to bottom, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%)",
-            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 16px, black calc(100% - 16px), transparent 100%)"
+            maskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)"
           }}
         >
           {/* Navigation Section */}
