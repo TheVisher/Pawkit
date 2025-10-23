@@ -214,7 +214,7 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="flex flex-1 flex-col gap-12 pb-16">
+      <div className="flex flex-1 flex-col gap-12 pb-16 min-h-full">
         <section className="relative text-center">
           <h1 className="text-4xl font-semibold text-gray-100 sm:text-5xl">
             <span className="mr-3 inline-block" aria-hidden="true">👋</span>

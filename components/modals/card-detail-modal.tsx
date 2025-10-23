@@ -25,6 +25,7 @@ import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 import { GlowButton } from "@/components/ui/glow-button";
 import { useTrackCardView } from "@/lib/hooks/use-recent-history";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 type TagsTabProps = {
   content: string;
@@ -78,6 +79,27 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const isNote = card.type === "md-note" || card.type === "text-note";
   const [isMounted, setIsMounted] = useState(false);
 
+  // Open control panel with card details when modal opens
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const restorePreviousContent = usePanelStore((state) => state.restorePreviousContent);
+
+  // Get panel states for modal positioning
+  const isLeftOpen = usePanelStore((state) => state.isLeftOpen);
+  const leftMode = usePanelStore((state) => state.leftMode);
+  const isPanelOpen = usePanelStore((state) => state.isOpen);
+  const panelMode = usePanelStore((state) => state.mode);
+
+  // Calculate modal offset based on panel states
+  // Floating panels: 325px width + 16px margin on each side = 357px total space
+  // Anchored panels: 325px width, flush to edge
+  const leftOffset = isLeftOpen
+    ? (leftMode === "floating" ? "357px" : "325px")
+    : "0px";
+
+  const rightOffset = isPanelOpen
+    ? (panelMode === "floating" ? "357px" : "325px")
+    : "0px";
+
   // Track card view for recent history
   useTrackCardView(card);
 
@@ -86,6 +108,16 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     setIsMounted(true);
     return () => setIsMounted(false);
   }, []);
+
+  // Open control panel when card modal opens
+  useEffect(() => {
+    openCardDetails(card.id);
+
+    // Clean up: restore previous panel content when modal closes
+    return () => {
+      restorePreviousContent();
+    };
+  }, [card.id, openCardDetails, restorePreviousContent]);
 
   // Initialize data store if not already initialized
   useEffect(() => {
@@ -740,8 +772,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         onClick={handleClose}
       />
 
-      {/* Centered Card Content */}
-      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 md:p-8 md:pr-[424px] pointer-events-none">
+      {/* Centered Card Content - dynamically centered over content panel */}
+      <div
+        className="fixed inset-0 z-[101] flex items-center justify-center p-4 md:p-8 pointer-events-none"
+        style={{
+          left: leftOffset,
+          right: rightOffset,
+          transition: "left 0.3s ease-out, right 0.3s ease-out",
+        }}
+      >
         <div
           className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative ${
             isReaderExpanded ? "w-full h-full flex flex-col" : isYouTubeUrl(card.url) ? "w-full max-w-6xl" : isNote ? "w-full max-w-3xl h-[80vh] flex flex-col" : "max-w-full max-h-full"
@@ -820,8 +859,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         </div>
       </div>
 
-      {/* Right Slide-Out Sheet for Details */}
-      <div
+      {/* Right Slide-Out Sheet for Details - HIDDEN: Now using global control panel */}
+      {false && (<div
         className={`fixed top-0 right-0 h-full w-full md:w-[480px] border-l border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl z-[102] flex transition-transform duration-300 ${
           isDetailsOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
         }`}
@@ -1005,7 +1044,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             </div>
           </div>
         </Tabs>
-      </div>
+      </div>)}
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </>

@@ -6,11 +6,13 @@ import { CardModel, CollectionNode } from "@/lib/types";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useCardEvents } from "@/lib/hooks/card-events-store";
 import { useViewSettingsStore, type LayoutMode } from "@/lib/hooks/view-settings-store";
+import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import { sortCards } from "@/lib/utils/sort-cards";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { format } from "date-fns";
-import { Library } from "lucide-react";
+import { Library, Settings } from "lucide-react";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 type TimelineGroup = {
   date: string;
@@ -32,6 +34,7 @@ type LibraryViewProps = {
   query?: {
     q?: string;
     collection?: string;
+    tag?: string;
     status?: string;
   };
   viewMode?: "normal" | "timeline";
@@ -57,11 +60,26 @@ export function LibraryView({
   const [timelineGroups, setTimelineGroups] = useState<TimelineGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
-  
+
   // Get view settings from the store
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
-  const { cardSize, sortBy, sortOrder } = viewSettings;
-  
+  const setLayoutInStore = useViewSettingsStore((state) => state.setLayout);
+  const setCardSizeInStore = useViewSettingsStore((state) => state.setCardSize);
+  const setShowTitles = useViewSettingsStore((state) => state.setShowTitles);
+  const setShowUrls = useViewSettingsStore((state) => state.setShowUrls);
+  const setSortBy = useViewSettingsStore((state) => state.setSortBy);
+  const { cardSize, sortBy, sortOrder, showTitles, showUrls } = viewSettings;
+
+  // Get selected tags from store (managed by control panel)
+  // Memoize to prevent changing on every render
+  const selectedTags = useMemo(() => {
+    return (viewSettings.viewSpecific?.selectedTags as string[]) || [];
+  }, [viewSettings.viewSpecific?.selectedTags]);
+
+  // Get global settings (thumbnails)
+  const showThumbnails = useSettingsStore((state) => state.showThumbnails);
+  const setShowThumbnails = useSettingsStore((state) => state.setShowThumbnails);
+
   // Use hydration-safe layout to prevent SSR mismatches
   const [layout, setLayout] = useState<LayoutMode>("grid");
   const [isHydrated, setIsHydrated] = useState(false);
@@ -76,10 +94,19 @@ export function LibraryView({
     setCards(initialCards);
   }, [initialCards]);
 
-  // Sort cards based on view settings
+  // Sort and filter cards based on view settings and selected tags
   const sortedCards = useMemo(() => {
-    return sortCards(cards, sortBy, sortOrder);
-  }, [cards, sortBy, sortOrder]);
+    let filtered = cards;
+
+    // Filter by selected tags
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter((card) =>
+        selectedTags.some((tag) => card.tags?.includes(tag))
+      );
+    }
+
+    return sortCards(filtered, sortBy, sortOrder);
+  }, [cards, sortBy, sortOrder, selectedTags]);
 
   const newCard = useCardEvents((state) => state.newCard);
   const clearNewCard = useCardEvents((state) => state.clearNewCard);
@@ -281,6 +308,7 @@ export function LibraryView({
                 {viewMode === "timeline"
                   ? `${timelineGroups.reduce((sum, g) => sum + g.cards.length, 0)} card(s)`
                   : `${sortedCards.length} card(s)`}
+                {selectedTags.length > 0 && ` · ${selectedTags.length} tag filter(s)`}
               </p>
             </div>
           </div>

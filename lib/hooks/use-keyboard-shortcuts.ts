@@ -105,7 +105,7 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
           switch (e.key) {
             case "h":
               e.preventDefault();
-              router.push("/");
+              router.push("/home");
               break;
             case "l":
               e.preventDefault();
@@ -125,12 +125,12 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
               break;
             case "d":
               e.preventDefault();
-              router.push("/dig-up");
+              router.push("/distill");
               break;
-            case "t":
-              e.preventDefault();
-              router.push("/timeline");
-              break;
+            // case "t": // Timeline route doesn't exist yet
+            //   e.preventDefault();
+            //   router.push("/timeline");
+            //   break;
           }
         }
       }
@@ -237,12 +237,13 @@ export function getAllShortcuts(): KeyboardShortcut[] {
       action: () => {},
       group: "Navigation",
     },
-    {
-      key: "G then T",
-      description: "Go to Timeline",
-      action: () => {},
-      group: "Navigation",
-    },
+    // Timeline route doesn't exist yet
+    // {
+    //   key: "G then T",
+    //   description: "Go to Timeline",
+    //   action: () => {},
+    //   group: "Navigation",
+    // },
 
     // Markdown Editor (shown when in editor)
     {
