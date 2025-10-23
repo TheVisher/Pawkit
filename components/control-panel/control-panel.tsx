@@ -1,8 +1,15 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { X, Settings, ChevronDown } from "lucide-react";
+import { X, HelpCircle, Trash2, BookOpen, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { useRouter } from "next/navigation";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export type ControlPanelMode = "floating" | "anchored";
 
@@ -13,9 +20,12 @@ export type ControlPanelProps = {
   onModeChange?: (mode: ControlPanelMode) => void;
   children: ReactNode;
   embedded?: boolean; // Special mode: embedded inside content panel
+  username?: string;
+  displayName?: string | null;
 };
 
-export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange, children, embedded = false }: ControlPanelProps) {
+export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange, children, embedded = false, username = "", displayName = null }: ControlPanelProps) {
+  const router = useRouter();
   // Mode can be controlled or uncontrolled
   const [internalMode, setInternalMode] = useState<ControlPanelMode>("floating");
   const mode = controlledMode ?? internalMode;
@@ -85,33 +95,100 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
-          <div className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-accent" />
-            <h2 className="text-lg font-semibold text-foreground">Controls</h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Mode Toggle Button */}
-            <button
-              onClick={handleModeToggle}
-              className="px-3 py-1 rounded-lg text-xs font-medium transition-colors
-                bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground border border-white/10"
-              title={mode === "floating" ? "Anchor panel" : "Float panel"}
-            >
-              {mode === "floating" ? "Anchor" : "Float"}
-            </button>
-
+        {/* Header - Icon-only controls */}
+        <TooltipProvider>
+          <div className="flex items-center justify-end gap-1 p-3 border-b border-white/10">
             {/* Close Button */}
-            <button
-              onClick={onClose}
-              className="p-1 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-              aria-label="Close panel"
-            >
-              <X size={20} />
-            </button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label="Close panel"
+                >
+                  <X size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Close</TooltipContent>
+            </Tooltip>
+
+            {/* Help */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => router.push('/help')}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label="Help"
+                >
+                  <HelpCircle size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Help</TooltipContent>
+            </Tooltip>
+
+            {/* Trash */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => router.push('/trash')}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label="Trash"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Trash</TooltipContent>
+            </Tooltip>
+
+            {/* Changelog */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => router.push('/changelog')}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label="Changelog"
+                >
+                  <BookOpen size={18} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Changelog</TooltipContent>
+            </Tooltip>
+
+            {/* Float/Anchor Toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleModeToggle}
+                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  aria-label={mode === "floating" ? "Anchor panel" : "Float panel"}
+                >
+                  {mode === "floating" ? <ArrowDownLeft size={18} /> : <ArrowUpRight size={18} />}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{mode === "floating" ? "Anchor" : "Float"}</TooltipContent>
+            </Tooltip>
+
+            {/* Profile */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="ml-2 rounded-full hover:ring-2 hover:ring-white/20 transition-all"
+                  aria-label="Profile"
+                >
+                  <div className="flex aspect-square size-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold text-base">
+                    {(displayName || username || "U").charAt(0).toUpperCase()}
+                  </div>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <div className="text-center">
+                  <div className="font-semibold">{displayName || username || "User"}</div>
+                  <div className="text-xs text-muted-foreground">View profile</div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
           </div>
-        </div>
+        </TooltipProvider>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6"
