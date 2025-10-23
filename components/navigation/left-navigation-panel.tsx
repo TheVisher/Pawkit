@@ -412,7 +412,7 @@ export function LeftNavigationPanel({
                                           removeFromCollection(collection.id, collection.name);
                                         }
                                       }}
-                                      className="p-1 rounded hover:bg-white/20 transition-colors"
+                                      className="p-1 rounded hover:bg-white/20 transition-colors relative"
                                       title={isHovered ? "Remove from pawkit" : "In this pawkit"}
                                     >
                                       {isHovered ? (
@@ -420,19 +420,19 @@ export function LeftNavigationPanel({
                                       ) : (
                                         <Check size={14} className="text-muted-foreground" />
                                       )}
+                                      {/* Purple expanding circle animation - overlays the icon */}
+                                      {isAnimating && (
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+                                          <div
+                                            className="animate-ping-once absolute h-8 w-8 rounded-full"
+                                            style={{
+                                              background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                                            }}
+                                          />
+                                          <Check size={14} className="text-white relative z-10" />
+                                        </div>
+                                      )}
                                     </button>
-                                    {/* Purple expanding circle animation */}
-                                    {isAnimating && (
-                                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                                        <div
-                                          className="animate-ping-once absolute h-8 w-8 rounded-full"
-                                          style={{
-                                            background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                          }}
-                                        />
-                                        <Check size={14} className="text-white relative z-10" />
-                                      </div>
-                                    )}
                                   </div>
                                 ) : isHovered && (
                                   <div className="relative">
@@ -441,23 +441,23 @@ export function LeftNavigationPanel({
                                         e.stopPropagation();
                                         addToCollection(collection.id, collection.name);
                                       }}
-                                      className="p-1 rounded hover:bg-white/20 transition-colors"
+                                      className="p-1 rounded hover:bg-white/20 transition-colors relative"
                                       title="Add to pawkit"
                                     >
                                       <Plus size={14} className="text-purple-400" />
+                                      {/* Purple expanding circle animation - overlays the icon */}
+                                      {isAnimating && (
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+                                          <div
+                                            className="animate-ping-once absolute h-8 w-8 rounded-full"
+                                            style={{
+                                              background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                                            }}
+                                          />
+                                          <Check size={14} className="text-white relative z-10" />
+                                        </div>
+                                      )}
                                     </button>
-                                    {/* Purple expanding circle animation */}
-                                    {isAnimating && (
-                                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                                        <div
-                                          className="animate-ping-once absolute h-8 w-8 rounded-full"
-                                          style={{
-                                            background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                          }}
-                                        />
-                                        <Check size={14} className="text-white relative z-10" />
-                                      </div>
-                                    )}
                                   </div>
                                 )}
                               </div>
@@ -515,7 +515,7 @@ export function LeftNavigationPanel({
                                                 removeFromCollection(child.id, child.name);
                                               }
                                             }}
-                                            className="p-0.5 rounded hover:bg-white/20 transition-colors"
+                                            className="p-0.5 rounded hover:bg-white/20 transition-colors relative"
                                             title={isChildHovered ? "Remove from pawkit" : "In this pawkit"}
                                           >
                                             {isChildHovered ? (
@@ -523,19 +523,19 @@ export function LeftNavigationPanel({
                                             ) : (
                                               <Check size={12} className="text-muted-foreground" />
                                             )}
+                                            {/* Purple expanding circle animation - overlays the icon */}
+                                            {isChildAnimating && (
+                                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+                                                <div
+                                                  className="animate-ping-once absolute h-6 w-6 rounded-full"
+                                                  style={{
+                                                    background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                                                  }}
+                                                />
+                                                <Check size={12} className="text-white relative z-10" />
+                                              </div>
+                                            )}
                                           </button>
-                                          {/* Purple expanding circle animation */}
-                                          {isChildAnimating && (
-                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                                              <div
-                                                className="animate-ping-once absolute h-6 w-6 rounded-full"
-                                                style={{
-                                                  background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                                }}
-                                              />
-                                              <Check size={12} className="text-white relative z-10" />
-                                            </div>
-                                          )}
                                         </div>
                                       ) : isChildHovered && (
                                         <div className="relative">
@@ -544,23 +544,23 @@ export function LeftNavigationPanel({
                                               e.stopPropagation();
                                               addToCollection(child.id, child.name);
                                             }}
-                                            className="p-0.5 rounded hover:bg-white/20 transition-colors"
+                                            className="p-0.5 rounded hover:bg-white/20 transition-colors relative"
                                             title="Add to pawkit"
                                           >
                                             <Plus size={12} className="text-purple-400" />
+                                            {/* Purple expanding circle animation - overlays the icon */}
+                                            {isChildAnimating && (
+                                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+                                                <div
+                                                  className="animate-ping-once absolute h-6 w-6 rounded-full"
+                                                  style={{
+                                                    background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                                                  }}
+                                                />
+                                                <Check size={12} className="text-white relative z-10" />
+                                              </div>
+                                            )}
                                           </button>
-                                          {/* Purple expanding circle animation */}
-                                          {isChildAnimating && (
-                                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                                              <div
-                                                className="animate-ping-once absolute h-6 w-6 rounded-full"
-                                                style={{
-                                                  background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                                }}
-                                              />
-                                              <Check size={12} className="text-white relative z-10" />
-                                            </div>
-                                          )}
                                         </div>
                                       )}
                                     </div>
