@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { X, HelpCircle, Trash2, BookOpen, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { X, HelpCircle, Trash2, BookOpen, ArrowUpRight, ArrowDownLeft, ChevronDown } from "lucide-react";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useRouter } from "next/navigation";
 import {
