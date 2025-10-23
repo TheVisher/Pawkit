@@ -68,24 +68,6 @@ export function ContentPanel({
       <div className="flex-1 overflow-y-auto px-6 py-6">
         {children}
       </div>
-
-      {/* Top fade overlay - positioned relative to panel */}
-      <div
-        className="absolute top-0 left-0 right-0 h-32 pointer-events-none"
-        style={{
-          background: "linear-gradient(to bottom, rgba(0, 0, 0, 0.2), transparent)",
-          zIndex: 100
-        }}
-      />
-
-      {/* Bottom fade overlay - positioned relative to panel */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none"
-        style={{
-          background: "linear-gradient(to top, rgba(0, 0, 0, 0.2), transparent)",
-          zIndex: 100
-        }}
-      />
     </div>
   );
 }
