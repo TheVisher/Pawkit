@@ -755,8 +755,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         onClick={handleClose}
       />
 
-      {/* Centered Card Content - no right padding since sidebar moved to control panel */}
-      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 md:p-8 md:pr-[424px] pointer-events-none">
+      {/* Centered Card Content - centered over content panel */}
+      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 md:p-8 pointer-events-none">
         <div
           className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative ${
             isReaderExpanded ? "w-full h-full flex flex-col" : isYouTubeUrl(card.url) ? "w-full max-w-6xl" : isNote ? "w-full max-w-3xl h-[80vh] flex flex-col" : "max-w-full max-h-full"
