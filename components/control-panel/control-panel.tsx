@@ -39,19 +39,8 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
     }
   };
 
-  // Close on escape key
-  useEffect(() => {
-    if (!open) return;
-
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
-    };
-
-    document.addEventListener("keydown", handleEscape);
-    return () => document.removeEventListener("keydown", handleEscape);
-  }, [open, onClose]);
+  // Note: Escape key handling is done globally in layout.tsx to ensure
+  // proper priority (modals close before panels)
 
   if (!open) return null;
 
