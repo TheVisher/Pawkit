@@ -80,7 +80,8 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
             ? "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
             : mode === "floating"
               ? "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
-              : "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
+              : "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)",
+          transition: "top 0.3s ease-out, right 0.3s ease-out, bottom 0.3s ease-out, margin 0.3s ease-out, border-radius 0.3s ease-out, box-shadow 0.3s ease-out"
         }}
         onClick={(e) => e.stopPropagation()}
       >
