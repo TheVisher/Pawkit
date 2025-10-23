@@ -48,11 +48,11 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
   // When embedded, the panel is positioned within the content panel
   // Otherwise it's fixed to the viewport
   const positionClasses = embedded
-    ? "absolute top-4 right-4 bottom-4 w-[325px] z-20"
+    ? "fixed top-4 right-4 bottom-4 w-[325px] z-20"
     : `fixed top-0 right-0 bottom-0 w-[325px] z-[102] ${mode === "floating" ? "m-4" : ""}`;
 
   const styleClasses = embedded
-    ? "rounded-xl border-l-2 border-white/20 shadow-xl"
+    ? "rounded-r-2xl border-l border-white/20"
     : mode === "floating"
       ? "rounded-2xl shadow-2xl border border-white/10"
       : "border-l border-white/10";
@@ -77,7 +77,7 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
         `}
         style={{
           boxShadow: embedded
-            ? "0 10px 25px -5px rgba(0, 0, 0, 0.3), inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
+            ? "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
             : mode === "floating"
               ? "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
               : "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"

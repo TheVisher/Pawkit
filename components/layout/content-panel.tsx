@@ -40,23 +40,31 @@ export function ContentPanel({
     ? (leftOpen ? "325px" : "0")
     : (leftOpen ? (leftMode === "floating" ? "357px" : "325px") : "16px");
 
+  // Right position calculation:
+  // - Embedded mode: content ends at 341px (325px panel + 16px margin) so panel sits flush
+  // - Normal mode: standard positioning
   const rightPosition = contentIsAnchored
     ? (rightOpen && rightMode === "anchored" ? "325px" : "0")
-    : (isRightEmbedded ? "16px" : (rightOpen ? (rightMode === "floating" ? "357px" : "325px") : "16px"));
+    : (isRightEmbedded ? "341px" : (rightOpen ? (rightMode === "floating" ? "357px" : "325px") : "16px"));
 
   // Build border classes dynamically
   // When content is anchored, remove all borders
-  // When content is floating, show borders except where anchored panels are
+  // When content is floating, show borders except where anchored/embedded panels are
   const borderClasses = contentIsAnchored
     ? "border-0"
     : `
       ${hasAnchoredLeft ? "border-l-0" : "border-l"}
-      ${hasAnchoredRight ? "border-r-0" : "border-r"}
+      ${hasAnchoredRight || isRightEmbedded ? "border-r-0" : "border-r"}
       border-t border-b border-white/10
     `;
 
   // Border radius - only rounded when content is floating
-  const roundedClasses = contentIsAnchored ? "rounded-none" : "rounded-2xl";
+  // When right is embedded, remove right-side rounding to merge with embedded panel
+  const roundedClasses = contentIsAnchored
+    ? "rounded-none"
+    : isRightEmbedded
+      ? "rounded-l-2xl rounded-r-none"
+      : "rounded-2xl";
 
   // Vertical positioning - anchored content takes full height
   const verticalClasses = contentIsAnchored ? "top-0 bottom-0" : "top-4 bottom-4";
@@ -83,12 +91,7 @@ export function ContentPanel({
       data-right-embedded={isRightEmbedded}
     >
       {/* Content container with scrolling */}
-      <div
-        className={`flex-1 overflow-y-auto px-6 py-6 ${isRightEmbedded ? "pr-[341px]" : ""}`}
-        style={isRightEmbedded ? {
-          transition: "padding-right 0.3s ease-out"
-        } : undefined}
-      >
+      <div className="flex-1 overflow-y-auto px-6 py-6">
         {children}
       </div>
     </div>
