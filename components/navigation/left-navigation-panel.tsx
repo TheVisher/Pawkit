@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useMemo, useCallback } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus } from "lucide-react";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDataStore } from "@/lib/stores/data-store";
@@ -58,10 +58,20 @@ export function LeftNavigationPanel({
   const router = useRouter();
   const pathname = usePathname();
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set());
+  const [hoveredPawkit, setHoveredPawkit] = useState<string | null>(null);
+  const [animatingPawkit, setAnimatingPawkit] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
 
   // Get cards and data
-  const { cards, addCard } = useDataStore();
+  const { cards, addCard, updateCard } = useDataStore();
   const { recentItems } = useRecentHistory();
+
+  // Get active card from panel store
+  const activeCardId = usePanelStore((state) => state.activeCardId);
+  const activeCard = useMemo(() => {
+    return cards.find((card) => card.id === activeCardId) ?? null;
+  }, [cards, activeCardId]);
 
   // Calculate daily note streak
   const dailyNoteStreak = useMemo(() => {
@@ -148,6 +158,63 @@ export function LeftNavigationPanel({
     } else {
       router.push('/calendar');
     }
+  };
+
+  // Add card to collection
+  const addToCollection = async (collectionId: string, collectionName: string) => {
+    if (!activeCard) return;
+
+    // Start animation
+    setAnimatingPawkit(collectionId);
+
+    // Add collection to card
+    const currentCollections = activeCard.collections || [];
+    if (!currentCollections.includes(collectionId)) {
+      await updateCard(activeCard.id, {
+        collections: [...currentCollections, collectionId]
+      });
+
+      // Show toast
+      setToastMessage(`Added to ${collectionName}`);
+      setShowToast(true);
+
+      // Hide toast after 2 seconds
+      setTimeout(() => {
+        setShowToast(false);
+      }, 2000);
+    }
+
+    // End animation after 500ms
+    setTimeout(() => {
+      setAnimatingPawkit(null);
+    }, 500);
+  };
+
+  // Remove card from collection
+  const removeFromCollection = async (collectionId: string, collectionName: string) => {
+    if (!activeCard) return;
+
+    const currentCollections = activeCard.collections || [];
+    if (currentCollections.includes(collectionId)) {
+      await updateCard(activeCard.id, {
+        collections: currentCollections.filter((id) => id !== collectionId)
+      });
+
+      // Show toast
+      setToastMessage(`Removed from ${collectionName}`);
+      setShowToast(true);
+
+      // Hide toast after 2 seconds
+      setTimeout(() => {
+        setShowToast(false);
+      }, 2000);
+    }
+  };
+
+  // Check if active card is in a collection
+  const isCardInCollection = (collectionId: string) => {
+    if (!activeCard) return false;
+    return activeCard.collections?.includes(collectionId) || false;
   };
 
   if (!open) return null;
@@ -289,22 +356,76 @@ export function LeftNavigationPanel({
                   const pawkitHref = `/pawkits/${collection.slug || collection.id}`;
                   const isCollectionActive = pathname === pawkitHref;
 
+                  // Check if card is in this collection
+                  const cardInCollection = isCardInCollection(collection.id);
+                  const isHovered = hoveredPawkit === collection.id;
+                  const isAnimating = animatingPawkit === collection.id;
+
                   return (
                     <div key={collection.id}>
                       <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleNavigate(pawkitHref)}
-                          className={`
-                            flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all
-                            ${isCollectionActive
-                              ? "bg-accent text-accent-foreground font-medium"
-                              : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
-                            }
-                          `}
+                        <div
+                          className="relative flex-1"
+                          onMouseEnter={() => activeCard && setHoveredPawkit(collection.id)}
+                          onMouseLeave={() => setHoveredPawkit(null)}
                         >
-                          <FolderOpen size={14} className="flex-shrink-0" />
-                          <span className="flex-1 text-left truncate">{collection.name}</span>
-                        </button>
+                          <button
+                            onClick={() => handleNavigate(pawkitHref)}
+                            className={`
+                              w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all relative overflow-hidden
+                              ${isCollectionActive
+                                ? "bg-accent text-accent-foreground font-medium"
+                                : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                              }
+                            `}
+                          >
+                            <FolderOpen size={14} className="flex-shrink-0" />
+                            <span className="flex-1 text-left truncate">{collection.name}</span>
+
+                            {/* Purple expanding circle animation */}
+                            {isAnimating && (
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="animate-ping-once absolute h-8 w-8 rounded-full bg-purple-500/50" />
+                                <Check size={16} className="text-white relative z-10" />
+                              </div>
+                            )}
+
+                            {/* Action buttons - only show when card modal is open */}
+                            {activeCard && !isAnimating && (
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {cardInCollection ? (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (isHovered) {
+                                        removeFromCollection(collection.id, collection.name);
+                                      }
+                                    }}
+                                    className="p-1 rounded hover:bg-white/20 transition-colors"
+                                    title={isHovered ? "Remove from pawkit" : "In this pawkit"}
+                                  >
+                                    {isHovered ? (
+                                      <Minus size={14} className="text-red-400" />
+                                    ) : (
+                                      <Check size={14} className="text-green-400" />
+                                    )}
+                                  </button>
+                                ) : isHovered && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      addToCollection(collection.id, collection.name);
+                                    }}
+                                    className="p-1 rounded hover:bg-white/20 transition-colors"
+                                    title="Add to pawkit"
+                                  >
+                                    <Plus size={14} className="text-purple-400" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </button>
+                        </div>
                         {hasChildren && (
                           <button
                             onClick={() => toggleCollection(collection.id)}
@@ -321,20 +442,73 @@ export function LeftNavigationPanel({
                         <div className="ml-6 mt-1 space-y-1">
                           {collection.children.map((child) => {
                             const childHref = `/pawkits/${child.slug || child.id}`;
+                            const childInCollection = isCardInCollection(child.id);
+                            const isChildHovered = hoveredPawkit === child.id;
+                            const isChildAnimating = animatingPawkit === child.id;
+
                             return (
-                              <button
+                              <div
                                 key={child.id}
-                                onClick={() => handleNavigate(childHref)}
-                                className={`
-                                  w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all
-                                  ${pathname === childHref
-                                    ? "bg-accent text-accent-foreground font-medium"
-                                    : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
-                                  }
-                                `}
+                                className="relative"
+                                onMouseEnter={() => activeCard && setHoveredPawkit(child.id)}
+                                onMouseLeave={() => setHoveredPawkit(null)}
                               >
-                                <span className="truncate">{child.name}</span>
-                              </button>
+                                <button
+                                  onClick={() => handleNavigate(childHref)}
+                                  className={`
+                                    w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all relative overflow-hidden
+                                    ${pathname === childHref
+                                      ? "bg-accent text-accent-foreground font-medium"
+                                      : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                                    }
+                                  `}
+                                >
+                                  <span className="flex-1 truncate">{child.name}</span>
+
+                                  {/* Purple expanding circle animation */}
+                                  {isChildAnimating && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                      <div className="animate-ping-once absolute h-6 w-6 rounded-full bg-purple-500/50" />
+                                      <Check size={12} className="text-white relative z-10" />
+                                    </div>
+                                  )}
+
+                                  {/* Action buttons - only show when card modal is open */}
+                                  {activeCard && !isChildAnimating && (
+                                    <div className="flex items-center gap-1 flex-shrink-0">
+                                      {childInCollection ? (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (isChildHovered) {
+                                              removeFromCollection(child.id, child.name);
+                                            }
+                                          }}
+                                          className="p-0.5 rounded hover:bg-white/20 transition-colors"
+                                          title={isChildHovered ? "Remove from pawkit" : "In this pawkit"}
+                                        >
+                                          {isChildHovered ? (
+                                            <Minus size={12} className="text-red-400" />
+                                          ) : (
+                                            <Check size={12} className="text-green-400" />
+                                          )}
+                                        </button>
+                                      ) : isChildHovered && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            addToCollection(child.id, child.name);
+                                          }}
+                                          className="p-0.5 rounded hover:bg-white/20 transition-colors"
+                                          title="Add to pawkit"
+                                        >
+                                          <Plus size={12} className="text-purple-400" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  )}
+                                </button>
+                              </div>
                             );
                           })}
                         </div>
@@ -391,6 +565,15 @@ export function LeftNavigationPanel({
           )}
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[150] animate-fade-in">
+          <div className="px-6 py-3 rounded-xl bg-white/5 backdrop-blur-lg border border-white/10 shadow-glow-accent">
+            <p className="text-sm font-medium text-foreground">{toastMessage}</p>
+          </div>
+        </div>
+      )}
     </>
   );
 }

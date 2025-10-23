@@ -88,12 +88,18 @@ const config: Config = {
   			'fade-in': {
   				'0%': { opacity: '0' },
   				'100%': { opacity: '1' }
+  			},
+  			'ping-once': {
+  				'0%': { transform: 'scale(1)', opacity: '1' },
+  				'50%': { transform: 'scale(2)', opacity: '0.5' },
+  				'100%': { transform: 'scale(2.5)', opacity: '0' }
   			}
   		},
   		animation: {
   			'slide-in-right': 'slide-in-right 0.3s ease-out',
   			'slide-in-left': 'slide-in-left 0.3s ease-out',
-  			'fade-in': 'fade-in 0.3s ease-out'
+  			'fade-in': 'fade-in 0.3s ease-out',
+  			'ping-once': 'ping-once 0.5s ease-out'
   		}
   	}
   },
