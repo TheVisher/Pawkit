@@ -678,6 +678,51 @@ export const useDataStore = create<DataStore>((set, get) => ({
             );
 
             // Keep local version but mark it for manual resolution
+          } else if (response.status === 412) {
+            // Precondition failed - card was modified on server
+            console.warn('[DataStore V2] Card was modified on server, fetching latest and retrying...');
+
+            try {
+              // Fetch latest version from server
+              const latestResponse = await fetch(`/api/cards/${id}`);
+              if (latestResponse.ok) {
+                const latestCard = await latestResponse.json();
+
+                // Merge our updates with the latest version
+                const mergedCard = {
+                  ...latestCard,
+                  ...updates,
+                  updatedAt: new Date().toISOString(),
+                };
+
+                // Save to local storage
+                await localStorage.saveCard(mergedCard, { localOnly: true });
+
+                // Retry the server update with the latest version
+                const retryResponse = await fetch(`/api/cards/${id}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'If-Unmodified-Since': latestCard.updatedAt,
+                  },
+                  body: JSON.stringify(updates),
+                });
+
+                if (retryResponse.ok) {
+                  const serverCard = await retryResponse.json();
+                  await localStorage.saveCard(serverCard, { fromServer: true });
+                  set((state) => ({
+                    cards: state.cards.map(c => c.id === id ? serverCard : c),
+                  }));
+                  console.log('[DataStore V2] Card updated successfully after retry:', id);
+                } else {
+                  console.warn('[DataStore V2] Retry failed, keeping local changes');
+                }
+              }
+            } catch (retryError) {
+              console.error('[DataStore V2] Failed to fetch latest and retry:', retryError);
+              // Local changes are already saved
+            }
           } else if (response.ok) {
             const serverCard = await response.json();
             await localStorage.saveCard(serverCard, { fromServer: true });
