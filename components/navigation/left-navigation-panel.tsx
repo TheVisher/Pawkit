@@ -28,7 +28,6 @@ const navigationItems: NavItem[] = [
   { id: "home", label: "Home", icon: Home, path: "/home" },
   { id: "library", label: "Library", icon: Library, path: "/library" },
   { id: "tags", label: "Tags", icon: Tag, path: "/tags" },
-  { id: "notes", label: "Notes", icon: FileText, path: "/notes" },
   { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
   { id: "den", label: "The Den", icon: DogHouseIcon, path: "/den" },
   { id: "distill", label: "Dig Up", icon: Layers, path: "/distill" },
@@ -67,6 +66,7 @@ export function LeftNavigationPanel({
   const [creatingPawkit, setCreatingPawkit] = useState(false);
   const [parentPawkitId, setParentPawkitId] = useState<string | null>(null);
   const [hoveredCreatePawkit, setHoveredCreatePawkit] = useState<string | null>(null);
+  const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
 
   // Detect if we're in demo mode
   const isDemo = pathname?.startsWith('/demo');
@@ -628,8 +628,31 @@ export function LeftNavigationPanel({
             </PanelSection>
           )}
 
-          {/* Daily Notes Section */}
-          <PanelSection id="left-daily-notes" title="Daily Notes" icon={<CalendarDays className="h-4 w-4 text-accent" />}>
+          {/* Notes Section */}
+          <PanelSection
+            id="left-notes"
+            title="Notes"
+            icon={<FileText className="h-4 w-4 text-accent" />}
+            onClick={() => {
+              handleNavigate("/notes");
+              // Ensure section is expanded when clicking header
+              if (collapsedSections["left-notes"]) {
+                toggleSection("left-notes");
+              }
+            }}
+            action={
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCreateNoteModal(true);
+                }}
+                className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100"
+                title="Create new note"
+              >
+                <Plus size={16} />
+              </button>
+            }
+          >
             <div className="space-y-1">
               <button
                 onClick={goToTodaysNote}
@@ -637,13 +660,6 @@ export function LeftNavigationPanel({
               >
                 <CalendarDays size={16} className="flex-shrink-0" />
                 <span className="flex-1 text-left">Today&apos;s Note</span>
-              </button>
-              <button
-                onClick={goToYesterdaysNote}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
-              >
-                <CalendarClock size={16} className="flex-shrink-0" />
-                <span className="flex-1 text-left">Yesterday&apos;s Note</span>
               </button>
               {dailyNoteStreak > 0 && (
                 <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
