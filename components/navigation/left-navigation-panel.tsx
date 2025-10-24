@@ -136,7 +136,7 @@ export function LeftNavigationPanel({
       const title = generateDailyNoteTitle(today);
       const content = generateDailyNoteContent(today);
 
-      await addCard({
+      const newCard = await addCard({
         type: 'md-note',
         title,
         content,
@@ -144,15 +144,16 @@ export function LeftNavigationPanel({
         inDen: false,
       });
 
+      // Navigate to the newly created note
+      // The card should now be in the cards array after addCard completes
       setTimeout(() => {
-        const store = isDemo ? useDemoAwareStore.getState() : useDemoAwareStore.getState();
-        const newNote = findDailyNoteForDate(store.cards, today);
+        const newNote = findDailyNoteForDate(cards, today);
         if (newNote) {
           router.push(`${pathPrefix}/notes#${newNote.id}`);
         }
-      }, 100);
+      }, 200);
     }
-  }, [cards, addCard, router, pathPrefix, isDemo]);
+  }, [cards, addCard, router, pathPrefix]);
 
   // Navigate to yesterday's note
   const goToYesterdaysNote = () => {
