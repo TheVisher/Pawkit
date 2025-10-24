@@ -959,9 +959,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               </div>
             ) : (
               // URL card content with tabs - all tabs positioned absolutely to maintain size
-              <div className="relative">
-                <div className={`p-[5px] ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
-                  <div className="w-full flex items-center justify-center">
+              <div className={`relative ${isModalExpanded ? 'h-full' : ''}`}>
+                <div className={`p-[5px] ${isModalExpanded ? 'h-full' : ''} ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
+                  <div className={`w-full flex items-center justify-center ${isModalExpanded ? 'h-full' : ''}`}>
                     {card.image ? (
                       <img
                         src={card.image}
