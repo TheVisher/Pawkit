@@ -39,6 +39,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const [imageLoadCount, setImageLoadCount] = useState(0);
   const [showUnpinModal, setShowUnpinModal] = useState(false);
   const searchParams = useSearchParams();
+  // Use single selector to ensure re-renders when pinnedNoteIds changes
   const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
   const pinNote = useSettingsStore((state) => state.pinNote);
   const unpinNote = useSettingsStore((state) => state.unpinNote);
@@ -716,7 +717,8 @@ const CardCell = memo(CardCellInner, (prevProps, nextProps) => {
     prevProps.selected === nextProps.selected &&
     prevProps.showThumbnail === nextProps.showThumbnail &&
     prevProps.layout === nextProps.layout &&
-    prevProps.area === nextProps.area
+    prevProps.area === nextProps.area &&
+    prevProps.isPinned === nextProps.isPinned
   );
 });
 
