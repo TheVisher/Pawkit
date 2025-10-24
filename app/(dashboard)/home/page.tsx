@@ -31,6 +31,15 @@ export default function HomePage() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
+  // Horizontal scroll with mouse wheel
+  const handleWheelScroll = (e: React.WheelEvent<HTMLDivElement>) => {
+    const container = e.currentTarget;
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.preventDefault();
+      container.scrollLeft += e.deltaY;
+    }
+  };
+
   // Track if component is mounted and document.body is available (for portal rendering)
   useEffect(() => {
     // Double-check document.body exists before setting mounted
@@ -230,9 +239,12 @@ export default function HomePage() {
             </Link>
           </div>
           {recent.length > 0 ? (
-            <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+            <div
+              className="flex gap-4 overflow-x-auto py-6 -my-6 -mx-4 px-4 scrollbar-hide"
+              onWheel={handleWheelScroll}
+            >
               {recent.map((card) => (
-                <div key={card.id} className="flex-shrink-0 w-[280px]">
+                <div key={card.id} className="flex-shrink-0 w-[322px]">
                 <RecentCard
                   key={card.id}
                   card={card}
@@ -281,9 +293,12 @@ export default function HomePage() {
             Manage shortcuts
           </Link>
         </div>
-        <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+        <div
+          className="flex gap-4 overflow-x-auto py-6 -my-6 -mx-4 px-4 scrollbar-hide"
+          onWheel={handleWheelScroll}
+        >
           {/* Inbox Button - Always First */}
-          <Link href="/library" className="flex-shrink-0 w-[200px]">
+          <Link href="/library" className="flex-shrink-0 w-[250px]">
             <div className="card-hover h-full rounded-2xl border border-subtle bg-surface p-6 transition flex flex-col items-center justify-center gap-3 cursor-pointer">
               <div className="p-3 rounded-full bg-purple-500/20">
                 <Inbox size={24} className="text-purple-400" />
@@ -297,14 +312,14 @@ export default function HomePage() {
 
           {/* Pinned Pawkits */}
           {pinnedPawkits.map((pawkit) => (
-            <div key={pawkit.id} className="flex-shrink-0 w-[200px]">
+            <div key={pawkit.id} className="flex-shrink-0 w-[250px]">
               <QuickAccessPawkitCard pawkit={pawkit} />
             </div>
           ))}
 
           {/* Pinned Cards */}
           {quickAccessUnique.map((item) => (
-            <div key={item.id} className="flex-shrink-0 w-[200px]">
+            <div key={item.id} className="flex-shrink-0 w-[250px]">
               <QuickAccessCard card={item} />
             </div>
           ))}
