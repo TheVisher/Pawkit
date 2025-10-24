@@ -800,10 +800,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             isReaderExpanded
               ? "w-full h-full"
               : isYouTubeUrl(card.url)
-                ? "w-full max-w-6xl h-[70vh]"
+                ? "w-full max-w-6xl max-h-[85vh]"
                 : isNote
                   ? "w-full max-w-3xl h-[80vh]"
-                  : "w-full max-w-4xl h-[85vh]"
+                  : "w-full max-w-4xl max-h-[90vh]"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
@@ -929,10 +929,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
               </div>
             ) : (
-              // URL card content with tabs - fills available space
-              <div className="h-full overflow-hidden p-8">
-                {bottomTabMode === 'preview' && (
-                  <div className="w-full h-full flex items-center justify-center">
+              // URL card content with tabs - all tabs positioned absolutely to maintain size
+              <div className="relative">
+                <div className={`p-8 ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
+                  <div className="w-full flex items-center justify-center">
                     {card.image ? (
                       <img
                         src={card.image}
@@ -950,10 +950,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                       </div>
                     )}
                   </div>
-                )}
+                </div>
 
                 {bottomTabMode === 'reader' && (
-                  <div className="w-full h-full overflow-y-auto">
+                  <div className="absolute inset-0 p-8 overflow-y-auto bg-white/5 backdrop-blur-lg">
                     {articleContent ? (
                       <ReaderView
                         title={card.title || card.domain || card.url}
@@ -999,7 +999,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 )}
 
                 {bottomTabMode === 'metadata' && (
-                  <div className="w-full h-full overflow-y-auto">
+                  <div className="absolute inset-0 p-8 overflow-y-auto bg-white/5 backdrop-blur-lg">
                     <div className="max-w-2xl mx-auto space-y-6">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
