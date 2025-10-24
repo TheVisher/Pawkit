@@ -58,14 +58,31 @@ export function CardContextMenuWrapper({
     setCreating(true);
     try {
       // Create the pawkit
-      const newCollection = await addCollection({ name: trimmedName });
+      await addCollection({ name: trimmedName });
 
-      // Add the card to the new pawkit
-      if (newCollection && newCollection.slug) {
-        const currentCollections = cardCollections || [];
-        await updateCard(cardId, {
-          collections: [...currentCollections, newCollection.slug]
-        });
+      // Fetch the updated collections to get the new pawkit's slug
+      const response = await fetch("/api/pawkits");
+      if (response.ok) {
+        const data = await response.json();
+        const flattenCollections = (nodes: any[]): any[] => {
+          return nodes.reduce((acc, node) => {
+            acc.push(node);
+            if (node.children && node.children.length > 0) {
+              acc.push(...flattenCollections(node.children));
+            }
+            return acc;
+          }, []);
+        };
+
+        const allCollections = flattenCollections(data.tree || []);
+        const newCollection = allCollections.find((c: any) => c.name === trimmedName);
+
+        if (newCollection && newCollection.slug) {
+          const currentCollections = cardCollections || [];
+          await updateCard(cardId, {
+            collections: [...currentCollections, newCollection.slug]
+          });
+        }
       }
 
       // Reset and close
