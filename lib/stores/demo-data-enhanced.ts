@@ -454,7 +454,7 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
   {
     id: 'card-13',
     url: 'https://dribbble.com/shots/popular',
-    title: 'Dribbble - Discover the World's Top Designers',
+    title: 'Dribbble - Discover the World\'s Top Designers',
     description: 'Inspiration for your next design project',
     domain: 'dribbble.com',
     image: 'https://images.unsplash.com/photo-1626785774573-4b799315345d?w=800&q=80',
@@ -1245,7 +1245,7 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     id: 'card-39',
     url: 'https://stripe.com/docs',
     title: 'Stripe Documentation',
-    description: 'Start integrating Stripe's payments APIs',
+    description: 'Start integrating Stripe\'s payments APIs',
     domain: 'stripe.com',
     image: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=800&q=80',
     type: 'url',
