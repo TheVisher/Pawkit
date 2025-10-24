@@ -294,6 +294,11 @@ class LocalStorage {
    * Build tree structure from flat collection list
    */
   private buildCollectionTree(flatCollections: CollectionNode[]): CollectionNode[] {
+    console.log('[buildCollectionTree] Building tree from flat collections:', flatCollections.length);
+    flatCollections.forEach(col => {
+      console.log('[buildCollectionTree]', col.name, '| id:', col.id, '| parentId:', col.parentId);
+    });
+
     const nodes = new Map<string, CollectionNode>();
     const roots: CollectionNode[] = [];
 
@@ -305,8 +310,12 @@ class LocalStorage {
     // Build parent-child relationships
     nodes.forEach((node) => {
       if (node.parentId && nodes.has(node.parentId)) {
+        console.log('[buildCollectionTree] Adding', node.name, 'as child of', nodes.get(node.parentId)!.name);
         nodes.get(node.parentId)!.children.push(node);
       } else {
+        if (node.parentId) {
+          console.log('[buildCollectionTree] WARNING: Parent not found for', node.name, 'parentId:', node.parentId);
+        }
         roots.push(node);
       }
     });
@@ -318,6 +327,14 @@ class LocalStorage {
     };
 
     sortTree(roots);
+
+    console.log('[buildCollectionTree] Built tree with', roots.length, 'roots');
+    roots.forEach(root => {
+      console.log('[buildCollectionTree] Root:', root.name, '| children:', root.children.length);
+      root.children.forEach(child => {
+        console.log('[buildCollectionTree]   - Child:', child.name, '| grandchildren:', child.children.length);
+      });
+    });
 
     return roots;
   }
