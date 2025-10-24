@@ -13,8 +13,9 @@ import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { format, addDays, startOfDay } from "date-fns";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
-import { Plus, FileText, CalendarIcon } from "lucide-react";
+import { Plus, FileText, CalendarIcon, Inbox } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
+import { HorizontalScrollContainer } from "@/components/ui/horizontal-scroll-container";
 
 const GREETINGS = [
   "Welcome back",
@@ -65,7 +66,7 @@ export default function HomePage() {
     return cards
       .filter(c => !c.inDen) // Exclude Den cards
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5);
+      .slice(0, 15); // Increased from 5 to 15
   }, [cards]);
 
   const quickAccess = useMemo(() => {
@@ -230,8 +231,9 @@ export default function HomePage() {
             </Link>
           </div>
           {recent.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <HorizontalScrollContainer>
               {recent.map((card) => (
+                <div key={card.id} className="flex-shrink-0 w-[322px]">
                 <RecentCard
                   key={card.id}
                   card={card}
@@ -265,8 +267,9 @@ export default function HomePage() {
                     await updateCard(card.id, { collections: [] });
                   }}
                 />
+                </div>
               ))}
-            </div>
+            </HorizontalScrollContainer>
           ) : (
             <EmptyState message="Add your first bookmark to see it here." />
           )}
@@ -279,18 +282,34 @@ export default function HomePage() {
             Manage shortcuts
           </Link>
         </div>
-        {(pinnedPawkits.length > 0 || quickAccessUnique.length > 0) ? (
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-            {pinnedPawkits.map((pawkit) => (
-              <QuickAccessPawkitCard key={pawkit.id} pawkit={pawkit} />
-            ))}
-            {quickAccessUnique.map((item) => (
-              <QuickAccessCard key={item.id} card={item} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState message="Pin cards or Pawkits to surface them here." />
-        )}
+        <HorizontalScrollContainer>
+          {/* Inbox Button - Always First */}
+          <Link href="/library" className="flex-shrink-0 w-[250px]">
+            <div className="card-hover h-full rounded-2xl border border-subtle bg-surface p-6 transition flex flex-col items-center justify-center gap-3 cursor-pointer">
+              <div className="p-3 rounded-full bg-purple-500/20">
+                <Inbox size={24} className="text-purple-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground">Inbox</p>
+                <p className="text-xs text-muted-foreground mt-1">Unsorted items</p>
+              </div>
+            </div>
+          </Link>
+
+          {/* Pinned Pawkits */}
+          {pinnedPawkits.map((pawkit) => (
+            <div key={pawkit.id} className="flex-shrink-0 w-[250px]">
+              <QuickAccessPawkitCard pawkit={pawkit} />
+            </div>
+          ))}
+
+          {/* Pinned Cards */}
+          {quickAccessUnique.map((item) => (
+            <div key={item.id} className="flex-shrink-0 w-[250px]">
+              <QuickAccessCard card={item} />
+            </div>
+          ))}
+        </HorizontalScrollContainer>
       </section>
 
       <section className="mt-auto space-y-4">
@@ -300,12 +319,13 @@ export default function HomePage() {
             View full calendar
           </Link>
         </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2 md:gap-3">
-          {weekDays.map((day, index) => {
+        <div className="max-w-[1800px] mx-auto">
+          <HorizontalScrollContainer>
+            {weekDays.map((day, index) => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayCards = cardsByDate.get(dateStr) || [];
             const isToday = format(new Date(), 'yyyy-MM-dd') === dateStr;
-            
+
             // Check if there's a daily note for this date
             const dailyNote = cards && Array.isArray(cards) ? cards.find(card => {
               if (!isDailyNote(card)) return false;
@@ -317,7 +337,7 @@ export default function HomePage() {
             return (
               <div
                 key={dateStr}
-                className={`card-hover rounded-2xl border bg-surface p-3 md:p-4 min-h-[160px] md:min-h-[200px] flex flex-col relative cursor-pointer transition-all ${
+                className={`card-hover rounded-2xl border bg-surface p-3 md:p-4 min-h-[160px] md:min-h-[200px] flex flex-col relative cursor-pointer transition-all flex-shrink-0 w-[180px] sm:w-[200px] md:w-[220px] ${
                   isToday ? 'border-accent' : 'border-subtle'
                 }`}
                 onClick={() => setSelectedDate(day)}
@@ -353,7 +373,7 @@ export default function HomePage() {
                     </button>
                   ))}
                 </div>
-                
+
                 {/* Daily Note Pill or Add Button - anchored to bottom */}
                 <div className="absolute bottom-2 left-2 right-2 flex justify-center">
                   {dailyNote && (
@@ -372,6 +392,7 @@ export default function HomePage() {
               </div>
             );
           })}
+          </HorizontalScrollContainer>
         </div>
       </section>
       </div>

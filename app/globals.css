@@ -460,6 +460,16 @@ textarea:focus-visible {
     box-shadow: 0 30px 60px -16px hsla(var(--accent) / 0.5);
   }
 
+  /* Hide scrollbars but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+
   /* Landing page animations */
   @keyframes float {
     0%, 100% {

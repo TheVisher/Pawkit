@@ -1,12 +1,13 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
-import { useState, useMemo, useCallback } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus } from "lucide-react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical } from "lucide-react";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
+import { useSettingsStore } from "@/lib/hooks/settings-store";
 import {
   Tooltip,
   TooltipContent,
@@ -15,7 +16,23 @@ import {
 } from "@/components/ui/tooltip";
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
 import { DogHouseIcon } from "@/components/icons/dog-house";
-import { type CollectionNode } from "@/lib/types";
+import { type CollectionNode, type CardType, type CardModel } from "@/lib/types";
+import { CreateNoteModal } from "@/components/modals/create-note-modal";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type NavItem = {
   id: string;
@@ -28,7 +45,6 @@ const navigationItems: NavItem[] = [
   { id: "home", label: "Home", icon: Home, path: "/home" },
   { id: "library", label: "Library", icon: Library, path: "/library" },
   { id: "tags", label: "Tags", icon: Tag, path: "/tags" },
-  { id: "notes", label: "Notes", icon: FileText, path: "/notes" },
   { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
   { id: "den", label: "The Den", icon: DogHouseIcon, path: "/den" },
   { id: "distill", label: "Dig Up", icon: Layers, path: "/distill" },
@@ -62,17 +78,25 @@ export function LeftNavigationPanel({
   const [animatingPawkit, setAnimatingPawkit] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [showCreatePawkitModal, setShowCreatePawkitModal] = useState(false);
+  const [newPawkitName, setNewPawkitName] = useState("");
+  const [creatingPawkit, setCreatingPawkit] = useState(false);
+  const [parentPawkitId, setParentPawkitId] = useState<string | null>(null);
+  const [hoveredCreatePawkit, setHoveredCreatePawkit] = useState<string | null>(null);
+  const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
 
   // Detect if we're in demo mode
   const isDemo = pathname?.startsWith('/demo');
   const pathPrefix = isDemo ? '/demo' : '';
 
   // Get cards and data (demo-aware)
-  const { cards, addCard, updateCard } = useDemoAwareStore();
+  const { cards, addCard, updateCard, addCollection } = useDemoAwareStore();
   const { recentItems } = useRecentHistory();
 
   // Get active card from panel store
   const activeCardId = usePanelStore((state) => state.activeCardId);
+  const collapsedSections = usePanelStore((state) => state.collapsedSections);
+  const toggleSection = usePanelStore((state) => state.toggleSection);
   const activeCard = useMemo(() => {
     const found = cards.find((card) => card.id === activeCardId) ?? null;
     console.log('[LEFT NAV] Active card:', { activeCardId, found: found?.title, totalCards: cards.length });
@@ -104,6 +128,44 @@ export function LeftNavigationPanel({
     return streak;
   }, [cards]);
 
+  // Check if today's daily note exists
+  const dailyNoteExists = useMemo(() => {
+    const today = new Date();
+    return findDailyNoteForDate(cards, today) !== null;
+  }, [cards]);
+
+  // Get pinned notes
+  const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
+  const reorderPinnedNotes = useSettingsStore((state) => state.reorderPinnedNotes);
+  const pinnedNotes = useMemo(() => {
+    return pinnedNoteIds
+      .map(id => cards.find(card => card.id === id))
+      .filter((note): note is NonNullable<typeof note> => note != null); // Filter out any notes that no longer exist
+  }, [pinnedNoteIds, cards]);
+
+  // Drag and drop for pinned notes
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = pinnedNoteIds.indexOf(active.id as string);
+      const newIndex = pinnedNoteIds.indexOf(over.id as string);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(pinnedNoteIds, oldIndex, newIndex);
+        reorderPinnedNotes(newOrder);
+      }
+    }
+  };
+
   const handleModeToggle = () => {
     const newMode = mode === "floating" ? "anchored" : "floating";
     onModeChange?.(newMode);
@@ -124,6 +186,37 @@ export function LeftNavigationPanel({
       return next;
     });
   };
+
+  // Auto-expand current pawkit when viewing it
+  useEffect(() => {
+    // Check if we're on a pawkit page
+    const pawkitMatch = pathname?.match(/\/pawkits\/([^/?]+)/);
+    if (!pawkitMatch) return;
+
+    const slug = pawkitMatch[1];
+
+    // Find the collection by slug
+    const findCollectionById = (cols: CollectionNode[]): string | null => {
+      for (const col of cols) {
+        if (col.slug === slug) return col.id;
+        if (col.children) {
+          const found = findCollectionById(col.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const collectionId = findCollectionById(collections);
+    if (collectionId) {
+      // Auto-expand this collection to show its children
+      setExpandedCollections((prev) => {
+        const next = new Set(prev);
+        next.add(collectionId);
+        return next;
+      });
+    }
+  }, [pathname, collections]);
 
   // Navigate to today's note
   const goToTodaysNote = useCallback(async () => {
@@ -154,6 +247,33 @@ export function LeftNavigationPanel({
       }, 200);
     }
   }, [cards, addCard, router, pathPrefix]);
+
+  // Handle creating note from modal
+  const handleCreateNote = useCallback(async (data: { type: CardType; title: string; content?: string; tags?: string[] }) => {
+    let finalTitle = data.title;
+    let finalContent = data.content || "";
+    let finalTags = data.tags || [];
+
+    // If it's a daily note (has 'daily' tag), generate title and content
+    if (data.tags?.includes('daily')) {
+      const today = new Date();
+      finalTitle = generateDailyNoteTitle(today);
+      finalContent = generateDailyNoteContent(today);
+    }
+
+    const newCard = await addCard({
+      type: data.type,
+      title: finalTitle,
+      content: finalContent,
+      tags: finalTags,
+      inDen: false,
+    });
+
+    // Navigate to the newly created note
+    setTimeout(() => {
+      router.push(`${pathPrefix}/notes`);
+    }, 100);
+  }, [addCard, router, pathPrefix]);
 
   // Navigate to yesterday's note
   const goToYesterdaysNote = () => {
@@ -243,7 +363,246 @@ export function LeftNavigationPanel({
     return activeCard.collections?.includes(collectionSlug) || false;
   };
 
+  // Create new pawkit
+  const handleCreatePawkit = async () => {
+    const trimmedName = newPawkitName.trim();
+    if (!trimmedName || creatingPawkit) return;
+
+    setCreatingPawkit(true);
+    try {
+      const payload: { name: string; parentId?: string } = { name: trimmedName };
+      if (parentPawkitId) {
+        payload.parentId = parentPawkitId;
+      }
+
+      await addCollection(payload);
+
+      // Show toast
+      setToastMessage(parentPawkitId ? "Sub-Pawkit Created" : "Pawkit Created");
+      setShowToast(true);
+
+      // Hide toast after 2 seconds
+      setTimeout(() => {
+        setShowToast(false);
+      }, 2000);
+
+      // Reset and close modal
+      setNewPawkitName("");
+      setShowCreatePawkitModal(false);
+      setParentPawkitId(null);
+    } catch (error) {
+      console.error('Failed to create pawkit:', error);
+    } finally {
+      setCreatingPawkit(false);
+    }
+  };
+
   if (!open) return null;
+
+  // Sortable Pinned Note component
+  const SortablePinnedNote = ({ note }: { note: CardModel }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: note.id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="w-full flex items-center gap-2 group/pinned-note"
+      >
+        <button
+          onClick={() => handleNavigate(`/notes#${note.id}`)}
+          className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+        >
+          <Pin size={16} className="flex-shrink-0 text-purple-400" />
+          <span className="flex-1 text-left truncate">{note.title}</span>
+        </button>
+        <div
+          {...attributes}
+          {...listeners}
+          className="p-1 rounded transition-colors hover:bg-white/10 text-muted-foreground opacity-0 group-hover/pinned-note:opacity-100 cursor-grab active:cursor-grabbing flex-shrink-0"
+        >
+          <GripVertical size={16} />
+        </div>
+      </div>
+    );
+  };
+
+  // Recursive function to render collection tree at any depth
+  const renderCollectionTree = (collection: CollectionNode, depth: number = 0) => {
+    const hasChildren = collection.children && collection.children.length > 0;
+    const isExpanded = expandedCollections.has(collection.id);
+    const pawkitHref = `/pawkits/${collection.slug || collection.id}`;
+    const isCollectionActive = pathname === pawkitHref;
+    const cardInCollection = isCardInCollection(collection.slug);
+    const isHovered = hoveredPawkit === collection.slug;
+    const isAnimating = animatingPawkit === collection.slug;
+    const isCreateHovered = hoveredCreatePawkit === collection.id;
+
+    // Determine size and spacing based on depth
+    const iconSize = depth === 0 ? 14 : 12;
+    const textSize = depth === 0 ? "text-sm" : "text-xs";
+    const padding = depth === 0 ? "px-3 py-2" : "px-3 py-1.5";
+
+    return (
+      <div key={collection.id}>
+        <div
+          className="flex items-center gap-1 group/pawkit"
+          onMouseEnter={() => !activeCard && setHoveredCreatePawkit(collection.id)}
+          onMouseLeave={() => setHoveredCreatePawkit(null)}
+        >
+          <div className="relative flex-1">
+            <button
+              onClick={() => handleNavigate(pawkitHref)}
+              className={`
+                w-full flex items-center gap-2 ${padding} rounded-lg ${textSize} transition-all relative overflow-hidden
+                ${isCollectionActive
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                }
+              `}
+            >
+              <FolderOpen size={iconSize} className="flex-shrink-0" />
+              <span className="flex-1 text-left truncate">{collection.name}</span>
+
+              {/* Action buttons - only show when card modal is open */}
+              {activeCard && (
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {cardInCollection ? (
+                    <div className="relative">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onMouseEnter={() => setHoveredPawkit(collection.slug)}
+                        onMouseLeave={() => setHoveredPawkit(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFromCollection(collection.slug, collection.name);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.stopPropagation();
+                            removeFromCollection(collection.slug, collection.name);
+                          }
+                        }}
+                        className="p-1 rounded transition-colors relative cursor-pointer"
+                        title={isHovered ? "Remove from pawkit" : "In this pawkit"}
+                      >
+                        {isHovered ? (
+                          <Minus size={iconSize} className="text-red-400" />
+                        ) : (
+                          <Check size={iconSize} className="text-muted-foreground" />
+                        )}
+                        {isAnimating && (
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+                            <div
+                              className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
+                              style={{
+                                background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                              }}
+                            />
+                            <Check size={iconSize} className="text-white relative z-10" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="p-1 rounded transition-colors relative cursor-pointer"
+                      title="Add to pawkit"
+                      onMouseEnter={() => setHoveredPawkit(collection.slug)}
+                      onMouseLeave={() => setHoveredPawkit(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCollection(collection.slug, collection.name);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                          addToCollection(collection.slug, collection.name);
+                        }
+                      }}
+                    >
+                      <Plus size={iconSize} className="text-purple-400" />
+                      {isAnimating && (
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+                          <div
+                            className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
+                            style={{
+                              background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                            }}
+                          />
+                          <Check size={iconSize} className="text-white relative z-10" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </button>
+          </div>
+
+          {/* + Button for creating sub-pawkit - show when no active card */}
+          {!activeCard && isCreateHovered && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setParentPawkitId(collection.id);
+                setShowCreatePawkitModal(true);
+              }}
+              className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400"
+              title="Create sub-pawkit"
+            >
+              <Plus size={iconSize} />
+            </button>
+          )}
+
+          {/* Chevron for expanding/collapsing children */}
+          {hasChildren && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const newExpanded = new Set(expandedCollections);
+                if (isExpanded) {
+                  newExpanded.delete(collection.id);
+                } else {
+                  newExpanded.add(collection.id);
+                }
+                setExpandedCollections(newExpanded);
+              }}
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <ChevronRight
+                size={14}
+                className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+              />
+            </button>
+          )}
+        </div>
+
+        {/* Recursively render children */}
+        {hasChildren && isExpanded && collection.children && (
+          <div className="ml-6 mt-1 space-y-1">
+            {collection.children.map((child) => renderCollectionTree(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -362,271 +721,61 @@ export function LeftNavigationPanel({
 
           {/* Pawkits Section */}
           {collections.length > 0 && (
-            <PanelSection id="left-pawkits" title="Pawkits" icon={<FolderOpen className="h-4 w-4 text-accent" />}>
-              <div className="space-y-1">
+            <PanelSection
+              id="left-pawkits"
+              title="Pawkits"
+              icon={<FolderOpen className="h-4 w-4 text-accent" />}
+              onClick={() => {
+                handleNavigate("/pawkits");
+                // Ensure section is expanded when clicking header
+                if (collapsedSections["left-pawkits"]) {
+                  toggleSection("left-pawkits");
+                }
+              }}
+              action={
                 <button
-                  onClick={() => handleNavigate("/pawkits")}
-                  className={`
-                    w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
-                    ${pathname === (pathPrefix + "/pawkits")
-                      ? "bg-accent text-accent-foreground font-medium"
-                      : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
-                    }
-                  `}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCreatePawkitModal(true);
+                  }}
+                  className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100"
+                  title="Create new pawkit"
                 >
-                  <FolderOpen size={16} className="flex-shrink-0" />
-                  <span className="flex-1 text-left">All Pawkits</span>
+                  <Plus size={16} />
                 </button>
-                {collections.map((collection) => {
-                  const hasChildren = collection.children && collection.children.length > 0;
-                  const isExpanded = expandedCollections.has(collection.id);
-                  const pawkitHref = `/pawkits/${collection.slug || collection.id}`;
-                  const isCollectionActive = pathname === pawkitHref;
-
-                  // Check if card is in this collection
-                  const cardInCollection = isCardInCollection(collection.slug);
-                  const isHovered = hoveredPawkit === collection.slug;
-                  const isAnimating = animatingPawkit === collection.slug;
-
-                  return (
-                    <div key={collection.id}>
-                      <div className="flex items-center gap-1">
-                        <div
-                          className="relative flex-1"
-                          onMouseEnter={() => activeCard && setHoveredPawkit(collection.slug)}
-                          onMouseLeave={() => setHoveredPawkit(null)}
-                        >
-                          <button
-                            onClick={() => handleNavigate(pawkitHref)}
-                            className={`
-                              w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all relative overflow-hidden
-                              ${isCollectionActive
-                                ? "bg-accent text-accent-foreground font-medium"
-                                : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
-                              }
-                            `}
-                          >
-                            <FolderOpen size={14} className="flex-shrink-0" />
-                            <span className="flex-1 text-left truncate">{collection.name}</span>
-
-                            {/* Action buttons - only show when card modal is open */}
-                            {activeCard && (
-                              <div className="flex items-center gap-1 flex-shrink-0">
-                                {cardInCollection ? (
-                                  <div className="relative">
-                                    <div
-                                      role="button"
-                                      tabIndex={0}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (isHovered) {
-                                          removeFromCollection(collection.slug, collection.name);
-                                        }
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ') {
-                                          e.stopPropagation();
-                                          if (isHovered) {
-                                            removeFromCollection(collection.slug, collection.name);
-                                          }
-                                        }
-                                      }}
-                                      className="p-1 rounded transition-colors relative cursor-pointer"
-                                      title={isHovered ? "Remove from pawkit" : "In this pawkit"}
-                                    >
-                                      {isHovered ? (
-                                        <Minus size={14} className="text-red-400" />
-                                      ) : (
-                                        <Check size={14} className="text-muted-foreground" />
-                                      )}
-                                      {/* Purple expanding circle animation - overlays the icon */}
-                                      {isAnimating && (
-                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                                          <div
-                                            className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
-                                            style={{
-                                              background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                            }}
-                                          />
-                                          <Check size={14} className="text-white relative z-10" />
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                ) : isHovered && (
-                                  <div className="relative">
-                                    <div
-                                      role="button"
-                                      tabIndex={0}
-                                      className="p-1 rounded transition-colors relative cursor-pointer"
-                                      title="Add to pawkit"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        addToCollection(collection.slug, collection.name);
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ') {
-                                          e.stopPropagation();
-                                          addToCollection(collection.slug, collection.name);
-                                        }
-                                      }}
-                                    >
-                                      <Plus size={14} className="text-purple-400" />
-                                      {/* Purple expanding circle animation - overlays the icon */}
-                                      {isAnimating && (
-                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                                          <div
-                                            className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
-                                            style={{
-                                              background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                            }}
-                                          />
-                                          <Check size={14} className="text-white relative z-10" />
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </button>
-                        </div>
-                        {hasChildren && (
-                          <button
-                            onClick={() => toggleCollection(collection.id)}
-                            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                          >
-                            <ChevronRight
-                              size={14}
-                              className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                            />
-                          </button>
-                        )}
-                      </div>
-                      {hasChildren && isExpanded && collection.children && (
-                        <div className="ml-6 mt-1 space-y-1">
-                          {collection.children.map((child) => {
-                            const childHref = `/pawkits/${child.slug || child.id}`;
-                            const childInCollection = isCardInCollection(child.slug);
-                            const isChildHovered = hoveredPawkit === child.slug;
-                            const isChildAnimating = animatingPawkit === child.slug;
-
-                            return (
-                              <div
-                                key={child.id}
-                                className="relative"
-                                onMouseEnter={() => activeCard && setHoveredPawkit(child.slug)}
-                                onMouseLeave={() => setHoveredPawkit(null)}
-                              >
-                                <button
-                                  onClick={() => handleNavigate(childHref)}
-                                  className={`
-                                    w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all relative overflow-hidden
-                                    ${pathname === childHref
-                                      ? "bg-accent text-accent-foreground font-medium"
-                                      : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
-                                    }
-                                  `}
-                                >
-                                  <span className="flex-1 truncate">{child.name}</span>
-
-                                  {/* Action buttons - only show when card modal is open */}
-                                  {activeCard && (
-                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                      {childInCollection ? (
-                                        <div className="relative">
-                                          <div
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              if (isChildHovered) {
-                                                removeFromCollection(child.slug, child.name);
-                                              }
-                                            }}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter' || e.key === ' ') {
-                                                e.stopPropagation();
-                                                if (isChildHovered) {
-                                                  removeFromCollection(child.slug, child.name);
-                                                }
-                                              }
-                                            }}
-                                            className="p-0.5 rounded transition-colors relative cursor-pointer"
-                                            title={isChildHovered ? "Remove from pawkit" : "In this pawkit"}
-                                          >
-                                            {isChildHovered ? (
-                                              <Minus size={12} className="text-red-400" />
-                                            ) : (
-                                              <Check size={12} className="text-muted-foreground" />
-                                            )}
-                                            {/* Purple expanding circle animation - overlays the icon */}
-                                            {isChildAnimating && (
-                                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                                                <div
-                                                  className="animate-expand-contract-fade absolute h-6 w-6 rounded-full"
-                                                  style={{
-                                                    background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.6) 100%)'
-                                                  }}
-                                                />
-                                                <Check size={12} className="text-white relative z-10" />
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      ) : isChildHovered && (
-                                        <div className="relative">
-                                          <div
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={(e) => {
-                                              console.log('[CLICK] Child plus button clicked!', { childSlug: child.slug, activeCard });
-                                              e.stopPropagation();
-                                              addToCollection(child.slug, child.name);
-                                            }}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter' || e.key === ' ') {
-                                                console.log('[KEYDOWN] Child plus button keydown!', { childSlug: child.slug, activeCard });
-                                                e.stopPropagation();
-                                                addToCollection(child.slug, child.name);
-                                              }
-                                            }}
-                                            className="p-0.5 rounded transition-colors relative cursor-pointer"
-                                            title="Add to pawkit"
-                                          >
-                                            <Plus size={12} className="text-purple-400" />
-                                            {/* Purple expanding circle animation - overlays the icon */}
-                                            {isChildAnimating && (
-                                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                                                <div
-                                                  className="animate-expand-contract-fade absolute h-6 w-6 rounded-full"
-                                                  style={{
-                                                    background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                                  }}
-                                                />
-                                                <Check size={12} className="text-white relative z-10" />
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+              }
+            >
+              <div className="space-y-1">
+                {collections.map((collection) => renderCollectionTree(collection, 0))}
               </div>
             </PanelSection>
           )}
 
-          {/* Daily Notes Section */}
-          <PanelSection id="left-daily-notes" title="Daily Notes" icon={<CalendarDays className="h-4 w-4 text-accent" />}>
+          {/* Notes Section */}
+          <PanelSection
+            id="left-notes"
+            title="Notes"
+            icon={<FileText className="h-4 w-4 text-accent" />}
+            onClick={() => {
+              handleNavigate("/notes");
+              // Ensure section is expanded when clicking header
+              if (collapsedSections["left-notes"]) {
+                toggleSection("left-notes");
+              }
+            }}
+            action={
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCreateNoteModal(true);
+                }}
+                className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100"
+                title="Create new note"
+              >
+                <Plus size={16} />
+              </button>
+            }
+          >
             <div className="space-y-1">
               <button
                 onClick={goToTodaysNote}
@@ -635,17 +784,30 @@ export function LeftNavigationPanel({
                 <CalendarDays size={16} className="flex-shrink-0" />
                 <span className="flex-1 text-left">Today&apos;s Note</span>
               </button>
-              <button
-                onClick={goToYesterdaysNote}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
-              >
-                <CalendarClock size={16} className="flex-shrink-0" />
-                <span className="flex-1 text-left">Yesterday&apos;s Note</span>
-              </button>
               {dailyNoteStreak > 0 && (
                 <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
                   <Flame size={16} className="text-orange-500" />
                   <span>{dailyNoteStreak} day streak</span>
+                </div>
+              )}
+
+              {/* Pinned Notes */}
+              {pinnedNotes.length > 0 && (
+                <div className="pt-2 space-y-1">
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={pinnedNoteIds}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      {pinnedNotes.map((note) => (
+                        <SortablePinnedNote key={note.id} note={note} />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 </div>
               )}
             </div>
@@ -698,6 +860,79 @@ export function LeftNavigationPanel({
           </div>
         </div>
       </div>
+
+      {/* Create Pawkit Modal */}
+      {showCreatePawkitModal && (
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => {
+            if (!creatingPawkit) {
+              setShowCreatePawkitModal(false);
+              setNewPawkitName("");
+              setParentPawkitId(null);
+            }
+          }}
+        >
+          <div
+            className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 shadow-glow-accent p-6 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              {parentPawkitId ? "Create Sub-Pawkit" : "Create Pawkit"}
+            </h3>
+            <input
+              type="text"
+              value={newPawkitName}
+              onChange={(e) => setNewPawkitName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleCreatePawkit();
+                } else if (e.key === "Escape") {
+                  if (!creatingPawkit) {
+                    setShowCreatePawkitModal(false);
+                    setNewPawkitName("");
+                    setParentPawkitId(null);
+                  }
+                }
+              }}
+              placeholder="Pawkit name"
+              className="w-full rounded-lg bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-foreground placeholder-muted-foreground border border-white/10 focus:border-accent focus:outline-none transition-colors"
+              autoFocus
+              disabled={creatingPawkit}
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => {
+                  if (!creatingPawkit) {
+                    setShowCreatePawkitModal(false);
+                    setNewPawkitName("");
+                    setParentPawkitId(null);
+                  }
+                }}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+                disabled={creatingPawkit}
+              >
+                Esc to Cancel
+              </button>
+              <button
+                onClick={handleCreatePawkit}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-50"
+                disabled={creatingPawkit || !newPawkitName.trim()}
+              >
+                {creatingPawkit ? "Creating..." : "Enter to Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Note Modal */}
+      <CreateNoteModal
+        open={showCreateNoteModal}
+        onClose={() => setShowCreateNoteModal(false)}
+        onConfirm={handleCreateNote}
+        dailyNoteExists={dailyNoteExists}
+      />
 
       {/* Toast Notification */}
       {showToast && (
