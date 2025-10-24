@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -374,6 +374,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [showNoteToolbar, setShowNoteToolbar] = useState(true);
   const lastSavedNotesRef = useRef(card.notes ?? "");
   const lastSavedContentRef = useRef(card.content ?? "");
+  const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Calculate note metadata for display in top bar
   const noteMetadata = useMemo(() => {
@@ -595,6 +596,26 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       setEditedTitle(card.title || "");
       setIsEditingTitle(false);
     }
+  };
+
+  // Insert markdown formatting for notes
+  const insertMarkdown = (before: string, after: string = '') => {
+    const textarea = editorTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    const newText = content.substring(0, start) + before + selectedText + after + content.substring(end);
+
+    setContent(newText);
+
+    // Restore focus and selection
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + before.length + selectedText.length + after.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
   };
 
   const handleAddToPawkit = async (slug: string) => {
@@ -1015,6 +1036,118 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </button>
               </div>
           </div>
+
+          {/* Formatting Toolbar - Only for notes in edit mode */}
+          {isNote && noteMode === 'edit' && showNoteToolbar && (
+            <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm px-6 py-3 flex items-center gap-1 flex-wrap flex-shrink-0">
+              <button
+                onClick={() => insertMarkdown('**', '**')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Bold (Cmd+B)"
+              >
+                <Bold size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('*', '*')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Italic (Cmd+I)"
+              >
+                <Italic size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('~~', '~~')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Strikethrough"
+              >
+                <Strikethrough size={16} className="text-gray-300" />
+              </button>
+              <div className="w-px h-6 bg-white/10 mx-1" />
+              <button
+                onClick={() => insertMarkdown('# ', '')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Heading 1"
+              >
+                <Heading1 size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('## ', '')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Heading 2"
+              >
+                <Heading2 size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('### ', '')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Heading 3"
+              >
+                <Heading3 size={16} className="text-gray-300" />
+              </button>
+              <div className="w-px h-6 bg-white/10 mx-1" />
+              <button
+                onClick={() => insertMarkdown('`', '`')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Code (Cmd+E)"
+              >
+                <Code size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('[', '](url)')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Link"
+              >
+                <LinkIcon size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('[[', ']]')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Wiki Link (Cmd+K)"
+              >
+                <Link2 size={16} className="text-gray-300" />
+              </button>
+              <div className="w-px h-6 bg-white/10 mx-1" />
+              <button
+                onClick={() => insertMarkdown('\n- ', '')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Bullet List"
+              >
+                <List size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('\n1. ', '')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Numbered List"
+              >
+                <ListOrdered size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('\n> ', '')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Quote"
+              >
+                <Quote size={16} className="text-gray-300" />
+              </button>
+            </div>
+          )}
+
+          {/* Collapse Handle - Only for notes in edit mode */}
+          {isNote && noteMode === 'edit' && (
+            <div className="relative border-b border-white/10 flex-shrink-0">
+              <button
+                onClick={() => setShowNoteToolbar(!showNoteToolbar)}
+                className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 group z-10"
+                title={showNoteToolbar ? "Hide toolbar" : "Show toolbar"}
+              >
+                <div className="w-12 h-1.5 bg-white/10 group-hover:bg-purple-500/50 rounded-full transition-all duration-200 flex items-center justify-center">
+                  <ChevronDown
+                    size={16}
+                    className={`text-gray-400 group-hover:text-purple-400 transition-all duration-200 ${showNoteToolbar ? '' : 'rotate-180'}`}
+                  />
+                </div>
+              </button>
+            </div>
+          )}
+
           {/* Card Content - Image, Reader, YouTube Player, or Note Preview/Edit */}
           <div className="relative flex-1 overflow-hidden min-h-0">
             {isNote ? (
@@ -1030,8 +1163,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   mode={noteMode}
                   onModeChange={setNoteMode}
                   hideControls={true}
-                  showToolbar={showNoteToolbar}
-                  onToggleToolbar={() => setShowNoteToolbar(!showNoteToolbar)}
+                  showToolbar={false}
+                  textareaRef={editorTextareaRef}
                 />
               </div>
             ) : isYouTubeUrl(card.url) ? (
