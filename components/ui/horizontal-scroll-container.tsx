@@ -146,13 +146,10 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
   }, [children]);
 
   return (
-    <div className="relative group">
-      {/* Left Gradient Overlay with Chevron */}
-      {showLeftGradient && (
-        <>
-          <div className="absolute left-0 -top-6 -bottom-6 w-32 z-10 pointer-events-none">
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent" />
-          </div>
+    <div className="relative py-6 -my-6">
+      <div className="group relative">
+        {/* Left Chevron */}
+        {showLeftGradient && (
           <button
             onClick={handleScrollLeft}
             onMouseDown={(e) => e.stopPropagation()}
@@ -161,15 +158,10 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
           >
             <ChevronLeft size={28} strokeWidth={2.5} />
           </button>
-        </>
-      )}
+        )}
 
-      {/* Right Gradient Overlay with Chevron */}
-      {showRightGradient && (
-        <>
-          <div className="absolute right-0 -top-6 -bottom-6 w-32 z-10 pointer-events-none">
-            <div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent" />
-          </div>
+        {/* Right Chevron */}
+        {showRightGradient && (
           <button
             onClick={handleScrollRight}
             onMouseDown={(e) => e.stopPropagation()}
@@ -178,21 +170,21 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
           >
             <ChevronRight size={28} strokeWidth={2.5} />
           </button>
-        </>
-      )}
+        )}
 
-      {/* Scrollable Content */}
-      <div
-        ref={scrollRef}
-        className={`flex gap-4 overflow-x-auto py-6 -my-6 -mx-4 px-4 scrollbar-hide cursor-grab active:cursor-grabbing ${className}`}
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-        onClick={handleClick}
-      >
-        {children}
+        {/* Scrollable Content */}
+        <div
+          ref={scrollRef}
+          className={`flex gap-4 overflow-x-auto -mx-4 px-4 scrollbar-hide cursor-grab active:cursor-grabbing ${className}`}
+          onWheel={handleWheel}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          onClick={handleClick}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );
