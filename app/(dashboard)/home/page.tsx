@@ -13,7 +13,7 @@ import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { format, addDays, startOfDay } from "date-fns";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
-import { Plus, FileText, CalendarIcon } from "lucide-react";
+import { Plus, FileText, CalendarIcon, Inbox } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 
 const GREETINGS = [
@@ -65,7 +65,7 @@ export default function HomePage() {
     return cards
       .filter(c => !c.inDen) // Exclude Den cards
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5);
+      .slice(0, 15); // Increased from 5 to 15
   }, [cards]);
 
   const quickAccess = useMemo(() => {
@@ -230,8 +230,9 @@ export default function HomePage() {
             </Link>
           </div>
           {recent.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
               {recent.map((card) => (
+                <div key={card.id} className="flex-shrink-0 w-[280px]">
                 <RecentCard
                   key={card.id}
                   card={card}
@@ -265,6 +266,7 @@ export default function HomePage() {
                     await updateCard(card.id, { collections: [] });
                   }}
                 />
+                </div>
               ))}
             </div>
           ) : (
@@ -279,18 +281,34 @@ export default function HomePage() {
             Manage shortcuts
           </Link>
         </div>
-        {(pinnedPawkits.length > 0 || quickAccessUnique.length > 0) ? (
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-            {pinnedPawkits.map((pawkit) => (
-              <QuickAccessPawkitCard key={pawkit.id} pawkit={pawkit} />
-            ))}
-            {quickAccessUnique.map((item) => (
-              <QuickAccessCard key={item.id} card={item} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState message="Pin cards or Pawkits to surface them here." />
-        )}
+        <div className="flex gap-4 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+          {/* Inbox Button - Always First */}
+          <Link href="/library" className="flex-shrink-0 w-[200px]">
+            <div className="card-hover h-full rounded-2xl border border-subtle bg-surface p-6 transition flex flex-col items-center justify-center gap-3 cursor-pointer">
+              <div className="p-3 rounded-full bg-purple-500/20">
+                <Inbox size={24} className="text-purple-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground">Inbox</p>
+                <p className="text-xs text-muted-foreground mt-1">Unsorted items</p>
+              </div>
+            </div>
+          </Link>
+
+          {/* Pinned Pawkits */}
+          {pinnedPawkits.map((pawkit) => (
+            <div key={pawkit.id} className="flex-shrink-0 w-[200px]">
+              <QuickAccessPawkitCard pawkit={pawkit} />
+            </div>
+          ))}
+
+          {/* Pinned Cards */}
+          {quickAccessUnique.map((item) => (
+            <div key={item.id} className="flex-shrink-0 w-[200px]">
+              <QuickAccessCard card={item} />
+            </div>
+          ))}
+        </div>
       </section>
 
       <section className="mt-auto space-y-4">
@@ -300,8 +318,9 @@ export default function HomePage() {
             View full calendar
           </Link>
         </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2 md:gap-3">
-          {weekDays.map((day, index) => {
+        <div className="max-w-[1800px] mx-auto">
+          <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+            {weekDays.map((day, index) => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayCards = cardsByDate.get(dateStr) || [];
             const isToday = format(new Date(), 'yyyy-MM-dd') === dateStr;
@@ -372,6 +391,7 @@ export default function HomePage() {
               </div>
             );
           })}
+          </div>
         </div>
       </section>
       </div>
