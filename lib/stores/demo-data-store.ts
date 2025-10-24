@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { CardDTO } from '@/lib/server/cards';
 import { CollectionNode } from '@/lib/types';
+import { ENHANCED_DEMO_CARDS, ENHANCED_DEMO_COLLECTIONS } from './demo-data-enhanced';
 
 type DemoDataStore = {
   cards: CardDTO[];
@@ -574,8 +575,8 @@ export const useDemoDataStore = create<DemoDataStore>()(
         }
 
         set({
-          cards: DEMO_CARDS,
-          collections: DEMO_COLLECTIONS,
+          cards: ENHANCED_DEMO_CARDS,
+          collections: ENHANCED_DEMO_COLLECTIONS,
           isInitialized: true,
         });
       },
@@ -662,8 +663,8 @@ export const useDemoDataStore = create<DemoDataStore>()(
 
       reset: () => {
         set({
-          cards: DEMO_CARDS,
-          collections: DEMO_COLLECTIONS,
+          cards: ENHANCED_DEMO_CARDS,
+          collections: ENHANCED_DEMO_COLLECTIONS,
           isInitialized: true,
         });
       },
