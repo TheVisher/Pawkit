@@ -31,6 +31,8 @@ export type SettingsState = {
   cardSize: number; // 1-5 scale
   // Per-area display settings
   displaySettings: Record<Area, DisplaySettings>;
+  // Pinned notes (max 3)
+  pinnedNoteIds: string[];
   setAutoFetchMetadata: (value: boolean) => void;
   setShowThumbnails: (value: boolean) => void;
   setPreviewServiceUrl: (value: string) => void;
@@ -48,6 +50,10 @@ export type SettingsState = {
   setShowCardUrls: (area: Area, value: boolean) => void;
   setShowCardTags: (area: Area, value: boolean) => void;
   setCardPadding: (area: Area, value: number) => void;
+  // Pinned notes management
+  pinNote: (noteId: string) => boolean; // Returns false if already at max (3)
+  unpinNote: (noteId: string) => void;
+  reorderPinnedNotes: (noteIds: string[]) => void;
 };
 
 const defaultDisplaySettings: DisplaySettings = {
@@ -59,7 +65,7 @@ const defaultDisplaySettings: DisplaySettings = {
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       autoFetchMetadata: true,
       showThumbnails: true,
       previewServiceUrl: DEFAULT_PREVIEW_URL,
@@ -80,6 +86,8 @@ export const useSettingsStore = create<SettingsState>()(
         pawkit: { ...defaultDisplaySettings },
         notes: { ...defaultDisplaySettings },
       },
+      // Initialize pinned notes as empty array
+      pinnedNoteIds: [],
       setAutoFetchMetadata: (value) => set({ autoFetchMetadata: value }),
       setShowThumbnails: (value) => set({ showThumbnails: value }),
       setPreviewServiceUrl: (value) => set({ previewServiceUrl: value }),
@@ -133,6 +141,34 @@ export const useSettingsStore = create<SettingsState>()(
             [area]: { ...state.displaySettings[area], cardPadding: value },
           },
         })),
+      // Pinned notes management
+      pinNote: (noteId) => {
+        const currentPinned = get().pinnedNoteIds;
+
+        // Check if already pinned
+        if (currentPinned.includes(noteId)) {
+          return true;
+        }
+
+        // Check if at max limit (3)
+        if (currentPinned.length >= 3) {
+          return false;
+        }
+
+        // Add to pinned notes
+        set({ pinnedNoteIds: [...currentPinned, noteId] });
+        return true;
+      },
+      unpinNote: (noteId) => {
+        const currentPinned = get().pinnedNoteIds;
+        set({ pinnedNoteIds: currentPinned.filter(id => id !== noteId) });
+      },
+      reorderPinnedNotes: (noteIds) => {
+        // Validate that all IDs are currently pinned and max 3
+        const currentPinned = get().pinnedNoteIds;
+        const validIds = noteIds.filter(id => currentPinned.includes(id)).slice(0, 3);
+        set({ pinnedNoteIds: validIds });
+      },
     }),
     {
       name: "vbm-settings"
