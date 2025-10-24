@@ -51,9 +51,11 @@ type RichMDEditorProps = {
   mode?: "edit" | "preview"; // External mode control
   onModeChange?: (mode: "edit" | "preview") => void; // External mode change handler
   hideControls?: boolean; // Hide the mode toggle bar
+  showToolbar?: boolean; // Control toolbar visibility (for collapsible toolbar)
+  onToggleToolbar?: () => void; // Callback to toggle toolbar
 };
 
-export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents, mode: externalMode, onModeChange, hideControls = false }: RichMDEditorProps) {
+export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents, mode: externalMode, onModeChange, hideControls = false, showToolbar = true, onToggleToolbar }: RichMDEditorProps) {
   const [internalMode, setInternalMode] = useState<"edit" | "preview">("preview");
   const mode = externalMode !== undefined ? externalMode : internalMode;
   const setMode = onModeChange !== undefined ? onModeChange : setInternalMode;
@@ -557,7 +559,8 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
 
       {mode === "edit" ? (
         <>
-          {/* Toolbar */}
+          {/* Toolbar - conditionally shown based on showToolbar */}
+          {showToolbar && (
           <div className="flex items-center gap-1 px-3 py-2 bg-surface-muted border-b border-subtle flex-wrap">
             <button
               onClick={() => insertMarkdown('**', '**')}
@@ -648,6 +651,29 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
               <Layout size={16} />
             </button>
           </div>
+          )}
+
+          {/* Collapse Handle - only show in edit mode when hideControls is true */}
+          {hideControls && onToggleToolbar && (
+            <div className="relative border-b border-white/10">
+              <button
+                onClick={onToggleToolbar}
+                className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 group"
+                title={showToolbar ? "Hide toolbar" : "Show toolbar"}
+              >
+                <div className="w-12 h-1.5 bg-white/10 group-hover:bg-purple-500/50 rounded-full transition-all duration-200 flex items-center justify-center">
+                  <svg
+                    className={`w-4 h-4 text-gray-400 group-hover:text-purple-400 transition-all duration-200 ${showToolbar ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </button>
+            </div>
+          )}
 
           {/* Template Dropdown */}
           {showTemplates && (
