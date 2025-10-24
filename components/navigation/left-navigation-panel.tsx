@@ -600,9 +600,13 @@ export function LeftNavigationPanel({
               id="left-pawkits"
               title="Pawkits"
               icon={<FolderOpen className="h-4 w-4 text-accent" />}
+              onClick={() => handleNavigate("/pawkits")}
               action={
                 <button
-                  onClick={() => setShowCreatePawkitModal(true)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCreatePawkitModal(true);
+                  }}
                   className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100"
                   title="Create new pawkit"
                 >
@@ -611,19 +615,6 @@ export function LeftNavigationPanel({
               }
             >
               <div className="space-y-1">
-                <button
-                  onClick={() => handleNavigate("/pawkits")}
-                  className={`
-                    w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
-                    ${pathname === (pathPrefix + "/pawkits")
-                      ? "bg-accent text-accent-foreground font-medium"
-                      : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
-                    }
-                  `}
-                >
-                  <FolderOpen size={16} className="flex-shrink-0" />
-                  <span className="flex-1 text-left">All Pawkits</span>
-                </button>
                 {collections.map((collection) => renderCollectionTree(collection, 0))}
               </div>
             </PanelSection>

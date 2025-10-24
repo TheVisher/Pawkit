@@ -200,30 +200,47 @@ export type PanelSectionProps = {
   children: ReactNode;
   icon?: ReactNode;
   action?: ReactNode; // Optional action button (like +)
+  onClick?: () => void; // Optional click handler for title (e.g., navigation)
 };
 
-export function PanelSection({ id, title, children, icon, action }: PanelSectionProps) {
+export function PanelSection({ id, title, children, icon, action, onClick }: PanelSectionProps) {
   const collapsedSections = usePanelStore((state) => state.collapsedSections);
   const toggleSection = usePanelStore((state) => state.toggleSection);
 
   const isCollapsed = collapsedSections[id] || false;
 
+  const handleTitleClick = () => {
+    if (onClick) {
+      onClick();
+    } else {
+      toggleSection(id);
+    }
+  };
+
   return (
     <div className="space-y-3 pb-3">
       <div className="w-full flex items-center gap-2 group">
         <button
-          onClick={() => toggleSection(id)}
+          onClick={handleTitleClick}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1"
+        >
+          {icon}
+          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+            {title}
+          </h3>
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleSection(id);
+          }}
+          className="p-1 rounded hover:bg-white/10 transition-colors flex-shrink-0"
         >
           <ChevronDown
             className={`h-4 w-4 text-accent transition-transform duration-200 ${
               isCollapsed ? "-rotate-90" : ""
             }`}
           />
-          {icon}
-          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-            {title}
-          </h3>
         </button>
         {action && (
           <div className="flex-shrink-0">
