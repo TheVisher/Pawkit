@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
-import { FileText, FolderOpen, Link2, Tag, Clock, BookOpen, Sparkles, Zap, Edit2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { FileText, Link2, Clock, Bot } from "lucide-react";
+import { BacklinksPanel } from "@/components/notes/backlinks-panel";
 
 export function CardDetailsPanel() {
+  const router = useRouter();
   const activeCardId = usePanelStore((state) => state.activeCardId);
   const { cards, updateCard } = useDataStore();
 
@@ -14,13 +16,15 @@ export function CardDetailsPanel() {
   const card = cards.find((c) => c.id === activeCardId);
 
   // Internal tab state
-  const [activeTab, setActiveTab] = useState<
-    "pawkits" | "notes" | "links" | "tags" | "schedule" | "reader" | "summary" | "actions"
-  >("pawkits");
+  const [activeTab, setActiveTab] = useState<"notes" | "links" | "schedule" | "ai">("notes");
 
-  // Edit title state
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [editedTitle, setEditedTitle] = useState(card?.title || "");
+  // Notes state
+  const [notes, setNotes] = useState(card?.notes || "");
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  // Schedule state
+  const initialDate = card?.scheduledDate ? card.scheduledDate.split('T')[0] : "";
+  const [scheduledDate, setScheduledDate] = useState(initialDate);
 
   if (!card) {
     return (
@@ -30,87 +34,172 @@ export function CardDetailsPanel() {
     );
   }
 
-  const isNote = card.type === "md-note" || card.type === "text-note";
+  // Handle notes save
+  const handleSaveNotes = async () => {
+    if (notes === card.notes) return;
 
-  const handleSaveTitle = () => {
-    if (editedTitle.trim() !== card.title) {
-      updateCard(card.id, { title: editedTitle.trim() });
-    }
-    setIsEditingTitle(false);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSaveTitle();
-    } else if (e.key === "Escape") {
-      setEditedTitle(card.title || "");
-      setIsEditingTitle(false);
+    setIsSavingNotes(true);
+    try {
+      await updateCard(card.id, { notes });
+    } catch (error) {
+      console.error("Failed to save notes:", error);
+    } finally {
+      setIsSavingNotes(false);
     }
   };
 
-  // Vertical navigation buttons
+  // Handle schedule save
+  const handleSaveSchedule = async () => {
+    if (!scheduledDate) return;
+
+    // Convert YYYY-MM-DD to ISO datetime at noon UTC to avoid timezone issues
+    const isoDate = `${scheduledDate}T12:00:00.000Z`;
+    try {
+      await updateCard(card.id, { scheduledDate: isoDate });
+    } catch (error) {
+      console.error("Failed to save schedule:", error);
+    }
+  };
+
+  // Handle schedule clear
+  const handleClearSchedule = async () => {
+    setScheduledDate("");
+    try {
+      await updateCard(card.id, { scheduledDate: null });
+    } catch (error) {
+      console.error("Failed to clear schedule:", error);
+    }
+  };
+
+  // Tabs configuration
   const tabs = [
-    { id: "pawkits", icon: FolderOpen, label: "Pawkits", show: true },
-    { id: "notes", icon: FileText, label: "Notes", show: true },
-    { id: "links", icon: Link2, label: "Links", show: true },
-    { id: "tags", icon: Tag, label: "Tags", show: isNote },
-    { id: "schedule", icon: Clock, label: "Schedule", show: true },
-    { id: "reader", icon: BookOpen, label: "Reader", show: !isNote },
-    { id: "summary", icon: Sparkles, label: "Summary", show: !isNote },
-    { id: "actions", icon: Zap, label: "Actions", show: true },
-  ].filter((tab) => tab.show);
+    { id: "notes" as const, icon: FileText, label: "Notes" },
+    { id: "links" as const, icon: Link2, label: "Links" },
+    { id: "schedule" as const, icon: Clock, label: "Schedule" },
+    { id: "ai" as const, icon: Bot, label: "AI Chat" },
+  ];
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4">
-        {/* Tab Content */}
-        {activeTab === "pawkits" && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Pawkits</h3>
-            <p className="text-xs text-muted-foreground">
-              Pawkits tab content coming soon...
-            </p>
-          </div>
-        )}
+      {/* Main Content Area - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
+        style={{
+          maskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)"
+        }}
+      >
+        {/* Notes Tab */}
         {activeTab === "notes" && (
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Notes</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Notes</h3>
+              {notes !== card.notes && (
+                <button
+                  onClick={handleSaveNotes}
+                  disabled={isSavingNotes}
+                  className="text-xs text-accent hover:underline disabled:opacity-50"
+                >
+                  {isSavingNotes ? "Saving..." : "Save"}
+                </button>
+              )}
+            </div>
+
             <textarea
-              value={card.notes || ""}
-              placeholder="Add notes about this card..."
-              className="w-full min-h-[200px] rounded border border-white/10 bg-white/5 p-3 text-sm text-foreground placeholder-muted-foreground resize-none focus:border-accent focus:outline-none"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              onBlur={handleSaveNotes}
+              placeholder="Add your notes about this card..."
+              className="w-full min-h-[300px] rounded-lg border border-white/10 bg-white/5 p-3 text-sm text-foreground placeholder-muted-foreground resize-none focus:border-accent focus:outline-none"
             />
           </div>
         )}
+
+        {/* Links/Backlinks Tab */}
         {activeTab === "links" && (
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Links</h3>
-            <p className="text-xs text-muted-foreground">
-              Backlinks and references coming soon...
-            </p>
+            <h3 className="text-sm font-semibold text-foreground">Backlinks</h3>
+            <BacklinksPanel noteId={card.id} onNavigate={(id) => router.push(`/notes?id=${id}`)} />
           </div>
         )}
+
+        {/* Schedule Tab */}
         {activeTab === "schedule" && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Schedule</h3>
-            <p className="text-xs text-muted-foreground">
-              Schedule for calendar coming soon...
-            </p>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-2">📅 Schedule for Calendar</h3>
+              <p className="text-xs text-muted-foreground">
+                Assign a date to this card to display it on your calendar. Perfect for tracking release dates, reminders, or countdowns.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-2">
+                Scheduled Date
+              </label>
+              <input
+                type="date"
+                value={scheduledDate}
+                onChange={(e) => setScheduledDate(e.target.value)}
+                className="w-full rounded-lg bg-white/5 px-3 py-2 text-sm text-foreground border border-white/10 focus:border-accent focus:outline-none"
+              />
+            </div>
+
+            {scheduledDate && (
+              <div className="p-3 rounded-lg bg-white/5 border border-white/10">
+                <p className="text-xs text-muted-foreground">
+                  This card will appear on your calendar on{" "}
+                  <button
+                    onClick={() => router.push('/calendar')}
+                    className="text-accent font-medium hover:underline cursor-pointer"
+                  >
+                    {(() => {
+                      // Parse YYYY-MM-DD as local date to avoid timezone issues
+                      const [year, month, day] = scheduledDate.split('-').map(Number);
+                      return new Date(year, month - 1, day).toLocaleDateString();
+                    })()}
+                  </button>
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveSchedule}
+                disabled={!scheduledDate || scheduledDate === initialDate}
+                className="flex-1 px-4 py-2 rounded-lg bg-accent text-accent-foreground text-sm font-medium hover:bg-accent/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Save Date
+              </button>
+              {card.scheduledDate && (
+                <button
+                  onClick={handleClearSchedule}
+                  className="flex-1 px-4 py-2 rounded-lg border border-white/10 text-sm font-medium hover:bg-white/5 transition-colors"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
         )}
-        {activeTab === "actions" && (
+
+        {/* AI Chat Tab */}
+        {activeTab === "ai" && (
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Actions</h3>
-            <p className="text-xs text-muted-foreground">
-              Card actions coming soon...
-            </p>
+            <h3 className="text-sm font-semibold text-foreground">AI Chat</h3>
+            <div className="p-8 text-center">
+              <Bot size={48} className="mx-auto mb-4 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                AI Chat coming soon...
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                Chat with AI about this card&apos;s content, get insights, and more.
+              </p>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Icon Navigation Grid - Above Details */}
+      {/* Icon Navigation Grid - Above keyboard shortcuts */}
       <div className="border-t border-white/10 p-3 flex-shrink-0">
         <div className="grid grid-cols-4 gap-2">
           {tabs.map((tab) => {
@@ -119,7 +208,7 @@ export function CardDetailsPanel() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`
                   w-full aspect-square rounded-xl flex items-center justify-center border transition-all
                   ${
@@ -134,110 +223,6 @@ export function CardDetailsPanel() {
               </button>
             );
           })}
-        </div>
-      </div>
-
-      {/* Bottom Details Section - Always Visible */}
-      <div className="border-t border-white/10 p-4 space-y-3 flex-shrink-0">
-        <h3 className="text-xs font-medium text-muted-foreground uppercase">Details</h3>
-
-        {/* Title with Edit */}
-        <div>
-          {isEditingTitle ? (
-            <textarea
-              value={editedTitle}
-              onChange={(e) => setEditedTitle(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onBlur={handleSaveTitle}
-              autoFocus
-              rows={3}
-              className="w-full text-sm font-semibold text-foreground bg-surface border border-white/10 rounded px-2 py-1 focus:outline-none focus:border-accent resize-none"
-              placeholder="Enter title..."
-            />
-          ) : (
-            <div className="flex items-start gap-2 group">
-              <h4 className="flex-1 text-sm font-semibold text-foreground line-clamp-2">
-                {card.title || card.domain || "Untitled"}
-              </h4>
-              <button
-                onClick={() => {
-                  setEditedTitle(card.title || "");
-                  setIsEditingTitle(true);
-                }}
-                className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0 opacity-0 group-hover:opacity-100"
-                title="Edit title"
-              >
-                <Edit2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )}
-          {card.url && card.domain && (
-            <a
-              href={card.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              title={card.url}
-              className="text-xs text-accent hover:underline truncate block"
-            >
-              {card.domain}
-            </a>
-          )}
-        </div>
-
-        {/* Pawkits */}
-        {card.collections && card.collections.length > 0 && (
-          <div>
-            <h5 className="text-xs text-muted-foreground mb-1">Pawkits</h5>
-            <div className="flex flex-wrap gap-1">
-              {card.collections.map((collection) => (
-                <Badge key={collection} variant="secondary" className="text-xs">
-                  📁 {collection}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tags */}
-        {card.tags && card.tags.length > 0 && (
-          <div>
-            <h5 className="text-xs text-muted-foreground mb-1">Tags</h5>
-            <div className="flex flex-wrap gap-1">
-              {card.tags.map((tag) => (
-                <Badge key={tag} variant="outline" className="text-xs">
-                  #{tag}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Metadata */}
-        <div className="space-y-1.5 text-xs text-muted-foreground">
-          {card.status === "PENDING" && (
-            <div className="flex justify-between items-center">
-              <span>Status</span>
-              <Badge variant="secondary" className="text-xs">Fetching</Badge>
-            </div>
-          )}
-          {card.status === "ERROR" && (
-            <div className="flex justify-between items-center">
-              <span>Status</span>
-              <Badge variant="destructive" className="text-xs">Error</Badge>
-            </div>
-          )}
-          <div className="flex justify-between">
-            <span>Created</span>
-            <span className="text-foreground">
-              {new Date(card.createdAt).toLocaleDateString()}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>Updated</span>
-            <span className="text-foreground">
-              {new Date(card.updatedAt).toLocaleDateString()}
-            </span>
-          </div>
         </div>
       </div>
     </div>
