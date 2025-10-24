@@ -1,94 +1,75 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
-import { Calendar, dateFnsLocalizer, View } from "react-big-calendar";
-import { format, parse, startOfWeek, getDay } from "date-fns";
+import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
-import { CardModel } from "@/lib/types";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
+import { CustomCalendar } from "@/components/calendar/custom-calendar";
+import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/daily-notes";
 import { CalendarIcon } from "lucide-react";
-import "react-big-calendar/lib/css/react-big-calendar.css";
-
-const locales = {
-  "en-US": require("date-fns/locale/en-US"),
-};
-
-const localizer = dateFnsLocalizer({
-  format,
-  parse,
-  startOfWeek,
-  getDay,
-  locales,
-});
-
-type CalendarEvent = {
-  id: string;
-  title: string;
-  start: Date;
-  end: Date;
-  resource: CardModel;
-};
+import { GlowButton } from "@/components/ui/glow-button";
 
 export default function DemoCalendarPage() {
-  const { cards, collections } = useDemoAwareStore();
-  const [view, setView] = useState<View>("month");
-  const [date, setDate] = useState(new Date());
+  const { cards, collections, addCard } = useDemoAwareStore();
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
-  // Convert cards to calendar events
-  const events: CalendarEvent[] = useMemo(() => {
-    return cards
-      .filter((card) => card.scheduledDate && !card.inDen)
-      .map((card) => {
-        const dateStr = card.scheduledDate!.split('T')[0];
-        const [year, month, day] = dateStr.split('-').map(Number);
-        const cardDate = new Date(year, month - 1, day);
-        return {
-          id: card.id,
-          title: card.title || card.domain || card.url,
-          start: cardDate,
-          end: cardDate,
-          resource: card,
-        };
-      });
-  }, [cards]);
-
-  const handleSelectEvent = useCallback((event: CalendarEvent) => {
-    setActiveCardId(event.id);
-  }, []);
-
-  const handleNavigate = useCallback((newDate: Date) => {
-    setDate(newDate);
-  }, []);
-
-  const handleViewChange = useCallback((newView: View) => {
-    setView(newView);
+  // Track if component is mounted (for portal rendering)
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
   }, []);
 
   const activeCard = useMemo(() => {
     return cards.find((card) => card.id === activeCardId) ?? null;
   }, [cards, activeCardId]);
 
-  const EventComponent = ({ event }: { event: CalendarEvent }) => {
-    const card = event.resource;
-    return (
-      <div className="flex items-center gap-1 overflow-hidden text-xs">
-        {card.image && (
-          <div className="h-4 w-4 flex-shrink-0 overflow-hidden rounded">
-            <img
-              src={card.image}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          </div>
-        )}
-        <span className="truncate">{event.title}</span>
-      </div>
+  const handleCreateDailyNote = async (date: Date) => {
+    const title = generateDailyNoteTitle(date);
+    const content = generateDailyNoteContent(date);
+
+    try {
+      await addCard({
+        type: 'md-note',
+        title,
+        content,
+        tags: ['daily'],
+        collections: []
+      });
+
+      // Find the newly created card
+      setTimeout(() => {
+        const newCard = cards.find(c => c.title === title);
+        if (newCard) {
+          setActiveCardId(newCard.id);
+          setSelectedDate(null);
+        }
+      }, 200);
+    } catch (error) {
+      console.error('Failed to create daily note:', error);
+    }
+  };
+
+  // Get cards scheduled for a specific date
+  const getCardsForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return cards.filter(card =>
+      card.scheduledDate &&
+      card.scheduledDate.split('T')[0] === dateStr &&
+      !card.inDen
     );
+  };
+
+  // Get daily note for a specific date
+  const getDailyNoteForDate = (date: Date) => {
+    const title = generateDailyNoteTitle(date);
+    return cards.find(c => c.title === title && !c.inDen);
   };
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
@@ -97,31 +78,145 @@ export default function DemoCalendarPage() {
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Calendar</h1>
             <p className="text-sm text-muted-foreground">
-              View your scheduled cards by date
+              View your scheduled cards and daily notes by date
             </p>
           </div>
         </div>
       </div>
 
-      <div className="calendar-container rounded-2xl border border-subtle bg-surface p-6">
-        <Calendar
-          localizer={localizer}
-          events={events}
-          startAccessor="start"
-          endAccessor="end"
-          view={view}
-          date={date}
-          onNavigate={handleNavigate}
-          onView={handleViewChange}
-          onSelectEvent={handleSelectEvent}
-          components={{
-            event: EventComponent,
-          }}
-          style={{ height: 700 }}
-          className="pawkit-calendar"
-        />
-      </div>
+      {/* Custom Calendar */}
+      <CustomCalendar
+        cards={cards}
+        onDayClick={(date) => setSelectedDate(date)}
+        onCardClick={(card) => setActiveCardId(card.id)}
+        onCreateDailyNote={handleCreateDailyNote}
+      />
 
+      {/* Expanded Day View Modal */}
+      {selectedDate && !activeCard && isMounted && (() => {
+        const scheduledCards = getCardsForDate(selectedDate);
+        const dailyNote = getDailyNoteForDate(selectedDate);
+
+        const modalContent = (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={() => setSelectedDate(null)}
+          >
+            <div
+              className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg p-6 w-full max-w-2xl shadow-xl max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <h2 className="text-xl font-semibold text-foreground mb-2">
+                {selectedDate.toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </h2>
+              <p className="text-sm text-muted-foreground mb-6">
+                {scheduledCards.length + (dailyNote ? 1 : 0)} item(s) for this day
+              </p>
+
+              {/* Daily Note Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <CalendarIcon size={16} />
+                  Daily Note
+                </h3>
+                {dailyNote ? (
+                  <GlowButton
+                    onClick={() => {
+                      setActiveCardId(dailyNote.id);
+                      setSelectedDate(null);
+                    }}
+                    variant="primary"
+                    className="w-full text-left p-4 rounded-xl justify-start"
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <div>
+                        <div className="font-medium text-purple-200">{dailyNote.title}</div>
+                        <div className="text-sm text-purple-300/70 mt-1">
+                          {dailyNote.content?.substring(0, 100)}...
+                        </div>
+                      </div>
+                      <div className="text-purple-300">→</div>
+                    </div>
+                  </GlowButton>
+                ) : (
+                  <GlowButton
+                    onClick={() => handleCreateDailyNote(selectedDate)}
+                    variant="primary"
+                    className="w-full text-left p-4 rounded-xl justify-start"
+                  >
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span>+ Create daily note for this day</span>
+                    </div>
+                  </GlowButton>
+                )}
+              </div>
+
+              {/* Scheduled Cards Section */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-foreground mb-3">
+                  Scheduled Cards ({scheduledCards.length})
+                </h3>
+                {scheduledCards.length > 0 ? (
+                  <div className="space-y-2">
+                    {scheduledCards.map((card) => (
+                      <button
+                        key={card.id}
+                        onClick={() => {
+                          setActiveCardId(card.id);
+                          setSelectedDate(null);
+                        }}
+                        className="w-full text-left p-3 rounded-lg bg-surface-soft hover:bg-surface transition-colors border border-subtle flex items-center gap-3"
+                      >
+                        {card.image && (
+                          <img
+                            src={card.image}
+                            alt=""
+                            className="w-12 h-12 rounded object-cover flex-shrink-0"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground truncate">
+                            {card.title || card.domain || card.url}
+                          </div>
+                          <div className="text-sm text-muted-foreground truncate">
+                            {card.domain || card.url}
+                          </div>
+                        </div>
+                        <div className="text-muted-foreground">→</div>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-subtle rounded-lg">
+                    No cards scheduled for this day
+                  </div>
+                )}
+              </div>
+
+              {/* Close Button */}
+              <div className="flex justify-end">
+                <GlowButton
+                  onClick={() => setSelectedDate(null)}
+                  variant="primary"
+                  size="md"
+                >
+                  Close
+                </GlowButton>
+              </div>
+            </div>
+          </div>
+        );
+
+        return createPortal(modalContent, document.body);
+      })()}
+
+      {/* Card Detail Modal */}
       {activeCard && (
         <CardDetailModal
           card={activeCard}

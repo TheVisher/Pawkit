@@ -19,15 +19,16 @@ function DemoPawkitPageContent({ params }: { params: Promise<{ slug: string }> }
 
   const { cards, collections } = useDemoAwareStore();
 
-  // Find the collection by slug (using id as slug for demo)
-  const collection = collections.find(c => c.id === slug);
+  // Find the collection by slug OR id
+  const collection = collections.find(c => c.slug === slug || c.id === slug);
 
   const items = useMemo(() => {
     let filtered = cards;
 
-    // Filter by this collection
+    // Filter by this collection - check both slug and id
     filtered = filtered.filter(card =>
-      card.collections?.includes(slug)
+      card.collections?.includes(slug) ||
+      (collection && card.collections?.includes(collection.id))
     );
 
     // Exclude Den items
@@ -44,7 +45,7 @@ function DemoPawkitPageContent({ params }: { params: Promise<{ slug: string }> }
     }
 
     return filtered;
-  }, [cards, slug, q]);
+  }, [cards, slug, q, collection]);
 
   return (
     <LibraryView

@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react";
 import type { CardModel, CollectionNode } from "@/lib/types";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ChevronDown, Check } from "lucide-react";
-import { useDataStore } from "@/lib/stores/data-store";
+import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { GlowButton } from "@/components/ui/glow-button";
 
 type DigUpViewProps = {
@@ -68,9 +68,14 @@ export function DigUpView({
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [totalCount, setTotalCount] = useState(initialTotalCount);
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Detect if we're in demo mode and use appropriate path prefix
+  const isDemo = pathname?.startsWith('/demo');
+  const pathPrefix = isDemo ? '/demo' : '';
 
   // Get data store methods for local-first operations
-  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDataStore();
+  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDemoAwareStore();
 
   // Re-sort cards when they change or when coming back to the view
   useEffect(() => {
@@ -107,7 +112,7 @@ export function DigUpView({
       setCurrentIndex(currentIndex + 1);
     } else {
       // All cards reviewed
-      router.push("/library");
+      router.push(`${pathPrefix}/library`);
     }
   };
 
@@ -171,7 +176,7 @@ export function DigUpView({
   };
 
   const handleClose = () => {
-    router.push("/library");
+    router.push(`${pathPrefix}/library`);
   };
 
   const handleSnooze = (days: number) => {

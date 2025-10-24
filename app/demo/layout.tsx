@@ -41,7 +41,8 @@ export default function DemoLayout({ children }: { children: ReactNode }) {
     close: closePanel,
     setMode: setPanelMode,
     setActiveCardId,
-    toggle: togglePanel
+    toggle: togglePanel,
+    open: openPanel
   } = usePanelStore();
 
   // Left Navigation Panel state
@@ -50,6 +51,7 @@ export default function DemoLayout({ children }: { children: ReactNode }) {
   const closeLeft = usePanelStore((state) => state.closeLeft);
   const setLeftMode = usePanelStore((state) => state.setLeftMode);
   const toggleLeft = usePanelStore((state) => state.toggleLeft);
+  const openLeft = usePanelStore((state) => state.openLeft);
 
   // Track content type changes for animation
   const [animatingContentType, setAnimatingContentType] = useState(contentType);
@@ -64,6 +66,14 @@ export default function DemoLayout({ children }: { children: ReactNode }) {
       initialize();
     }
   }, [isInitialized, initialize]);
+
+  // Open both panels on first load to show 3-panel layout
+  useEffect(() => {
+    if (isInitialized && !isLeftOpen && !isPanelOpen) {
+      openLeft();
+      openPanel();
+    }
+  }, [isInitialized, isLeftOpen, isPanelOpen, openLeft, openPanel]);
 
   useEffect(() => {
     if (contentType !== animatingContentType) {
@@ -164,26 +174,6 @@ export default function DemoLayout({ children }: { children: ReactNode }) {
                 rightOpen={isPanelOpen}
                 rightMode={panelMode}
               >
-                {/* Demo Banner - Only show in library/main view */}
-                <div className="mb-6 rounded-2xl border-2 border-[#7c3aed]/30 bg-gradient-to-r from-[#7c3aed]/10 to-[#a36bff]/10 p-4 backdrop-blur-sm">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-[#7c3aed]">Demo Mode</h2>
-                      <p className="text-sm text-[#a3a3b0]">
-                        You&apos;re exploring Pawkit in demo mode. Try adding cards, creating Pawkits, and organizing your bookmarks!
-                      </p>
-                    </div>
-                    <Link href="/">
-                      <Button
-                        variant="outline"
-                        className="border-[#7c3aed]/30 text-[#7c3aed] hover:bg-[#7c3aed] hover:text-white rounded-xl transition-all"
-                      >
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Exit Demo
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
                 {children}
               </ContentPanel>
             </main>
@@ -303,8 +293,8 @@ export default function DemoLayout({ children }: { children: ReactNode }) {
             </div>
           </ControlPanel>
 
-          {/* Fixed Exit Demo Button - Bottom Left */}
-          <div className="fixed bottom-6 left-6 z-50">
+          {/* Fixed Exit Demo Button - Bottom Left - Above all panels */}
+          <div className="fixed bottom-6 left-6 z-[200]">
             <Link href="/">
               <Button
                 size="lg"
