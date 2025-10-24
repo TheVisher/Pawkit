@@ -202,16 +202,21 @@ class SyncService {
   }
 
   /**
-   * Flatten collection tree into a flat array
+   * Flatten collection tree into a flat array, stripping children
+   * The tree structure will be rebuilt from parentId relationships
    */
   private flattenCollections(collections: CollectionNode[]): CollectionNode[] {
     const flattened: CollectionNode[] = [];
 
     const flatten = (nodes: CollectionNode[]) => {
       for (const node of nodes) {
-        flattened.push(node);
-        if (node.children && node.children.length > 0) {
-          flatten(node.children);
+        // Strip children array - tree will be rebuilt from parentId
+        const { children, ...nodeWithoutChildren } = node;
+        // Always set children to empty array to ensure clean state
+        flattened.push({ ...nodeWithoutChildren, children: [] } as CollectionNode);
+
+        if (children && children.length > 0) {
+          flatten(children);
         }
       }
     };
