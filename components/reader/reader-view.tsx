@@ -23,10 +23,10 @@ export function ReaderView({ title, content, url, isExpanded, onToggleExpand, on
   }, [content]);
 
   return (
-    <div className={`flex flex-col h-full ${isExpanded ? "bg-[#fefefe]" : ""}`}>
+    <div className={`flex flex-col h-full ${isExpanded ? "bg-[#faf8f3]" : ""}`}>
       {/* Header - only show in expanded mode */}
       {isExpanded && (
-        <div className="border-b border-gray-200 bg-white px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+        <div className="border-b border-gray-200 bg-[#faf8f3] px-8 py-4 flex items-center justify-between sticky top-0 z-10">
           <div className="flex items-center gap-4">
             <button
               onClick={onToggleExpand}
@@ -54,7 +54,7 @@ export function ReaderView({ title, content, url, isExpanded, onToggleExpand, on
       )}
 
       {/* Article Content */}
-      <div className={`flex-1 overflow-y-auto bg-[#fefefe] ${isExpanded ? "px-8 py-12" : "p-6"}`}>
+      <div className={`flex-1 overflow-y-auto bg-[#faf8f3] ${isExpanded ? "px-8 py-12" : "p-6"}`}>
         <article className="mx-auto max-w-[680px]">
           {/* Title - show in non-expanded mode */}
           {!isExpanded && (
