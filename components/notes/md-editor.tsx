@@ -53,15 +53,17 @@ type RichMDEditorProps = {
   hideControls?: boolean; // Hide the mode toggle bar
   showToolbar?: boolean; // Control toolbar visibility (for collapsible toolbar)
   onToggleToolbar?: () => void; // Callback to toggle toolbar
+  textareaRef?: React.MutableRefObject<HTMLTextAreaElement | null>; // External ref to textarea
 };
 
-export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents, mode: externalMode, onModeChange, hideControls = false, showToolbar = true, onToggleToolbar }: RichMDEditorProps) {
+export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents, mode: externalMode, onModeChange, hideControls = false, showToolbar = true, onToggleToolbar, textareaRef: externalTextareaRef }: RichMDEditorProps) {
   const [internalMode, setInternalMode] = useState<"edit" | "preview">("preview");
   const mode = externalMode !== undefined ? externalMode : internalMode;
   const setMode = onModeChange !== undefined ? onModeChange : setInternalMode;
   const [showTemplates, setShowTemplates] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = externalTextareaRef || internalTextareaRef;
   const cards = useDataStore((state) => state.cards);
 
   // Wiki-link autocomplete state
