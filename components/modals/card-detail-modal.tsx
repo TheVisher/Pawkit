@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen, Sparkles } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2 } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -363,10 +363,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
-  // Bottom tab view mode: 'preview' | 'reader' | 'screenshot' | 'metadata'
-  const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'screenshot' | 'metadata'>('preview');
+  // Bottom tab view mode: 'preview' | 'reader' | 'metadata'
+  const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'metadata'>('preview');
   const [denPawkitSlugs, setDenPawkitSlugs] = useState<Set<string>>(new Set());
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const lastSavedNotesRef = useRef(card.notes ?? "");
   const lastSavedContentRef = useRef(card.content ?? "");
 
@@ -767,6 +768,16 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   if (!isMounted) return null;
 
+  // Helper function to get shortened domain for display
+  const getShortDomain = (url: string) => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname.replace('www.', '');
+    } catch {
+      return url;
+    }
+  };
+
   const modalContent = (
     <>
       {/* Backdrop */}
@@ -785,29 +796,125 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         }}
       >
         <div
-          className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative ${
-            isReaderExpanded ? "w-full h-full flex flex-col" : isYouTubeUrl(card.url) ? "w-full max-w-6xl" : isNote ? "w-full max-w-3xl h-[80vh] flex flex-col" : "max-w-full max-h-full"
+          className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative flex flex-col ${
+            isReaderExpanded ? "w-full h-full" : isYouTubeUrl(card.url) ? "w-full max-w-6xl" : isNote ? "w-full max-w-3xl h-[80vh]" : "w-full max-w-5xl h-[85vh]"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Mobile Details Toggle Button */}
-          <button
-            onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-            className="md:hidden absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-3 shadow-lg border border-gray-700"
-            title={isDetailsOpen ? "Hide details" : "Show details"}
-          >
-            {isDetailsOpen ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
-          </button>
+          {/* Top Bar - Only for URL cards (not notes or YouTube) */}
+          {!isNote && !isYouTubeUrl(card.url) && (
+            <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm px-6 py-4 flex items-center justify-between flex-shrink-0">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-semibold text-gray-100 truncate">
+                  {card.title || "Untitled"}
+                </h2>
+                <a
+                  href={card.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-gray-400 hover:text-accent transition-colors truncate block"
+                  title={card.url}
+                >
+                  {getShortDomain(card.url)}
+                </a>
+              </div>
+              <div className="flex items-center gap-2 ml-4">
+                {/* 3-Dot Menu */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                    title="More options"
+                  >
+                    <MoreVertical size={20} className="text-gray-400" />
+                  </button>
+                  {isMenuOpen && (
+                    <>
+                      {/* Backdrop to close menu */}
+                      <div
+                        className="fixed inset-0 z-[110]"
+                        onClick={() => setIsMenuOpen(false)}
+                      />
+                      {/* Dropdown Menu */}
+                      <div className="absolute right-0 mt-2 w-48 rounded-lg border border-white/10 bg-gray-900 shadow-xl z-[111] overflow-hidden">
+                        <button
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            handleRefreshMetadata();
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center gap-2 transition-colors"
+                        >
+                          <RefreshCw size={16} />
+                          Refresh Preview
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            navigator.clipboard.writeText(card.url);
+                            setToast("Link copied to clipboard");
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center gap-2 transition-colors"
+                        >
+                          <Share2 size={16} />
+                          Share
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            handleTogglePin();
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center gap-2 transition-colors"
+                        >
+                          <Pin size={16} />
+                          {isPinned ? "Unpin from Home" : "Pin to Home"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            handleDelete();
+                            handleClose();
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors border-t border-white/10"
+                        >
+                          <Trash2 size={16} />
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {/* Close Button */}
+                <button
+                  onClick={handleClose}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Close"
+                >
+                  <X size={20} className="text-gray-400" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Details Toggle Button - Only for notes */}
+          {isNote && (
+            <button
+              onClick={() => setIsDetailsOpen(!isDetailsOpen)}
+              className="md:hidden absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-3 shadow-lg border border-gray-700"
+              title={isDetailsOpen ? "Hide details" : "Show details"}
+            >
+              {isDetailsOpen ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              )}
+            </button>
+          )}
           {/* Card Content - Image, Reader, YouTube Player, or Note Preview/Edit */}
-          <div className={`relative ${isReaderExpanded || isNote ? "flex-1 flex flex-col overflow-hidden" : ""}`}>
+          <div className={`relative flex-1 overflow-hidden ${isNote ? "flex flex-col" : ""}`}>
             {isNote ? (
               <>
                 {/* Note content area */}
@@ -840,14 +947,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               </div>
             ) : (
               <>
-                <div className="p-8">
+                {/* Content Area - Fixed height for consistent modal size */}
+                <div className="flex-1 overflow-hidden flex items-center justify-center p-8">
                   {bottomTabMode === 'preview' && (
-                    <>
+                    <div className="w-full h-full flex items-center justify-center">
                       {card.image ? (
                         <img
                           src={card.image}
                           alt={card.title || "Card preview"}
-                          className="max-w-full max-h-[calc(90vh-4rem)] object-contain rounded-lg"
+                          className="max-w-full max-h-full object-contain rounded-lg"
                         />
                       ) : (
                         <div className="text-center space-y-4">
@@ -859,11 +967,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                           </h3>
                         </div>
                       )}
-                    </>
+                    </div>
                   )}
 
                   {bottomTabMode === 'reader' && (
-                    <div className="h-[calc(90vh-12rem)] overflow-y-auto">
+                    <div className="w-full h-full overflow-y-auto">
                       {articleContent ? (
                         <ReaderView
                           title={card.title || card.domain || card.url}
@@ -906,28 +1014,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     </div>
                   )}
 
-                  {bottomTabMode === 'screenshot' && (
-                    <div className="h-[calc(90vh-12rem)] overflow-y-auto flex items-center justify-center">
-                      {card.image ? (
-                        <img
-                          src={card.image}
-                          alt={card.title || "Card screenshot"}
-                          className="max-w-full max-h-full object-contain rounded-lg"
-                        />
-                      ) : (
-                        <div className="text-center space-y-4">
-                          <div className="text-gray-400 mb-4">
-                            <Globe size={48} className="mx-auto" />
-                          </div>
-                          <h3 className="text-xl font-semibold text-gray-300">No Screenshot Available</h3>
-                          <p className="text-sm text-gray-500">No preview image was captured for this card</p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   {bottomTabMode === 'metadata' && (
-                    <div className="h-[calc(90vh-12rem)] overflow-y-auto">
+                    <div className="w-full h-full overflow-y-auto">
                       <div className="max-w-2xl mx-auto space-y-6">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
@@ -973,7 +1061,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
 
                 {/* Bottom Tab Buttons - Fabric-style */}
-                <div className="border-t border-white/10 bg-white/5 backdrop-blur-sm">
+                <div className="border-t border-white/10 bg-white/5 backdrop-blur-sm flex-shrink-0">
                   <div className="flex items-center justify-center gap-2 p-4">
                     <Button
                       onClick={() => setBottomTabMode('preview')}
@@ -992,15 +1080,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     >
                       <BookOpen size={16} />
                       Reader
-                    </Button>
-                    <Button
-                      onClick={() => setBottomTabMode('screenshot')}
-                      variant={bottomTabMode === 'screenshot' ? 'default' : 'ghost'}
-                      size="sm"
-                      className="flex items-center gap-2"
-                    >
-                      <FileText size={16} />
-                      Screenshot
                     </Button>
                     <Button
                       onClick={() => setBottomTabMode('metadata')}
