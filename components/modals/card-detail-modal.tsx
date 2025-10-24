@@ -800,7 +800,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             isReaderExpanded
               ? "w-full h-full"
               : isYouTubeUrl(card.url)
-                ? "w-full max-w-6xl h-[85vh]"
+                ? "w-full max-w-6xl h-[70vh]"
                 : isNote
                   ? "w-full max-w-3xl h-[80vh]"
                   : "w-full max-w-4xl h-[85vh]"
