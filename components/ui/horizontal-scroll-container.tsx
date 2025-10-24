@@ -13,6 +13,7 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+  const [hasDragged, setHasDragged] = useState(false);
   const [showLeftGradient, setShowLeftGradient] = useState(false);
   const [showRightGradient, setShowRightGradient] = useState(false);
 
@@ -44,6 +45,7 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
     if (!container) return;
 
     setIsDragging(true);
+    setHasDragged(false);
     setStartX(e.pageX - container.offsetLeft);
     setScrollLeft(container.scrollLeft);
     container.style.cursor = "grabbing";
@@ -60,23 +62,38 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
 
     const x = e.pageX - container.offsetLeft;
     const walk = (x - startX) * 1.5; // Multiply for faster scroll
+
+    // If user has dragged more than 5px, mark as dragged
+    if (Math.abs(walk) > 5) {
+      setHasDragged(true);
+    }
+
     container.scrollLeft = scrollLeft - walk;
   };
 
   // Stop dragging
-  const handleMouseUp = () => {
-    setIsDragging(false);
+  const handleMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
     const container = scrollRef.current;
     if (container) {
       container.style.cursor = "grab";
       container.style.userSelect = "";
     }
+
+    // If user dragged significantly, prevent click events
+    if (hasDragged && isDragging) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+
+    setIsDragging(false);
+    setHasDragged(false);
   };
 
   // Handle mouse leaving while dragging
   const handleMouseLeave = () => {
     if (isDragging) {
       setIsDragging(false);
+      setHasDragged(false);
       const container = scrollRef.current;
       if (container) {
         container.style.cursor = "grab";
@@ -85,14 +102,26 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
     }
   };
 
+  // Prevent click if user was dragging
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (hasDragged) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
+
   // Scroll by clicking chevrons
-  const handleScrollLeft = () => {
+  const handleScrollLeft = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     const container = scrollRef.current;
     if (!container) return;
     container.scrollBy({ left: -400, behavior: "smooth" });
   };
 
-  const handleScrollRight = () => {
+  const handleScrollRight = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
     const container = scrollRef.current;
     if (!container) return;
     container.scrollBy({ left: 400, behavior: "smooth" });
@@ -120,30 +149,36 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
     <div className="relative group">
       {/* Left Gradient Overlay with Chevron */}
       {showLeftGradient && (
-        <div className="absolute left-0 top-0 bottom-0 w-32 z-10 pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/60 to-transparent" />
+        <>
+          <div className="absolute left-0 -top-6 -bottom-6 w-32 z-10 pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent" />
+          </div>
           <button
             onClick={handleScrollLeft}
-            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-surface/80 backdrop-blur-sm border border-subtle hover:bg-surface hover:border-accent/50 transition-all pointer-events-auto opacity-0 group-hover:opacity-100"
+            onMouseDown={(e) => e.stopPropagation()}
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity hover:text-purple-400 text-muted-foreground"
             aria-label="Scroll left"
           >
-            <ChevronLeft size={20} className="text-muted-foreground" />
+            <ChevronLeft size={28} strokeWidth={2.5} />
           </button>
-        </div>
+        </>
       )}
 
       {/* Right Gradient Overlay with Chevron */}
       {showRightGradient && (
-        <div className="absolute right-0 top-0 bottom-0 w-32 z-10 pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a] via-[#0a0a0a]/60 to-transparent" />
+        <>
+          <div className="absolute right-0 -top-6 -bottom-6 w-32 z-10 pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-l from-[#0a0a0a] via-[#0a0a0a]/80 to-transparent" />
+          </div>
           <button
             onClick={handleScrollRight}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-surface/80 backdrop-blur-sm border border-subtle hover:bg-surface hover:border-accent/50 transition-all pointer-events-auto opacity-0 group-hover:opacity-100"
+            onMouseDown={(e) => e.stopPropagation()}
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity hover:text-purple-400 text-muted-foreground"
             aria-label="Scroll right"
           >
-            <ChevronRight size={20} className="text-muted-foreground" />
+            <ChevronRight size={28} strokeWidth={2.5} />
           </button>
-        </div>
+        </>
       )}
 
       {/* Scrollable Content */}
@@ -155,6 +190,7 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseLeave}
+        onClick={handleClick}
       >
         {children}
       </div>
