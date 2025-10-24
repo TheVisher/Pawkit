@@ -258,8 +258,26 @@ export function LeftNavigationPanel({
       const payload: { name: string; parentId?: string } = { name: trimmedName };
       if (parentPawkitId) {
         payload.parentId = parentPawkitId;
+        console.log('[CREATE PAWKIT] Creating sub-pawkit with parentId:', parentPawkitId);
+
+        // Find parent to show its name in logs
+        const findCollectionById = (cols: CollectionNode[], id: string): CollectionNode | null => {
+          for (const col of cols) {
+            if (col.id === id) return col;
+            if (col.children) {
+              const found = findCollectionById(col.children, id);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        const parent = findCollectionById(collections, parentPawkitId);
+        console.log('[CREATE PAWKIT] Parent collection:', parent?.name, 'has parentId:', parent?.parentId);
+      } else {
+        console.log('[CREATE PAWKIT] Creating root pawkit');
       }
 
+      console.log('[CREATE PAWKIT] Payload:', payload);
       await addCollection(payload);
 
       // Show toast
