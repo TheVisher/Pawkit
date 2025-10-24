@@ -303,7 +303,7 @@ export function LeftNavigationPanel({
   if (!open) return null;
 
   // Recursive function to render collection tree at any depth
-  const renderCollectionTree = (collection: CollectionNode, depth: number = 0): JSX.Element => {
+  const renderCollectionTree = (collection: CollectionNode, depth: number = 0) => {
     const hasChildren = collection.children && collection.children.length > 0;
     const isExpanded = expandedCollections.has(collection.id);
     const pawkitHref = `/pawkits/${collection.slug || collection.id}`;
