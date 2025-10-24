@@ -797,27 +797,36 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       >
         <div
           className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative flex flex-col ${
-            isReaderExpanded ? "w-full h-full" : isYouTubeUrl(card.url) ? "w-full max-w-6xl" : isNote ? "w-full max-w-3xl h-[80vh]" : "w-full max-w-5xl h-[85vh]"
+            isReaderExpanded
+              ? "w-full h-full"
+              : isYouTubeUrl(card.url)
+                ? "w-full max-w-6xl"
+                : isNote
+                  ? "w-full max-w-3xl min-h-[60vh] max-h-[85vh]"
+                  : "w-full max-w-4xl min-h-[40vh] max-h-[90vh]"
           }`}
+          style={{
+            // Let content determine height, but keep it within bounds
+            height: isReaderExpanded ? '100%' : 'auto'
+          }}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Top Bar - Only for URL cards (not notes or YouTube) */}
-          {!isNote && !isYouTubeUrl(card.url) && (
-            <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm px-6 py-4 flex items-center justify-between flex-shrink-0">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg font-semibold text-gray-100 truncate">
-                  {card.title || "Untitled"}
-                </h2>
-                <a
-                  href={card.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-gray-400 hover:text-accent transition-colors truncate block"
-                  title={card.url}
-                >
-                  {getShortDomain(card.url)}
-                </a>
-              </div>
+          {/* Top Bar - For all card types */}
+          <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm px-6 py-4 flex items-center justify-between flex-shrink-0">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-lg font-semibold text-gray-100 truncate">
+                {card.title || "Untitled"}
+              </h2>
+              <a
+                href={card.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-gray-400 hover:text-accent transition-colors truncate block"
+                title={card.url}
+              >
+                {getShortDomain(card.url)}
+              </a>
+            </div>
               <div className="flex items-center gap-2 ml-4">
                 {/* 3-Dot Menu */}
                 <div className="relative">
@@ -893,46 +902,25 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </button>
               </div>
             </div>
-          )}
-
-          {/* Mobile Details Toggle Button - Only for notes */}
-          {isNote && (
-            <button
-              onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-              className="md:hidden absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-3 shadow-lg border border-gray-700"
-              title={isDetailsOpen ? "Hide details" : "Show details"}
-            >
-              {isDetailsOpen ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              )}
-            </button>
-          )}
+          </div>
           {/* Card Content - Image, Reader, YouTube Player, or Note Preview/Edit */}
-          <div className={`relative flex-1 overflow-hidden ${isNote ? "flex flex-col" : ""}`}>
+          <div className="relative flex-1 overflow-hidden min-h-0">
             {isNote ? (
-              <>
-                {/* Note content area */}
-                <div className="flex-1 overflow-hidden p-8 min-h-0">
-                  <RichMDEditor
-                    content={content}
-                    onChange={setContent}
-                    placeholder="Start writing your note..."
-                    onNavigate={onNavigateToCard}
-                    onToggleFullscreen={() => setIsNoteExpanded(true)}
-                    customComponents={wikiLinkComponents}
-                  />
-                </div>
-              </>
+              // Note content area
+              <div className="h-full overflow-hidden p-8">
+                <RichMDEditor
+                  content={content}
+                  onChange={setContent}
+                  placeholder="Start writing your note..."
+                  onNavigate={onNavigateToCard}
+                  onToggleFullscreen={() => setIsNoteExpanded(true)}
+                  customComponents={wikiLinkComponents}
+                />
+              </div>
             ) : isYouTubeUrl(card.url) ? (
               // YouTube video embed in main content area
-              <div className="p-8 flex items-center justify-center min-h-[500px]">
-                <div className="w-full">
+              <div className="h-full flex items-center justify-center p-8">
+                <div className="w-full max-w-6xl">
                   <div className="relative w-full bg-black rounded-2xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
                     <iframe
                       src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
@@ -946,43 +934,43 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
               </div>
             ) : (
-              <>
-                {/* Content Area - Fixed height for consistent modal size */}
-                <div className="flex-1 overflow-hidden flex items-center justify-center p-8">
-                  {bottomTabMode === 'preview' && (
-                    <div className="w-full h-full flex items-center justify-center">
-                      {card.image ? (
-                        <img
-                          src={card.image}
-                          alt={card.title || "Card preview"}
-                          className="max-w-full max-h-full object-contain rounded-lg"
-                        />
-                      ) : (
-                        <div className="text-center space-y-4">
-                          <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center">
-                            <span className="text-white text-4xl">🔗</span>
-                          </div>
-                          <h3 className="text-xl font-semibold text-gray-300">
-                            {card.title || card.domain || card.url}
-                          </h3>
+              // URL card content with dynamic tabs - fixed min height for consistency
+              <div className="h-full min-h-[500px] overflow-hidden p-8">
+                {bottomTabMode === 'preview' && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    {card.image ? (
+                      <img
+                        src={card.image}
+                        alt={card.title || "Card preview"}
+                        className="max-w-full max-h-full object-contain rounded-lg"
+                      />
+                    ) : (
+                      <div className="text-center space-y-4">
+                        <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-4xl">🔗</span>
                         </div>
-                      )}
-                    </div>
-                  )}
+                        <h3 className="text-xl font-semibold text-gray-300">
+                          {card.title || card.domain || card.url}
+                        </h3>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                  {bottomTabMode === 'reader' && (
-                    <div className="w-full h-full overflow-y-auto">
-                      {articleContent ? (
-                        <ReaderView
-                          title={card.title || card.domain || card.url}
-                          content={articleContent}
-                          url={card.url}
-                          isExpanded={false}
-                          onToggleExpand={() => setIsReaderExpanded(true)}
-                          onClose={onClose}
-                        />
-                      ) : (
-                        <div className="text-center space-y-4 py-12">
+                {bottomTabMode === 'reader' && (
+                  <div className="w-full h-full overflow-y-auto">
+                    {articleContent ? (
+                      <ReaderView
+                        title={card.title || card.domain || card.url}
+                        content={articleContent}
+                        url={card.url}
+                        isExpanded={false}
+                        onToggleExpand={() => setIsReaderExpanded(true)}
+                        onClose={onClose}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center space-y-4">
                           <div className="text-gray-400 mb-4">
                             <BookOpen size={48} className="mx-auto" />
                           </div>
@@ -1010,90 +998,105 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                             )}
                           </Button>
                         </div>
-                      )}
-                    </div>
-                  )}
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                  {bottomTabMode === 'metadata' && (
-                    <div className="w-full h-full overflow-y-auto">
-                      <div className="max-w-2xl mx-auto space-y-6">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
-                          <div className="space-y-3 text-sm">
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Title</span>
-                              <span className="text-gray-200 text-right max-w-md truncate">{card.title || "—"}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Domain</span>
-                              <span className="text-gray-200">{card.domain || "—"}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">URL</span>
-                              <a
-                                href={card.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-accent hover:underline max-w-md truncate"
-                              >
-                                {card.url}
-                              </a>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Created</span>
-                              <span className="text-gray-200">{new Date(card.createdAt).toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Updated</span>
-                              <span className="text-gray-200">{new Date(card.updatedAt).toLocaleString()}</span>
-                            </div>
-                            {card.description && (
-                              <div className="py-2">
-                                <span className="text-gray-400 block mb-2">Description</span>
-                                <p className="text-gray-200">{card.description}</p>
-                              </div>
-                            )}
+                {bottomTabMode === 'metadata' && (
+                  <div className="w-full h-full overflow-y-auto">
+                    <div className="max-w-2xl mx-auto space-y-6">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
+                        <div className="space-y-3 text-sm">
+                          <div className="flex justify-between py-2 border-b border-white/10">
+                            <span className="text-gray-400">Title</span>
+                            <span className="text-gray-200 text-right max-w-md truncate">{card.title || "—"}</span>
                           </div>
+                          <div className="flex justify-between py-2 border-b border-white/10">
+                            <span className="text-gray-400">Domain</span>
+                            <span className="text-gray-200">{card.domain || "—"}</span>
+                          </div>
+                          <div className="flex justify-between py-2 border-b border-white/10">
+                            <span className="text-gray-400">URL</span>
+                            <a
+                              href={card.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-accent hover:underline max-w-md truncate"
+                            >
+                              {card.url}
+                            </a>
+                          </div>
+                          <div className="flex justify-between py-2 border-b border-white/10">
+                            <span className="text-gray-400">Created</span>
+                            <span className="text-gray-200">{new Date(card.createdAt).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between py-2 border-b border-white/10">
+                            <span className="text-gray-400">Updated</span>
+                            <span className="text-gray-200">{new Date(card.updatedAt).toLocaleString()}</span>
+                          </div>
+                          {card.description && (
+                            <div className="py-2">
+                              <span className="text-gray-400 block mb-2">Description</span>
+                              <p className="text-gray-200">{card.description}</p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
-                  )}
-                </div>
-
-                {/* Bottom Tab Buttons - Fabric-style */}
-                <div className="border-t border-white/10 bg-white/5 backdrop-blur-sm flex-shrink-0">
-                  <div className="flex items-center justify-center gap-2 p-4">
-                    <Button
-                      onClick={() => setBottomTabMode('preview')}
-                      variant={bottomTabMode === 'preview' ? 'default' : 'ghost'}
-                      size="sm"
-                      className="flex items-center gap-2"
-                    >
-                      <Globe size={16} />
-                      Preview
-                    </Button>
-                    <Button
-                      onClick={() => setBottomTabMode('reader')}
-                      variant={bottomTabMode === 'reader' ? 'default' : 'ghost'}
-                      size="sm"
-                      className="flex items-center gap-2"
-                    >
-                      <BookOpen size={16} />
-                      Reader
-                    </Button>
-                    <Button
-                      onClick={() => setBottomTabMode('metadata')}
-                      variant={bottomTabMode === 'metadata' ? 'default' : 'ghost'}
-                      size="sm"
-                      className="flex items-center gap-2"
-                    >
-                      <Tag size={16} />
-                      Metadata
-                    </Button>
                   </div>
-                </div>
-              </>
+                )}
+              </div>
             )}
+          </div>
+
+          {/* Bottom Bar - For all card types */}
+          <div className="border-t border-white/10 bg-white/5 backdrop-blur-sm flex-shrink-0">
+            <div className="flex items-center justify-center gap-2 p-4">
+              {isNote ? (
+                // Note-specific info (could add tabs like Preview/Edit mode later)
+                <div className="text-sm text-gray-400">
+                  {noteMode === 'preview' ? 'Preview Mode' : 'Edit Mode'}
+                </div>
+              ) : isYouTubeUrl(card.url) ? (
+                // YouTube-specific info
+                <div className="text-sm text-gray-400">
+                  Video Player
+                </div>
+              ) : (
+                // URL cards with tabs
+                <>
+                  <Button
+                    onClick={() => setBottomTabMode('preview')}
+                    variant={bottomTabMode === 'preview' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Globe size={16} />
+                    Preview
+                  </Button>
+                  <Button
+                    onClick={() => setBottomTabMode('reader')}
+                    variant={bottomTabMode === 'reader' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <BookOpen size={16} />
+                    Reader
+                  </Button>
+                  <Button
+                    onClick={() => setBottomTabMode('metadata')}
+                    variant={bottomTabMode === 'metadata' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Tag size={16} />
+                    Metadata
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
