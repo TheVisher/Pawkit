@@ -522,7 +522,8 @@ export function LeftNavigationPanel({
                     <div
                       role="button"
                       tabIndex={0}
-                      className="p-1 rounded transition-colors relative cursor-pointer"
+                      className="p-1 rounded transition-colors relative cursor-pointer flex items-center justify-center"
+                      style={{ minWidth: `${iconSize + 8}px`, minHeight: `${iconSize + 8}px` }}
                       title="Add to pawkit"
                       onMouseEnter={() => setHoveredPawkit(collection.slug)}
                       onMouseLeave={() => setHoveredPawkit(null)}
@@ -537,7 +538,7 @@ export function LeftNavigationPanel({
                         }
                       }}
                     >
-                      {isHovered && (
+                      {isHovered ? (
                         <>
                           <Plus size={iconSize} className="text-purple-400" />
                           {isAnimating && (
@@ -552,6 +553,8 @@ export function LeftNavigationPanel({
                             </div>
                           )}
                         </>
+                      ) : (
+                        <div style={{ width: `${iconSize}px`, height: `${iconSize}px` }} />
                       )}
                     </div>
                   )}
