@@ -873,10 +873,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             isReaderExpanded || isModalExpanded
               ? "w-full h-full"
               : isYouTubeUrl(card.url)
-                ? "w-full max-w-6xl max-h-[85vh]"
+                ? "w-full max-w-6xl max-h-[85vh] min-h-[600px]"
                 : isNote
                   ? "w-full max-w-3xl h-[80vh]"
-                  : "w-full max-w-4xl max-h-[90vh]"
+                  : "w-full max-w-4xl max-h-[90vh] min-h-[600px]"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
@@ -1206,7 +1206,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
 
                 {bottomTabMode === 'reader' && (
-                  <div className="absolute inset-0 p-[5px] overflow-y-auto bg-[#faf8f3]">
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto">
                     {articleContent ? (
                       <ReaderView
                         title={card.title || card.domain || card.url}
@@ -1252,7 +1252,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 )}
 
                 {bottomTabMode === 'metadata' && (
-                  <div className="absolute inset-0 p-[5px] overflow-y-auto bg-gray-900/95 backdrop-blur-sm">
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto">
                     <div className="max-w-2xl mx-auto space-y-6">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
