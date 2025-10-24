@@ -281,10 +281,45 @@ class LocalStorage {
     if (!this.db) return [];
 
     const collections = await this.db.getAll('collections');
-    return collections.map(collection => {
+    const cleanCollections = collections.map(collection => {
       const { _locallyModified, _locallyCreated, _serverVersion, ...cleanCollection } = collection;
       return cleanCollection as CollectionNode;
     });
+
+    // Build tree structure from flat list based on parentId
+    return this.buildCollectionTree(cleanCollections);
+  }
+
+  /**
+   * Build tree structure from flat collection list
+   */
+  private buildCollectionTree(flatCollections: CollectionNode[]): CollectionNode[] {
+    const nodes = new Map<string, CollectionNode>();
+    const roots: CollectionNode[] = [];
+
+    // Initialize nodes with empty children arrays
+    flatCollections.forEach((collection) => {
+      nodes.set(collection.id, { ...collection, children: [] });
+    });
+
+    // Build parent-child relationships
+    nodes.forEach((node) => {
+      if (node.parentId && nodes.has(node.parentId)) {
+        nodes.get(node.parentId)!.children.push(node);
+      } else {
+        roots.push(node);
+      }
+    });
+
+    // Sort tree
+    const sortTree = (tree: CollectionNode[]) => {
+      tree.sort((a, b) => a.name.localeCompare(b.name));
+      tree.forEach((node) => sortTree(node.children));
+    };
+
+    sortTree(roots);
+
+    return roots;
   }
 
   async saveCollection(collection: CollectionNode, options?: { localOnly?: boolean; fromServer?: boolean }): Promise<void> {
