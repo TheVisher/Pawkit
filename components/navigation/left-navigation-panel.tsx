@@ -5,7 +5,7 @@ import { useState, useMemo, useCallback } from "react";
 import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus } from "lucide-react";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
-import { useDataStore } from "@/lib/stores/data-store";
+import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
 import {
   Tooltip,
@@ -21,17 +21,17 @@ type NavItem = {
   id: string;
   label: string;
   icon: any;
-  href: string;
+  path: string; // Relative path without prefix
 };
 
 const navigationItems: NavItem[] = [
-  { id: "home", label: "Home", icon: Home, href: "/home" },
-  { id: "library", label: "Library", icon: Library, href: "/library" },
-  { id: "tags", label: "Tags", icon: Tag, href: "/tags" },
-  { id: "notes", label: "Notes", icon: FileText, href: "/notes" },
-  { id: "calendar", label: "Calendar", icon: Calendar, href: "/calendar" },
-  { id: "den", label: "The Den", icon: DogHouseIcon, href: "/den" },
-  { id: "distill", label: "Dig Up", icon: Layers, href: "/distill" },
+  { id: "home", label: "Home", icon: Home, path: "/home" },
+  { id: "library", label: "Library", icon: Library, path: "/library" },
+  { id: "tags", label: "Tags", icon: Tag, path: "/tags" },
+  { id: "notes", label: "Notes", icon: FileText, path: "/notes" },
+  { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
+  { id: "den", label: "The Den", icon: DogHouseIcon, path: "/den" },
+  { id: "distill", label: "Dig Up", icon: Layers, path: "/distill" },
 ];
 
 export type LeftPanelMode = "floating" | "anchored";
@@ -63,8 +63,12 @@ export function LeftNavigationPanel({
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
-  // Get cards and data
-  const { cards, addCard, updateCard } = useDataStore();
+  // Detect if we're in demo mode
+  const isDemo = pathname?.startsWith('/demo');
+  const pathPrefix = isDemo ? '/demo' : '';
+
+  // Get cards and data (demo-aware)
+  const { cards, addCard, updateCard } = useDemoAwareStore();
   const { recentItems } = useRecentHistory();
 
   // Get active card from panel store
@@ -105,8 +109,8 @@ export function LeftNavigationPanel({
     onModeChange?.(newMode);
   };
 
-  const handleNavigate = (href: string) => {
-    router.push(href);
+  const handleNavigate = (path: string) => {
+    router.push(pathPrefix + path);
   };
 
   const toggleCollection = (id: string) => {
@@ -127,7 +131,7 @@ export function LeftNavigationPanel({
     const existingNote = findDailyNoteForDate(cards, today);
 
     if (existingNote) {
-      router.push(`/notes#${existingNote.id}`);
+      router.push(`${pathPrefix}/notes#${existingNote.id}`);
     } else {
       const title = generateDailyNoteTitle(today);
       const content = generateDailyNoteContent(today);
@@ -141,13 +145,14 @@ export function LeftNavigationPanel({
       });
 
       setTimeout(() => {
-        const newNote = findDailyNoteForDate(useDataStore.getState().cards, today);
+        const store = isDemo ? useDemoAwareStore.getState() : useDemoAwareStore.getState();
+        const newNote = findDailyNoteForDate(store.cards, today);
         if (newNote) {
-          router.push(`/notes#${newNote.id}`);
+          router.push(`${pathPrefix}/notes#${newNote.id}`);
         }
       }, 100);
     }
-  }, [cards, addCard, router]);
+  }, [cards, addCard, router, pathPrefix, isDemo]);
 
   // Navigate to yesterday's note
   const goToYesterdaysNote = () => {
@@ -332,11 +337,12 @@ export function LeftNavigationPanel({
             <div className="space-y-1">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const fullPath = pathPrefix + item.path;
+                const isActive = pathname === fullPath;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => handleNavigate(item.href)}
+                    onClick={() => handleNavigate(item.path)}
                     className={`
                       w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
                       ${isActive
@@ -361,7 +367,7 @@ export function LeftNavigationPanel({
                   onClick={() => handleNavigate("/pawkits")}
                   className={`
                     w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
-                    ${pathname === "/pawkits"
+                    ${pathname === (pathPrefix + "/pawkits")
                       ? "bg-accent text-accent-foreground font-medium"
                       : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
                     }
