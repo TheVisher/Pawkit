@@ -131,7 +131,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   // when content is updated via the auto-save mechanism
   const [notes, setNotes] = useState(card.notes ?? "");
   const [content, setContent] = useState(card.content ?? "");
-  const [noteMode, setNoteMode] = useState<"preview" | "edit">("preview");
 
   // Wait for cards to load before building title map
   const [cardsReady, setCardsReady] = useState(false);
