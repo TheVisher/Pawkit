@@ -1183,9 +1183,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               </div>
             ) : (
               // URL card content with tabs - all tabs positioned absolutely to maintain size
-              <div className={`relative ${isModalExpanded ? 'h-full' : ''}`}>
-                <div className={`p-[5px] ${isModalExpanded ? 'h-full' : ''} ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
-                  <div className={`w-full flex items-center justify-center ${isModalExpanded ? 'h-full' : ''}`}>
+              <div className="relative h-full">
+                <div className={`p-[5px] h-full ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
+                  <div className="w-full h-full flex items-center justify-center">
                     {card.image ? (
                       <img
                         src={card.image}
@@ -1252,8 +1252,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 )}
 
                 {bottomTabMode === 'metadata' && (
-                  <div className="absolute inset-0 p-[5px] overflow-y-auto">
-                    <div className="max-w-2xl mx-auto space-y-6">
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto flex items-start justify-center">
+                    <div className="max-w-2xl w-full space-y-6 py-8">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
                         <div className="space-y-3 text-sm">
