@@ -827,26 +827,27 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               <h2 className="text-lg font-semibold text-gray-100 truncate">
                 {card.title || "Untitled"}
               </h2>
-              <a
-                href={card.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-gray-400 hover:text-accent transition-colors truncate block"
-                title={card.url}
-              >
-                {getShortDomain(card.url)}
-              </a>
+              {isNote && noteMetadata ? (
+                // Note metadata under title (like domain for URL cards)
+                <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
+                  <span>{noteMetadata.words} words</span>
+                  <span>{noteMetadata.characters} chars</span>
+                  <span>{noteMetadata.linkCount} links</span>
+                  <span>{noteMetadata.tagCount} tags</span>
+                </div>
+              ) : (
+                // Domain for URL cards
+                <a
+                  href={card.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-gray-400 hover:text-accent transition-colors truncate block"
+                  title={card.url}
+                >
+                  {getShortDomain(card.url)}
+                </a>
+              )}
             </div>
-
-            {/* Note Metadata - show for notes */}
-            {isNote && noteMetadata && (
-              <div className="flex items-center gap-4 text-xs text-gray-400 mx-4">
-                <span>{noteMetadata.words} words</span>
-                <span>{noteMetadata.characters} chars</span>
-                <span>{noteMetadata.linkCount} links</span>
-                <span>{noteMetadata.tagCount} tags</span>
-              </div>
-            )}
 
               <div className="flex items-center gap-2 ml-4">
                 {/* Expand Button */}
@@ -889,11 +890,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     <>
                       {/* Backdrop to close menu */}
                       <div
-                        className="fixed inset-0 z-[110]"
+                        className="fixed inset-0 z-[200]"
                         onClick={() => setIsMenuOpen(false)}
                       />
                       {/* Dropdown Menu */}
-                      <div className="absolute right-0 mt-2 w-48 rounded-lg border border-white/10 bg-gray-900 shadow-xl z-[111] overflow-hidden">
+                      <div className="absolute right-0 mt-2 w-48 rounded-lg border border-white/10 bg-gray-900 shadow-xl z-[201] overflow-hidden">
                         <button
                           onClick={() => {
                             setIsMenuOpen(false);
@@ -1008,7 +1009,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
 
                 {bottomTabMode === 'reader' && (
-                  <div className="absolute inset-0 p-[5px] overflow-y-auto bg-white/5 backdrop-blur-lg">
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto bg-[#faf8f3]">
                     {articleContent ? (
                       <ReaderView
                         title={card.title || card.domain || card.url}
@@ -1054,7 +1055,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 )}
 
                 {bottomTabMode === 'metadata' && (
-                  <div className="absolute inset-0 p-[5px] overflow-y-auto bg-white/5 backdrop-blur-lg">
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto bg-gray-900/95 backdrop-blur-sm">
                     <div className="max-w-2xl mx-auto space-y-6">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
