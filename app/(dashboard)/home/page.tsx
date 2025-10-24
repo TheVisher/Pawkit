@@ -337,7 +337,7 @@ export default function HomePage() {
             return (
               <div
                 key={dateStr}
-                className={`card-hover rounded-2xl border bg-surface p-3 md:p-4 min-h-[160px] md:min-h-[200px] flex flex-col relative cursor-pointer transition-all flex-shrink-0 w-full min-w-[140px] sm:min-w-[160px] md:min-w-[180px] ${
+                className={`card-hover rounded-2xl border bg-surface p-3 md:p-4 min-h-[160px] md:min-h-[200px] flex flex-col relative cursor-pointer transition-all flex-shrink-0 w-[180px] sm:w-[200px] md:w-[220px] ${
                   isToday ? 'border-accent' : 'border-subtle'
                 }`}
                 onClick={() => setSelectedDate(day)}
