@@ -95,24 +95,24 @@ function CollectionPageContent() {
   }, [cards, slug, q, status]);
 
   // Find current collection
-  const findCollection = (nodes: any[], targetSlug: string): any => {
-    for (const node of nodes) {
-      if (node.slug === targetSlug) return node;
-      if (node.children) {
-        const found = findCollection(node.children, targetSlug);
-        if (found) return found;
+  const currentCollection = useMemo(() => {
+    const findCollection = (nodes: any[], targetSlug: string): any => {
+      for (const node of nodes) {
+        if (node.slug === targetSlug) return node;
+        if (node.children) {
+          const found = findCollection(node.children, targetSlug);
+          if (found) return found;
+        }
       }
-    }
-    return null;
-  };
-
-  const currentCollection = findCollection(collections, slug);
-  if (!currentCollection) {
-    return <div>Collection not found</div>;
-  }
+      return null;
+    };
+    return findCollection(collections, slug);
+  }, [collections, slug]);
 
   // Build breadcrumb trail from root to current collection
   const breadcrumbs = useMemo(() => {
+    if (!currentCollection) return [];
+
     const trail: Array<{ id: string; name: string; slug: string }> = [];
 
     const buildTrail = (nodes: any[], targetSlug: string, path: any[] = []): boolean => {
@@ -135,11 +135,11 @@ function CollectionPageContent() {
 
     buildTrail(collections, slug);
     return trail;
-  }, [collections, slug]);
+  }, [collections, slug, currentCollection]);
 
   // Get child pawkits for display
   const childPawkits = useMemo(() => {
-    if (!currentCollection.children || currentCollection.children.length === 0) {
+    if (!currentCollection || !currentCollection.children || currentCollection.children.length === 0) {
       return [];
     }
 
@@ -156,6 +156,10 @@ function CollectionPageContent() {
       };
     });
   }, [currentCollection, cards]);
+
+  if (!currentCollection) {
+    return <div>Collection not found</div>;
+  }
 
   // Flatten all pawkits for the move modal (only root-level pawkits)
   const allPawkits = collections.map((node) => ({
