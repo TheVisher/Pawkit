@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -369,6 +369,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isModalExpanded, setIsModalExpanded] = useState(false);
+  const [noteMode, setNoteMode] = useState<'edit' | 'preview'>('preview');
   const lastSavedNotesRef = useRef(card.notes ?? "");
   const lastSavedContentRef = useRef(card.content ?? "");
 
@@ -939,6 +940,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   onNavigate={onNavigateToCard}
                   onToggleFullscreen={() => setIsNoteExpanded(true)}
                   customComponents={wikiLinkComponents}
+                  mode={noteMode}
+                  onModeChange={setNoteMode}
+                  hideControls={true}
                 />
               </div>
             ) : isYouTubeUrl(card.url) ? (
@@ -1079,10 +1083,27 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           <div className="border-t border-white/10 bg-white/5 backdrop-blur-sm flex-shrink-0">
             <div className="flex items-center justify-center gap-2 p-4">
               {isNote ? (
-                // Note-specific info (could add tabs like Preview/Edit mode later)
-                <div className="text-sm text-gray-400">
-                  {noteMode === 'preview' ? 'Preview Mode' : 'Edit Mode'}
-                </div>
+                // Note mode buttons
+                <>
+                  <Button
+                    onClick={() => setNoteMode('preview')}
+                    variant={noteMode === 'preview' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Eye size={16} />
+                    Preview
+                  </Button>
+                  <Button
+                    onClick={() => setNoteMode('edit')}
+                    variant={noteMode === 'edit' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Edit size={16} />
+                    Edit
+                  </Button>
+                </>
               ) : isYouTubeUrl(card.url) ? (
                 // YouTube-specific info
                 <div className="text-sm text-gray-400">

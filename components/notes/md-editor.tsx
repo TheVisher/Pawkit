@@ -48,10 +48,15 @@ type RichMDEditorProps = {
   onNavigate?: (noteId: string) => void;
   onToggleFullscreen?: () => void;
   customComponents?: any; // Custom ReactMarkdown components for wiki-links
+  mode?: "edit" | "preview"; // External mode control
+  onModeChange?: (mode: "edit" | "preview") => void; // External mode change handler
+  hideControls?: boolean; // Hide the mode toggle bar
 };
 
-export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents }: RichMDEditorProps) {
-  const [mode, setMode] = useState<"edit" | "preview">("preview");
+export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents, mode: externalMode, onModeChange, hideControls = false }: RichMDEditorProps) {
+  const [internalMode, setInternalMode] = useState<"edit" | "preview">("preview");
+  const mode = externalMode !== undefined ? externalMode : internalMode;
+  const setMode = onModeChange !== undefined ? onModeChange : setInternalMode;
   const [showTemplates, setShowTemplates] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -500,7 +505,8 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
 
   return (
     <div className="flex flex-col h-full bg-surface rounded-lg border border-subtle overflow-hidden">
-      {/* Mode Toggle */}
+      {/* Mode Toggle - only show if hideControls is false */}
+      {!hideControls && (
       <div className="flex items-center justify-between px-3 py-2 bg-surface-muted border-b border-subtle">
         <div className="flex items-center gap-2">
           <button
@@ -547,6 +553,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
           </button>
         )}
       </div>
+      )}
 
       {mode === "edit" ? (
         <>
