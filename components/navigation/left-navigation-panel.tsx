@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical } from "lucide-react";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
@@ -417,17 +417,26 @@ export function LeftNavigationPanel({
     };
 
     return (
-      <button
+      <div
         ref={setNodeRef}
         style={style}
-        {...attributes}
-        {...listeners}
-        onClick={() => handleNavigate(`/notes#${note.id}`)}
-        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground cursor-move"
+        className="w-full flex items-center gap-2 group/pinned-note"
       >
-        <Pin size={16} className="flex-shrink-0 text-purple-400" />
-        <span className="flex-1 text-left truncate">{note.title}</span>
-      </button>
+        <button
+          onClick={() => handleNavigate(`/notes#${note.id}`)}
+          className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+        >
+          <Pin size={16} className="flex-shrink-0 text-purple-400" />
+          <span className="flex-1 text-left truncate">{note.title}</span>
+        </button>
+        <div
+          {...attributes}
+          {...listeners}
+          className="p-1 rounded transition-colors hover:bg-white/10 text-muted-foreground opacity-0 group-hover/pinned-note:opacity-100 cursor-grab active:cursor-grabbing flex-shrink-0"
+        >
+          <GripVertical size={16} />
+        </div>
+      </div>
     );
   };
 
