@@ -17,6 +17,7 @@ import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { SelectionDrawer } from "@/components/selection-drawer/selection-drawer";
+import { UnpinNotesModal } from "@/components/modals/unpin-notes-modal";
 
 export type CardGalleryProps = {
   cards: CardModel[];
@@ -36,7 +37,11 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collections, setCollections] = useState<CollectionNode[]>([]);
   const [imageLoadCount, setImageLoadCount] = useState(0);
+  const [showUnpinModal, setShowUnpinModal] = useState(false);
   const searchParams = useSearchParams();
+  const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
+  const pinNote = useSettingsStore((state) => state.pinNote);
+  const unpinNote = useSettingsStore((state) => state.unpinNote);
   const selectedIds = useSelection((state) => state.selectedIds);
   const toggleSelection = useSelection((state) => state.toggle);
   const selectExclusive = useSelection((state) => state.selectExclusive);
@@ -241,6 +246,26 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     }
   };
 
+  // Pin/Unpin handlers
+  const handlePinToSidebar = (cardId: string) => {
+    const success = pinNote(cardId);
+    if (!success) {
+      // Max limit reached, show unpin modal
+      setShowUnpinModal(true);
+    }
+  };
+
+  const handleUnpinFromSidebar = (cardId: string) => {
+    unpinNote(cardId);
+  };
+
+  // Get pinned notes for unpin modal
+  const pinnedNotes = useMemo(() => {
+    return pinnedNoteIds
+      .map(id => cards.find(card => card.id === id))
+      .filter(Boolean) as CardModel[];
+  }, [pinnedNoteIds, cards]);
+
   const activeCard = cards.find((card) => card.id === activeCardId) ?? null;
 
   return (
@@ -301,6 +326,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               );
             }}
             onFetchMetadata={handleFetchMetadata}
+            isPinned={pinnedNoteIds.includes(card.id)}
+            onPinToSidebar={() => handlePinToSidebar(card.id)}
+            onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
           />
         ))}
       </div>
@@ -346,6 +374,14 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           </div>
         </div>
       )}
+
+      {/* Unpin Notes Modal */}
+      <UnpinNotesModal
+        open={showUnpinModal}
+        onClose={() => setShowUnpinModal(false)}
+        pinnedNotes={pinnedNotes}
+        onUnpin={handleUnpinFromSidebar}
+      />
 
       {activeCard && (
         <CardDetailModal
@@ -399,9 +435,12 @@ type CardCellProps = {
   onRemoveFromPawkit: (slug: string) => void;
   onRemoveFromAllPawkits: () => void;
   onFetchMetadata: (cardId: string) => void;
+  isPinned?: boolean;
+  onPinToSidebar?: () => void;
+  onUnpinFromSidebar?: () => void;
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
@@ -471,6 +510,11 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       onRemoveFromPawkit={onRemoveFromPawkit}
       onRemoveFromAllPawkits={onRemoveFromAllPawkits}
       onFetchMetadata={() => onFetchMetadata(card.id)}
+      cardId={card.id}
+      cardType={card.type}
+      isPinned={isPinned}
+      onPinToSidebar={onPinToSidebar}
+      onUnpinFromSidebar={onUnpinFromSidebar}
     >
       <div
         ref={setNodeRef}
