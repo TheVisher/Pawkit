@@ -53,9 +53,9 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              // Script sources - needed for Next.js and dynamic imports
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
-              "script-src-elem 'self' 'unsafe-inline' blob:",
+              // Script sources - needed for Next.js, dynamic imports, and Vercel
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://vercel.live",
+              "script-src-elem 'self' 'unsafe-inline' blob: https://vercel.live",
               // Styles
               "style-src 'self' 'unsafe-inline' blob:",
               "style-src-elem 'self' 'unsafe-inline'",
@@ -63,10 +63,10 @@ const nextConfig = {
               "img-src 'self' data: https: http: blob:",
               // Fonts
               "font-src 'self' data: blob:",
-              // API connections - more permissive for user content
-              "connect-src 'self' https: http: blob: data: wss: ws:",
-              // Frames for embeds
-              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+              // API connections - more permissive for user content + Vercel
+              "connect-src 'self' https: http: blob: data: wss: ws: https://vercel.live wss://ws-us3.pusher.com",
+              // Frames for embeds + Vercel
+              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://vercel.live",
               // Workers
               "worker-src 'self' blob:",
               // Objects

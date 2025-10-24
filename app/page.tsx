@@ -28,7 +28,7 @@ export default function PawkitLanding() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            entry.target.classList.add("animate-fade-in")
+            entry.target.classList.add("animate-fade-in-up")
           }
         })
       },
