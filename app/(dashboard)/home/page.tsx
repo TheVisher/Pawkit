@@ -320,12 +320,12 @@ export default function HomePage() {
           </Link>
         </div>
         <div className="max-w-[1800px] mx-auto">
-          <div className="grid grid-cols-7 gap-2 sm:gap-3 md:gap-4 lg:gap-6">
+          <HorizontalScrollContainer>
             {weekDays.map((day, index) => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayCards = cardsByDate.get(dateStr) || [];
             const isToday = format(new Date(), 'yyyy-MM-dd') === dateStr;
-            
+
             // Check if there's a daily note for this date
             const dailyNote = cards && Array.isArray(cards) ? cards.find(card => {
               if (!isDailyNote(card)) return false;
@@ -337,7 +337,7 @@ export default function HomePage() {
             return (
               <div
                 key={dateStr}
-                className={`card-hover rounded-2xl border bg-surface p-3 md:p-4 min-h-[160px] md:min-h-[200px] flex flex-col relative cursor-pointer transition-all ${
+                className={`card-hover rounded-2xl border bg-surface p-3 md:p-4 min-h-[160px] md:min-h-[200px] flex flex-col relative cursor-pointer transition-all flex-shrink-0 w-full min-w-[140px] sm:min-w-[160px] md:min-w-[180px] ${
                   isToday ? 'border-accent' : 'border-subtle'
                 }`}
                 onClick={() => setSelectedDate(day)}
@@ -373,7 +373,7 @@ export default function HomePage() {
                     </button>
                   ))}
                 </div>
-                
+
                 {/* Daily Note Pill or Add Button - anchored to bottom */}
                 <div className="absolute bottom-2 left-2 right-2 flex justify-center">
                   {dailyNote && (
@@ -392,7 +392,7 @@ export default function HomePage() {
               </div>
             );
           })}
-          </div>
+          </HorizontalScrollContainer>
         </div>
       </section>
       </div>
