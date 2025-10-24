@@ -78,6 +78,8 @@ export function LeftNavigationPanel({
 
   // Get active card from panel store
   const activeCardId = usePanelStore((state) => state.activeCardId);
+  const collapsedSections = usePanelStore((state) => state.collapsedSections);
+  const toggleSection = usePanelStore((state) => state.toggleSection);
   const activeCard = useMemo(() => {
     const found = cards.find((card) => card.id === activeCardId) ?? null;
     console.log('[LEFT NAV] Active card:', { activeCardId, found: found?.title, totalCards: cards.length });
@@ -600,7 +602,13 @@ export function LeftNavigationPanel({
               id="left-pawkits"
               title="Pawkits"
               icon={<FolderOpen className="h-4 w-4 text-accent" />}
-              onClick={() => handleNavigate("/pawkits")}
+              onClick={() => {
+                handleNavigate("/pawkits");
+                // Ensure section is expanded when clicking header
+                if (collapsedSections["left-pawkits"]) {
+                  toggleSection("left-pawkits");
+                }
+              }}
               action={
                 <button
                   onClick={(e) => {
