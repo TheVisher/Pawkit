@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import { useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 
 export default function PawkitLanding() {
   useEffect(() => {
@@ -55,7 +56,7 @@ export default function PawkitLanding() {
       <section className="relative container mx-auto px-4 pt-24 pb-20">
         <div className="max-w-5xl mx-auto text-center space-y-8">
           <h1 className="text-5xl md:text-7xl font-bold text-balance bg-gradient-to-r from-[#7c3aed] via-[#a36bff] to-[#7c3aed] bg-clip-text text-transparent leading-tight">
-            Your Bookmarks, Fetched and Organized
+            Your Bookmarks,<br />Fetched and Organized
           </h1>
 
           <p className="text-xl md:text-2xl text-[#a3a3b0] text-balance max-w-3xl mx-auto">
@@ -119,7 +120,7 @@ export default function PawkitLanding() {
                 <ul className="space-y-3 text-[#a3a3b0]">
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-[#22c55e] flex-shrink-0 mt-0.5" />
-                    <span>Local-first architecture—data stored on your device, not waiting for a server</span>
+                    <span>Your data lives on your device—works offline, loads instantly</span>
                   </li>
                   <li className="flex items-start gap-3">
                     <CheckCircle2 className="w-5 h-5 text-[#22c55e] flex-shrink-0 mt-0.5" />
@@ -159,8 +160,8 @@ export default function PawkitLanding() {
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           <FeatureCard
             icon={<Zap className="w-10 h-10 text-[#7c3aed]" />}
-            title="Local-First Speed"
-            description="Instant access. Data stored on your device, not waiting for a server."
+            title="Instant Speed"
+            description="No server lag. Everything loads instantly because it's already on your device."
           />
           <FeatureCard
             icon={<Lock className="w-10 h-10 text-[#7c3aed]" />}
@@ -199,17 +200,14 @@ export default function PawkitLanding() {
           <ProofCard
             title="Library with Pawkits"
             description="Nested collections keep everything organized"
-            imagePlaceholder="library-view"
           />
           <ProofCard
             title="The Den"
             description="Your encrypted private space"
-            imagePlaceholder="den-view"
           />
           <ProofCard
             title="Reader Mode"
             description="Clean, distraction-free article view"
-            imagePlaceholder="reader-view"
           />
         </div>
       </section>
@@ -285,6 +283,15 @@ export default function PawkitLanding() {
                 <p className="text-purple-100 mb-4 font-medium">Get Browser Extension</p>
                 <div className="flex flex-wrap justify-center gap-4">
                   <a
+                    href="https://chromewebstore.google.com/detail/pawkit-web-clipper/bbmhcminlncbpkmblbaelhkamhmknjcj"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/30 transition-all duration-300"
+                  >
+                    <Chrome className="w-5 h-5" />
+                    Chrome & Safari
+                  </a>
+                  <a
                     href="https://addons.mozilla.org/en-US/firefox/addon/pawkit-web-clipper/"
                     target="_blank"
                     rel="noopener noreferrer"
@@ -293,20 +300,6 @@ export default function PawkitLanding() {
                     <Chrome className="w-5 h-5" />
                     Firefox
                   </a>
-                  <button
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white/5 text-white/50 border border-white/20 cursor-not-allowed"
-                    disabled
-                  >
-                    <Chrome className="w-5 h-5" />
-                    Chrome (Coming Soon)
-                  </button>
-                  <button
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-lg bg-white/5 text-white/50 border border-white/20 cursor-not-allowed"
-                    disabled
-                  >
-                    <Chrome className="w-5 h-5" />
-                    Safari (Coming Soon)
-                  </button>
                 </div>
               </div>
             </div>
@@ -420,15 +413,25 @@ function StepCard({
 function ProofCard({
   title,
   description,
-  imagePlaceholder,
-}: { title: string; description: string; imagePlaceholder: string }) {
+  imagePath,
+}: { title: string; description: string; imagePath?: string }) {
   return (
-    <Card className="p-6 bg-[rgba(255,255,255,0.03)] border-2 border-[rgba(255,255,255,0.08)] rounded-2xl backdrop-blur-sm hover:border-[#7c3aed]/30 transition-all duration-300 group">
-      <div className="aspect-video bg-gradient-to-br from-[#7c3aed]/10 to-[#a36bff]/5 rounded-xl mb-4 flex items-center justify-center border border-[rgba(255,255,255,0.08)] group-hover:border-[#7c3aed]/20 transition-colors">
-        <span className="text-[#a3a3b0] text-sm">Screenshot: {imagePlaceholder}</span>
+    <Card className="p-6 bg-[rgba(255,255,255,0.03)] border-2 border-[rgba(255,255,255,0.08)] rounded-2xl backdrop-blur-sm hover:border-[#7c3aed]/30 transition-all duration-300 group flex flex-col h-full">
+      <div className="aspect-video bg-gradient-to-br from-[#7c3aed]/10 to-[#a36bff]/5 rounded-xl mb-4 flex items-center justify-center border border-[rgba(255,255,255,0.08)] group-hover:border-[#7c3aed]/20 transition-colors overflow-hidden">
+        {imagePath ? (
+          <Image
+            src={imagePath}
+            alt={title}
+            width={800}
+            height={450}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <span className="text-[#a3a3b0] text-sm">Screenshot placeholder</span>
+        )}
       </div>
       <h3 className="text-xl font-semibold text-[#f5f5f7] mb-2">{title}</h3>
-      <p className="text-[#a3a3b0]">{description}</p>
+      <p className="text-[#a3a3b0] flex-1">{description}</p>
     </Card>
   )
 }
