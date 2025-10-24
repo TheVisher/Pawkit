@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2 } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -368,6 +368,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [denPawkitSlugs, setDenPawkitSlugs] = useState<Set<string>>(new Set());
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isModalExpanded, setIsModalExpanded] = useState(false);
   const lastSavedNotesRef = useRef(card.notes ?? "");
   const lastSavedContentRef = useRef(card.content ?? "");
 
@@ -413,6 +414,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     setIsReaderExpanded(false);
     setExtracting(false);
     setBottomTabMode('preview');
+    setIsModalExpanded(false);
   }, [card.id]);
 
   // Save on modal close to ensure nothing is lost
@@ -797,7 +799,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       >
         <div
           className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative flex flex-col ${
-            isReaderExpanded
+            isReaderExpanded || isModalExpanded
               ? "w-full h-full"
               : isYouTubeUrl(card.url)
                 ? "w-full max-w-6xl max-h-[85vh]"
@@ -824,6 +826,33 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               </a>
             </div>
               <div className="flex items-center gap-2 ml-4">
+                {/* Expand Button */}
+                <button
+                  onClick={() => setIsModalExpanded(!isModalExpanded)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title={isModalExpanded ? "Restore size" : "Expand to fill window"}
+                >
+                  <Maximize2 size={20} className="text-gray-400" />
+                </button>
+
+                {/* Search Button */}
+                <button
+                  onClick={() => setToast("Search coming soon")}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Search within content"
+                >
+                  <Search size={20} className="text-gray-400" />
+                </button>
+
+                {/* Tag Button */}
+                <button
+                  onClick={() => setToast("Tags coming soon")}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Manage tags"
+                >
+                  <Tags size={20} className="text-gray-400" />
+                </button>
+
                 {/* 3-Dot Menu */}
                 <div className="relative">
                   <button
