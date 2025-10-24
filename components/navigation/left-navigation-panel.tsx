@@ -537,17 +537,21 @@ export function LeftNavigationPanel({
                         }
                       }}
                     >
-                      <Plus size={iconSize} className="text-purple-400" />
-                      {isAnimating && (
-                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                          <div
-                            className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
-                            style={{
-                              background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                            }}
-                          />
-                          <Check size={iconSize} className="text-white relative z-10" />
-                        </div>
+                      {isHovered && (
+                        <>
+                          <Plus size={iconSize} className="text-purple-400" />
+                          {isAnimating && (
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+                              <div
+                                className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
+                                style={{
+                                  background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                                }}
+                              />
+                              <Check size={iconSize} className="text-white relative z-10" />
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
