@@ -11,8 +11,9 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { FolderPlus, Trash2, Home, FolderMinus, RefreshCw } from "lucide-react";
+import { FolderPlus, Trash2, Home, FolderMinus, RefreshCw, Plus } from "lucide-react";
 import { CollectionNode } from "@/lib/types";
+import { useDataStore } from "@/lib/stores/data-store";
 
 type CardContextMenuWrapperProps = {
   children: ReactNode;
@@ -25,6 +26,7 @@ type CardContextMenuWrapperProps = {
   onRemoveFromPawkit?: (slug: string) => void; // Remove from a specific Pawkit
   onRemoveFromAllPawkits?: () => void; // Remove from all Pawkits
   onFetchMetadata?: () => void; // Fetch metadata for the card
+  cardId?: string; // Card ID for creating new pawkit with card
 };
 
 export function CardContextMenuWrapper({
@@ -38,10 +40,43 @@ export function CardContextMenuWrapper({
   onRemoveFromPawkit,
   onRemoveFromAllPawkits,
   onFetchMetadata,
+  cardId,
 }: CardContextMenuWrapperProps) {
   const [collections, setCollections] = useState<CollectionNode[]>([]);
   const [regularCollections, setRegularCollections] = useState<CollectionNode[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newPawkitName, setNewPawkitName] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  const { addCollection, updateCard } = useDataStore();
+
+  const handleCreateNewPawkit = async () => {
+    const trimmedName = newPawkitName.trim();
+    if (!trimmedName || creating || !cardId) return;
+
+    setCreating(true);
+    try {
+      // Create the pawkit
+      const newCollection = await addCollection({ name: trimmedName });
+
+      // Add the card to the new pawkit
+      if (newCollection && newCollection.slug) {
+        const currentCollections = cardCollections || [];
+        await updateCard(cardId, {
+          collections: [...currentCollections, newCollection.slug]
+        });
+      }
+
+      // Reset and close
+      setNewPawkitName("");
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error('Failed to create pawkit:', error);
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const fetchCollections = async () => {
     setLoading(true);
@@ -174,7 +209,18 @@ export function CardContextMenuWrapper({
                 Loading...
               </ContextMenuItem>
             ) : (
-              renderCollectionTree(collections, onAddToPawkit)
+              <>
+                {cardId && (
+                  <>
+                    <ContextMenuItem onClick={() => setShowCreateModal(true)}>
+                      <Plus className="mr-2 h-4 w-4 text-purple-400" />
+                      Create New Pawkit
+                    </ContextMenuItem>
+                    <ContextMenuSeparator />
+                  </>
+                )}
+                {renderCollectionTree(collections, onAddToPawkit)}
+              </>
             )}
           </ContextMenuSubContent>
         </ContextMenuSub>
@@ -231,6 +277,65 @@ export function CardContextMenuWrapper({
           Delete
         </ContextMenuItem>
       </ContextMenuContent>
+      {/* Create Pawkit Modal */}
+      {showCreateModal && (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => {
+            if (!creating) {
+              setShowCreateModal(false);
+              setNewPawkitName("");
+            }
+          }}
+        >
+          <div
+            className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 shadow-glow-accent p-6 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-foreground mb-4">Create Pawkit</h3>
+            <input
+              type="text"
+              value={newPawkitName}
+              onChange={(e) => setNewPawkitName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleCreateNewPawkit();
+                } else if (e.key === "Escape") {
+                  if (!creating) {
+                    setShowCreateModal(false);
+                    setNewPawkitName("");
+                  }
+                }
+              }}
+              placeholder="Pawkit name"
+              className="w-full rounded-lg bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-foreground placeholder-muted-foreground border border-white/10 focus:border-accent focus:outline-none transition-colors"
+              autoFocus
+              disabled={creating}
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => {
+                  if (!creating) {
+                    setShowCreateModal(false);
+                    setNewPawkitName("");
+                  }
+                }}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+                disabled={creating}
+              >
+                Esc to Cancel
+              </button>
+              <button
+                onClick={handleCreateNewPawkit}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-50"
+                disabled={creating || !newPawkitName.trim()}
+              >
+                {creating ? "Creating..." : "Enter to Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ContextMenu>
   );
 }
