@@ -48,13 +48,22 @@ type RichMDEditorProps = {
   onNavigate?: (noteId: string) => void;
   onToggleFullscreen?: () => void;
   customComponents?: any; // Custom ReactMarkdown components for wiki-links
+  mode?: "edit" | "preview"; // External mode control
+  onModeChange?: (mode: "edit" | "preview") => void; // External mode change handler
+  hideControls?: boolean; // Hide the mode toggle bar
+  showToolbar?: boolean; // Control toolbar visibility (for collapsible toolbar)
+  onToggleToolbar?: () => void; // Callback to toggle toolbar
+  textareaRef?: React.MutableRefObject<HTMLTextAreaElement | null>; // External ref to textarea
 };
 
-export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents }: RichMDEditorProps) {
-  const [mode, setMode] = useState<"edit" | "preview">("preview");
+export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents, mode: externalMode, onModeChange, hideControls = false, showToolbar = true, onToggleToolbar, textareaRef: externalTextareaRef }: RichMDEditorProps) {
+  const [internalMode, setInternalMode] = useState<"edit" | "preview">("preview");
+  const mode = externalMode !== undefined ? externalMode : internalMode;
+  const setMode = onModeChange !== undefined ? onModeChange : setInternalMode;
   const [showTemplates, setShowTemplates] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = externalTextareaRef || internalTextareaRef;
   const cards = useDataStore((state) => state.cards);
 
   // Wiki-link autocomplete state
@@ -500,7 +509,8 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
 
   return (
     <div className="flex flex-col h-full bg-surface rounded-lg border border-subtle overflow-hidden">
-      {/* Mode Toggle */}
+      {/* Mode Toggle - only show if hideControls is false */}
+      {!hideControls && (
       <div className="flex items-center justify-between px-3 py-2 bg-surface-muted border-b border-subtle">
         <div className="flex items-center gap-2">
           <button
@@ -547,10 +557,12 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
           </button>
         )}
       </div>
+      )}
 
       {mode === "edit" ? (
         <>
-          {/* Toolbar */}
+          {/* Toolbar - conditionally shown based on showToolbar */}
+          {showToolbar && (
           <div className="flex items-center gap-1 px-3 py-2 bg-surface-muted border-b border-subtle flex-wrap">
             <button
               onClick={() => insertMarkdown('**', '**')}
@@ -641,6 +653,29 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
               <Layout size={16} />
             </button>
           </div>
+          )}
+
+          {/* Collapse Handle - only show in edit mode when hideControls is true */}
+          {hideControls && onToggleToolbar && (
+            <div className="relative border-b border-white/10">
+              <button
+                onClick={onToggleToolbar}
+                className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 group"
+                title={showToolbar ? "Hide toolbar" : "Show toolbar"}
+              >
+                <div className="w-12 h-1.5 bg-white/10 group-hover:bg-purple-500/50 rounded-full transition-all duration-200 flex items-center justify-center">
+                  <svg
+                    className={`w-4 h-4 text-gray-400 group-hover:text-purple-400 transition-all duration-200 ${showToolbar ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </button>
+            </div>
+          )}
 
           {/* Template Dropdown */}
           {showTemplates && (
