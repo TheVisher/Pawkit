@@ -11,8 +11,8 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { FolderPlus, Trash2, Home, FolderMinus, RefreshCw } from "lucide-react";
-import { CollectionNode } from "@/lib/types";
+import { FolderPlus, Trash2, Home, FolderMinus, RefreshCw, Pin, PinOff } from "lucide-react";
+import { CollectionNode, CardType } from "@/lib/types";
 
 type CardContextMenuWrapperProps = {
   children: ReactNode;
@@ -25,6 +25,12 @@ type CardContextMenuWrapperProps = {
   onRemoveFromPawkit?: (slug: string) => void; // Remove from a specific Pawkit
   onRemoveFromAllPawkits?: () => void; // Remove from all Pawkits
   onFetchMetadata?: () => void; // Fetch metadata for the card
+  // Pin to sidebar (notes only)
+  cardId?: string;
+  cardType?: CardType;
+  isPinned?: boolean;
+  onPinToSidebar?: () => void;
+  onUnpinFromSidebar?: () => void;
 };
 
 export function CardContextMenuWrapper({
@@ -38,6 +44,11 @@ export function CardContextMenuWrapper({
   onRemoveFromPawkit,
   onRemoveFromAllPawkits,
   onFetchMetadata,
+  cardId,
+  cardType,
+  isPinned = false,
+  onPinToSidebar,
+  onUnpinFromSidebar,
 }: CardContextMenuWrapperProps) {
   const [collections, setCollections] = useState<CollectionNode[]>([]);
   const [regularCollections, setRegularCollections] = useState<CollectionNode[]>([]);
@@ -222,6 +233,23 @@ export function CardContextMenuWrapper({
             <RefreshCw className="mr-2 h-4 w-4" />
             Fetch metadata
           </ContextMenuItem>
+        )}
+
+        {/* Pin to Sidebar - only for notes */}
+        {(cardType === 'md-note' || cardType === 'text-note') && (
+          <>
+            {isPinned ? (
+              <ContextMenuItem onClick={onUnpinFromSidebar}>
+                <PinOff className="mr-2 h-4 w-4" />
+                Unpin from Sidebar
+              </ContextMenuItem>
+            ) : (
+              <ContextMenuItem onClick={onPinToSidebar}>
+                <Pin className="mr-2 h-4 w-4" />
+                Pin to Sidebar
+              </ContextMenuItem>
+            )}
+          </>
         )}
 
         <ContextMenuSeparator />
