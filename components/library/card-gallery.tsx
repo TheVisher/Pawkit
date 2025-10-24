@@ -11,7 +11,7 @@ import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
-import { FileText, Bookmark } from "lucide-react";
+import { FileText, Bookmark, Pin } from "lucide-react";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
@@ -632,11 +632,20 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                 )}
               </div>
             )}
-            {showCardTags && (
-              <div className="flex items-center gap-2 pt-1">
-                <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-purple-200">
-                  {card.type === "md-note" ? "Markdown" : "Text"}
-                </span>
+            {(showCardTags || isPinned) && (
+              <div className="flex items-center justify-between gap-2 pt-1">
+                <div className="flex items-center gap-2">
+                  {showCardTags && (
+                    <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-purple-200">
+                      {card.type === "md-note" ? "Markdown" : "Text"}
+                    </span>
+                  )}
+                </div>
+                {isPinned && (
+                  <div className="flex items-center gap-1 text-purple-400">
+                    <Pin size={12} className="flex-shrink-0" />
+                  </div>
+                )}
               </div>
             )}
           </div>
