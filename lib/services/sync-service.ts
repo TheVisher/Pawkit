@@ -122,9 +122,12 @@ class SyncService {
       const serverCards: CardDTO[] = cardsData.items || [];
       const serverCollections: CollectionNode[] = collectionsData.tree || [];
 
+      // Flatten collections tree to get accurate count
+      const flatServerCollections = this.flattenCollections(serverCollections);
+
       console.log('[SyncService] Pulled from server:', {
         cards: serverCards.length,
-        collections: serverCollections.length,
+        collections: flatServerCollections.length,
       });
 
       // Get local data
@@ -138,7 +141,7 @@ class SyncService {
 
       // Merge collections
       const collectionConflicts = await this.mergeCollections(serverCollections, localCollections);
-      result.pulled.collections = serverCollections.length;
+      result.pulled.collections = flatServerCollections.length;
       result.conflicts.collections = collectionConflicts;
 
     } catch (error) {
@@ -199,15 +202,42 @@ class SyncService {
   }
 
   /**
+   * Flatten collection tree into a flat array, stripping children
+   * The tree structure will be rebuilt from parentId relationships
+   */
+  private flattenCollections(collections: CollectionNode[]): CollectionNode[] {
+    const flattened: CollectionNode[] = [];
+
+    const flatten = (nodes: CollectionNode[]) => {
+      for (const node of nodes) {
+        // Strip children array - tree will be rebuilt from parentId
+        const { children, ...nodeWithoutChildren } = node;
+        // Always set children to empty array to ensure clean state
+        flattened.push({ ...nodeWithoutChildren, children: [] } as CollectionNode);
+
+        if (children && children.length > 0) {
+          flatten(children);
+        }
+      }
+    };
+
+    flatten(collections);
+    return flattened;
+  }
+
+  /**
    * Merge server collections with local collections
    */
   private async mergeCollections(serverCollections: CollectionNode[], localCollections: CollectionNode[]): Promise<number> {
     let conflicts = 0;
 
-    const localMap = new Map(localCollections.map(c => [c.id, c]));
-    const serverMap = new Map(serverCollections.map(c => [c.id, c]));
+    // Flatten the tree structure to include all nested pawkits
+    const flatServerCollections = this.flattenCollections(serverCollections);
 
-    for (const serverCollection of serverCollections) {
+    const localMap = new Map(localCollections.map(c => [c.id, c]));
+    const serverMap = new Map(flatServerCollections.map(c => [c.id, c]));
+
+    for (const serverCollection of flatServerCollections) {
       const localCollection = localMap.get(serverCollection.id);
 
       if (!localCollection) {

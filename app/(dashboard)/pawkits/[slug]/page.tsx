@@ -6,7 +6,7 @@ import { LibraryWorkspace } from "@/components/library/workspace";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
-import { Folder } from "lucide-react";
+import { Folder, ChevronRight } from "lucide-react";
 
 function CollectionPageContent() {
   const params = useParams();
@@ -94,18 +94,48 @@ function CollectionPageContent() {
   }, [cards, slug, q, status]);
 
   // Find current collection
-  const findCollection = (nodes: any[], targetSlug: string): any => {
-    for (const node of nodes) {
-      if (node.slug === targetSlug) return node;
-      if (node.children) {
-        const found = findCollection(node.children, targetSlug);
-        if (found) return found;
+  const currentCollection = useMemo(() => {
+    const findCollection = (nodes: any[], targetSlug: string): any => {
+      for (const node of nodes) {
+        if (node.slug === targetSlug) return node;
+        if (node.children) {
+          const found = findCollection(node.children, targetSlug);
+          if (found) return found;
+        }
       }
-    }
-    return null;
-  };
+      return null;
+    };
+    return findCollection(collections, slug);
+  }, [collections, slug]);
 
-  const currentCollection = findCollection(collections, slug);
+  // Build breadcrumb trail from root to current collection
+  const breadcrumbs = useMemo(() => {
+    if (!currentCollection) return [];
+
+    const trail: Array<{ id: string; name: string; slug: string }> = [];
+
+    const buildTrail = (nodes: any[], targetSlug: string, path: any[] = []): boolean => {
+      for (const node of nodes) {
+        const currentPath = [...path, { id: node.id, name: node.name, slug: node.slug }];
+
+        if (node.slug === targetSlug) {
+          trail.push(...currentPath);
+          return true;
+        }
+
+        if (node.children) {
+          if (buildTrail(node.children, targetSlug, currentPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    buildTrail(collections, slug);
+    return trail;
+  }, [collections, slug, currentCollection]);
+
   if (!currentCollection) {
     return <div>Collection not found</div>;
   }
@@ -265,10 +295,33 @@ function CollectionPageContent() {
             </div>
             <div>
               <h1 className="text-2xl font-semibold text-foreground">{currentCollection.name}</h1>
-              <p className="text-sm text-muted-foreground">{items.length} card(s)</p>
+
+              {/* Breadcrumb Navigation */}
+              {breadcrumbs.length > 1 && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                  {breadcrumbs.map((crumb, index) => (
+                    <div key={crumb.id} className="flex items-center gap-1">
+                      {index > 0 && <ChevronRight size={12} />}
+                      {index < breadcrumbs.length - 1 ? (
+                        <button
+                          onClick={() => router.push(`/pawkits/${crumb.slug}`)}
+                          className="hover:text-foreground transition-colors"
+                        >
+                          {crumb.name}
+                        </button>
+                      ) : (
+                        <span className="text-foreground font-medium">{crumb.name}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-sm text-muted-foreground mt-1">{items.length} card(s)</p>
             </div>
           </div>
         </div>
+
         <LibraryWorkspace
           initialCards={items}
           initialNextCursor={undefined}
