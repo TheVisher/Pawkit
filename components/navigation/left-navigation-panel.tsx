@@ -65,6 +65,8 @@ export function LeftNavigationPanel({
   const [showCreatePawkitModal, setShowCreatePawkitModal] = useState(false);
   const [newPawkitName, setNewPawkitName] = useState("");
   const [creatingPawkit, setCreatingPawkit] = useState(false);
+  const [parentPawkitId, setParentPawkitId] = useState<string | null>(null);
+  const [hoveredCreatePawkit, setHoveredCreatePawkit] = useState<string | null>(null);
 
   // Detect if we're in demo mode
   const isDemo = pathname?.startsWith('/demo');
@@ -253,10 +255,15 @@ export function LeftNavigationPanel({
 
     setCreatingPawkit(true);
     try {
-      await addCollection({ name: trimmedName });
+      const payload: { name: string; parentId?: string } = { name: trimmedName };
+      if (parentPawkitId) {
+        payload.parentId = parentPawkitId;
+      }
+
+      await addCollection(payload);
 
       // Show toast
-      setToastMessage("Pawkit Created");
+      setToastMessage(parentPawkitId ? "Sub-Pawkit Created" : "Pawkit Created");
       setShowToast(true);
 
       // Hide toast after 2 seconds
@@ -267,6 +274,7 @@ export function LeftNavigationPanel({
       // Reset and close modal
       setNewPawkitName("");
       setShowCreatePawkitModal(false);
+      setParentPawkitId(null);
     } catch (error) {
       console.error('Failed to create pawkit:', error);
     } finally {
@@ -434,7 +442,11 @@ export function LeftNavigationPanel({
 
                   return (
                     <div key={collection.id}>
-                      <div className="flex items-center gap-1">
+                      <div
+                        className="flex items-center gap-1 group/pawkit"
+                        onMouseEnter={() => !activeCard && setHoveredCreatePawkit(collection.id)}
+                        onMouseLeave={() => setHoveredCreatePawkit(null)}
+                      >
                         <div className="relative flex-1">
                           <button
                             onClick={() => handleNavigate(pawkitHref)}
@@ -540,6 +552,20 @@ export function LeftNavigationPanel({
                             )}
                           </button>
                         </div>
+                        {/* + Button for creating sub-pawkit - show when no active card */}
+                        {!activeCard && hoveredCreatePawkit === collection.id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setParentPawkitId(collection.id);
+                              setShowCreatePawkitModal(true);
+                            }}
+                            className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400"
+                            title="Create sub-pawkit"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        )}
                         {hasChildren && (
                           <button
                             onClick={() => toggleCollection(collection.id)}
@@ -563,14 +589,23 @@ export function LeftNavigationPanel({
                             return (
                               <div
                                 key={child.id}
-                                className="relative"
-                                onMouseEnter={() => activeCard && setHoveredPawkit(child.slug)}
-                                onMouseLeave={() => setHoveredPawkit(null)}
+                                className="relative flex items-center gap-1 group/childpawkit"
+                                onMouseEnter={() => {
+                                  if (activeCard) {
+                                    setHoveredPawkit(child.slug);
+                                  } else {
+                                    setHoveredCreatePawkit(child.id);
+                                  }
+                                }}
+                                onMouseLeave={() => {
+                                  setHoveredPawkit(null);
+                                  setHoveredCreatePawkit(null);
+                                }}
                               >
                                 <button
                                   onClick={() => handleNavigate(childHref)}
                                   className={`
-                                    w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all relative overflow-hidden
+                                    flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all relative overflow-hidden
                                     ${pathname === childHref
                                       ? "bg-accent text-accent-foreground font-medium"
                                       : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
@@ -662,6 +697,20 @@ export function LeftNavigationPanel({
                                     </div>
                                   )}
                                 </button>
+                                {/* + Button for creating sub-pawkit under child - show when no active card */}
+                                {!activeCard && hoveredCreatePawkit === child.id && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setParentPawkitId(child.id);
+                                      setShowCreatePawkitModal(true);
+                                    }}
+                                    className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 flex-shrink-0"
+                                    title="Create sub-pawkit"
+                                  >
+                                    <Plus size={12} />
+                                  </button>
+                                )}
                               </div>
                             );
                           })}
@@ -756,6 +805,7 @@ export function LeftNavigationPanel({
             if (!creatingPawkit) {
               setShowCreatePawkitModal(false);
               setNewPawkitName("");
+              setParentPawkitId(null);
             }
           }}
         >
@@ -763,7 +813,9 @@ export function LeftNavigationPanel({
             className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 shadow-glow-accent p-6 w-full max-w-md mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-foreground mb-4">Create Pawkit</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              {parentPawkitId ? "Create Sub-Pawkit" : "Create Pawkit"}
+            </h3>
             <input
               type="text"
               value={newPawkitName}
@@ -775,6 +827,7 @@ export function LeftNavigationPanel({
                   if (!creatingPawkit) {
                     setShowCreatePawkitModal(false);
                     setNewPawkitName("");
+                    setParentPawkitId(null);
                   }
                 }
               }}
@@ -789,6 +842,7 @@ export function LeftNavigationPanel({
                   if (!creatingPawkit) {
                     setShowCreatePawkitModal(false);
                     setNewPawkitName("");
+                    setParentPawkitId(null);
                   }
                 }}
                 className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
