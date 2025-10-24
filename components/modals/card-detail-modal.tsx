@@ -822,7 +822,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           onClick={(e) => e.stopPropagation()}
         >
           {/* Top Bar - For all card types */}
-          <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm px-6 py-4 flex items-center justify-between flex-shrink-0">
+          <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm px-6 py-4 flex items-center justify-between flex-shrink-0 relative z-10">
             <div className="flex-1 min-w-0">
               <h2 className="text-lg font-semibold text-gray-100 truncate">
                 {card.title || "Untitled"}
@@ -890,11 +890,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     <>
                       {/* Backdrop to close menu */}
                       <div
-                        className="fixed inset-0 z-[200]"
+                        className="fixed inset-0 z-[300]"
                         onClick={() => setIsMenuOpen(false)}
                       />
                       {/* Dropdown Menu */}
-                      <div className="absolute right-0 mt-2 w-48 rounded-lg border border-white/10 bg-gray-900 shadow-xl z-[201] overflow-hidden">
+                      <div className="absolute right-0 mt-2 w-48 rounded-lg border border-white/10 bg-gray-900 shadow-xl z-[301] overflow-hidden">
                         <button
                           onClick={() => {
                             setIsMenuOpen(false);
