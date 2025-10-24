@@ -363,6 +363,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
+  // Bottom tab view mode: 'preview' | 'reader' | 'screenshot' | 'metadata'
+  const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'screenshot' | 'metadata'>('preview');
   const [denPawkitSlugs, setDenPawkitSlugs] = useState<Set<string>>(new Set());
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const lastSavedNotesRef = useRef(card.notes ?? "");
@@ -409,6 +411,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   useEffect(() => {
     setIsReaderExpanded(false);
     setExtracting(false);
+    setBottomTabMode('preview');
   }, [card.id]);
 
   // Save on modal close to ensure nothing is lost
@@ -836,24 +839,181 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
               </div>
             ) : (
-              <div className="p-8">
-                {card.image ? (
-                  <img
-                    src={card.image}
-                    alt={card.title || "Card preview"}
-                    className="max-w-full max-h-[calc(90vh-4rem)] object-contain rounded-lg"
-                  />
-                ) : (
-                  <div className="text-center space-y-4">
-                    <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center">
-                      <span className="text-white text-4xl">🔗</span>
+              <>
+                <div className="p-8">
+                  {bottomTabMode === 'preview' && (
+                    <>
+                      {card.image ? (
+                        <img
+                          src={card.image}
+                          alt={card.title || "Card preview"}
+                          className="max-w-full max-h-[calc(90vh-4rem)] object-contain rounded-lg"
+                        />
+                      ) : (
+                        <div className="text-center space-y-4">
+                          <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-4xl">🔗</span>
+                          </div>
+                          <h3 className="text-xl font-semibold text-gray-300">
+                            {card.title || card.domain || card.url}
+                          </h3>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {bottomTabMode === 'reader' && (
+                    <div className="h-[calc(90vh-12rem)] overflow-y-auto">
+                      {articleContent ? (
+                        <ReaderView
+                          title={card.title || card.domain || card.url}
+                          content={articleContent}
+                          url={card.url}
+                          isExpanded={false}
+                          onToggleExpand={() => setIsReaderExpanded(true)}
+                          onClose={onClose}
+                        />
+                      ) : (
+                        <div className="text-center space-y-4 py-12">
+                          <div className="text-gray-400 mb-4">
+                            <BookOpen size={48} className="mx-auto" />
+                          </div>
+                          <h3 className="text-xl font-semibold text-gray-300">No Article Content Yet</h3>
+                          <p className="text-sm text-gray-500 max-w-md mx-auto">
+                            Extract the article content for distraction-free reading
+                          </p>
+                          <Button
+                            onClick={handleExtractArticle}
+                            disabled={extracting}
+                            size="lg"
+                          >
+                            {extracting ? (
+                              <>
+                                <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                Kit is fetching...
+                              </>
+                            ) : (
+                              <>
+                                🐕 Let Kit Fetch Article
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-300">
-                      {card.title || card.domain || card.url}
-                    </h3>
+                  )}
+
+                  {bottomTabMode === 'screenshot' && (
+                    <div className="h-[calc(90vh-12rem)] overflow-y-auto flex items-center justify-center">
+                      {card.image ? (
+                        <img
+                          src={card.image}
+                          alt={card.title || "Card screenshot"}
+                          className="max-w-full max-h-full object-contain rounded-lg"
+                        />
+                      ) : (
+                        <div className="text-center space-y-4">
+                          <div className="text-gray-400 mb-4">
+                            <Globe size={48} className="mx-auto" />
+                          </div>
+                          <h3 className="text-xl font-semibold text-gray-300">No Screenshot Available</h3>
+                          <p className="text-sm text-gray-500">No preview image was captured for this card</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {bottomTabMode === 'metadata' && (
+                    <div className="h-[calc(90vh-12rem)] overflow-y-auto">
+                      <div className="max-w-2xl mx-auto space-y-6">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
+                          <div className="space-y-3 text-sm">
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Title</span>
+                              <span className="text-gray-200 text-right max-w-md truncate">{card.title || "—"}</span>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Domain</span>
+                              <span className="text-gray-200">{card.domain || "—"}</span>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">URL</span>
+                              <a
+                                href={card.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-accent hover:underline max-w-md truncate"
+                              >
+                                {card.url}
+                              </a>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Created</span>
+                              <span className="text-gray-200">{new Date(card.createdAt).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Updated</span>
+                              <span className="text-gray-200">{new Date(card.updatedAt).toLocaleString()}</span>
+                            </div>
+                            {card.description && (
+                              <div className="py-2">
+                                <span className="text-gray-400 block mb-2">Description</span>
+                                <p className="text-gray-200">{card.description}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bottom Tab Buttons - Fabric-style */}
+                <div className="border-t border-white/10 bg-white/5 backdrop-blur-sm">
+                  <div className="flex items-center justify-center gap-2 p-4">
+                    <Button
+                      onClick={() => setBottomTabMode('preview')}
+                      variant={bottomTabMode === 'preview' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <Globe size={16} />
+                      Preview
+                    </Button>
+                    <Button
+                      onClick={() => setBottomTabMode('reader')}
+                      variant={bottomTabMode === 'reader' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <BookOpen size={16} />
+                      Reader
+                    </Button>
+                    <Button
+                      onClick={() => setBottomTabMode('screenshot')}
+                      variant={bottomTabMode === 'screenshot' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <FileText size={16} />
+                      Screenshot
+                    </Button>
+                    <Button
+                      onClick={() => setBottomTabMode('metadata')}
+                      variant={bottomTabMode === 'metadata' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <Tag size={16} />
+                      Metadata
+                    </Button>
                   </div>
-                )}
-              </div>
+                </div>
+              </>
             )}
           </div>
         </div>
