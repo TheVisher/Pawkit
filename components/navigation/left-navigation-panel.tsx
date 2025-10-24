@@ -391,7 +391,11 @@ export function LeftNavigationPanel({
                   return (
                     <div key={collection.id}>
                       <div className="flex items-center gap-1">
-                        <div className="relative flex-1">
+                        <div
+                          className="relative flex-1"
+                          onMouseEnter={() => activeCard && setHoveredPawkit(collection.slug)}
+                          onMouseLeave={() => setHoveredPawkit(null)}
+                        >
                           <button
                             onClick={() => handleNavigate(pawkitHref)}
                             className={`
@@ -413,16 +417,18 @@ export function LeftNavigationPanel({
                                     <div
                                       role="button"
                                       tabIndex={0}
-                                      onMouseEnter={() => setHoveredPawkit(collection.slug)}
-                                      onMouseLeave={() => setHoveredPawkit(null)}
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        removeFromCollection(collection.slug, collection.name);
+                                        if (isHovered) {
+                                          removeFromCollection(collection.slug, collection.name);
+                                        }
                                       }}
                                       onKeyDown={(e) => {
                                         if (e.key === 'Enter' || e.key === ' ') {
                                           e.stopPropagation();
-                                          removeFromCollection(collection.slug, collection.name);
+                                          if (isHovered) {
+                                            removeFromCollection(collection.slug, collection.name);
+                                          }
                                         }
                                       }}
                                       className="p-1 rounded transition-colors relative cursor-pointer"
@@ -447,49 +453,38 @@ export function LeftNavigationPanel({
                                       )}
                                     </div>
                                   </div>
-                                ) : (
-                                  <div
-                                    role="button"
-                                    tabIndex={0}
-                                    className="p-1 rounded transition-colors relative cursor-pointer"
-                                    title="Add to pawkit"
-                                    onMouseEnter={() => setHoveredPawkit(collection.slug)}
-                                    onMouseLeave={() => setHoveredPawkit(null)}
-                                    onClick={(e) => {
-                                      console.log('[CLICK] ========== PLUS BUTTON CLICKED ==========');
-                                      console.log('[CLICK] Collection:', collection.slug, collection.name);
-                                      console.log('[CLICK] Active card:', activeCard);
-                                      console.log('[CLICK] Event:', e);
-                                      e.stopPropagation();
-                                      console.log('[CLICK] About to call addToCollection...');
-                                      addToCollection(collection.slug, collection.name);
-                                      console.log('[CLICK] addToCollection called!');
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' || e.key === ' ') {
-                                        console.log('[KEYDOWN] Plus button keydown!', { collectionSlug: collection.slug, activeCard });
+                                ) : isHovered && (
+                                  <div className="relative">
+                                    <div
+                                      role="button"
+                                      tabIndex={0}
+                                      className="p-1 rounded transition-colors relative cursor-pointer"
+                                      title="Add to pawkit"
+                                      onClick={(e) => {
                                         e.stopPropagation();
                                         addToCollection(collection.slug, collection.name);
-                                      }
-                                    }}
-                                  >
-                                    {isHovered && (
-                                      <>
-                                        <Plus size={14} className="text-purple-400" />
-                                        {/* Purple expanding circle animation - overlays the icon */}
-                                        {isAnimating && (
-                                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                                            <div
-                                              className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
-                                              style={{
-                                                background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                              }}
-                                            />
-                                            <Check size={14} className="text-white relative z-10" />
-                                          </div>
-                                        )}
-                                      </>
-                                    )}
+                                      }}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                          e.stopPropagation();
+                                          addToCollection(collection.slug, collection.name);
+                                        }
+                                      }}
+                                    >
+                                      <Plus size={14} className="text-purple-400" />
+                                      {/* Purple expanding circle animation - overlays the icon */}
+                                      {isAnimating && (
+                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+                                          <div
+                                            className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
+                                            style={{
+                                              background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                                            }}
+                                          />
+                                          <Check size={14} className="text-white relative z-10" />
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 )}
                               </div>
