@@ -373,6 +373,18 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const lastSavedNotesRef = useRef(card.notes ?? "");
   const lastSavedContentRef = useRef(card.content ?? "");
 
+  // Calculate note metadata for display in top bar
+  const noteMetadata = useMemo(() => {
+    if (!isNote) return null;
+    const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+    const characters = content.length;
+    const linkMatches = content.match(/\[\[([^\]]+)\]\]/g) || [];
+    const linkCount = linkMatches.length;
+    const tagMatches = content.match(/#([a-zA-Z0-9_-]+)/g) || [];
+    const tagCount = tagMatches.length;
+    return { words, characters, linkCount, tagCount };
+  }, [content, isNote]);
+
   // Fetch Den Pawkit slugs to differentiate from regular Pawkits
   useEffect(() => {
     const fetchDenPawkits = async () => {
@@ -826,6 +838,17 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 {getShortDomain(card.url)}
               </a>
             </div>
+
+            {/* Note Metadata - show for notes */}
+            {isNote && noteMetadata && (
+              <div className="flex items-center gap-4 text-xs text-gray-400 mx-4">
+                <span>{noteMetadata.words} words</span>
+                <span>{noteMetadata.characters} chars</span>
+                <span>{noteMetadata.linkCount} links</span>
+                <span>{noteMetadata.tagCount} tags</span>
+              </div>
+            )}
+
               <div className="flex items-center gap-2 ml-4">
                 {/* Expand Button */}
                 <button
