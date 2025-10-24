@@ -302,6 +302,170 @@ export function LeftNavigationPanel({
 
   if (!open) return null;
 
+  // Recursive function to render collection tree at any depth
+  const renderCollectionTree = (collection: CollectionNode, depth: number = 0): JSX.Element => {
+    const hasChildren = collection.children && collection.children.length > 0;
+    const isExpanded = expandedCollections.has(collection.id);
+    const pawkitHref = `/pawkits/${collection.slug || collection.id}`;
+    const isCollectionActive = pathname === pawkitHref;
+    const cardInCollection = isCardInCollection(collection.slug);
+    const isHovered = hoveredPawkit === collection.slug;
+    const isAnimating = animatingPawkit === collection.slug;
+    const isCreateHovered = hoveredCreatePawkit === collection.id;
+
+    // Determine size and spacing based on depth
+    const iconSize = depth === 0 ? 14 : 12;
+    const textSize = depth === 0 ? "text-sm" : "text-xs";
+    const padding = depth === 0 ? "px-3 py-2" : "px-3 py-1.5";
+
+    return (
+      <div key={collection.id}>
+        <div
+          className="flex items-center gap-1 group/pawkit"
+          onMouseEnter={() => !activeCard && setHoveredCreatePawkit(collection.id)}
+          onMouseLeave={() => setHoveredCreatePawkit(null)}
+        >
+          <div className="relative flex-1">
+            <button
+              onClick={() => handleNavigate(pawkitHref)}
+              className={`
+                w-full flex items-center gap-2 ${padding} rounded-lg ${textSize} transition-all relative overflow-hidden
+                ${isCollectionActive
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                }
+              `}
+            >
+              <FolderOpen size={iconSize} className="flex-shrink-0" />
+              <span className="flex-1 text-left truncate">{collection.name}</span>
+
+              {/* Action buttons - only show when card modal is open */}
+              {activeCard && (
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  {cardInCollection ? (
+                    <div className="relative">
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onMouseEnter={() => setHoveredPawkit(collection.slug)}
+                        onMouseLeave={() => setHoveredPawkit(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFromCollection(collection.slug, collection.name);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.stopPropagation();
+                            removeFromCollection(collection.slug, collection.name);
+                          }
+                        }}
+                        className="p-1 rounded transition-colors relative cursor-pointer"
+                        title={isHovered ? "Remove from pawkit" : "In this pawkit"}
+                      >
+                        {isHovered ? (
+                          <Minus size={iconSize} className="text-red-400" />
+                        ) : (
+                          <Check size={iconSize} className="text-muted-foreground" />
+                        )}
+                        {isAnimating && (
+                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+                            <div
+                              className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
+                              style={{
+                                background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                              }}
+                            />
+                            <Check size={iconSize} className="text-white relative z-10" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className="p-1 rounded transition-colors relative cursor-pointer"
+                      title="Add to pawkit"
+                      onMouseEnter={() => setHoveredPawkit(collection.slug)}
+                      onMouseLeave={() => setHoveredPawkit(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addToCollection(collection.slug, collection.name);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                          addToCollection(collection.slug, collection.name);
+                        }
+                      }}
+                    >
+                      <Plus size={iconSize} className="text-purple-400" />
+                      {isAnimating && (
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+                          <div
+                            className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
+                            style={{
+                              background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                            }}
+                          />
+                          <Check size={iconSize} className="text-white relative z-10" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </button>
+          </div>
+
+          {/* + Button for creating sub-pawkit - show when no active card */}
+          {!activeCard && isCreateHovered && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setParentPawkitId(collection.id);
+                setShowCreatePawkitModal(true);
+              }}
+              className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400"
+              title="Create sub-pawkit"
+            >
+              <Plus size={iconSize} />
+            </button>
+          )}
+
+          {/* Chevron for expanding/collapsing children */}
+          {hasChildren && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                const newExpanded = new Set(expandedCollections);
+                if (isExpanded) {
+                  newExpanded.delete(collection.id);
+                } else {
+                  newExpanded.add(collection.id);
+                }
+                setExpandedCollections(newExpanded);
+              }}
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <ChevronRight
+                size={14}
+                className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+              />
+            </button>
+          )}
+        </div>
+
+        {/* Recursively render children */}
+        {hasChildren && isExpanded && collection.children && (
+          <div className="ml-6 mt-1 space-y-1">
+            {collection.children.map((child) => renderCollectionTree(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       {/* Subtle backdrop - only in floating mode */}
@@ -447,296 +611,7 @@ export function LeftNavigationPanel({
                   <FolderOpen size={16} className="flex-shrink-0" />
                   <span className="flex-1 text-left">All Pawkits</span>
                 </button>
-                {collections.map((collection) => {
-                  const hasChildren = collection.children && collection.children.length > 0;
-                  const isExpanded = expandedCollections.has(collection.id);
-                  const pawkitHref = `/pawkits/${collection.slug || collection.id}`;
-                  const isCollectionActive = pathname === pawkitHref;
-
-                  // Check if card is in this collection
-                  const cardInCollection = isCardInCollection(collection.slug);
-                  const isHovered = hoveredPawkit === collection.slug;
-                  const isAnimating = animatingPawkit === collection.slug;
-
-                  return (
-                    <div key={collection.id}>
-                      <div
-                        className="flex items-center gap-1 group/pawkit"
-                        onMouseEnter={() => !activeCard && setHoveredCreatePawkit(collection.id)}
-                        onMouseLeave={() => setHoveredCreatePawkit(null)}
-                      >
-                        <div className="relative flex-1">
-                          <button
-                            onClick={() => handleNavigate(pawkitHref)}
-                            className={`
-                              w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all relative overflow-hidden
-                              ${isCollectionActive
-                                ? "bg-accent text-accent-foreground font-medium"
-                                : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
-                              }
-                            `}
-                          >
-                            <FolderOpen size={14} className="flex-shrink-0" />
-                            <span className="flex-1 text-left truncate">{collection.name}</span>
-
-                            {/* Action buttons - only show when card modal is open */}
-                            {activeCard && (
-                              <div className="flex items-center gap-1 flex-shrink-0">
-                                {cardInCollection ? (
-                                  <div className="relative">
-                                    <div
-                                      role="button"
-                                      tabIndex={0}
-                                      onMouseEnter={() => setHoveredPawkit(collection.slug)}
-                                      onMouseLeave={() => setHoveredPawkit(null)}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        removeFromCollection(collection.slug, collection.name);
-                                      }}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter' || e.key === ' ') {
-                                          e.stopPropagation();
-                                          removeFromCollection(collection.slug, collection.name);
-                                        }
-                                      }}
-                                      className="p-1 rounded transition-colors relative cursor-pointer"
-                                      title={isHovered ? "Remove from pawkit" : "In this pawkit"}
-                                    >
-                                      {isHovered ? (
-                                        <Minus size={14} className="text-red-400" />
-                                      ) : (
-                                        <Check size={14} className="text-muted-foreground" />
-                                      )}
-                                      {/* Purple expanding circle animation - overlays the icon */}
-                                      {isAnimating && (
-                                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                                          <div
-                                            className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
-                                            style={{
-                                              background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                            }}
-                                          />
-                                          <Check size={14} className="text-white relative z-10" />
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div
-                                    role="button"
-                                    tabIndex={0}
-                                    className="p-1 rounded transition-colors relative cursor-pointer"
-                                    title="Add to pawkit"
-                                    onMouseEnter={() => setHoveredPawkit(collection.slug)}
-                                    onMouseLeave={() => setHoveredPawkit(null)}
-                                    onClick={(e) => {
-                                      console.log('[CLICK] ========== PLUS BUTTON CLICKED ==========');
-                                      console.log('[CLICK] Collection:', collection.slug, collection.name);
-                                      console.log('[CLICK] Active card:', activeCard);
-                                      console.log('[CLICK] Event:', e);
-                                      e.stopPropagation();
-                                      console.log('[CLICK] About to call addToCollection...');
-                                      addToCollection(collection.slug, collection.name);
-                                      console.log('[CLICK] addToCollection called!');
-                                    }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' || e.key === ' ') {
-                                        console.log('[KEYDOWN] Plus button keydown!', { collectionSlug: collection.slug, activeCard });
-                                        e.stopPropagation();
-                                        addToCollection(collection.slug, collection.name);
-                                      }
-                                    }}
-                                  >
-                                    {isHovered && (
-                                      <>
-                                        <Plus size={14} className="text-purple-400" />
-                                        {/* Purple expanding circle animation - overlays the icon */}
-                                        {isAnimating && (
-                                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                                            <div
-                                              className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
-                                              style={{
-                                                background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                              }}
-                                            />
-                                            <Check size={14} className="text-white relative z-10" />
-                                          </div>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </button>
-                        </div>
-                        {/* + Button for creating sub-pawkit - show when no active card */}
-                        {!activeCard && hoveredCreatePawkit === collection.id && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setParentPawkitId(collection.id);
-                              setShowCreatePawkitModal(true);
-                            }}
-                            className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400"
-                            title="Create sub-pawkit"
-                          >
-                            <Plus size={14} />
-                          </button>
-                        )}
-                        {hasChildren && (
-                          <button
-                            onClick={() => toggleCollection(collection.id)}
-                            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                          >
-                            <ChevronRight
-                              size={14}
-                              className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
-                            />
-                          </button>
-                        )}
-                      </div>
-                      {hasChildren && isExpanded && collection.children && (
-                        <div className="ml-6 mt-1 space-y-1">
-                          {collection.children.map((child) => {
-                            const childHref = `/pawkits/${child.slug || child.id}`;
-                            const childInCollection = isCardInCollection(child.slug);
-                            const isChildHovered = hoveredPawkit === child.slug;
-                            const isChildAnimating = animatingPawkit === child.slug;
-
-                            return (
-                              <div
-                                key={child.id}
-                                className="relative flex items-center gap-1 group/childpawkit"
-                                onMouseEnter={() => {
-                                  if (activeCard) {
-                                    setHoveredPawkit(child.slug);
-                                  } else {
-                                    setHoveredCreatePawkit(child.id);
-                                  }
-                                }}
-                                onMouseLeave={() => {
-                                  setHoveredPawkit(null);
-                                  setHoveredCreatePawkit(null);
-                                }}
-                              >
-                                <button
-                                  onClick={() => handleNavigate(childHref)}
-                                  className={`
-                                    flex-1 flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs transition-all relative overflow-hidden
-                                    ${pathname === childHref
-                                      ? "bg-accent text-accent-foreground font-medium"
-                                      : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
-                                    }
-                                  `}
-                                >
-                                  <span className="flex-1 truncate">{child.name}</span>
-
-                                  {/* Action buttons - only show when card modal is open */}
-                                  {activeCard && (
-                                    <div className="flex items-center gap-1 flex-shrink-0">
-                                      {childInCollection ? (
-                                        <div className="relative">
-                                          <div
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              if (isChildHovered) {
-                                                removeFromCollection(child.slug, child.name);
-                                              }
-                                            }}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter' || e.key === ' ') {
-                                                e.stopPropagation();
-                                                if (isChildHovered) {
-                                                  removeFromCollection(child.slug, child.name);
-                                                }
-                                              }
-                                            }}
-                                            className="p-0.5 rounded transition-colors relative cursor-pointer"
-                                            title={isChildHovered ? "Remove from pawkit" : "In this pawkit"}
-                                          >
-                                            {isChildHovered ? (
-                                              <Minus size={12} className="text-red-400" />
-                                            ) : (
-                                              <Check size={12} className="text-muted-foreground" />
-                                            )}
-                                            {/* Purple expanding circle animation - overlays the icon */}
-                                            {isChildAnimating && (
-                                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                                                <div
-                                                  className="animate-expand-contract-fade absolute h-6 w-6 rounded-full"
-                                                  style={{
-                                                    background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.6) 100%)'
-                                                  }}
-                                                />
-                                                <Check size={12} className="text-white relative z-10" />
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      ) : isChildHovered && (
-                                        <div className="relative">
-                                          <div
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={(e) => {
-                                              console.log('[CLICK] Child plus button clicked!', { childSlug: child.slug, activeCard });
-                                              e.stopPropagation();
-                                              addToCollection(child.slug, child.name);
-                                            }}
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter' || e.key === ' ') {
-                                                console.log('[KEYDOWN] Child plus button keydown!', { childSlug: child.slug, activeCard });
-                                                e.stopPropagation();
-                                                addToCollection(child.slug, child.name);
-                                              }
-                                            }}
-                                            className="p-0.5 rounded transition-colors relative cursor-pointer"
-                                            title="Add to pawkit"
-                                          >
-                                            <Plus size={12} className="text-purple-400" />
-                                            {/* Purple expanding circle animation - overlays the icon */}
-                                            {isChildAnimating && (
-                                              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                                                <div
-                                                  className="animate-expand-contract-fade absolute h-6 w-6 rounded-full"
-                                                  style={{
-                                                    background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                                  }}
-                                                />
-                                                <Check size={12} className="text-white relative z-10" />
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
-                                </button>
-                                {/* + Button for creating sub-pawkit under child - show when no active card */}
-                                {!activeCard && hoveredCreatePawkit === child.id && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setParentPawkitId(child.id);
-                                      setShowCreatePawkitModal(true);
-                                    }}
-                                    className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 flex-shrink-0"
-                                    title="Create sub-pawkit"
-                                  >
-                                    <Plus size={12} />
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+                {collections.map((collection) => renderCollectionTree(collection, 0))}
               </div>
             </PanelSection>
           )}
