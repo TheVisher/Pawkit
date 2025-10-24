@@ -463,7 +463,11 @@ export function LeftNavigationPanel({
           onMouseEnter={() => !activeCard && setHoveredCreatePawkit(collection.id)}
           onMouseLeave={() => setHoveredCreatePawkit(null)}
         >
-          <div className="relative flex-1">
+          <div
+            className="relative flex-1"
+            onMouseEnter={() => activeCard && setHoveredPawkit(collection.slug)}
+            onMouseLeave={() => setHoveredPawkit(null)}
+          >
             <button
               onClick={() => handleNavigate(pawkitHref)}
               className={`
@@ -481,52 +485,43 @@ export function LeftNavigationPanel({
               {activeCard && (
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {cardInCollection ? (
-                    <div className="relative">
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        onMouseEnter={() => setHoveredPawkit(collection.slug)}
-                        onMouseLeave={() => setHoveredPawkit(null)}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeFromCollection(collection.slug, collection.name);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.stopPropagation();
-                            removeFromCollection(collection.slug, collection.name);
-                          }
-                        }}
-                        className="p-1 rounded transition-colors relative cursor-pointer"
-                        title={isHovered ? "Remove from pawkit" : "In this pawkit"}
-                      >
-                        {isHovered ? (
-                          <Minus size={iconSize} className="text-red-400" />
-                        ) : (
-                          <Check size={iconSize} className="text-muted-foreground" />
-                        )}
-                        {isAnimating && (
-                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                            <div
-                              className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
-                              style={{
-                                background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                              }}
-                            />
-                            <Check size={iconSize} className="text-white relative z-10" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
                     <div
                       role="button"
                       tabIndex={0}
-                      className="p-1 rounded transition-colors relative cursor-pointer flex items-center justify-center"
-                      style={{ minWidth: `${iconSize + 8}px`, minHeight: `${iconSize + 8}px` }}
-                      title="Add to pawkit"
-                      onMouseEnter={() => setHoveredPawkit(collection.slug)}
-                      onMouseLeave={() => setHoveredPawkit(null)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFromCollection(collection.slug, collection.name);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.stopPropagation();
+                          removeFromCollection(collection.slug, collection.name);
+                        }
+                      }}
+                      className="p-1 rounded transition-colors relative cursor-pointer"
+                      title={isHovered ? "Remove from pawkit" : "In this pawkit"}
+                    >
+                      {isHovered ? (
+                        <Minus size={iconSize} className="text-red-400" />
+                      ) : (
+                        <Check size={iconSize} className="text-muted-foreground" />
+                      )}
+                      {isAnimating && (
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+                          <div
+                            className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
+                            style={{
+                              background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                            }}
+                          />
+                          <Check size={iconSize} className="text-white relative z-10" />
+                        </div>
+                      )}
+                    </div>
+                  ) : isHovered && (
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={(e) => {
                         e.stopPropagation();
                         addToCollection(collection.slug, collection.name);
@@ -537,24 +532,20 @@ export function LeftNavigationPanel({
                           addToCollection(collection.slug, collection.name);
                         }
                       }}
+                      className="p-1 rounded transition-colors relative cursor-pointer"
+                      title="Add to pawkit"
                     >
-                      {isHovered ? (
-                        <>
-                          <Plus size={iconSize} className="text-purple-400" />
-                          {isAnimating && (
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
-                              <div
-                                className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
-                                style={{
-                                  background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
-                                }}
-                              />
-                              <Check size={iconSize} className="text-white relative z-10" />
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div style={{ width: `${iconSize}px`, height: `${iconSize}px` }} />
+                      <Plus size={iconSize} className="text-purple-400" />
+                      {isAnimating && (
+                        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
+                          <div
+                            className="animate-expand-contract-fade absolute h-8 w-8 rounded-full"
+                            style={{
+                              background: 'linear-gradient(180deg, hsla(var(--accent) / 0.2) 0%, hsla(var(--accent) / 0.35) 55%, hsla(var(--accent) / 0.6) 100%)'
+                            }}
+                          />
+                          <Check size={iconSize} className="text-white relative z-10" />
+                        </div>
                       )}
                     </div>
                   )}
