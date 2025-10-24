@@ -229,6 +229,11 @@ export function PanelSection({ id, title, children, icon, action, onClick }: Pan
             {title}
           </h3>
         </button>
+        {action && (
+          <div className="flex-shrink-0">
+            {action}
+          </div>
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -242,11 +247,6 @@ export function PanelSection({ id, title, children, icon, action, onClick }: Pan
             }`}
           />
         </button>
-        {action && (
-          <div className="flex-shrink-0">
-            {action}
-          </div>
-        )}
       </div>
       <div
         className={`space-y-2 transition-all duration-200 overflow-hidden ${
