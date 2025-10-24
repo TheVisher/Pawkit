@@ -800,15 +800,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             isReaderExpanded
               ? "w-full h-full"
               : isYouTubeUrl(card.url)
-                ? "w-full max-w-6xl"
+                ? "w-full max-w-6xl h-[85vh]"
                 : isNote
-                  ? "w-full max-w-3xl min-h-[60vh] max-h-[85vh]"
-                  : "w-full max-w-4xl min-h-[40vh] max-h-[90vh]"
+                  ? "w-full max-w-3xl h-[80vh]"
+                  : "w-full max-w-4xl h-[85vh]"
           }`}
-          style={{
-            // Let content determine height, but keep it within bounds
-            height: isReaderExpanded ? '100%' : 'auto'
-          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Top Bar - For all card types */}
@@ -933,8 +929,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
               </div>
             ) : (
-              // URL card content with dynamic tabs - fixed min height for consistency
-              <div className="h-full min-h-[500px] overflow-hidden p-8">
+              // URL card content with tabs - fills available space
+              <div className="h-full overflow-hidden p-8">
                 {bottomTabMode === 'preview' && (
                   <div className="w-full h-full flex items-center justify-center">
                     {card.image ? (
