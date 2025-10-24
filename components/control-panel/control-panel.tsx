@@ -190,7 +190,7 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
         </div>
 
         {/* Keyboard Shortcuts Footer - Fixed at bottom */}
-        <div className="px-4 py-3 border-t border-white/5 bg-white/5 backdrop-blur-lg">
+        <div className="px-4 py-3 border-t border-white/5">
           <div className="text-xs text-muted-foreground space-y-2">
             <div className="flex items-center justify-between">
               <span>Quick search</span>
