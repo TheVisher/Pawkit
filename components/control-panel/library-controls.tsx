@@ -5,6 +5,8 @@ import { Grid, List, LayoutGrid, Columns, Tag, SortAsc, Eye, Maximize2 } from "l
 import { useViewSettingsStore, type SortBy } from "@/lib/hooks/view-settings-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDataStore } from "@/lib/stores/data-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { useRouter, usePathname } from "next/navigation";
 import { useMemo } from "react";
 
 // Map view settings sortBy to control panel sort options
@@ -37,7 +39,17 @@ const mapControlToSortBy = (sort: "date" | "modified" | "title" | "domain"): Sor
 };
 
 export function LibraryControls() {
+  const router = useRouter();
+  const pathname = usePathname();
   const { cards } = useDataStore();
+
+  // Detect if we're in demo mode
+  const isDemo = pathname?.startsWith('/demo');
+  const pathPrefix = isDemo ? '/demo' : '';
+
+  // Get collapsed sections for managing section state
+  const collapsedSections = usePanelStore((state) => state.collapsedSections);
+  const toggleSection = usePanelStore((state) => state.toggleSection);
 
   // Get view settings from store
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
@@ -191,7 +203,18 @@ export function LibraryControls() {
 
       {/* Tags Filter Section */}
       {allTags.length > 0 && (
-        <PanelSection id="library-tags" title="Filter by Tags" icon={<Tag className="h-4 w-4 text-accent" />}>
+        <PanelSection
+          id="library-tags"
+          title="Tags"
+          icon={<Tag className="h-4 w-4 text-accent" />}
+          onClick={() => {
+            router.push(`${pathPrefix}/tags`);
+            // Ensure section is expanded when clicking header
+            if (collapsedSections["library-tags"]) {
+              toggleSection("library-tags");
+            }
+          }}
+        >
           {selectedTags.length > 0 && (
             <button
               onClick={handleClearTags}
