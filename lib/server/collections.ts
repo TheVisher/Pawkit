@@ -4,7 +4,7 @@ import { collectionCreateSchema, collectionUpdateSchema } from "@/lib/validators
 import { slugify } from "@/lib/utils/slug";
 import { unstable_cache, revalidateTag } from 'next/cache';
 
-const MAX_DEPTH = 4;
+const MAX_DEPTH = 10; // Allow deep nesting
 
 export type CollectionDTO = Omit<Collection, 'createdAt' | 'updatedAt' | 'deletedAt'> & {
   children: CollectionDTO[];
