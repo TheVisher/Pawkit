@@ -42,9 +42,7 @@ type NavItem = {
 };
 
 const navigationItems: NavItem[] = [
-  { id: "home", label: "Home", icon: Home, path: "/home" },
   { id: "library", label: "Library", icon: Library, path: "/library" },
-  { id: "tags", label: "Tags", icon: Tag, path: "/tags" },
   { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
   { id: "den", label: "The Den", icon: DogHouseIcon, path: "/den" },
   { id: "distill", label: "Dig Up", icon: Layers, path: "/distill" },
@@ -690,8 +688,19 @@ export function LeftNavigationPanel({
             WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)"
           }}
         >
-          {/* Navigation Section */}
-          <PanelSection id="left-navigation" title="Navigation" icon={<Home className="h-4 w-4 text-accent" />}>
+          {/* Home Section */}
+          <PanelSection
+            id="left-home"
+            title="Home"
+            icon={<Home className="h-4 w-4 text-accent" />}
+            onClick={() => {
+              handleNavigate("/home");
+              // Ensure section is expanded when clicking header
+              if (collapsedSections["left-home"]) {
+                toggleSection("left-home");
+              }
+            }}
+          >
             <div className="space-y-1">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
