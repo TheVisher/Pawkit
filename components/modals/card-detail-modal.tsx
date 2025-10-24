@@ -369,6 +369,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isModalExpanded, setIsModalExpanded] = useState(false);
   const [noteMode, setNoteMode] = useState<'edit' | 'preview'>('preview');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(card.title || "");
   const lastSavedNotesRef = useRef(card.notes ?? "");
   const lastSavedContentRef = useRef(card.content ?? "");
 
@@ -427,7 +429,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     setExtracting(false);
     setBottomTabMode('preview');
     setIsModalExpanded(false);
-  }, [card.id]);
+    setIsEditingTitle(false);
+    setEditedTitle(card.title || "");
+  }, [card.id, card.title]);
 
   // Save on modal close to ensure nothing is lost
   const handleClose = async () => {
@@ -555,6 +559,40 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     onUpdate({ ...card, pinned: newPinned });
 
     setToast(newPinned ? "Pinned to home" : "Unpinned from home");
+  };
+
+  const handleSaveTitle = async () => {
+    const trimmedTitle = editedTitle.trim();
+
+    // If title hasn't changed, just exit edit mode
+    if (trimmedTitle === card.title) {
+      setIsEditingTitle(false);
+      return;
+    }
+
+    try {
+      // Update store
+      await updateCardInStore(card.id, { title: trimmedTitle });
+
+      // Update parent component state
+      onUpdate({ ...card, title: trimmedTitle });
+
+      setIsEditingTitle(false);
+      setToast("Title updated");
+    } catch (error) {
+      console.error("Failed to update title:", error);
+      setToast("Failed to update title");
+    }
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSaveTitle();
+    } else if (e.key === "Escape") {
+      setEditedTitle(card.title || "");
+      setIsEditingTitle(false);
+    }
   };
 
   const handleAddToPawkit = async (slug: string) => {
@@ -824,9 +862,33 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           {/* Top Bar - For all card types */}
           <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm px-6 py-4 flex items-center justify-between flex-shrink-0 relative z-10">
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-semibold text-gray-100 truncate">
-                {card.title || "Untitled"}
-              </h2>
+              {isEditingTitle ? (
+                // Edit mode for title
+                <input
+                  type="text"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onKeyDown={handleTitleKeyDown}
+                  onBlur={handleSaveTitle}
+                  autoFocus
+                  className="w-full text-lg font-semibold text-gray-100 bg-gray-800/50 border border-purple-500/50 rounded px-2 py-1 focus:outline-none focus:border-purple-400"
+                  placeholder="Enter title..."
+                />
+              ) : (
+                // Display mode with hover edit
+                <div className="group flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-gray-100 truncate">
+                    {card.title || "Untitled"}
+                  </h2>
+                  <button
+                    onClick={() => setIsEditingTitle(true)}
+                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-purple-400 transition-all flex-shrink-0 p-1"
+                    title="Edit title"
+                  >
+                    <Edit size={16} />
+                  </button>
+                </div>
+              )}
               {isNote && noteMetadata ? (
                 // Note metadata under title (like domain for URL cards)
                 <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
@@ -836,12 +898,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   <span>{noteMetadata.tagCount} tags</span>
                 </div>
               ) : (
-                // Domain for URL cards
+                // Domain for URL cards with hover effects
                 <a
                   href={card.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-gray-400 hover:text-accent transition-colors truncate block"
+                  className="text-sm text-gray-400 hover:text-purple-400 hover:underline transition-colors truncate block mt-1"
                   title={card.url}
                 >
                   {getShortDomain(card.url)}
