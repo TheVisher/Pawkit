@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/tooltip";
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
 import { DogHouseIcon } from "@/components/icons/dog-house";
-import { type CollectionNode, type CardType } from "@/lib/types";
+import { type CollectionNode, type CardType, type CardModel } from "@/lib/types";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
 import {
   DndContext,
@@ -140,7 +140,7 @@ export function LeftNavigationPanel({
   const pinnedNotes = useMemo(() => {
     return pinnedNoteIds
       .map(id => cards.find(card => card.id === id))
-      .filter(Boolean); // Filter out any notes that no longer exist
+      .filter((note): note is NonNullable<typeof note> => note != null); // Filter out any notes that no longer exist
   }, [pinnedNoteIds, cards]);
 
   // Drag and drop for pinned notes
@@ -400,7 +400,7 @@ export function LeftNavigationPanel({
   if (!open) return null;
 
   // Sortable Pinned Note component
-  const SortablePinnedNote = ({ note }: { note: any }) => {
+  const SortablePinnedNote = ({ note }: { note: CardModel }) => {
     const {
       attributes,
       listeners,
