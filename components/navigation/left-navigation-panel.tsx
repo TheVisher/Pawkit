@@ -18,6 +18,21 @@ import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent,
 import { DogHouseIcon } from "@/components/icons/dog-house";
 import { type CollectionNode, type CardType } from "@/lib/types";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 type NavItem = {
   id: string;
@@ -121,11 +136,35 @@ export function LeftNavigationPanel({
 
   // Get pinned notes
   const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
+  const reorderPinnedNotes = useSettingsStore((state) => state.reorderPinnedNotes);
   const pinnedNotes = useMemo(() => {
     return pinnedNoteIds
       .map(id => cards.find(card => card.id === id))
       .filter(Boolean); // Filter out any notes that no longer exist
   }, [pinnedNoteIds, cards]);
+
+  // Drag and drop for pinned notes
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = pinnedNoteIds.indexOf(active.id as string);
+      const newIndex = pinnedNoteIds.indexOf(over.id as string);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(pinnedNoteIds, oldIndex, newIndex);
+        reorderPinnedNotes(newOrder);
+      }
+    }
+  };
 
   const handleModeToggle = () => {
     const newMode = mode === "floating" ? "anchored" : "floating";
@@ -359,6 +398,38 @@ export function LeftNavigationPanel({
   };
 
   if (!open) return null;
+
+  // Sortable Pinned Note component
+  const SortablePinnedNote = ({ note }: { note: any }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({ id: note.id });
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    };
+
+    return (
+      <button
+        ref={setNodeRef}
+        style={style}
+        {...attributes}
+        {...listeners}
+        onClick={() => handleNavigate(`/notes#${note.id}`)}
+        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground cursor-move"
+      >
+        <Pin size={16} className="flex-shrink-0 text-purple-400" />
+        <span className="flex-1 text-left truncate">{note.title}</span>
+      </button>
+    );
+  };
 
   // Recursive function to render collection tree at any depth
   const renderCollectionTree = (collection: CollectionNode, depth: number = 0) => {
@@ -714,16 +785,20 @@ export function LeftNavigationPanel({
               {/* Pinned Notes */}
               {pinnedNotes.length > 0 && (
                 <div className="pt-2 space-y-1">
-                  {pinnedNotes.map((note) => (
-                    <button
-                      key={note.id}
-                      onClick={() => handleNavigate(`/notes#${note.id}`)}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={pinnedNoteIds}
+                      strategy={verticalListSortingStrategy}
                     >
-                      <Pin size={16} className="flex-shrink-0 text-purple-400" />
-                      <span className="flex-1 text-left truncate">{note.title}</span>
-                    </button>
-                  ))}
+                      {pinnedNotes.map((note) => (
+                        <SortablePinnedNote key={note.id} note={note} />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 </div>
               )}
             </div>
