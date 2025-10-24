@@ -15,6 +15,7 @@ import { format, addDays, startOfDay } from "date-fns";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
 import { Plus, FileText, CalendarIcon, Inbox } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
+import { HorizontalScrollContainer } from "@/components/ui/horizontal-scroll-container";
 
 const GREETINGS = [
   "Welcome back",
@@ -30,15 +31,6 @@ export default function HomePage() {
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);
-
-  // Horizontal scroll with mouse wheel
-  const handleWheelScroll = (e: React.WheelEvent<HTMLDivElement>) => {
-    const container = e.currentTarget;
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-      e.preventDefault();
-      container.scrollLeft += e.deltaY;
-    }
-  };
 
   // Track if component is mounted and document.body is available (for portal rendering)
   useEffect(() => {
@@ -239,10 +231,7 @@ export default function HomePage() {
             </Link>
           </div>
           {recent.length > 0 ? (
-            <div
-              className="flex gap-4 overflow-x-auto py-6 -my-6 -mx-4 px-4 scrollbar-hide"
-              onWheel={handleWheelScroll}
-            >
+            <HorizontalScrollContainer>
               {recent.map((card) => (
                 <div key={card.id} className="flex-shrink-0 w-[322px]">
                 <RecentCard
@@ -280,7 +269,7 @@ export default function HomePage() {
                 />
                 </div>
               ))}
-            </div>
+            </HorizontalScrollContainer>
           ) : (
             <EmptyState message="Add your first bookmark to see it here." />
           )}
@@ -293,10 +282,7 @@ export default function HomePage() {
             Manage shortcuts
           </Link>
         </div>
-        <div
-          className="flex gap-4 overflow-x-auto py-6 -my-6 -mx-4 px-4 scrollbar-hide"
-          onWheel={handleWheelScroll}
-        >
+        <HorizontalScrollContainer>
           {/* Inbox Button - Always First */}
           <Link href="/library" className="flex-shrink-0 w-[250px]">
             <div className="card-hover h-full rounded-2xl border border-subtle bg-surface p-6 transition flex flex-col items-center justify-center gap-3 cursor-pointer">
@@ -323,7 +309,7 @@ export default function HomePage() {
               <QuickAccessCard card={item} />
             </div>
           ))}
-        </div>
+        </HorizontalScrollContainer>
       </section>
 
       <section className="mt-auto space-y-4">
