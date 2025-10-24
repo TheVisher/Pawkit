@@ -902,7 +902,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           <div className="relative flex-1 overflow-hidden min-h-0">
             {isNote ? (
               // Note content area
-              <div className="h-full overflow-hidden p-8">
+              <div className="h-full overflow-hidden p-[5px]">
                 <RichMDEditor
                   content={content}
                   onChange={setContent}
@@ -914,7 +914,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               </div>
             ) : isYouTubeUrl(card.url) ? (
               // YouTube video embed in main content area
-              <div className="h-full flex items-center justify-center p-8">
+              <div className="h-full flex items-center justify-center p-[5px]">
                 <div className="w-full max-w-6xl">
                   <div className="relative w-full bg-black rounded-2xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
                     <iframe
@@ -931,7 +931,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             ) : (
               // URL card content with tabs - all tabs positioned absolutely to maintain size
               <div className="relative">
-                <div className={`p-8 ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
+                <div className={`p-[5px] ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
                   <div className="w-full flex items-center justify-center">
                     {card.image ? (
                       <img
@@ -953,7 +953,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
 
                 {bottomTabMode === 'reader' && (
-                  <div className="absolute inset-0 p-8 overflow-y-auto bg-white/5 backdrop-blur-lg">
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto bg-white/5 backdrop-blur-lg">
                     {articleContent ? (
                       <ReaderView
                         title={card.title || card.domain || card.url}
@@ -999,7 +999,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 )}
 
                 {bottomTabMode === 'metadata' && (
-                  <div className="absolute inset-0 p-8 overflow-y-auto bg-white/5 backdrop-blur-lg">
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto bg-white/5 backdrop-blur-lg">
                     <div className="max-w-2xl mx-auto space-y-6">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
