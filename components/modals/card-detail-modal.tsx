@@ -371,6 +371,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [noteMode, setNoteMode] = useState<'edit' | 'preview'>('preview');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(card.title || "");
+  const [showNoteToolbar, setShowNoteToolbar] = useState(true);
   const lastSavedNotesRef = useRef(card.notes ?? "");
   const lastSavedContentRef = useRef(card.content ?? "");
 
@@ -431,6 +432,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     setIsModalExpanded(false);
     setIsEditingTitle(false);
     setEditedTitle(card.title || "");
+    setShowNoteToolbar(true); // Reset toolbar to visible when card changes
   }, [card.id, card.title]);
 
   // Save on modal close to ensure nothing is lost
@@ -1028,6 +1030,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   mode={noteMode}
                   onModeChange={setNoteMode}
                   hideControls={true}
+                  showToolbar={showNoteToolbar}
+                  onToggleToolbar={() => setShowNoteToolbar(!showNoteToolbar)}
                 />
               </div>
             ) : isYouTubeUrl(card.url) ? (
