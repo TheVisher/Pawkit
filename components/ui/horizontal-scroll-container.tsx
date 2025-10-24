@@ -146,7 +146,7 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
   }, [children]);
 
   return (
-    <div className="relative">
+    <div className="relative -mb-16">
       <div className="group relative">
         {/* Left Chevron */}
         {showLeftGradient && (
@@ -175,7 +175,7 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
         {/* Scrollable Content */}
         <div
           ref={scrollRef}
-          className={`flex gap-4 overflow-x-auto py-12 -mx-4 px-4 scrollbar-hide cursor-grab active:cursor-grabbing ${className}`}
+          className={`flex gap-4 overflow-x-auto pt-2 pb-20 -mx-4 px-4 scrollbar-hide cursor-grab active:cursor-grabbing ${className}`}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
