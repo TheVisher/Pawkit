@@ -6,7 +6,8 @@ import { LibraryWorkspace } from "@/components/library/workspace";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
-import { Folder } from "lucide-react";
+import { CollectionsGrid } from "@/components/pawkits/grid";
+import { Folder, ChevronRight } from "lucide-react";
 
 function CollectionPageContent() {
   const params = useParams();
@@ -109,6 +110,52 @@ function CollectionPageContent() {
   if (!currentCollection) {
     return <div>Collection not found</div>;
   }
+
+  // Build breadcrumb trail from root to current collection
+  const breadcrumbs = useMemo(() => {
+    const trail: Array<{ id: string; name: string; slug: string }> = [];
+
+    const buildTrail = (nodes: any[], targetSlug: string, path: any[] = []): boolean => {
+      for (const node of nodes) {
+        const currentPath = [...path, { id: node.id, name: node.name, slug: node.slug }];
+
+        if (node.slug === targetSlug) {
+          trail.push(...currentPath);
+          return true;
+        }
+
+        if (node.children) {
+          if (buildTrail(node.children, targetSlug, currentPath)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    buildTrail(collections, slug);
+    return trail;
+  }, [collections, slug]);
+
+  // Get child pawkits for display
+  const childPawkits = useMemo(() => {
+    if (!currentCollection.children || currentCollection.children.length === 0) {
+      return [];
+    }
+
+    return currentCollection.children.map((child: any) => {
+      const childCards = cards.filter(card => card.collections.includes(child.slug));
+      return {
+        id: child.id,
+        name: child.name,
+        slug: child.slug,
+        count: childCards.length,
+        cards: childCards,
+        isPinned: child.pinned,
+        hasChildren: child.children && child.children.length > 0
+      };
+    });
+  }, [currentCollection, cards]);
 
   // Flatten all pawkits for the move modal (only root-level pawkits)
   const allPawkits = collections.map((node) => ({
@@ -257,7 +304,7 @@ function CollectionPageContent() {
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
@@ -265,20 +312,57 @@ function CollectionPageContent() {
             </div>
             <div>
               <h1 className="text-2xl font-semibold text-foreground">{currentCollection.name}</h1>
-              <p className="text-sm text-muted-foreground">{items.length} card(s)</p>
+
+              {/* Breadcrumb Navigation */}
+              {breadcrumbs.length > 1 && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                  {breadcrumbs.map((crumb, index) => (
+                    <div key={crumb.id} className="flex items-center gap-1">
+                      {index > 0 && <ChevronRight size={12} />}
+                      {index < breadcrumbs.length - 1 ? (
+                        <button
+                          onClick={() => router.push(`/pawkits/${crumb.slug}`)}
+                          className="hover:text-foreground transition-colors"
+                        >
+                          {crumb.name}
+                        </button>
+                      ) : (
+                        <span className="text-foreground font-medium">{crumb.name}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-sm text-muted-foreground mt-1">{items.length} card(s)</p>
             </div>
           </div>
         </div>
-        <LibraryWorkspace
-          initialCards={items}
-          initialNextCursor={undefined}
-          initialQuery={{ q, collection: slug, status, layout }}
-          collectionsTree={collections}
-          collectionName={currentCollection.name}
-          storageKey={`pawkit-${slug}-layout`}
-          hideControls={true}
-          area="pawkit"
-        />
+
+        {/* Sub-Pawkits Grid */}
+        {childPawkits.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-foreground">Sub-Pawkits</h2>
+            <CollectionsGrid collections={childPawkits} allPawkits={allPawkits} />
+          </div>
+        )}
+
+        {/* Cards in this Pawkit */}
+        {items.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="text-lg font-semibold text-foreground">Cards</h2>
+            <LibraryWorkspace
+              initialCards={items}
+              initialNextCursor={undefined}
+              initialQuery={{ q, collection: slug, status, layout }}
+              collectionsTree={collections}
+              collectionName={currentCollection.name}
+              storageKey={`pawkit-${slug}-layout`}
+              hideControls={true}
+              area="pawkit"
+            />
+          </div>
+        )}
       </div>
 
       {/* Create Sub-Pawkit Modal */}
