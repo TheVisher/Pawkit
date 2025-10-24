@@ -130,6 +130,37 @@ export function LeftNavigationPanel({
     });
   };
 
+  // Auto-expand current pawkit when viewing it
+  useEffect(() => {
+    // Check if we're on a pawkit page
+    const pawkitMatch = pathname?.match(/\/pawkits\/([^/?]+)/);
+    if (!pawkitMatch) return;
+
+    const slug = pawkitMatch[1];
+
+    // Find the collection by slug
+    const findCollectionById = (cols: CollectionNode[]): string | null => {
+      for (const col of cols) {
+        if (col.slug === slug) return col.id;
+        if (col.children) {
+          const found = findCollectionById(col.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const collectionId = findCollectionById(collections);
+    if (collectionId) {
+      // Auto-expand this collection to show its children
+      setExpandedCollections((prev) => {
+        const next = new Set(prev);
+        next.add(collectionId);
+        return next;
+      });
+    }
+  }, [pathname, collections]);
+
   // Navigate to today's note
   const goToTodaysNote = useCallback(async () => {
     const today = new Date();

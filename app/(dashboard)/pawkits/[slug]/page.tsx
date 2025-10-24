@@ -6,7 +6,6 @@ import { LibraryWorkspace } from "@/components/library/workspace";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
-import { CollectionsGrid } from "@/components/pawkits/grid";
 import { Folder, ChevronRight } from "lucide-react";
 
 function CollectionPageContent() {
@@ -136,26 +135,6 @@ function CollectionPageContent() {
     buildTrail(collections, slug);
     return trail;
   }, [collections, slug, currentCollection]);
-
-  // Get child pawkits for display
-  const childPawkits = useMemo(() => {
-    if (!currentCollection || !currentCollection.children || currentCollection.children.length === 0) {
-      return [];
-    }
-
-    return currentCollection.children.map((child: any) => {
-      const childCards = cards.filter(card => card.collections.includes(child.slug));
-      return {
-        id: child.id,
-        name: child.name,
-        slug: child.slug,
-        count: childCards.length,
-        cards: childCards,
-        isPinned: child.pinned,
-        hasChildren: child.children && child.children.length > 0
-      };
-    });
-  }, [currentCollection, cards]);
 
   if (!currentCollection) {
     return <div>Collection not found</div>;
@@ -308,7 +287,7 @@ function CollectionPageContent() {
 
   return (
     <>
-      <div className="space-y-6">
+      <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
@@ -343,30 +322,16 @@ function CollectionPageContent() {
           </div>
         </div>
 
-        {/* Sub-Pawkits Grid */}
-        {childPawkits.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-foreground">Sub-Pawkits</h2>
-            <CollectionsGrid collections={childPawkits} allPawkits={allPawkits} />
-          </div>
-        )}
-
-        {/* Cards in this Pawkit */}
-        {items.length > 0 && (
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-foreground">Cards</h2>
-            <LibraryWorkspace
-              initialCards={items}
-              initialNextCursor={undefined}
-              initialQuery={{ q, collection: slug, status, layout }}
-              collectionsTree={collections}
-              collectionName={currentCollection.name}
-              storageKey={`pawkit-${slug}-layout`}
-              hideControls={true}
-              area="pawkit"
-            />
-          </div>
-        )}
+        <LibraryWorkspace
+          initialCards={items}
+          initialNextCursor={undefined}
+          initialQuery={{ q, collection: slug, status, layout }}
+          collectionsTree={collections}
+          collectionName={currentCollection.name}
+          storageKey={`pawkit-${slug}-layout`}
+          hideControls={true}
+          area="pawkit"
+        />
       </div>
 
       {/* Create Sub-Pawkit Modal */}
