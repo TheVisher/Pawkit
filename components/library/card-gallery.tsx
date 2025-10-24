@@ -30,11 +30,10 @@ export type CardGalleryProps = {
 };
 
 function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false, area }: CardGalleryProps) {
-  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDemoAwareStore();
+  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore, collections } = useDemoAwareStore();
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [collections, setCollections] = useState<CollectionNode[]>([]);
   const [imageLoadCount, setImageLoadCount] = useState(0);
   const searchParams = useSearchParams();
   const selectedIds = useSelection((state) => state.selectedIds);
@@ -106,21 +105,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     };
   }, [layout]);
 
-  // Fetch collections for the modal
-  useEffect(() => {
-    const fetchCollections = async () => {
-      try {
-        const response = await fetch("/api/pawkits");
-        if (response.ok) {
-          const data = await response.json();
-          setCollections(data.tree);
-        }
-      } catch (error) {
-        console.error("Failed to fetch collections:", error);
-      }
-    };
-    fetchCollections();
-  }, []);
+  // Collections are now provided by useDemoAwareStore - no need to fetch from API
 
   // Removed polling - cards are updated via the data store sync queue
   // The data store handles pending card updates automatically

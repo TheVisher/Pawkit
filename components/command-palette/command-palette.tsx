@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRouter, usePathname } from "next/navigation";
-import { useDataStore } from "@/lib/stores/data-store";
+import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { CardModel, CollectionNode } from "@/lib/types";
 import {
   Home,
@@ -84,9 +84,11 @@ export function CommandPalette({
 }: CommandPaletteProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const cards = useDataStore((state) => state.cards);
-  const collections = useDataStore((state) => state.collections);
-  const addCard = useDataStore((state) => state.addCard);
+  const { cards, collections, addCard } = useDemoAwareStore();
+
+  // Detect if we're in demo mode and use appropriate path prefix
+  const isDemo = pathname?.startsWith('/demo');
+  const pathPrefix = isDemo ? '/demo' : '';
 
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -168,14 +170,15 @@ export function CommandPalette({
     if (existingNote) {
       // Open existing note
       // If already on /notes, force hash change by going to /notes first, then to hash
-      if (pathname === '/notes') {
+      const notesPath = `${pathPrefix}/notes`;
+      if (pathname === notesPath) {
         // Clear hash first, then set it
         window.location.hash = '';
         setTimeout(() => {
           window.location.hash = existingNote.id;
         }, 10);
       } else {
-        router.push(`/notes#${existingNote.id}`);
+        router.push(`${notesPath}#${existingNote.id}`);
       }
     } else {
       // Create new daily note
@@ -190,9 +193,9 @@ export function CommandPalette({
         collections: [],
       });
 
-      router.push("/notes");
+      router.push(`${pathPrefix}/notes`);
     }
-  }, [cards, addCard, router, pathname]);
+  }, [cards, addCard, router, pathname, pathPrefix]);
 
   // Define all commands
   const allCommands = useMemo(() => {
@@ -209,8 +212,9 @@ export function CommandPalette({
         action: async () => {
           await addCard({ url: query.trim(), type: 'url' });
           setQuery("");
-          if (pathname !== "/library") {
-            router.push("/library");
+          const libraryPath = `${pathPrefix}/library`;
+          if (pathname !== libraryPath) {
+            router.push(libraryPath);
           }
         },
         keywords: ["quick", "add", "url", "save"],
@@ -253,7 +257,7 @@ export function CommandPalette({
         type: "navigation",
         label: "Go to Home",
         icon: Home,
-        action: () => router.push("/home"),
+        action: () => router.push(`${pathPrefix}/home`),
         keywords: ["home", "dashboard"],
       },
       {
@@ -261,7 +265,7 @@ export function CommandPalette({
         type: "navigation",
         label: "Go to Library",
         icon: Library,
-        action: () => router.push("/library"),
+        action: () => router.push(`${pathPrefix}/library`),
         keywords: ["library", "bookmarks", "cards"],
       },
       {
@@ -269,7 +273,7 @@ export function CommandPalette({
         type: "navigation",
         label: "Go to Notes",
         icon: FileText,
-        action: () => router.push("/notes"),
+        action: () => router.push(`${pathPrefix}/notes`),
         keywords: ["notes"],
       },
       {
@@ -277,7 +281,7 @@ export function CommandPalette({
         type: "navigation",
         label: "Go to Calendar",
         icon: Calendar,
-        action: () => router.push("/calendar"),
+        action: () => router.push(`${pathPrefix}/calendar`),
         keywords: ["calendar", "schedule"],
       },
       {
@@ -285,7 +289,7 @@ export function CommandPalette({
         type: "navigation",
         label: "Go to The Den",
         icon: DogHouseIcon,
-        action: () => router.push("/den"),
+        action: () => router.push(`${pathPrefix}/den`),
         keywords: ["den", "private", "secure"],
       },
       {
@@ -293,7 +297,7 @@ export function CommandPalette({
         type: "navigation",
         label: "Dig Up (Review Cards)",
         icon: Layers,
-        action: () => router.push("/distill"),
+        action: () => router.push(`${pathPrefix}/distill`),
         keywords: ["dig", "up", "review", "distill"],
       },
     );
@@ -307,7 +311,7 @@ export function CommandPalette({
         label: note.title || "Untitled Note",
         description: note.content?.substring(0, 60) || "",
         icon: FileText,
-        action: () => router.push(`/notes#${note.id}`),
+        action: () => router.push(`${pathPrefix}/notes#${note.id}`),
         keywords: [note.title || "", ...(note.tags || [])],
       });
     });
@@ -321,7 +325,7 @@ export function CommandPalette({
         label: bookmark.title || bookmark.url || "Untitled",
         description: bookmark.domain || bookmark.url,
         icon: Bookmark,
-        action: () => router.push(`/library#${bookmark.id}`),
+        action: () => router.push(`${pathPrefix}/library#${bookmark.id}`),
         keywords: [bookmark.title || "", bookmark.domain || "", ...(bookmark.tags || [])],
       });
     });
@@ -346,13 +350,13 @@ export function CommandPalette({
         label: `Go to "${collection.name}" Pawkit`,
         description: `Open the ${collection.name} collection`,
         icon: FolderOpen,
-        action: () => router.push(`/pawkits/${collection.slug || collection.id}`),
+        action: () => router.push(`${pathPrefix}/pawkits/${collection.slug || collection.id}`),
         keywords: [collection.name, "pawkit", "collection"],
       });
     });
 
     return commands;
-  }, [cards, collections, router, onOpenCreateNote, onOpenCreateCard, createDailyNote, query, pathname, addCard]);
+  }, [cards, collections, router, onOpenCreateNote, onOpenCreateCard, createDailyNote, query, pathname, addCard, pathPrefix]);
 
   // Filter and score commands based on query
   const filteredCommands = useMemo(() => {
