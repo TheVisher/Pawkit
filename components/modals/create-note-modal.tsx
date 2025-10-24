@@ -251,7 +251,7 @@ export function CreateNoteModal({ open, onClose, onConfirm, dailyNoteExists = fa
           {noteType === "daily-note" && (
             <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
               <p className="text-sm text-gray-300">
-                Daily note will be created with today's date as the title.
+                Daily note will be created with today&apos;s date as the title.
               </p>
             </div>
           )}
