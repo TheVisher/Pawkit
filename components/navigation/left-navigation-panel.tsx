@@ -837,34 +837,6 @@ export function LeftNavigationPanel({
               </div>
             </PanelSection>
           )}
-
-          {/* Keyboard Shortcuts Hint - Desktop only */}
-          <div className="hidden lg:block px-4 py-3 mt-auto border-t border-white/5">
-            <div className="text-xs text-muted-foreground space-y-2">
-              <div className="flex items-center justify-between">
-                <span>Quick search</span>
-                <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">/</kbd>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Paste URL</span>
-                <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">⌘V</kbd>
-              </div>
-              <div className="flex items-center justify-between">
-                <span>Add card</span>
-                <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">⌘P</kbd>
-              </div>
-              <button
-                onClick={() => {
-                  // Trigger the help modal - we'll need to add this callback
-                  const helpEvent = new KeyboardEvent('keydown', { key: '?' });
-                  document.dispatchEvent(helpEvent);
-                }}
-                className="text-accent hover:underline text-xs mt-1"
-              >
-                View all shortcuts →
-              </button>
-            </div>
-          </div>
         </div>
       </div>
 
