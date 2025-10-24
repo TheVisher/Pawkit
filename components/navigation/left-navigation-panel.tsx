@@ -2,11 +2,12 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin } from "lucide-react";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
+import { useSettingsStore } from "@/lib/hooks/settings-store";
 import {
   Tooltip,
   TooltipContent,
@@ -117,6 +118,14 @@ export function LeftNavigationPanel({
     const today = new Date();
     return findDailyNoteForDate(cards, today) !== null;
   }, [cards]);
+
+  // Get pinned notes
+  const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
+  const pinnedNotes = useMemo(() => {
+    return pinnedNoteIds
+      .map(id => cards.find(card => card.id === id))
+      .filter(Boolean); // Filter out any notes that no longer exist
+  }, [pinnedNoteIds, cards]);
 
   const handleModeToggle = () => {
     const newMode = mode === "floating" ? "anchored" : "floating";
@@ -699,6 +708,22 @@ export function LeftNavigationPanel({
                 <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
                   <Flame size={16} className="text-orange-500" />
                   <span>{dailyNoteStreak} day streak</span>
+                </div>
+              )}
+
+              {/* Pinned Notes */}
+              {pinnedNotes.length > 0 && (
+                <div className="pt-2 space-y-1">
+                  {pinnedNotes.map((note) => (
+                    <button
+                      key={note.id}
+                      onClick={() => handleNavigate(`/notes#${note.id}`)}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                    >
+                      <Pin size={16} className="flex-shrink-0 text-purple-400" />
+                      <span className="flex-1 text-left truncate">{note.title}</span>
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
