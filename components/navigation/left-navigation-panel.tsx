@@ -260,6 +260,9 @@ export function LeftNavigationPanel({
         payload.parentId = parentPawkitId;
       }
 
+      console.log('[CREATE PAWKIT] Creating with payload:', payload);
+      console.log('[CREATE PAWKIT] Parent pawkit ID:', parentPawkitId);
+
       await addCollection(payload);
 
       // Show toast
@@ -557,6 +560,7 @@ export function LeftNavigationPanel({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              console.log('[+ BUTTON] Setting parent ID for root pawkit:', collection.id, collection.name);
                               setParentPawkitId(collection.id);
                               setShowCreatePawkitModal(true);
                             }}
@@ -702,6 +706,7 @@ export function LeftNavigationPanel({
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
+                                      console.log('[+ BUTTON] Setting parent ID for child pawkit:', child.id, child.name);
                                       setParentPawkitId(child.id);
                                       setShowCreatePawkitModal(true);
                                     }}
