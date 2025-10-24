@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/tooltip";
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
 import { DogHouseIcon } from "@/components/icons/dog-house";
-import { type CollectionNode } from "@/lib/types";
+import { type CollectionNode, type CardType } from "@/lib/types";
+import { CreateNoteModal } from "@/components/modals/create-note-modal";
 
 type NavItem = {
   id: string;
@@ -111,6 +112,12 @@ export function LeftNavigationPanel({
     return streak;
   }, [cards]);
 
+  // Check if today's daily note exists
+  const dailyNoteExists = useMemo(() => {
+    const today = new Date();
+    return findDailyNoteForDate(cards, today) !== null;
+  }, [cards]);
+
   const handleModeToggle = () => {
     const newMode = mode === "floating" ? "anchored" : "floating";
     onModeChange?.(newMode);
@@ -192,6 +199,33 @@ export function LeftNavigationPanel({
       }, 200);
     }
   }, [cards, addCard, router, pathPrefix]);
+
+  // Handle creating note from modal
+  const handleCreateNote = useCallback(async (data: { type: CardType; title: string; content?: string; tags?: string[] }) => {
+    let finalTitle = data.title;
+    let finalContent = data.content || "";
+    let finalTags = data.tags || [];
+
+    // If it's a daily note (has 'daily' tag), generate title and content
+    if (data.tags?.includes('daily')) {
+      const today = new Date();
+      finalTitle = generateDailyNoteTitle(today);
+      finalContent = generateDailyNoteContent(today);
+    }
+
+    const newCard = await addCard({
+      type: data.type,
+      title: finalTitle,
+      content: finalContent,
+      tags: finalTags,
+      inDen: false,
+    });
+
+    // Navigate to the newly created note
+    setTimeout(() => {
+      router.push(`${pathPrefix}/notes`);
+    }, 100);
+  }, [addCard, router, pathPrefix]);
 
   // Navigate to yesterday's note
   const goToYesterdaysNote = () => {
@@ -782,6 +816,14 @@ export function LeftNavigationPanel({
           </div>
         </div>
       )}
+
+      {/* Create Note Modal */}
+      <CreateNoteModal
+        open={showCreateNoteModal}
+        onClose={() => setShowCreateNoteModal(false)}
+        onConfirm={handleCreateNote}
+        dailyNoteExists={dailyNoteExists}
+      />
 
       {/* Toast Notification */}
       {showToast && (
