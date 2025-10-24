@@ -562,7 +562,6 @@ function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, on
 
   return (
     <CardContextMenuWrapper
-      cardId={card.id}
       onAddToPawkit={onAddToPawkit}
       onAddToDen={onAddToDen}
       onDelete={onDeleteCard}
