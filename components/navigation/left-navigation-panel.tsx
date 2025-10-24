@@ -62,13 +62,16 @@ export function LeftNavigationPanel({
   const [animatingPawkit, setAnimatingPawkit] = useState<string | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+  const [showCreatePawkitModal, setShowCreatePawkitModal] = useState(false);
+  const [newPawkitName, setNewPawkitName] = useState("");
+  const [creatingPawkit, setCreatingPawkit] = useState(false);
 
   // Detect if we're in demo mode
   const isDemo = pathname?.startsWith('/demo');
   const pathPrefix = isDemo ? '/demo' : '';
 
   // Get cards and data (demo-aware)
-  const { cards, addCard, updateCard } = useDemoAwareStore();
+  const { cards, addCard, updateCard, addCollection } = useDemoAwareStore();
   const { recentItems } = useRecentHistory();
 
   // Get active card from panel store
@@ -243,6 +246,34 @@ export function LeftNavigationPanel({
     return activeCard.collections?.includes(collectionSlug) || false;
   };
 
+  // Create new pawkit
+  const handleCreatePawkit = async () => {
+    const trimmedName = newPawkitName.trim();
+    if (!trimmedName || creatingPawkit) return;
+
+    setCreatingPawkit(true);
+    try {
+      await addCollection({ name: trimmedName });
+
+      // Show toast
+      setToastMessage("Pawkit Created");
+      setShowToast(true);
+
+      // Hide toast after 2 seconds
+      setTimeout(() => {
+        setShowToast(false);
+      }, 2000);
+
+      // Reset and close modal
+      setNewPawkitName("");
+      setShowCreatePawkitModal(false);
+    } catch (error) {
+      console.error('Failed to create pawkit:', error);
+    } finally {
+      setCreatingPawkit(false);
+    }
+  };
+
   if (!open) return null;
 
   return (
@@ -362,7 +393,20 @@ export function LeftNavigationPanel({
 
           {/* Pawkits Section */}
           {collections.length > 0 && (
-            <PanelSection id="left-pawkits" title="Pawkits" icon={<FolderOpen className="h-4 w-4 text-accent" />}>
+            <PanelSection
+              id="left-pawkits"
+              title="Pawkits"
+              icon={<FolderOpen className="h-4 w-4 text-accent" />}
+              action={
+                <button
+                  onClick={() => setShowCreatePawkitModal(true)}
+                  className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100"
+                  title="Create new pawkit"
+                >
+                  <Plus size={16} />
+                </button>
+              }
+            >
               <div className="space-y-1">
                 <button
                   onClick={() => handleNavigate("/pawkits")}
@@ -703,6 +747,66 @@ export function LeftNavigationPanel({
           </div>
         </div>
       </div>
+
+      {/* Create Pawkit Modal */}
+      {showCreatePawkitModal && (
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => {
+            if (!creatingPawkit) {
+              setShowCreatePawkitModal(false);
+              setNewPawkitName("");
+            }
+          }}
+        >
+          <div
+            className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 shadow-glow-accent p-6 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-foreground mb-4">Create Pawkit</h3>
+            <input
+              type="text"
+              value={newPawkitName}
+              onChange={(e) => setNewPawkitName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleCreatePawkit();
+                } else if (e.key === "Escape") {
+                  if (!creatingPawkit) {
+                    setShowCreatePawkitModal(false);
+                    setNewPawkitName("");
+                  }
+                }
+              }}
+              placeholder="Pawkit name"
+              className="w-full rounded-lg bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-foreground placeholder-muted-foreground border border-white/10 focus:border-accent focus:outline-none transition-colors"
+              autoFocus
+              disabled={creatingPawkit}
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => {
+                  if (!creatingPawkit) {
+                    setShowCreatePawkitModal(false);
+                    setNewPawkitName("");
+                  }
+                }}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+                disabled={creatingPawkit}
+              >
+                Esc to Cancel
+              </button>
+              <button
+                onClick={handleCreatePawkit}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-50"
+                disabled={creatingPawkit || !newPawkitName.trim()}
+              >
+                {creatingPawkit ? "Creating..." : "Enter to Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast Notification */}
       {showToast && (

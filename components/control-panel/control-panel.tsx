@@ -199,9 +199,10 @@ export type PanelSectionProps = {
   title: string;
   children: ReactNode;
   icon?: ReactNode;
+  action?: ReactNode; // Optional action button (like +)
 };
 
-export function PanelSection({ id, title, children, icon }: PanelSectionProps) {
+export function PanelSection({ id, title, children, icon, action }: PanelSectionProps) {
   const collapsedSections = usePanelStore((state) => state.collapsedSections);
   const toggleSection = usePanelStore((state) => state.toggleSection);
 
@@ -209,20 +210,27 @@ export function PanelSection({ id, title, children, icon }: PanelSectionProps) {
 
   return (
     <div className="space-y-3 pb-3">
-      <button
-        onClick={() => toggleSection(id)}
-        className="w-full flex items-center gap-2 hover:opacity-80 transition-opacity"
-      >
-        <ChevronDown
-          className={`h-4 w-4 text-accent transition-transform duration-200 ${
-            isCollapsed ? "-rotate-90" : ""
-          }`}
-        />
-        {icon}
-        <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
-          {title}
-        </h3>
-      </button>
+      <div className="w-full flex items-center gap-2 group">
+        <button
+          onClick={() => toggleSection(id)}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1"
+        >
+          <ChevronDown
+            className={`h-4 w-4 text-accent transition-transform duration-200 ${
+              isCollapsed ? "-rotate-90" : ""
+            }`}
+          />
+          {icon}
+          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+            {title}
+          </h3>
+        </button>
+        {action && (
+          <div className="flex-shrink-0">
+            {action}
+          </div>
+        )}
+      </div>
       <div
         className={`space-y-2 transition-all duration-200 overflow-hidden ${
           isCollapsed ? "max-h-0 opacity-0" : "max-h-[2000px] opacity-100"
