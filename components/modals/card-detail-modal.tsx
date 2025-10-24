@@ -901,7 +901,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   <X size={20} className="text-gray-400" />
                 </button>
               </div>
-            </div>
           </div>
           {/* Card Content - Image, Reader, YouTube Player, or Note Preview/Edit */}
           <div className="relative flex-1 overflow-hidden min-h-0">
