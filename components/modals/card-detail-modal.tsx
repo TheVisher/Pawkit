@@ -473,17 +473,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }
   };
 
-  // Close on Escape key
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        handleClose();
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notes, content, isNote]);
+  // Note: ESC key handling is managed by the keyboard shortcuts hook in layout.tsx
+  // This provides proper priority: autocomplete → modal → right panel → left panel
 
   // Debounced save notes to prevent constant re-renders
   useEffect(() => {
