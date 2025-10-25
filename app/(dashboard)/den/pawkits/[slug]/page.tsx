@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { CardModel } from "@/lib/types";
 import { useDenStore } from "@/lib/stores/den-store";
 import { useDataStore } from "@/lib/stores/data-store";
-import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { DogHouseIcon } from "@/components/icons/dog-house";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useRouter, useParams } from "next/navigation";
 // Removed useSWR - using local-first data store instead
 
@@ -14,7 +14,7 @@ export default function DenPawkitPage() {
   const slug = params?.slug as string;
   const { denCards, loadDenCards, refreshDenCards } = useDenStore();
   const { collections, deleteCard } = useDataStore();
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const router = useRouter();
 
   // Get Den Pawkits from local data store (no API calls)
@@ -35,19 +35,6 @@ export default function DenPawkitPage() {
     card.collections?.includes(slug)
   );
 
-  const activeCard = activeCardId ? denCards.find(c => c.id === activeCardId) : null;
-
-  const handleUpdateCard = async (updated: CardModel) => {
-    await refreshDenCards();
-  };
-
-  const handleDeleteCard = async () => {
-    if (activeCardId) {
-      await deleteCard(activeCardId);
-      await refreshDenCards();
-      setActiveCardId(null);
-    }
-  };
 
   if (!currentPawkit) {
     return (
@@ -112,21 +99,11 @@ export default function DenPawkitPage() {
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {pawkitCards.map((card) => (
-              <DenCard key={card.id} card={card} onClick={() => setActiveCardId(card.id)} />
+              <DenCard key={card.id} card={card} onClick={() => openCardDetails(card.id)} />
             ))}
           </div>
         )}
       </div>
-
-      {activeCard && (
-        <CardDetailModal
-          card={activeCard as CardModel}
-          collections={collections || []}
-          onClose={() => setActiveCardId(null)}
-          onUpdate={handleUpdateCard}
-          onDelete={handleDeleteCard}
-        />
-      )}
     </>
   );
 }
