@@ -33,6 +33,7 @@ export type CollectionNode = {
   name: string;
   slug: string;
   parentId?: string | null;
+  coverImage?: string | null;
   pinned: boolean;
   deleted: boolean;
   inDen?: boolean;

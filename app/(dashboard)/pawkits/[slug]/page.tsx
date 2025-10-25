@@ -6,7 +6,7 @@ import { LibraryWorkspace } from "@/components/library/workspace";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
-import { Folder, ChevronRight } from "lucide-react";
+import { Folder, ChevronRight, Image as ImageIcon } from "lucide-react";
 
 function CollectionPageContent() {
   const params = useParams();
@@ -18,6 +18,8 @@ function CollectionPageContent() {
   const [showRenamePawkitModal, setShowRenamePawkitModal] = useState(false);
   const [showMovePawkitModal, setShowMovePawkitModal] = useState(false);
   const [showDeletePawkitConfirm, setShowDeletePawkitConfirm] = useState(false);
+  const [showCoverImageModal, setShowCoverImageModal] = useState(false);
+  const [coverImageUrl, setCoverImageUrl] = useState("");
   const [pawkitName, setPawkitName] = useState("");
   const [renameValue, setRenameValue] = useState("");
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<string | null>(null);
@@ -285,9 +287,71 @@ function CollectionPageContent() {
     }
   };
 
+  const handleSetCoverImage = async () => {
+    if (!coverImageUrl.trim() && !currentCollection.coverImage) {
+      setShowCoverImageModal(false);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/pawkits/${currentCollection.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ coverImage: coverImageUrl.trim() || null }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update cover image");
+      }
+
+      await refresh();
+      setShowCoverImageModal(false);
+      setCoverImageUrl("");
+    } catch (err) {
+      console.error("Cover image update error:", err);
+      alert("Failed to update cover image");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <>
       <div className="space-y-4">
+        {/* Cover Image Banner */}
+        {currentCollection.coverImage ? (
+          <div className="relative w-full h-48 -mx-6 -mt-6 mb-6">
+            <img
+              src={currentCollection.coverImage}
+              alt={currentCollection.name}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/80" />
+            <button
+              onClick={() => {
+                setCoverImageUrl(currentCollection.coverImage || "");
+                setShowCoverImageModal(true);
+              }}
+              className="absolute bottom-4 right-4 px-3 py-1.5 rounded-lg bg-surface/90 backdrop-blur-sm border border-subtle text-xs text-muted-foreground hover:text-foreground hover:bg-surface transition-colors flex items-center gap-2"
+            >
+              <ImageIcon size={14} />
+              Change Cover
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              setCoverImageUrl("");
+              setShowCoverImageModal(true);
+            }}
+            className="w-full h-32 -mx-6 -mt-6 mb-6 border-2 border-dashed border-subtle rounded-xl flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-accent/50 transition-colors group"
+          >
+            <ImageIcon size={24} className="group-hover:text-accent transition-colors" />
+            <span className="text-sm">Add Cover Image</span>
+          </button>
+        )}
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
@@ -527,6 +591,81 @@ function CollectionPageContent() {
                 disabled={loading}
               >
                 {loading ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cover Image Modal */}
+      {showCoverImageModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => !loading && setShowCoverImageModal(false)}
+        >
+          <div
+            className="bg-surface rounded-2xl p-6 w-full max-w-md shadow-xl border border-subtle"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold text-foreground mb-4">
+              {currentCollection.coverImage ? "Change Cover Image" : "Add Cover Image"}
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="coverImageUrl" className="block text-sm font-medium text-muted-foreground mb-2">
+                  Image URL
+                </label>
+                <input
+                  id="coverImageUrl"
+                  type="url"
+                  value={coverImageUrl}
+                  onChange={(e) => setCoverImageUrl(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                  className="w-full px-3 py-2 bg-surface-soft border border-subtle rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/50"
+                  disabled={loading}
+                />
+              </div>
+              {coverImageUrl && (
+                <div className="relative w-full h-32 rounded-lg overflow-hidden border border-subtle">
+                  <img
+                    src={coverImageUrl}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.currentTarget.src = "";
+                      e.currentTarget.alt = "Invalid image URL";
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+            <div className="flex gap-3 mt-6">
+              {currentCollection.coverImage && (
+                <button
+                  onClick={async () => {
+                    setCoverImageUrl("");
+                    await handleSetCoverImage();
+                  }}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors"
+                  disabled={loading}
+                >
+                  Remove
+                </button>
+              )}
+              <div className="flex-1" />
+              <button
+                onClick={() => setShowCoverImageModal(false)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSetCoverImage}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-50"
+                disabled={loading || !coverImageUrl.trim()}
+              >
+                {loading ? "Saving..." : "Save"}
               </button>
             </div>
           </div>
