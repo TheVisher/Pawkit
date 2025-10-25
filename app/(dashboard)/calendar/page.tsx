@@ -12,6 +12,7 @@ import { GlowButton } from "@/components/ui/glow-button";
 export default function CalendarPage() {
   const { cards, addCard } = useDataStore();
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const activeCardId = usePanelStore((state) => state.activeCardId);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -88,7 +89,7 @@ export default function CalendarPage() {
       />
 
       {/* Expanded Day View Modal */}
-      {selectedDate && !activeCard && isMounted && (() => {
+      {selectedDate && !activeCardId && isMounted && (() => {
         const scheduledCards = getCardsForDate(selectedDate);
         const dailyNote = getDailyNoteForDate(selectedDate);
 
