@@ -542,6 +542,7 @@ export default function HomePage() {
 
       {activeCard && (
         <CardDetailModal
+          key={activeCard.id}
           card={activeCard as CardModel}
           collections={collections}
           onClose={() => handleSetActiveCard(null)}
