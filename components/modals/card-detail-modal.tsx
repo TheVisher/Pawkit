@@ -1147,7 +1147,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           )}
 
           {/* Card Content - Image, Reader, YouTube Player, or Note Preview/Edit */}
-          <div className="relative flex-1 overflow-hidden min-h-0">
+          <div className="relative flex-1 overflow-hidden">
             {isNote ? (
               // Note content area
               <div className="h-full overflow-hidden p-[5px]">
@@ -1184,7 +1184,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             ) : (
               // URL card content with tabs - all tabs positioned absolutely to maintain size
               <div className="relative h-full">
-                <div className={`p-[5px] h-full ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
+                <div className={`absolute inset-0 p-[5px] ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
                   <div className="w-full h-full flex items-center justify-center">
                     {card.image ? (
                       <img
