@@ -34,6 +34,7 @@ export type CollectionNode = {
   slug: string;
   parentId?: string | null;
   coverImage?: string | null;
+  coverImagePosition?: number | null; // Vertical position percentage (0-100)
   pinned: boolean;
   deleted: boolean;
   inDen?: boolean;
