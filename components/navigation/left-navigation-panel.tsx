@@ -96,9 +96,7 @@ export function LeftNavigationPanel({
   const collapsedSections = usePanelStore((state) => state.collapsedSections);
   const toggleSection = usePanelStore((state) => state.toggleSection);
   const activeCard = useMemo(() => {
-    const found = cards.find((card) => card.id === activeCardId) ?? null;
-    console.log('[LEFT NAV] Active card:', { activeCardId, found: found?.title, totalCards: cards.length });
-    return found;
+    return cards.find((card) => card.id === activeCardId) ?? null;
   }, [cards, activeCardId]);
 
   // Calculate daily note streak

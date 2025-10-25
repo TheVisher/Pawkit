@@ -134,7 +134,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   useEffect(() => {
     if (allCards.length > 0 && !cardsReady) {
-      console.log('[Wiki-Link] Cards loaded, setting ready');
       setCardsReady(true);
     }
   }, [allCards.length, cardsReady]);
@@ -142,26 +141,16 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   // Create a map of note titles to IDs for wiki-link resolution
   const noteTitleMap = useMemo(() => {
     if (!cardsReady) {
-      console.log('[Wiki-Link] Cards not ready yet, returning empty map');
       return new Map<string, string>();
     }
 
     const map = new Map<string, string>();
-    console.log('[Wiki-Link] Building title map from cards:', {
-      totalCards: allCards.length,
-      noteCards: allCards.filter(c => c.type === 'md-note' || c.type === 'text-note').length,
-      notesWithTitles: allCards.filter(c => (c.type === 'md-note' || c.type === 'text-note') && c.title).length,
-      allNotes: allCards.filter(c => c.type === 'md-note' || c.type === 'text-note').map(c => ({ id: c.id, title: c.title, type: c.type })),
-    });
-
     allCards.forEach((c) => {
       if ((c.type === 'md-note' || c.type === 'text-note') && c.title) {
         map.set(c.title.toLowerCase(), c.id);
-        console.log('[Wiki-Link] Added to map:', c.title.toLowerCase(), '->', c.id);
       }
     });
 
-    console.log('[Wiki-Link] Final title map:', Array.from(map.entries()));
     return map;
   }, [allCards, cardsReady]);
 
@@ -1485,12 +1474,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 <BacklinksPanel
                   noteId={card.id}
                   onNavigate={(cardId) => {
-                    console.log('[CardDetailModal] onNavigate called with cardId:', cardId);
                     if (onNavigateToCard) {
-                      console.log('[CardDetailModal] Calling onNavigateToCard');
                       onNavigateToCard(cardId);
-                    } else {
-                      console.log('[CardDetailModal] onNavigateToCard is not defined');
                     }
                   }}
                 />

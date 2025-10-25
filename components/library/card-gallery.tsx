@@ -209,13 +209,6 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           });
 
           // Update local state
-          console.log('[CardGallery] Updating card with new metadata:', {
-            cardId,
-            oldImage: cards.find(c => c.id === cardId)?.image,
-            newImage: updatedCard.image,
-            title: updatedCard.title
-          });
-          
           // Add cache-busting parameter to image URL to prevent browser caching
           const updatedCardWithCacheBust = {
             ...updatedCard,
