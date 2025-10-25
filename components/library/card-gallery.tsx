@@ -14,8 +14,8 @@ import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-s
 import { FileText, Bookmark, Pin } from "lucide-react";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
-import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { SelectionDrawer } from "@/components/selection-drawer/selection-drawer";
 import { UnpinNotesModal } from "@/components/modals/unpin-notes-modal";
 
@@ -32,7 +32,7 @@ export type CardGalleryProps = {
 
 function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false, area }: CardGalleryProps) {
   const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore, collections } = useDemoAwareStore();
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [imageLoadCount, setImageLoadCount] = useState(0);
@@ -128,7 +128,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
       return;
     }
     // Only open modal, don't add to selection
-    setActiveCardId(card.id);
+    openCardDetails(card.id);
   };
 
   const handleLoadMore = async () => {
@@ -252,8 +252,6 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
       .filter(Boolean) as CardModel[];
   }, [pinnedNoteIds, cards]);
 
-  const activeCard = cards.find((card) => card.id === activeCardId) ?? null;
-
   return (
     <div className="space-y-4">
       {!hideControls && (
@@ -368,26 +366,6 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
         pinnedNotes={pinnedNotes}
         onUnpin={handleUnpinFromSidebar}
       />
-
-      {activeCard && (
-        <CardDetailModal
-          card={activeCard}
-          collections={collections}
-          onClose={() => setActiveCardId(null)}
-          onUpdate={(updated) =>
-            setCards((prev) => prev.map((item) => (item.id === updated.id ? updated : item)))
-          }
-          onDelete={() => {
-            setCards((prev) => prev.filter((item) => item.id !== activeCard.id));
-            clearSelection();
-            setActiveCardId(null);
-          }}
-          onNavigateToCard={(cardId) => {
-            // Navigate to the clicked note by changing the active card
-            setActiveCardId(cardId);
-          }}
-        />
-      )}
 
       {/* Selection Drawer */}
       <SelectionDrawer

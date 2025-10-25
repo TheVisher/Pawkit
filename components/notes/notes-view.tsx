@@ -8,8 +8,8 @@ import { sortCards } from "@/lib/utils/sort-cards";
 import { FileText, Network, Calendar } from "lucide-react";
 import { SmartSearch } from "@/components/notes/smart-search";
 import { KnowledgeGraph } from "@/components/notes/knowledge-graph";
-import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { useDataStore } from "@/lib/stores/data-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
 import { GlowButton } from "@/components/ui/glow-button";
 import { CardSurface } from "@/components/ui/card-surface";
@@ -22,7 +22,7 @@ type NotesViewProps = {
 
 export function NotesView({ initialCards, collectionsTree, query }: NotesViewProps) {
   const [cards, setCards] = useState<CardModel[]>(initialCards);
-  const [selectedCard, setSelectedCard] = useState<CardModel | null>(null);
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const [showGraph, setShowGraph] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
@@ -61,7 +61,7 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
       if (hash) {
         const card = cards.find(c => c.id === hash);
         if (card) {
-          setSelectedCard(card);
+          openCardDetails(card.id);
         }
       }
     };
@@ -98,7 +98,10 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
     // Check if daily note already exists for today
     if (hasTodaysNote) {
       // Open existing note
-      setSelectedCard(cards.find(c => c.id === todaysNote!.id) || null);
+      const todaysCard = cards.find(c => c.id === todaysNote!.id);
+      if (todaysCard) {
+        openCardDetails(todaysCard.id);
+      }
       return;
     }
     
@@ -118,7 +121,7 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
       
       if (newCard) {
         setCards(updatedCards);
-        setSelectedCard(newCard);
+        openCardDetails(newCard.id);
       }
     } catch (error) {
       console.error('Failed to create daily note:', error);
@@ -192,7 +195,7 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
       <div className="max-w-md">
         <SmartSearch
           onSelectCard={(card) => {
-            setSelectedCard(card);
+            openCardDetails(card.id);
           }}
           placeholder="Search notes, tags, and content..."
         />
@@ -219,7 +222,7 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
                     className="flex items-center justify-between p-3 rounded border border-subtle hover:bg-surface-soft transition-colors cursor-pointer"
                     onClick={() => {
                       if (card) {
-                        setSelectedCard(card);
+                        openCardDetails(card.id);
                       }
                     }}
                   >
@@ -252,7 +255,7 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
       {showGraph && (
         <KnowledgeGraph
           onSelectCard={(card) => {
-            setSelectedCard(card);
+            openCardDetails(card.id);
           }}
         />
       )}
@@ -266,28 +269,6 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
         storageKey="notes-layout"
         area="notes"
       />
-
-      {/* Card Detail Modal */}
-      {selectedCard && (
-        <CardDetailModal
-          card={selectedCard}
-          collections={collectionsTree}
-          onClose={() => setSelectedCard(null)}
-          onUpdate={(updatedCard) => {
-            setCards(prev => prev.map(c => c.id === updatedCard.id ? updatedCard : c));
-          }}
-          onDelete={() => {
-            setCards(prev => prev.filter(c => c.id !== selectedCard.id));
-            setSelectedCard(null);
-          }}
-          onNavigateToCard={(cardId) => {
-            const card = cards.find(c => c.id === cardId);
-            if (card) {
-              setSelectedCard(card);
-            }
-          }}
-        />
-      )}
     </div>
   );
 }
