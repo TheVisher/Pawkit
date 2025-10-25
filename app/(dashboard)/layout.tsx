@@ -178,7 +178,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       setShowCommandPalette(true);
     },
     onEscape: () => {
-      // Priority: Close modals first before closing panels
+      // Priority: Close modals first, then right panel, then left panel
       if (showCommandPalette) {
         setShowCommandPalette(false);
       } else if (showCreateNoteModal) {
@@ -187,6 +187,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         setShowCreateCardModal(false);
       } else if (showKeyboardShortcuts) {
         setShowKeyboardShortcuts(false);
+      } else if (panelActiveCardId) {
+        // Close card detail modal if open
+        setActiveCardId(null);
       } else if (isPanelOpen) {
         // Close right panel if no modals are open
         closePanel();
