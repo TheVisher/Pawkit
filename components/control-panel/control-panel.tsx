@@ -303,7 +303,7 @@ export function PanelButton({ children, active, onClick, icon }: PanelButtonProp
         w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
         ${active
           ? "bg-accent text-accent-foreground font-medium"
-          : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+          : "text-muted-foreground hover:text-foreground hover:bg-white/5"
         }
       `}
     >
@@ -329,7 +329,7 @@ export function PanelToggle({ label, checked, onChange, icon }: PanelToggleProps
         w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
         ${checked
           ? "bg-accent/20 text-accent-foreground border border-accent/50"
-          : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground border border-transparent"
+          : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-transparent"
         }
       `}
     >
