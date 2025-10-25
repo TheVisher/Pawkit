@@ -59,7 +59,11 @@ export function LibraryView({
   const [cards, setCards] = useState<CardModel[]>(initialCards);
   const [timelineGroups, setTimelineGroups] = useState<TimelineGroup[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+
+  // Use panel store as single source of truth for active card
+  const panelActiveCardId = usePanelStore((state) => state.activeCardId);
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const activeCardId = panelActiveCardId;
 
   // Create a map from collection ID to collection name
   const collectionIdToName = useMemo(() => {
@@ -194,7 +198,7 @@ export function LibraryView({
       event.preventDefault();
       return;
     }
-    setActiveCardId(card.id);
+    openCardDetails(card.id);
   };
 
 
@@ -383,9 +387,10 @@ export function LibraryView({
       {/* Card Detail Modal for Timeline */}
       {activeCard && viewMode === "timeline" && (
         <CardDetailModal
+          key={activeCard.id}
           card={activeCard}
           collections={collectionsTree}
-          onClose={() => setActiveCardId(null)}
+          onClose={() => usePanelStore.getState().setActiveCardId(null)}
           onUpdate={(updatedCard) => {
             setTimelineGroups((prev) =>
               prev.map((group) => ({
@@ -404,8 +409,9 @@ export function LibraryView({
               }))
               .filter((group) => group.cards.length > 0)
             );
-            setActiveCardId(null);
+            usePanelStore.getState().setActiveCardId(null);
           }}
+          onNavigateToCard={(cardId) => openCardDetails(cardId)}
         />
       )}
     </>
