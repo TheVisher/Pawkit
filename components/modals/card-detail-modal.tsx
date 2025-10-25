@@ -477,6 +477,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   useEffect(() => {
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        // Check if event was already handled (e.g., by autocomplete dropdown)
+        // If defaultPrevented is true, another handler already handled it
+        if (event.defaultPrevented) {
+          return;
+        }
         handleClose();
       }
     };
