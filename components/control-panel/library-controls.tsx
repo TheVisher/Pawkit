@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Grid, List, LayoutGrid, Columns, Tag, SortAsc, Eye, Maximize2, File, ArrowUpDown, ChevronDown } from "lucide-react";
+import { Grid, List, LayoutGrid, Columns, Tag, SortAsc, Eye, Maximize2, File, ArrowUpDown } from "lucide-react";
 import { useViewSettingsStore, type SortBy, type ContentType } from "@/lib/hooks/view-settings-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDataStore } from "@/lib/stores/data-store";
@@ -57,8 +57,8 @@ export function LibraryControls() {
   const setCardSize = useViewSettingsStore((state) => state.setCardSize);
   const setCardSpacing = useViewSettingsStore((state) => state.setCardSpacing);
   const setCardPadding = useViewSettingsStore((state) => state.setCardPadding);
-  const setShowTitles = useViewSettingsStore((state) => state.setShowTitles);
-  const setShowUrls = useViewSettingsStore((state) => state.setShowUrls);
+  const setShowLabels = useViewSettingsStore((state) => state.setShowLabels);
+  const setShowMetadata = useViewSettingsStore((state) => state.setShowMetadata);
   const setShowPreview = useViewSettingsStore((state) => state.setShowPreview);
   const setContentTypeFilter = useViewSettingsStore((state) => state.setContentTypeFilter);
   const setSortBy = useViewSettingsStore((state) => state.setSortBy);
@@ -74,8 +74,8 @@ export function LibraryControls() {
   const cardSizeValue = viewSettings.cardSize;
   const cardSpacingValue = viewSettings.cardSpacing;
   const cardPaddingValue = viewSettings.cardPadding;
-  const showTitlesValue = viewSettings.showTitles;
-  const showUrlsValue = viewSettings.showUrls;
+  const showLabelsValue = viewSettings.showLabels;
+  const showMetadataValue = viewSettings.showMetadata;
   const showPreviewValue = viewSettings.showPreview;
   const contentTypeFilter = viewSettings.contentTypeFilter;
   const sortBy = mapSortByToControl(viewSettings.sortBy);
@@ -141,20 +141,28 @@ export function LibraryControls() {
     setShowThumbnails(show);
   };
 
-  const handleShowTitlesChange = (show: boolean) => {
-    setShowTitles("library", show);
+  const handleShowLabelsChange = (show: boolean) => {
+    setShowLabels("library", show);
   };
 
-  const handleShowUrlsChange = (show: boolean) => {
-    setShowUrls("library", show);
+  const handleShowMetadataChange = (show: boolean) => {
+    setShowMetadata("library", show);
   };
 
   const handleShowPreviewChange = (show: boolean) => {
     setShowPreview("library", show);
   };
 
-  const handleContentTypeFilterChange = (type: ContentType | "all") => {
-    setContentTypeFilter("library", type);
+  const handleContentTypeToggle = (type: ContentType) => {
+    const currentTypes = contentTypeFilter;
+    const newTypes = currentTypes.includes(type)
+      ? currentTypes.filter((t) => t !== type)
+      : [...currentTypes, type];
+    setContentTypeFilter("library", newTypes);
+  };
+
+  const handleClearContentTypes = () => {
+    setContentTypeFilter("library", []);
   };
 
   const handleToggleSortOrder = () => {
@@ -163,36 +171,107 @@ export function LibraryControls() {
 
   return (
     <>
-      {/* View Section */}
-      <PanelSection id="library-view" title="View" icon={<Eye className="h-4 w-4 text-accent" />}>
-        <PanelButton
-          active={layout === "grid"}
-          onClick={() => handleLayoutChange("grid")}
-          icon={<Grid size={16} />}
+      {/* Tags Filter Section */}
+      {allTags.length > 0 && (
+        <PanelSection
+          id="library-tags"
+          title="Tags"
+          icon={<Tag className={`h-4 w-4 ${pathname === pathPrefix + "/tags" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
+          active={pathname === pathPrefix + "/tags"}
+          onClick={() => {
+            router.push(`${pathPrefix}/tags`);
+            // Ensure section is expanded when clicking header
+            if (collapsedSections["library-tags"]) {
+              toggleSection("library-tags");
+            }
+          }}
         >
-          Grid
-        </PanelButton>
-        <PanelButton
-          active={layout === "masonry"}
-          onClick={() => handleLayoutChange("masonry")}
-          icon={<LayoutGrid size={16} />}
+          <button
+            onClick={handleClearTags}
+            disabled={selectedTags.length === 0}
+            className="text-xs text-accent hover:text-accent/80 transition-colors mb-1 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-accent"
+          >
+            Clear all filters
+          </button>
+          <div className="space-y-1 max-h-96 overflow-y-auto">
+            {allTags.map((tag) => (
+              <PanelToggle
+                key={tag.name}
+                label={`#${tag.name}`}
+                checked={selectedTags.includes(tag.name)}
+                onChange={() => handleTagToggle(tag.name)}
+                icon={
+                  <span className="text-xs text-muted-foreground min-w-[24px] text-right">
+                    {tag.count}
+                  </span>
+                }
+              />
+            ))}
+          </div>
+        </PanelSection>
+      )}
+
+      {/* Content Type Filter Section */}
+      <PanelSection id="library-content-type" title="Content Type" icon={<File className="h-4 w-4 text-accent" />}>
+        <button
+          onClick={handleClearContentTypes}
+          disabled={contentTypeFilter.length === 0}
+          className="text-xs text-accent hover:text-accent/80 transition-colors mb-1 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-accent"
         >
-          Masonry
-        </PanelButton>
-        <PanelButton
-          active={layout === "list"}
-          onClick={() => handleLayoutChange("list")}
-          icon={<List size={16} />}
-        >
-          List
-        </PanelButton>
-        <PanelButton
-          active={layout === "compact"}
-          onClick={() => handleLayoutChange("compact")}
-          icon={<Columns size={16} />}
-        >
-          Compact
-        </PanelButton>
+          Clear all filters
+        </button>
+        <div className="space-y-1">
+          <PanelToggle
+            label="Bookmark"
+            checked={contentTypeFilter.includes("url")}
+            onChange={() => handleContentTypeToggle("url")}
+          />
+          <PanelToggle
+            label="Note"
+            checked={contentTypeFilter.includes("md-note")}
+            onChange={() => handleContentTypeToggle("md-note")}
+          />
+          <PanelToggle
+            label="Image"
+            checked={contentTypeFilter.includes("image")}
+            onChange={() => handleContentTypeToggle("image")}
+          />
+          <PanelToggle
+            label="Document"
+            checked={contentTypeFilter.includes("document")}
+            onChange={() => handleContentTypeToggle("document")}
+          />
+          <PanelToggle
+            label="Audio"
+            checked={contentTypeFilter.includes("audio")}
+            onChange={() => handleContentTypeToggle("audio")}
+          />
+          <PanelToggle
+            label="Video"
+            checked={contentTypeFilter.includes("video")}
+            onChange={() => handleContentTypeToggle("video")}
+          />
+          <PanelToggle
+            label="Email"
+            checked={contentTypeFilter.includes("email")}
+            onChange={() => handleContentTypeToggle("email")}
+          />
+          <PanelToggle
+            label="Highlight"
+            checked={contentTypeFilter.includes("highlight")}
+            onChange={() => handleContentTypeToggle("highlight")}
+          />
+          <PanelToggle
+            label="Folder"
+            checked={contentTypeFilter.includes("folder")}
+            onChange={() => handleContentTypeToggle("folder")}
+          />
+          <PanelToggle
+            label="Other"
+            checked={contentTypeFilter.includes("other")}
+            onChange={() => handleContentTypeToggle("other")}
+          />
+        </div>
       </PanelSection>
 
       {/* Sort Section */}
@@ -235,70 +314,37 @@ export function LibraryControls() {
         </PanelButton>
       </PanelSection>
 
-      {/* Content Type Filter Section */}
-      <PanelSection id="library-content-type" title="Content Type" icon={<File className="h-4 w-4 text-accent" />}>
-        <div className="relative">
-          <select
-            value={contentTypeFilter}
-            onChange={(e) => handleContentTypeFilterChange(e.target.value as ContentType | "all")}
-            className="w-full px-3 py-2 bg-white/5 border border-subtle rounded-lg text-sm text-foreground appearance-none cursor-pointer hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50"
-          >
-            <option value="all">Any kind</option>
-            <option value="url">Bookmark</option>
-            <option value="md-note">Note</option>
-            <option value="image">Image</option>
-            <option value="document">Document</option>
-            <option value="audio">Audio</option>
-            <option value="video">Video</option>
-            <option value="email">Email</option>
-            <option value="highlight">Highlight</option>
-            <option value="folder">Folder</option>
-            <option value="other">Other</option>
-          </select>
-          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-        </div>
-      </PanelSection>
-
-      {/* Tags Filter Section */}
-      {allTags.length > 0 && (
-        <PanelSection
-          id="library-tags"
-          title="Tags"
-          icon={<Tag className={`h-4 w-4 ${pathname === pathPrefix + "/tags" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
-          active={pathname === pathPrefix + "/tags"}
-          onClick={() => {
-            router.push(`${pathPrefix}/tags`);
-            // Ensure section is expanded when clicking header
-            if (collapsedSections["library-tags"]) {
-              toggleSection("library-tags");
-            }
-          }}
+      {/* View Section */}
+      <PanelSection id="library-view" title="View" icon={<Eye className="h-4 w-4 text-accent" />}>
+        <PanelButton
+          active={layout === "grid"}
+          onClick={() => handleLayoutChange("grid")}
+          icon={<Grid size={16} />}
         >
-          {selectedTags.length > 0 && (
-            <button
-              onClick={handleClearTags}
-              className="text-xs text-accent hover:text-accent/80 transition-colors mb-1"
-            >
-              Clear all filters
-            </button>
-          )}
-          <div className="space-y-1 max-h-96 overflow-y-auto">
-            {allTags.map((tag) => (
-              <PanelToggle
-                key={tag.name}
-                label={`#${tag.name}`}
-                checked={selectedTags.includes(tag.name)}
-                onChange={() => handleTagToggle(tag.name)}
-                icon={
-                  <span className="text-xs text-muted-foreground min-w-[24px] text-right">
-                    {tag.count}
-                  </span>
-                }
-              />
-            ))}
-          </div>
-        </PanelSection>
-      )}
+          Grid
+        </PanelButton>
+        <PanelButton
+          active={layout === "masonry"}
+          onClick={() => handleLayoutChange("masonry")}
+          icon={<LayoutGrid size={16} />}
+        >
+          Masonry
+        </PanelButton>
+        <PanelButton
+          active={layout === "list"}
+          onClick={() => handleLayoutChange("list")}
+          icon={<List size={16} />}
+        >
+          List
+        </PanelButton>
+        <PanelButton
+          active={layout === "compact"}
+          onClick={() => handleLayoutChange("compact")}
+          icon={<Columns size={16} />}
+        >
+          Compact
+        </PanelButton>
+      </PanelSection>
 
       {/* Display Options Section */}
       <PanelSection id="library-display" title="Display" icon={<Maximize2 className="h-4 w-4 text-accent" />}>
@@ -331,7 +377,7 @@ export function LibraryControls() {
           </div>
           <input
             type="range"
-            min="0"
+            min="1"
             max="64"
             step="1"
             value={cardSpacingValue}
@@ -372,14 +418,14 @@ export function LibraryControls() {
           onChange={handleShowThumbnailsChange}
         />
         <PanelToggle
-          label="Show Titles"
-          checked={showTitlesValue}
-          onChange={handleShowTitlesChange}
+          label="Show Labels"
+          checked={showLabelsValue}
+          onChange={handleShowLabelsChange}
         />
         <PanelToggle
-          label="Show URLs"
-          checked={showUrlsValue}
-          onChange={handleShowUrlsChange}
+          label="Show Metadata"
+          checked={showMetadataValue}
+          onChange={handleShowMetadataChange}
         />
         <PanelToggle
           label="Show Preview"
