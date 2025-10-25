@@ -1184,7 +1184,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             ) : (
               // URL card content with tabs - all tabs positioned absolutely to maintain size
               <div className="relative h-full">
-                <div className={`p-[5px] h-full ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
+                <div className={`absolute inset-0 p-[5px] ${bottomTabMode === 'preview' ? 'z-10' : 'invisible'}`}>
                   <div className="w-full h-full flex items-center justify-center">
                     {card.image ? (
                       <img
@@ -1206,7 +1206,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
 
                 {bottomTabMode === 'reader' && (
-                  <div className="absolute inset-0 p-[5px] overflow-y-auto">
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto z-10">
                     {articleContent ? (
                       <ReaderView
                         title={card.title || card.domain || card.url}
@@ -1252,7 +1252,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 )}
 
                 {bottomTabMode === 'metadata' && (
-                  <div className="absolute inset-0 p-[5px] overflow-y-auto flex items-start justify-center">
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto flex items-start justify-center z-10">
                     <div className="max-w-2xl w-full space-y-6 py-8">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
