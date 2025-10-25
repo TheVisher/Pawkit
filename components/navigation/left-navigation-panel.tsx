@@ -42,6 +42,7 @@ type NavItem = {
 };
 
 const navigationItems: NavItem[] = [
+  { id: "home", label: "Home", icon: Home, path: "/home" },
   { id: "library", label: "Library", icon: Library, path: "/library" },
   { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
   { id: "den", label: "The Den", icon: DogHouseIcon, path: "/den" },
@@ -420,7 +421,7 @@ export function LeftNavigationPanel({
       >
         <button
           onClick={() => handleNavigate(`/notes#${note.id}`)}
-          className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+          className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-white/5"
         >
           <Pin size={16} className="flex-shrink-0 text-purple-400" />
           <span className="flex-1 text-left truncate">{note.title}</span>
@@ -469,11 +470,14 @@ export function LeftNavigationPanel({
               className={`
                 w-full flex items-center gap-2 ${padding} rounded-lg ${textSize} transition-all relative overflow-hidden
                 ${isCollectionActive
-                  ? "bg-accent text-accent-foreground font-medium"
-                  : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                  ? "text-accent-foreground font-medium shadow-glow-accent-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                 }
               `}
             >
+              {isCollectionActive && (
+                <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
+              )}
               <FolderOpen size={iconSize} className="flex-shrink-0" />
               <span className="flex-1 text-left truncate">{collection.name}</span>
 
