@@ -10,7 +10,8 @@ import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 function LibraryPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { viewSettings, updateViewSettings } = useViewSettingsStore();
+  const updateViewSettings = useViewSettingsStore((state) => state.updateSettings);
+  const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
 
   const q = searchParams.get("q") || undefined;
   const collection = searchParams.get("collection") || undefined;
@@ -38,6 +39,9 @@ function LibraryPageContent() {
   // Read from global store - instant, no API calls
   const { cards, collections } = useDataStore();
 
+  // Get content type filter from view settings
+  const contentTypeFilter = viewSettings.contentTypeFilter;
+
   // Check if tag filter exists in any card, if not clear it
   useEffect(() => {
     if (tag) {
@@ -59,7 +63,7 @@ function LibraryPageContent() {
         );
         // If any tags were filtered out, update view settings
         if (validTags.length !== selectedTags.length) {
-          updateViewSettings({
+          updateViewSettings("library", {
             viewSpecific: {
               ...viewSettings.viewSpecific,
               selectedTags: validTags
@@ -109,8 +113,27 @@ function LibraryPageContent() {
       filtered = filtered.filter(card => card.status === status);
     }
 
+    // Content type filter - if array is not empty, filter by selected types
+    if (contentTypeFilter && contentTypeFilter.length > 0) {
+      filtered = filtered.filter(card => {
+        // Check if card type matches any of the selected content types
+        return contentTypeFilter.some(filterType => {
+          // For "url" content type, we need to check if it's a bookmark (url type but not a note)
+          if (filterType === "url") {
+            return card.type === "url";
+          }
+          // For "md-note", match md-note or text-note types
+          if (filterType === "md-note") {
+            return card.type === "md-note" || card.type === "text-note";
+          }
+          // For other types, match the card type directly
+          return card.type === filterType;
+        });
+      });
+    }
+
     return filtered;
-  }, [cards, q, collection, tag, status]);
+  }, [cards, q, collection, tag, status, contentTypeFilter]);
 
   return (
     <LibraryView
