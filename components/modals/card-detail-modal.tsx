@@ -1252,7 +1252,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 )}
 
                 {bottomTabMode === 'metadata' && (
-                  <div className="absolute inset-0 p-[5px] overflow-y-auto">
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto flex items-start justify-center">
                     <div className="max-w-2xl w-full space-y-6 py-8">
                       <div>
                         <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
