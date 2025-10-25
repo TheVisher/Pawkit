@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { DEFAULT_USERNAME } from "@/lib/constants";
@@ -31,6 +31,7 @@ export default function HomePage() {
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const setPanelActiveCardId = usePanelStore((state) => state.setActiveCardId);
   const panelActiveCardId = usePanelStore((state) => state.activeCardId);
+  const isUpdatingFromPanel = useRef(false);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -47,10 +48,10 @@ export default function HomePage() {
 
   // Sync local modal state with panel store state (for backlink navigation)
   useEffect(() => {
-    if (panelActiveCardId !== activeCardId) {
+    if (panelActiveCardId !== activeCardId && !isUpdatingFromPanel.current) {
       setActiveCardId(panelActiveCardId);
     }
-  }, [panelActiveCardId]);
+  }, [panelActiveCardId, activeCardId]);
 
   // Read from global store - instant, no API calls
   const { cards, collections, updateCard, deleteCard, addCard } = useDataStore();
@@ -146,12 +147,17 @@ export default function HomePage() {
 
   // Wrapper to keep both local state and panel store in sync
   const handleSetActiveCard = (cardId: string | null) => {
+    isUpdatingFromPanel.current = true;
     setActiveCardId(cardId);
     if (cardId) {
       openCardDetails(cardId);
     } else {
       setPanelActiveCardId(null);
     }
+    // Reset flag after state updates have propagated
+    setTimeout(() => {
+      isUpdatingFromPanel.current = false;
+    }, 0);
   };
 
   const handleUpdateCard = async (updated: CardModel) => {
