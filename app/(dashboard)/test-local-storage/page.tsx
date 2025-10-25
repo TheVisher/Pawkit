@@ -7,6 +7,10 @@ import { useRouter } from 'next/navigation';
 
 export default function TestLocalStoragePage() {
   const router = useRouter();
+  const [stats, setStats] = useState<any>(null);
+  const [cards, setCards] = useState<any[]>([]);
+  const [log, setLog] = useState<string[]>([]);
+  const [initialized, setInitialized] = useState(false);
 
   // Redirect to home in production
   useEffect(() => {
@@ -14,15 +18,6 @@ export default function TestLocalStoragePage() {
       router.replace('/home');
     }
   }, [router]);
-
-  // Don't render in production
-  if (process.env.NODE_ENV === 'production') {
-    return null;
-  }
-  const [stats, setStats] = useState<any>(null);
-  const [cards, setCards] = useState<any[]>([]);
-  const [log, setLog] = useState<string[]>([]);
-  const [initialized, setInitialized] = useState(false);
 
   const addLog = (message: string) => {
     setLog(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`]);
@@ -174,6 +169,11 @@ export default function TestLocalStoragePage() {
       addLog(`❌ Error importing: ${error}`);
     }
   };
+
+  // Don't render in production (after all hooks)
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
 
   if (!initialized) {
     return (
