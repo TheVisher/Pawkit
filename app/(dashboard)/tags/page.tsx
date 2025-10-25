@@ -24,6 +24,7 @@ export default function TagsPage() {
   const [selectedTag, setSelectedTag] = useState<TagInfo | null>(null);
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState("");
+  const [deleteConfirmTag, setDeleteConfirmTag] = useState<TagInfo | null>(null);
   const router = useRouter();
   const { toasts, dismissToast, success, error } = useToast();
 
@@ -86,22 +87,27 @@ export default function TagsPage() {
     const tag = tags.find((t) => t.name === tagName);
     if (!tag) return;
 
-    if (!confirm(`Are you sure you want to delete the tag "${tagName}"? This will remove it from ${tag.count} cards.`)) {
-      return;
-    }
+    // Show custom confirm modal instead of browser confirm
+    setDeleteConfirmTag(tag);
+  };
+
+  const confirmDeleteTag = async () => {
+    if (!deleteConfirmTag) return;
 
     try {
       // Remove tag from all cards
       const { updateCard } = useDataStore.getState();
-      for (const card of tag.cards) {
-        const updatedTags = card.tags?.filter((t) => t !== tagName) || [];
+      for (const card of deleteConfirmTag.cards) {
+        const updatedTags = card.tags?.filter((t) => t !== deleteConfirmTag.name) || [];
         await updateCard(card.id, { tags: updatedTags });
       }
 
       setSelectedTag(null);
-      success(`Deleted tag "${tagName}" from ${tag.cards.length} cards`);
+      setDeleteConfirmTag(null);
+      success(`Deleted tag "${deleteConfirmTag.name}" from ${deleteConfirmTag.cards.length} cards`);
     } catch (err) {
       error("Failed to delete tag");
+      setDeleteConfirmTag(null);
     }
   };
 
@@ -139,7 +145,7 @@ export default function TagsPage() {
       </div>
 
       {/* Tags Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {filteredTags.map((tag) => (
           <div
             key={tag.name}
@@ -234,6 +240,38 @@ export default function TagsPage() {
 
       {/* Toast Container */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmTag && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setDeleteConfirmTag(null)}
+        >
+          <div
+            className="bg-surface rounded-2xl p-6 w-full max-w-md shadow-xl border border-subtle"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold text-foreground mb-4">Delete Tag?</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Are you sure you want to delete the tag <span className="text-accent font-medium">#{deleteConfirmTag.name}</span>? This will remove it from {deleteConfirmTag.count} {deleteConfirmTag.count === 1 ? 'card' : 'cards'}.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirmTag(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteTag}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

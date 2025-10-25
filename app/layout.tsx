@@ -44,11 +44,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
               // Catch unhandled errors and log browser info
               window.addEventListener('error', (e) => {
+                // Ignore benign ResizeObserver errors
+                if (e.message?.includes('ResizeObserver loop')) {
+                  return;
+                }
+
                 console.error('[Global Error]', {
                   message: e.message,
                   filename: e.filename,
                   lineno: e.lineno,
                   colno: e.colno,
+                  error: e.error,
+                  stack: e.error?.stack,
                   userAgent: navigator.userAgent
                 });
               });
