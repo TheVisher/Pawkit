@@ -735,7 +735,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
             {autocompleteOpen && autocompleteSuggestions.length > 0 && (
               <div
                 ref={autocompleteRef}
-                className="fixed z-50 bg-surface-muted border border-accent shadow-lg flex flex-col overflow-hidden"
+                className="fixed z-[110] bg-surface-muted border border-accent shadow-lg flex flex-col overflow-hidden"
                 style={{
                   top: `${autocompletePosition.top}px`,
                   left: `${autocompletePosition.left}px`,
