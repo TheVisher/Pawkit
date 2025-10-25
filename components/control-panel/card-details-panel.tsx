@@ -11,6 +11,7 @@ export function CardDetailsPanel() {
   const router = useRouter();
   const activeCardId = usePanelStore((state) => state.activeCardId);
   const setActiveCardId = usePanelStore((state) => state.setActiveCardId);
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const { cards, updateCard } = useDataStore();
 
   // Find the active card
@@ -119,7 +120,13 @@ export function CardDetailsPanel() {
         {activeTab === "links" && (
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-foreground">Backlinks</h3>
-            <BacklinksPanel noteId={card.id} onNavigate={(id) => setActiveCardId(id)} />
+            <BacklinksPanel
+              noteId={card.id}
+              onNavigate={(id) => {
+                // Ensure both the panel and modal navigate consistently
+                openCardDetails(id);
+              }}
+            />
           </div>
         )}
 
