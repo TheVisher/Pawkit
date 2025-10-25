@@ -15,8 +15,8 @@ import {
 import { ChevronDown, Check } from "lucide-react";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
-import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { useDataStore } from "@/lib/stores/data-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 type TimelineGroup = {
   date: string;
@@ -164,7 +164,7 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
   const [loading, setLoading] = useState(false);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const [collections, setCollections] = useState<CollectionNode[]>([]);
 
   const selectedIds = useSelection((state) => state.selectedIds);
@@ -187,11 +187,6 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
     [groups]
   );
 
-  // Get active card object
-  const activeCard = useMemo(
-    () => allCards.find((card) => card.id === activeCardId) ?? null,
-    [allCards, activeCardId]
-  );
 
   // Fetch collections for the modal
   useEffect(() => {
@@ -275,7 +270,7 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
       return;
     }
     // Open modal
-    setActiveCardId(card.id);
+    openCardDetails(card.id);
   };
 
   const handleBulkMove = () => {
@@ -409,34 +404,6 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
         onClose={() => setShowMoveModal(false)}
         onConfirm={handleConfirmMove}
       />
-
-      {activeCard && (
-        <CardDetailModal
-          card={activeCard}
-          collections={collections}
-          onClose={() => setActiveCardId(null)}
-          onUpdate={(updatedCard) => {
-            setGroups((prev) =>
-              prev.map((group) => ({
-                ...group,
-                cards: group.cards.map((card) =>
-                  card.id === updatedCard.id ? updatedCard : card
-                )
-              }))
-            );
-          }}
-          onDelete={() => {
-            setGroups((prev) =>
-              prev.map((group) => ({
-                ...group,
-                cards: group.cards.filter((card) => card.id !== activeCardId)
-              }))
-              .filter((group) => group.cards.length > 0)
-            );
-            setActiveCardId(null);
-          }}
-        />
-      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
