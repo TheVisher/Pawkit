@@ -711,8 +711,8 @@ export function LeftNavigationPanel({
                     className={`
                       w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all relative
                       ${isActive
-                        ? "bg-accent/10 text-accent-foreground font-medium shadow-glow-accent-sm"
-                        : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                        ? "text-accent-foreground font-medium shadow-glow-accent-sm"
+                        : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                       }
                     `}
                   >
@@ -787,7 +787,7 @@ export function LeftNavigationPanel({
             <div className="space-y-1">
               <button
                 onClick={goToTodaysNote}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-white/5"
               >
                 <CalendarDays size={16} className="flex-shrink-0" />
                 <span className="flex-1 text-left">Today&apos;s Note</span>
@@ -829,7 +829,7 @@ export function LeftNavigationPanel({
                   <button
                     key={item.id}
                     onClick={() => handleNavigate(item.type === "note" ? `/notes#${item.id}` : `/library?q=${encodeURIComponent(item.title)}`)}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-white/5"
                   >
                     <Clock size={16} className="flex-shrink-0" />
                     <span className="flex-1 text-left truncate">{item.title}</span>
