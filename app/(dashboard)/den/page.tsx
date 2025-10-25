@@ -6,8 +6,8 @@ import { useDenStore } from "@/lib/stores/den-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
-import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { DogHouseIcon } from "@/components/icons/dog-house";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { DenPawkitsGrid } from "@/components/den/den-pawkits-grid";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 // Removed useSWR - using local-first data store instead
@@ -16,7 +16,7 @@ export default function DenPage() {
   const { denCards, isUnlocked, loadDenCards, checkExpiry, refreshDenCards, updateDenCard } = useDenStore();
   const { collections, deleteCard, addCollection } = useDataStore();
   const { setOnCreatePawkit } = usePawkitActions();
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const [showCreatePawkitModal, setShowCreatePawkitModal] = useState(false);
   const [newPawkitName, setNewPawkitName] = useState("");
   const [creating, setCreating] = useState(false);
@@ -76,21 +76,6 @@ export default function DenPage() {
     }
   };
 
-  const activeCard = activeCardId ? denCards.find(c => c.id === activeCardId) : null;
-
-  const handleUpdateCard = async (updated: CardModel) => {
-    // Just refresh to get the latest state from server
-    // The modal already handles the API calls
-    await refreshDenCards();
-  };
-
-  const handleDeleteCard = async () => {
-    if (activeCardId) {
-      await deleteCard(activeCardId);
-      await refreshDenCards();
-      setActiveCardId(null);
-    }
-  };
 
   return (
     <>
@@ -137,7 +122,7 @@ export default function DenPage() {
                 <DenCard
                   key={card.id}
                   card={card}
-                  onClick={() => setActiveCardId(card.id)}
+                  onClick={() => openCardDetails(card.id)}
                   onAddToDenPawkit={async (slug) => {
                     const collections = Array.from(new Set([slug, ...(card.collections || [])]));
                     // Always ensure Den cards have inDen: true when adding to Den Pawkits
@@ -212,17 +197,6 @@ export default function DenPage() {
           </div>
         </div>
       )}
-
-      {activeCard && (
-        <CardDetailModal
-          card={activeCard as CardModel}
-          collections={collections || []}
-          onClose={() => setActiveCardId(null)}
-          onUpdate={handleUpdateCard}
-          onDelete={handleDeleteCard}
-        />
-      )}
-
     </>
   );
 }
