@@ -1147,7 +1147,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           )}
 
           {/* Card Content - Image, Reader, YouTube Player, or Note Preview/Edit */}
-          <div className="relative flex-1 overflow-hidden">
+          <div className="relative flex-1 overflow-hidden min-h-0">
             {isNote ? (
               // Note content area
               <div className="h-full overflow-hidden p-[5px]">
@@ -1184,28 +1184,26 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             ) : (
               // URL card content with tabs - all tabs positioned absolutely to maintain size
               <div className="relative h-full">
-                {bottomTabMode === 'preview' && (
-                  <div className="absolute inset-0 p-[5px]">
-                    <div className="w-full h-full flex items-center justify-center">
-                      {card.image ? (
-                        <img
-                          src={card.image}
-                          alt={card.title || "Card preview"}
-                          className="max-w-full max-h-full object-contain rounded-lg"
-                        />
-                      ) : (
-                        <div className="text-center space-y-4">
-                          <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center">
-                            <span className="text-white text-4xl">🔗</span>
-                          </div>
-                          <h3 className="text-xl font-semibold text-gray-300">
-                            {card.title || card.domain || card.url}
-                          </h3>
+                <div className={`p-[5px] h-full ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
+                  <div className="w-full h-full flex items-center justify-center">
+                    {card.image ? (
+                      <img
+                        src={card.image}
+                        alt={card.title || "Card preview"}
+                        className="max-w-full max-h-full object-contain rounded-lg"
+                      />
+                    ) : (
+                      <div className="text-center space-y-4">
+                        <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-4xl">🔗</span>
                         </div>
-                      )}
-                    </div>
+                        <h3 className="text-xl font-semibold text-gray-300">
+                          {card.title || card.domain || card.url}
+                        </h3>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
 
                 {bottomTabMode === 'reader' && (
                   <div className="absolute inset-0 p-[5px] overflow-y-auto">
