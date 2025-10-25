@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
@@ -74,6 +75,11 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
   const [wikiLinkStartPos, setWikiLinkStartPos] = useState<number | null>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const justClosedRef = useRef(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Calculate metadata
   const metadata = useMemo(() => {
@@ -731,8 +737,8 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
               }}
             />
 
-            {/* Autocomplete Dropdown */}
-            {autocompleteOpen && autocompleteSuggestions.length > 0 && (
+            {/* Autocomplete Dropdown - Rendered as portal to avoid modal positioning issues */}
+            {isMounted && autocompleteOpen && autocompleteSuggestions.length > 0 && createPortal(
               <div
                 ref={autocompleteRef}
                 className="fixed z-[110] bg-surface-muted border border-accent shadow-lg flex flex-col overflow-hidden"
@@ -785,7 +791,8 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
                     <span>Esc to close</span>
                   </div>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         </>
