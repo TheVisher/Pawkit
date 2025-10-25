@@ -30,6 +30,7 @@ export default function HomePage() {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const setPanelActiveCardId = usePanelStore((state) => state.setActiveCardId);
+  const panelActiveCardId = usePanelStore((state) => state.activeCardId);
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -43,6 +44,13 @@ export default function HomePage() {
     }
     return () => setIsMounted(false);
   }, []);
+
+  // Sync local modal state with panel store state (for backlink navigation)
+  useEffect(() => {
+    if (panelActiveCardId !== activeCardId) {
+      setActiveCardId(panelActiveCardId);
+    }
+  }, [panelActiveCardId]);
 
   // Read from global store - instant, no API calls
   const { cards, collections, updateCard, deleteCard, addCard } = useDataStore();
