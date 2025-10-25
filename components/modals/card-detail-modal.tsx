@@ -281,17 +281,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           const matchedCard = !matchedNote ? findBestFuzzyMatch(linkText, cards, 0.7) : null;
           const cardId = matchedCard?.id;
 
-          console.log('[Wiki-Link Debug]', {
-            href,
-            linkText,
-            linkTextLower: linkText.toLowerCase(),
-            noteId,
-            cardId,
-            hasNavigateCallback: !!onNavigateToCard,
-            availableNoteTitles: Array.from(noteTitleMap.keys()),
-            availableCardTitles: Array.from(cardTitleMap.keys()),
-          });
-
           if (noteId && onNavigateToCard) {
             return (
               <button

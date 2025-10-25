@@ -42,7 +42,6 @@ type NavItem = {
 };
 
 const navigationItems: NavItem[] = [
-  { id: "home", label: "Home", icon: Home, path: "/home" },
   { id: "library", label: "Library", icon: Library, path: "/library" },
   { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
   { id: "den", label: "The Den", icon: DogHouseIcon, path: "/den" },
@@ -94,6 +93,7 @@ export function LeftNavigationPanel({
 
   // Get active card from panel store
   const activeCardId = usePanelStore((state) => state.activeCardId);
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const collapsedSections = usePanelStore((state) => state.collapsedSections);
   const toggleSection = usePanelStore((state) => state.toggleSection);
   const activeCard = useMemo(() => {
@@ -420,7 +420,7 @@ export function LeftNavigationPanel({
         className="w-full flex items-center gap-2 group/pinned-note"
       >
         <button
-          onClick={() => handleNavigate(`/notes#${note.id}`)}
+          onClick={() => openCardDetails(note.id)}
           className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-white/5"
         >
           <Pin size={16} className="flex-shrink-0 text-purple-400" />
@@ -695,6 +695,7 @@ export function LeftNavigationPanel({
             id="left-home"
             title="Home"
             icon={<Home className={`h-4 w-4 ${pathname === pathPrefix + "/home" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
+            active={pathname === pathPrefix + "/home"}
             onClick={() => {
               handleNavigate("/home");
               // Ensure section is expanded when clicking header
@@ -737,6 +738,7 @@ export function LeftNavigationPanel({
               id="left-pawkits"
               title="Pawkits"
               icon={<FolderOpen className={`h-4 w-4 ${pathname === pathPrefix + "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
+              active={pathname === pathPrefix + "/pawkits"}
               onClick={() => {
                 handleNavigate("/pawkits");
                 // Ensure section is expanded when clicking header
@@ -768,6 +770,7 @@ export function LeftNavigationPanel({
             id="left-notes"
             title="Notes"
             icon={<FileText className={`h-4 w-4 ${pathname === pathPrefix + "/notes" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
+            active={pathname === pathPrefix + "/notes"}
             onClick={() => {
               handleNavigate("/notes");
               // Ensure section is expanded when clicking header

@@ -206,7 +206,8 @@ export function LibraryControls() {
         <PanelSection
           id="library-tags"
           title="Tags"
-          icon={<Tag className="h-4 w-4 text-accent" />}
+          icon={<Tag className={`h-4 w-4 ${pathname === pathPrefix + "/tags" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
+          active={pathname === pathPrefix + "/tags"}
           onClick={() => {
             router.push(`${pathPrefix}/tags`);
             // Ensure section is expanded when clicking header
