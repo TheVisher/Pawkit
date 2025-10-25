@@ -690,7 +690,7 @@ export function LeftNavigationPanel({
           <PanelSection
             id="left-home"
             title="Home"
-            icon={<Home className="h-4 w-4 text-accent" />}
+            icon={<Home className={`h-4 w-4 ${pathname === pathPrefix + "/home" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
             onClick={() => {
               handleNavigate("/home");
               // Ensure section is expanded when clicking header
@@ -709,15 +709,18 @@ export function LeftNavigationPanel({
                     key={item.id}
                     onClick={() => handleNavigate(item.path)}
                     className={`
-                      w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
+                      w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all relative
                       ${isActive
-                        ? "bg-accent text-accent-foreground font-medium"
+                        ? "bg-accent/10 text-accent-foreground font-medium shadow-glow-accent-sm"
                         : "bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground"
                       }
                     `}
                   >
                     <Icon size={16} className="flex-shrink-0" />
                     <span className="flex-1 text-left">{item.label}</span>
+                    {isActive && (
+                      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
+                    )}
                   </button>
                 );
               })}
@@ -729,7 +732,7 @@ export function LeftNavigationPanel({
             <PanelSection
               id="left-pawkits"
               title="Pawkits"
-              icon={<FolderOpen className="h-4 w-4 text-accent" />}
+              icon={<FolderOpen className={`h-4 w-4 ${pathname === pathPrefix + "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
               onClick={() => {
                 handleNavigate("/pawkits");
                 // Ensure section is expanded when clicking header
@@ -760,7 +763,7 @@ export function LeftNavigationPanel({
           <PanelSection
             id="left-notes"
             title="Notes"
-            icon={<FileText className="h-4 w-4 text-accent" />}
+            icon={<FileText className={`h-4 w-4 ${pathname === pathPrefix + "/notes" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
             onClick={() => {
               handleNavigate("/notes");
               // Ensure section is expanded when clicking header
