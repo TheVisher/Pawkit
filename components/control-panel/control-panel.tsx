@@ -222,6 +222,7 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
 }
 
 // Panel Section Component
+
 export type PanelSectionProps = {
   id: string; // Unique identifier for persisting collapse state
   title: string;
