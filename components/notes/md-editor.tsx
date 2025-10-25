@@ -109,10 +109,10 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
     return map;
   }, [cards]);
 
-  // Get all notes for autocomplete (sorted by most recently updated)
+  // Get all cards for autocomplete (notes and URLs, sorted by most recently updated)
   const allNotes = useMemo(() => {
     return cards
-      .filter(card => (card.type === 'md-note' || card.type === 'text-note') && card.title && !card.inDen)
+      .filter(card => card.title && !card.inDen)
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [cards]);
 
@@ -753,7 +753,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
               >
                 {/* Sticky header */}
                 <div className="border-b border-subtle px-3 py-2 bg-surface-muted text-xs text-muted-foreground flex-shrink-0">
-                  {autocompleteQuery ? `Search: "${autocompleteQuery}"` : 'Recent notes'}
+                  {autocompleteQuery ? `Search: "${autocompleteQuery}"` : 'Recent cards'}
                 </div>
 
                 {/* Scrollable content area */}
@@ -769,14 +769,22 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <FileText size={14} className="flex-shrink-0" />
+                        {note.type === 'url' ? (
+                          <Globe size={14} className="flex-shrink-0" />
+                        ) : (
+                          <FileText size={14} className="flex-shrink-0" />
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm truncate">{note.title}</div>
-                          {note.content && (
+                          {note.type === 'url' ? (
+                            <div className="text-xs text-muted-foreground truncate mt-0.5">
+                              {note.domain || note.url}
+                            </div>
+                          ) : note.content ? (
                             <div className="text-xs text-muted-foreground truncate mt-0.5">
                               {note.content.substring(0, 60)}...
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </button>
