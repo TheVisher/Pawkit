@@ -1184,26 +1184,28 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             ) : (
               // URL card content with tabs - all tabs positioned absolutely to maintain size
               <div className="relative h-full">
-                <div className={`absolute inset-0 p-[5px] ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
-                  <div className="w-full h-full flex items-center justify-center">
-                    {card.image ? (
-                      <img
-                        src={card.image}
-                        alt={card.title || "Card preview"}
-                        className="max-w-full max-h-full object-contain rounded-lg"
-                      />
-                    ) : (
-                      <div className="text-center space-y-4">
-                        <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center">
-                          <span className="text-white text-4xl">🔗</span>
+                {bottomTabMode === 'preview' && (
+                  <div className="absolute inset-0 p-[5px]">
+                    <div className="w-full h-full flex items-center justify-center">
+                      {card.image ? (
+                        <img
+                          src={card.image}
+                          alt={card.title || "Card preview"}
+                          className="max-w-full max-h-full object-contain rounded-lg"
+                        />
+                      ) : (
+                        <div className="text-center space-y-4">
+                          <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center">
+                            <span className="text-white text-4xl">🔗</span>
+                          </div>
+                          <h3 className="text-xl font-semibold text-gray-300">
+                            {card.title || card.domain || card.url}
+                          </h3>
                         </div>
-                        <h3 className="text-xl font-semibold text-gray-300">
-                          {card.title || card.domain || card.url}
-                        </h3>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {bottomTabMode === 'reader' && (
                   <div className="absolute inset-0 p-[5px] overflow-y-auto">
