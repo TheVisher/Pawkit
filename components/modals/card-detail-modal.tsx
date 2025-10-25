@@ -878,7 +878,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 ? "w-full max-w-6xl max-h-[85vh]"
                 : isNote
                   ? "w-full max-w-3xl h-[80vh]"
-                  : "w-full max-w-4xl max-h-[90vh]"
+                  : "w-full max-w-4xl h-[80vh]"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
