@@ -26,12 +26,19 @@ import { LeftNavigationPanel } from "@/components/navigation/left-navigation-pan
 import { ContentPanel } from "@/components/layout/content-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { Menu, Settings, ChevronRight, ChevronLeft } from "lucide-react";
+import { CardDetailModal } from "@/components/modals/card-detail-modal";
+import type { CardModel } from "@/lib/types";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
-  const { collections, initialize, isInitialized, refresh, addCard } = useDataStore();
+  const { collections, initialize, isInitialized, refresh, addCard, cards, updateCard, deleteCard } = useDataStore();
   const { loadFromServer } = useViewSettingsStore();
   const router = useRouter();
+
+  // Global modal state management - single source of truth for card modals
+  const panelActiveCardId = usePanelStore((state) => state.activeCardId);
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const setActiveCardId = usePanelStore((state) => state.setActiveCardId);
 
   // Command Palette state
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -203,6 +210,26 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     });
   };
 
+  // Global card modal state
+  const activeCard = panelActiveCardId && cards && Array.isArray(cards)
+    ? cards.find(c => c.id === panelActiveCardId)
+    : null;
+
+  const handleUpdateCard = async (updated: CardModel) => {
+    await updateCard(updated.id, updated);
+  };
+
+  const handleDeleteCard = async () => {
+    if (panelActiveCardId) {
+      await deleteCard(panelActiveCardId);
+      setActiveCardId(null);
+    }
+  };
+
+  const handleNavigateToCard = (cardId: string) => {
+    openCardDetails(cardId);
+  };
+
   return (
     <SelectionStoreProvider>
       <PawkitActionsProvider>
@@ -369,6 +396,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               )}
             </div>
           </ControlPanel>
+
+          {/* Global Card Detail Modal - rendered once for all pages */}
+          {activeCard && (
+            <CardDetailModal
+              key={activeCard.id}
+              card={activeCard as CardModel}
+              collections={collections}
+              onClose={() => setActiveCardId(null)}
+              onUpdate={handleUpdateCard}
+              onDelete={handleDeleteCard}
+              onNavigateToCard={handleNavigateToCard}
+            />
+          )}
         </SidebarProvider>
       </PawkitActionsProvider>
     </SelectionStoreProvider>

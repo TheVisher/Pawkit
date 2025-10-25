@@ -9,7 +9,6 @@ import { useViewSettingsStore, type LayoutMode } from "@/lib/hooks/view-settings
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import { sortCards } from "@/lib/utils/sort-cards";
-import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { format } from "date-fns";
 import { Library, Settings } from "lucide-react";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -60,10 +59,8 @@ export function LibraryView({
   const [timelineGroups, setTimelineGroups] = useState<TimelineGroup[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Use panel store as single source of truth for active card
-  const panelActiveCardId = usePanelStore((state) => state.activeCardId);
+  // Use panel store to open card details
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
-  const activeCardId = panelActiveCardId;
 
   // Create a map from collection ID to collection name
   const collectionIdToName = useMemo(() => {
@@ -173,14 +170,6 @@ export function LibraryView({
     () => timelineGroups.flatMap((group) => group.cards),
     [timelineGroups]
   );
-
-  // Get active card object
-  const activeCard = useMemo(() => {
-    if (viewMode === "timeline") {
-      return allTimelineCards.find((card) => card.id === activeCardId) ?? null;
-    }
-    return sortedCards.find((card) => card.id === activeCardId) ?? null;
-  }, [viewMode, allTimelineCards, sortedCards, activeCardId]);
 
   const formatDateHeader = (dateStr: string) => {
     const date = new Date(dateStr + 'T00:00:00');
@@ -384,36 +373,6 @@ export function LibraryView({
         )}
       </div>
 
-      {/* Card Detail Modal for Timeline */}
-      {activeCard && viewMode === "timeline" && (
-        <CardDetailModal
-          key={activeCard.id}
-          card={activeCard}
-          collections={collectionsTree}
-          onClose={() => usePanelStore.getState().setActiveCardId(null)}
-          onUpdate={(updatedCard) => {
-            setTimelineGroups((prev) =>
-              prev.map((group) => ({
-                ...group,
-                cards: group.cards.map((card) =>
-                  card.id === updatedCard.id ? updatedCard : card
-                )
-              }))
-            );
-          }}
-          onDelete={() => {
-            setTimelineGroups((prev) =>
-              prev.map((group) => ({
-                ...group,
-                cards: group.cards.filter((card) => card.id !== activeCardId)
-              }))
-              .filter((group) => group.cards.length > 0)
-            );
-            usePanelStore.getState().setActiveCardId(null);
-          }}
-          onNavigateToCard={(cardId) => openCardDetails(cardId)}
-        />
-      )}
     </>
   );
 }

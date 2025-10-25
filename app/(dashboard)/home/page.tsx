@@ -6,7 +6,6 @@ import Link from "next/link";
 import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
 import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
-import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
@@ -27,13 +26,7 @@ const GREETINGS = [
 ];
 
 export default function HomePage() {
-  const panelActiveCardId = usePanelStore((state) => state.activeCardId);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
-
-  // Use panel store as single source of truth for active card
-  const activeCardId = panelActiveCardId;
-
-  console.log('[HomePage] Rendering with activeCardId:', activeCardId);
 
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
@@ -139,28 +132,6 @@ export default function HomePage() {
     quickAccessUnique = quickAccess;
   }
 
-  const activeCard = activeCardId && cards && Array.isArray(cards) ? cards.find(c => c.id === activeCardId) : null;
-
-  // Navigate to a card (updates panel store which drives the modal)
-  const handleSetActiveCard = (cardId: string | null) => {
-    if (cardId) {
-      openCardDetails(cardId);
-    } else {
-      usePanelStore.getState().setActiveCardId(null);
-    }
-  };
-
-  const handleUpdateCard = async (updated: CardModel) => {
-    await updateCard(updated.id, updated);
-  };
-
-  const handleDeleteCard = async () => {
-    if (activeCardId) {
-      await deleteCard(activeCardId);
-      handleSetActiveCard(null);
-    }
-  };
-
   const handleCreateQuickNote = async (date: Date) => {
     try {
       const year = date.getFullYear();
@@ -200,7 +171,7 @@ export default function HomePage() {
       const dataStore = useDataStore.getState();
       const newCard = dataStore.cards.find(c => c.title === title);
       if (newCard) {
-        handleSetActiveCard(newCard.id);
+        openCardDetails(newCard.id);
         setSelectedDate(null);
       }
     } catch (error) {
@@ -254,7 +225,7 @@ export default function HomePage() {
                 <RecentCard
                   key={card.id}
                   card={card}
-                  onClick={() => handleSetActiveCard(card.id)}
+                  onClick={() => openCardDetails(card.id)}
                   onAddToPawkit={async (slug) => {
                     const collections = Array.from(new Set([slug, ...(card.collections || [])]));
                     // If card is in The Den, remove it when adding to regular Pawkit
@@ -373,7 +344,7 @@ export default function HomePage() {
                       key={card.id}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleSetActiveCard(card.id);
+                        openCardDetails(card.id);
                       }}
                       className="w-full text-left p-1.5 md:p-2 rounded-lg bg-surface-soft hover:bg-surface-soft/80 transition-colors"
                     >
@@ -397,7 +368,7 @@ export default function HomePage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleSetActiveCard(dailyNote.id);
+                        openCardDetails(dailyNote.id);
                       }}
                       className="px-3 py-1.5 rounded-full bg-purple-500/20 backdrop-blur-md border border-purple-400/30 text-xs text-purple-200 hover:bg-purple-500/30 transition-colors flex items-center gap-1.5"
                     >
@@ -450,7 +421,7 @@ export default function HomePage() {
                 {dailyNote ? (
                   <GlowButton
                     onClick={() => {
-                      handleSetActiveCard(dailyNote.id);
+                      openCardDetails(dailyNote.id);
                       setSelectedDate(null);
                     }}
                     variant="primary"
@@ -490,7 +461,7 @@ export default function HomePage() {
                       <button
                         key={card.id}
                         onClick={() => {
-                          handleSetActiveCard(card.id);
+                          openCardDetails(card.id);
                           setSelectedDate(null);
                         }}
                         className="w-full text-left p-3 rounded-lg bg-surface-soft hover:bg-surface transition-colors border border-subtle flex items-center gap-3"
@@ -542,21 +513,6 @@ export default function HomePage() {
           return null;
         }
       })()}
-
-      {activeCard && (
-        <CardDetailModal
-          key={activeCard.id}
-          card={activeCard as CardModel}
-          collections={collections}
-          onClose={() => handleSetActiveCard(null)}
-          onUpdate={handleUpdateCard}
-          onDelete={handleDeleteCard}
-          onNavigateToCard={(cardId) => {
-            // Navigate to the clicked note/card by changing the active card
-            handleSetActiveCard(cardId);
-          }}
-        />
-      )}
     </>
   );
 }
