@@ -230,9 +230,10 @@ export type PanelSectionProps = {
   icon?: ReactNode;
   action?: ReactNode; // Optional action button (like +)
   onClick?: () => void; // Optional click handler for title (e.g., navigation)
+  active?: boolean; // Whether this section is currently active/selected
 };
 
-export function PanelSection({ id, title, children, icon, action, onClick }: PanelSectionProps) {
+export function PanelSection({ id, title, children, icon, action, onClick, active }: PanelSectionProps) {
   const collapsedSections = usePanelStore((state) => state.collapsedSections);
   const toggleSection = usePanelStore((state) => state.toggleSection);
 
@@ -248,16 +249,21 @@ export function PanelSection({ id, title, children, icon, action, onClick }: Pan
 
   return (
     <div className="space-y-3 pb-3">
-      <div className="w-full flex items-center gap-2 group">
+      <div className={`w-full flex items-center gap-2 group relative ${active ? "pb-2" : ""}`}>
         <button
           onClick={handleTitleClick}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1"
         >
           {icon}
-          <h3 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+          <h3 className={`text-sm font-semibold uppercase tracking-wide transition-all ${
+            active ? "text-accent-foreground drop-shadow-glow-accent" : "text-foreground"
+          }`}>
             {title}
           </h3>
         </button>
+        {active && (
+          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
+        )}
         {action && (
           <div className="flex-shrink-0">
             {action}
