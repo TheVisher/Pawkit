@@ -48,7 +48,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
   // Global Control Panel state (right panel)
-  const { isOpen: isPanelOpen, mode: panelMode, contentType, close: closePanel, setMode: setPanelMode, setActiveCardId, toggle: togglePanel } = usePanelStore();
+  const { isOpen: isPanelOpen, mode: panelMode, contentType, close: closePanel, setMode: setPanelMode, toggle: togglePanel } = usePanelStore();
 
   // Left Navigation Panel state
   const isLeftOpen = usePanelStore((state) => state.isLeftOpen);
