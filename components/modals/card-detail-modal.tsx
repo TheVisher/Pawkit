@@ -8,7 +8,7 @@ import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
 import { CardModel, CollectionNode } from "@/lib/types";
-import { extractAndSaveLinks } from "@/lib/stores/data-store";
+import { useDataStore, extractAndSaveLinks } from "@/lib/stores/data-store";
 import { localStorage } from "@/lib/services/local-storage";
 import { Toast } from "@/components/ui/toast";
 import { ReaderView } from "@/components/reader/reader-view";
@@ -73,7 +73,9 @@ type CardDetailModalProps = {
 };
 
 export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete, onNavigateToCard }: CardDetailModalProps) {
-  const { cards: allCards, updateCard: updateCardInStore, deleteCard: deleteCardFromStore, isInitialized, initialize } = useDemoAwareStore();
+  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDemoAwareStore();
+  const dataStore = useDataStore();
+  const allCards = dataStore.cards;
   const isNote = card.type === "md-note" || card.type === "text-note";
   const [isMounted, setIsMounted] = useState(false);
 
@@ -119,10 +121,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   // Initialize data store if not already initialized
   useEffect(() => {
-    if (!isInitialized) {
-      initialize();
+    if (!dataStore.isInitialized) {
+      dataStore.initialize();
     }
-  }, [isInitialized, initialize]);
+  }, [dataStore]);
 
   // Extract links when modal opens if this is a note with content
   // Note: Link extraction is now handled automatically by the data store
@@ -873,10 +875,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             isReaderExpanded || isModalExpanded
               ? "w-full h-full"
               : isYouTubeUrl(card.url)
-                ? "w-full max-w-6xl max-h-[85vh] min-h-[600px]"
+                ? "w-full max-w-6xl max-h-[85vh]"
                 : isNote
                   ? "w-full max-w-3xl h-[80vh]"
-                  : "w-full max-w-4xl max-h-[90vh] min-h-[600px]"
+                  : "w-full max-w-4xl max-h-[90vh]"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
