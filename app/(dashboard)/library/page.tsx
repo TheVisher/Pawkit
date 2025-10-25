@@ -1,13 +1,16 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
-import { useMemo, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useMemo, Suspense, useEffect } from "react";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { LibraryView } from "@/components/library/library-view";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 
 function LibraryPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { viewSettings, updateViewSettings } = useViewSettingsStore();
 
   const q = searchParams.get("q") || undefined;
   const collection = searchParams.get("collection") || undefined;
@@ -34,6 +37,36 @@ function LibraryPageContent() {
 
   // Read from global store - instant, no API calls
   const { cards, collections } = useDataStore();
+
+  // Check if tag filter exists in any card, if not clear it
+  useEffect(() => {
+    if (tag) {
+      const tagExists = cards.some(card => card.tags?.includes(tag));
+      if (!tagExists) {
+        // Tag doesn't exist in any card, clear the filter from URL
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete('tag');
+        router.replace(`/library?${params.toString()}`);
+      }
+    }
+
+    // Also check view settings for selectedTags
+    const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
+    if (selectedTags.length > 0) {
+      const validTags = selectedTags.filter(tagName =>
+        cards.some(card => card.tags?.includes(tagName))
+      );
+      // If any tags were filtered out, update view settings
+      if (validTags.length !== selectedTags.length) {
+        updateViewSettings({
+          viewSpecific: {
+            ...viewSettings.viewSpecific,
+            selectedTags: validTags
+          }
+        });
+      }
+    }
+  }, [tag, cards, searchParams, router, viewSettings, updateViewSettings]);
 
   // Filter cards based on search params (client-side filtering)
   const items = useMemo(() => {
