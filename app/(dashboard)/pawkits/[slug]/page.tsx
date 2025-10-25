@@ -20,6 +20,8 @@ function CollectionPageContent() {
   const [showDeletePawkitConfirm, setShowDeletePawkitConfirm] = useState(false);
   const [showCoverImageModal, setShowCoverImageModal] = useState(false);
   const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [coverImagePosition, setCoverImagePosition] = useState(50); // Vertical position percentage
+  const [isRepositioning, setIsRepositioning] = useState(false);
   const [pawkitName, setPawkitName] = useState("");
   const [renameValue, setRenameValue] = useState("");
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<string | null>(null);
@@ -321,23 +323,134 @@ function CollectionPageContent() {
       <div className="space-y-4">
         {/* Cover Image Banner */}
         {currentCollection.coverImage ? (
-          <div className="relative w-full h-48 -mx-6 -mt-6 mb-6">
-            <img
-              src={currentCollection.coverImage}
-              alt={currentCollection.name}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background/80" />
-            <button
-              onClick={() => {
-                setCoverImageUrl(currentCollection.coverImage || "");
-                setShowCoverImageModal(true);
+          <div className="relative w-[calc(100%+3rem)] h-96 -mx-6 -mt-6 mb-0 overflow-hidden group">
+            <div
+              className="w-full h-full"
+              style={{
+                backgroundImage: `url(${currentCollection.coverImage})`,
+                backgroundSize: 'cover',
+                backgroundPosition: `center ${coverImagePosition}%`,
               }}
-              className="absolute bottom-4 right-4 px-3 py-1.5 rounded-lg bg-surface/90 backdrop-blur-sm border border-subtle text-xs text-muted-foreground hover:text-foreground hover:bg-surface transition-colors flex items-center gap-2"
-            >
-              <ImageIcon size={14} />
-              Change Cover
-            </button>
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
+
+            {/* Overlaid Title and Breadcrumb */}
+            <div className="absolute bottom-6 left-6 right-6 z-10">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface/80 backdrop-blur-sm border border-white/20">
+                  <Folder className="h-5 w-5 text-white" />
+                </div>
+                <h1 className="text-3xl font-semibold text-white drop-shadow-lg">{currentCollection.name}</h1>
+              </div>
+
+              {/* Breadcrumb Navigation */}
+              {breadcrumbs.length > 1 && (
+                <div className="flex items-center gap-1 text-sm text-white/90 ml-[52px] drop-shadow-md">
+                  {breadcrumbs.map((crumb, index) => (
+                    <div key={crumb.id} className="flex items-center gap-1">
+                      {index > 0 && <ChevronRight size={14} />}
+                      {index < breadcrumbs.length - 1 ? (
+                        <button
+                          onClick={() => router.push(`/pawkits/${crumb.slug}`)}
+                          className="hover:text-white transition-colors"
+                        >
+                          {crumb.name}
+                        </button>
+                      ) : (
+                        <span className="text-white font-medium">{crumb.name}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Hover Controls */}
+            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+              <button
+                onClick={() => setIsRepositioning(!isRepositioning)}
+                className="px-3 py-1.5 rounded-lg bg-surface/90 backdrop-blur-sm border border-subtle text-xs text-muted-foreground hover:text-foreground hover:bg-surface transition-colors flex items-center gap-2"
+              >
+                <ImageIcon size={14} />
+                {isRepositioning ? "Done" : "Reposition"}
+              </button>
+              <button
+                onClick={() => {
+                  setCoverImageUrl(currentCollection.coverImage || "");
+                  setCoverImagePosition(currentCollection.coverImagePosition || 50);
+                  setShowCoverImageModal(true);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-surface/90 backdrop-blur-sm border border-subtle text-xs text-muted-foreground hover:text-foreground hover:bg-surface transition-colors flex items-center gap-2"
+              >
+                <ImageIcon size={14} />
+                Change Cover
+              </button>
+            </div>
+
+            {/* Reposition Overlay - Click and Drag */}
+            {isRepositioning && (
+              <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
+                <div
+                  className="absolute inset-0 cursor-move"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    const container = e.currentTarget.getBoundingClientRect();
+
+                    const handleMouseMove = (moveEvent: MouseEvent) => {
+                      moveEvent.preventDefault();
+                      // Calculate position based on mouse Y relative to container
+                      const relativeY = moveEvent.clientY - container.top;
+                      const newPosition = Math.max(0, Math.min(100, (relativeY / container.height) * 100));
+                      setCoverImagePosition(newPosition);
+                    };
+
+                    const handleMouseUp = async () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', handleMouseUp);
+
+                      // Save the position
+                      setLoading(true);
+                      try {
+                        const response = await fetch(`/api/pawkits/${currentCollection.id}`, {
+                          method: "PATCH",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ coverImagePosition: Math.round(coverImagePosition) }),
+                        });
+                        if (!response.ok) {
+                          const errorData = await response.json();
+                          console.error("API error:", errorData);
+                          throw new Error("Failed to update position");
+                        }
+                        await refresh();
+                        setIsRepositioning(false);
+                      } catch (err) {
+                        console.error("Position update error:", err);
+                        alert("Failed to update position");
+                      } finally {
+                        setLoading(false);
+                      }
+                    };
+
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', handleMouseUp);
+                  }}
+                />
+                <div className="bg-surface/90 backdrop-blur-sm rounded-lg px-6 py-3 pointer-events-none">
+                  <p className="text-sm font-medium text-foreground">Drag to reposition image</p>
+                  <p className="text-xs text-muted-foreground mt-1">Position: {Math.round(coverImagePosition)}%</p>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCoverImagePosition(currentCollection.coverImagePosition || 50);
+                    setIsRepositioning(false);
+                  }}
+                  className="absolute top-4 right-4 px-4 py-2 rounded-lg bg-surface/90 backdrop-blur-sm border border-subtle text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-surface transition-colors z-10"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <button
@@ -345,46 +458,49 @@ function CollectionPageContent() {
               setCoverImageUrl("");
               setShowCoverImageModal(true);
             }}
-            className="w-full h-32 -mx-6 -mt-6 mb-6 border-2 border-dashed border-subtle rounded-xl flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-accent/50 transition-colors group"
+            className="w-full h-64 -mx-6 -mt-6 mb-6 border-2 border-dashed border-subtle flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-accent/50 transition-colors group"
           >
             <ImageIcon size={24} className="group-hover:text-accent transition-colors" />
             <span className="text-sm">Add Cover Image</span>
           </button>
         )}
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
-              <Folder className="h-5 w-5 text-accent" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-semibold text-foreground">{currentCollection.name}</h1>
+        {/* Title section - only show if no cover image (otherwise it's in the overlay) */}
+        {!currentCollection.coverImage && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
+                <Folder className="h-5 w-5 text-accent" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-semibold text-foreground">{currentCollection.name}</h1>
 
-              {/* Breadcrumb Navigation */}
-              {breadcrumbs.length > 1 && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                  {breadcrumbs.map((crumb, index) => (
-                    <div key={crumb.id} className="flex items-center gap-1">
-                      {index > 0 && <ChevronRight size={12} />}
-                      {index < breadcrumbs.length - 1 ? (
-                        <button
-                          onClick={() => router.push(`/pawkits/${crumb.slug}`)}
-                          className="hover:text-foreground transition-colors"
-                        >
-                          {crumb.name}
-                        </button>
-                      ) : (
-                        <span className="text-foreground font-medium">{crumb.name}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+                {/* Breadcrumb Navigation */}
+                {breadcrumbs.length > 1 && (
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                    {breadcrumbs.map((crumb, index) => (
+                      <div key={crumb.id} className="flex items-center gap-1">
+                        {index > 0 && <ChevronRight size={12} />}
+                        {index < breadcrumbs.length - 1 ? (
+                          <button
+                            onClick={() => router.push(`/pawkits/${crumb.slug}`)}
+                            className="hover:text-foreground transition-colors"
+                          >
+                            {crumb.name}
+                          </button>
+                        ) : (
+                          <span className="text-foreground font-medium">{crumb.name}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-              <p className="text-sm text-muted-foreground mt-1">{items.length} card(s)</p>
+                <p className="text-sm text-muted-foreground mt-1">{items.length} card(s)</p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         <LibraryWorkspace
           initialCards={items}
