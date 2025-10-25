@@ -10,6 +10,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/lib/hooks/use-toast";
 import { ToastContainer } from "@/components/ui/toast";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 interface TagInfo {
   name: string;
@@ -28,6 +29,12 @@ export default function TagsPage() {
   const [deleteConfirmTag, setDeleteConfirmTag] = useState<TagInfo | null>(null);
   const router = useRouter();
   const { toasts, dismissToast, success, error } = useToast();
+  const setContent = usePanelStore((state) => state.setContent);
+
+  // Set right panel to show tags controls
+  useEffect(() => {
+    setContent("tags-controls");
+  }, [setContent]);
 
   useEffect(() => {
     // Extract all tags from cards and count usage

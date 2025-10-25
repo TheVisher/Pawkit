@@ -21,6 +21,7 @@ import { useKeyboardShortcuts } from "@/lib/hooks/use-keyboard-shortcuts";
 import { useRouter } from "next/navigation";
 import { ControlPanel } from "@/components/control-panel/control-panel";
 import { LibraryControls } from "@/components/control-panel/library-controls";
+import { UniversalControls } from "@/components/control-panel/universal-controls";
 import { CardDetailsPanel } from "@/components/control-panel/card-details-panel";
 import { LeftNavigationPanel } from "@/components/navigation/left-navigation-panel";
 import { ContentPanel } from "@/components/layout/content-panel";
@@ -389,11 +390,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             >
               {animatingContentType === "library-controls" && <LibraryControls />}
               {animatingContentType === "card-details" && <CardDetailsPanel />}
-              {animatingContentType === "notes-controls" && (
-                <div className="p-4">
-                  <p className="text-sm text-muted-foreground">Notes controls coming soon...</p>
-                </div>
-              )}
+              {animatingContentType === "notes-controls" && <UniversalControls viewType="notes" />}
+              {animatingContentType === "pawkits-controls" && <UniversalControls viewType="pawkits" />}
+              {animatingContentType === "tags-controls" && <UniversalControls viewType="tags" />}
+              {animatingContentType === "den-controls" && <UniversalControls viewType="den" />}
               {animatingContentType === "calendar-controls" && (
                 <div className="p-4">
                   <p className="text-sm text-muted-foreground">Calendar controls coming soon...</p>

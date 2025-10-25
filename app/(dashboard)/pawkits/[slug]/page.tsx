@@ -7,12 +7,16 @@ import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
 import { Folder, ChevronRight, Image as ImageIcon } from "lucide-react";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 function CollectionPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
   const slug = params.slug as string;
+
+  // Set right panel content to pawkits controls
+  const setContent = usePanelStore((state) => state.setContent);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showRenamePawkitModal, setShowRenamePawkitModal] = useState(false);
@@ -43,6 +47,11 @@ function CollectionPageContent() {
     // Clean up when component unmounts
     return () => setPawkitActions(null);
   }, [setPawkitActions]);
+
+  // Set right panel to show pawkits controls
+  useEffect(() => {
+    setContent("pawkits-controls");
+  }, [setContent]);
 
   // Focus input when modal opens
   useEffect(() => {

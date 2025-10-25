@@ -17,9 +17,15 @@ export default function DenPage() {
   const { collections, deleteCard, addCollection } = useDataStore();
   const { setOnCreatePawkit } = usePawkitActions();
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const setContent = usePanelStore((state) => state.setContent);
   const [showCreatePawkitModal, setShowCreatePawkitModal] = useState(false);
   const [newPawkitName, setNewPawkitName] = useState("");
   const [creating, setCreating] = useState(false);
+
+  // Set right panel to show den controls
+  useEffect(() => {
+    setContent("den-controls");
+  }, [setContent]);
 
   // Set the create action for the top bar
   useEffect(() => {

@@ -23,10 +23,16 @@ type NotesViewProps = {
 export function NotesView({ initialCards, collectionsTree, query }: NotesViewProps) {
   const [cards, setCards] = useState<CardModel[]>(initialCards);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const setContent = usePanelStore((state) => state.setContent);
   const [showGraph, setShowGraph] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   const dataStore = useDataStore();
+
+  // Set right panel to show notes controls
+  useEffect(() => {
+    setContent("notes-controls");
+  }, [setContent]);
 
   // Get view settings from the store
   const viewSettings = useViewSettingsStore((state) => state.getSettings("notes"));
