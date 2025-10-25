@@ -32,6 +32,9 @@ export default function HomePage() {
 
   // Use panel store as single source of truth for active card
   const activeCardId = panelActiveCardId;
+
+  console.log('[HomePage] Rendering with activeCardId:', activeCardId);
+
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
