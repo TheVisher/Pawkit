@@ -434,6 +434,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     setIsEditingTitle(false);
     setEditedTitle(card.title || "");
     setShowNoteToolbar(true); // Reset toolbar to visible when card changes
+    setIsInDen(card.inDen ?? false);
+    setIsPinned(card.pinned ?? false);
+    setArticleContent(card.articleContent ?? null);
+    setNotes(card.notes ?? "");
+    setContent(card.content ?? "");
+    lastSavedNotesRef.current = card.notes ?? "";
+    lastSavedContentRef.current = card.content ?? "";
   }, [card.id, card.title]);
 
   // Save on modal close to ensure nothing is lost
