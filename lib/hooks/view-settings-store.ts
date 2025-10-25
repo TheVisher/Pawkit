@@ -9,21 +9,28 @@ export type ViewType = "library" | "notes" | "den" | "timeline" | "pawkits" | "h
 export type SortBy = "createdAt" | "title" | "url" | "updatedAt" | "pawkit";
 export type SortOrder = "asc" | "desc";
 
+export type ContentType = "url" | "md-note" | "text-note" | "image" | "document" | "audio" | "video" | "email" | "bookmark" | "highlight" | "folder" | "other";
+
 export type ViewSettings = {
   // Layout settings
   layout: LayoutMode;
-  cardSize: number; // 1-5 scale
-  
+  cardSize: number; // 1-100 scale (smooth)
+  cardSpacing: number; // 1-100 scale (gap between cards)
+
   // Display settings
   showTitles: boolean;
   showUrls: boolean;
   showTags: boolean;
-  cardPadding: number; // 0-4 scale
-  
+  showPreview: boolean; // Show note content preview
+  cardPadding: number; // 1-100 scale (smooth)
+
+  // Filtering settings
+  contentTypeFilter: ContentType | "all"; // Filter by content type
+
   // Sorting settings
   sortBy: SortBy;
   sortOrder: SortOrder;
-  
+
   // View-specific settings (flexible JSON)
   viewSpecific?: Record<string, any>;
 };
@@ -41,10 +48,13 @@ export type ViewSettingsState = {
   updateSettings: (view: ViewType, updates: Partial<ViewSettings>) => Promise<void>;
   setLayout: (view: ViewType, layout: LayoutMode) => Promise<void>;
   setCardSize: (view: ViewType, size: number) => Promise<void>;
+  setCardSpacing: (view: ViewType, spacing: number) => Promise<void>;
   setShowTitles: (view: ViewType, show: boolean) => Promise<void>;
   setShowUrls: (view: ViewType, show: boolean) => Promise<void>;
   setShowTags: (view: ViewType, show: boolean) => Promise<void>;
+  setShowPreview: (view: ViewType, show: boolean) => Promise<void>;
   setCardPadding: (view: ViewType, padding: number) => Promise<void>;
+  setContentTypeFilter: (view: ViewType, contentType: ContentType | "all") => Promise<void>;
   setSortBy: (view: ViewType, sortBy: SortBy) => Promise<void>;
   setSortOrder: (view: ViewType, sortOrder: SortOrder) => Promise<void>;
   setViewSpecific: (view: ViewType, data: Record<string, any>) => Promise<void>;
@@ -56,11 +66,14 @@ export type ViewSettingsState = {
 
 const defaultSettings: ViewSettings = {
   layout: "grid",
-  cardSize: 3,
+  cardSize: 50, // Middle of 1-100 scale (was 3 on 1-5 scale)
+  cardSpacing: 16, // Default gap between cards
   showTitles: true,
   showUrls: true,
   showTags: true,
-  cardPadding: 2,
+  showPreview: true, // Show note previews by default
+  cardPadding: 40, // Middle of 1-100 scale (was 2 on 0-4 scale)
+  contentTypeFilter: "all", // Show all content types
   sortBy: "createdAt",
   sortOrder: "desc",
   viewSpecific: {},
@@ -126,6 +139,18 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
 
       setCardPadding: async (view, padding) => {
         await get().updateSettings(view, { cardPadding: padding });
+      },
+
+      setCardSpacing: async (view, spacing) => {
+        await get().updateSettings(view, { cardSpacing: spacing });
+      },
+
+      setShowPreview: async (view, show) => {
+        await get().updateSettings(view, { showPreview: show });
+      },
+
+      setContentTypeFilter: async (view, contentType) => {
+        await get().updateSettings(view, { contentTypeFilter: contentType });
       },
 
       setSortBy: async (view, sortBy) => {
