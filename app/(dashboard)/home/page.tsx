@@ -27,6 +27,7 @@ const GREETINGS = [
 
 export default function HomePage() {
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const activeCardId = usePanelStore((state) => state.activeCardId);
 
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
@@ -386,7 +387,7 @@ export default function HomePage() {
       </div>
 
       {/* Expanded Day View Modal */}
-      {selectedDate && !activeCard && isMounted && typeof document !== 'undefined' && document.body && (() => {
+      {selectedDate && !activeCardId && isMounted && typeof document !== 'undefined' && document.body && (() => {
         const scheduledCards = getCardsForDate(selectedDate);
         const dailyNote = getDailyNoteForDate(selectedDate);
 
