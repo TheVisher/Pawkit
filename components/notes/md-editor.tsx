@@ -287,9 +287,10 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
           return;
         }
         if (e.key === 'Escape') {
-          // IMPORTANT: stopPropagation prevents this from bubbling to parent modal
+          // IMPORTANT: stopImmediatePropagation prevents other ESC handlers from firing
           e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation(); // Prevents modal/panel ESC handlers from running
           setAutocompleteOpen(false);
           setWikiLinkStartPos(null);
           setAutocompleteQuery('');
@@ -328,8 +329,9 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    // Use capture phase (true) to handle ESC before modal/panel handlers
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, autocompleteOpen, autocompleteSuggestions, selectedIndex]);
 
