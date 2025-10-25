@@ -27,11 +27,11 @@ const GREETINGS = [
 ];
 
 export default function HomePage() {
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
-  const openCardDetails = usePanelStore((state) => state.openCardDetails);
-  const setPanelActiveCardId = usePanelStore((state) => state.setActiveCardId);
   const panelActiveCardId = usePanelStore((state) => state.activeCardId);
-  const isUpdatingFromPanel = useRef(false);
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
+
+  // Use panel store as single source of truth for active card
+  const activeCardId = panelActiveCardId;
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -45,13 +45,6 @@ export default function HomePage() {
     }
     return () => setIsMounted(false);
   }, []);
-
-  // Sync local modal state with panel store state (for backlink navigation)
-  useEffect(() => {
-    if (panelActiveCardId !== activeCardId && !isUpdatingFromPanel.current) {
-      setActiveCardId(panelActiveCardId);
-    }
-  }, [panelActiveCardId, activeCardId]);
 
   // Read from global store - instant, no API calls
   const { cards, collections, updateCard, deleteCard, addCard } = useDataStore();
@@ -145,19 +138,13 @@ export default function HomePage() {
 
   const activeCard = activeCardId && cards && Array.isArray(cards) ? cards.find(c => c.id === activeCardId) : null;
 
-  // Wrapper to keep both local state and panel store in sync
+  // Navigate to a card (updates panel store which drives the modal)
   const handleSetActiveCard = (cardId: string | null) => {
-    isUpdatingFromPanel.current = true;
-    setActiveCardId(cardId);
     if (cardId) {
       openCardDetails(cardId);
     } else {
-      setPanelActiveCardId(null);
+      usePanelStore.getState().setActiveCardId(null);
     }
-    // Reset flag after state updates have propagated
-    setTimeout(() => {
-      isUpdatingFromPanel.current = false;
-    }, 0);
   };
 
   const handleUpdateCard = async (updated: CardModel) => {
