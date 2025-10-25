@@ -109,15 +109,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     return () => setIsMounted(false);
   }, []);
 
-  // Open control panel when card modal opens
+  // Open control panel when card modal opens or card changes.
+  // Do NOT restore in cleanup here, because card switches (key changes)
+  // would trigger cleanup and incorrectly restore the panel.
   useEffect(() => {
     openCardDetails(card.id);
-
-    // Clean up: restore previous panel content when modal closes
-    return () => {
-      restorePreviousContent();
-    };
-  }, [card.id, openCardDetails, restorePreviousContent]);
+  }, [card.id, openCardDetails]);
 
   // Initialize data store if not already initialized
   useEffect(() => {
@@ -466,6 +463,14 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }
 
     onClose();
+
+    // Only restore previous panel content on an actual close action
+    // (not during card switches).
+    try {
+      restorePreviousContent();
+    } catch (err) {
+      // no-op safeguard
+    }
   };
 
   // Close on Escape key
