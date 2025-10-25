@@ -1,8 +1,8 @@
 "use client";
 
 import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Grid, List, LayoutGrid, Columns, Tag, SortAsc, Eye, Maximize2 } from "lucide-react";
-import { useViewSettingsStore, type SortBy } from "@/lib/hooks/view-settings-store";
+import { Grid, List, LayoutGrid, Columns, Tag, SortAsc, Eye, Maximize2, File, ArrowUpDown, ChevronDown } from "lucide-react";
+import { useViewSettingsStore, type SortBy, type ContentType } from "@/lib/hooks/view-settings-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -55,9 +55,14 @@ export function LibraryControls() {
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
   const setLayout = useViewSettingsStore((state) => state.setLayout);
   const setCardSize = useViewSettingsStore((state) => state.setCardSize);
+  const setCardSpacing = useViewSettingsStore((state) => state.setCardSpacing);
+  const setCardPadding = useViewSettingsStore((state) => state.setCardPadding);
   const setShowTitles = useViewSettingsStore((state) => state.setShowTitles);
   const setShowUrls = useViewSettingsStore((state) => state.setShowUrls);
+  const setShowPreview = useViewSettingsStore((state) => state.setShowPreview);
+  const setContentTypeFilter = useViewSettingsStore((state) => state.setContentTypeFilter);
   const setSortBy = useViewSettingsStore((state) => state.setSortBy);
+  const setSortOrder = useViewSettingsStore((state) => state.setSortOrder);
   const setViewSpecific = useViewSettingsStore((state) => state.setViewSpecific);
 
   // Get global settings
@@ -67,9 +72,14 @@ export function LibraryControls() {
   // Extract current values
   const layout = viewSettings.layout;
   const cardSizeValue = viewSettings.cardSize;
+  const cardSpacingValue = viewSettings.cardSpacing;
+  const cardPaddingValue = viewSettings.cardPadding;
   const showTitlesValue = viewSettings.showTitles;
   const showUrlsValue = viewSettings.showUrls;
+  const showPreviewValue = viewSettings.showPreview;
+  const contentTypeFilter = viewSettings.contentTypeFilter;
   const sortBy = mapSortByToControl(viewSettings.sortBy);
+  const sortOrder = viewSettings.sortOrder;
   const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
 
   // Extract all unique tags from cards
@@ -119,6 +129,14 @@ export function LibraryControls() {
     setCardSize("library", size);
   };
 
+  const handleCardSpacingChange = (spacing: number) => {
+    setCardSpacing("library", spacing);
+  };
+
+  const handleCardPaddingChange = (padding: number) => {
+    setCardPadding("library", padding);
+  };
+
   const handleShowThumbnailsChange = (show: boolean) => {
     setShowThumbnails(show);
   };
@@ -131,12 +149,16 @@ export function LibraryControls() {
     setShowUrls("library", show);
   };
 
-  // Get card padding
-  const cardPadding = viewSettings.cardPadding;
+  const handleShowPreviewChange = (show: boolean) => {
+    setShowPreview("library", show);
+  };
 
-  const handleCardPaddingChange = (padding: number) => {
-    const paddingValue = Math.round(padding); // Round to nearest integer
-    useViewSettingsStore.getState().setCardPadding("library", paddingValue);
+  const handleContentTypeFilterChange = (type: ContentType | "all") => {
+    setContentTypeFilter("library", type);
+  };
+
+  const handleToggleSortOrder = () => {
+    setSortOrder("library", sortOrder === "asc" ? "desc" : "asc");
   };
 
   return (
@@ -175,6 +197,18 @@ export function LibraryControls() {
 
       {/* Sort Section */}
       <PanelSection id="library-sort" title="Sort" icon={<SortAsc className="h-4 w-4 text-accent" />}>
+        {/* Sort Direction Toggle */}
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs text-muted-foreground">Direction</span>
+          <button
+            onClick={handleToggleSortOrder}
+            className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+          >
+            <ArrowUpDown size={12} />
+            <span>{sortOrder === "asc" ? "Ascending" : "Descending"}</span>
+          </button>
+        </div>
+
         <PanelButton
           active={sortBy === "modified"}
           onClick={() => handleSortChange("modified")}
@@ -199,6 +233,30 @@ export function LibraryControls() {
         >
           Domain
         </PanelButton>
+      </PanelSection>
+
+      {/* Content Type Filter Section */}
+      <PanelSection id="library-content-type" title="Content Type" icon={<File className="h-4 w-4 text-accent" />}>
+        <div className="relative">
+          <select
+            value={contentTypeFilter}
+            onChange={(e) => handleContentTypeFilterChange(e.target.value as ContentType | "all")}
+            className="w-full px-3 py-2 bg-white/5 border border-subtle rounded-lg text-sm text-foreground appearance-none cursor-pointer hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/50"
+          >
+            <option value="all">Any kind</option>
+            <option value="url">Bookmark</option>
+            <option value="md-note">Note</option>
+            <option value="image">Image</option>
+            <option value="document">Document</option>
+            <option value="audio">Audio</option>
+            <option value="video">Video</option>
+            <option value="email">Email</option>
+            <option value="highlight">Highlight</option>
+            <option value="folder">Folder</option>
+            <option value="other">Other</option>
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        </div>
       </PanelSection>
 
       {/* Tags Filter Section */}
@@ -244,23 +302,19 @@ export function LibraryControls() {
 
       {/* Display Options Section */}
       <PanelSection id="library-display" title="Display" icon={<Maximize2 className="h-4 w-4 text-accent" />}>
-        {/* Card Size Slider */}
+        {/* Card Size Slider - 1-100 scale */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Card Size</span>
-            <span>{cardSizeValue === 1 ? "XS" : cardSizeValue === 2 ? "S" : cardSizeValue === 3 ? "M" : cardSizeValue === 4 ? "L" : "XL"}</span>
+            <span>{Math.round(cardSizeValue)}%</span>
           </div>
           <input
             type="range"
             min="1"
-            max="5"
-            step="0.01"
+            max="100"
+            step="1"
             value={cardSizeValue}
-            onChange={(e) => {
-              const value = parseFloat(e.target.value);
-              const rounded = Math.round(value);
-              handleCardSizeChange(rounded);
-            }}
+            onChange={(e) => handleCardSizeChange(Number(e.target.value))}
             className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer
               [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent
@@ -269,19 +323,40 @@ export function LibraryControls() {
           />
         </div>
 
-        {/* Card Padding Slider */}
+        {/* Card Spacing Slider - 1-100 scale */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Card Padding</span>
-            <span>{cardPadding === 0 ? "None" : cardPadding === 1 ? "XS" : cardPadding === 2 ? "S" : cardPadding === 3 ? "M" : "L"}</span>
+            <span>Card Spacing</span>
+            <span>{Math.round(cardSpacingValue)}px</span>
           </div>
           <input
             type="range"
             min="0"
-            max="4"
-            step="0.01"
-            value={cardPadding}
-            onChange={(e) => handleCardPaddingChange(parseFloat(e.target.value))}
+            max="64"
+            step="1"
+            value={cardSpacingValue}
+            onChange={(e) => handleCardSpacingChange(Number(e.target.value))}
+            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer
+              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+              [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent
+              [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4
+              [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-accent [&::-moz-range-thumb]:border-0"
+          />
+        </div>
+
+        {/* Card Padding Slider - 1-100 scale */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Card Padding</span>
+            <span>{Math.round(cardPaddingValue)}%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={cardPaddingValue}
+            onChange={(e) => handleCardPaddingChange(Number(e.target.value))}
             className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer
               [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
               [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent
@@ -305,6 +380,11 @@ export function LibraryControls() {
           label="Show URLs"
           checked={showUrlsValue}
           onChange={handleShowUrlsChange}
+        />
+        <PanelToggle
+          label="Show Preview"
+          checked={showPreviewValue}
+          onChange={handleShowPreviewChange}
         />
       </PanelSection>
     </>

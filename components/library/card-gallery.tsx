@@ -495,11 +495,19 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
   const showCardTitles = viewSettings.showTitles;
   const showCardUrls = viewSettings.showUrls;
   const showCardTags = viewSettings.showTags;
+  const showPreview = viewSettings.showPreview;
   const cardPadding = viewSettings.cardPadding;
 
-  // Map cardPadding to Tailwind classes: 0=none, 1=xs, 2=sm, 3=md, 4=lg
-  const paddingClasses = ["p-0", "p-1", "p-2", "p-4", "p-6"];
-  const cardPaddingClass = paddingClasses[cardPadding] || "p-4";
+  // Convert cardPadding from 1-100 scale to Tailwind classes
+  // 0-20 = p-0, 21-40 = p-1, 41-60 = p-2/p-4, 61-80 = p-6, 81-100 = p-8
+  const getPaddingClass = (padding: number) => {
+    if (padding <= 20) return "p-0";
+    if (padding <= 40) return "p-1";
+    if (padding <= 60) return "p-4";
+    if (padding <= 80) return "p-6";
+    return "p-8";
+  };
+  const cardPaddingClass = getPaddingClass(cardPadding);
 
   // Check if text section will render (used for conditional thumbnail margin)
   const hasTextSection = showCardTitles || showCardTags || isPending || isError || isNote || (!card.image && !showThumbnail);
@@ -541,7 +549,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
 
   const rawTitle = card.title || (isNote ? "Untitled Note" : card.domain || card.url);
   const displayTitle = cleanTitle(rawTitle);
-  const displaySubtext = isNote ? getExcerpt() : (isPending ? "Kit is Fetching" : "");
+  const displaySubtext = (isNote && showPreview) ? getExcerpt() : (isPending ? "Kit is Fetching" : "");
 
   return (
     <CardContextMenuWrapper
@@ -773,7 +781,12 @@ const CardCell = memo(CardCellInner, (prevProps, nextProps) => {
 });
 
 
-function layoutClass(layout: LayoutMode, cardSize: number = 3) {
+function layoutClass(layout: LayoutMode, cardSize: number = 50) {
+  // Convert cardSize from 1-100 scale to 1-5 scale for grid columns
+  // 1-20 = 1 (extra small), 21-40 = 2 (small), 41-60 = 3 (medium), 61-80 = 4 (large), 81-100 = 5 (extra large)
+  const scaledSize = Math.ceil(cardSize / 20);
+  const size = Math.max(1, Math.min(5, scaledSize));
+
   // Map cardSize (1-5) to complete Tailwind class strings
   // Mobile: varies 1-3 columns, Tablet: 2-4 columns, Desktop: 2-7 columns
   const sizeToClasses: Record<number, { grid: string; masonry: string; compact: string }> = {
@@ -804,7 +817,7 @@ function layoutClass(layout: LayoutMode, cardSize: number = 3) {
     }
   };
 
-  const classes = sizeToClasses[cardSize] || sizeToClasses[3];
+  const classes = sizeToClasses[size] || sizeToClasses[3];
 
   switch (layout) {
     case "masonry":
