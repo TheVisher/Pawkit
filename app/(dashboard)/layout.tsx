@@ -39,6 +39,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const panelActiveCardId = usePanelStore((state) => state.activeCardId);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const setActiveCardId = usePanelStore((state) => state.setActiveCardId);
+  const restorePreviousContent = usePanelStore((state) => state.restorePreviousContent);
 
   // Command Palette state
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -188,8 +189,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       } else if (showKeyboardShortcuts) {
         setShowKeyboardShortcuts(false);
       } else if (panelActiveCardId) {
-        // Close card detail modal if open
+        // Close card detail modal and restore previous panel content
         setActiveCardId(null);
+        restorePreviousContent();
       } else if (isPanelOpen) {
         // Close right panel if no modals are open
         closePanel();
