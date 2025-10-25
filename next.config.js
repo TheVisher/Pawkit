@@ -25,7 +25,7 @@ const nextConfig = {
   ...(process.env.NODE_ENV === 'development' && {
     // Disable source maps in development for faster builds
     productionBrowserSourceMaps: false,
-    
+
     // Optimize development server - more aggressive memory management
     onDemandEntries: {
       // Period (in ms) where the server will keep pages in the buffer
@@ -33,19 +33,22 @@ const nextConfig = {
       // Number of pages that should be kept simultaneously without being disposed
       pagesBufferLength: 1, // Reduced from 2 to 1
     },
-    
-    // Additional development optimizations
-    swcMinify: true,
+  }),
+
+  // Production optimizations
+  ...(process.env.NODE_ENV === 'production' && {
     compiler: {
-      // Remove console logs in development for better performance
-      removeConsole: process.env.NODE_ENV === 'development' ? {
+      // Remove console logs in production (except errors and warnings)
+      removeConsole: {
         exclude: ['error', 'warn']
-      } : false,
+      },
     },
   }),
 
   // Security headers
   async headers() {
+    const isDev = process.env.NODE_ENV === 'development';
+
     return [
       {
         source: '/(.*)',
@@ -54,26 +57,38 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              // Script sources - needed for Next.js, dynamic imports, and Vercel
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://vercel.live",
-              "script-src-elem 'self' 'unsafe-inline' blob: https://vercel.live",
+              // Script sources - stricter in production
+              isDev
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://vercel.live"
+                : "script-src 'self' 'unsafe-inline' blob:",
+              isDev
+                ? "script-src-elem 'self' 'unsafe-inline' blob: https://vercel.live"
+                : "script-src-elem 'self' 'unsafe-inline' blob:",
               // Styles
               "style-src 'self' 'unsafe-inline' blob:",
               "style-src-elem 'self' 'unsafe-inline'",
-              // Images - support all user content
-              "img-src 'self' data: https: http: blob:",
+              // Images - support all user content (http: only in dev)
+              isDev
+                ? "img-src 'self' data: https: http: blob:"
+                : "img-src 'self' data: https: blob:",
               // Fonts
               "font-src 'self' data: blob:",
-              // API connections - more permissive for user content + Vercel
-              "connect-src 'self' https: http: blob: data: wss: ws: https://vercel.live wss://ws-us3.pusher.com",
-              // Frames for embeds + Vercel
-              "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://vercel.live",
+              // API connections - stricter in production
+              isDev
+                ? "connect-src 'self' https: http: blob: data: wss: ws: https://vercel.live wss://ws-us3.pusher.com"
+                : "connect-src 'self' https: blob: data: wss: ws: wss://ws-us3.pusher.com",
+              // Frames for embeds
+              isDev
+                ? "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://vercel.live"
+                : "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
               // Workers
               "worker-src 'self' blob:",
               // Objects
               "object-src 'none'",
-              // Media
-              "media-src 'self' https: http: blob: data:",
+              // Media - stricter in production
+              isDev
+                ? "media-src 'self' https: http: blob: data:"
+                : "media-src 'self' https: blob: data:",
               // Manifest
               "manifest-src 'self'",
               // Frame ancestors
@@ -83,7 +98,7 @@ const nextConfig = {
               // Form actions
               "form-action 'self'",
               // Report CSP violations (only in production)
-              ...(process.env.NODE_ENV === 'production' ? ["report-uri /api/csp-report"] : [])
+              ...(!isDev ? ["report-uri /api/csp-report"] : [])
             ].join('; ')
           },
           {

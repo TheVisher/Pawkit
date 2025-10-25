@@ -3,8 +3,22 @@
 import { useEffect, useState } from 'react';
 import { localStorage } from '@/lib/services/local-storage';
 import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 
 export default function TestLocalStoragePage() {
+  const router = useRouter();
+
+  // Redirect to home in production
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') {
+      router.replace('/home');
+    }
+  }, [router]);
+
+  // Don't render in production
+  if (process.env.NODE_ENV === 'production') {
+    return null;
+  }
   const [stats, setStats] = useState<any>(null);
   const [cards, setCards] = useState<any[]>([]);
   const [log, setLog] = useState<string[]>([]);
