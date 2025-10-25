@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/lib/hooks/use-toast";
 import { ToastContainer } from "@/components/ui/toast";
+import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 
 interface TagInfo {
   name: string;
@@ -95,16 +96,33 @@ export default function TagsPage() {
     if (!deleteConfirmTag) return;
 
     try {
-      // Remove tag from all cards
+      const tagToDelete = deleteConfirmTag.name;
+
+      // FIRST: Clear this tag from any active filters to prevent filtering issues
+      const { viewSettings, updateViewSettings } = useViewSettingsStore.getState();
+      if (viewSettings && viewSettings.viewSpecific) {
+        const selectedTags = (viewSettings.viewSpecific.selectedTags as string[]) || [];
+        if (selectedTags.includes(tagToDelete)) {
+          const updatedTags = selectedTags.filter(t => t !== tagToDelete);
+          updateViewSettings({
+            viewSpecific: {
+              ...viewSettings.viewSpecific,
+              selectedTags: updatedTags
+            }
+          });
+        }
+      }
+
+      // SECOND: Remove tag from all cards
       const { updateCard } = useDataStore.getState();
       for (const card of deleteConfirmTag.cards) {
-        const updatedTags = card.tags?.filter((t) => t !== deleteConfirmTag.name) || [];
+        const updatedTags = card.tags?.filter((t) => t !== tagToDelete) || [];
         await updateCard(card.id, { tags: updatedTags });
       }
 
       setSelectedTag(null);
       setDeleteConfirmTag(null);
-      success(`Deleted tag "${deleteConfirmTag.name}" from ${deleteConfirmTag.cards.length} cards`);
+      success(`Deleted tag "${tagToDelete}" from ${deleteConfirmTag.cards.length} cards`);
     } catch (err) {
       error("Failed to delete tag");
       setDeleteConfirmTag(null);

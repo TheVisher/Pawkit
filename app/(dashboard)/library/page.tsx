@@ -50,20 +50,22 @@ function LibraryPageContent() {
       }
     }
 
-    // Also check view settings for selectedTags
-    const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
-    if (selectedTags.length > 0) {
-      const validTags = selectedTags.filter(tagName =>
-        cards.some(card => card.tags?.includes(tagName))
-      );
-      // If any tags were filtered out, update view settings
-      if (validTags.length !== selectedTags.length) {
-        updateViewSettings({
-          viewSpecific: {
-            ...viewSettings.viewSpecific,
-            selectedTags: validTags
-          }
-        });
+    // Also check view settings for selectedTags (only if viewSettings is loaded)
+    if (viewSettings && viewSettings.viewSpecific) {
+      const selectedTags = (viewSettings.viewSpecific.selectedTags as string[]) || [];
+      if (selectedTags.length > 0) {
+        const validTags = selectedTags.filter(tagName =>
+          cards.some(card => card.tags?.includes(tagName))
+        );
+        // If any tags were filtered out, update view settings
+        if (validTags.length !== selectedTags.length) {
+          updateViewSettings({
+            viewSpecific: {
+              ...viewSettings.viewSpecific,
+              selectedTags: validTags
+            }
+          });
+        }
       }
     }
   }, [tag, cards, searchParams, router, viewSettings, updateViewSettings]);
@@ -92,11 +94,14 @@ function LibraryPageContent() {
       );
     }
 
-    // Tag filter
+    // Tag filter - only apply if tag actually exists in some card
     if (tag) {
-      filtered = filtered.filter(card =>
-        card.tags?.includes(tag)
-      );
+      const tagExists = cards.some(card => card.tags?.includes(tag));
+      if (tagExists) {
+        filtered = filtered.filter(card =>
+          card.tags?.includes(tag)
+        );
+      }
     }
 
     // Status filter
