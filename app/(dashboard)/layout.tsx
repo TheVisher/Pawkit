@@ -22,6 +22,7 @@ import { useRouter } from "next/navigation";
 import { ControlPanel } from "@/components/control-panel/control-panel";
 import { LibraryControls } from "@/components/control-panel/library-controls";
 import { NotesControls } from "@/components/control-panel/notes-controls";
+import { PawkitsControls } from "@/components/control-panel/pawkits-controls";
 import { CardDetailsPanel } from "@/components/control-panel/card-details-panel";
 import { LeftNavigationPanel } from "@/components/navigation/left-navigation-panel";
 import { ContentPanel } from "@/components/layout/content-panel";
@@ -390,6 +391,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             >
               {animatingContentType === "library-controls" && <LibraryControls />}
               {animatingContentType === "notes-controls" && <NotesControls />}
+              {animatingContentType === "pawkits-controls" && <PawkitsControls />}
               {animatingContentType === "card-details" && <CardDetailsPanel />}
               {animatingContentType === "calendar-controls" && (
                 <div className="p-4">
