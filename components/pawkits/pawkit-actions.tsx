@@ -8,12 +8,13 @@ type PawkitActionsProps = {
   pawkitId: string;
   pawkitName: string;
   isPinned?: boolean;
+  isPrivate?: boolean;
   hasChildren?: boolean;
   allPawkits?: Array<{ id: string; name: string; slug: string }>;
   onDeleteSuccess?: () => void;
 };
 
-export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChildren = false, allPawkits = [], onDeleteSuccess }: PawkitActionsProps) {
+export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivate = false, hasChildren = false, allPawkits = [], onDeleteSuccess }: PawkitActionsProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
@@ -23,6 +24,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
   const [loading, setLoading] = useState(false);
   const [deleteCards, setDeleteCards] = useState(false);
   const [pinned, setPinned] = useState(isPinned);
+  const [isPrivateState, setIsPrivateState] = useState(isPrivate);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { deleteCollection, updateCollection } = useDemoAwareStore();
@@ -78,6 +80,17 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
     }
   };
 
+  const handlePrivateToggle = async () => {
+    try {
+      setIsPrivateState(!isPrivateState);
+      setShowMenu(false);
+      await updateCollection(pawkitId, { isPrivate: !isPrivateState });
+    } catch (err) {
+      alert("Failed to toggle privacy");
+      setIsPrivateState(isPrivateState); // Revert on error
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -112,7 +125,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
         </button>
 
         {showMenu && (
-          <div className="absolute right-0 mt-2 w-48 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-50">
+          <div className="absolute right-0 mt-2 w-56 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-50">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -121,6 +134,15 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
               className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors"
             >
               {pinned ? "Unpin from Quick Access" : "Pin to Quick Access"}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrivateToggle();
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors"
+            >
+              {isPrivateState ? "🔓 Mark as Public" : "🔒 Mark as Private"}
             </button>
             <button
               onClick={(e) => {

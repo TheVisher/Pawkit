@@ -16,6 +16,7 @@ export const collectionUpdateSchema = z
     name: nameSchema.optional(),
     parentId: z.string().nullable().optional(),
     pinned: z.boolean().optional(),
+    isPrivate: z.boolean().optional(),
     coverImage: z.string().nullable().optional(),
     coverImagePosition: z.number().int().min(0).max(100).nullable().optional()
   })

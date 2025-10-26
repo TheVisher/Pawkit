@@ -151,6 +151,32 @@ export async function updateCollection(userId: string, id: string, payload: unkn
   }
 
   const updated = await prisma.collection.update({ where: { id, userId }, data });
+
+  // Handle isPrivate toggle: Update card inDen flags
+  if (parsed.isPrivate !== undefined && updated.slug) {
+    const newInDenValue = parsed.isPrivate;
+
+    // Find all cards in this collection using raw SQL for JSONB query
+    const cardsInCollection = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM "Card"
+      WHERE "userId" = ${userId}
+        AND deleted = false
+        AND collections::jsonb ? ${updated.slug}
+    `;
+
+    if (cardsInCollection.length > 0) {
+      // Update inDen flag for all cards in this collection
+      await prisma.card.updateMany({
+        where: {
+          id: { in: cardsInCollection.map(c => c.id) }
+        },
+        data: {
+          inDen: newInDenValue
+        }
+      });
+    }
+  }
+
   revalidateTag('collections');
   return updated;
 }
