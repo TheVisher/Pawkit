@@ -16,7 +16,7 @@ function CollectionPageContent() {
   const slug = params.slug as string;
 
   // Set right panel content to pawkits controls
-  const setContent = usePanelStore((state) => state.setContent);
+  const setContentType = usePanelStore((state) => state.setContentType);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showRenamePawkitModal, setShowRenamePawkitModal] = useState(false);
@@ -50,8 +50,8 @@ function CollectionPageContent() {
 
   // Set right panel to show pawkits controls
   useEffect(() => {
-    setContent("pawkits-controls");
-  }, [setContent]);
+    setContentType("pawkits-controls");
+  }, [setContentType]);
 
   // Focus input when modal opens
   useEffect(() => {

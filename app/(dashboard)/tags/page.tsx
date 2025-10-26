@@ -29,12 +29,12 @@ export default function TagsPage() {
   const [deleteConfirmTag, setDeleteConfirmTag] = useState<TagInfo | null>(null);
   const router = useRouter();
   const { toasts, dismissToast, success, error } = useToast();
-  const setContent = usePanelStore((state) => state.setContent);
+  const setContentType = usePanelStore((state) => state.setContentType);
 
   // Set right panel to show tags controls
   useEffect(() => {
-    setContent("tags-controls");
-  }, [setContent]);
+    setContentType("tags-controls");
+  }, [setContentType]);
 
   useEffect(() => {
     // Extract all tags from cards and count usage
