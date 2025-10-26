@@ -178,8 +178,7 @@ export function UniversalControls({ viewType, showTagsFilter = true, showContent
         <PanelSection
           id={`${viewType}-tags`}
           title="Tags"
-          collapsed={collapsedSections[`${viewType}-tags`]}
-          onToggle={() => toggleSection(`${viewType}-tags`)}
+          icon={<Tag className="h-4 w-4 text-accent" />}
         >
           <div className="space-y-2">
             <div className="flex flex-wrap gap-1.5">
@@ -217,8 +216,7 @@ export function UniversalControls({ viewType, showTagsFilter = true, showContent
         <PanelSection
           id={`${viewType}-content-type`}
           title="Content Type"
-          collapsed={collapsedSections[`${viewType}-content-type`]}
-          onToggle={() => toggleSection(`${viewType}-content-type`)}
+          icon={<File className="h-4 w-4 text-accent" />}
         >
           <div className="space-y-2">
             <PanelToggle
@@ -244,36 +242,33 @@ export function UniversalControls({ viewType, showTagsFilter = true, showContent
       <PanelSection
         id={`${viewType}-sort`}
         title="Sort"
-        collapsed={collapsedSections[`${viewType}-sort`]}
-        onToggle={() => toggleSection(`${viewType}-sort`)}
+        icon={<SortAsc className="h-4 w-4 text-accent" />}
       >
         <div className="space-y-2">
-          <div className="grid grid-cols-2 gap-2">
-            <PanelButton
-              icon={SortAsc}
-              label="Date"
-              active={sortBy === "date"}
-              onClick={() => handleSortByChange("date")}
-            />
-            <PanelButton
-              icon={SortAsc}
-              label="Modified"
-              active={sortBy === "modified"}
-              onClick={() => handleSortByChange("modified")}
-            />
-            <PanelButton
-              icon={Tag}
-              label="Title"
-              active={sortBy === "title"}
-              onClick={() => handleSortByChange("title")}
-            />
-            <PanelButton
-              icon={Tag}
-              label="Domain"
-              active={sortBy === "domain"}
-              onClick={() => handleSortByChange("domain")}
-            />
-          </div>
+          <PanelButton
+            active={sortBy === "modified"}
+            onClick={() => handleSortByChange("modified")}
+          >
+            Recently Modified
+          </PanelButton>
+          <PanelButton
+            active={sortBy === "date"}
+            onClick={() => handleSortByChange("date")}
+          >
+            Date Added
+          </PanelButton>
+          <PanelButton
+            active={sortBy === "title"}
+            onClick={() => handleSortByChange("title")}
+          >
+            Title A-Z
+          </PanelButton>
+          <PanelButton
+            active={sortBy === "domain"}
+            onClick={() => handleSortByChange("domain")}
+          >
+            Domain
+          </PanelButton>
           <button
             onClick={handleSortOrderChange}
             className="flex w-full items-center justify-between rounded-lg bg-surface-soft px-3 py-2 text-xs text-muted-foreground hover:bg-surface-elevated hover:text-foreground transition-colors"
@@ -291,23 +286,43 @@ export function UniversalControls({ viewType, showTagsFilter = true, showContent
       <PanelSection
         id={`${viewType}-view`}
         title="View"
-        collapsed={collapsedSections[`${viewType}-view`]}
-        onToggle={() => toggleSection(`${viewType}-view`)}
+        icon={<Eye className="h-4 w-4 text-accent" />}
       >
-        <div className="grid grid-cols-2 gap-2">
-          <PanelButton icon={Grid} label="Grid" active={layout === "grid"} onClick={() => handleLayoutChange("grid")} />
-          <PanelButton icon={LayoutGrid} label="Masonry" active={layout === "masonry"} onClick={() => handleLayoutChange("masonry")} />
-          <PanelButton icon={List} label="List" active={layout === "list"} onClick={() => handleLayoutChange("list")} />
-          <PanelButton icon={Columns} label="Compact" active={layout === "compact"} onClick={() => handleLayoutChange("compact")} />
-        </div>
+        <PanelButton
+          active={layout === "grid"}
+          onClick={() => handleLayoutChange("grid")}
+          icon={<Grid size={16} />}
+        >
+          Grid
+        </PanelButton>
+        <PanelButton
+          active={layout === "masonry"}
+          onClick={() => handleLayoutChange("masonry")}
+          icon={<LayoutGrid size={16} />}
+        >
+          Masonry
+        </PanelButton>
+        <PanelButton
+          active={layout === "list"}
+          onClick={() => handleLayoutChange("list")}
+          icon={<List size={16} />}
+        >
+          List
+        </PanelButton>
+        <PanelButton
+          active={layout === "compact"}
+          onClick={() => handleLayoutChange("compact")}
+          icon={<Columns size={16} />}
+        >
+          Compact
+        </PanelButton>
       </PanelSection>
 
       {/* Display Options Section */}
       <PanelSection
         id={`${viewType}-display`}
         title="Display"
-        collapsed={collapsedSections[`${viewType}-display`]}
-        onToggle={() => toggleSection(`${viewType}-display`)}
+        icon={<Maximize2 className="h-4 w-4 text-accent" />}
       >
         <div className="space-y-3">
           <div className="space-y-2">
