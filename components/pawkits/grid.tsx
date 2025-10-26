@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { PawkitActions } from "./pawkit-actions";
+import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
+import { useMemo } from "react";
 
 type CollectionPreviewCard = {
   id: string;
@@ -33,6 +35,16 @@ const previewPositions = [
 export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGridProps) {
   const router = useRouter();
 
+  // Get pawkit size from view settings
+  const viewSettings = useViewSettingsStore((state) => state.getSettings("pawkits"));
+  const pawkitSize = viewSettings.cardSize || 50;
+
+  // Calculate minimum pawkit width based on size slider (1-100)
+  // 1 = 250px (smallest), 100 = 600px (largest)
+  const minPawkitWidth = useMemo(() => {
+    return Math.round(250 + ((pawkitSize - 1) / 99) * 350);
+  }, [pawkitSize]);
+
   if (!collections.length) {
     return (
       <div className="rounded-2xl border border-subtle bg-surface/60 p-12 text-center text-sm text-muted-foreground">
@@ -42,7 +54,12 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
   }
 
   return (
-    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+    <div
+      className="grid gap-6"
+      style={{
+        gridTemplateColumns: `repeat(auto-fill, minmax(${minPawkitWidth}px, 1fr))`
+      }}
+    >
       {collections.map((collection) => (
         <div
           key={collection.id}
@@ -53,7 +70,7 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
               router.push(`/library`);
             }
           }}
-          className="card-hover group relative flex h-56 cursor-pointer flex-col overflow-hidden rounded-2xl border border-subtle bg-surface/80 p-5 text-left"
+          className="card-hover group relative flex h-56 cursor-pointer flex-col overflow-hidden rounded-2xl border-2 border-purple-500/30 bg-surface/80 p-5 text-left"
         >
           <div className="relative z-10 flex items-center justify-between pb-4 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">

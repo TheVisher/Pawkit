@@ -4,11 +4,13 @@ import { useMemo, useEffect, useState } from "react";
 import { CollectionsGrid } from "@/components/pawkits/grid";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { FolderOpen } from "lucide-react";
 
 export default function CollectionsPage() {
   const { collections, cards, addCollection } = useDataStore();
   const { setOnCreatePawkit } = usePawkitActions();
+  const setContentType = usePanelStore((state) => state.setContentType);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [pawkitName, setPawkitName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,6 +21,11 @@ export default function CollectionsPage() {
     setOnCreatePawkit(() => () => setShowCreateModal(true));
     return () => setOnCreatePawkit(null);
   }, [setOnCreatePawkit]);
+
+  // Set the right panel content to show pawkits controls
+  useEffect(() => {
+    setContentType("pawkits-controls");
+  }, [setContentType]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
