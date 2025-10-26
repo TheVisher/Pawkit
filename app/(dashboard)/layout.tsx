@@ -388,7 +388,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 isTransitioning ? "translate-y-full opacity-0" : "translate-y-0 opacity-100"
               }`}
             >
-              {animatingContentType === "library-controls" && <UniversalControls viewType="library" />}
+              {animatingContentType === "library-controls" && <LibraryControls />}
               {animatingContentType === "card-details" && <CardDetailsPanel />}
               {animatingContentType === "notes-controls" && <UniversalControls viewType="notes" />}
               {animatingContentType === "pawkits-controls" && <UniversalControls viewType="pawkits" />}
