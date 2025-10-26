@@ -66,7 +66,7 @@ function LibraryPageContent() {
       const selectedTags = (viewSettings.viewSpecific.selectedTags as string[]) || [];
       if (selectedTags.length > 0) {
         const validTags = selectedTags.filter(tagName =>
-          cards.some(card => card.tags?.includes(tagName))
+          cards.some(card => card.tags?.includes(tagName) || card.collections?.includes(tagName))
         );
         // If any tags were filtered out, update view settings
         if (validTags.length !== selectedTags.length) {

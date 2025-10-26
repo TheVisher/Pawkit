@@ -87,12 +87,8 @@ export function LibraryView({
   const { cardSize, sortBy, sortOrder, showTitles, showUrls } = viewSettings;
 
   // Get selected tags from store (managed by control panel)
-  // Memoize to prevent changing on every render
-  // Filter out tags that don't exist in any cards
-  const selectedTags = useMemo(() => {
-    const tags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
-    return tags.filter(tag => cards.some(card => card.tags?.includes(tag)));
-  }, [viewSettings.viewSpecific?.selectedTags, cards]);
+  // Use tags directly from store without filtering - trust the control panel
+  const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
 
   // Get global settings (thumbnails)
   const showThumbnails = useSettingsStore((state) => state.showThumbnails);
@@ -116,10 +112,12 @@ export function LibraryView({
   const sortedCards = useMemo(() => {
     let filtered = cards;
 
-    // Filter by selected tags (already filtered to only valid tags in the useMemo above)
+    // Filter by selected tags (checks both tags AND collections/pawkits)
     if (selectedTags.length > 0) {
       filtered = filtered.filter((card) =>
-        selectedTags.some((tag) => card.tags?.includes(tag))
+        selectedTags.some((tag) =>
+          card.tags?.includes(tag) || card.collections?.includes(tag)
+        )
       );
     }
 

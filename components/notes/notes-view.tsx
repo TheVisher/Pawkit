@@ -32,11 +32,9 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
   const viewSettings = useViewSettingsStore((state) => state.getSettings("notes"));
   const { sortBy, sortOrder, layout: storedLayout } = viewSettings;
 
-  // Get selected tags from view settings
-  const selectedTags = useMemo(() => {
-    const tags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
-    return tags.filter(tag => cards.some(card => card.tags?.includes(tag)));
-  }, [viewSettings.viewSpecific?.selectedTags, cards]);
+  // Get selected tags from view settings (checks both tags AND collections)
+  // Use tags directly from store without filtering - trust the control panel
+  const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
 
   // Use hydration-safe layout to prevent SSR mismatches
   const [layout, setLayout] = useState<LayoutMode>("grid");
@@ -84,10 +82,12 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
   const sortedCards = useMemo(() => {
     let filtered = cards;
 
-    // Filter by selected tags
+    // Filter by selected tags (checks both tags AND collections/pawkits)
     if (selectedTags.length > 0) {
       filtered = filtered.filter((card) =>
-        selectedTags.some((tag) => card.tags?.includes(tag))
+        selectedTags.some((tag) =>
+          card.tags?.includes(tag) || card.collections?.includes(tag)
+        )
       );
     }
 
