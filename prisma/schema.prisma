@@ -64,6 +64,8 @@ model Collection {
   parentId             String?
   coverImage           String?
   coverImagePosition   Int?      // Vertical position percentage (0-100)
+  hidePreview          Boolean   @default(false) // Hide card preview tiles on pawkit card
+  useCoverAsBackground Boolean   @default(false) // Use cover image as pawkit card background
   pinned               Boolean   @default(false)
   deleted              Boolean   @default(false)
   deletedAt            DateTime?

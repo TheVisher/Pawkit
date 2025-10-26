@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 
@@ -25,9 +26,16 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
   const [deleteCards, setDeleteCards] = useState(false);
   const [pinned, setPinned] = useState(isPinned);
   const [isPrivateState, setIsPrivateState] = useState(isPrivate);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [mounted, setMounted] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
   const { deleteCollection, updateCollection } = useDemoAwareStore();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleDelete = async () => {
     setLoading(true);
@@ -111,8 +119,16 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
     <>
       <div className="relative" ref={menuRef}>
         <button
+          ref={buttonRef}
           onClick={(e) => {
             e.stopPropagation();
+            if (!showMenu && buttonRef.current) {
+              const rect = buttonRef.current.getBoundingClientRect();
+              setMenuPosition({
+                top: rect.bottom + 8,
+                left: rect.right - 224 // 224px = w-56 menu width
+              });
+            }
             setShowMenu(!showMenu);
           }}
           className="flex items-center justify-center h-9 w-9 rounded text-gray-400 hover:bg-gray-900 hover:text-gray-100 transition-colors"
@@ -124,8 +140,11 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
           </svg>
         </button>
 
-        {showMenu && (
-          <div className="absolute right-0 top-full mt-2 w-56 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-[9999]">
+        {showMenu && mounted && createPortal(
+          <div
+            className="fixed w-56 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-[9999]"
+            style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
+          >
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -174,7 +193,8 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
             >
               Delete
             </button>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 

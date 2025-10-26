@@ -18,7 +18,9 @@ export const collectionUpdateSchema = z
     pinned: z.boolean().optional(),
     isPrivate: z.boolean().optional(),
     coverImage: z.string().nullable().optional(),
-    coverImagePosition: z.number().int().min(0).max(100).nullable().optional()
+    coverImagePosition: z.number().int().min(0).max(100).nullable().optional(),
+    hidePreview: z.boolean().optional(),
+    useCoverAsBackground: z.boolean().optional()
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided"
