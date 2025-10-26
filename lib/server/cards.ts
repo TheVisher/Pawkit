@@ -58,6 +58,20 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
   const cardType = parsed.type || "url";
   const isNote = cardType === "md-note" || cardType === "text-note";
 
+  // Check if any of the collections are private pawkits
+  let inDen = false;
+  if (normalizedCollections.length > 0) {
+    const privateCollections = await prisma.collection.findMany({
+      where: {
+        userId,
+        slug: { in: normalizedCollections },
+        isPrivate: true
+      },
+      select: { slug: true }
+    });
+    inDen = privateCollections.length > 0;
+  }
+
   // Create card with different logic based on type
   const data: Prisma.CardCreateInput = {
     type: cardType,
@@ -69,6 +83,7 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
     collections: serializeCollections(normalizedCollections),
     domain: parsed.url && parsed.url.length > 0 ? safeHost(parsed.url) : undefined,
     status: cardType === "url" ? "PENDING" : "READY",
+    inDen,
     user: { connect: { id: userId } }
   };
 
@@ -225,6 +240,21 @@ export async function updateCard(userId: string, id: string, payload: CardUpdate
 
   if (parsed.url) {
     data.domain = safeHost(parsed.url);
+  }
+
+  // When collections are updated, check if any are private pawkits
+  // If so, set inDen to true to hide from Library/Timeline/Search
+  if (normalizedCollections !== undefined) {
+    const privateCollections = await prisma.collection.findMany({
+      where: {
+        userId,
+        slug: { in: normalizedCollections },
+        isPrivate: true
+      },
+      select: { slug: true }
+    });
+
+    data.inDen = privateCollections.length > 0;
   }
 
   const updated = await prisma.card.update({

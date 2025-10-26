@@ -302,8 +302,8 @@ export function CommandPalette({
       },
     );
 
-    // Add notes to commands
-    const notes = cards.filter((c) => c.type === "md-note" || c.type === "text-note");
+    // Add notes to commands (exclude private pawkit cards)
+    const notes = cards.filter((c) => (c.type === "md-note" || c.type === "text-note") && !c.inDen);
     notes.forEach((note) => {
       commands.push({
         id: `note-${note.id}`,
@@ -316,8 +316,8 @@ export function CommandPalette({
       });
     });
 
-    // Add bookmarks to commands
-    const bookmarks = cards.filter((c) => c.type === "url");
+    // Add bookmarks to commands (exclude private pawkit cards)
+    const bookmarks = cards.filter((c) => c.type === "url" && !c.inDen);
     bookmarks.forEach((bookmark) => {
       commands.push({
         id: `card-${bookmark.id}`,

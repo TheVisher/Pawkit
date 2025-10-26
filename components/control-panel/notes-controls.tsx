@@ -77,10 +77,14 @@ export function NotesControls() {
   const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
 
   // Extract all unique tags from NOTES only (md-note or text-note)
+  // Exclude cards in private pawkits (inDen: true)
   const allTags = useMemo(() => {
     const tagMap = new Map<string, number>();
 
     cards.forEach((card) => {
+      // Skip cards in private pawkits
+      if (card.inDen) return;
+
       // Only count tags from notes
       if ((card.type === 'md-note' || card.type === 'text-note') && card.tags && card.tags.length > 0) {
         card.tags.forEach((tag) => {

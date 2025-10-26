@@ -71,7 +71,7 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
               router.push(`/library`);
             }
           }}
-          className="card-hover group relative flex h-56 cursor-pointer flex-col overflow-hidden rounded-2xl border-2 border-purple-500/30 bg-surface/80 p-5 text-left"
+          className="card-hover group relative flex h-56 cursor-pointer flex-col overflow-visible rounded-2xl border-2 border-purple-500/30 bg-surface/80 p-5 text-left"
         >
           <div className="relative z-10 flex items-center justify-between pb-4 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -96,7 +96,7 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
               )}
             </div>
           </div>
-          <div className="relative h-full w-full">
+          <div className="relative h-full w-full overflow-hidden">
             {collection.cards.slice(0, 3).map((card, index) => (
               <PreviewTile key={card.id} card={card} positionClass={previewPositions[index] ?? "bottom-6 right-8 rotate-1"} />
             ))}
