@@ -8,7 +8,6 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useRouter, usePathname } from "next/navigation";
 import { useMemo } from "react";
-import { CardSizeSlider } from "../card-size-slider";
 
 // Map view settings sortBy to control panel sort options
 const mapSortByToControl = (sortBy: SortBy): "date" | "modified" | "title" | "domain" => {
@@ -324,56 +323,90 @@ export function UniversalControls({ viewType, showTagsFilter = true, showContent
         title="Display"
         icon={<Maximize2 className="h-4 w-4 text-accent" />}
       >
-        <div className="space-y-3">
-          <div className="space-y-2">
-            <PanelToggle
-              label="Show Thumbnails"
-              checked={showThumbnails}
-              onChange={handleShowThumbnailsChange}
-            />
-            <PanelToggle
-              label="Show Labels"
-              checked={showLabelsValue}
-              onChange={handleShowLabelsChange}
-            />
-            <PanelToggle
-              label="Show Metadata"
-              checked={showMetadataValue}
-              onChange={handleShowMetadataChange}
-            />
-            <PanelToggle
-              label="Show Preview"
-              checked={showPreviewValue}
-              onChange={handleShowPreviewChange}
-            />
-            <PanelToggle
-              label="Show Tags"
-              checked={showTagsValue}
-              onChange={handleShowTagsChange}
-            />
+        {/* Card Size Slider - 1-100 scale */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Card Size</span>
+            <span>{Math.round(cardSizeValue)}%</span>
           </div>
-
-          <div className="space-y-2 pt-2 border-t border-subtle">
-            <CardSizeSlider
-              label="Card Size"
-              icon={Maximize2}
-              value={cardSizeValue}
-              onChange={handleCardSizeChange}
-            />
-            <CardSizeSlider
-              label="Card Spacing"
-              icon={Maximize2}
-              value={cardSpacingValue}
-              onChange={handleCardSpacingChange}
-            />
-            <CardSizeSlider
-              label="Card Padding"
-              icon={Maximize2}
-              value={cardPaddingValue}
-              onChange={handleCardPaddingChange}
-            />
-          </div>
+          <input
+            type="range"
+            min="1"
+            max="100"
+            step="1"
+            value={cardSizeValue}
+            onChange={(e) => handleCardSizeChange(Number(e.target.value))}
+            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer
+              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+              [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent
+              [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4
+              [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-accent [&::-moz-range-thumb]:border-0"
+          />
         </div>
+
+        {/* Card Spacing Slider - 1-64 scale */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Card Spacing</span>
+            <span>{Math.round(cardSpacingValue)}px</span>
+          </div>
+          <input
+            type="range"
+            min="1"
+            max="64"
+            step="1"
+            value={cardSpacingValue}
+            onChange={(e) => handleCardSpacingChange(Number(e.target.value))}
+            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer
+              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+              [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent
+              [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4
+              [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-accent [&::-moz-range-thumb]:border-0"
+          />
+        </div>
+
+        {/* Card Padding Slider - 0-100 scale */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Card Padding</span>
+            <span>{Math.round(cardPaddingValue)}%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={cardPaddingValue}
+            onChange={(e) => handleCardPaddingChange(Number(e.target.value))}
+            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer
+              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+              [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent
+              [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4
+              [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-accent [&::-moz-range-thumb]:border-0"
+          />
+        </div>
+
+        {/* Display Toggles */}
+        <PanelToggle
+          label="Show Thumbnails"
+          checked={showThumbnails}
+          onChange={handleShowThumbnailsChange}
+        />
+        <PanelToggle
+          label="Show Labels"
+          checked={showLabelsValue}
+          onChange={handleShowLabelsChange}
+        />
+        <PanelToggle
+          label="Show Metadata"
+          checked={showMetadataValue}
+          onChange={handleShowMetadataChange}
+        />
+        <PanelToggle
+          label="Show Preview"
+          checked={showPreviewValue}
+          onChange={handleShowPreviewChange}
+        />
       </PanelSection>
     </>
   );
