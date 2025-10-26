@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { Plus } from "lucide-react";
 import { CardModel } from "@/lib/types";
 import { useDenStore } from "@/lib/stores/den-store";
 import { useDataStore } from "@/lib/stores/data-store";
@@ -14,12 +15,14 @@ import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 
 export default function DenPage() {
   const { denCards, isUnlocked, loadDenCards, checkExpiry, refreshDenCards, updateDenCard } = useDenStore();
-  const { collections, deleteCard, addCollection } = useDataStore();
+  const { deleteCard, addCollection } = useDataStore();
   const { setOnCreatePawkit } = usePawkitActions();
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const setContentType = usePanelStore((state) => state.setContentType);
   const [showCreatePawkitModal, setShowCreatePawkitModal] = useState(false);
   const [newPawkitName, setNewPawkitName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [denPawkits, setDenPawkits] = useState<any[]>([]);
 
   // Set the create action for the top bar
   useEffect(() => {
@@ -27,11 +30,27 @@ export default function DenPage() {
     return () => setOnCreatePawkit(null);
   }, [setOnCreatePawkit]);
 
-  // Get Den Pawkits from local data store (no API calls)
-  const denPawkits = useMemo(() => 
-    collections.filter(c => c.inDen), 
-    [collections]
-  );
+  // Set the right panel content to show pawkits controls
+  useEffect(() => {
+    setContentType("pawkits-controls");
+  }, [setContentType]);
+
+  // Fetch Den Pawkits from API (they're not in the main data store)
+  const fetchDenPawkits = async () => {
+    try {
+      const response = await fetch('/api/den/pawkits');
+      if (response.ok) {
+        const data = await response.json();
+        setDenPawkits(data.collections || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch Den Pawkits:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchDenPawkits();
+  }, []);
 
   // Load Den cards on mount (password protection not yet implemented)
   useEffect(() => {
@@ -63,12 +82,22 @@ export default function DenPage() {
 
     setCreating(true);
     try {
-      // Use data store - creates locally first, then syncs to server
-      await addCollection({ name: newPawkitName.trim(), inDen: true });
+      // Create Den Pawkit via API
+      const response = await fetch('/api/den/pawkits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newPawkitName.trim() })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create Den Pawkit');
+      }
 
       setNewPawkitName("");
       setShowCreatePawkitModal(false);
-      // No need to mutate - data store handles refresh
+
+      // Refresh the Den Pawkits list
+      await fetchDenPawkits();
     } catch (error) {
       alert("Failed to create Den Pawkit");
     } finally {
@@ -92,6 +121,15 @@ export default function DenPage() {
               </p>
             </div>
           </div>
+
+          {/* Add Pawkit Button */}
+          <button
+            onClick={() => setShowCreatePawkitModal(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-gray-950 hover:bg-accent/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" />
+            Add Pawkit
+          </button>
         </div>
 
         {/* Den Pawkits Section */}
@@ -100,6 +138,7 @@ export default function DenPage() {
           <DenPawkitsGrid
             collections={denPawkitsGridItems}
             allPawkits={denPawkits}
+            onUpdate={fetchDenPawkits}
           />
         </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { Plus } from "lucide-react";
 import { ViewOptionsMenu } from "./view-options-menu";
 import { SortFilterMenu } from "./sort-filter-menu";
 import { ActionsMenu } from "./actions-menu";
@@ -44,7 +45,7 @@ export function ViewControls({ onRefresh }: ViewControlsProps) {
   return (
     <div className="flex items-center gap-1">
       {/* View Options (Layout, Card Size, Display Options) */}
-      <ViewOptionsMenu 
+      <ViewOptionsMenu
         view={currentView}
         showTimelineToggle={currentView === 'library'}
       />
@@ -52,10 +53,22 @@ export function ViewControls({ onRefresh }: ViewControlsProps) {
       {/* Sort & Filter */}
       <SortFilterMenu view={currentView} />
 
+      {/* Create Pawkit button - show on pawkits and den pages */}
+      {onCreatePawkit && (currentView === 'pawkits' || currentView === 'den') && (
+        <button
+          onClick={onCreatePawkit}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-accent text-gray-950 hover:bg-accent/90 transition-colors"
+          title={currentView === 'den' ? 'Create Den Pawkit' : 'Create Pawkit'}
+        >
+          <Plus className="h-4 w-4" />
+          Add Pawkit
+        </button>
+      )}
+
       {/* Actions Menu (Refresh, Bulk Actions, Pawkit Actions) */}
-      <ActionsMenu 
-        view={currentView} 
-        onRefresh={onRefresh} 
+      <ActionsMenu
+        view={currentView}
+        onRefresh={onRefresh}
         pawkitActions={pawkitActions || undefined}
         onCreatePawkit={onCreatePawkit || undefined}
       />
