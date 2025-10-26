@@ -67,7 +67,9 @@ model Collection {
   pinned               Boolean   @default(false)
   deleted              Boolean   @default(false)
   deletedAt            DateTime?
-  inDen                Boolean   @default(false)
+  inDen                Boolean   @default(false) // DEPRECATED: kept for migration, use isPrivate instead
+  isPrivate            Boolean   @default(false) // Private pawkits isolate cards from Library/Timeline/Search
+  passwordHash         String?   // Optional per-pawkit password protection
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   userId               String
@@ -76,6 +78,7 @@ model Collection {
   @@index([userId])
   @@index([userId, deleted])
   @@index([userId, inDen])
+  @@index([userId, isPrivate])
 }
 
 model UserViewSettings {

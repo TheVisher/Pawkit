@@ -83,6 +83,7 @@ export default function CollectionsPage() {
         count: pawkitCards.length,
         cards: pawkitCards,
         isPinned: root.pinned,
+        isPrivate: root.isPrivate,
         hasChildren: root.children && root.children.length > 0
       };
     });

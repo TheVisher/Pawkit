@@ -12,6 +12,7 @@ type CollectionPreviewCard = {
   count: number;
   hasChildren?: boolean;
   isPinned?: boolean;
+  isPrivate?: boolean;
   cards: Array<{
     id: string;
     title?: string | null;
@@ -74,7 +75,9 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
         >
           <div className="relative z-10 flex items-center justify-between pb-4 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent">📁</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent">
+                {collection.isPrivate ? '🔒' : '📁'}
+              </span>
               {collection.name}
             </span>
             <div className="flex items-center gap-2">
@@ -85,6 +88,7 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
                     pawkitId={collection.id}
                     pawkitName={collection.name}
                     isPinned={collection.isPinned}
+                    isPrivate={collection.isPrivate}
                     hasChildren={collection.hasChildren}
                     allPawkits={allPawkits}
                   />
