@@ -15,7 +15,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
-import { DogHouseIcon } from "@/components/icons/dog-house";
 import { type CollectionNode, type CardType, type CardModel } from "@/lib/types";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
 import {
@@ -44,7 +43,6 @@ type NavItem = {
 const navigationItems: NavItem[] = [
   { id: "library", label: "Library", icon: Library, path: "/library" },
   { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
-  { id: "den", label: "The Den", icon: DogHouseIcon, path: "/den" },
   { id: "distill", label: "Dig Up", icon: Layers, path: "/distill" },
 ];
 
