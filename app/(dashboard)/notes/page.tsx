@@ -1,16 +1,23 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useMemo, Suspense } from "react";
+import { useMemo, Suspense, useEffect } from "react";
 import { NotesView } from "@/components/notes/notes-view";
 import { useDataStore } from "@/lib/stores/data-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 function NotesPageContent() {
   const searchParams = useSearchParams();
   const q = searchParams.get("q") || undefined;
+  const setContentType = usePanelStore((state) => state.setContentType);
 
   // Read from global store - instant, no API calls
   const { cards, collections } = useDataStore();
+
+  // Set the right panel content to show notes controls
+  useEffect(() => {
+    setContentType("notes-controls");
+  }, [setContentType]);
 
   // Filter to only notes (md-note or text-note) and exclude Den cards
   const allNotes = useMemo(() => {
