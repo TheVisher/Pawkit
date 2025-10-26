@@ -93,32 +93,32 @@ export default function CollectionsPage() {
 
   return (
     <>
-      <div className="space-y-10 relative">
-        {/* Floating Create Button */}
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="group fixed top-4 right-8 z-10 flex h-10 items-center gap-2 rounded-full bg-accent/10 backdrop-blur-sm transition-all duration-300 hover:bg-accent hover:px-4"
-          title="Create Pawkit"
-        >
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center">
-            <Plus className="h-5 w-5 text-accent transition-colors group-hover:text-gray-950" />
-          </div>
-          <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium text-accent opacity-0 transition-all duration-300 group-hover:max-w-xs group-hover:opacity-100 group-hover:text-gray-950 group-hover:pr-2">
-            Create Pawkit
-          </span>
-        </button>
-
+      <div className="space-y-10">
         {/* Page Header */}
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
-            <FolderOpen className="h-5 w-5 text-accent" />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
+              <FolderOpen className="h-5 w-5 text-accent" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold text-foreground">Pawkits</h1>
+              <p className="text-sm text-muted-foreground">
+                Organize cards into visual groups. Open a Pawkit to filter the library or manage the hierarchy below.
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-semibold text-foreground">Pawkits</h1>
-            <p className="text-sm text-muted-foreground">
-              Organize cards into visual groups. Open a Pawkit to filter the library or manage the hierarchy below.
-            </p>
-          </div>
+
+          {/* Create Pawkit Button */}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="group relative flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-transparent text-muted-foreground transition-all duration-300 hover:bg-accent/10 hover:text-foreground hover:w-auto hover:px-3"
+            title="Create Pawkit"
+          >
+            <Plus className="h-5 w-5 shrink-0" />
+            <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium opacity-0 transition-all duration-300 group-hover:ml-2 group-hover:max-w-xs group-hover:opacity-100">
+              Create Pawkit
+            </span>
+          </button>
         </div>
 
         <CollectionsGrid collections={gridItems} allPawkits={allPawkits} />
