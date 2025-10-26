@@ -96,13 +96,11 @@ export default function CollectionsPage() {
       {/* Create Pawkit Button - Fixed to top-right */}
       <button
         onClick={() => setShowCreateModal(true)}
-        className="group fixed top-4 right-20 z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-transparent text-muted-foreground transition-all duration-300 hover:bg-accent/10 hover:text-foreground hover:w-auto hover:px-3"
+        className="fixed top-4 right-20 z-10 flex h-10 items-center gap-2 rounded-md bg-accent/10 px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-gray-950"
         title="Create Pawkit"
       >
-        <Plus className="h-5 w-5 shrink-0" />
-        <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium opacity-0 transition-all duration-300 group-hover:ml-2 group-hover:max-w-xs group-hover:opacity-100">
-          Create Pawkit
-        </span>
+        <Plus className="h-5 w-5" />
+        <span>Create Pawkit</span>
       </button>
 
       <div className="space-y-10">
