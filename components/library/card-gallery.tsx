@@ -28,9 +28,10 @@ export type CardGalleryProps = {
   setNextCursor: Dispatch<SetStateAction<string | undefined>>;
   hideControls?: boolean;
   area: "library" | "home" | "den" | "pawkit" | "notes";
+  currentPawkitSlug?: string; // If set, hide this pawkit's badge (viewing inside this pawkit)
 };
 
-function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false, area }: CardGalleryProps) {
+function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false, area, currentPawkitSlug }: CardGalleryProps) {
   const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore, collections } = useDemoAwareStore();
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const [showMoveModal, setShowMoveModal] = useState(false);
@@ -831,7 +832,10 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                 {showCardTags && card.collections && card.collections.length > 0 && layout !== "compact" && (
                   <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
                     {card.collections
-                      .filter((collection) => !collection.startsWith('den-'))
+                      .filter((collection) =>
+                        !collection.startsWith('den-') &&
+                        collection !== currentPawkitSlug // Hide current pawkit badge (redundant)
+                      )
                       .map((collection) => (
                         <span key={collection} className="rounded bg-surface-soft/80 backdrop-blur-sm px-2 py-0.5 border border-purple-500/10">
                           {collection}
@@ -905,7 +909,10 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           {showCardTags && card.collections && card.collections.length > 0 && layout !== "compact" && (
             <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
               {card.collections
-                .filter((collection) => !collection.startsWith('den-'))
+                .filter((collection) =>
+                  !collection.startsWith('den-') &&
+                  collection !== currentPawkitSlug // Hide current pawkit badge (redundant)
+                )
                 .map((collection) => (
                   <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
                     {collection}

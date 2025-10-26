@@ -77,14 +77,25 @@ export function PawkitsControls() {
   const sortOrder = viewSettings.sortOrder;
   const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
 
-  // Extract all unique tags from cards
+  // Extract all unique tags from cards (includes both user tags AND pawkit collections)
   const allTags = useMemo(() => {
     const tagMap = new Map<string, number>();
 
     cards.forEach((card) => {
+      // Add user-defined tags
       if (card.tags && card.tags.length > 0) {
         card.tags.forEach((tag) => {
           tagMap.set(tag, (tagMap.get(tag) || 0) + 1);
+        });
+      }
+
+      // Add pawkit collections as tags (these are also filterable)
+      if (card.collections && card.collections.length > 0) {
+        card.collections.forEach((collection) => {
+          // Skip 'den-' prefixed collections
+          if (!collection.startsWith('den-')) {
+            tagMap.set(collection, (tagMap.get(collection) || 0) + 1);
+          }
         });
       }
     });
