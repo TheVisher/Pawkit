@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, HelpCircle, User, Layers, Calendar, CalendarDays, CalendarClock, Flame, Clock, Tag, Lock } from "lucide-react";
 import { type CollectionNode } from "@/lib/types";
 import { ProfileModal } from "@/components/modals/profile-modal";
-import { DogHouseIcon } from "@/components/icons/dog-house";
 import { useDataStore } from "@/lib/stores/data-store";
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
@@ -40,7 +39,6 @@ const navigationItems = [
   { href: "/tags", label: "Tags", icon: Tag },
   { href: "/notes", label: "Notes", icon: FileText },
   { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/den", label: "The Den", icon: DogHouseIcon },
   { href: "/distill", label: "Dig Up", icon: Layers },
 ];
 
