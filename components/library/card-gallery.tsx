@@ -284,58 +284,100 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                   const kind = isNote ? "Note" : "Bookmark";
 
                   return (
-                    <tr
+                    <CardContextMenuWrapper
                       key={card.id}
-                      className={`border-b border-subtle hover:bg-white/5 cursor-pointer transition-colors ${
-                        selected ? "bg-accent/10" : ""
-                      }`}
-                      onClick={(e) => handleCardClick(e, card)}
+                      onAddToPawkit={(slug) => {
+                        const collections = Array.from(new Set([slug, ...(card.collections || [])]));
+                        const updates: { collections: string[]; inDen?: boolean } = { collections };
+                        if (card.inDen) {
+                          updates.inDen = false;
+                        }
+                        updateCardInStore(card.id, updates);
+                        setCards((prev) =>
+                          prev.map((c) => (c.id === card.id ? { ...c, ...updates } : c))
+                        );
+                      }}
+                      onAddToDen={async () => {
+                        await updateCardInStore(card.id, { inDen: true });
+                        setCards((prev) => prev.filter((c) => c.id !== card.id));
+                      }}
+                      onDelete={async () => {
+                        await deleteCardFromStore(card.id);
+                        setCards((prev) => prev.filter((c) => c.id !== card.id));
+                      }}
+                      cardCollections={card.collections || []}
+                      onRemoveFromPawkit={(slug) => {
+                        const collections = (card.collections || []).filter(s => s !== slug);
+                        updateCardInStore(card.id, { collections });
+                        setCards((prev) =>
+                          prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
+                        );
+                      }}
+                      onRemoveFromAllPawkits={() => {
+                        updateCardInStore(card.id, { collections: [] });
+                        setCards((prev) =>
+                          prev.map((c) => (c.id === card.id ? { ...c, collections: [] } : c))
+                        );
+                      }}
+                      onFetchMetadata={handleFetchMetadata}
+                      cardId={card.id}
+                      cardType={card.type}
+                      isPinned={isPinned}
+                      onPinToSidebar={() => handlePinToSidebar(card.id)}
+                      onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
                     >
-                      <td className="py-2 px-4">
-                        <div className="flex items-center gap-3">
-                          {isNote ? (
-                            <FileText size={16} className="text-purple-400 flex-shrink-0" />
-                          ) : card.image ? (
-                            <img
-                              src={card.image}
-                              alt=""
-                              className="w-5 h-5 rounded object-cover flex-shrink-0"
-                            />
-                          ) : (
-                            <Bookmark size={16} className="text-muted-foreground flex-shrink-0" />
-                          )}
-                          <span className="text-sm text-foreground truncate">{displayTitle}</span>
-                          {isPinned && <Pin size={12} className="text-purple-400 flex-shrink-0" />}
-                        </div>
-                      </td>
-                      <td className="py-2 px-4">
-                        <div className="flex flex-wrap gap-1">
-                          {card.collections && card.collections.length > 0 ? (
-                            card.collections.slice(0, 2).map((collection) => (
-                              <span key={collection} className="text-xs text-muted-foreground bg-surface-soft px-2 py-0.5 rounded">
-                                {collection}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-2 px-4">
-                        <span className="text-xs text-muted-foreground">
-                          {card.notes ? card.notes.substring(0, 50) + (card.notes.length > 50 ? "..." : "") : "-"}
-                        </span>
-                      </td>
-                      <td className="py-2 px-4">
-                        <span className="text-xs text-muted-foreground">{formattedDate}</span>
-                      </td>
-                      <td className="py-2 px-4">
-                        <span className="text-xs text-muted-foreground">{kind}</span>
-                      </td>
-                      <td className="py-2 px-4">
-                        <span className="text-xs text-muted-foreground">-</span>
-                      </td>
-                    </tr>
+                      <tr
+                        className={`border-b border-subtle hover:bg-white/5 cursor-pointer transition-colors ${
+                          selected ? "bg-accent/10" : ""
+                        }`}
+                        onClick={(e) => handleCardClick(e, card)}
+                      >
+                        <td className="py-2 px-4">
+                          <div className="flex items-center gap-3">
+                            {isNote ? (
+                              <FileText size={16} className="text-purple-400 flex-shrink-0" />
+                            ) : card.image ? (
+                              <img
+                                src={card.image}
+                                alt=""
+                                className="w-5 h-5 rounded object-cover flex-shrink-0"
+                              />
+                            ) : (
+                              <Bookmark size={16} className="text-muted-foreground flex-shrink-0" />
+                            )}
+                            <span className="text-sm text-foreground truncate">{displayTitle}</span>
+                            {isPinned && <Pin size={12} className="text-purple-400 flex-shrink-0" />}
+                          </div>
+                        </td>
+                        <td className="py-2 px-4">
+                          <div className="flex flex-wrap gap-1">
+                            {card.collections && card.collections.length > 0 ? (
+                              card.collections.slice(0, 2).map((collection) => (
+                                <span key={collection} className="text-xs text-muted-foreground bg-surface-soft px-2 py-0.5 rounded">
+                                  {collection}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-muted-foreground">-</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2 px-4">
+                          <span className="text-xs text-muted-foreground">
+                            {card.notes ? card.notes.substring(0, 50) + (card.notes.length > 50 ? "..." : "") : "-"}
+                          </span>
+                        </td>
+                        <td className="py-2 px-4">
+                          <span className="text-xs text-muted-foreground">{formattedDate}</span>
+                        </td>
+                        <td className="py-2 px-4">
+                          <span className="text-xs text-muted-foreground">{kind}</span>
+                        </td>
+                        <td className="py-2 px-4">
+                          <span className="text-xs text-muted-foreground">-</span>
+                        </td>
+                      </tr>
+                    </CardContextMenuWrapper>
                   );
                 })}
               </tbody>

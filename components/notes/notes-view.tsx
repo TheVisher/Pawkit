@@ -32,6 +32,12 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
   const viewSettings = useViewSettingsStore((state) => state.getSettings("notes"));
   const { sortBy, sortOrder, layout: storedLayout } = viewSettings;
 
+  // Get selected tags from view settings
+  const selectedTags = useMemo(() => {
+    const tags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
+    return tags.filter(tag => cards.some(card => card.tags?.includes(tag)));
+  }, [viewSettings.viewSpecific?.selectedTags, cards]);
+
   // Use hydration-safe layout to prevent SSR mismatches
   const [layout, setLayout] = useState<LayoutMode>("grid");
 
@@ -74,10 +80,19 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [cards, isHydrated]);
 
-  // Sort cards based on view settings
+  // Sort and filter cards based on view settings and selected tags
   const sortedCards = useMemo(() => {
-    return sortCards(cards, sortBy, sortOrder);
-  }, [cards, sortBy, sortOrder]);
+    let filtered = cards;
+
+    // Filter by selected tags
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter((card) =>
+        selectedTags.some((tag) => card.tags?.includes(tag))
+      );
+    }
+
+    return sortCards(filtered, sortBy, sortOrder);
+  }, [cards, sortBy, sortOrder, selectedTags]);
 
   // Get daily notes
   const dailyNotes = useMemo(() => {
@@ -156,7 +171,10 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Notes</h1>
-            <p className="text-sm text-muted-foreground">{sortedCards.length} note(s)</p>
+            <p className="text-sm text-muted-foreground">
+              {sortedCards.length} note(s)
+              {selectedTags.length > 0 && ` · ${selectedTags.length} tag filter(s)`}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
