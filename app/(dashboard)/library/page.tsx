@@ -6,12 +6,14 @@ import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { LibraryView } from "@/components/library/library-view";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 function LibraryPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const updateViewSettings = useViewSettingsStore((state) => state.updateSettings);
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
+  const setContentType = usePanelStore((state) => state.setContentType);
 
   const q = searchParams.get("q") || undefined;
   const collection = searchParams.get("collection") || undefined;
@@ -41,6 +43,11 @@ function LibraryPageContent() {
 
   // Get content type filter from view settings
   const contentTypeFilter = viewSettings.contentTypeFilter;
+
+  // Set the right panel content to show library controls
+  useEffect(() => {
+    setContentType("library-controls");
+  }, [setContentType]);
 
   // Check if tag filter exists in any card, if not clear it
   useEffect(() => {
