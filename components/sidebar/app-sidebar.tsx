@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, HelpCircle, User, Layers, Calendar, CalendarDays, CalendarClock, Flame, Clock, Tag } from "lucide-react";
+import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, HelpCircle, User, Layers, Calendar, CalendarDays, CalendarClock, Flame, Clock, Tag, Lock } from "lucide-react";
 import { type CollectionNode } from "@/lib/types";
 import { ProfileModal } from "@/components/modals/profile-modal";
 import { DogHouseIcon } from "@/components/icons/dog-house";
@@ -288,7 +288,7 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
                               <div className="flex w-full items-center">
                                 <SidebarMenuSubButton asChild isActive={isCollectionActive} className="flex-1">
                                   <Link href={pawkitHref}>
-                                    <FolderOpen className="h-4 w-4" />
+                                    {collection.isPrivate ? <Lock className="h-4 w-4" /> : <FolderOpen className="h-4 w-4" />}
                                     <span>{collection.name}</span>
                                   </Link>
                                 </SidebarMenuSubButton>
@@ -316,6 +316,7 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
                                       <SidebarMenuSubItem key={child.id}>
                                         <SidebarMenuSubButton asChild isActive={pathname === childHref}>
                                           <Link href={childHref}>
+                                            {child.isPrivate ? <Lock className="h-4 w-4" /> : <FolderOpen className="h-4 w-4" />}
                                             <span>{child.name}</span>
                                           </Link>
                                         </SidebarMenuSubButton>

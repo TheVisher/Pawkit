@@ -38,6 +38,7 @@ export type CollectionNode = {
   pinned: boolean;
   deleted: boolean;
   inDen?: boolean;
+  isPrivate?: boolean;
   userId: string;
   createdAt: string;
   updatedAt: string;

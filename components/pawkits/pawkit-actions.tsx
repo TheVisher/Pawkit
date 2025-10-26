@@ -125,7 +125,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
         </button>
 
         {showMenu && (
-          <div className="absolute right-0 mt-2 w-56 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-50">
+          <div className="absolute right-0 top-full mt-2 w-56 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-[9999]">
             <button
               onClick={(e) => {
                 e.stopPropagation();
