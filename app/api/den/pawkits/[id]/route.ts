@@ -3,83 +3,81 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
 import { handleApiError } from "@/lib/utils/api-error";
 
-type RouteContext = {
-  params: Promise<{ id: string }>;
-};
-
-// PATCH /api/den/pawkits/[id] - Update a Den Pawkit
-export async function PATCH(request: NextRequest, context: RouteContext) {
+// DELETE /api/den/pawkits/[id] - Soft delete a Den Pawkit
+export async function DELETE(
+  request: NextRequest,
+  segmentData: { params: Promise<{ id: string }> }
+) {
   try {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = await context.params;
-    const body = await request.json();
-    const { name } = body;
+    const params = await segmentData.params;
+    const { searchParams } = new URL(request.url);
+    const deleteCards = searchParams.get("deleteCards") === "true";
 
-    // Verify ownership and that it's a Den Pawkit
-    const existing = await prisma.collection.findUnique({
-      where: { id }
+    console.log('[DELETE Den Pawkit] ID:', params.id, 'DeleteCards:', deleteCards);
+
+    // Verify the collection exists and belongs to the user
+    const collection = await prisma.collection.findFirst({
+      where: {
+        id: params.id,
+        userId: user.id,
+        inDen: true,
+        deleted: false,
+      },
     });
 
-    if (!existing || existing.userId !== user.id || !existing.inDen) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!collection) {
+      console.log('[DELETE Den Pawkit] Not found');
+      return NextResponse.json(
+        { error: "Den Pawkit not found" },
+        { status: 404 }
+      );
     }
 
-    const updated = await prisma.collection.update({
-      where: { id },
+    console.log('[DELETE Den Pawkit] Found collection:', collection.name);
+
+    // Soft delete the collection
+    await prisma.collection.update({
+      where: { id: params.id },
       data: {
-        ...(name && { name: name.trim() })
+        deleted: true,
+        deletedAt: new Date(),
+      },
+    });
+
+    console.log('[DELETE Den Pawkit] Collection deleted');
+
+    // If deleteCards is true, also soft delete all cards in this collection
+    if (deleteCards && collection.slug) {
+      // Use raw SQL to find cards with this collection slug in the JSON array
+      const cardsToDelete = await prisma.$queryRaw`
+        SELECT id FROM "Card"
+        WHERE "userId" = ${user.id}
+          AND deleted = false
+          AND collections::jsonb ? ${collection.slug}
+      `;
+
+      const cardIds = (cardsToDelete as any[]).map(c => c.id);
+
+      // Soft delete those cards
+      if (cardIds.length > 0) {
+        await prisma.card.updateMany({
+          where: {
+            id: { in: cardIds },
+          },
+          data: {
+            deleted: true,
+            deletedAt: new Date(),
+          },
+        });
       }
-    });
-
-    return NextResponse.json(updated);
-  } catch (error) {
-    return handleApiError(error);
-  }
-}
-
-// DELETE /api/den/pawkits/[id] - Delete a Den Pawkit
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = await context.params;
-    const body = await request.json();
-    const { deleteCards } = body;
-
-    // Verify ownership and that it's a Den Pawkit
-    const existing = await prisma.collection.findUnique({
-      where: { id }
-    });
-
-    if (!existing || existing.userId !== user.id || !existing.inDen) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
-    // Delete the collection
-    await prisma.collection.delete({
-      where: { id }
-    });
-
-    // If deleteCards is true, delete all cards in this collection
-    if (deleteCards) {
-      await prisma.card.deleteMany({
-        where: {
-          userId: user.id,
-          collections: {
-            contains: existing.slug
-          }
-        }
-      });
-    }
-
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     return handleApiError(error);
   }

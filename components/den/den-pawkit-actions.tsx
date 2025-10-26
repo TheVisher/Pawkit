@@ -22,16 +22,26 @@ export function DenPawkitActions({ pawkitId, pawkitName, isPinned = false, hasCh
   const [deleteCards, setDeleteCards] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { updateCollection, deleteCollection } = useDataStore();
+  const { updateCollection } = useDataStore();
 
   const handleDelete = async () => {
     setLoading(true);
     try {
-      // Use data store - updates IndexedDB first, then syncs to server
-      await deleteCollection(pawkitId, deleteCards);
+      // Call Den-specific API endpoint directly
+      const response = await fetch(`/api/den/pawkits/${pawkitId}?deleteCards=${deleteCards}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete Den Pawkit');
+      }
 
       setShowDeleteConfirm(false);
-      // No need to call onUpdate - data store handles refresh
+
+      // Call onUpdate to refresh the Den Pawkits list
+      if (onUpdate) {
+        onUpdate();
+      }
     } catch (err) {
       alert("Failed to delete Den Pawkit");
     } finally {
@@ -48,7 +58,11 @@ export function DenPawkitActions({ pawkitId, pawkitName, isPinned = false, hasCh
       await updateCollection(pawkitId, { name: renameValue.trim() });
 
       setShowRenameModal(false);
-      // No need to call onUpdate - data store handles refresh
+
+      // Call onUpdate to refresh the Den Pawkits list
+      if (onUpdate) {
+        onUpdate();
+      }
     } catch (err) {
       alert("Failed to rename Den Pawkit");
     } finally {

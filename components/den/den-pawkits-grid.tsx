@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useMemo } from "react";
 import { DenPawkitActions } from "./den-pawkit-actions";
+import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 
 type CollectionPreviewCard = {
   id: string;
@@ -22,6 +24,7 @@ type CollectionPreviewCard = {
 type DenPawkitsGridProps = {
   collections: CollectionPreviewCard[];
   allPawkits?: Array<{ id: string; name: string; slug: string }>;
+  onUpdate?: () => void;
 };
 
 const previewPositions = [
@@ -30,8 +33,18 @@ const previewPositions = [
   "bottom-1 left-1/2 -translate-x-1/2 rotate-2"
 ];
 
-export function DenPawkitsGrid({ collections, allPawkits = [] }: DenPawkitsGridProps) {
+export function DenPawkitsGrid({ collections, allPawkits = [], onUpdate }: DenPawkitsGridProps) {
   const router = useRouter();
+
+  // Get pawkit size from view settings for Den view
+  const viewSettings = useViewSettingsStore((state) => state.getSettings("den"));
+  const pawkitSize = viewSettings.cardSize || 50;
+
+  // Calculate minimum pawkit width based on size slider (1-100)
+  // 1 = 250px (smallest), 100 = 600px (largest)
+  const minPawkitWidth = useMemo(() => {
+    return Math.round(250 + ((pawkitSize - 1) / 99) * 350);
+  }, [pawkitSize]);
 
   if (!collections.length) {
     return (
@@ -42,7 +55,12 @@ export function DenPawkitsGrid({ collections, allPawkits = [] }: DenPawkitsGridP
   }
 
   return (
-    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+    <div
+      className="grid gap-6"
+      style={{
+        gridTemplateColumns: `repeat(auto-fill, minmax(${minPawkitWidth}px, 1fr))`
+      }}
+    >
       {collections.map((collection) => (
         <div
           key={collection.id}
@@ -68,6 +86,7 @@ export function DenPawkitsGrid({ collections, allPawkits = [] }: DenPawkitsGridP
                     isPinned={collection.isPinned}
                     hasChildren={collection.hasChildren}
                     allPawkits={allPawkits}
+                    onUpdate={onUpdate}
                   />
                 </div>
               )}
