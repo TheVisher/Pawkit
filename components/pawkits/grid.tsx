@@ -83,7 +83,7 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">{collection.count} item{collection.count === 1 ? "" : "s"}</span>
               {collection.slug && (
-                <div onClick={(e) => e.stopPropagation()}>
+                <div onClick={(e) => e.stopPropagation()} className="relative z-50">
                   <PawkitActions
                     pawkitId={collection.id}
                     pawkitName={collection.name}

@@ -5,7 +5,7 @@ import { CollectionsGrid } from "@/components/pawkits/grid";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
-import { FolderOpen } from "lucide-react";
+import { FolderOpen, Plus } from "lucide-react";
 
 export default function CollectionsPage() {
   const { collections, cards, addCollection } = useDataStore();
@@ -93,7 +93,21 @@ export default function CollectionsPage() {
 
   return (
     <>
-      <div className="space-y-10">
+      <div className="space-y-10 relative">
+        {/* Floating Create Button */}
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="group fixed top-4 right-8 z-10 flex h-10 items-center gap-2 rounded-full bg-accent/10 backdrop-blur-sm transition-all duration-300 hover:bg-accent hover:px-4"
+          title="Create Pawkit"
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center">
+            <Plus className="h-5 w-5 text-accent transition-colors group-hover:text-gray-950" />
+          </div>
+          <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-medium text-accent opacity-0 transition-all duration-300 group-hover:max-w-xs group-hover:opacity-100 group-hover:text-gray-950 group-hover:pr-2">
+            Create Pawkit
+          </span>
+        </button>
+
         {/* Page Header */}
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
