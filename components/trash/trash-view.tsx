@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { localDb } from "@/lib/services/local-storage";
 import { FileText, Folder } from "lucide-react";
+import { ToastContainer, ToastType } from "@/components/ui/toast";
 
 type CardTrashItem = CardDTO & { itemType: "card" };
 type PawkitTrashItem = CollectionDTO & { itemType: "pawkit" };
@@ -22,7 +23,17 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; itemType: "card" | "pawkit"; name: string } | null>(null);
   const [showEmptyConfirm, setShowEmptyConfirm] = useState(false);
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type?: ToastType }>>([]);
   const router = useRouter();
+
+  const showToast = (message: string, type: ToastType = "success") => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   const allItems: TrashItem[] = [
     ...cards.map((card): CardTrashItem => ({ ...card, itemType: "card" as const })),
@@ -48,9 +59,22 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
 
       if (!response.ok) throw new Error("Failed to restore");
 
+      const data = await response.json();
+
+      // Show appropriate toast based on restore context
+      if (type === "pawkit" && data.restoredToRoot) {
+        showToast("Pawkit restored to root level (parent no longer exists)", "info");
+      } else if (type === "pawkit") {
+        showToast("Pawkit restored successfully", "success");
+      } else if (type === "card" && data.restoredToLibrary) {
+        showToast("Card restored to Library (Pawkit no longer exists)", "info");
+      } else if (type === "card") {
+        showToast("Card restored successfully", "success");
+      }
+
       router.refresh();
     } catch (error) {
-      alert(`Failed to restore ${type}`);
+      showToast(`Failed to restore ${type}`, "error");
     } finally {
       setLoading(null);
     }
@@ -307,6 +331,9 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
           </div>
         </div>
       )}
+
+      {/* Toast Container */}
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
     </div>
   );
 }

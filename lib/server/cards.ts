@@ -415,13 +415,51 @@ export async function getTrashCards(userId: string) {
 }
 
 export async function restoreCard(userId: string, id: string) {
-  return prisma.card.update({
+  const card = await prisma.card.findFirst({ where: { id, userId } });
+  if (!card) {
+    throw new Error('Card not found');
+  }
+
+  // Parse collections array
+  const collections: any = card.collections ? JSON.parse(card.collections) : [];
+  const collectionSlugs = Array.isArray(collections) ? collections : [];
+
+  let restoredToLibrary = false;
+  let cleanedCollections = collectionSlugs;
+
+  // If card has collections, check if they still exist
+  if (collectionSlugs.length > 0) {
+    const validCollections = await prisma.collection.findMany({
+      where: {
+        userId,
+        slug: { in: collectionSlugs },
+        deleted: false
+      },
+      select: { slug: true }
+    });
+
+    const validSlugs = validCollections.map((c: { slug: string }) => c.slug);
+    cleanedCollections = collectionSlugs.filter((slug: string) => validSlugs.includes(slug));
+
+    // If all collections were removed, card goes to library
+    if (cleanedCollections.length === 0 && collectionSlugs.length > 0) {
+      restoredToLibrary = true;
+    }
+  }
+
+  const updated = await prisma.card.update({
     where: { id, userId },
     data: {
       deleted: false,
-      deletedAt: null
+      deletedAt: null,
+      collections: JSON.stringify(cleanedCollections)
     }
   });
+
+  return {
+    card: updated,
+    restoredToLibrary
+  };
 }
 
 export async function permanentlyDeleteCard(userId: string, id: string) {

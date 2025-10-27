@@ -542,14 +542,16 @@ export const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
-  deleteCollection: async (id: string, deleteCards = false) => {
+  deleteCollection: async (id: string, deleteCards = false, deleteSubPawkits = false) => {
     try {
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync && !id.startsWith('temp_')) {
         try {
-          const url = deleteCards
-            ? `/api/pawkits/${id}?deleteCards=true`
-            : `/api/pawkits/${id}`;
+          const params = new URLSearchParams();
+          if (deleteCards) params.set('deleteCards', 'true');
+          if (deleteSubPawkits) params.set('deleteSubPawkits', 'true');
+
+          const url = `/api/pawkits/${id}${params.toString() ? `?${params.toString()}` : ''}`;
 
           const response = await fetch(url, {
             method: 'DELETE',
