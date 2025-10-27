@@ -39,6 +39,8 @@ export type CollectionNode = {
   deleted: boolean;
   inDen?: boolean;
   isPrivate?: boolean;
+  hidePreview?: boolean; // Hide card preview tiles on pawkit card
+  useCoverAsBackground?: boolean; // Use cover image as pawkit card background
   userId: string;
   createdAt: string;
   updatedAt: string;

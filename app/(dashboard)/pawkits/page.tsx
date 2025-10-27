@@ -6,6 +6,7 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { FolderOpen, Plus } from "lucide-react";
+import { GlowButton } from "@/components/ui/glow-button";
 
 export default function CollectionsPage() {
   const { collections, cards, addCollection } = useDataStore();
@@ -84,6 +85,9 @@ export default function CollectionsPage() {
         cards: pawkitCards,
         isPinned: root.pinned,
         isPrivate: root.isPrivate,
+        hidePreview: root.hidePreview,
+        useCoverAsBackground: root.useCoverAsBackground,
+        coverImage: root.coverImage,
         hasChildren: root.children && root.children.length > 0
       };
     });
@@ -94,14 +98,16 @@ export default function CollectionsPage() {
   return (
     <>
       {/* Create Pawkit Button - Fixed to top-right */}
-      <button
+      <GlowButton
         onClick={() => setShowCreateModal(true)}
-        className="fixed top-4 right-20 z-10 flex h-10 items-center gap-2 rounded-md bg-accent/10 px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent hover:text-gray-950"
+        variant="primary"
+        size="md"
+        className="fixed top-4 right-20 z-10 flex items-center gap-2"
         title="Create Pawkit"
       >
-        <Plus className="h-5 w-5" />
-        <span>Create Pawkit</span>
-      </button>
+        <Plus size={16} />
+        Create Pawkit
+      </GlowButton>
 
       <div className="space-y-10">
         {/* Page Header */}

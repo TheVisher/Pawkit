@@ -8,6 +8,7 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { Folder, ChevronRight, Image as ImageIcon } from "lucide-react";
+import { GlowButton } from "@/components/ui/glow-button";
 
 function CollectionPageContent() {
   const params = useParams();
@@ -373,25 +374,29 @@ function CollectionPageContent() {
             </div>
 
             {/* Hover Controls */}
-            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-              <button
+            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 bg-black/70 backdrop-blur-md rounded-2xl p-2 shadow-lg">
+              <GlowButton
                 onClick={() => setIsRepositioning(!isRepositioning)}
-                className="px-3 py-1.5 rounded-lg bg-surface/90 backdrop-blur-sm border border-subtle text-xs text-muted-foreground hover:text-foreground hover:bg-surface transition-colors flex items-center gap-2"
+                variant="primary"
+                size="sm"
+                className="flex items-center gap-2"
               >
                 <ImageIcon size={14} />
                 {isRepositioning ? "Done" : "Reposition"}
-              </button>
-              <button
+              </GlowButton>
+              <GlowButton
                 onClick={() => {
                   setCoverImageUrl(currentCollection.coverImage || "");
                   setCoverImagePosition(currentCollection.coverImagePosition || 50);
                   setShowCoverImageModal(true);
                 }}
-                className="px-3 py-1.5 rounded-lg bg-surface/90 backdrop-blur-sm border border-subtle text-xs text-muted-foreground hover:text-foreground hover:bg-surface transition-colors flex items-center gap-2"
+                variant="primary"
+                size="sm"
+                className="flex items-center gap-2"
               >
                 <ImageIcon size={14} />
                 Change Cover
-              </button>
+              </GlowButton>
             </div>
 
             {/* Reposition Overlay - Click and Drag */}
