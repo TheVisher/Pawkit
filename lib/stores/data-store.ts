@@ -108,6 +108,7 @@ type DataStore = {
   updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; isPrivate?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; coverImage?: string | null; coverImagePosition?: number | null }) => Promise<void>;
   deleteCollection: (id: string, deleteCards?: boolean, deleteSubPawkits?: boolean) => Promise<void>;
   refresh: () => Promise<void>;
+  drainQueue: () => Promise<void>;
   exportData: () => Promise<void>;
   importData: (file: File) => Promise<void>;
 };
