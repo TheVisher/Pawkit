@@ -103,6 +103,9 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
         await localDb.permanentlyDeleteCollection(deleteConfirm.id);
       }
 
+      // Wait a bit to ensure server deletion completes before refresh
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       router.refresh();
     } catch (error) {
       alert(`Failed to permanently delete ${deleteConfirm.itemType}`);
@@ -124,6 +127,10 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
 
       // Also empty trash from IndexedDB
       await localDb.emptyTrash();
+
+      // Wait a bit to ensure server deletion completes before refresh
+      // This prevents a race condition where sync pulls data before deletion finishes
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       router.refresh();
     } catch (error) {
