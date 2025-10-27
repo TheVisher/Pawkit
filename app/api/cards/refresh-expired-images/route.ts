@@ -10,6 +10,7 @@ import { getCurrentUser } from '@/lib/auth/get-user';
 import { prisma } from '@/lib/server/prisma';
 import { fetchAndUpdateCardMetadata } from '@/lib/server/cards';
 import { isExpiringImageUrl, isStoredImageUrl } from '@/lib/server/image-storage';
+import type { PrismaCard } from '@/lib/types';
 
 export async function POST() {
   try {
@@ -30,7 +31,7 @@ export async function POST() {
       }
     });
 
-    const cardsToRefresh = cards.filter(card => {
+    const cardsToRefresh = cards.filter((card: PrismaCard) => {
       if (!card.image) return false;
       return isExpiringImageUrl(card.image) && !isStoredImageUrl(card.image);
     });
@@ -39,7 +40,7 @@ export async function POST() {
 
     // Refresh metadata for each card (this will download and store the images)
     const results = await Promise.allSettled(
-      cardsToRefresh.map(async (card) => {
+      cardsToRefresh.map(async (card: PrismaCard) => {
         if (!card.url) return null;
         console.log(`[RefreshExpiredImages] Refreshing card ${card.id}: ${card.title}`);
         return fetchAndUpdateCardMetadata(card.id, card.url);
@@ -54,7 +55,7 @@ export async function POST() {
       total: cardsToRefresh.length,
       successful,
       failed,
-      cards: cardsToRefresh.map(c => ({ id: c.id, title: c.title, url: c.url }))
+      cards: cardsToRefresh.map((c: PrismaCard) => ({ id: c.id, title: c.title, url: c.url }))
     });
 
   } catch (error) {

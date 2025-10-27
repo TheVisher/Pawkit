@@ -11,9 +11,10 @@ export function handleApiError(error: unknown): NextResponse {
     );
   }
 
-  // Prisma errors
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    switch (error.code) {
+  // Prisma errors (check for code property since PrismaClientKnownRequestError may not be available)
+  if (error && typeof error === 'object' && 'code' in error && typeof error.code === 'string') {
+    const prismaError = error as { code: string; message?: string };
+    switch (prismaError.code) {
       case "P2025": // Record not found
         return NextResponse.json(
           { message: "Resource not found" },
@@ -30,11 +31,14 @@ export function handleApiError(error: unknown): NextResponse {
           { status: 400 }
         );
       default:
-        console.error("Prisma error:", error);
-        return NextResponse.json(
-          { message: "Database error" },
-          { status: 500 }
-        );
+        if (prismaError.code.startsWith('P')) {
+          // It's a Prisma error
+          console.error("Prisma error:", error);
+          return NextResponse.json(
+            { message: "Database error" },
+            { status: 500 }
+          );
+        }
     }
   }
 

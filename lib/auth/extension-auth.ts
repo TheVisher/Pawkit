@@ -1,5 +1,5 @@
 import { prisma } from '@/lib/server/prisma'
-import { User } from '@prisma/client'
+import type { PrismaUser } from '@/lib/types'
 import bcrypt from 'bcryptjs'
 
 // Extension tokens expire after 30 days (reduced from 90 for better security)
@@ -11,7 +11,7 @@ const TOKEN_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
  * Note: Tokens are hashed in the database, so we need to check all users
  * and compare hashes (performance consideration for future: add token index)
  */
-export async function getUserByExtensionToken(token: string): Promise<User | null> {
+export async function getUserByExtensionToken(token: string): Promise<PrismaUser | null> {
   if (!token) {
     return null
   }

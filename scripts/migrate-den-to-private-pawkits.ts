@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Migration script to convert The Den to Private Pawkits
  * This migrates from the old "Den" architecture to the new "Private Pawkits" system

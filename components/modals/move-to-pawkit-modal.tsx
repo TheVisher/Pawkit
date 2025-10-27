@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Collection } from "@prisma/client";
+import type { CollectionNode } from "@/lib/types";
 import { GlowButton } from "@/components/ui/glow-button";
 
 export type MoveToPawkitModalProps = {
@@ -11,7 +11,7 @@ export type MoveToPawkitModalProps = {
 };
 
 export function MoveToPawkitModal({ open, onClose, onConfirm }: MoveToPawkitModalProps) {
-  const [pawkits, setPawkits] = useState<Collection[]>([]);
+  const [pawkits, setPawkits] = useState<CollectionNode[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
