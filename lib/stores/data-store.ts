@@ -144,10 +144,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
     try {
       // ALWAYS load from local IndexedDB first
-      const [cards, collections] = await Promise.all([
+      const [allCards, allCollections] = await Promise.all([
         localDb.getAllCards(),
         localDb.getAllCollections(),
       ]);
+
+      // CRITICAL: Filter out deleted items (soft-deleted items go to trash)
+      const cards = allCards.filter(c => !c.deleted);
+      const collections = allCollections.filter(c => !c.deleted);
 
       set({
         cards,
@@ -226,10 +230,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
     set({ isLoading: true });
 
     try {
-      const [cards, collections] = await Promise.all([
+      const [allCards, allCollections] = await Promise.all([
         localDb.getAllCards(),
         localDb.getAllCollections(),
       ]);
+
+      // Filter out deleted items
+      const cards = allCards.filter(c => !c.deleted);
+      const collections = allCollections.filter(c => !c.deleted);
 
       set({ cards, collections, isLoading: false });
 
@@ -498,7 +506,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
       await localDb.saveCollection(newCollection, { localOnly: true });
 
       // Refresh collections from local storage to get proper tree structure
-      const collections = await localDb.getAllCollections();
+      const allCollections = await localDb.getAllCollections();
+      const collections = allCollections.filter(c => !c.deleted);
       set({ collections });
 
       console.log('[DataStore V2] Collection added to local storage:', newCollection.id);
@@ -521,7 +530,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
             await localDb.saveCollection(serverCollection, { fromServer: true });
 
             // Refresh collections to get updated tree structure
-            const collections = await localDb.getAllCollections();
+            const allCollections = await localDb.getAllCollections();
+            const collections = allCollections.filter(c => !c.deleted);
             set({ collections });
 
             console.log('[DataStore V2] Collection synced to server:', serverCollection.id);
@@ -553,7 +563,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
         // STEP 2: Update Zustand state immediately (UI updates instantly)
         const allCollections = await localDb.getAllCollections();
-        set({ collections: allCollections });
+        const activeCollections = allCollections.filter(c => !c.deleted);
+        set({ collections: activeCollections });
 
         console.log('[DataStore V2] Collection updated locally:', id);
       }
@@ -636,8 +647,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
         }
 
         // STEP 2: Update Zustand state immediately (UI updates instantly)
+        // CRITICAL: Filter out deleted collections from Zustand state
         const allCollections = await localDb.getAllCollections();
-        set({ collections: allCollections });
+        const activeCollections = allCollections.filter(c => !c.deleted);
+        set({ collections: activeCollections });
 
         console.log('[DataStore V2] Collection(s) deleted locally:', collectionsToDelete);
       }
