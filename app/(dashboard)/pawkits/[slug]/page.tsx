@@ -90,7 +90,7 @@ function CollectionPageContent() {
 
   // Filter cards for this specific collection
   const items = useMemo(() => {
-    let filtered = cards.filter(card => card.collections?.includes(slug));
+    let filtered = cards.filter(card => card.collections?.includes(slug) && !card.deleted);
 
     if (q) {
       const query = q.toLowerCase();
@@ -182,7 +182,7 @@ function CollectionPageContent() {
     }
 
     return currentCollection.children.map((child: any) => {
-      const pawkitCards = cards.filter(card => card.collections.includes(child.slug));
+      const pawkitCards = cards.filter(card => card.collections.includes(child.slug) && !card.deleted);
 
       return {
         id: child.id,

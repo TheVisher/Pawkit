@@ -99,8 +99,9 @@ function LibraryPageContent() {
 
     let filtered = cards;
 
-    // Exclude cards in The Den or in private collections
+    // Exclude deleted cards, cards in The Den, or in private collections
     filtered = filtered.filter(card => {
+      if (card.deleted) return false;
       if (card.inDen) return false;
       const isInPrivateCollection = card.collections?.some(collectionId =>
         privateCollectionIds.has(collectionId)
