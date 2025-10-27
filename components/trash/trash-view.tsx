@@ -5,7 +5,7 @@ import { CardDTO } from "@/lib/server/cards";
 import { CollectionDTO } from "@/lib/server/collections";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import { localStorage } from "@/lib/services/local-storage";
+import { localDb } from "@/lib/services/local-storage";
 import { FileText, Folder } from "lucide-react";
 
 type CardTrashItem = CardDTO & { itemType: "card" };
@@ -74,9 +74,9 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
 
       // Also delete from IndexedDB
       if (deleteConfirm.itemType === "card") {
-        await localStorage.permanentlyDeleteCard(deleteConfirm.id);
+        await localDb.permanentlyDeleteCard(deleteConfirm.id);
       } else {
-        await localStorage.permanentlyDeleteCollection(deleteConfirm.id);
+        await localDb.permanentlyDeleteCollection(deleteConfirm.id);
       }
 
       router.refresh();
@@ -99,7 +99,7 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
       if (!response.ok) throw new Error("Failed to empty trash");
 
       // Also empty trash from IndexedDB
-      await localStorage.emptyTrash();
+      await localDb.emptyTrash();
 
       router.refresh();
     } catch (error) {

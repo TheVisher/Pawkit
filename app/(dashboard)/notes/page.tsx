@@ -19,11 +19,37 @@ function NotesPageContent() {
     setContentType("notes-controls");
   }, [setContentType]);
 
-  // Filter to only notes (md-note or text-note) and exclude Den cards
+  // Filter to only notes (md-note or text-note) and exclude Den cards and private pawkit cards
   const allNotes = useMemo(() => {
-    let notes = cards.filter(c =>
-      (c.type === 'md-note' || c.type === 'text-note') && !c.inDen
-    );
+    // Build a set of private collection IDs for fast lookup
+    const privateCollectionIds = new Set<string>();
+    const getAllCollectionIds = (nodes: any[]): void => {
+      for (const node of nodes) {
+        if (node.isPrivate) {
+          privateCollectionIds.add(node.id);
+        }
+        if (node.children && node.children.length > 0) {
+          getAllCollectionIds(node.children);
+        }
+      }
+    };
+    getAllCollectionIds(collections);
+
+    let notes = cards.filter(c => {
+      // Must be a note type
+      if (c.type !== 'md-note' && c.type !== 'text-note') return false;
+
+      // Exclude Den cards
+      if (c.inDen) return false;
+
+      // Exclude cards in private collections
+      const isInPrivateCollection = c.collections?.some(collectionId =>
+        privateCollectionIds.has(collectionId)
+      );
+      if (isInPrivateCollection) return false;
+
+      return true;
+    });
 
     // Apply search filter if present
     if (q) {
@@ -37,7 +63,7 @@ function NotesPageContent() {
 
     // Sort by creation date
     return notes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  }, [cards, q]);
+  }, [cards, collections, q]);
 
   return (
     <NotesView

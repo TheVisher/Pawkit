@@ -670,5 +670,5 @@ class LocalStorage {
   }
 }
 
-// Export singleton instance
-export const localStorage = new LocalStorage();
+// Export singleton instance (renamed from localStorage to avoid confusion with browser's localStorage)
+export const localDb = new LocalStorage();

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { CardDTO } from '@/lib/server/cards';
 import { CollectionNode } from '@/lib/types';
-import { localStorage } from '@/lib/services/local-storage';
+import { localDb } from '@/lib/services/local-storage';
 import { syncService } from '@/lib/services/sync-service';
 import { syncQueue } from '@/lib/services/sync-queue';
 import { useConflictStore } from '@/lib/stores/conflict-store';
@@ -42,7 +42,7 @@ async function extractAndSaveLinks(sourceId: string, content: string, allCards: 
   console.log('[extractAndSaveLinks] Found matches:', matches.map(m => m[1]));
 
   // Get existing links to avoid duplicates
-  const existingLinks = await localStorage.getNoteLinks(sourceId);
+  const existingLinks = await localDb.getNoteLinks(sourceId);
   const existingTargets = new Set(existingLinks.map(l => l.targetNoteId));
 
   console.log('[extractAndSaveLinks] Existing links:', existingLinks.length);
@@ -69,7 +69,7 @@ async function extractAndSaveLinks(sourceId: string, content: string, allCards: 
 
       // Only add link if it doesn't exist yet
       if (!existingTargets.has(targetNote.id)) {
-        await localStorage.addNoteLink(sourceId, targetNote.id, linkText);
+        await localDb.addNoteLink(sourceId, targetNote.id, linkText);
         console.log('[DataStore V2] Created link:', sourceId, '->', targetNote.id);
       } else {
         console.log('[extractAndSaveLinks] Link already exists:', sourceId, '->', targetNote.id);
@@ -80,7 +80,7 @@ async function extractAndSaveLinks(sourceId: string, content: string, allCards: 
   // Remove links that no longer exist in content
   for (const existingLink of existingLinks) {
     if (!foundTargetIds.has(existingLink.targetNoteId)) {
-      await localStorage.deleteNoteLink(existingLink.id);
+      await localDb.deleteNoteLink(existingLink.id);
       console.log('[DataStore V2] Removed link:', existingLink.id);
     }
   }
@@ -134,8 +134,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
     try {
       // ALWAYS load from local IndexedDB first
       const [cards, collections] = await Promise.all([
-        localStorage.getAllCards(),
-        localStorage.getAllCollections(),
+        localDb.getAllCards(),
+        localDb.getAllCollections(),
       ]);
 
       set({
@@ -190,8 +190,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
       if (result.success) {
         // Reload from local storage (which now has merged data)
         const [cards, collections] = await Promise.all([
-          localStorage.getAllCards(),
-          localStorage.getAllCollections(),
+          localDb.getAllCards(),
+          localDb.getAllCollections(),
         ]);
 
         set({ cards, collections });
@@ -216,8 +216,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
     try {
       const [cards, collections] = await Promise.all([
-        localStorage.getAllCards(),
-        localStorage.getAllCollections(),
+        localDb.getAllCards(),
+        localDb.getAllCollections(),
       ]);
 
       set({ cards, collections, isLoading: false });
@@ -267,7 +267,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
     try {
       // STEP 1: Save to local storage FIRST (source of truth)
-      await localStorage.saveCard(newCard, { localOnly: true });
+      await localDb.saveCard(newCard, { localOnly: true });
 
       // STEP 2: Update Zustand for instant UI
       set((state) => ({
@@ -299,12 +299,12 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
             // Update link references if this was a temp card
             if (tempId.startsWith('temp_')) {
-              await localStorage.updateLinkReferences(tempId, serverCard.id);
+              await localDb.updateLinkReferences(tempId, serverCard.id);
             }
 
             // Replace temp card with server card
-            await localStorage.deleteCard(tempId);
-            await localStorage.saveCard(serverCard, { fromServer: true });
+            await localDb.deleteCard(tempId);
+            await localDb.saveCard(serverCard, { fromServer: true });
 
             set((state) => ({
               cards: state.cards.map(c => c.id === tempId ? serverCard : c),
@@ -322,7 +322,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
                 const updatedCardRes = await fetch(`/api/cards/${serverCard.id}`);
                 if (updatedCardRes.ok) {
                   const updatedCard = await updatedCardRes.json();
-                  await localStorage.saveCard(updatedCard, { fromServer: true });
+                  await localDb.saveCard(updatedCard, { fromServer: true });
                   set((state) => ({
                     cards: state.cards.map(c => c.id === serverCard.id ? updatedCard : c),
                   }));
@@ -358,7 +358,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
     try {
       // STEP 1: Save to local storage FIRST
-      await localStorage.saveCard(updatedCard, { localOnly: true });
+      await localDb.saveCard(updatedCard, { localOnly: true });
 
       // STEP 1.5: Extract and save wiki-links if this is a note
       console.log('[DataStore V2] Checking extraction condition:', {
@@ -409,7 +409,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
             // Keep local version but mark it for manual resolution
           } else if (response.ok) {
             const serverCard = await response.json();
-            await localStorage.saveCard(serverCard, { fromServer: true });
+            await localDb.saveCard(serverCard, { fromServer: true });
             set((state) => ({
               cards: state.cards.map(c => c.id === id ? serverCard : c),
             }));
@@ -432,10 +432,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
   deleteCard: async (id: string) => {
     try {
       // STEP 0: Delete all note links for this card
-      await localStorage.deleteAllLinksForNote(id);
+      await localDb.deleteAllLinksForNote(id);
 
       // STEP 1: Remove from local storage
-      await localStorage.deleteCard(id);
+      await localDb.deleteCard(id);
 
       // STEP 2: Update Zustand for instant UI
       set((state) => ({
@@ -484,10 +484,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
     };
 
     try {
-      await localStorage.saveCollection(newCollection, { localOnly: true });
+      await localDb.saveCollection(newCollection, { localOnly: true });
 
       // Refresh collections from local storage to get proper tree structure
-      const collections = await localStorage.getAllCollections();
+      const collections = await localDb.getAllCollections();
       set({ collections });
 
       console.log('[DataStore V2] Collection added to local storage:', newCollection.id);
@@ -583,7 +583,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
    */
   exportData: async () => {
     try {
-      const data = await localStorage.exportAllData();
+      const data = await localDb.exportAllData();
 
       const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: 'application/json',
@@ -613,7 +613,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const text = await file.text();
       const data = JSON.parse(text);
 
-      await localStorage.importData(data);
+      await localDb.importData(data);
 
       // Refresh UI from local storage
       await get().refresh();

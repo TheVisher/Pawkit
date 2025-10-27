@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, HelpCircle, User, Layers, Calendar, CalendarDays, CalendarClock, Flame, Clock, Tag, Lock } from "lucide-react";
 import { type CollectionNode } from "@/lib/types";
@@ -211,7 +212,7 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
             <SidebarMenuButton size="lg" asChild>
               <Link href={isDemo ? "/demo/home" : "/home"}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <img src="/logo.png" alt="Pawkit" className="w-8 h-8" />
+                  <Image src="/logo.png" alt="Pawkit" width={32} height={32} className="w-8 h-8" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Pawkit</span>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { localStorage } from '@/lib/services/local-storage';
+import { localDb } from '@/lib/services/local-storage';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 
@@ -26,15 +26,15 @@ export default function TestLocalStoragePage() {
   useEffect(() => {
     const init = async () => {
       try {
-        await localStorage.init();
+        await localDb.init();
         setInitialized(true);
         addLog('✅ Local storage initialized');
 
-        const s = await localStorage.getStats();
+        const s = await localDb.getStats();
         setStats(s);
         addLog(`📊 Stats loaded: ${JSON.stringify(s)}`);
 
-        const c = await localStorage.getAllCards();
+        const c = await localDb.getAllCards();
         setCards(c);
         addLog(`📦 Loaded ${c.length} cards`);
       } catch (error) {
@@ -73,14 +73,14 @@ export default function TestLocalStoragePage() {
         scheduledDate: null,
       };
 
-      await localStorage.saveCard(testCard, { localOnly: true });
+      await localDb.saveCard(testCard, { localOnly: true });
       addLog(`✅ Card saved: ${testCard.id}`);
 
       // Refresh data
-      const c = await localStorage.getAllCards();
+      const c = await localDb.getAllCards();
       setCards(c);
 
-      const s = await localStorage.getStats();
+      const s = await localDb.getStats();
       setStats(s);
 
       addLog(`📦 Total cards: ${c.length}`);
@@ -91,13 +91,13 @@ export default function TestLocalStoragePage() {
 
   const handleDeleteAll = async () => {
     try {
-      const allCards = await localStorage.getAllCards();
+      const allCards = await localDb.getAllCards();
       for (const card of allCards) {
-        await localStorage.deleteCard(card.id);
+        await localDb.deleteCard(card.id);
       }
 
       setCards([]);
-      const s = await localStorage.getStats();
+      const s = await localDb.getStats();
       setStats(s);
 
       addLog(`🗑️ Deleted all ${allCards.length} cards`);
@@ -108,7 +108,7 @@ export default function TestLocalStoragePage() {
 
   const handleExport = async () => {
     try {
-      const data = await localStorage.exportAllData();
+      const data = await localDb.exportAllData();
 
       const blob = new Blob([JSON.stringify(data, null, 2)], {
         type: 'application/json',
@@ -131,10 +131,10 @@ export default function TestLocalStoragePage() {
 
   const handleRefresh = async () => {
     try {
-      const c = await localStorage.getAllCards();
+      const c = await localDb.getAllCards();
       setCards(c);
 
-      const s = await localStorage.getStats();
+      const s = await localDb.getStats();
       setStats(s);
 
       addLog(`🔄 Refreshed: ${c.length} cards`);
@@ -155,13 +155,13 @@ export default function TestLocalStoragePage() {
 
       addLog(`📥 Importing ${data.cards?.length || 0} cards...`);
 
-      await localStorage.importData(data);
+      await localDb.importData(data);
 
       // Refresh UI
-      const c = await localStorage.getAllCards();
+      const c = await localDb.getAllCards();
       setCards(c);
 
-      const s = await localStorage.getStats();
+      const s = await localDb.getStats();
       setStats(s);
 
       addLog(`✅ Imported ${data.cards?.length || 0} cards successfully!`);

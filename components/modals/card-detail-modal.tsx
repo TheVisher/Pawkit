@@ -9,7 +9,7 @@ import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore, extractAndSaveLinks } from "@/lib/stores/data-store";
-import { localStorage } from "@/lib/services/local-storage";
+import { localDb } from "@/lib/services/local-storage";
 import { Toast } from "@/components/ui/toast";
 import { ReaderView } from "@/components/reader/reader-view";
 import { RichMDEditor } from "@/components/notes/md-editor";

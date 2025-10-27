@@ -1,5 +1,20 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**', // Allow all HTTPS domains for user-generated content
+      },
+      {
+        protocol: 'http',
+        hostname: '**', // Allow HTTP only in development
+      },
+    ],
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+  },
   experimental: {
     optimizePackageImports: [
       "@dnd-kit/core",
@@ -12,14 +27,9 @@ const nextConfig = {
   },
 
   // Turbopack configuration (moved from experimental.turbo)
-  turbopack: {
-    rules: {
-      '*.svg': {
-        loaders: ['@svgr/webpack'],
-        as: '*.js',
-      },
-    },
-  },
+  // Note: SVGR webpack loader is not supported in Turbopack
+  // SVGs can be imported as URLs directly in Turbopack
+  turbopack: {},
 
   // Development optimizations
   ...(process.env.NODE_ENV === 'development' && {
@@ -60,10 +70,10 @@ const nextConfig = {
               // Script sources - stricter in production
               isDev
                 ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://vercel.live"
-                : "script-src 'self' 'unsafe-inline' blob:",
+                : "script-src 'self' blob:",
               isDev
                 ? "script-src-elem 'self' 'unsafe-inline' blob: https://vercel.live"
-                : "script-src-elem 'self' 'unsafe-inline' blob:",
+                : "script-src-elem 'self' blob:",
               // Styles
               "style-src 'self' 'unsafe-inline' blob:",
               "style-src-elem 'self' 'unsafe-inline'",
@@ -76,7 +86,7 @@ const nextConfig = {
               // API connections - stricter in production
               isDev
                 ? "connect-src 'self' https: http: blob: data: wss: ws: https://vercel.live wss://ws-us3.pusher.com"
-                : "connect-src 'self' https: blob: data: wss: ws: wss://ws-us3.pusher.com",
+                : "connect-src 'self' https: blob: data: wss: wss://ws-us3.pusher.com",
               // Frames for embeds
               isDev
                 ? "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://vercel.live"
@@ -112,14 +122,6 @@ const nextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'strict-origin-when-cross-origin'
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block'
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()'
           },
           {
             key: 'Strict-Transport-Security',

@@ -31,6 +31,7 @@ function CollectionPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dragPositionRef = useRef(50); // Store live drag position
   
   const { setPawkitActions } = usePawkitActions();
 
@@ -148,16 +149,36 @@ function CollectionPageContent() {
     return trail;
   }, [collections, slug, currentCollection]);
 
+  // Initialize cover image position from collection data (after currentCollection is defined)
+  useEffect(() => {
+    if (currentCollection) {
+      const position = currentCollection.coverImagePosition || 50;
+      setCoverImagePosition(position);
+      dragPositionRef.current = position;
+    }
+  }, [currentCollection]);
+
   if (!currentCollection) {
     return <div>Collection not found</div>;
   }
 
-  // Flatten all pawkits for the move modal (only root-level pawkits)
-  const allPawkits = collections.map((node) => ({
-    id: node.id,
-    name: node.name,
-    slug: node.slug,
-  }));
+  // Flatten all pawkits for the move modal (including sub-pawkits)
+  const flattenPawkits = (nodes: any[], prefix = ""): Array<{ id: string; name: string; slug: string }> => {
+    const result: Array<{ id: string; name: string; slug: string }> = [];
+    for (const node of nodes) {
+      result.push({
+        id: node.id,
+        name: prefix ? `${prefix} / ${node.name}` : node.name,
+        slug: node.slug,
+      });
+      if (node.children && node.children.length > 0) {
+        result.push(...flattenPawkits(node.children, prefix ? `${prefix} / ${node.name}` : node.name));
+      }
+    }
+    return result;
+  };
+
+  const allPawkits = flattenPawkits(collections);
 
   const handleLayoutChange = (newLayout: LayoutMode) => {
     localStorage.setItem(`pawkit-${slug}-layout`, newLayout);
@@ -413,6 +434,7 @@ function CollectionPageContent() {
                       // Calculate position based on mouse Y relative to container
                       const relativeY = moveEvent.clientY - container.top;
                       const newPosition = Math.max(0, Math.min(100, (relativeY / container.height) * 100));
+                      dragPositionRef.current = newPosition; // Update ref with live position
                       setCoverImagePosition(newPosition);
                     };
 
@@ -420,13 +442,13 @@ function CollectionPageContent() {
                       document.removeEventListener('mousemove', handleMouseMove);
                       document.removeEventListener('mouseup', handleMouseUp);
 
-                      // Save the position
+                      // Save the position using the ref value (not stale closure)
                       setLoading(true);
                       try {
                         const response = await fetch(`/api/pawkits/${currentCollection.id}`, {
                           method: "PATCH",
                           headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ coverImagePosition: Math.round(coverImagePosition) }),
+                          body: JSON.stringify({ coverImagePosition: Math.round(dragPositionRef.current) }),
                         });
                         if (!response.ok) {
                           const errorData = await response.json();

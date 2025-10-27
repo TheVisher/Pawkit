@@ -62,21 +62,50 @@ export default function HomePage() {
     fetchProfile();
   }, []);
 
+  // Build private collection IDs helper
+  const privateCollectionIds = useMemo(() => {
+    const ids = new Set<string>();
+    const getAllCollectionIds = (nodes: any[]): void => {
+      for (const node of nodes) {
+        if (node.isPrivate) {
+          ids.add(node.id);
+        }
+        if (node.children && node.children.length > 0) {
+          getAllCollectionIds(node.children);
+        }
+      }
+    };
+    getAllCollectionIds(collections);
+    return ids;
+  }, [collections]);
+
   // Compute views from the single source of truth
   const recent = useMemo(() => {
     if (!cards || !Array.isArray(cards)) return [];
     return cards
-      .filter(c => !c.inDen) // Exclude Den cards
+      .filter(c => {
+        if (c.inDen) return false;
+        const isInPrivateCollection = c.collections?.some(collectionId =>
+          privateCollectionIds.has(collectionId)
+        );
+        return !isInPrivateCollection;
+      })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, 15); // Increased from 5 to 15
-  }, [cards]);
+  }, [cards, privateCollectionIds]);
 
   const quickAccess = useMemo(() => {
     if (!cards || !Array.isArray(cards)) return [];
     return cards
-      .filter(c => c.pinned && !c.inDen) // Exclude Den cards
+      .filter(c => {
+        if (!c.pinned || c.inDen) return false;
+        const isInPrivateCollection = c.collections?.some(collectionId =>
+          privateCollectionIds.has(collectionId)
+        );
+        return !isInPrivateCollection;
+      })
       .slice(0, 8);
-  }, [cards]);
+  }, [cards, privateCollectionIds]);
 
   // Get pinned pawkits from collections (flatten tree and filter)
   const pinnedPawkits = useMemo(() => {

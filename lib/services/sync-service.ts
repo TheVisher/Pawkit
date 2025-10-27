@@ -1,4 +1,4 @@
-import { localStorage } from './local-storage';
+import { localDb } from './local-storage';
 import { syncQueue } from './sync-queue';
 import { CardDTO } from '@/lib/server/cards';
 import { CollectionNode } from '@/lib/types';
@@ -76,7 +76,7 @@ class SyncService {
       console.log('[SyncService] Processing', pendingOps.length, 'queued operations');
 
       // Update last sync time
-      await localStorage.setLastSyncTime(Date.now());
+      await localDb.setLastSyncTime(Date.now());
 
       console.log('[SyncService] Sync complete:', result);
     } catch (error) {
@@ -131,8 +131,8 @@ class SyncService {
       });
 
       // Get local data
-      const localCards = await localStorage.getAllCards();
-      const localCollections = await localStorage.getAllCollections();
+      const localCards = await localDb.getAllCards();
+      const localCollections = await localDb.getAllCollections();
 
       // Merge cards
       const cardConflicts = await this.mergeCards(serverCards, localCards);
@@ -169,7 +169,7 @@ class SyncService {
 
       if (!localCard) {
         // New card from server - add it
-        await localStorage.saveCard(serverCard, { fromServer: true });
+        await localDb.saveCard(serverCard, { fromServer: true });
       } else {
         // Card exists locally - check for conflicts
         const serverTime = new Date(serverCard.updatedAt).getTime();
@@ -178,14 +178,14 @@ class SyncService {
         if (serverTime > localTime) {
           // Server is newer - use server version
           console.log('[SyncService] Server version newer for card:', serverCard.id);
-          await localStorage.saveCard(serverCard, { fromServer: true });
+          await localDb.saveCard(serverCard, { fromServer: true });
         } else if (localTime > serverTime) {
           // Local is newer - keep local (will be pushed to server)
           console.log('[SyncService] Local version newer for card:', localCard.id);
           conflicts++;
         } else {
           // Same timestamp - update server version marker
-          await localStorage.saveCard(serverCard, { fromServer: true });
+          await localDb.saveCard(serverCard, { fromServer: true });
         }
       }
     }
@@ -241,18 +241,18 @@ class SyncService {
       const localCollection = localMap.get(serverCollection.id);
 
       if (!localCollection) {
-        await localStorage.saveCollection(serverCollection, { fromServer: true });
+        await localDb.saveCollection(serverCollection, { fromServer: true });
       } else {
         const serverTime = new Date(serverCollection.updatedAt).getTime();
         const localTime = new Date(localCollection.updatedAt).getTime();
 
         if (serverTime > localTime) {
-          await localStorage.saveCollection(serverCollection, { fromServer: true });
+          await localDb.saveCollection(serverCollection, { fromServer: true });
         } else if (localTime > serverTime) {
           console.log('[SyncService] Local version newer for collection:', localCollection.id);
           conflicts++;
         } else {
-          await localStorage.saveCollection(serverCollection, { fromServer: true });
+          await localDb.saveCollection(serverCollection, { fromServer: true });
         }
       }
     }
@@ -273,7 +273,7 @@ class SyncService {
     };
 
     try {
-      const modifiedCards = await localStorage.getModifiedCards();
+      const modifiedCards = await localDb.getModifiedCards();
       console.log('[SyncService] Pushing', modifiedCards.length, 'modified cards to server');
 
       for (const card of modifiedCards) {
@@ -292,8 +292,8 @@ class SyncService {
             if (response.ok) {
               const serverCard = await response.json();
               // Replace temp card with server card
-              await localStorage.deleteCard(card.id);
-              await localStorage.saveCard(serverCard, { fromServer: true });
+              await localDb.deleteCard(card.id);
+              await localDb.saveCard(serverCard, { fromServer: true });
               result.pushed.cards++;
             } else {
               result.errors.push(`Failed to create card: ${card.id}`);
@@ -308,7 +308,7 @@ class SyncService {
 
             if (response.ok) {
               const serverCard = await response.json();
-              await localStorage.markCardSynced(card.id, serverCard.updatedAt);
+              await localDb.markCardSynced(card.id, serverCard.updatedAt);
               result.pushed.cards++;
             } else if (response.status === 404) {
               // Card doesn't exist on server - create it
@@ -320,7 +320,7 @@ class SyncService {
 
               if (createResponse.ok) {
                 const serverCard = await createResponse.json();
-                await localStorage.markCardSynced(card.id, serverCard.updatedAt);
+                await localDb.markCardSynced(card.id, serverCard.updatedAt);
                 result.pushed.cards++;
               } else {
                 result.errors.push(`Failed to create card: ${card.id}`);
@@ -350,7 +350,7 @@ class SyncService {
     pendingChanges: number;
     isSyncing: boolean;
   }> {
-    const stats = await localStorage.getStats();
+    const stats = await localDb.getStats();
     return {
       lastSync: stats.lastSync,
       pendingChanges: stats.modifiedCards,
