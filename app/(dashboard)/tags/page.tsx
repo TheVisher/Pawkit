@@ -19,7 +19,7 @@ interface TagInfo {
 }
 
 export default function TagsPage() {
-  const { cards } = useDataStore();
+  const { cards, collections } = useDataStore();
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<TagInfo | null>(null);
@@ -30,10 +30,32 @@ export default function TagsPage() {
   const { toasts, dismissToast, success, error } = useToast();
 
   useEffect(() => {
-    // Extract all tags from cards and count usage
+    // Build a set of private collection IDs for fast lookup
+    const privateCollectionIds = new Set<string>();
+    const getAllCollectionIds = (nodes: any[]): void => {
+      for (const node of nodes) {
+        if (node.isPrivate) {
+          privateCollectionIds.add(node.id);
+        }
+        if (node.children && node.children.length > 0) {
+          getAllCollectionIds(node.children);
+        }
+      }
+    };
+    getAllCollectionIds(collections);
+
+    // Extract all tags from cards and count usage (excluding private cards)
     const tagMap = new Map<string, CardModel[]>();
 
     cards.forEach((card) => {
+      // Skip cards that are in private collections or marked as inDen (deprecated but still check)
+      const isInPrivateCollection = card.collections?.some(collectionId =>
+        privateCollectionIds.has(collectionId)
+      );
+      if (card.inDen || isInPrivateCollection) {
+        return; // Skip this card
+      }
+
       if (card.tags && card.tags.length > 0) {
         card.tags.forEach((tag) => {
           if (!tagMap.has(tag)) {
@@ -53,7 +75,7 @@ export default function TagsPage() {
       .sort((a, b) => b.count - a.count);
 
     setTags(tagInfos);
-  }, [cards]);
+  }, [cards, collections]);
 
   const filteredTags = tags.filter((tag) =>
     tag.name.toLowerCase().includes(searchQuery.toLowerCase())

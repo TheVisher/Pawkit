@@ -60,6 +60,8 @@ export const GlassModal = React.forwardRef<HTMLDivElement, GlassModalProps>(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
           <div
             ref={ref}
+            role="dialog"
+            aria-modal="true"
             onClick={(e) => e.stopPropagation()}
             className={cn(
               "w-full rounded-3xl border border-white/10 bg-white/5 p-6 shadow-lg backdrop-blur-lg transition-all duration-200 pointer-events-auto",

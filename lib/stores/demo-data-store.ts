@@ -14,7 +14,7 @@ type DemoDataStore = {
   updateCard: (id: string, updates: Partial<CardDTO>) => void;
   deleteCard: (id: string) => void;
   addCollection: (collectionData: { name: string; parentId?: string | null }) => void;
-  updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean }) => void;
+  updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; isPrivate?: boolean }) => void;
   deleteCollection: (id: string) => void;
   reset: () => void;
 };
@@ -645,7 +645,7 @@ export const useDemoDataStore = create<DemoDataStore>()(
         }));
       },
 
-      updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean }) => {
+      updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; isPrivate?: boolean }) => {
         set((state) => ({
           collections: state.collections.map((c) => (c.id === id ? { ...c, ...updates } : c)),
         }));

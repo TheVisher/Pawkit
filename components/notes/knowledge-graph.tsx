@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useDataStore } from "@/lib/stores/data-store";
 import { CardModel } from "@/lib/types";
-import { localStorage } from "@/lib/services/local-storage";
+import { localDb } from "@/lib/services/local-storage";
 import { FileText, Bookmark, Globe, Tag, Network, ZoomIn, ZoomOut, RotateCcw, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -93,8 +93,8 @@ export function KnowledgeGraph({ onSelectCard, className = "" }: KnowledgeGraphP
           // Get links for this note
           try {
             const [noteLinks, cardLinks] = await Promise.all([
-              localStorage.getNoteLinks(note.id),
-              localStorage.getNoteCardLinks(note.id)
+              localDb.getNoteLinks(note.id),
+              localDb.getNoteCardLinks(note.id)
             ]);
 
             // Add links to other notes
