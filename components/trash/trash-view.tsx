@@ -332,8 +332,8 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
         </div>
       )}
 
-      {/* Toast Container */}
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      {/* Toast Container - only render on client */}
+      {toasts.length > 0 && <ToastContainer toasts={toasts} onDismiss={dismissToast} />}
     </div>
   );
 }
