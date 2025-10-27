@@ -514,8 +514,17 @@ export const useDataStore = create<DataStore>((set, get) => ({
           });
 
           if (response.ok) {
-            await get().sync();
-            console.log('[DataStore V2] Collection synced to server');
+            const serverCollection = await response.json();
+
+            // Replace temp collection with server collection
+            await localDb.deleteCollection(tempId);
+            await localDb.saveCollection(serverCollection, { fromServer: true });
+
+            // Refresh collections to get updated tree structure
+            const collections = await localDb.getAllCollections();
+            set({ collections });
+
+            console.log('[DataStore V2] Collection synced to server:', serverCollection.id);
           }
         } catch (error) {
           console.error('[DataStore V2] Failed to sync collection:', error);
