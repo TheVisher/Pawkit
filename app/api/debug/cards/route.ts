@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
-import type { PrismaCard } from "@/lib/types";
+
+type DebugCard = {
+  id: string;
+  title: string | null;
+  inDen: boolean;
+  deleted: boolean;
+  url: string;
+};
 
 export async function GET() {
   try {
@@ -11,7 +18,7 @@ export async function GET() {
     }
 
     // Get ALL cards including Den items
-    const allCards = await prisma.card.findMany({
+    const allCards: DebugCard[] = await prisma.card.findMany({
       where: {
         userId: user.id,
         deleted: false
@@ -27,10 +34,10 @@ export async function GET() {
         updatedAt: "desc"
       },
       take: 20
-    });
+    }) as any;
 
-    const denCards = allCards.filter((c: PrismaCard) => c.inDen);
-    const regularCards = allCards.filter((c: PrismaCard) => !c.inDen);
+    const denCards = allCards.filter((c: DebugCard) => c.inDen);
+    const regularCards = allCards.filter((c: DebugCard) => !c.inDen);
 
     return NextResponse.json({
       total: allCards.length,
