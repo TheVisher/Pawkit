@@ -10,8 +10,14 @@ export type MoveToPawkitModalProps = {
   onConfirm: (slug: string) => void;
 };
 
+type FlatPawkit = {
+  id: string;
+  name: string;
+  slug: string;
+};
+
 export function MoveToPawkitModal({ open, onClose, onConfirm }: MoveToPawkitModalProps) {
-  const [pawkits, setPawkits] = useState<CollectionNode[]>([]);
+  const [pawkits, setPawkits] = useState<FlatPawkit[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,13 +42,32 @@ export function MoveToPawkitModal({ open, onClose, onConfirm }: MoveToPawkitModa
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
+  // Flatten collections tree with hierarchical names
+  const flattenPawkits = (nodes: CollectionNode[], prefix = ""): FlatPawkit[] => {
+    const result: FlatPawkit[] = [];
+    for (const node of nodes) {
+      const hierarchicalName = prefix ? `${prefix} / ${node.name}` : node.name;
+      result.push({
+        id: node.id,
+        name: hierarchicalName,
+        slug: node.slug,
+      });
+      if (node.children && node.children.length > 0) {
+        result.push(...flattenPawkits(node.children, hierarchicalName));
+      }
+    }
+    return result;
+  };
+
   const loadPawkits = async () => {
     setLoading(true);
     try {
       const response = await fetch("/api/pawkits");
       if (response.ok) {
         const data = await response.json();
-        setPawkits(data.flat || []);
+        // Flatten the tree structure with hierarchical names
+        const flattened = flattenPawkits(data.tree || []);
+        setPawkits(flattened);
       }
     } catch (error) {
       console.error("Failed to load pawkits:", error);
