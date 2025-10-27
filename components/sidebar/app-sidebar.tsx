@@ -10,6 +10,7 @@ import { ProfileModal } from "@/components/modals/profile-modal";
 import { useDataStore } from "@/lib/stores/data-store";
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
+import { SyncStatus } from "@/components/sync/sync-status";
 import {
   Sidebar,
   SidebarContent,
@@ -429,6 +430,8 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
             </SidebarMenu>
           </>
         )}
+        {/* Sync Status - Matches right sidebar keybind footer styling */}
+        <SyncStatus />
       </SidebarFooter>
 
       <ProfileModal

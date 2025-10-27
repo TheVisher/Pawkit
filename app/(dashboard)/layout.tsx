@@ -9,6 +9,7 @@ import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useNetworkSync } from "@/lib/hooks/use-network-sync";
 import { useSyncSettings } from "@/lib/hooks/use-sync-settings";
+import { useSyncTriggers } from "@/lib/hooks/use-sync-triggers";
 import { ConflictNotifications } from "@/components/conflict-notifications";
 import { ViewControls } from "@/components/layout/view-controls";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
@@ -132,6 +133,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   // Sync settings hook ensures localStorage serverSync is synced to database
   useSyncSettings();
+
+  // Sync triggers hook manages periodic sync and event-based sync
+  useSyncTriggers();
 
   const username = userData?.email || "";
   const displayName = userData?.displayName || null;

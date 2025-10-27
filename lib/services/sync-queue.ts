@@ -180,6 +180,93 @@ class SyncQueue {
     const count = await index.count('pending');
     return count;
   }
+
+  // Process all pending operations
+  async process(): Promise<{ success: number; failed: number }> {
+    const pending = await this.getPending();
+    let success = 0;
+    let failed = 0;
+
+    console.log('[SyncQueue] Processing', pending.length, 'operations');
+
+    for (const operation of pending) {
+      try {
+        await this.markProcessing(operation.id);
+
+        // Process based on operation type
+        let response: Response;
+        switch (operation.type) {
+          case 'CREATE_CARD':
+            response = await fetch('/api/cards', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(operation.payload),
+            });
+            break;
+
+          case 'UPDATE_CARD':
+            response = await fetch(`/api/cards/${operation.targetId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(operation.payload),
+            });
+            break;
+
+          case 'DELETE_CARD':
+            response = await fetch(`/api/cards/${operation.targetId}`, {
+              method: 'DELETE',
+            });
+            break;
+
+          case 'CREATE_COLLECTION':
+            response = await fetch('/api/pawkits', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(operation.payload),
+            });
+            break;
+
+          case 'UPDATE_COLLECTION':
+            response = await fetch(`/api/pawkits/${operation.targetId}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(operation.payload),
+            });
+            break;
+
+          case 'DELETE_COLLECTION':
+            response = await fetch(`/api/pawkits/${operation.targetId}`, {
+              method: 'DELETE',
+            });
+            break;
+
+          default:
+            throw new Error(`Unknown operation type: ${operation.type}`);
+        }
+
+        if (response.ok) {
+          await this.remove(operation.id);
+          success++;
+          console.log('[SyncQueue] Operation completed:', operation.id);
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+      } catch (error) {
+        console.error('[SyncQueue] Operation failed:', operation.id, error);
+        await this.markFailed(operation.id);
+        failed++;
+
+        // Stop processing if too many failures (likely offline)
+        if (failed >= 3) {
+          console.error('[SyncQueue] Too many failures, stopping');
+          break;
+        }
+      }
+    }
+
+    console.log('[SyncQueue] Processing complete:', { success, failed });
+    return { success, failed };
+  }
 }
 
 // Export singleton instance
