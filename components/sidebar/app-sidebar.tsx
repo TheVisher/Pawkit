@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, HelpCircle, User, Layers, Calendar, CalendarDays, CalendarClock, Flame, Clock, Tag, Lock } from "lucide-react";
+import { ChevronRight, Home, Library, FolderOpen, FileText, Star, User, Layers, Calendar, CalendarDays, CalendarClock, Flame, Clock, Tag, Lock } from "lucide-react";
 import { type CollectionNode } from "@/lib/types";
 import { ProfileModal } from "@/components/modals/profile-modal";
 import { useDataStore } from "@/lib/stores/data-store";
@@ -44,11 +44,8 @@ const navigationItems = [
   { href: "/distill", label: "Dig Up", icon: Layers },
 ];
 
-const bottomItems = [
-  { href: "/changelog", label: "Changelog", icon: History },
-  { href: "/trash", label: "Trash", icon: Trash2 },
-  { href: "/help", label: "Help", icon: HelpCircle },
-];
+// Note: Changelog, Trash, Help moved to right sidebar control panel
+// Removed bottomItems array as it's no longer used
 
 export function AppSidebar({ username, displayName, collections }: AppSidebarProps) {
   const pathname = usePathname();
@@ -413,23 +410,6 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        {!isDemo && (
-          <>
-            <SidebarSeparator />
-            <SidebarMenu>
-              {bottomItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild size="sm" isActive={isActive(item.href)}>
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </>
-        )}
         {/* Sync Status - Matches right sidebar keybind footer styling */}
         <SyncStatus />
       </SidebarFooter>
