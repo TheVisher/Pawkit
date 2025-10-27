@@ -7,8 +7,9 @@ import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
-import { Folder, ChevronRight, Image as ImageIcon } from "lucide-react";
+import { Folder, ChevronRight, ChevronDown, Image as ImageIcon } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
+import { CollectionsGrid } from "@/components/pawkits/grid";
 
 function CollectionPageContent() {
   const params = useParams();
@@ -32,7 +33,8 @@ function CollectionPageContent() {
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dragPositionRef = useRef(50); // Store live drag position
-  
+  const [subPawkitsExpanded, setSubPawkitsExpanded] = useState(true); // Sub-pawkits section state
+
   const { setPawkitActions } = usePawkitActions();
 
   // Set Pawkit actions for the top bar
@@ -158,6 +160,21 @@ function CollectionPageContent() {
     }
   }, [currentCollection]);
 
+  // Load sub-pawkits expanded state from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('subPawkitsExpanded');
+    if (saved !== null) {
+      setSubPawkitsExpanded(saved === 'true');
+    }
+  }, []);
+
+  // Save sub-pawkits expanded state to localStorage
+  const toggleSubPawkits = () => {
+    const newState = !subPawkitsExpanded;
+    setSubPawkitsExpanded(newState);
+    localStorage.setItem('subPawkitsExpanded', String(newState));
+  };
+
   if (!currentCollection) {
     return <div>Collection not found</div>;
   }
@@ -179,6 +196,31 @@ function CollectionPageContent() {
   };
 
   const allPawkits = flattenPawkits(collections);
+
+  // Create grid items for sub-pawkits
+  const subPawkitsGridItems = useMemo(() => {
+    if (!currentCollection?.children || currentCollection.children.length === 0) {
+      return [];
+    }
+
+    return currentCollection.children.map((child: any) => {
+      const pawkitCards = cards.filter(card => card.collections.includes(child.slug));
+
+      return {
+        id: child.id,
+        name: child.name,
+        slug: child.slug,
+        count: pawkitCards.length,
+        cards: pawkitCards.slice(0, 3), // Only show first 3 for preview
+        isPinned: child.pinned,
+        isPrivate: child.isPrivate,
+        hidePreview: child.hidePreview,
+        useCoverAsBackground: child.useCoverAsBackground,
+        coverImage: child.coverImage,
+        hasChildren: child.children && child.children.length > 0
+      };
+    });
+  }, [currentCollection, cards]);
 
   const handleLayoutChange = (newLayout: LayoutMode) => {
     localStorage.setItem(`pawkit-${slug}-layout`, newLayout);
@@ -533,6 +575,28 @@ function CollectionPageContent() {
                 <p className="text-sm text-muted-foreground mt-1">{items.length} card(s)</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Sub-Pawkits Section */}
+        {subPawkitsGridItems.length > 0 && (
+          <div className="mb-8">
+            <button
+              onClick={toggleSubPawkits}
+              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-4"
+            >
+              <ChevronDown
+                size={16}
+                className={`transition-transform ${subPawkitsExpanded ? '' : '-rotate-90'}`}
+              />
+              <span>Sub-Pawkits ({subPawkitsGridItems.length})</span>
+            </button>
+
+            {subPawkitsExpanded && (
+              <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                <CollectionsGrid collections={subPawkitsGridItems} allPawkits={allPawkits} />
+              </div>
+            )}
           </div>
         )}
 
