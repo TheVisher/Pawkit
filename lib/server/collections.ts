@@ -25,7 +25,7 @@ function mapCollection(collection: Collection): Omit<CollectionDTO, 'children'> 
   };
 }
 
-// Cache collections for 60 seconds to improve navigation speed
+// Cache collections for 5 seconds to improve navigation speed while keeping data fresh
 export const listCollections = unstable_cache(
   async (userId: string) => {
     const items = await prisma.collection.findMany({
@@ -58,7 +58,7 @@ export const listCollections = unstable_cache(
     return { tree: roots, flat: Array.from(nodes.values()) };
   },
   ['collections'],
-  { revalidate: 60, tags: ['collections'] }
+  { revalidate: 5, tags: ['collections'] }
 );
 
 async function ensureDepth(userId: string, parentId: string | undefined | null) {

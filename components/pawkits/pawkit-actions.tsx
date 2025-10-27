@@ -48,6 +48,8 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
     try {
       await deleteCollection(pawkitId, deleteCards, deleteSubPawkits);
       setShowDeleteConfirm(false);
+      // Force refresh to invalidate server cache
+      router.refresh();
       router.push("/pawkits");
       onDeleteSuccess?.();
     } catch (err) {
