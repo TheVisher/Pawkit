@@ -15,10 +15,18 @@ type SyncState =
 export function SyncStatus() {
   const [syncState, setSyncState] = useState<SyncState>({ status: "synced", lastSync: Date.now() });
   const [isOnline, setIsOnline] = useState(true);
+  const [mounted, setMounted] = useState(false);
   const serverSync = useSettingsStore((state) => state.serverSync);
+
+  // Handle mounting
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Check online status
   useEffect(() => {
+    if (!mounted) return;
+
     const updateOnlineStatus = () => setIsOnline(navigator.onLine);
 
     window.addEventListener("online", updateOnlineStatus);
@@ -28,10 +36,12 @@ export function SyncStatus() {
       window.removeEventListener("online", updateOnlineStatus);
       window.removeEventListener("offline", updateOnlineStatus);
     };
-  }, []);
+  }, [mounted]);
 
   // Check sync queue periodically
   useEffect(() => {
+    if (!mounted || !serverSync) return;
+
     const checkQueue = async () => {
       const pending = await syncQueue.getPending();
 
@@ -48,7 +58,7 @@ export function SyncStatus() {
     const interval = setInterval(checkQueue, 3000); // Check every 3 seconds
 
     return () => clearInterval(interval);
-  }, [isOnline]);
+  }, [isOnline, mounted, serverSync]);
 
   // Manual sync
   const handleSync = async () => {
@@ -75,6 +85,11 @@ export function SyncStatus() {
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     return `${Math.floor(seconds / 86400)}d ago`;
   };
+
+  // Don't render until mounted (prevents hydration issues)
+  if (!mounted) {
+    return null;
+  }
 
   // Don't show if server sync is disabled
   if (!serverSync) {
