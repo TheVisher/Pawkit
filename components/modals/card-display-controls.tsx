@@ -13,8 +13,8 @@ type CardDisplayControlsProps = {
 
 export function CardDisplayControls({ open, onClose, view }: CardDisplayControlsProps) {
   const settings = useViewSettingsStore((state) => state.getSettings(view));
-  const setShowTitles = useViewSettingsStore((state) => state.setShowTitles);
-  const setShowUrls = useViewSettingsStore((state) => state.setShowUrls);
+  const setShowMetadata = useViewSettingsStore((state) => state.setShowMetadata);
+  const setShowLabels = useViewSettingsStore((state) => state.setShowLabels);
   const setShowTags = useViewSettingsStore((state) => state.setShowTags);
   const setCardPadding = useViewSettingsStore((state) => state.setCardPadding);
   const [mounted, setMounted] = useState(false);
@@ -25,12 +25,12 @@ export function CardDisplayControls({ open, onClose, view }: CardDisplayControls
 
   if (!open || !mounted) return null;
 
-  const { showTitles, showUrls, showTags, cardPadding } = settings;
+  const { showMetadata: showTitles, showLabels: showUrls, showTags, cardPadding } = settings;
   const paddingLabels = ["None", "XS", "SM", "MD", "LG"];
 
   const handleResetAll = () => {
-    setShowTitles(view, true);
-    setShowUrls(view, true);
+    setShowMetadata(view, true);
+    setShowLabels(view, true);
     setShowTags(view, true);
     setCardPadding(view, 2); // Default SM
   };
@@ -61,7 +61,7 @@ export function CardDisplayControls({ open, onClose, view }: CardDisplayControls
             <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowTitles(view, !showTitles)}
+                  onClick={() => setShowMetadata(view, !showTitles)}
                   className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
                 >
                   {showTitles ? (
@@ -83,7 +83,7 @@ export function CardDisplayControls({ open, onClose, view }: CardDisplayControls
             <div className="flex items-center justify-between p-3 rounded-lg bg-gray-900/50 border border-gray-800">
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setShowUrls(view, !showUrls)}
+                  onClick={() => setShowLabels(view, !showUrls)}
                   className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-800 hover:bg-gray-700 transition-colors"
                 >
                   {showUrls ? (

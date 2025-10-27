@@ -8,6 +8,7 @@ export type PanelContentType =
   | "library-controls"
   | "card-details"
   | "notes-controls"
+  | "pawkits-controls"
   | "calendar-controls"
   | "closed";
 

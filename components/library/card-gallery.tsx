@@ -298,10 +298,6 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                           prev.map((c) => (c.id === card.id ? { ...c, ...updates } : c))
                         );
                       }}
-                      onAddToDen={async () => {
-                        await updateCardInStore(card.id, { inDen: true });
-                        setCards((prev) => prev.filter((c) => c.id !== card.id));
-                      }}
                       onDelete={async () => {
                         await deleteCardFromStore(card.id);
                         setCards((prev) => prev.filter((c) => c.id !== card.id));
@@ -320,7 +316,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                           prev.map((c) => (c.id === card.id ? { ...c, collections: [] } : c))
                         );
                       }}
-                      onFetchMetadata={handleFetchMetadata}
+                      onFetchMetadata={() => handleFetchMetadata(card.id)}
                       cardId={card.id}
                       cardType={card.type}
                       isPinned={isPinned}
@@ -407,11 +403,6 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 setCards((prev) =>
                   prev.map((c) => (c.id === card.id ? { ...c, ...updates } : c))
                 );
-              }}
-              onAddToDen={async () => {
-                // ✅ Move card to The Den via data store
-                await updateCardInStore(card.id, { inDen: true });
-                setCards((prev) => prev.filter((c) => c.id !== card.id));
               }}
               onDeleteCard={async () => {
                 await deleteCardFromStore(card.id);
@@ -517,7 +508,6 @@ type CardCellProps = {
   onClick: (event: MouseEvent, card: CardModel) => void;
   onImageLoad?: () => void;
   onAddToPawkit: (slug: string) => void;
-  onAddToDen: () => void;
   onDeleteCard: () => void;
   onRemoveFromPawkit: (slug: string) => void;
   onRemoveFromAllPawkits: () => void;
@@ -527,7 +517,7 @@ type CardCellProps = {
   onUnpinFromSidebar?: () => void;
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
@@ -622,7 +612,6 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
   return (
     <CardContextMenuWrapper
       onAddToPawkit={onAddToPawkit}
-      onAddToDen={onAddToDen}
       onDelete={onDeleteCard}
       cardCollections={card.collections || []}
       onRemoveFromPawkit={onRemoveFromPawkit}
@@ -833,8 +822,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                   <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
                     {card.collections
                       .filter((collection) =>
-                        !collection.startsWith('den-') &&
-                        collection !== currentPawkitSlug // Hide current pawkit badge (redundant)
+                        !collection.startsWith('den-')
                       )
                       .map((collection) => (
                         <span key={collection} className="rounded bg-surface-soft/80 backdrop-blur-sm px-2 py-0.5 border border-purple-500/10">
@@ -910,8 +898,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
             <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
               {card.collections
                 .filter((collection) =>
-                  !collection.startsWith('den-') &&
-                  collection !== currentPawkitSlug // Hide current pawkit badge (redundant)
+                  !collection.startsWith('den-')
                 )
                 .map((collection) => (
                   <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">

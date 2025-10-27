@@ -19,16 +19,16 @@ export function ViewControls({ onRefresh }: ViewControlsProps) {
   // Detect current view from pathname
   const getCurrentView = (): ViewType | null => {
     if (!pathname) return null;
-    
+
     if (pathname.includes('/library')) return 'library';
     if (pathname.includes('/notes')) return 'notes';
-    if (pathname.includes('/den')) return 'den';
     if (pathname.includes('/calendar') || pathname.includes('/timeline')) return 'timeline';
     if (pathname.includes('/pawkits')) return 'pawkits';
     if (pathname.includes('/home')) return 'home';
     if (pathname.includes('/favorites')) return 'favorites';
     if (pathname.includes('/trash')) return 'trash';
-    
+    if (pathname.includes('/tags')) return 'tags';
+
     return null;
   };
 
@@ -53,12 +53,12 @@ export function ViewControls({ onRefresh }: ViewControlsProps) {
       {/* Sort & Filter */}
       <SortFilterMenu view={currentView} />
 
-      {/* Create Pawkit button - show on pawkits and den pages */}
-      {onCreatePawkit && (currentView === 'pawkits' || currentView === 'den') && (
+      {/* Create Pawkit button - show on pawkits page */}
+      {onCreatePawkit && currentView === 'pawkits' && (
         <button
           onClick={onCreatePawkit}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium bg-accent text-gray-950 hover:bg-accent/90 transition-colors"
-          title={currentView === 'den' ? 'Create Den Pawkit' : 'Create Pawkit'}
+          title="Create Pawkit"
         >
           <Plus className="h-4 w-4" />
           Add Pawkit
