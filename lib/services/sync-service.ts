@@ -155,6 +155,7 @@ class SyncService {
   /**
    * Merge server cards with local cards
    * Strategy: Last-write-wins by updatedAt timestamp
+   * CRITICAL: Local deletions ALWAYS take precedence
    */
   private async mergeCards(serverCards: CardDTO[], localCards: CardDTO[]): Promise<number> {
     let conflicts = 0;
@@ -168,12 +169,29 @@ class SyncService {
       const localCard = localMap.get(serverCard.id);
 
       if (!localCard) {
-        // New card from server - add it
-        await localDb.saveCard(serverCard, { fromServer: true });
+        // New card from server - add it ONLY if not deleted on server
+        if (!serverCard.deleted) {
+          await localDb.saveCard(serverCard, { fromServer: true });
+        }
       } else {
-        // Card exists locally - check for conflicts
+        // CRITICAL: If local card is deleted, NEVER overwrite with server version
+        // Local deletions always take precedence to prevent resurrection
+        if (localCard.deleted) {
+          console.log('[SyncService] Local card is deleted, preserving deletion:', localCard.id);
+          // Keep local deleted version, will be synced to server in push phase
+          continue;
+        }
+
+        // Card exists locally and not deleted - check for conflicts
         const serverTime = new Date(serverCard.updatedAt).getTime();
         const localTime = new Date(localCard.updatedAt).getTime();
+
+        // If server version is deleted, accept the deletion
+        if (serverCard.deleted) {
+          console.log('[SyncService] Server card is deleted, accepting deletion:', serverCard.id);
+          await localDb.saveCard(serverCard, { fromServer: true });
+          continue;
+        }
 
         if (serverTime > localTime) {
           // Server is newer - use server version
@@ -227,6 +245,7 @@ class SyncService {
 
   /**
    * Merge server collections with local collections
+   * CRITICAL: Local deletions ALWAYS take precedence
    */
   private async mergeCollections(serverCollections: CollectionNode[], localCollections: CollectionNode[]): Promise<number> {
     let conflicts = 0;
@@ -241,10 +260,28 @@ class SyncService {
       const localCollection = localMap.get(serverCollection.id);
 
       if (!localCollection) {
-        await localDb.saveCollection(serverCollection, { fromServer: true });
+        // New collection from server - add it ONLY if not deleted on server
+        if (!serverCollection.deleted) {
+          await localDb.saveCollection(serverCollection, { fromServer: true });
+        }
       } else {
+        // CRITICAL: If local collection is deleted, NEVER overwrite with server version
+        // Local deletions always take precedence to prevent resurrection
+        if (localCollection.deleted) {
+          console.log('[SyncService] Local collection is deleted, preserving deletion:', localCollection.id);
+          // Keep local deleted version, will be synced to server in push phase
+          continue;
+        }
+
         const serverTime = new Date(serverCollection.updatedAt).getTime();
         const localTime = new Date(localCollection.updatedAt).getTime();
+
+        // If server version is deleted, accept the deletion
+        if (serverCollection.deleted) {
+          console.log('[SyncService] Server collection is deleted, accepting deletion:', serverCollection.id);
+          await localDb.saveCollection(serverCollection, { fromServer: true });
+          continue;
+        }
 
         if (serverTime > localTime) {
           await localDb.saveCollection(serverCollection, { fromServer: true });
@@ -273,6 +310,7 @@ class SyncService {
     };
 
     try {
+      // Push modified cards
       const modifiedCards = await localDb.getModifiedCards();
       console.log('[SyncService] Pushing', modifiedCards.length, 'modified cards to server');
 
@@ -299,7 +337,7 @@ class SyncService {
               result.errors.push(`Failed to create card: ${card.id}`);
             }
           } else {
-            // Update existing card on server
+            // Update existing card on server (includes deleted cards)
             const response = await fetch(`/api/cards/${card.id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
@@ -332,6 +370,74 @@ class SyncService {
         } catch (error) {
           console.error('[SyncService] Failed to push card:', card.id, error);
           result.errors.push(`Failed to push card ${card.id}: ${error}`);
+        }
+      }
+
+      // Push modified collections
+      const modifiedCollections = await localDb.getModifiedCollections();
+      console.log('[SyncService] Pushing', modifiedCollections.length, 'modified collections to server');
+
+      for (const collection of modifiedCollections) {
+        try {
+          const isTemp = collection.id.startsWith('temp_');
+
+          if (isTemp) {
+            // Create new collection on server
+            const response = await fetch('/api/pawkits', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: collection.name,
+                parentId: collection.parentId,
+              }),
+            });
+
+            if (response.ok) {
+              const serverCollection = await response.json();
+              // Replace temp collection with server collection
+              await localDb.deleteCollection(collection.id);
+              await localDb.saveCollection(serverCollection, { fromServer: true });
+              result.pushed.collections++;
+            } else {
+              result.errors.push(`Failed to create collection: ${collection.id}`);
+            }
+          } else {
+            // Update existing collection on server (includes deleted collections)
+            const response = await fetch(`/api/pawkits/${collection.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(collection),
+            });
+
+            if (response.ok) {
+              const serverCollection = await response.json();
+              await localDb.markCollectionSynced(collection.id, serverCollection.updatedAt);
+              result.pushed.collections++;
+            } else if (response.status === 404) {
+              // Collection doesn't exist on server - create it
+              const createResponse = await fetch('/api/pawkits', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  name: collection.name,
+                  parentId: collection.parentId,
+                }),
+              });
+
+              if (createResponse.ok) {
+                const serverCollection = await createResponse.json();
+                await localDb.markCollectionSynced(collection.id, serverCollection.updatedAt);
+                result.pushed.collections++;
+              } else {
+                result.errors.push(`Failed to create collection: ${collection.id}`);
+              }
+            } else {
+              result.errors.push(`Failed to update collection: ${collection.id}`);
+            }
+          }
+        } catch (error) {
+          console.error('[SyncService] Failed to push collection:', collection.id, error);
+          result.errors.push(`Failed to push collection ${collection.id}: ${error}`);
         }
       }
     } catch (error) {

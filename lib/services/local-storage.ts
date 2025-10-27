@@ -355,6 +355,34 @@ class LocalStorage {
     console.log('[LocalStorage] Permanently deleted collection:', id);
   }
 
+  async getModifiedCollections(): Promise<CollectionNode[]> {
+    await this.init();
+    if (!this.db) return [];
+
+    const allCollections = await this.db.getAll('collections');
+    return allCollections
+      .filter(collection => collection._locallyModified || collection._locallyCreated)
+      .map(collection => {
+        const { _locallyModified, _locallyCreated, _serverVersion, ...cleanCollection } = collection;
+        return cleanCollection as CollectionNode;
+      });
+  }
+
+  async markCollectionSynced(id: string, serverVersion: string): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    const collection = await this.db.get('collections', id);
+    if (!collection) return;
+
+    await this.db.put('collections', {
+      ...collection,
+      _locallyModified: false,
+      _locallyCreated: false,
+      _serverVersion: serverVersion,
+    });
+  }
+
   // ==================== METADATA ====================
 
   async getMetadata(key: string): Promise<any> {
