@@ -165,16 +165,13 @@ export const useDataStore = create<DataStore>((set, get) => ({
         collections: collections.length,
       });
 
-      // Sync with server in background if enabled
-      const serverSync = useSettingsStore.getState().serverSync;
-      if (serverSync) {
-        console.log('[DataStore V2] Syncing with server in background...');
-        get().sync().catch(err => {
-          console.error('[DataStore V2] Background sync failed:', err);
-        });
-      } else {
-        console.log('[DataStore V2] Server sync disabled - local-only mode');
-      }
+      // NOTE: Removed aggressive auto-sync on page load
+      // Sync now happens on:
+      // - Periodic intervals (every 60s)
+      // - Internet reconnection
+      // - Before page unload
+      // - Manual "Sync Now" button
+      // This prevents race conditions and improves performance
     } catch (error) {
       console.error('[DataStore V2] Failed to initialize:', error);
       set({ isLoading: false });
