@@ -265,15 +265,6 @@ export default function HomePage() {
                     }
                     await updateCard(card.id, updates);
                   }}
-                  onAddToDen={async () => {
-                    const response = await fetch(`/api/cards/${card.id}/move-to-den`, {
-                      method: "PATCH",
-                    });
-                    if (response.ok) {
-                      // Card moved to Den, refresh the page data
-                      window.location.reload();
-                    }
-                  }}
                   onDeleteCard={async () => {
                     await deleteCard(card.id);
                   }}
@@ -551,13 +542,12 @@ type CardProps = {
   card: CardModel;
   onClick: () => void;
   onAddToPawkit: (slug: string) => void;
-  onAddToDen: () => void;
   onDeleteCard: () => void;
   onRemoveFromPawkit: (slug: string) => void;
   onRemoveFromAllPawkits: () => void;
 };
 
-function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardProps) {
+function RecentCard({ card, onClick, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardProps) {
   // Get display settings for home view
   const viewSettings = useViewSettingsStore((state) => state.getSettings('home'));
   const showTitles = (viewSettings as any)?.showTitles ?? true;
@@ -568,7 +558,6 @@ function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, on
   return (
     <CardContextMenuWrapper
       onAddToPawkit={onAddToPawkit}
-      onAddToDen={onAddToDen}
       onDelete={onDeleteCard}
       cardCollections={card.collections || []}
       onRemoveFromPawkit={onRemoveFromPawkit}

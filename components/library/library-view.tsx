@@ -81,10 +81,10 @@ export function LibraryView({
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
   const setLayoutInStore = useViewSettingsStore((state) => state.setLayout);
   const setCardSizeInStore = useViewSettingsStore((state) => state.setCardSize);
-  const setShowTitles = useViewSettingsStore((state) => state.setShowTitles);
-  const setShowUrls = useViewSettingsStore((state) => state.setShowUrls);
+  const setShowMetadata = useViewSettingsStore((state) => state.setShowMetadata);
+  const setShowLabels = useViewSettingsStore((state) => state.setShowLabels);
   const setSortBy = useViewSettingsStore((state) => state.setSortBy);
-  const { cardSize, sortBy, sortOrder, showTitles, showUrls } = viewSettings;
+  const { cardSize, sortBy, sortOrder, showMetadata: showTitles, showLabels: showUrls } = viewSettings;
 
   // Get selected tags from store (managed by control panel)
   // Use tags directly from store without filtering - trust the control panel

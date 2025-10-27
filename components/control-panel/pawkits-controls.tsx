@@ -174,9 +174,18 @@ export function PawkitsControls() {
     setSortOrder("pawkits", sortOrder === "asc" ? "desc" : "asc");
   };
 
-  const handleContentTypeChange = (type: ContentType) => {
+  const handleContentTypeChange = (filterType: "all" | "bookmarks" | "notes") => {
     if (isOverview) return; // Disabled on overview
-    setContentTypeFilter("pawkits", type);
+
+    let newFilter: ContentType[] = [];
+    if (filterType === "bookmarks") {
+      newFilter = ["url", "bookmark"];
+    } else if (filterType === "notes") {
+      newFilter = ["md-note", "text-note"];
+    }
+    // "all" = empty array (show all types)
+
+    setContentTypeFilter("pawkits", newFilter);
   };
 
   return (
@@ -213,7 +222,6 @@ export function PawkitsControls() {
                         ? "bg-accent text-accent-foreground"
                         : "bg-surface-soft text-muted-foreground hover:bg-surface-soft/80"
                     }`}
-                    disabled={isOverview}
                   >
                     {name} ({count})
                   </button>
@@ -223,7 +231,6 @@ export function PawkitsControls() {
                 <button
                   onClick={handleClearTags}
                   className="text-xs text-accent hover:text-accent/80 transition-colors"
-                  disabled={isOverview}
                 >
                   Clear all
                 </button>
@@ -240,23 +247,20 @@ export function PawkitsControls() {
         >
           <div className={`flex flex-col gap-2 ${isOverview ? "opacity-50 pointer-events-none" : ""}`}>
             <PanelButton
-              active={contentTypeFilter === "all"}
+              active={contentTypeFilter.length === 0}
               onClick={() => handleContentTypeChange("all")}
-              disabled={isOverview}
             >
               All
             </PanelButton>
             <PanelButton
-              active={contentTypeFilter === "bookmarks"}
+              active={contentTypeFilter.includes("url") || contentTypeFilter.includes("bookmark")}
               onClick={() => handleContentTypeChange("bookmarks")}
-              disabled={isOverview}
             >
               Bookmarks Only
             </PanelButton>
             <PanelButton
-              active={contentTypeFilter === "notes"}
+              active={contentTypeFilter.includes("md-note") || contentTypeFilter.includes("text-note")}
               onClick={() => handleContentTypeChange("notes")}
-              disabled={isOverview}
             >
               Notes Only
             </PanelButton>
@@ -272,7 +276,6 @@ export function PawkitsControls() {
               <button
                 onClick={handleToggleSortOrder}
                 className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
-                disabled={isOverview}
               >
                 <ArrowUpDown size={12} />
                 {sortOrder === "asc" ? "Ascending" : "Descending"}
@@ -283,28 +286,24 @@ export function PawkitsControls() {
               <PanelButton
                 active={sortBy === "modified"}
                 onClick={() => handleSortChange("modified")}
-                disabled={isOverview}
               >
                 Date Modified
               </PanelButton>
               <PanelButton
                 active={sortBy === "date"}
                 onClick={() => handleSortChange("date")}
-                disabled={isOverview}
               >
                 Date Added
               </PanelButton>
               <PanelButton
                 active={sortBy === "title"}
                 onClick={() => handleSortChange("title")}
-                disabled={isOverview}
               >
                 Title
               </PanelButton>
               <PanelButton
                 active={sortBy === "domain"}
                 onClick={() => handleSortChange("domain")}
-                disabled={isOverview}
               >
                 Domain
               </PanelButton>
@@ -319,7 +318,6 @@ export function PawkitsControls() {
               active={layout === "grid"}
               onClick={() => handleLayoutChange("grid")}
               icon={<Grid size={16} />}
-              disabled={isOverview}
             >
               Grid
             </PanelButton>
@@ -327,7 +325,6 @@ export function PawkitsControls() {
               active={layout === "masonry"}
               onClick={() => handleLayoutChange("masonry")}
               icon={<LayoutGrid size={16} />}
-              disabled={isOverview}
             >
               Masonry
             </PanelButton>
@@ -335,7 +332,6 @@ export function PawkitsControls() {
               active={layout === "list"}
               onClick={() => handleLayoutChange("list")}
               icon={<List size={16} />}
-              disabled={isOverview}
             >
               List
             </PanelButton>
@@ -343,7 +339,6 @@ export function PawkitsControls() {
               active={layout === "compact"}
               onClick={() => handleLayoutChange("compact")}
               icon={<Columns size={16} />}
-              disabled={isOverview}
             >
               Compact
             </PanelButton>
@@ -382,7 +377,6 @@ export function PawkitsControls() {
                 value={cardSpacingValue}
                 onChange={(e) => handleCardSpacingChange(Number(e.target.value))}
                 className="w-full accent-accent"
-                disabled={isOverview}
               />
             </div>
 
@@ -399,7 +393,6 @@ export function PawkitsControls() {
                 value={cardPaddingValue}
                 onChange={(e) => handleCardPaddingChange(Number(e.target.value))}
                 className="w-full accent-accent"
-                disabled={isOverview}
               />
             </div>
 
@@ -409,25 +402,21 @@ export function PawkitsControls() {
                 label="Show Thumbnails"
                 checked={showThumbnails}
                 onChange={handleShowThumbnailsChange}
-                disabled={isOverview}
               />
               <PanelToggle
                 label="Show Labels"
                 checked={showLabelsValue}
                 onChange={handleShowLabelsChange}
-                disabled={isOverview}
               />
               <PanelToggle
                 label="Show Metadata"
                 checked={showMetadataValue}
                 onChange={handleShowMetadataChange}
-                disabled={isOverview}
               />
               <PanelToggle
                 label="Show Tags"
                 checked={showTagsValue}
                 onChange={handleShowTagsChange}
-                disabled={isOverview}
               />
             </div>
           </div>

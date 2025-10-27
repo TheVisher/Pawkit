@@ -180,16 +180,14 @@ export function ActionsMenu({ view, onRefresh, pawkitActions, onCreatePawkit }: 
                 {selectedCardIds.length} card{selectedCardIds.length !== 1 ? 's' : ''} selected
               </div>
 
-              {/* Move to Pawkit - not available in Den view */}
-              {view !== "den" && (
-                <DropdownMenuItem
-                  onClick={handleMoveToPawkit}
-                  className="cursor-pointer"
-                >
-                  <FolderInput className="mr-2 h-4 w-4" />
-                  Move to Pawkit
-                </DropdownMenuItem>
-              )}
+              {/* Move to Pawkit */}
+              <DropdownMenuItem
+                onClick={handleMoveToPawkit}
+                className="cursor-pointer"
+              >
+                <FolderInput className="mr-2 h-4 w-4" />
+                Move to Pawkit
+              </DropdownMenuItem>
 
               {/* Delete */}
               <DropdownMenuItem

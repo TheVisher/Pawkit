@@ -121,12 +121,13 @@ export default function TagsPage() {
       const tagToDelete = deleteConfirmTag.name;
 
       // FIRST: Clear this tag from any active filters to prevent filtering issues
-      const { viewSettings, updateViewSettings } = useViewSettingsStore.getState();
+      const { getSettings, updateSettings } = useViewSettingsStore.getState();
+      const viewSettings = getSettings('tags');
       if (viewSettings && viewSettings.viewSpecific) {
         const selectedTags = (viewSettings.viewSpecific.selectedTags as string[]) || [];
         if (selectedTags.includes(tagToDelete)) {
           const updatedTags = selectedTags.filter(t => t !== tagToDelete);
-          updateViewSettings({
+          await updateSettings('tags', {
             viewSpecific: {
               ...viewSettings.viewSpecific,
               selectedTags: updatedTags
