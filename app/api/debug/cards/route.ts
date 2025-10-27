@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
+import type { PrismaCard } from "@/lib/types";
 
 export async function GET() {
   try {
@@ -28,8 +29,8 @@ export async function GET() {
       take: 20
     });
 
-    const denCards = allCards.filter(c => c.inDen);
-    const regularCards = allCards.filter(c => !c.inDen);
+    const denCards = allCards.filter((c: PrismaCard) => c.inDen);
+    const regularCards = allCards.filter((c: PrismaCard) => !c.inDen);
 
     return NextResponse.json({
       total: allCards.length,

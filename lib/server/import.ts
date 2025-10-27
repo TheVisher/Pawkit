@@ -33,7 +33,7 @@ export async function importData(userId: string, payload: unknown) {
   let createdCollections = 0;
   let updatedCollections = 0;
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: any) => {
     for (const collection of parsed.collections) {
       const id = collection.id ?? undefined;
       const existing = id

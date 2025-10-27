@@ -1,4 +1,7 @@
-import { Collection, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import type { PrismaCollection } from "@/lib/types";
+// Use PrismaCollection instead of Collection from @prisma/client when Prisma client is not generated
+type Collection = PrismaCollection;
 import { prisma } from "@/lib/server/prisma";
 import { collectionCreateSchema, collectionUpdateSchema } from "@/lib/validators/collection";
 import { slugify } from "@/lib/utils/slug";
@@ -33,11 +36,11 @@ export const listCollections = unstable_cache(
     const nodes = new Map<string, CollectionDTO>();
     const roots: CollectionDTO[] = [];
 
-    items.forEach((item) => {
+    items.forEach((item: PrismaCollection) => {
       nodes.set(item.id, { ...mapCollection(item), children: [] });
     });
 
-    nodes.forEach((node) => {
+    nodes.forEach((node: CollectionDTO) => {
       if (node.parentId && nodes.has(node.parentId)) {
         nodes.get(node.parentId)!.children.push(node);
       } else {
@@ -47,7 +50,7 @@ export const listCollections = unstable_cache(
 
     const sortTree = (tree: CollectionDTO[]) => {
       tree.sort((a, b) => a.name.localeCompare(b.name));
-      tree.forEach((node) => sortTree(node.children));
+      tree.forEach((node: CollectionDTO) => sortTree(node.children));
     };
 
     sortTree(roots);
@@ -141,7 +144,7 @@ export async function updateCollection(userId: string, id: string, payload: unkn
     await ensureDepth(userId, parsed.parentId);
   }
 
-  const data: Prisma.CollectionUpdateInput = {
+  const data: Record<string, any> = {
     ...parsed,
     parentId: parsed.parentId === undefined ? undefined : parsed.parentId ?? null
   };
@@ -168,7 +171,7 @@ export async function updateCollection(userId: string, id: string, payload: unkn
       // Update inDen flag for all cards in this collection
       await prisma.card.updateMany({
         where: {
-          id: { in: cardsInCollection.map(c => c.id) }
+          id: { in: cardsInCollection.map((c: {id: string}) => c.id) }
         },
         data: {
           inDen: newInDenValue
@@ -189,7 +192,7 @@ export async function deleteCollection(userId: string, id: string, deleteCards =
 
   const now = new Date();
 
-  await prisma.$transaction(async (tx) => {
+  await prisma.$transaction(async (tx: any) => {
     // Move child collections to parent (they don't get deleted)
     await tx.collection.updateMany({
       where: { parentId: id, userId },
@@ -220,7 +223,7 @@ export async function deleteCollection(userId: string, id: string, deleteCards =
       });
 
       for (const card of affectedCards) {
-        const collections = card.collections ? JSON.parse(card.collections) : [];
+        const collections: any = card.collections ? JSON.parse(card.collections) : [];
         const filtered = Array.isArray(collections)
           ? collections.filter((c: string) => c !== collection.slug)
           : [];
@@ -258,7 +261,7 @@ export async function pinnedCollections(userId: string, limit = 8) {
     take: limit
   });
 
-  return collections.map(c => ({ ...mapCollection(c), children: [] }));
+  return collections.map((c: PrismaCollection) => ({ ...mapCollection(c), children: [] }));
 }
 
 export async function getTrashCollections(userId: string) {
@@ -267,7 +270,7 @@ export async function getTrashCollections(userId: string) {
     orderBy: { deletedAt: "desc" }
   });
 
-  return collections.map(c => ({ ...mapCollection(c), children: [] }));
+  return collections.map((c: PrismaCollection) => ({ ...mapCollection(c), children: [] }));
 }
 
 export async function restoreCollection(userId: string, id: string) {

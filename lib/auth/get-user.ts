@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/server/prisma'
-import { User } from '@prisma/client'
+import type { PrismaUser } from '@/lib/types'
 import { unstable_cache } from 'next/cache'
 
 // Cache user lookup for 5 minutes to avoid repeated database queries
@@ -14,7 +14,7 @@ const getCachedUser = unstable_cache(
   { revalidate: 300, tags: ['user'] }
 )
 
-export async function getCurrentUser(): Promise<User | null> {
+export async function getCurrentUser(): Promise<PrismaUser | null> {
   try {
     const supabase = await createClient()
     const { data: { user }, error } = await supabase.auth.getUser()
@@ -52,7 +52,7 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
-export async function requireUser(): Promise<User> {
+export async function requireUser(): Promise<PrismaUser> {
   const user = await getCurrentUser()
   if (!user) {
     throw new Error('Unauthorized')

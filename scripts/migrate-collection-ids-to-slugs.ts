@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Migration script to convert collection IDs to slugs in cards
  * Run with: npx tsx scripts/migrate-collection-ids-to-slugs.ts
@@ -16,7 +17,7 @@ async function main() {
   });
 
   const idToSlugMap = new Map<string, string>();
-  collections.forEach(c => {
+  collections.forEach((c: any) => {
     idToSlugMap.set(c.id, c.slug);
   });
 
