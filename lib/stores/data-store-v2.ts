@@ -503,7 +503,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
           });
 
           if (response.ok) {
-            await get().refresh();
+            await get().sync();
             console.log('[DataStore V2] Collection synced to server');
           }
         } catch (error) {
@@ -529,7 +529,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
           });
 
           if (response.ok) {
-            await get().refresh();
+            await get().sync();
             console.log('[DataStore V2] Collection updated:', id);
           }
         } catch (error) {
@@ -558,7 +558,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
           });
 
           if (response.ok) {
-            await get().refresh();
+            await get().sync();
             console.log('[DataStore V2] Collection deleted:', id);
           }
         } catch (error) {
