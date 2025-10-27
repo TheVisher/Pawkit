@@ -175,29 +175,7 @@ function CollectionPageContent() {
     localStorage.setItem('subPawkitsExpanded', String(newState));
   };
 
-  if (!currentCollection) {
-    return <div>Collection not found</div>;
-  }
-
-  // Flatten all pawkits for the move modal (including sub-pawkits)
-  const flattenPawkits = (nodes: any[], prefix = ""): Array<{ id: string; name: string; slug: string }> => {
-    const result: Array<{ id: string; name: string; slug: string }> = [];
-    for (const node of nodes) {
-      result.push({
-        id: node.id,
-        name: prefix ? `${prefix} / ${node.name}` : node.name,
-        slug: node.slug,
-      });
-      if (node.children && node.children.length > 0) {
-        result.push(...flattenPawkits(node.children, prefix ? `${prefix} / ${node.name}` : node.name));
-      }
-    }
-    return result;
-  };
-
-  const allPawkits = flattenPawkits(collections);
-
-  // Create grid items for sub-pawkits
+  // Create grid items for sub-pawkits (before early return to satisfy hooks rules)
   const subPawkitsGridItems = useMemo(() => {
     if (!currentCollection?.children || currentCollection.children.length === 0) {
       return [];
@@ -221,6 +199,28 @@ function CollectionPageContent() {
       };
     });
   }, [currentCollection, cards]);
+
+  if (!currentCollection) {
+    return <div>Collection not found</div>;
+  }
+
+  // Flatten all pawkits for the move modal (including sub-pawkits)
+  const flattenPawkits = (nodes: any[], prefix = ""): Array<{ id: string; name: string; slug: string }> => {
+    const result: Array<{ id: string; name: string; slug: string }> = [];
+    for (const node of nodes) {
+      result.push({
+        id: node.id,
+        name: prefix ? `${prefix} / ${node.name}` : node.name,
+        slug: node.slug,
+      });
+      if (node.children && node.children.length > 0) {
+        result.push(...flattenPawkits(node.children, prefix ? `${prefix} / ${node.name}` : node.name));
+      }
+    }
+    return result;
+  };
+
+  const allPawkits = flattenPawkits(collections);
 
   const handleLayoutChange = (newLayout: LayoutMode) => {
     localStorage.setItem(`pawkit-${slug}-layout`, newLayout);
