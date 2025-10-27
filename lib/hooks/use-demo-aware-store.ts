@@ -1,4 +1,4 @@
-import { useDataStore } from '@/lib/stores/data-store-v2';
+import { useDataStore } from '@/lib/stores/data-store';
 
 /**
  * Hook that returns the data store
