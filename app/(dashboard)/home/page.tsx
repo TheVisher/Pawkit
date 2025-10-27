@@ -560,7 +560,8 @@ type CardProps = {
 function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardProps) {
   // Get display settings for home view
   const viewSettings = useViewSettingsStore((state) => state.getSettings('home'));
-  const { showTitles, showUrls } = viewSettings;
+  const showTitles = (viewSettings as any)?.showTitles ?? true;
+  const showUrls = (viewSettings as any)?.showUrls ?? true;
 
   const isNote = card.type === 'md-note' || card.type === 'text-note';
 
