@@ -30,7 +30,7 @@ import { useSettingsStore } from '@/lib/hooks/settings-store';
  * Extract wiki-links from note content and save to IndexedDB
  * Wiki-link syntax: [[Note Title]]
  */
-async function extractAndSaveLinks(sourceId: string, content: string, allCards: CardDTO[]): Promise<void> {
+export async function extractAndSaveLinks(sourceId: string, content: string, allCards: CardDTO[]): Promise<void> {
   console.log('[extractAndSaveLinks] Starting extraction for:', sourceId);
   console.log('[extractAndSaveLinks] Content:', content);
   console.log('[extractAndSaveLinks] Available cards:', allCards.length);
