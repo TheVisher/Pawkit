@@ -6,6 +6,7 @@ import { syncService } from '@/lib/services/sync-service';
 import { syncQueue } from '@/lib/services/sync-queue';
 import { useConflictStore } from '@/lib/stores/conflict-store';
 import { useSettingsStore } from '@/lib/hooks/settings-store';
+import { markDeviceActive } from '@/lib/utils/device-session';
 
 /**
  * LOCAL-FIRST DATA STORE V2
@@ -201,10 +202,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
       if (result.success) {
         // Reload from local storage (which now has merged data)
-        const [cards, collections] = await Promise.all([
+        const [allCards, allCollections] = await Promise.all([
           localDb.getAllCards(),
           localDb.getAllCollections(),
         ]);
+
+        // CRITICAL: Filter out deleted items to prevent resurrection
+        const cards = allCards.filter(c => !c.deleted);
+        const collections = allCollections.filter(c => !c.deleted);
 
         set({ cards, collections });
 
@@ -252,6 +257,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Add card: Save to local first, then sync to server
    */
   addCard: async (cardData: Partial<CardDTO>) => {
+    // Mark device as active - this is the source of truth
+    markDeviceActive();
+
     // Generate ID for the card
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
@@ -363,6 +371,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Update card: Save to local first, then sync to server
    */
   updateCard: async (id: string, updates: Partial<CardDTO>) => {
+    // Mark device as active - this is the source of truth
+    markDeviceActive();
+
     const oldCard = get().cards.find(c => c.id === id);
     if (!oldCard) return;
 
@@ -446,6 +457,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Delete card: Remove from local first, then sync to server
    */
   deleteCard: async (id: string) => {
+    // Mark device as active - this is the source of truth
+    markDeviceActive();
+
     try {
       // STEP 0: Delete all note links for this card
       await localDb.deleteAllLinksForNote(id);
@@ -483,6 +497,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Add collection: Save to local first, then sync
    */
   addCollection: async (collectionData: { name: string; parentId?: string | null }) => {
+    // Mark device as active - this is the source of truth
+    markDeviceActive();
+
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
     const newCollection: any = {
@@ -544,6 +561,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   updateCollection: async (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; isPrivate?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; coverImage?: string | null; coverImagePosition?: number | null }) => {
+    // Mark device as active - this is the source of truth
+    markDeviceActive();
+
     try {
       // STEP 1: Update local storage FIRST (local-first!)
       const collections = await localDb.getAllCollections();
@@ -590,6 +610,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   deleteCollection: async (id: string, deleteCards = false, deleteSubPawkits = false) => {
+    // Mark device as active - this is the source of truth
+    markDeviceActive();
+
     try {
       const now = new Date().toISOString();
 

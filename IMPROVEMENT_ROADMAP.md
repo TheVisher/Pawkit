@@ -772,3 +772,78 @@ async function importAllBookmarks() {
 
 ### G. Corner Radius Alignment ⭐
 - [ ] Audit embedded media (YouTube iframes, card preview images) for mismatched radii and update to match parent shells (e.g., upgrade from `rounded-lg` to `rounded-2xl/3xl` where needed).
+
+---
+
+## 🔄 Multi-Device Sync Enhancements
+
+### A. WebSocket Real-Time Sync ⭐⭐⭐ (FUTURE ENHANCEMENT)
+
+**Current State**: Polling-based multi-session detection (implemented)
+- ✅ Detects when user is logged in on another device
+- ✅ Shows warning banner with device info
+- ✅ One-click takeover to become active device
+- ✅ Updates every 30 seconds via API polling
+
+**Future Enhancement**: WebSocket/SSE for Real-Time Sync
+- [ ] Instant detection of new devices (no 30s delay)
+- [ ] Real-time "handoff" between devices
+- [ ] Live typing indicators across devices
+- [ ] Instant conflict resolution notifications
+- [ ] Push notifications when sync fails
+- [ ] Live collaboration features (future)
+
+**Implementation Details:**
+
+**WebSocket Architecture:**
+```typescript
+// Server-side (WebSocket handler)
+- Track active connections per user
+- Broadcast device events to all sessions
+- Handle reconnection gracefully
+- Send heartbeat every 10s
+
+// Client-side (Browser)
+- Auto-reconnect on disconnect
+- Receive instant device notifications
+- Update UI in real-time
+- Graceful degradation to polling if WS fails
+```
+
+**Files to Create/Modify:**
+- [ ] `app/api/ws/route.ts` - WebSocket handler
+- [ ] `lib/services/websocket-client.ts` - Client connection manager
+- [ ] `lib/hooks/use-websocket.ts` - React hook for WS
+- [ ] Update `lib/hooks/use-multi-session-detector.ts` - Add WS support
+
+**Benefits Over Polling:**
+- ⚡ **Instant notifications** (vs 30s delay)
+- 📉 **Lower server load** (persistent connection vs repeated polling)
+- 🔄 **Bidirectional communication** (server can push updates)
+- 🚀 **Future features** (live typing, real-time collaboration)
+
+**Technical Considerations:**
+1. **Scaling**: Need sticky sessions or Redis pub/sub for multi-server
+2. **Fallback**: Keep polling as backup if WebSocket fails
+3. **Mobile**: Handle sleep/wake cycles gracefully
+4. **Battery**: Only send when necessary to preserve mobile battery
+5. **Security**: Authenticate WS connections with session tokens
+
+**Use Cases Enabled:**
+- Real-time sync status updates
+- Live conflict resolution UI
+- Cross-device notifications
+- Multi-user collaboration (future)
+- Presence indicators ("User X is viewing this note")
+
+**Estimated Implementation**: 1-2 days
+- Day 1: Server WebSocket setup + connection management
+- Day 2: Client integration + testing + fallback logic
+
+**Priority**: 🔜 **FUTURE ENHANCEMENT** (after core features stabilized)
+
+**Prerequisite**: Current polling-based system must be stable first ✅
+
+**Status**: 📋 **PLANNED** - Add after core roadmap completion
+
+---

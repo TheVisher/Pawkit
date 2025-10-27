@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Cloud, CloudOff, RefreshCw, CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { Cloud, CloudOff, RefreshCw, CheckCircle2, AlertCircle, Clock, Wifi, WifiOff } from "lucide-react";
 import { syncQueue } from "@/lib/services/sync-queue";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 
@@ -17,6 +17,7 @@ export function SyncStatus() {
   const [isOnline, setIsOnline] = useState(true);
   const [mounted, setMounted] = useState(false);
   const serverSync = useSettingsStore((state) => state.serverSync);
+  const setServerSync = useSettingsStore((state) => state.setServerSync);
 
   // Handle mounting
   useEffect(() => {
@@ -91,22 +92,10 @@ export function SyncStatus() {
     return null;
   }
 
-  // Don't show if server sync is disabled
-  if (!serverSync) {
-    return (
-      <div className="px-4 py-3 border-t border-white/5">
-        <div className="text-xs text-muted-foreground space-y-2">
-          <div className="flex items-center gap-2">
-            <CloudOff className="h-3.5 w-3.5" />
-            <span>Local-only mode</span>
-          </div>
-          <p className="text-[10px] opacity-60">
-            Enable server sync in settings to sync across devices
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Handle toggle
+  const handleToggleSync = () => {
+    setServerSync(!serverSync);
+  };
 
   // Render based on state
   const renderStatus = () => {
@@ -216,7 +205,67 @@ export function SyncStatus() {
   return (
     <div className="px-4 py-3 border-t border-white/5">
       <div className="text-xs text-muted-foreground space-y-2">
-        {renderStatus()}
+        {/* Online/Offline Indicator */}
+        <div className="flex items-center justify-between pb-2 border-b border-white/5">
+          <div className="flex items-center gap-2">
+            {isOnline ? (
+              <>
+                <Wifi className="h-3.5 w-3.5 text-green-500" />
+                <span className="text-green-500">Online</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-3.5 w-3.5 text-orange-500" />
+                <span className="text-orange-500">Offline</span>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Sync Mode Toggle */}
+        <button
+          onClick={handleToggleSync}
+          className="flex items-center justify-between w-full hover:bg-white/5 -mx-1 px-1 py-1 rounded transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            {serverSync ? (
+              <>
+                <Cloud className="h-3.5 w-3.5 text-blue-500" />
+                <span>Server Sync</span>
+              </>
+            ) : (
+              <>
+                <CloudOff className="h-3.5 w-3.5" />
+                <span>Local-only</span>
+              </>
+            )}
+          </div>
+          <div
+            className={`relative w-9 h-5 rounded-full transition-colors ${
+              serverSync ? "bg-blue-500" : "bg-white/10"
+            }`}
+          >
+            <div
+              className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                serverSync ? "translate-x-4" : "translate-x-0.5"
+              }`}
+            />
+          </div>
+        </button>
+
+        {/* Sync Status - Only show when server sync is enabled */}
+        {serverSync && (
+          <div className="pt-2 border-t border-white/5 space-y-2">
+            {renderStatus()}
+          </div>
+        )}
+
+        {/* Explanation when local-only mode */}
+        {!serverSync && (
+          <p className="text-[10px] opacity-60 pt-1">
+            Changes are stored locally only
+          </p>
+        )}
       </div>
     </div>
   );
