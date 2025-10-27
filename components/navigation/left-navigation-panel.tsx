@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical } from "lucide-react";
+import { SyncStatus } from "@/components/sync/sync-status";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
@@ -844,6 +845,9 @@ export function LeftNavigationPanel({
             </PanelSection>
           )}
         </div>
+
+        {/* Sync Status Footer - Matches right sidebar keybind footer styling */}
+        <SyncStatus />
       </div>
 
       {/* Create Pawkit Modal */}

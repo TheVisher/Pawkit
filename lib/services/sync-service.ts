@@ -2,6 +2,7 @@ import { localDb } from './local-storage';
 import { syncQueue } from './sync-queue';
 import { CardDTO } from '@/lib/server/cards';
 import { CollectionNode } from '@/lib/types';
+import { getDeviceMetadata, markDeviceActive } from '@/lib/utils/device-session';
 
 /**
  * BIDIRECTIONAL SYNC SERVICE
@@ -46,6 +47,9 @@ class SyncService {
         errors: ['Sync already in progress'],
       };
     }
+
+    // Mark this device as active when syncing
+    markDeviceActive();
 
     this.isSyncing = true;
     const result: SyncResult = {
@@ -154,11 +158,19 @@ class SyncService {
 
   /**
    * Merge server cards with local cards
-   * Strategy: Last-write-wins by updatedAt timestamp
+   * Strategy: Active device wins, then last-write-wins by updatedAt timestamp
    * CRITICAL: Local deletions ALWAYS take precedence
    */
   private async mergeCards(serverCards: CardDTO[], localCards: CardDTO[]): Promise<number> {
     let conflicts = 0;
+
+    // Get device metadata - if this device is active, prefer local changes
+    const deviceMeta = getDeviceMetadata();
+    const preferLocal = deviceMeta.isActive;
+
+    if (preferLocal) {
+      console.log('[SyncService] 🎯 This device is ACTIVE - local changes will be preferred');
+    }
 
     // Create maps for easy lookup
     const localMap = new Map(localCards.map(c => [c.id, c]));
@@ -193,6 +205,14 @@ class SyncService {
           continue;
         }
 
+        // ENHANCED: If this device is active, ALWAYS prefer local version
+        if (preferLocal && localTime > 0) {
+          console.log('[SyncService] 🎯 Active device - keeping local version:', localCard.id);
+          conflicts++;
+          continue;
+        }
+
+        // Fallback to timestamp comparison
         if (serverTime > localTime) {
           // Server is newer - use server version
           console.log('[SyncService] Server version newer for card:', serverCard.id);
@@ -245,10 +265,15 @@ class SyncService {
 
   /**
    * Merge server collections with local collections
+   * Strategy: Active device wins, then last-write-wins by updatedAt timestamp
    * CRITICAL: Local deletions ALWAYS take precedence
    */
   private async mergeCollections(serverCollections: CollectionNode[], localCollections: CollectionNode[]): Promise<number> {
     let conflicts = 0;
+
+    // Get device metadata - if this device is active, prefer local changes
+    const deviceMeta = getDeviceMetadata();
+    const preferLocal = deviceMeta.isActive;
 
     // Flatten the tree structure to include all nested pawkits
     const flatServerCollections = this.flattenCollections(serverCollections);
@@ -283,6 +308,14 @@ class SyncService {
           continue;
         }
 
+        // ENHANCED: If this device is active, ALWAYS prefer local version
+        if (preferLocal && localTime > 0) {
+          console.log('[SyncService] 🎯 Active device - keeping local collection:', localCollection.id);
+          conflicts++;
+          continue;
+        }
+
+        // Fallback to timestamp comparison
         if (serverTime > localTime) {
           await localDb.saveCollection(serverCollection, { fromServer: true });
         } else if (localTime > serverTime) {

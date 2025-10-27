@@ -31,6 +31,8 @@ import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { Menu, Settings, ChevronRight, ChevronLeft } from "lucide-react";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import type { CardModel } from "@/lib/types";
+import { initActivityTracking } from "@/lib/utils/device-session";
+import { SessionWarningBanner } from "@/components/session-warning-banner";
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
@@ -136,6 +138,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   // Sync triggers hook manages periodic sync and event-based sync
   useSyncTriggers();
+
+  // Initialize activity tracking to mark this device as active
+  useEffect(() => {
+    initActivityTracking();
+    console.log('[Layout] Activity tracking initialized');
+  }, []);
 
   const username = userData?.email || "";
   const displayName = userData?.displayName || null;
@@ -293,6 +301,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </main>
           </SidebarInset>
           <ConflictNotifications />
+
+          {/* Multi-Session Warning Banner */}
+          <SessionWarningBanner />
 
           {/* Command Palette */}
           <CommandPalette

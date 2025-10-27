@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -23,6 +24,7 @@ model User {
   cards       Card[]
   collections Collection[]
   viewSettings UserViewSettings[]
+  deviceSessions DeviceSession[]
 }
 
 model Card {
@@ -111,4 +113,20 @@ model UserViewSettings {
   
   @@unique([userId, view])
   @@index([userId])
+}
+
+model DeviceSession {
+  id            String   @id @default(cuid())
+  userId        String
+  deviceId      String   // Unique device identifier
+  deviceName    String   // E.g., "MacBook Pro - Chrome"
+  browser       String?  // Browser name
+  os            String?  // Operating system
+  lastActive    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceId])
+  @@index([userId])
+  @@index([userId, lastActive])
 }
