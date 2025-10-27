@@ -254,7 +254,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
       </div>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
+      {showDeleteConfirm && mounted && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setShowDeleteConfirm(false)}
@@ -312,11 +312,12 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Rename Modal */}
-      {showRenameModal && (
+      {showRenameModal && mounted && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => !loading && setShowRenameModal(false)}
@@ -359,11 +360,12 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Move Modal */}
-      {showMoveModal && (
+      {showMoveModal && mounted && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => !loading && setShowMoveModal(false)}
@@ -420,7 +422,8 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
