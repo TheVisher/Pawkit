@@ -516,9 +516,29 @@ export const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
-  updateCollection: async (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean }) => {
+  updateCollection: async (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; isPrivate?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; coverImage?: string | null; coverImagePosition?: number | null }) => {
     try {
-      // For now, just sync to server directly since we don't have collections in local storage fully implemented
+      // STEP 1: Update local storage FIRST (local-first!)
+      const collections = await localDb.getAllCollections();
+      const collection = collections.find(c => c.id === id);
+
+      if (collection) {
+        const updatedCollection = {
+          ...collection,
+          ...updates,
+          updatedAt: new Date().toISOString()
+        };
+
+        await localDb.saveCollection(updatedCollection, { localOnly: true });
+
+        // STEP 2: Update Zustand state immediately (UI updates instantly)
+        const allCollections = await localDb.getAllCollections();
+        set({ collections: allCollections });
+
+        console.log('[DataStore V2] Collection updated locally:', id);
+      }
+
+      // STEP 3: Sync to server in background (if enabled)
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync && !id.startsWith('temp_')) {
         try {
@@ -529,11 +549,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
           });
 
           if (response.ok) {
-            await get().sync();
-            console.log('[DataStore V2] Collection updated:', id);
+            console.log('[DataStore V2] Collection synced to server:', id);
           }
         } catch (error) {
-          console.error('[DataStore V2] Failed to update collection:', error);
+          console.error('[DataStore V2] Failed to sync collection to server:', error);
         }
       }
     } catch (error) {
@@ -544,6 +563,66 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
   deleteCollection: async (id: string, deleteCards = false, deleteSubPawkits = false) => {
     try {
+      const now = new Date().toISOString();
+
+      // STEP 1: Delete from local storage FIRST (local-first!)
+      const collections = await localDb.getAllCollections();
+      const collection = collections.find(c => c.id === id);
+
+      if (collection) {
+        let collectionsToDelete = [id];
+
+        // If deleting sub-pawkits, recursively find all descendants
+        if (deleteSubPawkits) {
+          const findDescendants = (parentId: string): string[] => {
+            const children = collections.filter(c => c.parentId === parentId);
+            const childIds = children.map(c => c.id);
+            const allDescendants = [...childIds];
+
+            for (const childId of childIds) {
+              allDescendants.push(...findDescendants(childId));
+            }
+
+            return allDescendants;
+          };
+
+          const descendants = findDescendants(id);
+          collectionsToDelete = [id, ...descendants];
+        } else {
+          // Move children to parent (preserve sub-pawkits)
+          const children = collections.filter(c => c.parentId === id);
+          for (const child of children) {
+            const updatedChild = {
+              ...child,
+              parentId: collection.parentId,
+              updatedAt: now
+            };
+            await localDb.saveCollection(updatedChild, { localOnly: true });
+          }
+        }
+
+        // Mark collections as deleted
+        for (const collectionId of collectionsToDelete) {
+          const coll = collections.find(c => c.id === collectionId);
+          if (coll) {
+            const deletedCollection = {
+              ...coll,
+              deleted: true,
+              deletedAt: now,
+              updatedAt: now
+            };
+            await localDb.saveCollection(deletedCollection, { localOnly: true });
+          }
+        }
+
+        // STEP 2: Update Zustand state immediately (UI updates instantly)
+        const allCollections = await localDb.getAllCollections();
+        set({ collections: allCollections });
+
+        console.log('[DataStore V2] Collection(s) deleted locally:', collectionsToDelete);
+      }
+
+      // STEP 3: Sync to server in background (if enabled)
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync && !id.startsWith('temp_')) {
         try {
@@ -558,11 +637,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
           });
 
           if (response.ok) {
-            await get().sync();
-            console.log('[DataStore V2] Collection deleted:', id);
+            console.log('[DataStore V2] Collection synced to server:', id);
           }
         } catch (error) {
-          console.error('[DataStore V2] Failed to delete collection:', error);
+          console.error('[DataStore V2] Failed to sync deletion to server:', error);
         }
       }
     } catch (error) {
