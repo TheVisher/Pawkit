@@ -10,12 +10,14 @@ type PawkitActionsProps = {
   pawkitName: string;
   isPinned?: boolean;
   isPrivate?: boolean;
+  hidePreview?: boolean;
+  useCoverAsBackground?: boolean;
   hasChildren?: boolean;
   allPawkits?: Array<{ id: string; name: string; slug: string }>;
   onDeleteSuccess?: () => void;
 };
 
-export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivate = false, hasChildren = false, allPawkits = [], onDeleteSuccess }: PawkitActionsProps) {
+export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivate = false, hidePreview = false, useCoverAsBackground = false, hasChildren = false, allPawkits = [], onDeleteSuccess }: PawkitActionsProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
@@ -26,8 +28,11 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
   const [deleteCards, setDeleteCards] = useState(false);
   const [pinned, setPinned] = useState(isPinned);
   const [isPrivateState, setIsPrivateState] = useState(isPrivate);
+  const [hidePreviewState, setHidePreviewState] = useState(hidePreview);
+  const [useCoverAsBackgroundState, setUseCoverAsBackgroundState] = useState(useCoverAsBackground);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
   const [mounted, setMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
@@ -99,9 +104,38 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
     }
   };
 
+  const handleHidePreviewToggle = async () => {
+    try {
+      setHidePreviewState(!hidePreviewState);
+      setShowMenu(false);
+      await updateCollection(pawkitId, { hidePreview: !hidePreviewState });
+    } catch (err) {
+      // Silently revert on error - database columns may not exist yet
+      console.warn("Failed to toggle preview visibility (database migration may be pending):", err);
+      setHidePreviewState(hidePreviewState);
+    }
+  };
+
+  const handleCoverAsBackgroundToggle = async () => {
+    try {
+      setUseCoverAsBackgroundState(!useCoverAsBackgroundState);
+      setShowMenu(false);
+      await updateCollection(pawkitId, { useCoverAsBackground: !useCoverAsBackgroundState });
+    } catch (err) {
+      // Silently revert on error - database columns may not exist yet
+      console.warn("Failed to toggle cover background (database migration may be pending):", err);
+      setUseCoverAsBackgroundState(useCoverAsBackgroundState);
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      // Check if click is outside both the button container AND the portal menu
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        menuRef.current && !menuRef.current.contains(target)
+      ) {
         setShowMenu(false);
       }
     };
@@ -117,7 +151,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
 
   return (
     <>
-      <div className="relative" ref={menuRef}>
+      <div className="relative" ref={containerRef}>
         <button
           ref={buttonRef}
           onClick={(e) => {
@@ -142,6 +176,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
 
         {showMenu && mounted && createPortal(
           <div
+            ref={menuRef}
             className="fixed w-56 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-[9999]"
             style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
           >
@@ -163,6 +198,26 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
             >
               {isPrivateState ? "🔓 Mark as Public" : "🔒 Mark as Private"}
             </button>
+            <div className="border-t border-gray-800 my-1" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleHidePreviewToggle();
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors"
+            >
+              {hidePreviewState ? "Show Preview" : "Hide Preview"}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCoverAsBackgroundToggle();
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors"
+            >
+              {useCoverAsBackgroundState ? "Remove Cover Background" : "Use Cover as Background"}
+            </button>
+            <div className="border-t border-gray-800 my-1" />
             <button
               onClick={(e) => {
                 e.stopPropagation();
