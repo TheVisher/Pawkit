@@ -916,7 +916,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
-  deleteCollection: async (id: string, deleteCards = false) => {
+  deleteCollection: async (id: string, deleteCards = false, deleteSubPawkits = false) => {
     try {
       // STEP 1: Soft delete in local storage first
       const collections = await localDb.getAllCollections();
@@ -945,7 +945,13 @@ export const useDataStore = create<DataStore>((set, get) => ({
         try {
           // Use Den API if collection is in Den
           const baseUrl = collection?.inDen ? `/api/den/pawkits/${id}` : `/api/pawkits/${id}`;
-          const url = deleteCards ? `${baseUrl}?deleteCards=true` : baseUrl;
+
+          // Build query params
+          const params = new URLSearchParams();
+          if (deleteCards) params.set('deleteCards', 'true');
+          if (deleteSubPawkits) params.set('deleteSubPawkits', 'true');
+
+          const url = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
 
           const response = await fetch(url, {
             method: 'DELETE',
