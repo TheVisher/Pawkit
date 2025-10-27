@@ -600,6 +600,15 @@ function CollectionPageContent() {
           </div>
         )}
 
+        {/* Cards Section */}
+        {items.length > 0 && (
+          <div className="mb-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-4">
+              <span>Cards ({items.length})</span>
+            </div>
+          </div>
+        )}
+
         <LibraryWorkspace
           initialCards={items}
           initialNextCursor={undefined}
