@@ -397,19 +397,6 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" onClick={() => setShowProfileModal(true)}>
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold text-sm">
-                {(displayName || username).charAt(0).toUpperCase()}
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{displayName || username}</span>
-                <span className="truncate text-xs text-muted-foreground">View profile</span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
         {/* Sync Status - Matches right sidebar keybind footer styling */}
         <SyncStatus />
       </SidebarFooter>
