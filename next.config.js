@@ -58,6 +58,9 @@ const nextConfig = {
   // Security headers
   async headers() {
     const isDev = process.env.NODE_ENV === 'development';
+    // Vercel preview deployments need looser CSP for feedback tools
+    const isPreview = process.env.VERCEL_ENV === 'preview';
+    const allowVercelScripts = isDev || isPreview;
 
     return [
       {
@@ -67,12 +70,12 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              // Script sources - stricter in production
-              isDev
-                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://vercel.live"
+              // Script sources - allow Vercel scripts on dev and preview
+              allowVercelScripts
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://vercel.live https://vercel.live"
                 : "script-src 'self' blob:",
-              isDev
-                ? "script-src-elem 'self' 'unsafe-inline' blob: https://vercel.live"
+              allowVercelScripts
+                ? "script-src-elem 'self' 'unsafe-inline' blob: https://vercel.live https://*.vercel-scripts.com"
                 : "script-src-elem 'self' blob:",
               // Styles
               "style-src 'self' 'unsafe-inline' blob:",
@@ -83,12 +86,12 @@ const nextConfig = {
                 : "img-src 'self' data: https: blob:",
               // Fonts
               "font-src 'self' data: blob:",
-              // API connections - stricter in production
-              isDev
+              // API connections - allow Vercel live on dev and preview
+              allowVercelScripts
                 ? "connect-src 'self' https: http: blob: data: wss: ws: https://vercel.live wss://ws-us3.pusher.com"
                 : "connect-src 'self' https: blob: data: wss: wss://ws-us3.pusher.com",
-              // Frames for embeds
-              isDev
+              // Frames for embeds - allow Vercel live on dev and preview
+              allowVercelScripts
                 ? "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://vercel.live"
                 : "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
               // Workers
@@ -107,8 +110,8 @@ const nextConfig = {
               "base-uri 'self'",
               // Form actions
               "form-action 'self'",
-              // Report CSP violations (only in production)
-              ...(!isDev ? ["report-uri /api/csp-report"] : [])
+              // Report CSP violations (only in true production)
+              ...(!allowVercelScripts ? ["report-uri /api/csp-report"] : [])
             ].join('; ')
           },
           {
