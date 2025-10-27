@@ -184,7 +184,24 @@ export async function updateCollection(userId: string, id: string, payload: unkn
   return updated;
 }
 
-export async function deleteCollection(userId: string, id: string, deleteCards = false) {
+async function getAllDescendantIds(userId: string, parentId: string, tx: any): Promise<string[]> {
+  const children = await tx.collection.findMany({
+    where: { parentId, userId, deleted: false },
+    select: { id: true }
+  });
+
+  const childIds = children.map((c: { id: string }) => c.id);
+  const descendantIds: string[] = [...childIds];
+
+  for (const childId of childIds) {
+    const grandChildren = await getAllDescendantIds(userId, childId, tx);
+    descendantIds.push(...grandChildren);
+  }
+
+  return descendantIds;
+}
+
+export async function deleteCollection(userId: string, id: string, deleteCards = false, deleteSubPawkits = false) {
   const collection = await prisma.collection.findFirst({ where: { id, userId } });
   if (!collection) {
     return;
@@ -193,56 +210,70 @@ export async function deleteCollection(userId: string, id: string, deleteCards =
   const now = new Date();
 
   await prisma.$transaction(async (tx: any) => {
-    // Move child collections to parent (they don't get deleted)
-    await tx.collection.updateMany({
-      where: { parentId: id, userId },
-      data: { parentId: collection.parentId }
-    });
+    let collectionIdsToDelete = [id];
 
-    if (deleteCards) {
-      // Soft delete all cards in this collection
-      await tx.card.updateMany({
-        where: {
-          userId,
-          collections: { contains: `"${collection.slug}"` },
-          deleted: false
-        },
+    if (deleteSubPawkits) {
+      // Recursively find all descendant collections
+      const descendantIds = await getAllDescendantIds(userId, id, tx);
+      collectionIdsToDelete = [id, ...descendantIds];
+    } else {
+      // Move child collections to parent (they don't get deleted)
+      await tx.collection.updateMany({
+        where: { parentId: id, userId },
+        data: { parentId: collection.parentId }
+      });
+    }
+
+    // Process each collection to delete
+    for (const collectionId of collectionIdsToDelete) {
+      const coll = await tx.collection.findFirst({ where: { id: collectionId, userId } });
+      if (!coll) continue;
+
+      if (deleteCards) {
+        // Soft delete all cards in this collection
+        await tx.card.updateMany({
+          where: {
+            userId,
+            collections: { contains: `"${coll.slug}"` },
+            deleted: false
+          },
+          data: {
+            deleted: true,
+            deletedAt: now
+          }
+        });
+      } else {
+        // Remove collection slug from all cards
+        const affectedCards = await tx.card.findMany({
+          where: {
+            userId,
+            collections: { contains: `"${coll.slug}"` },
+            deleted: false
+          }
+        });
+
+        for (const card of affectedCards) {
+          const collections: any = card.collections ? JSON.parse(card.collections) : [];
+          const filtered = Array.isArray(collections)
+            ? collections.filter((c: string) => c !== coll.slug)
+            : [];
+
+          await tx.card.update({
+            where: { id: card.id, userId },
+            data: { collections: JSON.stringify(filtered) }
+          });
+        }
+      }
+
+      // Soft delete the collection
+      await tx.collection.update({
+        where: { id: collectionId, userId },
         data: {
           deleted: true,
           deletedAt: now
         }
       });
-    } else {
-      // Remove collection slug from all cards
-      const affectedCards = await tx.card.findMany({
-        where: {
-          userId,
-          collections: { contains: `"${collection.slug}"` },
-          deleted: false
-        }
-      });
-
-      for (const card of affectedCards) {
-        const collections: any = card.collections ? JSON.parse(card.collections) : [];
-        const filtered = Array.isArray(collections)
-          ? collections.filter((c: string) => c !== collection.slug)
-          : [];
-
-        await tx.card.update({
-          where: { id: card.id, userId },
-          data: { collections: JSON.stringify(filtered) }
-        });
-      }
     }
-
-    // Soft delete the collection
-    await tx.collection.update({
-      where: { id, userId },
-      data: {
-        deleted: true,
-        deletedAt: now
-      }
-    });
   });
 
   revalidateTag('collections');
@@ -274,13 +305,42 @@ export async function getTrashCollections(userId: string) {
 }
 
 export async function restoreCollection(userId: string, id: string) {
-  return prisma.collection.update({
+  const collection = await prisma.collection.findFirst({ where: { id, userId } });
+  if (!collection) {
+    throw new Error('Collection not found');
+  }
+
+  // Check if parent exists and is not deleted
+  let parentId = collection.parentId;
+  let restoredToRoot = false;
+
+  if (parentId) {
+    const parent = await prisma.collection.findFirst({
+      where: { id: parentId, userId }
+    });
+
+    // If parent doesn't exist or is deleted, restore to root level
+    if (!parent || parent.deleted) {
+      parentId = null;
+      restoredToRoot = true;
+    }
+  }
+
+  const updated = await prisma.collection.update({
     where: { id, userId },
     data: {
       deleted: false,
-      deletedAt: null
+      deletedAt: null,
+      parentId
     }
   });
+
+  revalidateTag('collections');
+
+  return {
+    collection: updated,
+    restoredToRoot
+  };
 }
 
 export async function permanentlyDeleteCollection(userId: string, id: string) {

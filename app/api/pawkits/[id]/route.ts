@@ -35,8 +35,9 @@ export async function DELETE(request: NextRequest, segmentData: RouteParams) {
     const params = await segmentData.params;
     const { searchParams } = new URL(request.url);
     const deleteCards = searchParams.get('deleteCards') === 'true';
+    const deleteSubPawkits = searchParams.get('deleteSubPawkits') === 'true';
 
-    await deleteCollection(user.id, params.id, deleteCards);
+    await deleteCollection(user.id, params.id, deleteCards, deleteSubPawkits);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return handleApiError(error);

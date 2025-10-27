@@ -15,7 +15,7 @@ type DemoDataStore = {
   deleteCard: (id: string) => void;
   addCollection: (collectionData: { name: string; parentId?: string | null }) => void;
   updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; isPrivate?: boolean }) => void;
-  deleteCollection: (id: string) => void;
+  deleteCollection: (id: string, deleteCards?: boolean, deleteSubPawkits?: boolean) => void;
   reset: () => void;
 };
 
@@ -651,13 +651,15 @@ export const useDemoDataStore = create<DemoDataStore>()(
         }));
       },
 
-      deleteCollection: (id: string) => {
+      deleteCollection: (id: string, deleteCards?: boolean, deleteSubPawkits?: boolean) => {
         set((state) => ({
           collections: state.collections.filter((c) => c.id !== id),
-          cards: state.cards.map((card) => ({
-            ...card,
-            collections: card.collections?.filter((cId) => cId !== id) || [],
-          })),
+          cards: deleteCards
+            ? state.cards.filter((card) => !card.collections?.includes(id))
+            : state.cards.map((card) => ({
+                ...card,
+                collections: card.collections?.filter((cId) => cId !== id) || [],
+              })),
         }));
       },
 

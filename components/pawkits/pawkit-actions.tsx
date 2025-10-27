@@ -26,6 +26,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleteCards, setDeleteCards] = useState(false);
+  const [deleteSubPawkits, setDeleteSubPawkits] = useState(false);
   const [pinned, setPinned] = useState(isPinned);
   const [isPrivateState, setIsPrivateState] = useState(isPrivate);
   const [hidePreviewState, setHidePreviewState] = useState(hidePreview);
@@ -45,7 +46,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
   const handleDelete = async () => {
     setLoading(true);
     try {
-      await deleteCollection(pawkitId, deleteCards);
+      await deleteCollection(pawkitId, deleteCards, deleteSubPawkits);
       setShowDeleteConfirm(false);
       router.push("/pawkits");
       onDeleteSuccess?.();
@@ -269,14 +270,33 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
               <div className="mb-4 p-3 rounded bg-yellow-900/20 border border-yellow-700/50">
                 <p className="text-sm text-yellow-200 font-medium">⚠️ Warning</p>
                 <p className="text-xs text-yellow-300/80 mt-1">
-                  This Pawkit contains sub-Pawkits. Deleting it will also delete all sub-Pawkits.
+                  This Pawkit contains sub-Pawkits. Choose whether to delete them or move them to root level.
                 </p>
               </div>
             )}
 
             <p className="text-sm text-gray-400 mb-4">
-              This will move this Pawkit{hasChildren ? " and all its sub-Pawkits" : ""} to Trash. You can restore it within 30 days.
+              This will move this Pawkit to Trash. You can restore it within 30 days.
             </p>
+
+            {hasChildren && (
+              <div className="mb-4 p-3 rounded bg-gray-900 border border-gray-800">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={deleteSubPawkits}
+                    onChange={(e) => setDeleteSubPawkits(e.target.checked)}
+                    className="rounded bg-gray-800 border-gray-700 text-accent focus:ring-accent"
+                  />
+                  <span className="text-sm text-gray-300">Delete all sub-Pawkits</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1 ml-6">
+                  {deleteSubPawkits
+                    ? "All sub-Pawkits will be moved to Trash individually"
+                    : "Sub-Pawkits will be moved to root level"}
+                </p>
+              </div>
+            )}
 
             <div className="mb-4 p-3 rounded bg-gray-900 border border-gray-800">
               <label className="flex items-center gap-2 cursor-pointer">

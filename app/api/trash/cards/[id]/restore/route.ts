@@ -17,8 +17,11 @@ export async function POST(_request: NextRequest, segmentData: RouteParams) {
     }
 
     const params = await segmentData.params;
-    await restoreCard(user.id, params.id);
-    return NextResponse.json({ ok: true });
+    const result = await restoreCard(user.id, params.id);
+    return NextResponse.json({
+      ok: true,
+      restoredToLibrary: result.restoredToLibrary
+    });
   } catch (error) {
     return handleApiError(error);
   }
