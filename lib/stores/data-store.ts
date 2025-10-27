@@ -27,6 +27,16 @@ import { useSettingsStore } from '@/lib/hooks/settings-store';
  */
 
 /**
+ * Extract tags from content (#tag syntax)
+ */
+export function extractTags(content: string): string[] {
+  const tagRegex = /#([a-zA-Z0-9_-]+)/g;
+  const matches = [...content.matchAll(tagRegex)];
+  const tags = matches.map(match => match[1].toLowerCase());
+  return [...new Set(tags)]; // Remove duplicates
+}
+
+/**
  * Extract wiki-links from note content and save to IndexedDB
  * Wiki-link syntax: [[Note Title]]
  */
