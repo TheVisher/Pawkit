@@ -205,7 +205,58 @@ class SyncService {
           continue;
         }
 
-        // ENHANCED: If this device is active, ALWAYS prefer local version
+        // Check if server has metadata that local doesn't have
+        // Metadata fields: title, description, image, domain, articleContent, metadata
+        const serverHasMetadata = serverCard.image || serverCard.description ||
+                                  serverCard.articleContent || serverCard.metadata;
+        const localHasMetadata = localCard.image || localCard.description ||
+                                 localCard.articleContent || localCard.metadata;
+
+        // SPECIAL CASE: If server has metadata but local doesn't, always merge metadata
+        // This ensures metadata fetched on other devices is never lost
+        if (serverHasMetadata && !localHasMetadata) {
+          console.log('[SyncService] 📥 Server has metadata, merging into local version:', serverCard.id);
+          const mergedCard = {
+            ...localCard,
+            // Take metadata fields from server
+            title: serverCard.title || localCard.title,
+            description: serverCard.description || localCard.description,
+            image: serverCard.image || localCard.image,
+            domain: serverCard.domain || localCard.domain,
+            articleContent: serverCard.articleContent || localCard.articleContent,
+            metadata: serverCard.metadata || localCard.metadata,
+            // Keep the later updatedAt to avoid re-syncing
+            updatedAt: serverTime > localTime ? serverCard.updatedAt : localCard.updatedAt,
+          };
+          await localDb.saveCard(mergedCard, { fromServer: true });
+          continue;
+        }
+
+        // If both have metadata, check if server's is more complete
+        if (serverHasMetadata && localHasMetadata) {
+          const serverMetadataScore = [
+            serverCard.image,
+            serverCard.description,
+            serverCard.articleContent,
+            serverCard.metadata
+          ].filter(Boolean).length;
+
+          const localMetadataScore = [
+            localCard.image,
+            localCard.description,
+            localCard.articleContent,
+            localCard.metadata
+          ].filter(Boolean).length;
+
+          // If server has more complete metadata, prefer it regardless of timestamp
+          if (serverMetadataScore > localMetadataScore) {
+            console.log('[SyncService] 📥 Server has more complete metadata, using server version:', serverCard.id);
+            await localDb.saveCard(serverCard, { fromServer: true });
+            continue;
+          }
+        }
+
+        // ENHANCED: If this device is active, prefer local version for non-metadata changes
         if (preferLocal && localTime > 0) {
           console.log('[SyncService] 🎯 Active device - keeping local version:', localCard.id);
           conflicts++;

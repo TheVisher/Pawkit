@@ -577,17 +577,64 @@ export const useDataStore = create<DataStore>((set, get) => ({
             body: JSON.stringify(updates),
           });
 
-          if (response.status === 409) {
+          if (response.status === 409 || response.status === 412) {
             // Conflict - server has newer version
-            const conflict = await response.json();
-            console.warn('[DataStore V2] Conflict detected:', conflict.message);
+            // 409: Conflict (from our API)
+            // 412: Precondition Failed (from Vercel or other middleware)
+            console.warn('[DataStore V2] Conflict detected - server has newer version:', id);
 
-            useConflictStore.getState().addConflict(
-              id,
-              'This card was modified on another device. Your changes were saved locally.'
-            );
+            // Fetch the latest version from server
+            try {
+              const latestRes = await fetch(`/api/cards/${id}`);
+              if (latestRes.ok) {
+                const latestCard = await latestRes.json();
 
-            // Keep local version but mark it for manual resolution
+                // Merge: Keep user's changes but update with server's metadata
+                const mergedCard = {
+                  ...latestCard,
+                  ...updates,
+                  // Always keep server's metadata if it exists
+                  image: latestCard.image || updates.image,
+                  description: latestCard.description || updates.description,
+                  articleContent: latestCard.articleContent || updates.articleContent,
+                  metadata: latestCard.metadata || updates.metadata,
+                  updatedAt: new Date().toISOString(),
+                };
+
+                // Save merged version locally
+                await localDb.saveCard(mergedCard, { localOnly: true });
+                set((state) => ({
+                  cards: state.cards.map(c => c.id === id ? mergedCard : c),
+                }));
+
+                // Retry the update with the new timestamp
+                const retryResponse = await fetch(`/api/cards/${id}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'If-Unmodified-Since': latestCard.updatedAt,
+                  },
+                  body: JSON.stringify(updates),
+                });
+
+                if (retryResponse.ok) {
+                  const finalCard = await retryResponse.json();
+                  await localDb.saveCard(finalCard, { fromServer: true });
+                  set((state) => ({
+                    cards: state.cards.map(c => c.id === id ? finalCard : c),
+                  }));
+                  console.log('[DataStore V2] Card update retry succeeded:', id);
+                } else {
+                  console.warn('[DataStore V2] Card update retry failed, keeping local version:', id);
+                }
+              }
+            } catch (retryError) {
+              console.error('[DataStore V2] Failed to resolve conflict:', retryError);
+              useConflictStore.getState().addConflict(
+                id,
+                'This card was modified on another device. Your changes were saved locally.'
+              );
+            }
           } else if (response.ok) {
             const serverCard = await response.json();
             await localDb.saveCard(serverCard, { fromServer: true });
