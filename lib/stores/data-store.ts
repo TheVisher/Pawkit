@@ -151,8 +151,30 @@ export const useDataStore = create<DataStore>((set, get) => ({
       ]);
 
       // CRITICAL: Filter out deleted items (soft-deleted items go to trash)
-      const cards = allCards.filter(c => !c.deleted);
-      const collections = allCollections.filter(c => !c.deleted);
+      const filteredCards = allCards.filter(c => !c.deleted);
+      const filteredCollections = allCollections.filter(c => !c.deleted);
+
+      // DEDUPLICATION: Remove any duplicate cards by ID
+      const seenCardIds = new Set<string>();
+      const cards = filteredCards.filter(card => {
+        if (seenCardIds.has(card.id)) {
+          console.warn('[DataStore V2] Removing duplicate card during init:', card.id);
+          return false;
+        }
+        seenCardIds.add(card.id);
+        return true;
+      });
+
+      // DEDUPLICATION: Remove any duplicate collections by ID
+      const seenCollectionIds = new Set<string>();
+      const collections = filteredCollections.filter(collection => {
+        if (seenCollectionIds.has(collection.id)) {
+          console.warn('[DataStore V2] Removing duplicate collection during init:', collection.id);
+          return false;
+        }
+        seenCollectionIds.add(collection.id);
+        return true;
+      });
 
       set({
         cards,
@@ -208,8 +230,30 @@ export const useDataStore = create<DataStore>((set, get) => ({
         ]);
 
         // CRITICAL: Filter out deleted items to prevent resurrection
-        const cards = allCards.filter(c => !c.deleted);
-        const collections = allCollections.filter(c => !c.deleted);
+        const filteredCards = allCards.filter(c => !c.deleted);
+        const filteredCollections = allCollections.filter(c => !c.deleted);
+
+        // DEDUPLICATION: Remove any duplicate cards by ID (can happen with multi-session sync)
+        const seenCardIds = new Set<string>();
+        const cards = filteredCards.filter(card => {
+          if (seenCardIds.has(card.id)) {
+            console.warn('[DataStore V2] Removing duplicate card:', card.id);
+            return false;
+          }
+          seenCardIds.add(card.id);
+          return true;
+        });
+
+        // DEDUPLICATION: Remove any duplicate collections by ID
+        const seenCollectionIds = new Set<string>();
+        const collections = filteredCollections.filter(collection => {
+          if (seenCollectionIds.has(collection.id)) {
+            console.warn('[DataStore V2] Removing duplicate collection:', collection.id);
+            return false;
+          }
+          seenCollectionIds.add(collection.id);
+          return true;
+        });
 
         set({ cards, collections });
 
@@ -238,8 +282,30 @@ export const useDataStore = create<DataStore>((set, get) => ({
       ]);
 
       // Filter out deleted items
-      const cards = allCards.filter(c => !c.deleted);
-      const collections = allCollections.filter(c => !c.deleted);
+      const filteredCards = allCards.filter(c => !c.deleted);
+      const filteredCollections = allCollections.filter(c => !c.deleted);
+
+      // DEDUPLICATION: Remove any duplicate cards by ID
+      const seenCardIds = new Set<string>();
+      const cards = filteredCards.filter(card => {
+        if (seenCardIds.has(card.id)) {
+          console.warn('[DataStore V2] Removing duplicate card during refresh:', card.id);
+          return false;
+        }
+        seenCardIds.add(card.id);
+        return true;
+      });
+
+      // DEDUPLICATION: Remove any duplicate collections by ID
+      const seenCollectionIds = new Set<string>();
+      const collections = filteredCollections.filter(collection => {
+        if (seenCollectionIds.has(collection.id)) {
+          console.warn('[DataStore V2] Removing duplicate collection during refresh:', collection.id);
+          return false;
+        }
+        seenCollectionIds.add(collection.id);
+        return true;
+      });
 
       set({ cards, collections, isLoading: false });
 
