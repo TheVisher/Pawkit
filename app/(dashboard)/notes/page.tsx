@@ -21,19 +21,19 @@ function NotesPageContent() {
 
   // Filter to only notes (md-note or text-note) and exclude Den cards and private pawkit cards
   const allNotes = useMemo(() => {
-    // Build a set of private collection IDs for fast lookup
-    const privateCollectionIds = new Set<string>();
-    const getAllCollectionIds = (nodes: any[]): void => {
+    // Build a set of private collection SLUGS for fast lookup (cards store slugs, not IDs)
+    const privateCollectionSlugs = new Set<string>();
+    const getAllPrivateSlugs = (nodes: any[]): void => {
       for (const node of nodes) {
         if (node.isPrivate) {
-          privateCollectionIds.add(node.id);
+          privateCollectionSlugs.add(node.slug);
         }
         if (node.children && node.children.length > 0) {
-          getAllCollectionIds(node.children);
+          getAllPrivateSlugs(node.children);
         }
       }
     };
-    getAllCollectionIds(collections);
+    getAllPrivateSlugs(collections);
 
     let notes = cards.filter(c => {
       // Must be a note type
@@ -43,8 +43,8 @@ function NotesPageContent() {
       if (c.inDen) return false;
 
       // Exclude cards in private collections
-      const isInPrivateCollection = c.collections?.some(collectionId =>
-        privateCollectionIds.has(collectionId)
+      const isInPrivateCollection = c.collections?.some(collectionSlug =>
+        privateCollectionSlugs.has(collectionSlug)
       );
       if (isInPrivateCollection) return false;
 
