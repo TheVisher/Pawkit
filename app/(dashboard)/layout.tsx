@@ -116,19 +116,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     loadFromServer();
   }, [loadFromServer]);
 
-  // Sync check on window focus (checks if another device made changes)
-  useEffect(() => {
-    const handleFocus = () => {
-      if (isInitialized && document.visibilityState === 'visible') {
-        // Optional: You can add a timestamp check here to avoid too frequent syncs
-        // For now, just drain the queue when user returns to tab
-        useDataStore.getState().drainQueue();
-      }
-    };
-
-    window.addEventListener('visibilitychange', handleFocus);
-    return () => window.removeEventListener('visibilitychange', handleFocus);
-  }, [isInitialized]);
+  // DISABLED: This was causing excessive syncing and card duplication
+  // Sync is now handled by useNetworkSync hook with proper debouncing
+  // useEffect(() => {
+  //   const handleFocus = () => {
+  //     if (isInitialized && document.visibilityState === 'visible') {
+  //       useDataStore.getState().drainQueue();
+  //     }
+  //   };
+  //   window.addEventListener('visibilitychange', handleFocus);
+  //   return () => window.removeEventListener('visibilitychange', handleFocus);
+  // }, [isInitialized]);
 
   // Network sync hook handles queue draining on reconnection + periodic retries
   useNetworkSync();
