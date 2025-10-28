@@ -44,7 +44,7 @@ export function SessionWarningBanner() {
               Active Session Detected
             </h3>
             <p className="text-xs text-orange-200/80 mb-3">
-              You're currently logged in on:
+              You&apos;re currently logged in on:
             </p>
 
             {/* Device Info */}
