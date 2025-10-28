@@ -83,19 +83,19 @@ function LibraryPageContent() {
 
   // Filter cards based on search params (client-side filtering)
   const items = useMemo(() => {
-    // Build a set of private collection IDs for fast lookup
-    const privateCollectionIds = new Set<string>();
-    const getAllCollectionIds = (nodes: any[]): void => {
+    // Build a set of private collection SLUGS for fast lookup (cards store slugs, not IDs)
+    const privateCollectionSlugs = new Set<string>();
+    const getAllPrivateSlugs = (nodes: any[]): void => {
       for (const node of nodes) {
         if (node.isPrivate) {
-          privateCollectionIds.add(node.id);
+          privateCollectionSlugs.add(node.slug);
         }
         if (node.children && node.children.length > 0) {
-          getAllCollectionIds(node.children);
+          getAllPrivateSlugs(node.children);
         }
       }
     };
-    getAllCollectionIds(collections);
+    getAllPrivateSlugs(collections);
 
     let filtered = cards;
 
@@ -103,8 +103,8 @@ function LibraryPageContent() {
     filtered = filtered.filter(card => {
       if (card.deleted) return false;
       if (card.inDen) return false;
-      const isInPrivateCollection = card.collections?.some(collectionId =>
-        privateCollectionIds.has(collectionId)
+      const isInPrivateCollection = card.collections?.some(collectionSlug =>
+        privateCollectionSlugs.has(collectionSlug)
       );
       return !isInPrivateCollection;
     });
