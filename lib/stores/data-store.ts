@@ -6,7 +6,24 @@ import { syncService } from '@/lib/services/sync-service';
 import { syncQueue } from '@/lib/services/sync-queue';
 import { useConflictStore } from '@/lib/stores/conflict-store';
 import { useSettingsStore } from '@/lib/hooks/settings-store';
-import { markDeviceActive } from '@/lib/utils/device-session';
+import { markDeviceActive, getDeviceId } from '@/lib/utils/device-session';
+
+/**
+ * Write guard: Ensures only the active device can modify data
+ * Prevents corruption from concurrent writes across multiple devices
+ */
+function ensureActiveDevice(): boolean {
+  const currentDeviceId = getDeviceId();
+  const activeDeviceId = localStorage.getItem('pawkit_active_device');
+
+  if (activeDeviceId && activeDeviceId !== currentDeviceId) {
+    console.error('[WriteGuard] ❌ Write blocked - another device is active:', activeDeviceId);
+    alert('Another device is active. Please refresh and click "Use This Device" to continue.');
+    return false;
+  }
+
+  return true;
+}
 
 /**
  * LOCAL-FIRST DATA STORE V2
@@ -323,6 +340,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Add card: Save to local first, then sync to server
    */
   addCard: async (cardData: Partial<CardDTO>) => {
+    // WRITE GUARD: Ensure this is the active device
+    if (!ensureActiveDevice()) {
+      return;
+    }
+
     // Mark device as active - this is the source of truth
     markDeviceActive();
 
@@ -437,6 +459,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Update card: Save to local first, then sync to server
    */
   updateCard: async (id: string, updates: Partial<CardDTO>) => {
+    // WRITE GUARD: Ensure this is the active device
+    if (!ensureActiveDevice()) {
+      return;
+    }
+
     // Mark device as active - this is the source of truth
     markDeviceActive();
 
@@ -523,6 +550,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Delete card: Remove from local first, then sync to server
    */
   deleteCard: async (id: string) => {
+    // WRITE GUARD: Ensure this is the active device
+    if (!ensureActiveDevice()) {
+      return;
+    }
+
     // Mark device as active - this is the source of truth
     markDeviceActive();
 
@@ -563,6 +595,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Add collection: Save to local first, then sync
    */
   addCollection: async (collectionData: { name: string; parentId?: string | null }) => {
+    // WRITE GUARD: Ensure this is the active device
+    if (!ensureActiveDevice()) {
+      return;
+    }
+
     // Mark device as active - this is the source of truth
     markDeviceActive();
 
@@ -627,6 +664,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   updateCollection: async (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; isPrivate?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; coverImage?: string | null; coverImagePosition?: number | null }) => {
+    // WRITE GUARD: Ensure this is the active device
+    if (!ensureActiveDevice()) {
+      return;
+    }
+
     // Mark device as active - this is the source of truth
     markDeviceActive();
 
@@ -676,6 +718,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   deleteCollection: async (id: string, deleteCards = false, deleteSubPawkits = false) => {
+    // WRITE GUARD: Ensure this is the active device
+    if (!ensureActiveDevice()) {
+      return;
+    }
+
     // Mark device as active - this is the source of truth
     markDeviceActive();
 
