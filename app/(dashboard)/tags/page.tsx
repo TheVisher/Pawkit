@@ -30,27 +30,27 @@ export default function TagsPage() {
   const { toasts, dismissToast, success, error } = useToast();
 
   useEffect(() => {
-    // Build a set of private collection IDs for fast lookup
-    const privateCollectionIds = new Set<string>();
-    const getAllCollectionIds = (nodes: any[]): void => {
+    // Build a set of private collection SLUGS for fast lookup (cards store slugs, not IDs)
+    const privateCollectionSlugs = new Set<string>();
+    const getAllPrivateSlugs = (nodes: any[]): void => {
       for (const node of nodes) {
         if (node.isPrivate) {
-          privateCollectionIds.add(node.id);
+          privateCollectionSlugs.add(node.slug);
         }
         if (node.children && node.children.length > 0) {
-          getAllCollectionIds(node.children);
+          getAllPrivateSlugs(node.children);
         }
       }
     };
-    getAllCollectionIds(collections);
+    getAllPrivateSlugs(collections);
 
     // Extract all tags from cards and count usage (excluding private cards)
     const tagMap = new Map<string, CardModel[]>();
 
     cards.forEach((card) => {
       // Skip cards that are in private collections or marked as inDen (deprecated but still check)
-      const isInPrivateCollection = card.collections?.some(collectionId =>
-        privateCollectionIds.has(collectionId)
+      const isInPrivateCollection = card.collections?.some(collectionSlug =>
+        privateCollectionSlugs.has(collectionSlug)
       );
       if (card.inDen || isInPrivateCollection) {
         return; // Skip this card
