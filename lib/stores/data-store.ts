@@ -34,11 +34,12 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
   const seenCardUrls = new Map<string, string>(); // url/title -> cardId mapping
   const cardsToDelete: string[] = []; // IDs of duplicate cards to delete from IndexedDB
 
-  // First pass: detect duplicates by URL/title and mark temp cards for deletion
+  // First pass: detect duplicates by URL/title and mark duplicates for deletion
   for (const card of cards) {
     const key = card.url || card.title || card.id;
     if (seenCardUrls.has(key) && key !== card.id) {
       const existingId = seenCardUrls.get(key);
+      const existingCard = cards.find(c => c.id === existingId);
       const isTempExisting = existingId?.startsWith('temp_');
       const isTempDuplicate = card.id.startsWith('temp_');
 
@@ -48,19 +49,37 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
         key,
         isTempExisting,
         isTempDuplicate,
+        existingCreatedAt: existingCard?.createdAt,
+        duplicateCreatedAt: card.createdAt,
       });
 
-      // If the duplicate is a temp card and the existing is real, delete the temp
+      // Priority 1: If the duplicate is a temp card and the existing is real, delete the temp
       if (isTempDuplicate && !isTempExisting) {
         console.log('[DataStore V2] 🧹 Cleaning up temp duplicate:', card.id);
         cardsToDelete.push(card.id);
       }
-      // If the existing is temp and the duplicate is real, delete the temp
+      // Priority 2: If the existing is temp and the duplicate is real, delete the temp
       else if (isTempExisting && !isTempDuplicate) {
         console.log('[DataStore V2] 🧹 Cleaning up temp duplicate:', existingId);
         cardsToDelete.push(existingId!);
         // Update the map to point to the real card
         seenCardUrls.set(key, card.id);
+      }
+      // Priority 3: Both are real OR both are temp - keep the older one (by createdAt)
+      else {
+        const existingTime = existingCard ? new Date(existingCard.createdAt).getTime() : 0;
+        const duplicateTime = new Date(card.createdAt).getTime();
+
+        if (duplicateTime > existingTime) {
+          // Current card is newer, delete it and keep existing
+          console.log('[DataStore V2] 🧹 Cleaning up newer duplicate:', card.id);
+          cardsToDelete.push(card.id);
+        } else {
+          // Existing card is newer, delete it and keep current
+          console.log('[DataStore V2] 🧹 Cleaning up newer duplicate:', existingId);
+          cardsToDelete.push(existingId!);
+          seenCardUrls.set(key, card.id);
+        }
       }
     } else {
       seenCardUrls.set(key, card.id);
