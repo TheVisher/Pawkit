@@ -27,14 +27,38 @@ export function useMultiSessionDetector() {
     otherDevices: [],
     isCheckingMultipleSessions: false,
   });
+  const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
     const currentDeviceId = getDeviceId();
     let heartbeatInterval: NodeJS.Timeout | null = null;
     let checkInterval: NodeJS.Timeout | null = null;
 
-    // Send heartbeat every 30 seconds
+    // Check if another device is already active
+    const activeDeviceId = localStorage.getItem('pawkit_active_device');
+    if (activeDeviceId && activeDeviceId !== currentDeviceId) {
+      console.log('[MultiSession] Another device is active, starting in passive mode');
+      setIsActive(false);
+      return; // Don't start heartbeats
+    } else {
+      // This is the active device, mark it in localStorage
+      localStorage.setItem('pawkit_active_device', currentDeviceId);
+    }
+
+    // Send heartbeat every 30 seconds (only if active)
     const sendHeartbeat = async () => {
+      // Don't send heartbeat if this session was taken over
+      if (!isActive) {
+        console.log('[MultiSession] Session inactive, skipping heartbeat');
+        return;
+      }
+
+      // Don't send heartbeat if tab is hidden
+      if (document.visibilityState === 'hidden') {
+        console.log('[MultiSession] Tab hidden, skipping heartbeat');
+        return;
+      }
+
       try {
         const metadata = getDeviceMetadata();
         const deviceName = getDeviceName();
@@ -56,6 +80,8 @@ export function useMultiSessionDetector() {
 
     // Check for other active sessions
     const checkSessions = async () => {
+      if (!isActive) return;
+
       try {
         const response = await fetch('/api/sessions/heartbeat');
         if (response.ok) {
@@ -77,6 +103,29 @@ export function useMultiSessionDetector() {
       }
     };
 
+    // Listen for storage events (cross-tab communication)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'pawkit_active_device' && e.newValue) {
+        const activeDeviceId = e.newValue;
+        if (activeDeviceId !== currentDeviceId) {
+          console.log('[MultiSession] Another device took over, deactivating this session');
+          setIsActive(false);
+          // Clear intervals
+          if (heartbeatInterval) clearInterval(heartbeatInterval);
+          if (checkInterval) clearInterval(checkInterval);
+        }
+      }
+    };
+
+    // Listen for visibility changes
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isActive) {
+        // Tab became visible again, resume heartbeats
+        console.log('[MultiSession] Tab visible, resuming heartbeats');
+        sendHeartbeat();
+      }
+    };
+
     // Send initial heartbeat
     sendHeartbeat();
     checkSessions();
@@ -85,18 +134,35 @@ export function useMultiSessionDetector() {
     heartbeatInterval = setInterval(sendHeartbeat, 30000); // 30 seconds
     checkInterval = setInterval(checkSessions, 30000); // 30 seconds
 
+    // Listen for cross-tab communication
+    window.addEventListener('storage', handleStorageChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
       if (heartbeatInterval) clearInterval(heartbeatInterval);
       if (checkInterval) clearInterval(checkInterval);
+      window.removeEventListener('storage', handleStorageChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [isActive]);
 
-  // Take over as active device (just mark this device as active)
+  // Take over as active device
   const takeoverSession = async () => {
     const metadata = getDeviceMetadata();
     const deviceName = getDeviceName();
 
     try {
+      // Broadcast to other tabs that THIS device is now active
+      // This will trigger the storage event listener in other tabs
+      localStorage.setItem('pawkit_active_device', metadata.deviceId);
+      localStorage.setItem('pawkit_takeover_timestamp', Date.now().toString());
+
+      console.log('[MultiSession] Taking over as active device:', metadata.deviceId);
+
+      // Ensure this session is marked as active
+      setIsActive(true);
+
+      // Send immediate heartbeat to claim this session
       await fetch('/api/sessions/heartbeat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
