@@ -26,6 +26,72 @@ function ensureActiveDevice(): boolean {
 }
 
 /**
+ * Deduplicate cards: Remove duplicate IDs and clean up temp cards
+ * Returns [deduplicated cards, IDs to delete from IndexedDB]
+ */
+async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]> {
+  const seenCardIds = new Set<string>();
+  const seenCardUrls = new Map<string, string>(); // url/title -> cardId mapping
+  const cardsToDelete: string[] = []; // IDs of duplicate cards to delete from IndexedDB
+
+  // First pass: detect duplicates by URL/title and mark temp cards for deletion
+  for (const card of cards) {
+    const key = card.url || card.title || card.id;
+    if (seenCardUrls.has(key) && key !== card.id) {
+      const existingId = seenCardUrls.get(key);
+      const isTempExisting = existingId?.startsWith('temp_');
+      const isTempDuplicate = card.id.startsWith('temp_');
+
+      console.warn('[DataStore V2] ⚠️ DUPLICATE DETECTED - Same content, different IDs:', {
+        existing: existingId,
+        duplicate: card.id,
+        key,
+        isTempExisting,
+        isTempDuplicate,
+      });
+
+      // If the duplicate is a temp card and the existing is real, delete the temp
+      if (isTempDuplicate && !isTempExisting) {
+        console.log('[DataStore V2] 🧹 Cleaning up temp duplicate:', card.id);
+        cardsToDelete.push(card.id);
+      }
+      // If the existing is temp and the duplicate is real, delete the temp
+      else if (isTempExisting && !isTempDuplicate) {
+        console.log('[DataStore V2] 🧹 Cleaning up temp duplicate:', existingId);
+        cardsToDelete.push(existingId!);
+        // Update the map to point to the real card
+        seenCardUrls.set(key, card.id);
+      }
+    } else {
+      seenCardUrls.set(key, card.id);
+    }
+  }
+
+  // Delete temp duplicates from IndexedDB
+  if (cardsToDelete.length > 0) {
+    console.log('[DataStore V2] 🧹 Deleting', cardsToDelete.length, 'duplicate temp cards from IndexedDB');
+    await Promise.all(cardsToDelete.map(id => localDb.deleteCard(id)));
+  }
+
+  // Second pass: remove duplicate IDs and temp cards marked for deletion
+  const deduplicated = cards.filter(card => {
+    // Skip cards marked for deletion
+    if (cardsToDelete.includes(card.id)) {
+      return false;
+    }
+    // Skip duplicate IDs
+    if (seenCardIds.has(card.id)) {
+      console.warn('[DataStore V2] Removing duplicate card:', card.id);
+      return false;
+    }
+    seenCardIds.add(card.id);
+    return true;
+  });
+
+  return [deduplicated, cardsToDelete];
+}
+
+/**
  * LOCAL-FIRST DATA STORE V2
  *
  * Architecture:
@@ -171,16 +237,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const filteredCards = allCards.filter(c => !c.deleted);
       const filteredCollections = allCollections.filter(c => !c.deleted);
 
-      // DEDUPLICATION: Remove any duplicate cards by ID
-      const seenCardIds = new Set<string>();
-      const cards = filteredCards.filter(card => {
-        if (seenCardIds.has(card.id)) {
-          console.warn('[DataStore V2] Removing duplicate card during init:', card.id);
-          return false;
-        }
-        seenCardIds.add(card.id);
-        return true;
-      });
+      // DEDUPLICATION: Remove duplicate cards and clean up temp duplicates
+      const [cards] = await deduplicateCards(filteredCards);
 
       // DEDUPLICATION: Remove any duplicate collections by ID
       const seenCollectionIds = new Set<string>();
@@ -250,16 +308,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
         const filteredCards = allCards.filter(c => !c.deleted);
         const filteredCollections = allCollections.filter(c => !c.deleted);
 
-        // DEDUPLICATION: Remove any duplicate cards by ID (can happen with multi-session sync)
-        const seenCardIds = new Set<string>();
-        const cards = filteredCards.filter(card => {
-          if (seenCardIds.has(card.id)) {
-            console.warn('[DataStore V2] Removing duplicate card:', card.id);
-            return false;
-          }
-          seenCardIds.add(card.id);
-          return true;
-        });
+        // DEDUPLICATION: Remove duplicate cards and clean up temp duplicates
+        const [cards] = await deduplicateCards(filteredCards);
 
         // DEDUPLICATION: Remove any duplicate collections by ID
         const seenCollectionIds = new Set<string>();
@@ -302,16 +352,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const filteredCards = allCards.filter(c => !c.deleted);
       const filteredCollections = allCollections.filter(c => !c.deleted);
 
-      // DEDUPLICATION: Remove any duplicate cards by ID
-      const seenCardIds = new Set<string>();
-      const cards = filteredCards.filter(card => {
-        if (seenCardIds.has(card.id)) {
-          console.warn('[DataStore V2] Removing duplicate card during refresh:', card.id);
-          return false;
-        }
-        seenCardIds.add(card.id);
-        return true;
-      });
+      // DEDUPLICATION: Remove duplicate cards and clean up temp duplicates
+      const [cards] = await deduplicateCards(filteredCards);
 
       // DEDUPLICATION: Remove any duplicate collections by ID
       const seenCollectionIds = new Set<string>();
