@@ -45,20 +45,8 @@ export function useMultiSessionDetector() {
       localStorage.setItem('pawkit_active_device', currentDeviceId);
     }
 
-    // Send heartbeat every 30 seconds (only if active)
-    const sendHeartbeat = async () => {
-      // Don't send heartbeat if this session was taken over
-      if (!isActive) {
-        console.log('[MultiSession] Session inactive, skipping heartbeat');
-        return;
-      }
-
-      // Don't send heartbeat if tab is hidden
-      if (document.visibilityState === 'hidden') {
-        console.log('[MultiSession] Tab hidden, skipping heartbeat');
-        return;
-      }
-
+    // Send heartbeat ONCE to register this session
+    const registerSession = async () => {
       try {
         const metadata = getDeviceMetadata();
         const deviceName = getDeviceName();
@@ -73,15 +61,15 @@ export function useMultiSessionDetector() {
             os: getOSName(),
           }),
         });
+
+        console.log('[MultiSession] Session registered');
       } catch (error) {
-        console.error('[MultiSession] Heartbeat failed:', error);
+        console.error('[MultiSession] Registration failed:', error);
       }
     };
 
-    // Check for other active sessions
-    const checkSessions = async () => {
-      if (!isActive) return;
-
+    // Check for other active sessions ONCE on page load
+    const checkForOtherSessions = async () => {
       try {
         const response = await fetch('/api/sessions/heartbeat');
         if (response.ok) {
@@ -97,6 +85,8 @@ export function useMultiSessionDetector() {
             otherDevices,
             isCheckingMultipleSessions: false,
           });
+
+          console.log('[MultiSession] Found', otherDevices.length, 'other active sessions');
         }
       } catch (error) {
         console.error('[MultiSession] Check failed:', error);
@@ -117,32 +107,17 @@ export function useMultiSessionDetector() {
       }
     };
 
-    // Listen for visibility changes
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && isActive) {
-        // Tab became visible again, resume heartbeats
-        console.log('[MultiSession] Tab visible, resuming heartbeats');
-        sendHeartbeat();
-      }
-    };
+    // Register this session ONCE on page load
+    registerSession();
 
-    // Send initial heartbeat
-    sendHeartbeat();
-    checkSessions();
-
-    // Set up intervals
-    heartbeatInterval = setInterval(sendHeartbeat, 30000); // 30 seconds
-    checkInterval = setInterval(checkSessions, 30000); // 30 seconds
+    // Check for other sessions ONCE on page load
+    checkForOtherSessions();
 
     // Listen for cross-tab communication
     window.addEventListener('storage', handleStorageChange);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      if (heartbeatInterval) clearInterval(heartbeatInterval);
-      if (checkInterval) clearInterval(checkInterval);
       window.removeEventListener('storage', handleStorageChange);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isActive]);
 
