@@ -80,12 +80,34 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
     user: { connect: { id: userId } }
   };
 
-  const created = await prisma.card.create({
-    data
-  });
+  try {
+    const created = await prisma.card.create({
+      data
+    });
 
-  // Return immediately - metadata will be fetched in background for URL cards
-  return mapCard(created);
+    // Return immediately - metadata will be fetched in background for URL cards
+    return mapCard(created);
+  } catch (error) {
+    // Handle unique constraint violation (P2002) - duplicate userId + url
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      console.log('[createCard] Duplicate detected, returning existing card for URL:', parsed.url);
+
+      // Find and return the existing card
+      const existingCard = await prisma.card.findFirst({
+        where: {
+          userId,
+          url: parsed.url || ""
+        }
+      });
+
+      if (existingCard) {
+        return mapCard(existingCard);
+      }
+    }
+
+    // Re-throw other errors
+    throw error;
+  }
 }
 
 export async function fetchAndUpdateCardMetadata(cardId: string, url: string, previewServiceUrl?: string): Promise<CardDTO> {
