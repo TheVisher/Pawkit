@@ -65,11 +65,12 @@ description: Living, interactive roadmap serving as single source of truth for p
   Why: Causing 500 errors, doesn't prevent race conditions, adds overhead
   Completed: October 29, 2025 - Multi-session detection now uses localStorage only
 
-- [ ] Add database duplicate prevention (2 hours) - [implemented: ] [tested: ] [complete: ]
+- [✓] Add database duplicate prevention (2 hours) - [implemented: ✓] [tested: ✓] [complete: ✓]
   Add `@@unique([userId, url])` constraint to Card model in schema.prisma
   Update createCard to handle duplicate constraint errors gracefully (return existing card)
   Run migration and test duplicate URL saves
   Why: Prevents race condition duplicates at database level (proper solution)
+  Completed: October 29, 2025 - Database constraint added, server catches P2002 errors and returns existing card
 
 - [ ] Test duplicate prevention across devices (15 min) - [implemented: ] [tested: ] [complete: ]
   Save same URL from two different browsers simultaneously
@@ -127,6 +128,13 @@ description: Living, interactive roadmap serving as single source of truth for p
   Removed card.content from useEffect dependency in card-detail-modal.tsx
   Prevents cursor reset when auto-save updates card content
   Smooth note editing experience without interruptions
+
+- ✅ **Database Duplicate Prevention**
+  Added @@unique([userId, url]) constraint to Card model
+  Created migration for unique index on (userId, url)
+  Server catches P2002 errors and returns existing card
+  Prevents race condition duplicates at database level
+  Transparent handling - client code unchanged
 
 - ✅ **Skills Structure Setup**
   Created proper .claude/skills/ directory structure
@@ -784,6 +792,6 @@ When adding new tasks:
 
 **Last Updated**: October 29, 2025
 **Branch**: feat/multi-session-detection
-**Next Critical Items**: Add DB duplicate prevention, test multi-session duplicate handling
+**Next Critical Items**: Test multi-session duplicate handling, UI polish tasks
 **Total Tasks**: 100+ across all phases (Pre-merge → Month 3+ → Ongoing)
 **Merged From**: POST_LAUNCH_ROADMAP.md (Phase 0-5 now integrated)
