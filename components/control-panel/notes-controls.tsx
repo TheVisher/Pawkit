@@ -82,8 +82,8 @@ export function NotesControls() {
     const tagMap = new Map<string, number>();
 
     cards.forEach((card) => {
-      // Skip cards in private pawkits
-      if (card.inDen) return;
+      // Skip cards in private collections
+      if (card.collections?.includes('the-den')) return;
 
       // Only count tags from notes
       if ((card.type === 'md-note' || card.type === 'text-note') && card.tags && card.tags.length > 0) {

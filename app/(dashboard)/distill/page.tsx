@@ -17,8 +17,8 @@ function DigUpContent() {
 
   // Filter cards based on mode - ALWAYS exclude Den cards
   const filteredCards = cards.filter(card => {
-    // CRITICAL: Exclude all Den cards from Dig Up
-    if (card.inDen) return false;
+    // CRITICAL: Exclude all private collection cards from Dig Up
+    if (card.collections?.includes('the-den')) return false;
 
     if (filterMode === 'uncategorized') return !card.collections || card.collections.length === 0;
     return true; // all

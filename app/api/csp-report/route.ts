@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/utils/api-error';
+import { success } from '@/lib/utils/api-responses';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,9 +17,8 @@ export async function POST(request: NextRequest) {
     // Example:
     // await sendToLoggingService(body);
 
-    return NextResponse.json({ received: true });
+    return success({ received: true });
   } catch (error) {
-    console.error('[CSP Report] Failed to process report:', error);
-    return NextResponse.json({ error: 'Failed to process report' }, { status: 500 });
+    return handleApiError(error, { route: '/api/csp-report' });
   }
 }

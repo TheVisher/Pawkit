@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/utils/api-error";
+import { unauthorized, success } from "@/lib/utils/api-responses";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { countCards, listCards, type CardDTO } from "@/lib/server/cards";
 import { listCollections, type CollectionDTO } from "@/lib/server/collections";
@@ -20,10 +21,11 @@ function flattenCollections(nodes: CollectionDTO[]): CollectionDTO[] {
 }
 
 export async function GET() {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const [{ tree }, rootCards, totals] = await Promise.all([
@@ -95,8 +97,8 @@ export async function GET() {
       slug: node.slug,
     }));
 
-    return NextResponse.json({ gridItems, allPawkits });
+    return success({ gridItems, allPawkits });
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/pawkits/preview', userId: user?.id });
   }
 }

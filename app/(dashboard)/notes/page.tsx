@@ -39,10 +39,7 @@ function NotesPageContent() {
       // Must be a note type
       if (c.type !== 'md-note' && c.type !== 'text-note') return false;
 
-      // Exclude Den cards
-      if (c.inDen) return false;
-
-      // Exclude cards in private collections
+      // Exclude cards in private collections (including 'the-den')
       const isInPrivateCollection = c.collections?.some(collectionSlug =>
         privateCollectionSlugs.has(collectionSlug)
       );

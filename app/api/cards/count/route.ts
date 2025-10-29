@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
 import { countCards } from "@/lib/server/cards";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { handleApiError } from "@/lib/utils/api-error";
+import { unauthorized, success } from "@/lib/utils/api-responses";
 
 export async function GET() {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const counts = await countCards(user.id);
-    return NextResponse.json(counts);
+    return success(counts);
   } catch (error) {
-    console.error("Failed to count cards:", error);
-    return NextResponse.json({ error: "Failed to count cards" }, { status: 500 });
+    return handleApiError(error, { route: '/api/cards/count', userId: user?.id });
   }
 }

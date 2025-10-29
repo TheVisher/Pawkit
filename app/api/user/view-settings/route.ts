@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
+import { viewSettingsUpdateSchema } from "@/lib/validators/user";
+import { handleApiError } from "@/lib/utils/api-error";
+import { unauthorized, success } from "@/lib/utils/api-responses";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     // Fetch all view settings for the user
@@ -23,45 +22,24 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ settings });
+    return success({ settings });
   } catch (error) {
-    console.error("[API] Error fetching view settings:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch view settings" },
-      { status: 500 }
-    );
+    return handleApiError(error, { route: '/api/user/view-settings' });
   }
 }
 
 export async function PATCH(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
+    const user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const body = await request.json();
-    const { view, settings } = body;
 
-    if (!view || !settings) {
-      return NextResponse.json(
-        { error: "Missing required fields: view, settings" },
-        { status: 400 }
-      );
-    }
-
-    // Validate view type
-    const validViews = ["library", "notes", "den", "timeline", "pawkits", "home", "favorites", "trash"];
-    if (!validViews.includes(view)) {
-      return NextResponse.json(
-        { error: "Invalid view type" },
-        { status: 400 }
-      );
-    }
+    // Validate input
+    const validated = viewSettingsUpdateSchema.parse(body);
+    const { view, settings } = validated;
 
     // Upsert view settings
     const viewSettings = await prisma.userViewSettings.upsert({
@@ -97,13 +75,9 @@ export async function PATCH(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, settings: viewSettings });
+    return success({ success: true, settings: viewSettings });
   } catch (error) {
-    console.error("[API] Error updating view settings:", error);
-    return NextResponse.json(
-      { error: "Failed to update view settings" },
-      { status: 500 }
-    );
+    return handleApiError(error, { route: '/api/user/view-settings' });
   }
 }
 

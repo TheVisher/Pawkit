@@ -84,7 +84,6 @@ export default function HomePage() {
     if (!cards || !Array.isArray(cards)) return [];
     return cards
       .filter(c => {
-        if (c.inDen) return false;
         const isInPrivateCollection = c.collections?.some(collectionId =>
           privateCollectionIds.has(collectionId)
         );
@@ -98,7 +97,7 @@ export default function HomePage() {
     if (!cards || !Array.isArray(cards)) return [];
     return cards
       .filter(c => {
-        if (!c.pinned || c.inDen) return false;
+        if (!c.pinned) return false;
         const isInPrivateCollection = c.collections?.some(collectionId =>
           privateCollectionIds.has(collectionId)
         );
@@ -143,7 +142,7 @@ export default function HomePage() {
     if (!cards || !Array.isArray(cards)) return map;
 
     cards
-      .filter((card) => card.scheduledDate && !card.inDen)
+      .filter((card) => card.scheduledDate && !card.collections?.includes('the-den'))
       .forEach((card) => {
         const dateStr = card.scheduledDate!.split('T')[0];
         if (!map.has(dateStr)) {
@@ -216,7 +215,7 @@ export default function HomePage() {
     return cards.filter(card =>
       card.scheduledDate &&
       card.scheduledDate.split('T')[0] === dateStr &&
-      !card.inDen
+      !card.collections?.includes('the-den')
     );
   };
 
@@ -228,7 +227,7 @@ export default function HomePage() {
     const day = String(date.getDate()).padStart(2, '0');
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
     const title = `${year}-${month}-${day} - ${dayName}`;
-    return cards.find(c => c.title === title && !c.inDen);
+    return cards.find(c => c.title === title && !c.collections?.includes('the-den'));
   };
 
   return (
@@ -258,12 +257,7 @@ export default function HomePage() {
                   onClick={() => openCardDetails(card.id)}
                   onAddToPawkit={async (slug) => {
                     const collections = Array.from(new Set([slug, ...(card.collections || [])]));
-                    // If card is in The Den, remove it when adding to regular Pawkit
-                    const updates: { collections: string[]; inDen?: boolean } = { collections };
-                    if (card.inDen) {
-                      updates.inDen = false;
-                    }
-                    await updateCard(card.id, updates);
+                    await updateCard(card.id, { collections });
                   }}
                   onDeleteCard={async () => {
                     await deleteCard(card.id);

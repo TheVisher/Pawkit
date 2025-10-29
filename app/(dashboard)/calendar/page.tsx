@@ -53,14 +53,14 @@ export default function CalendarPage() {
     return cards.filter(card =>
       card.scheduledDate &&
       card.scheduledDate.split('T')[0] === dateStr &&
-      !card.inDen
+      !card.collections?.includes('the-den')
     );
   };
 
   // Get daily note for a specific date
   const getDailyNoteForDate = (date: Date) => {
     const title = generateDailyNoteTitle(date);
-    return cards.find(c => c.title === title && !c.inDen);
+    return cards.find(c => c.title === title && !c.collections?.includes('the-den'));
   };
 
   return (

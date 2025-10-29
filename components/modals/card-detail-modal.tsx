@@ -332,7 +332,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [isPinned, setIsPinned] = useState(card.pinned ?? false);
-  const [isInDen, setIsInDen] = useState(card.inDen ?? false);
+  const [isInDen, setIsInDen] = useState(card.collections?.includes('the-den') ?? false);
   const [isReaderExpanded, setIsReaderExpanded] = useState(false);
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const [extracting, setExtracting] = useState(false);
@@ -409,7 +409,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     setIsEditingTitle(false);
     setEditedTitle(card.title || "");
     setShowNoteToolbar(true); // Reset toolbar to visible when card changes
-    setIsInDen(card.inDen ?? false);
+    setIsInDen(card.collections?.includes('the-den') ?? false);
     setIsPinned(card.pinned ?? false);
     setArticleContent(card.articleContent ?? null);
     setNotes(card.notes ?? "");
@@ -606,33 +606,17 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       ? currentCollections.filter((s) => s !== slug)
       : Array.from(new Set([slug, ...currentCollections]));
 
-    const updates: { collections: string[]; inDen?: boolean } = { collections: nextCollections };
-
-    // Check if the slug is a Den Pawkit or regular Pawkit
-    const isDenPawkit = denPawkitSlugs.has(slug);
-
-    const wasInDen = card.inDen;
-
-    if (!isAlreadyIn) {
-      // Adding to a new Pawkit
-      if (isDenPawkit) {
-        // Adding to Den Pawkit - ensure inDen is true
-        updates.inDen = true;
-      } else {
-        // Adding to regular Pawkit - ensure inDen is false
-        updates.inDen = false;
-      }
-    }
-
     // Update the global store (optimistic update)
-    await updateCardInStore(card.id, updates);
+    await updateCardInStore(card.id, { collections: nextCollections });
 
     // Also update parent component state
-    const updated = { ...card, ...updates };
+    const updated = { ...card, collections: nextCollections };
     onUpdate(updated);
 
     // If card was in Den and is now being moved out, close the modal
-    if (wasInDen && updates.inDen === false) {
+    const wasInDen = card.collections?.includes('the-den');
+    const nowInDen = nextCollections.includes('the-den');
+    if (wasInDen && !nowInDen) {
       setToast("Moved out of The Den");
       // Close modal after a brief delay to show the toast
       setTimeout(() => handleClose(), 500);
@@ -720,14 +704,21 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   const handleMoveToDen = async () => {
     try {
-      // ✅ Use data store to update IndexedDB
       const newInDen = !isInDen;
-      await updateCardInStore(card.id, { inDen: newInDen });
+      const currentCollections = card.collections || [];
+
+      // Add or remove 'the-den' from collections
+      const nextCollections = newInDen
+        ? Array.from(new Set([...currentCollections, 'the-den']))
+        : currentCollections.filter(slug => slug !== 'the-den');
+
+      // Update the data store
+      await updateCardInStore(card.id, { collections: nextCollections });
 
       // Update local state immediately
       setIsInDen(newInDen);
 
-      const updated = { ...card, inDen: newInDen };
+      const updated = { ...card, collections: nextCollections };
 
       // Simply refresh the entire data store to get the latest state from server
       // This ensures consistency and will properly filter out Den items
@@ -738,10 +729,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         await useDataStore.getState().refresh();
       }
 
-      setToast(updated.inDen ? "Moved to The Den" : "Removed from The Den");
+      setToast(newInDen ? "Moved to The Den" : "Removed from The Den");
 
       // Close modal after moving to Den
-      if (updated.inDen) {
+      if (newInDen) {
         setTimeout(() => handleClose(), 500);
       }
     } catch (error) {

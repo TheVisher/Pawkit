@@ -112,7 +112,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
   // Get all cards for autocomplete (notes and URLs, sorted by most recently updated)
   const allNotes = useMemo(() => {
     return cards
-      .filter(card => card.title && !card.inDen)
+      .filter(card => card.title && !card.collections?.includes('the-den'))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [cards]);
 

@@ -147,7 +147,7 @@ export function filterCardsWithOperators(
             case "deleted":
               return card.deleted === true;
             case "den":
-              return card.inDen === true;
+              return card.collections?.includes('the-den') === true;
             default:
               return true;
           }

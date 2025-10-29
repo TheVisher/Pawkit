@@ -3,16 +3,18 @@ import { prisma } from "@/lib/server/prisma";
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { revalidateTag } from "next/cache";
+import { unauthorized, success } from "@/lib/utils/api-responses";
 
 export async function POST() {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     // Permanently delete all soft-deleted items in a transaction
-    await prisma.$transaction([
+    const result = await prisma.$transaction([
       prisma.card.deleteMany({
         where: { userId: user.id, deleted: true }
       }),
@@ -25,8 +27,16 @@ export async function POST() {
     revalidateTag('cards');
     revalidateTag('collections');
 
-    return NextResponse.json({ ok: true });
+    const deletedCards = result[0].count;
+    const deletedPawkits = result[1].count;
+
+    return success({
+      ok: true,
+      message: `Trash emptied successfully: ${deletedCards} cards and ${deletedPawkits} pawkits permanently deleted`,
+      deletedCards,
+      deletedPawkits
+    });
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/trash/empty', userId: user?.id });
   }
 }
