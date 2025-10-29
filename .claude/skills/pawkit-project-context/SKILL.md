@@ -14,6 +14,53 @@
 
 ## Session History
 
+### Date: October 29, 2025 - UI Polish & Debugging Session
+
+**Accomplished**:
+
+1. **Fixed Library Tags UI Consistency**
+   - Updated Library view tags from checkboxes to glass pill buttons
+   - Now matches Pawkits view pattern (purple glow on hover/selected)
+   - Documented as canonical pattern in UI/UX skill
+   - Commit: 58132cd
+
+2. **Debugged "Failed to sync settings to server" Error**
+   - Investigated supposed view-settings sync failure
+   - **Root Cause**: Confusion about feature state - no server sync exists
+   - **Reality**: View settings are localStorage-only (intentional design)
+   - Clarified architecture:
+     - Each view stores layout in localStorage (library-layout, notes-layout, etc.)
+     - No server sync currently implemented
+     - Per-device preferences by design
+   - Documented in troubleshooting skill to prevent future confusion
+
+3. **Verified Skills System Working Well**
+   - Successfully navigated 9 comprehensive skills during debugging
+   - Skills provided accurate context about codebase state
+   - Added troubleshooting entry for clarity on localStorage architecture
+
+**Key Findings**:
+
+- View settings pattern: `localStorage.getItem('library-layout')` etc.
+- No `view-settings-store.ts` file exists (was referenced in old summary)
+- No `/api/user/view-settings` endpoint exists
+- Server sync for view settings is on roadmap but not implemented
+- Current implementation works as intended (localStorage-only)
+
+**Files Modified**:
+- `.claude/skills/pawkit-troubleshooting/SKILL.md` - Added sync error clarification
+- `.claude/skills/pawkit-project-context/SKILL.md` - This session
+- `.claude/skills/pawkit-conventions/SKILL.md` - Added view settings pattern
+
+**Current Status**: 4 UI polish tasks remain on roadmap
+
+**Next Steps**:
+- Add server-side view settings sync to roadmap
+- Continue with remaining UI polish tasks
+- Manual multi-session test still pending from previous session
+
+---
+
 ### Date: October 28, 2025 - Pre-merge Testing Complete
 
 **Accomplished**:

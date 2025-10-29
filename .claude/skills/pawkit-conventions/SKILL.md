@@ -119,6 +119,120 @@ The data store has automatic deduplication that:
 
 ---
 
+
+## View Settings Pattern
+
+### localStorage-Only Architecture
+
+**View settings (layout, card size, etc.) are stored in localStorage ONLY.**
+
+There is **no server sync** for view settings currently. This is intentional:
+- Settings are per-device preferences
+- Faster (no network requests)
+- Works offline
+- Privacy-friendly (no tracking of UI preferences)
+
+### localStorage Keys
+
+Each view stores its layout preference independently:
+
+```typescript
+// Per-view layout preferences
+localStorage.getItem('library-layout')           // 'grid' | 'list' | 'masonry' | 'compact'
+localStorage.getItem('notes-layout')             // same options
+localStorage.getItem(`pawkit-${slug}-layout`)    // per-collection layout
+localStorage.getItem('timeline-layout')          // timeline view layout
+
+// Future: May add more settings
+localStorage.getItem('library-cardSize')         // 1-100 (not implemented yet)
+localStorage.getItem('library-showMetadata')     // boolean (not implemented yet)
+```
+
+### Implementation Pattern
+
+**Each view page reads from localStorage on load:**
+
+```typescript
+// app/(dashboard)/library/page.tsx
+function LibraryPage() {
+  const searchParams = useSearchParams();
+  const layoutParam = searchParams.get("layout") as LayoutMode | null;
+
+  // ✅ Read from localStorage first
+  const savedLayout = typeof window !== 'undefined' 
+    ? localStorage.getItem("library-layout") as LayoutMode | null 
+    : null;
+
+  // Priority: URL param > localStorage > default
+  const layout: LayoutMode = layoutParam && LAYOUTS.includes(layoutParam)
+    ? layoutParam
+    : savedLayout && LAYOUTS.includes(savedLayout)
+      ? savedLayout
+      : DEFAULT_LAYOUT;
+
+  return <LibraryView initialLayout={layout} />;
+}
+```
+
+**Child components save to localStorage on change:**
+
+```typescript
+// components/library/library-view.tsx
+function LibraryView({ initialLayout }: { initialLayout: LayoutMode }) {
+  const [layout, setLayout] = useState(initialLayout);
+
+  const handleLayoutChange = (newLayout: LayoutMode) => {
+    // ✅ Save to localStorage
+    localStorage.setItem('library-layout', newLayout);
+    
+    // Update URL
+    const params = new URLSearchParams(window.location.search);
+    params.set('layout', newLayout);
+    router.push(`?${params.toString()}`);
+    
+    // Update state
+    setLayout(newLayout);
+  };
+
+  return (
+    <div>
+      <LayoutSwitcher layout={layout} onChange={handleLayoutChange} />
+      <CardGallery layout={layout} />
+    </div>
+  );
+}
+```
+
+### Where This Pattern Is Used
+
+- **Library view** - `app/(dashboard)/library/page.tsx`
+- **Notes view** - `app/(dashboard)/notes/page.tsx`
+- **Pawkits detail** - `app/(dashboard)/pawkits/[slug]/page.tsx`
+- **Timeline view** - `app/(dashboard)/timeline/page.tsx`
+
+### Future: Server Sync
+
+**Server-side view settings sync is on the roadmap but not implemented.**
+
+When implemented, it will:
+1. Add `UserViewSettings` Prisma model
+2. Create `/api/user/view-settings` endpoint
+3. Create `lib/hooks/view-settings-store.ts` with Zustand + sync
+4. Migrate existing localStorage settings to server
+5. Sync across devices while maintaining localStorage as cache
+
+**Until then**: View settings are localStorage-only, per-device.
+
+### How to Avoid Confusion
+
+- **Don't look for** `view-settings-store.ts` - it doesn't exist yet
+- **Don't expect** server sync - it's not implemented
+- **Do use** localStorage directly in each view
+- **Do follow** the priority pattern: URL > localStorage > default
+- If you see "Failed to sync settings to server", see troubleshooting skill
+
+---
+
 ## Coding Standards
 
 ### Imports
