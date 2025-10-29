@@ -54,9 +54,10 @@ description: Living, interactive roadmap serving as single source of truth for p
 
 ### Active Work
 
-- [ ] Fix cursor jumping in note editor (30 min) - [implemented: ] [tested: ] [complete: ]
+- [✓] Fix cursor jumping in note editor (30 min) - [implemented: ✓] [tested: ✓] [complete: ✓]
   Remove `card.content` from useEffect dependency in card-detail-modal.tsx:391-394
   Why: Users report cursor jumping when typing in notes, breaks writing flow
+  Completed: October 29, 2025 - Removed card.content from dependency array to prevent cursor reset on auto-save
 
 - [✓] Remove heartbeat system (1 hour) - [implemented: ✓] [tested: ✓] [complete: ✓]
   Delete /app/api/sessions/heartbeat/route.ts and client-side heartbeat calls
@@ -121,6 +122,11 @@ description: Living, interactive roadmap serving as single source of truth for p
   Cleaned up client-side heartbeat calls
   Multi-session detection simplified to localStorage-only approach
   Eliminated 500 errors and unnecessary database overhead
+
+- ✅ **Cursor Jumping Fix**
+  Removed card.content from useEffect dependency in card-detail-modal.tsx
+  Prevents cursor reset when auto-save updates card content
+  Smooth note editing experience without interruptions
 
 - ✅ **Skills Structure Setup**
   Created proper .claude/skills/ directory structure
@@ -778,6 +784,6 @@ When adding new tasks:
 
 **Last Updated**: October 29, 2025
 **Branch**: feat/multi-session-detection
-**Next Critical Items**: Fix cursor jumping, add DB duplicate prevention
+**Next Critical Items**: Add DB duplicate prevention, test multi-session duplicate handling
 **Total Tasks**: 100+ across all phases (Pre-merge → Month 3+ → Ongoing)
 **Merged From**: POST_LAUNCH_ROADMAP.md (Phase 0-5 now integrated)
