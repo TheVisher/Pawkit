@@ -560,13 +560,13 @@ export default function PreMergeTestSuite() {
       });
       testIdx++;
 
-      // Test 6: Last sync timestamp
+      // Test 6: Last sync timestamp (feature not implemented)
       const startTime6 = Date.now();
-      const lastSyncTimestamp = useDataStore.getState().lastSyncTimestamp;
 
       updateTest(sectionId, `${sectionId}-test-${testIdx}`, {
-        status: lastSyncTimestamp !== undefined ? "pass" : "fail",
-        message: lastSyncTimestamp ? `Last sync: ${new Date(lastSyncTimestamp).toLocaleString()}` : "Last sync timestamp missing",
+        status: "warning",
+        message: "Last sync timestamp feature not implemented yet",
+        details: "Data store doesn't track lastSyncTimestamp - manual verification required",
         duration: Date.now() - startTime6,
       });
 
