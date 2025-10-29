@@ -132,13 +132,11 @@
   Impact: Restore settings functionality disabled during UI overhaul
   Command: `claude-code "Re-enable the settings menu that was disabled during UI overhaul. Find the disabled settings component and restore its functionality. Ensure it opens properly and all settings are accessible."`
 
-- [ ] Unify Tags Styling (25 min) - [impl: ] [test: ] [done: ]
+- [✓] Unify Tags Styling (25 min) - [implemented: ✓] [tested: ✓] [complete: ✓]
   Why: Consistency improves UX, reduces confusion
   Impact: Consistent tag display across Library and Pawkits views
-  Current Issues:
-    - Library: Vertical list with `#` prefix
-    - Pawkits Overview: Horizontal pills with counts
-  Command: `claude-code "Standardize the tags display across all views. Current inconsistency: Library view shows tags as '#tag-name' in vertical list, while Pawkits Overview shows them as pills with 'tag-name (count)'. Choose one style and apply it everywhere: components/control-panel/library-controls.tsx and the pawkits overview component."`
+  Fixed: Library tags now use glass pill buttons matching Pawkits view
+  Commit: 58132cd - Updated Library tags to glass pill buttons with purple glow
 
 - [ ] Fix Right Sidebar (45 min) - [impl: ] [test: ] [done: ]
   Why: Navigation consistency across all views
