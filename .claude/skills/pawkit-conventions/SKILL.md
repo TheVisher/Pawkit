@@ -1,3 +1,8 @@
+---
+name: pawkit-conventions
+description: Enforce consistent data model usage and coding patterns across all development sessions
+---
+
 # Pawkit Coding Conventions & Data Model
 
 **Purpose**: Enforce consistent data model usage and coding patterns across all development sessions.
@@ -293,6 +298,135 @@ if (!ensureActiveDevice()) {
 
 ---
 
+## Data Integrity Rules - CRITICAL
+
+### Notes vs Bookmarks Distinction
+
+**NEVER apply URL uniqueness constraints to notes!**
+
+```typescript
+// Card Types
+type CardType = 'url' | 'md-note' | 'text-note';
+
+// Notes vs Bookmarks
+const BOOKMARK_TYPES = ['url'];           // Can have URL constraints
+const NOTE_TYPES = ['md-note', 'text-note']; // NEVER constrain by URL
+```
+
+### Rules for Database Constraints
+
+#### ✅ CORRECT: Partial Unique Index
+
+```sql
+-- Only applies to URL bookmarks, excludes notes
+CREATE UNIQUE INDEX "Card_userId_url_key"
+ON "Card"("userId", "url")
+WHERE "type" = 'url';
+```
+
+#### ❌ WRONG: Full Unique Constraint
+
+```sql
+-- DO NOT DO THIS - deletes all notes!
+ALTER TABLE "Card"
+ADD CONSTRAINT "Card_userId_url_unique"
+UNIQUE ("userId", "url");
+
+-- DO NOT DO THIS - deletes all notes!
+@@unique([userId, url])  -- in schema.prisma
+```
+
+### Why Notes Must Be Excluded
+
+1. **Notes have empty URLs**: All notes have `url = ""` by design
+2. **Multiple notes are normal**: Users create many notes, all with empty URLs
+3. **No duplication issue**: Notes are not bookmarks, empty URLs are intentional
+4. **Data loss risk**: Treating notes as duplicates WILL DELETE USER DATA
+
+### Migration Safety Rules
+
+**Any migration that deletes cards MUST:**
+
+```sql
+-- ✅ CORRECT: Only delete duplicate URL bookmarks
+DELETE FROM "Card" a USING "Card" b
+WHERE a."userId" = b."userId"
+  AND a."url" = b."url"
+  AND a."type" = 'url'      -- REQUIRED: Only bookmarks
+  AND b."type" = 'url'      -- REQUIRED: Compare bookmarks only
+  AND a."id" < b."id";
+
+-- ❌ WRONG: Deletes ALL duplicates including notes
+DELETE FROM "Card" a USING "Card" b
+WHERE a."userId" = b."userId"
+  AND a."url" = b."url"     -- Missing type filter = DATA LOSS
+  AND a."id" < b."id";
+```
+
+### Code Safety Rules
+
+**When working with cards, ALWAYS filter by type:**
+
+```typescript
+// ✅ CORRECT: Check card type before applying URL logic
+async function createCard(data: CardInput) {
+  // Only check for duplicates if it's a URL bookmark
+  if (data.type === 'url') {
+    const existing = await findDuplicateUrl(data.userId, data.url);
+    if (existing) return existing;
+  }
+
+  // Notes bypass duplicate check
+  return await prisma.card.create({ data });
+}
+
+// ❌ WRONG: Applies URL logic to all cards
+async function createCard(data: CardInput) {
+  const existing = await findDuplicateUrl(data.userId, data.url);
+  if (existing) return existing;  // Blocks note creation!
+
+  return await prisma.card.create({ data });
+}
+```
+
+### Testing Requirements
+
+**Before deploying ANY feature that touches cards:**
+
+✅ Test with URL bookmarks:
+```typescript
+{ type: 'url', url: 'https://example.com', title: 'Example' }
+```
+
+✅ Test with markdown notes:
+```typescript
+{ type: 'md-note', url: '', content: '# My Note', title: 'Note 1' }
+{ type: 'md-note', url: '', content: '# Another', title: 'Note 2' }
+```
+
+✅ Test with text notes:
+```typescript
+{ type: 'text-note', url: '', notes: 'Quick thought', title: 'Thought' }
+```
+
+✅ Verify notes are NOT affected by:
+- Duplicate detection
+- URL validation
+- Unique constraints
+- Deletion logic
+
+### Quick Reference - Card Type Handling
+
+| Operation | URL Bookmarks | Notes |
+|-----------|--------------|-------|
+| **Unique URL constraint** | ✅ Yes (prevent duplicates) | ❌ No (allow multiple) |
+| **Duplicate detection** | ✅ Yes (check before create) | ❌ No (skip check) |
+| **URL validation** | ✅ Yes (must be valid URL) | ❌ No (empty is valid) |
+| **Metadata fetching** | ✅ Yes (fetch title/image) | ❌ No (user-provided only) |
+| **Empty URL allowed** | ❌ No | ✅ Yes |
+
+---
+
 ## Testing Checklist
 
 Before committing code that touches collections:
@@ -302,6 +436,16 @@ Before committing code that touches collections:
 - [ ] Added explanatory comments?
 - [ ] Tested private pawkit filtering?
 - [ ] Checked other views (library, notes, tags)?
+
+Before committing code that touches cards:
+
+- [ ] Does it handle URL bookmarks (`type='url'`)?
+- [ ] Does it handle markdown notes (`type='md-note'`)?
+- [ ] Does it handle text notes (`type='text-note'`)?
+- [ ] Are notes excluded from URL uniqueness logic?
+- [ ] Are notes excluded from duplicate detection?
+- [ ] Can multiple notes be created with empty URLs?
+- [ ] Tested with both bookmarks AND notes?
 
 ---
 
@@ -316,5 +460,5 @@ Before committing code that touches collections:
 
 ---
 
-**Last Updated**: 2025-10-28
-**Reason**: Fixed ID/slug mismatches across library, notes, and tags views
+**Last Updated**: 2025-10-29
+**Reason**: Added critical data integrity rules for notes vs bookmarks distinction
