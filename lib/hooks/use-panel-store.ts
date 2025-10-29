@@ -10,6 +10,7 @@ export type PanelContentType =
   | "notes-controls"
   | "pawkits-controls"
   | "calendar-controls"
+  | "bulk-operations"
   | "closed";
 
 export type PanelState = {
@@ -54,6 +55,7 @@ export type PanelState = {
   openCardDetails: (cardId: string) => void;
   openNotesControls: () => void;
   openCalendarControls: () => void;
+  openBulkOperations: () => void;
   restorePreviousContent: () => void;
 };
 
@@ -155,6 +157,10 @@ export const usePanelStore = create<PanelState>()(
 
       openCalendarControls: () => {
         set({ isOpen: true, contentType: "calendar-controls", activeCardId: null, wasAutoOpened: false });
+      },
+
+      openBulkOperations: () => {
+        set({ isOpen: true, contentType: "bulk-operations", activeCardId: null, wasAutoOpened: false });
       },
 
       restorePreviousContent: () => {

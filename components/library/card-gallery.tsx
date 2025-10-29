@@ -16,7 +16,6 @@ import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
-import { SelectionDrawer } from "@/components/selection-drawer/selection-drawer";
 import { UnpinNotesModal } from "@/components/modals/unpin-notes-modal";
 
 export type CardGalleryProps = {
@@ -34,6 +33,8 @@ export type CardGalleryProps = {
 function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false, area, currentPawkitSlug }: CardGalleryProps) {
   const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore, collections } = useDemoAwareStore();
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const openBulkOperations = usePanelStore((state) => state.openBulkOperations);
+  const restorePreviousContent = usePanelStore((state) => state.restorePreviousContent);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [imageLoadCount, setImageLoadCount] = useState(0);
@@ -66,6 +67,16 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   }, [viewSettings.cardSize, viewSettings.cardSpacing]);
 
   const orderedIds = useMemo(() => cards.map((card) => card.id), [cards]);
+
+  // Open bulk operations panel when 2+ cards are selected
+  useEffect(() => {
+    if (selectedIds.length >= 2) {
+      openBulkOperations();
+    } else if (selectedIds.length === 0) {
+      // Restore previous panel content when selection is cleared
+      restorePreviousContent();
+    }
+  }, [selectedIds.length, openBulkOperations, restorePreviousContent]);
 
   // Handle image loading for masonry layout
   const handleImageLoad = () => {
@@ -472,12 +483,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
         onUnpin={handleUnpinFromSidebar}
       />
 
-      {/* Selection Drawer */}
-      <SelectionDrawer
-        cards={cards}
-        onBulkDelete={handleBulkDelete}
-        onBulkMove={handleBulkMove}
-      />
+      {/* Bulk operations are now handled in the right sidebar panel */}
     </div>
   );
 }

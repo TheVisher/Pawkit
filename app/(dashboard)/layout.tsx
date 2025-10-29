@@ -25,6 +25,7 @@ import { LibraryControls } from "@/components/control-panel/library-controls";
 import { NotesControls } from "@/components/control-panel/notes-controls";
 import { PawkitsControls } from "@/components/control-panel/pawkits-controls";
 import { CardDetailsPanel } from "@/components/control-panel/card-details-panel";
+import { BulkOperationsPanel } from "@/components/control-panel/bulk-operations-panel";
 import { LeftNavigationPanel } from "@/components/navigation/left-navigation-panel";
 import { ContentPanel } from "@/components/layout/content-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -247,6 +248,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     openCardDetails(cardId);
   };
 
+  // Bulk operations handlers
+  const handleBulkDelete = async () => {
+    // TODO: Implement bulk delete - will be handled by library view
+    console.log('Bulk delete triggered');
+  };
+
+  const handleBulkMove = () => {
+    // TODO: Implement bulk move - will be handled by library view
+    console.log('Bulk move triggered');
+  };
+
   return (
     <SelectionStoreProvider>
       <PawkitActionsProvider>
@@ -406,6 +418,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               {animatingContentType === "notes-controls" && <NotesControls />}
               {animatingContentType === "pawkits-controls" && <PawkitsControls />}
               {animatingContentType === "card-details" && <CardDetailsPanel />}
+              {animatingContentType === "bulk-operations" && (
+                <BulkOperationsPanel
+                  cards={cards || []}
+                  onBulkDelete={handleBulkDelete}
+                  onBulkMove={handleBulkMove}
+                />
+              )}
               {animatingContentType === "calendar-controls" && (
                 <div className="p-4">
                   <p className="text-sm text-muted-foreground">Calendar controls coming soon...</p>
