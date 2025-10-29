@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useDataStore } from "@/lib/stores/data-store";
-import { CardModel, CollectionModel } from "@/lib/types";
+import { CardModel, CollectionNode } from "@/lib/types";
 import {
   Play,
   CheckCircle2,
@@ -379,7 +379,7 @@ export default function PreMergeTestSuite() {
           description: "Test pawkit for pre-merge suite",
         }),
       });
-      let testCollection: CollectionModel | null = null;
+      let testCollection: CollectionNode | null = null;
       if (collectionResponse.ok) {
         testCollection = await collectionResponse.json();
         if (testCollection?.id) {
@@ -622,12 +622,12 @@ export default function PreMergeTestSuite() {
       // Test 2: 'the-den' collection exists
       const startTime2 = Date.now();
       const collectionsResponse = await fetch("/api/pawkits");
-      let denCollection: CollectionModel | null = null;
+      let denCollection: CollectionNode | null = null;
 
       if (collectionsResponse.ok) {
         const collectionsData = await collectionsResponse.json();
-        const collections: CollectionModel[] = Array.isArray(collectionsData) ? collectionsData : [];
-        denCollection = collections.find((c: CollectionModel) => c.slug === "the-den") || null;
+        const collections: CollectionNode[] = Array.isArray(collectionsData) ? collectionsData : [];
+        denCollection = collections.find((c: CollectionNode) => c.slug === "the-den") || null;
 
         updateTest(sectionId, `${sectionId}-test-${testIdx}`, {
           status: denCollection ? "pass" : "fail",
@@ -837,8 +837,8 @@ export default function PreMergeTestSuite() {
         const cardsData = await cardsResponse.json();
         const collectionsData = await collectionsResponse.json();
         const cards: CardModel[] = Array.isArray(cardsData) ? cardsData : [];
-        const collections: CollectionModel[] = Array.isArray(collectionsData) ? collectionsData : [];
-        const collectionSlugs = new Set(collections.map((c: CollectionModel) => c.slug));
+        const collections: CollectionNode[] = Array.isArray(collectionsData) ? collectionsData : [];
+        const collectionSlugs = new Set(collections.map((c: CollectionNode) => c.slug));
 
         const orphanedReferences = cards.filter((card: CardModel) =>
           card.collections?.some(slug => !collectionSlugs.has(slug))
@@ -924,7 +924,7 @@ export default function PreMergeTestSuite() {
         }),
       });
 
-      let privateCollection: CollectionModel | null = null;
+      let privateCollection: CollectionNode | null = null;
       if (privateCollectionResponse.ok) {
         privateCollection = await privateCollectionResponse.json();
         if (privateCollection?.id) {
