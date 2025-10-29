@@ -77,6 +77,57 @@ description: Living, interactive roadmap serving as single source of truth for p
   Verify only one card created and both clients show same card
   Why: Validate the core issue from multi-session work is resolved
 
+### Discoverability Improvements (User Feedback Priority)
+
+**Context**: User testing revealed features are built well but not discoverable. Right-click menus, CMD+select, hover+button all work perfectly - users just don't know they exist. Focus on guiding new users through core workflow: Create Pawkit → Add cards → Organize.
+
+- [ ] Interactive onboarding checklist (3 hours) - **PRIORITY** - [impl: ] [test: ] [done: ]
+  Why: Primary solution for discoverability - guides new users through core features
+  Impact: Users discover existing features naturally through guided workflow
+  User feedback: "Adding to collections unclear" + "Renaming not intuitive" - guide instead of rebuild
+  Implementation:
+    - Shows on first login, dismissible with progress tracking
+    - Step 1: 'Create your first Pawkit' (highlights sidebar + button, shows creation flow)
+    - Step 2: 'Add cards to your Pawkit' (demonstrates right-click, drag-drop, and hover+button options)
+    - Step 3: 'Organize with nested Pawkits' (shows drag Pawkit onto Pawkit for hierarchy)
+    - Tracks completion in localStorage (pawkit-onboarding-checklist-progress)
+    - Can be reopened from settings/help menu ('Show onboarding checklist')
+    - Contextual - each step appears in relevant view (Step 1 in Library, Step 2 when hovering card, etc.)
+    - Use glass modal with purple glow for checkmarks
+  Command: `claude-code "Create interactive onboarding checklist: 1) Create onboarding-checklist component with 3 steps, 2) Step 1: Create first Pawkit (highlight sidebar + button), 3) Step 2: Add cards (show right-click, drag, hover+button demos), 4) Step 3: Nest Pawkits (demo drag onto pawkit), 5) Track progress in localStorage 'pawkit-onboarding-checklist-progress', 6) Add 'Show onboarding' option in settings, 7) Make contextual - steps appear in relevant views, 8) Use glass modal design with purple glow checkmarks"`
+
+- [ ] Inline Pawkit rename (30 min) - [impl: ] [test: ] [done: ]
+  Why: Click-to-edit is more intuitive than menu-based rename
+  Impact: Makes renaming obvious through direct interaction
+  User feedback: "Renaming collections not intuitive" - make affordance clearer
+  Implementation:
+    - Click Pawkit name in sidebar to edit directly (like Finder/Explorer)
+    - ESC to cancel, Enter to save
+    - Show subtle edit icon on hover to signal editability
+    - Location: Pawkits sidebar (left sidebar)
+  Command: `claude-code "Add inline rename to Pawkits sidebar: 1) Make Pawkit name editable on click, 2) Show input field with current name, 3) ESC to cancel, Enter to save, 4) Auto-focus input on click, 5) Show subtle edit icon (pencil) on hover, 6) Validate name not empty before saving"`
+
+- [ ] Enhanced visual affordances (45 min) - [impl: ] [test: ] [done: ]
+  Why: Subtle visual cues help users discover interactive elements
+  Impact: Users notice drag zones, selection states, and interactive areas
+  User feedback: "Visual aspect of app is strong" - use visuals to guide interaction
+  Implementation:
+    - Selected cards: stronger visual state with purple border glow (currently too subtle)
+    - Drag state: show drop zones on Pawkits with purple highlight when card is dragged
+    - Hover + button: subtle pulse animation on first hover (localStorage flag to show once)
+    - Drop zones: "Drop here to add to [Pawkit Name]" tooltip
+  Command: `claude-code "Enhance visual affordances: 1) Strengthen selected card state (purple border glow), 2) Show drop zones when dragging (purple highlight on Pawkits), 3) Add pulse animation to hover+button on first hover (localStorage 'seen-hover-button'), 4) Show drop zone tooltips, 5) Ensure all animations match glass design system"`
+
+- [ ] Empty state guidance (30 min) - [impl: ] [test: ] [done: ]
+  Why: Empty states are teaching moments - guide users on next action
+  Impact: New users know what to do when starting out
+  Implementation:
+    - When user has cards but no Pawkits: 'Create your first Pawkit to organize your bookmarks' (with arrow to + button)
+    - When user has Pawkits but no cards in them: 'Right-click cards or drag them here' (shown in empty Pawkit view)
+    - When user has no cards and no Pawkits: Show both messages contextually
+    - Use glass cards with purple glow for empty state messages
+  Command: `claude-code "Add empty state guidance: 1) No Pawkits but has cards: show 'Create your first Pawkit' message with arrow to + button, 2) Empty Pawkit: show 'Right-click cards or drag them here' message, 3) No cards or Pawkits: show contextual messages, 4) Use glass card design with purple glow, 5) Make dismissible per session"`
+
 ---
 
 ## COMPLETED WORK
@@ -170,84 +221,27 @@ description: Living, interactive roadmap serving as single source of truth for p
   Impact: Sidebar consistently appears in all main views
   Command: `claude-code "Fix the right sidebar not appearing/working in some views. Identify which views have broken sidebar functionality and restore it. The sidebar should consistently appear across all main views (Library, Pawkits, Notes, etc.)."`
 
-### Pawkit UX - Quick Wins (User Feedback Priority)
+### ~~Pawkit UX - Quick Wins~~ (SUPERSEDED - See Discoverability Improvements above)
 
-**Context**: User testing revealed Pawkit management is not intuitive. These quick wins make Pawkits more discoverable and easier to use.
+**Status**: These tasks have been superseded by the Discoverability Improvements approach. User testing revealed features already exist and work well - the issue is discovery, not implementation. The interactive onboarding checklist addresses all of these needs more effectively.
 
-- [ ] Inline Pawkit rename (30 min) - [impl: ] [test: ] [done: ]
-  Why: Click-to-edit is more intuitive than menu-based rename
-  Impact: Faster Pawkit organization, matches OS conventions (Finder/Explorer)
-  User feedback: "Renaming collections not intuitive"
-  Implementation:
-    - Click Pawkit name in sidebar to edit directly
-    - ESC to cancel, Enter to save
-    - Location: Pawkits sidebar (left sidebar)
-  Command: `claude-code "Add inline rename to Pawkits sidebar: 1) Make Pawkit name editable on click, 2) Show input field with current name, 3) ESC to cancel, Enter to save, 4) Auto-focus input on click, 5) Validate name not empty before saving"`
+**Superseded by**: Interactive onboarding checklist + Enhanced visual affordances + Empty state guidance
 
-- [ ] 'Add to Pawkit' in context menu (20 min) - [impl: ] [test: ] [done: ]
-  Why: Right-click works but not discoverable, needs more prominence
-  Impact: Users discover Pawkit feature more easily
-  User feedback: "Adding to collections unclear (right-click works but not discoverable)"
-  Implementation:
-    - Add to card context menu with icon (lucide-react FolderPlus icon)
-    - Should appear in both grid and list views
-    - Opens Pawkit picker dialog
-  Command: `claude-code "Make 'Add to Pawkit' more prominent in context menu: 1) Add FolderPlus icon to menu item, 2) Move higher in menu order (near top), 3) Ensure works in both grid and list views, 4) Opens Pawkit picker dialog"`
+- [SUPERSEDED] ~~'Add to Pawkit' in context menu~~ - Feature already exists and works perfectly (card-context-menu.tsx line 137), users just don't discover it. Onboarding checklist Step 2 demonstrates this feature instead.
 
-- [ ] Visual drag-and-drop feedback (45 min) - [impl: ] [test: ] [done: ]
-  Why: Users don't know where they can drop cards
-  Impact: Clearer affordance for drag-and-drop functionality
-  User feedback: "Visual aspect of app is strong" - enhance drag interactions to match
-  Implementation:
-    - Highlight drop zones when dragging cards
-    - Show Pawkit hover state (purple glow border)
-    - Add drop indicator/animation (subtle pulse)
-    - Show "Drop here to add to [Pawkit Name]" tooltip
-  Command: `claude-code "Add visual feedback for drag-and-drop: 1) Highlight Pawkits when card is being dragged (purple glow border), 2) Show hover state on Pawkit items, 3) Add drop indicator animation (subtle pulse), 4) Show tooltip 'Drop here to add to [Pawkit Name]' on hover, 5) Ensure works across all views (Library, Notes, etc.)"`
+- [SUPERSEDED] ~~Onboarding tooltips for Pawkits~~ - Replaced by comprehensive interactive onboarding checklist which provides better guided experience across all features.
 
-- [ ] Onboarding tooltips for Pawkits (1 hour) - [impl: ] [test: ] [done: ]
-  Why: First-time users don't discover drag-and-drop or context menu features
-  Impact: Better feature discovery, reduces confusion
-  User feedback: "Adding to collections unclear" - guide new users
-  Implementation:
-    - First-time user: show 'Tip: Right-click or drag cards into Pawkits'
-    - Dismissible tooltip with "Don't show again" option
-    - Track in localStorage (pawkit-tooltip-pawkits-shown)
-    - Appears when user creates first Pawkit or hovers over sidebar
-  Command: `claude-code "Add onboarding tooltip for Pawkits: 1) Show tooltip on first Pawkit creation or sidebar hover, 2) Content: 'Tip: Right-click or drag cards into Pawkits', 3) Add 'Don't show again' checkbox, 4) Track in localStorage 'pawkit-tooltip-pawkits-shown', 5) Use glass tooltip style matching UI design system"`
+- [SUPERSEDED] ~~Visual drag-and-drop feedback~~ - Covered by "Enhanced visual affordances" task which includes drop zone highlighting and tooltips.
 
-### Pawkit UX - Enhanced Features (Next Sprint)
+- [KEPT] Inline Pawkit rename (30 min) - Moved to Discoverability Improvements section with edit icon affordance added.
 
-**Context**: After quick wins land, these features enhance Pawkit power-user workflows.
+### ~~Pawkit UX - Enhanced Features~~ (MOVED - See Phase 3 Bulk Operations)
 
-- [ ] Keyboard shortcut for Add to Pawkit (45 min) - [impl: ] [test: ] [done: ]
-  Why: Power users want keyboard-driven workflows
-  Impact: Faster card organization for frequent users
-  Implementation:
-    - Cmd/Ctrl + Shift + C opens Pawkit picker
-    - Works on currently selected card(s)
-    - Show shortcut in keyboard shortcuts help (⌘+?)
-  Command: `claude-code "Add keyboard shortcut for Add to Pawkit: 1) Implement Cmd/Ctrl + Shift + C to open Pawkit picker, 2) Works on currently selected/focused card, 3) If multiple cards selected, applies to all, 4) Add to keyboard shortcuts help modal, 5) Show hint in context menu ('⌘⇧C')"`
+**Status**: These power-user features remain important but are not urgent for initial discoverability. Moved to Phase 3 where they integrate with broader bulk operations UI.
 
-- [ ] Multi-select bulk add to Pawkit (2 hours) - [impl: ] [test: ] [done: ]
-  Why: Users want to organize multiple cards at once
-  Impact: Much faster bulk organization
-  Note: Integrates with existing bulk operations UI (Priority 2 in Phase 3)
-  Implementation:
-    - Select multiple cards (Cmd/Ctrl + click)
-    - Bulk add to Pawkit via context menu or keyboard shortcut
-    - Visual selection state (purple border or overlay)
-    - Show "X cards selected" counter
-  Command: `claude-code "Add multi-select bulk add to Pawkit: 1) Implement Cmd/Ctrl + click for multi-select, 2) Show selection count badge, 3) Add 'Add to Pawkit' in bulk actions menu, 4) Visual selection state (purple border), 5) Apply to all selected cards simultaneously"`
-
-- [ ] Quick-add from card detail view (30 min) - [impl: ] [test: ] [done: ]
-  Why: Users want to add cards to Pawkits without closing modal
-  Impact: Smoother workflow when reviewing cards
-  Implementation:
-    - Add Pawkit picker button in card detail modal
-    - Show current Pawkits with option to add more
-    - One-click add without closing modal
-  Command: `claude-code "Add Pawkit picker to card detail modal: 1) Add button/section showing current Pawkits, 2) Click to open Pawkit picker inline, 3) Can add/remove Pawkits without closing modal, 4) Show visual feedback when Pawkit added, 5) Match modal's glass design system"`
+- [MOVED] Keyboard shortcut for Add to Pawkit - See Phase 3: Priority 1: Keyboard Shortcuts
+- [MOVED] Multi-select bulk add to Pawkit - See Phase 3: Priority 2: Bulk Operations
+- [MOVED] Quick-add from card detail view - See Phase 3: Priority 2: Bulk Operations
 
 ### Optional Pre-Launch
 
@@ -871,6 +865,6 @@ When adding new tasks:
 
 **Last Updated**: October 29, 2025
 **Branch**: feat/multi-session-detection
-**Next Critical Items**: Collection UX quick wins (user feedback priority), UI polish tasks
-**Total Tasks**: 107+ across all phases (Pre-merge → Month 3+ → Ongoing)
-**User Feedback**: Collection management improvements now prioritized (7 new tasks added)
+**Next Critical Item**: Interactive onboarding checklist (3 hours) - PRIMARY FOCUS
+**Total Tasks**: 104 active tasks across all phases (Pre-merge → Month 3+ → Ongoing)
+**User Feedback Insight**: Features work well, discoverability is the issue (4 new discoverability tasks, 7 tasks superseded)
