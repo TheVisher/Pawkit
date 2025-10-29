@@ -56,7 +56,8 @@ model Card {
   @@index([userId, deleted])
   @@index([userId, inDen])
   @@index([userId, scheduledDate])
-  @@unique([userId, url])
+  // Note: Unique constraint on (userId, url) is applied via custom migration
+  // with WHERE type = 'url' to exclude notes from the constraint
 }
 
 model Collection {
