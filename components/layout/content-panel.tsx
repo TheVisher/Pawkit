@@ -91,7 +91,7 @@ export function ContentPanel({
       data-right-embedded={isRightEmbedded}
     >
       {/* Content container with scrolling */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      <div className={`flex-1 overflow-y-auto px-6 py-6 ${isRightEmbedded ? "pr-[341px]" : ""}`}>
         {children}
       </div>
     </div>
