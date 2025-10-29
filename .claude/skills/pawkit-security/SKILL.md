@@ -1,3 +1,8 @@
+---
+name: pawkit-security
+description: Document authentication, authorization, and privacy patterns for secure data handling
+---
+
 # Pawkit Security & Privacy Patterns
 
 **Purpose**: Document authentication, authorization, and privacy patterns for secure data handling

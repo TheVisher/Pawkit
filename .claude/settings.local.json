@@ -35,7 +35,10 @@
       "Bash(npm run build:*)",
       "Bash(npx tsx:*)",
       "Bash(npx prisma migrate:*)",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "Skill(pawkit-roadmap)",
+      "Bash(npx prisma db push:*)",
+      "Skill(pawkit-ui-ux)"
     ],
     "deny": [],
     "ask": []

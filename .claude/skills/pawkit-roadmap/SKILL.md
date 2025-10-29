@@ -136,6 +136,13 @@ description: Living, interactive roadmap serving as single source of truth for p
 
 ### October 28-29, 2025
 
+- ✅ **Multi-Select UI Integration** (Bulk Operations)
+  Integrated bulk operations into right sidebar panel
+  Replaced overlay drawer with smooth transitions
+  Applied glass morphism styling with purple glow
+  Matches 3-sidebar architecture (left nav | content | right panel)
+  Commit: 6f78f08
+
 - ✅ **API Standardization** (30 routes)
   Unified error handling, validation, and response formats
   Added structured error responses with `createErrorResponse()`

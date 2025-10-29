@@ -1,3 +1,8 @@
+---
+name: pawkit-testing
+description: Document testing approach, standards, and best practices for the Pawkit project
+---
+
 # Pawkit Testing Standards & Philosophy
 
 **Purpose**: Document testing approach, standards, and best practices for the Pawkit project

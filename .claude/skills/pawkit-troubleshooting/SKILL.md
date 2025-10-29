@@ -1,3 +1,8 @@
+---
+name: pawkit-troubleshooting
+description: Living document of issues encountered, their fixes, and prevention patterns
+---
+
 # Pawkit Troubleshooting Guide
 
 **A living document of issues encountered, their fixes, and prevention patterns**
