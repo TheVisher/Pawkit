@@ -1,3 +1,8 @@
+---
+name: pawkit-project-context
+description: Track development progress, major milestones, and session history across sessions
+---
+
 # Pawkit Project Context & Session History
 
 **Purpose**: Track development progress, major milestones, and session history to maintain context across development sessions.
@@ -13,6 +18,68 @@
 ---
 
 ## Session History
+
+### Date: October 29, 2025 - User Feedback & Collection UX Improvements
+
+**Accomplished**:
+
+1. **Received and Prioritized User Feedback**
+   - Conducted user testing session
+   - Identified key pain points with collection management
+   - Added 7 new UX improvement tasks to roadmap
+   - Organized into HIGH and MEDIUM priority sections
+
+2. **User Feedback Summary**
+   - **Finding**: "Renaming collections not intuitive"
+     - **Solution**: Added inline collection rename (30 min) - click to edit like Finder/Explorer
+
+   - **Finding**: "Adding to collections unclear (right-click works but not discoverable)"
+     - **Solution**: Make 'Add to Collection' more prominent in context menu (20 min)
+     - **Solution**: Add visual drag-and-drop feedback (45 min)
+     - **Solution**: Add onboarding tooltips for new users (1 hour)
+
+   - **Finding**: "Visual aspect of app is strong (bookmarking images/design)"
+     - **Validation**: Glass morphism with purple glow resonating with users
+     - **Action**: Enhance drag interactions to match visual quality
+
+   - **Finding**: "PKM-lite positioning working well"
+     - **Validation**: Users understand the product as a lighter alternative to heavy PKM tools
+     - **Action**: Continue balancing simplicity with power features
+
+3. **Roadmap Updated with Collection UX Tasks**
+
+   **HIGH PRIORITY - Quick Wins** (added to Pre-Merge Critical):
+   - Inline collection rename (30 min)
+   - 'Add to Collection' in context menu (20 min)
+   - Visual drag-and-drop feedback (45 min)
+   - Onboarding tooltips for collections (1 hour)
+
+   **MEDIUM PRIORITY - Enhanced Features** (Next Sprint):
+   - Keyboard shortcut for Add to Collection (45 min)
+   - Multi-select bulk add to collection (2 hours)
+   - Quick-add from card detail view (30 min)
+
+4. **Strategic Insights**
+   - Collections are core feature but discoverability is low
+   - Right-click and drag work but users don't discover them organically
+   - Need progressive disclosure: tooltips → visual feedback → power shortcuts
+   - Quick wins can be implemented rapidly (all under 1 hour each)
+
+**Files Modified**:
+- `.claude/skills/pawkit-roadmap/SKILL.md` - Added Collection UX sections
+- `.claude/skills/pawkit-project-context/SKILL.md` - This session
+
+**Current Status**:
+- Multi-session work complete and documented
+- New collection UX improvements queued as next priority
+- 4 quick wins ready to implement (total ~2.5 hours)
+
+**Next Steps**:
+- Implement collection UX quick wins
+- Manual multi-session test still pending
+- Then merge to main
+
+---
 
 ### Date: October 29, 2025 - UI Polish & Debugging Session
 
@@ -240,6 +307,6 @@ Location: `/app/(dashboard)/test/pre-merge-suite/page.tsx`
 
 ---
 
-**Last Updated**: 2025-10-28
+**Last Updated**: 2025-10-29
 **Updated By**: Claude Code
-**Reason**: Pre-merge testing completed, ready to merge feat/multi-session-detection
+**Reason**: User feedback received, collection UX improvements added to roadmap
