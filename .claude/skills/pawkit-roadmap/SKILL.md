@@ -170,29 +170,29 @@ description: Living, interactive roadmap serving as single source of truth for p
   Impact: Sidebar consistently appears in all main views
   Command: `claude-code "Fix the right sidebar not appearing/working in some views. Identify which views have broken sidebar functionality and restore it. The sidebar should consistently appear across all main views (Library, Pawkits, Notes, etc.)."`
 
-### Collection UX - Quick Wins (User Feedback Priority)
+### Pawkit UX - Quick Wins (User Feedback Priority)
 
-**Context**: User testing revealed collection management is not intuitive. These quick wins make collections more discoverable and easier to use.
+**Context**: User testing revealed Pawkit management is not intuitive. These quick wins make Pawkits more discoverable and easier to use.
 
-- [ ] Inline collection rename (30 min) - [impl: ] [test: ] [done: ]
+- [ ] Inline Pawkit rename (30 min) - [impl: ] [test: ] [done: ]
   Why: Click-to-edit is more intuitive than menu-based rename
-  Impact: Faster collection organization, matches OS conventions (Finder/Explorer)
+  Impact: Faster Pawkit organization, matches OS conventions (Finder/Explorer)
   User feedback: "Renaming collections not intuitive"
   Implementation:
-    - Click collection name in sidebar to edit directly
+    - Click Pawkit name in sidebar to edit directly
     - ESC to cancel, Enter to save
-    - Location: Collections sidebar (left sidebar)
-  Command: `claude-code "Add inline rename to collections sidebar: 1) Make collection name editable on click, 2) Show input field with current name, 3) ESC to cancel, Enter to save, 4) Auto-focus input on click, 5) Validate name not empty before saving"`
+    - Location: Pawkits sidebar (left sidebar)
+  Command: `claude-code "Add inline rename to Pawkits sidebar: 1) Make Pawkit name editable on click, 2) Show input field with current name, 3) ESC to cancel, Enter to save, 4) Auto-focus input on click, 5) Validate name not empty before saving"`
 
-- [ ] 'Add to Collection' in context menu (20 min) - [impl: ] [test: ] [done: ]
+- [ ] 'Add to Pawkit' in context menu (20 min) - [impl: ] [test: ] [done: ]
   Why: Right-click works but not discoverable, needs more prominence
-  Impact: Users discover collection feature more easily
+  Impact: Users discover Pawkit feature more easily
   User feedback: "Adding to collections unclear (right-click works but not discoverable)"
   Implementation:
     - Add to card context menu with icon (lucide-react FolderPlus icon)
     - Should appear in both grid and list views
-    - Opens collection picker dialog
-  Command: `claude-code "Make 'Add to Collection' more prominent in context menu: 1) Add FolderPlus icon to menu item, 2) Move higher in menu order (near top), 3) Ensure works in both grid and list views, 4) Opens collection picker dialog"`
+    - Opens Pawkit picker dialog
+  Command: `claude-code "Make 'Add to Pawkit' more prominent in context menu: 1) Add FolderPlus icon to menu item, 2) Move higher in menu order (near top), 3) Ensure works in both grid and list views, 4) Opens Pawkit picker dialog"`
 
 - [ ] Visual drag-and-drop feedback (45 min) - [impl: ] [test: ] [done: ]
   Why: Users don't know where they can drop cards
@@ -200,54 +200,54 @@ description: Living, interactive roadmap serving as single source of truth for p
   User feedback: "Visual aspect of app is strong" - enhance drag interactions to match
   Implementation:
     - Highlight drop zones when dragging cards
-    - Show collection hover state (purple glow border)
+    - Show Pawkit hover state (purple glow border)
     - Add drop indicator/animation (subtle pulse)
-    - Show "Drop here to add to [Collection]" tooltip
-  Command: `claude-code "Add visual feedback for drag-and-drop: 1) Highlight collections when card is being dragged (purple glow border), 2) Show hover state on collection items, 3) Add drop indicator animation (subtle pulse), 4) Show tooltip 'Drop here to add to [Collection]' on hover, 5) Ensure works across all views (Library, Notes, etc.)"`
+    - Show "Drop here to add to [Pawkit Name]" tooltip
+  Command: `claude-code "Add visual feedback for drag-and-drop: 1) Highlight Pawkits when card is being dragged (purple glow border), 2) Show hover state on Pawkit items, 3) Add drop indicator animation (subtle pulse), 4) Show tooltip 'Drop here to add to [Pawkit Name]' on hover, 5) Ensure works across all views (Library, Notes, etc.)"`
 
-- [ ] Onboarding tooltips for collections (1 hour) - [impl: ] [test: ] [done: ]
+- [ ] Onboarding tooltips for Pawkits (1 hour) - [impl: ] [test: ] [done: ]
   Why: First-time users don't discover drag-and-drop or context menu features
   Impact: Better feature discovery, reduces confusion
   User feedback: "Adding to collections unclear" - guide new users
   Implementation:
-    - First-time user: show 'Tip: Right-click or drag cards into collections'
+    - First-time user: show 'Tip: Right-click or drag cards into Pawkits'
     - Dismissible tooltip with "Don't show again" option
-    - Track in localStorage (pawkit-tooltip-collections-shown)
-    - Appears when user creates first collection or hovers over sidebar
-  Command: `claude-code "Add onboarding tooltip for collections: 1) Show tooltip on first collection creation or sidebar hover, 2) Content: 'Tip: Right-click or drag cards into collections', 3) Add 'Don't show again' checkbox, 4) Track in localStorage 'pawkit-tooltip-collections-shown', 5) Use glass tooltip style matching UI design system"`
+    - Track in localStorage (pawkit-tooltip-pawkits-shown)
+    - Appears when user creates first Pawkit or hovers over sidebar
+  Command: `claude-code "Add onboarding tooltip for Pawkits: 1) Show tooltip on first Pawkit creation or sidebar hover, 2) Content: 'Tip: Right-click or drag cards into Pawkits', 3) Add 'Don't show again' checkbox, 4) Track in localStorage 'pawkit-tooltip-pawkits-shown', 5) Use glass tooltip style matching UI design system"`
 
-### Collection UX - Enhanced Features (Next Sprint)
+### Pawkit UX - Enhanced Features (Next Sprint)
 
-**Context**: After quick wins land, these features enhance collection power-user workflows.
+**Context**: After quick wins land, these features enhance Pawkit power-user workflows.
 
-- [ ] Keyboard shortcut for Add to Collection (45 min) - [impl: ] [test: ] [done: ]
+- [ ] Keyboard shortcut for Add to Pawkit (45 min) - [impl: ] [test: ] [done: ]
   Why: Power users want keyboard-driven workflows
   Impact: Faster card organization for frequent users
   Implementation:
-    - Cmd/Ctrl + Shift + C opens collection picker
+    - Cmd/Ctrl + Shift + C opens Pawkit picker
     - Works on currently selected card(s)
     - Show shortcut in keyboard shortcuts help (⌘+?)
-  Command: `claude-code "Add keyboard shortcut for Add to Collection: 1) Implement Cmd/Ctrl + Shift + C to open collection picker, 2) Works on currently selected/focused card, 3) If multiple cards selected, applies to all, 4) Add to keyboard shortcuts help modal, 5) Show hint in context menu ('⌘⇧C')"`
+  Command: `claude-code "Add keyboard shortcut for Add to Pawkit: 1) Implement Cmd/Ctrl + Shift + C to open Pawkit picker, 2) Works on currently selected/focused card, 3) If multiple cards selected, applies to all, 4) Add to keyboard shortcuts help modal, 5) Show hint in context menu ('⌘⇧C')"`
 
-- [ ] Multi-select bulk add to collection (2 hours) - [impl: ] [test: ] [done: ]
+- [ ] Multi-select bulk add to Pawkit (2 hours) - [impl: ] [test: ] [done: ]
   Why: Users want to organize multiple cards at once
   Impact: Much faster bulk organization
   Note: Integrates with existing bulk operations UI (Priority 2 in Phase 3)
   Implementation:
     - Select multiple cards (Cmd/Ctrl + click)
-    - Bulk add to collection via context menu or keyboard shortcut
+    - Bulk add to Pawkit via context menu or keyboard shortcut
     - Visual selection state (purple border or overlay)
     - Show "X cards selected" counter
-  Command: `claude-code "Add multi-select bulk add to collection: 1) Implement Cmd/Ctrl + click for multi-select, 2) Show selection count badge, 3) Add 'Add to Collection' in bulk actions menu, 4) Visual selection state (purple border), 5) Apply to all selected cards simultaneously"`
+  Command: `claude-code "Add multi-select bulk add to Pawkit: 1) Implement Cmd/Ctrl + click for multi-select, 2) Show selection count badge, 3) Add 'Add to Pawkit' in bulk actions menu, 4) Visual selection state (purple border), 5) Apply to all selected cards simultaneously"`
 
 - [ ] Quick-add from card detail view (30 min) - [impl: ] [test: ] [done: ]
-  Why: Users want to add cards to collections without closing modal
+  Why: Users want to add cards to Pawkits without closing modal
   Impact: Smoother workflow when reviewing cards
   Implementation:
-    - Add collection picker button in card detail modal
-    - Show current collections with option to add more
+    - Add Pawkit picker button in card detail modal
+    - Show current Pawkits with option to add more
     - One-click add without closing modal
-  Command: `claude-code "Add collection picker to card detail modal: 1) Add button/section showing current collections, 2) Click to open collection picker inline, 3) Can add/remove collections without closing modal, 4) Show visual feedback when collection added, 5) Match modal's glass design system"`
+  Command: `claude-code "Add Pawkit picker to card detail modal: 1) Add button/section showing current Pawkits, 2) Click to open Pawkit picker inline, 3) Can add/remove Pawkits without closing modal, 4) Show visual feedback when Pawkit added, 5) Match modal's glass design system"`
 
 ### Optional Pre-Launch
 
