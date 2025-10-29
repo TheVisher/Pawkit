@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 
 type ContentPanelProps = {
   children: ReactNode;
@@ -69,6 +69,30 @@ export function ContentPanel({
   // Vertical positioning - anchored content takes full height
   const verticalClasses = contentIsAnchored ? "top-0 bottom-0" : "top-4 bottom-4";
 
+  // Debug logging to track panel state and dimensions
+  useEffect(() => {
+    console.log('=== CONTENT PANEL DEBUG ===');
+    console.log('Left:', { open: leftOpen, mode: leftMode, anchored: hasAnchoredLeft });
+    console.log('Right:', { open: rightOpen, mode: rightMode, anchored: hasAnchoredRight });
+    console.log('Content anchored:', contentIsAnchored);
+    console.log('Right embedded:', isRightEmbedded);
+    console.log('Positions:', { left: leftPosition, right: rightPosition });
+
+    // Log actual dimensions after render
+    setTimeout(() => {
+      const panel = document.querySelector('[data-content-panel]');
+      if (panel) {
+        const rect = panel.getBoundingClientRect();
+        console.log('Actual ContentPanel dimensions:', {
+          left: rect.left,
+          right: rect.right,
+          width: rect.width,
+          height: rect.height
+        });
+      }
+    }, 350); // Wait for transition to complete
+  }, [leftOpen, leftMode, rightOpen, rightMode, leftPosition, rightPosition, contentIsAnchored, isRightEmbedded, hasAnchoredLeft, hasAnchoredRight]);
+
   return (
     <div
       className={`
@@ -88,6 +112,7 @@ export function ContentPanel({
         boxShadow: "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)",
         transition: "left 0.3s ease-out, right 0.3s ease-out"
       }}
+      data-content-panel
       data-right-embedded={isRightEmbedded}
     >
       {/* Content container with scrolling */}

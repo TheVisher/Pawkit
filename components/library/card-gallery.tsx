@@ -106,13 +106,27 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     const gallery = document.querySelector('[data-masonry-gallery]');
     if (!gallery) return;
 
-    const resizeObserver = new ResizeObserver(() => {
-      // Force a reflow when the container size changes
-      const element = gallery as HTMLElement;
-      const originalColumns = element.style.columns;
-      element.style.columns = 'auto';
-      element.offsetHeight;
-      element.style.columns = originalColumns;
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        console.log('=== MASONRY RESIZE DEBUG ===');
+        console.log('Container width:', entry.contentRect.width);
+        console.log('Container height:', entry.contentRect.height);
+
+        const element = gallery as HTMLElement;
+        const computedStyle = window.getComputedStyle(element);
+        console.log('CSS columns:', computedStyle.columns);
+        console.log('CSS column-width:', computedStyle.columnWidth);
+        console.log('CSS column-count:', computedStyle.columnCount);
+        console.log('CSS column-gap:', computedStyle.columnGap);
+
+        // Force a reflow when the container size changes
+        const originalColumns = element.style.columns;
+        element.style.columns = 'auto';
+        element.offsetHeight;
+        element.style.columns = originalColumns;
+
+        console.log('After reflow - CSS columns:', window.getComputedStyle(element).columns);
+      }
     });
 
     resizeObserver.observe(gallery);

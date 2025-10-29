@@ -1,3 +1,8 @@
+---
+name: pawkit-api-patterns
+description: Document standardized API conventions and patterns for consistent error handling
+---
+
 # Pawkit API Standards & Patterns
 
 **Purpose**: Document standardized API conventions and patterns from October 2025 audit

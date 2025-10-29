@@ -1,3 +1,8 @@
+---
+name: pawkit-performance
+description: Document performance patterns and best practices for local-first architecture
+---
+
 # Pawkit Performance Optimization Guide
 
 **Purpose**: Document performance patterns and best practices for local-first architecture

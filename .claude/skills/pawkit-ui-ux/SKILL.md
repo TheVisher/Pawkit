@@ -1,3 +1,8 @@
+---
+name: pawkit-ui-ux
+description: Official Pawkit design language - glass morphism with strategic purple glow for interactions
+---
+
 # Pawkit UI/UX Design System - "Selective Glow"
 
 **Purpose**: Official Pawkit design language - glass morphism with strategic purple glow for interactions

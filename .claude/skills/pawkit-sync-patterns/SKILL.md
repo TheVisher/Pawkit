@@ -1,3 +1,8 @@
+---
+name: pawkit-sync-patterns
+description: Document local-first sync architecture and conflict resolution patterns
+---
+
 # Pawkit Sync Patterns & Architecture
 
 **Purpose**: Document local-first sync architecture and conflict resolution patterns
