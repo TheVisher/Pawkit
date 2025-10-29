@@ -48,7 +48,7 @@ GLOW HIERARCHY (most to least prominent):
 
 #### Glass Pill Button (Primary Interactive Element)
 
-**Use Cases**: Top nav workspace switcher ("Personal"), right sidebar filters ("All", "Bookmarks Only")
+**Use Cases**: Top nav workspace switcher ("Personal"), right sidebar filters ("All", "Bookmarks Only"), **tag filters (Library and Pawkits views)**
 
 **Base State** (Inactive):
 ```tsx
@@ -147,6 +147,33 @@ export function GlassPillButton({
 - Use gray hover states (needs purple glow!)
 - Skip the backdrop blur (essential for glass effect)
 - Use on every button (reserve for primary interactions)
+
+#### Tag Display Pattern
+
+**CANONICAL PATTERN**: Tags ALWAYS use glass pill buttons across all views.
+
+**Implementation Note**: As of October 29, 2025, Library view was updated (commit 58132cd) to match Pawkits view pattern. Tags now consistently appear as interactive glass pill buttons with purple glow on hover and selected states.
+
+**Why**: Consistency across views reduces cognitive load and creates unified UX. Tags are primary filter mechanism in both Library and Pawkits views.
+
+**Example** (Tag Filter):
+```tsx
+<button
+  onClick={() => toggleTag(tagName)}
+  className={`rounded-full backdrop-blur-md px-3 py-1 text-xs font-medium transition-all duration-200 ${
+    selectedTags.includes(tagName)
+      ? "bg-purple-500/20 border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)] text-purple-200"
+      : "bg-white/5 border border-white/10 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] text-muted-foreground"
+  }`}
+>
+  #{tagName} ({count})
+</button>
+```
+
+**Where Applied**:
+- Library view tag filters (components/control-panel/library-controls.tsx)
+- Pawkits view tag filters (components/control-panel/pawkits-controls.tsx)
+- Any future views with tag filtering
 
 ---
 
@@ -332,6 +359,7 @@ export function GlassCard({
 - Include backdrop blur (`backdrop-blur-lg`)
 - Add purple glow on hover for interactive cards
 - Use glass pills for metadata (URLs, tags)
+- **Tags MUST use glass pill buttons** (canonical pattern, consistent across all views)
 
 **❌ DON'T**:
 - Use flat cards without glass effect
