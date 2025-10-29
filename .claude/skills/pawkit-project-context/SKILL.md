@@ -31,10 +31,10 @@ description: Track development progress, major milestones, and session history a
 
 2. **User Feedback Summary**
    - **Finding**: "Renaming collections not intuitive"
-     - **Solution**: Added inline collection rename (30 min) - click to edit like Finder/Explorer
+     - **Solution**: Added inline Pawkit rename (30 min) - click to edit like Finder/Explorer
 
    - **Finding**: "Adding to collections unclear (right-click works but not discoverable)"
-     - **Solution**: Make 'Add to Collection' more prominent in context menu (20 min)
+     - **Solution**: Make 'Add to Pawkit' more prominent in context menu (20 min)
      - **Solution**: Add visual drag-and-drop feedback (45 min)
      - **Solution**: Add onboarding tooltips for new users (1 hour)
 
@@ -46,24 +46,25 @@ description: Track development progress, major milestones, and session history a
      - **Validation**: Users understand the product as a lighter alternative to heavy PKM tools
      - **Action**: Continue balancing simplicity with power features
 
-3. **Roadmap Updated with Collection UX Tasks**
+3. **Roadmap Updated with Pawkit UX Tasks**
 
    **HIGH PRIORITY - Quick Wins** (added to Pre-Merge Critical):
-   - Inline collection rename (30 min)
-   - 'Add to Collection' in context menu (20 min)
+   - Inline Pawkit rename (30 min)
+   - 'Add to Pawkit' in context menu (20 min)
    - Visual drag-and-drop feedback (45 min)
-   - Onboarding tooltips for collections (1 hour)
+   - Onboarding tooltips for Pawkits (1 hour)
 
    **MEDIUM PRIORITY - Enhanced Features** (Next Sprint):
-   - Keyboard shortcut for Add to Collection (45 min)
-   - Multi-select bulk add to collection (2 hours)
+   - Keyboard shortcut for Add to Pawkit (45 min)
+   - Multi-select bulk add to Pawkit (2 hours)
    - Quick-add from card detail view (30 min)
 
 4. **Strategic Insights**
-   - Collections are core feature but discoverability is low
+   - Pawkits are core feature but discoverability is low
    - Right-click and drag work but users don't discover them organically
    - Need progressive disclosure: tooltips → visual feedback → power shortcuts
    - Quick wins can be implemented rapidly (all under 1 hour each)
+   - Note: Internally called "collections" in code, but "Pawkits" in all UI text
 
 **Files Modified**:
 - `.claude/skills/pawkit-roadmap/SKILL.md` - Added Collection UX sections
