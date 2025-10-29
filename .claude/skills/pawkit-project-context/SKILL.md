@@ -19,7 +19,7 @@ description: Track development progress, major milestones, and session history a
 
 ## Session History
 
-### Date: October 29, 2025 - User Feedback & Collection UX Improvements
+### Date: October 29, 2025 - User Feedback & Discoverability Focus (REVISED)
 
 **Accomplished**:
 
@@ -70,13 +70,47 @@ description: Track development progress, major milestones, and session history a
 - `.claude/skills/pawkit-roadmap/SKILL.md` - Added Collection UX sections
 - `.claude/skills/pawkit-project-context/SKILL.md` - This session
 
+**REVISION - Discoverability Focus**:
+
+After initial roadmap update, user clarified the real insight:
+- **Key Finding**: Features already exist and work perfectly (right-click, CMD+select, hover+button)
+- **Real Problem**: Users don't discover these features
+- **Solution Shift**: Guide users to existing features instead of building new ones
+
+**New Approach - 4 Discoverability Tasks** (5.75 hours):
+1. **Interactive onboarding checklist** (3 hours) - PRIMARY SOLUTION
+   - Step-by-step guided workflow: Create Pawkit → Add cards → Organize
+   - Demonstrates right-click, drag-drop, hover+button in context
+   - Tracks progress, reopenable from settings
+
+2. **Inline Pawkit rename** (30 min)
+   - Click-to-edit with edit icon affordance
+   - Makes renaming discoverable through direct interaction
+
+3. **Enhanced visual affordances** (45 min)
+   - Stronger selection states (purple glow)
+   - Drop zone highlighting during drag
+   - Pulse animation on first hover+button interaction
+
+4. **Empty state guidance** (30 min)
+   - "Create your first Pawkit" when cards exist but no Pawkits
+   - "Right-click cards or drag them here" in empty Pawkits
+
+**Superseded**: 7 previous tasks that tried to rebuild/enhance existing features
+- 'Add to Pawkit' in context menu - Already perfect in card-context-menu.tsx:137
+- Onboarding tooltips - Replaced by comprehensive checklist
+- Visual drag-and-drop feedback - Now part of enhanced affordances
+- 3 power-user features - Moved to Phase 3 (keyboard shortcuts, bulk ops)
+
 **Current Status**:
 - Multi-session work complete and documented
-- New collection UX improvements queued as next priority
-- 4 quick wins ready to implement (total ~2.5 hours)
+- Discoverability improvements prioritized (4 new tasks)
+- Interactive onboarding checklist is PRIMARY FOCUS (3 hours)
+- 7 redundant tasks superseded/moved
 
 **Next Steps**:
-- Implement collection UX quick wins
+- Implement interactive onboarding checklist (3 hours)
+- Then inline rename, visual affordances, empty states (~1.75 hours)
 - Manual multi-session test still pending
 - Then merge to main
 
