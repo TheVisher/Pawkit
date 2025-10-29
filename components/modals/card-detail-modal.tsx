@@ -391,7 +391,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   useEffect(() => {
     setContent(card.content ?? "");
     lastSavedContentRef.current = card.content ?? "";
-  }, [card.id, card.content]);
+  }, [card.id]); // Removed card.content to prevent cursor jumping when typing
 
   useEffect(() => {
     setIsPinned(card.pinned ?? false);
