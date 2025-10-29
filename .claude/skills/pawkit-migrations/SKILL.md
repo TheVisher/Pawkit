@@ -1,3 +1,8 @@
+---
+name: pawkit-migrations
+description: Document safe deployment and data migration patterns to prevent data loss
+---
+
 # Pawkit Migrations & Deployment Patterns
 
 **Purpose**: Document safe deployment and data migration patterns to prevent data loss
@@ -19,6 +24,138 @@
 5. **Keep Old Fields Temporarily** - Don't drop columns immediately
 6. **Idempotent Operations** - Safe to run migrations multiple times
 7. **Monitor Everything** - Watch for errors 24-48 hours post-deploy
+
+---
+
+## CRITICAL DATA SAFETY RULES
+
+### Notes vs Bookmarks - NEVER Mix Them
+
+**CRITICAL**: Notes (type='md-note' or 'text-note') can have duplicate URLs and should NEVER be constrained by URL uniqueness.
+
+#### Card Types
+
+```typescript
+// Different card types have different rules
+type CardType = 'url' | 'md-note' | 'text-note';
+
+// URL Bookmarks: Can have unique constraints
+const BOOKMARK_TYPES = ['url'];
+
+// Notes: NEVER apply URL constraints!
+const NOTE_TYPES = ['md-note', 'text-note'];
+```
+
+#### Database Constraint Rules
+
+**✅ CORRECT: Partial unique index (only URL bookmarks)**
+
+```sql
+-- SAFE: Only applies to URL bookmarks
+CREATE UNIQUE INDEX "Card_userId_url_key"
+ON "Card"("userId", "url")
+WHERE "type" = 'url';  -- ← Critical: Excludes notes!
+```
+
+**❌ WRONG: Full unique constraint (deletes ALL notes!)**
+
+```sql
+-- DANGEROUS: Applies to all cards including notes
+CREATE UNIQUE INDEX "Card_userId_url_key"
+ON "Card"("userId", "url");
+-- ↑ Missing WHERE clause = DATA LOSS!
+
+-- DANGEROUS: Prisma @unique
+@@unique([userId, url])  -- in schema.prisma
+-- ↑ No partial index support = DATA LOSS!
+```
+
+#### Migration Deletion Rules
+
+**Any migration that deletes cards MUST explicitly filter by type!**
+
+**✅ CORRECT: Only delete URL bookmark duplicates**
+
+```sql
+-- SAFE: Only touches URL bookmarks
+DELETE FROM "Card" a
+USING "Card" b
+WHERE a."userId" = b."userId"
+  AND a."url" = b."url"
+  AND a."type" = 'url'      -- ← REQUIRED: Only bookmarks!
+  AND b."type" = 'url'      -- ← REQUIRED: Compare bookmarks only!
+  AND a."id" < b."id"
+  AND a."id" != b."id";
+```
+
+**❌ WRONG: Deletes ALL cards with duplicate URLs (DELETES ALL NOTES!)**
+
+```sql
+-- DANGEROUS: No type filter
+DELETE FROM "Card" a
+USING "Card" b
+WHERE a."userId" = b."userId"
+  AND a."url" = b."url"     -- ← All notes have url = ""
+  AND a."id" < b."id";      -- ← Deletes all but one note!
+-- ↑ Missing type filter = DELETES ALL USER NOTES!
+```
+
+#### Why Notes Must Be Excluded
+
+1. **Notes have empty URLs by design**: All notes have `url = ""`
+2. **Multiple notes are normal**: Users create many notes with empty URLs
+3. **Not a bug**: Empty URLs on notes are intentional, not duplicates
+4. **Catastrophic data loss**: Treating notes as duplicates will delete ALL user notes except one!
+
+#### Testing Requirements
+
+**Before ANY migration that touches cards:**
+
+1. **Test with URL bookmarks**:
+   ```typescript
+   const bookmark1 = { type: 'url', url: 'https://example.com', userId: 'user1' };
+   const bookmark2 = { type: 'url', url: 'https://example.com', userId: 'user1' };
+   // ✅ Should detect as duplicate
+   ```
+
+2. **Test with multiple notes**:
+   ```typescript
+   const note1 = { type: 'md-note', url: '', content: '# Note 1', userId: 'user1' };
+   const note2 = { type: 'md-note', url: '', content: '# Note 2', userId: 'user1' };
+   const note3 = { type: 'text-note', url: '', notes: 'Thought', userId: 'user1' };
+   // ✅ Should NOT be detected as duplicates
+   // ✅ All three must survive migration
+   ```
+
+3. **Verify notes are untouched**:
+   ```sql
+   -- Count notes before migration
+   SELECT COUNT(*) FROM "Card" WHERE "type" IN ('md-note', 'text-note');
+
+   -- Run migration
+   -- ...
+
+   -- Count notes after migration (MUST BE SAME!)
+   SELECT COUNT(*) FROM "Card" WHERE "type" IN ('md-note', 'text-note');
+   ```
+
+4. **NEVER run a migration in production without:**
+   - [ ] Testing on staging with production data copy
+   - [ ] Verifying note count stays the same
+   - [ ] Manual test creating multiple notes
+   - [ ] Backup ready for immediate restore
+
+#### Quick Safety Checklist
+
+Before running ANY card migration:
+
+- [ ] Does it filter by `type = 'url'`?
+- [ ] Are notes (`md-note`, `text-note`) explicitly excluded?
+- [ ] Did I test with multiple notes having empty URLs?
+- [ ] Did I verify note count before/after on staging?
+- [ ] Do I have a tested backup restore procedure?
+
+**If you answer NO to any of these, DO NOT RUN THE MIGRATION!**
 
 ---
 
