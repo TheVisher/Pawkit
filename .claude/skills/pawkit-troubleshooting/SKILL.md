@@ -679,6 +679,114 @@ setInterval(() => {
 
 ---
 
+### 8. 'Failed to sync settings to server' Error
+
+**Issue**: Error message about syncing view settings to server, but feature doesn't exist in current codebase.
+
+**What Failed**:
+```tsx
+// ❌ ERROR: File doesn't exist
+// lib/hooks/view-settings-store.ts
+const syncToServer = async () => {
+  const response = await fetch('/api/user/view-settings', {
+    method: 'PATCH',
+    body: JSON.stringify(settings)
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to sync settings to server');
+    // ❌ This error appears but shouldn't - no server sync exists!
+  }
+};
+```
+
+**The Reality**:
+```tsx
+// ✅ CURRENT IMPLEMENTATION: localStorage-only view settings
+// app/(dashboard)/library/page.tsx
+const savedLayout = typeof window !== 'undefined' 
+  ? localStorage.getItem("library-layout") as LayoutMode | null 
+  : null;
+
+// Each view stores its own settings locally:
+// - library-layout
+// - notes-layout  
+// - pawkit-{slug}-layout
+// These don't sync to server (by design)
+```
+
+**Root Cause**:
+- **No server sync implemented** - View settings are intentionally localStorage-only
+- If you see this error, it's from:
+  1. Old uncommitted code from previous session
+  2. Stale webpack cache referencing deleted files
+  3. Confusion about feature state
+
+**Investigation Findings**:
+```bash
+# Searched for view-settings-store.ts - doesn't exist
+$ find . -name "*view-settings*"
+# No results
+
+# Checked for server sync code - not implemented  
+$ grep -r "syncToServer" .
+# No results
+
+# Current implementation confirmed
+$ grep -r "localStorage.getItem.*layout" .
+# Found in library/page.tsx, notes/page.tsx, pawkits/[slug]/page.tsx
+```
+
+**The Fix**:
+```bash
+# If you see this error:
+# 1. Clear Next.js cache
+cd "Test Bookmark Manager/Pawkit"
+rm -rf .next
+npm run dev
+
+# 2. Verify no old files exist
+find . -name "*view-settings-store*"
+# Should return nothing
+
+# 3. Confirm localStorage pattern
+grep "localStorage.getItem" app/**/*.tsx
+# Should see library-layout, notes-layout, etc.
+```
+
+**How to Avoid**:
+- **Remember**: View settings = localStorage only (no server sync currently)
+- If you see references to `syncToServer` or `view-settings-store.ts`, that's old code
+- Clear `.next` cache when switching branches or after context loss
+- Don't confuse this with `settings-store.ts` (which DOES exist, for app preferences)
+- Server sync is on roadmap but not yet implemented
+
+**Current localStorage Keys**:
+```typescript
+// Per-view layout preferences (localStorage only)
+localStorage.getItem('library-layout')     // 'grid' | 'list' | 'masonry' | 'compact'
+localStorage.getItem('notes-layout')       // same options
+localStorage.getItem(`pawkit-${slug}-layout`) // per-collection layout
+localStorage.getItem('timeline-layout')    // timeline view layout
+
+// These are intentionally per-device, don't sync across browsers
+```
+
+**If You Want Server Sync**:
+- This feature is on the roadmap (not yet implemented)
+- Would require:
+  1. New `UserViewSettings` Prisma model
+  2. `/api/user/view-settings` endpoint (GET/PATCH)
+  3. `view-settings-store.ts` Zustand store with sync
+  4. Migration from localStorage to server
+- See roadmap skill for prioritization
+
+**Impact**: Clarified October 29, 2025 during debugging session - confirmed localStorage-only is current architecture
+
+**See**: `.claude/skills/pawkit-conventions/SKILL.md` for view settings pattern documentation
+
+---
+
 ## Debugging Strategies
 
 ### When API Returns 500 Error
