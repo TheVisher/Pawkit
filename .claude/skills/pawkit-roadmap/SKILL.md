@@ -1,3 +1,8 @@
+---
+name: pawkit-roadmap
+description: Living, interactive roadmap serving as single source of truth for project progress
+---
+
 # Pawkit Project Roadmap
 
 **Purpose**: Living, interactive roadmap serving as single source of truth for project progress and priorities.
@@ -53,10 +58,11 @@
   Remove `card.content` from useEffect dependency in card-detail-modal.tsx:391-394
   Why: Users report cursor jumping when typing in notes, breaks writing flow
 
-- [ ] Remove heartbeat system (1 hour) - [implemented: ] [tested: ] [complete: ]
+- [✓] Remove heartbeat system (1 hour) - [implemented: ✓] [tested: ✓] [complete: ✓]
   Delete /app/api/sessions/heartbeat/route.ts and client-side heartbeat calls
   Regenerate Prisma client without DeviceSession model
   Why: Causing 500 errors, doesn't prevent race conditions, adds overhead
+  Completed: October 29, 2025 - Multi-session detection now uses localStorage only
 
 - [ ] Add database duplicate prevention (2 hours) - [implemented: ] [tested: ] [complete: ]
   Add `@@unique([userId, url])` constraint to Card model in schema.prisma
@@ -108,6 +114,13 @@
   Write guards to prevent conflicts
   Cross-tab communication via storage events
   Multi-session warning banner UI
+
+- ✅ **Heartbeat System Removal**
+  Deleted /app/api/sessions/heartbeat/route.ts endpoint
+  Removed DeviceSession model from Prisma schema
+  Cleaned up client-side heartbeat calls
+  Multi-session detection simplified to localStorage-only approach
+  Eliminated 500 errors and unnecessary database overhead
 
 - ✅ **Skills Structure Setup**
   Created proper .claude/skills/ directory structure
@@ -765,6 +778,6 @@ When adding new tasks:
 
 **Last Updated**: October 29, 2025
 **Branch**: feat/multi-session-detection
-**Next Critical Items**: Fix cursor jumping, remove heartbeat, add DB duplicate prevention
+**Next Critical Items**: Fix cursor jumping, add DB duplicate prevention
 **Total Tasks**: 100+ across all phases (Pre-merge → Month 3+ → Ongoing)
 **Merged From**: POST_LAUNCH_ROADMAP.md (Phase 0-5 now integrated)
