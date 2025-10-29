@@ -332,6 +332,35 @@
   Risk: Low
   Command: `claude-code "Add debouncing to extractAndSaveLinks function in lib/stores/data-store.ts: 1) Use 500ms debounce on content changes, 2) Reduce logging verbosity, 3) Only extract when content actually changes, 4) Cancel pending extractions on unmount"`
 
+### Priority 5: UI Consistency (Post-Launch)
+
+**Note**: These are gradual improvements, NOT blocking launch. Implement as time allows after deployment is stable.
+
+- [ ] Update Dig Up modal (1 hour) - [impl: ] [test: ] [done: ]
+  Why: User hates dog emoji, clunky layout
+  Impact: Better visual consistency
+  Command: `claude-code "Update Dig Up modal to match Selective Glow design system: 1) Remove 🐕 emoji, replace with Sparkles icon from lucide-react, 2) Convert to GlassModal pattern with glass top bar and bottom bar, 3) Use glass pill buttons instead of plain buttons, 4) Use rounded-3xl for content area. See .claude/skills/pawkit-ui-ux/SKILL.md for complete GlassModal pattern."`
+
+- [ ] Convert glass pill buttons to match skill (2 hours) - [impl: ] [test: ] [done: ]
+  Why: Add purple glow on hover, glass popovers
+  Impact: Signature interaction throughout app
+  Command: `claude-code "Update all glass pill buttons to match design system: 1) Ensure all use backdrop-blur-md and bg-white/5 base, 2) Add purple glow on hover (border-purple-500/50 and shadow-[0_0_20px_rgba(168,85,247,0.4)]), 3) Selected state has constant glow (bg-purple-500/20), 4) Replace any flat purple tooltips with glass popovers. See .claude/skills/pawkit-ui-ux/SKILL.md for GlassPillButton and GlassPopover patterns."`
+
+- [ ] Update sidebar filter buttons (1 hour) - [impl: ] [test: ] [done: ]
+  Why: Selected state needs constant glow
+  Impact: Clearer visual hierarchy
+  Command: `claude-code "Update right sidebar filter buttons ('All', 'Bookmarks Only', etc) to match design system: 1) Ensure selected state has constant purple glow (bg-purple-500/20 border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]), 2) Hover state shows purple glow temporarily, 3) Inactive state is glass only. See .claude/skills/pawkit-ui-ux/SKILL.md section on GlassPillButton."`
+
+- [ ] Update navigation indicators (30 min) - [impl: ] [test: ] [done: ]
+  Why: Thicker glow bar, not thin line
+  Impact: Better active state visibility
+  Command: `claude-code "Update navigation active indicators (Library/Calendar/Timeline tabs): 1) Change from h-0.5 to h-1 for thickness, 2) Add purple glow shadow-[0_0_10px_rgba(168,85,247,0.6)], 3) Use rounded-full for smooth appearance, 4) Ensure width matches text width dynamically. See .claude/skills/pawkit-ui-ux/SKILL.md section on NavItem pattern."`
+
+- [ ] Update sliders to glass theme (1 hour) - [impl: ] [test: ] [done: ]
+  Why: Match glass aesthetic
+  Impact: Visual consistency
+  Command: `claude-code "Update control panel sliders to glass theme: 1) Replace browser default styling with custom glass slider, 2) Use glass track (bg-white/5 border-white/10 backdrop-blur-md), 3) Purple fill with glow, 4) Custom thumb with glass effect and purple border. See .claude/skills/pawkit-ui-ux/SKILL.md section on GlassSlider for complete implementation."`
+
 ### Performance Targets for Phase 2
 
 **Targets:**
