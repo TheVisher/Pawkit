@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { getUserByExtensionToken, extractTokenFromHeader } from "@/lib/auth/extension-auth";
 import { rateLimit, getRateLimitHeaders } from "@/lib/utils/rate-limit";
 import { isAllowedExtensionOrigin } from "@/lib/config/extension-config";
+import { unauthorized, rateLimited, success, created, ErrorCodes } from "@/lib/utils/api-responses";
 
 // Force Node.js runtime for Prisma compatibility
 export const runtime = 'nodejs';
@@ -61,6 +62,16 @@ async function getAuthenticatedUser(request: NextRequest) {
   return getCurrentUser()
 }
 
+/**
+ * Helper to add CORS headers to a NextResponse
+ */
+function withCorsHeaders(response: NextResponse, headers: HeadersInit): NextResponse {
+  Object.entries(headers).forEach(([key, value]) => {
+    response.headers.set(key, value as string);
+  });
+  return response;
+}
+
 // Handle preflight requests
 export async function OPTIONS(request: NextRequest) {
   const corsHeaders = getCorsHeaders(request);
@@ -69,11 +80,12 @@ export async function OPTIONS(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   const corsHeaders = getCorsHeaders(request);
+  let user;
 
   try {
-    const user = await getAuthenticatedUser(request);
+    user = await getAuthenticatedUser(request);
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
+      return withCorsHeaders(unauthorized(), corsHeaders);
     }
 
     const { searchParams } = new URL(request.url);
@@ -89,19 +101,20 @@ export async function GET(request: NextRequest) {
       cursor: query.cursor
     };
     const result = await listCards(user.id, payload);
-    return NextResponse.json(result, { headers: corsHeaders });
+    return withCorsHeaders(success(result), corsHeaders);
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/cards', userId: user?.id });
   }
 }
 
 export async function POST(request: NextRequest) {
   const corsHeaders = getCorsHeaders(request);
+  let user;
 
   try {
-    const user = await getAuthenticatedUser(request);
+    user = await getAuthenticatedUser(request);
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: corsHeaders });
+      return withCorsHeaders(unauthorized(), corsHeaders);
     }
 
     // Rate limiting: 60 card creations per minute per user
@@ -114,12 +127,9 @@ export async function POST(request: NextRequest) {
     const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
 
     if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { error: "Too many requests. Please try again later." },
-        {
-          status: 429,
-          headers: { ...corsHeaders, ...rateLimitHeaders }
-        }
+      return withCorsHeaders(
+        rateLimited('Too many card creations. Please try again later.'),
+        { ...corsHeaders, ...rateLimitHeaders }
       );
     }
 
@@ -134,11 +144,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(card, {
-      status: 201,
-      headers: { ...corsHeaders, ...rateLimitHeaders }
-    });
+    return withCorsHeaders(created(card), { ...corsHeaders, ...rateLimitHeaders });
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/cards', userId: user?.id });
   }
 }
