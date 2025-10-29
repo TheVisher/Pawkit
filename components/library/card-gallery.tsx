@@ -35,6 +35,19 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const openBulkOperations = usePanelStore((state) => state.openBulkOperations);
   const restorePreviousContent = usePanelStore((state) => state.restorePreviousContent);
+
+  // Detect if right panel is embedded (left floating + right anchored)
+  const isPanelOpen = usePanelStore((state) => state.isOpen);
+  const panelMode = usePanelStore((state) => state.mode);
+  const leftMode = usePanelStore((state) => state.leftMode);
+  const isRightEmbedded = leftMode === "floating" && panelMode === "anchored" && isPanelOpen;
+
+  // Debug: Log embedded state changes
+  useEffect(() => {
+    console.log('=== CARD GALLERY EMBEDDED MODE ===');
+    console.log('isRightEmbedded:', isRightEmbedded);
+    console.log('Will apply 341px right padding:', isRightEmbedded);
+  }, [isRightEmbedded]);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [imageLoadCount, setImageLoadCount] = useState(0);
@@ -288,7 +301,13 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
       <div>
         {layout === "list" ? (
             // Table-style list view like Fabric
-            <div className="w-full overflow-x-auto">
+            <div
+              className="w-full overflow-x-auto"
+              style={{
+                // Add right padding when right panel is embedded to prevent table from rendering behind it
+                paddingRight: isRightEmbedded ? '341px' : undefined,
+              }}
+            >
               <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-subtle text-xs text-muted-foreground">
@@ -402,7 +421,16 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             </table>
           </div>
         ) : (
-          <div className={layoutConfig.className} style={layoutConfig.style} data-masonry-gallery>
+          <div
+            className={layoutConfig.className}
+            style={{
+              ...layoutConfig.style,
+              // Add right padding when right panel is embedded to prevent cards from rendering behind it
+              // Panel is 325px width + 16px margin = 341px total
+              paddingRight: isRightEmbedded ? '341px' : undefined,
+            }}
+            data-masonry-gallery
+          >
             {cards.map((card) => (
               <CardCell
                 key={card.id}
