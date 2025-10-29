@@ -204,27 +204,30 @@ export function LibraryControls() {
             }
           }}
         >
-          <button
-            onClick={handleClearTags}
-            disabled={selectedTags.length === 0}
-            className="text-xs text-accent hover:text-accent/80 transition-colors mb-1 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-accent"
-          >
-            Clear all filters
-          </button>
-          <div className="space-y-1 max-h-96 overflow-y-auto">
-            {allTags.map((tag) => (
-              <PanelToggle
-                key={tag.name}
-                label={`#${tag.name}`}
-                checked={selectedTags.includes(tag.name)}
-                onChange={() => handleTagToggle(tag.name)}
-                icon={
-                  <span className="text-xs text-muted-foreground min-w-[24px] text-right">
-                    {tag.count}
-                  </span>
-                }
-              />
-            ))}
+          <div className="space-y-2">
+            <div className="flex flex-wrap gap-2">
+              {allTags.map((tag) => (
+                <button
+                  key={tag.name}
+                  onClick={() => handleTagToggle(tag.name)}
+                  className={`rounded-full backdrop-blur-md px-3 py-1 text-xs font-medium transition-all duration-200 ${
+                    selectedTags.includes(tag.name)
+                      ? "bg-purple-500/20 border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)] text-purple-200"
+                      : "bg-white/5 border border-white/10 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] text-muted-foreground"
+                  }`}
+                >
+                  #{tag.name} ({tag.count})
+                </button>
+              ))}
+            </div>
+            {selectedTags.length > 0 && (
+              <button
+                onClick={handleClearTags}
+                className="text-xs text-accent hover:text-accent/80 transition-colors"
+              >
+                Clear all
+              </button>
+            )}
           </div>
         </PanelSection>
       )}
