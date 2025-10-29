@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
 import { prisma } from '@/lib/server/prisma';
+import { sessionHeartbeatSchema } from '@/lib/validators/session';
+import { handleApiError } from '@/lib/utils/api-error';
+import { unauthorized, success } from '@/lib/utils/api-responses';
 
 /**
  * Session Heartbeat API
@@ -9,21 +12,18 @@ import { prisma } from '@/lib/server/prisma';
  * Enables multi-device detection and active device preference.
  */
 export async function POST(request: NextRequest) {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return unauthorized();
     }
 
     const body = await request.json();
-    const { deviceId, deviceName, browser, os } = body;
 
-    if (!deviceId || !deviceName) {
-      return NextResponse.json(
-        { error: 'Missing deviceId or deviceName' },
-        { status: 400 }
-      );
-    }
+    // Validate input
+    const validated = sessionHeartbeatSchema.parse(body);
+    const { deviceId, deviceName, browser, os } = validated;
 
     // Upsert device session (create or update lastActive)
     const session = await prisma.deviceSession.upsert({
@@ -36,26 +36,22 @@ export async function POST(request: NextRequest) {
       update: {
         lastActive: new Date(),
         deviceName,
-        browser,
-        os,
+        browser: browser || null,
+        os: os || null,
       },
       create: {
         userId: user.id,
         deviceId,
         deviceName,
-        browser,
-        os,
+        browser: browser || null,
+        os: os || null,
         lastActive: new Date(),
       },
     });
 
-    return NextResponse.json({ success: true, session });
+    return success({ success: true, session });
   } catch (error) {
-    console.error('[Heartbeat] Error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, { route: '/api/sessions/heartbeat', userId: user?.id });
   }
 }
 
@@ -64,10 +60,11 @@ export async function POST(request: NextRequest) {
  * Active = seen within last 2 minutes
  */
 export async function GET(request: NextRequest) {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return unauthorized();
     }
 
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
@@ -84,12 +81,8 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ sessions });
+    return success({ sessions });
   } catch (error) {
-    console.error('[Heartbeat] Error fetching sessions:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return handleApiError(error, { route: '/api/sessions/heartbeat', userId: user?.id });
   }
 }

@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDigUpCards, type DigUpFilterMode } from "@/lib/server/cards";
 import { handleApiError } from "@/lib/utils/api-error";
+import { unauthorized, success } from "@/lib/utils/api-responses";
 import { getCurrentUser } from "@/lib/auth/get-user";
 
 export async function GET(request: NextRequest) {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { searchParams } = new URL(request.url);
@@ -22,8 +24,8 @@ export async function GET(request: NextRequest) {
       limit
     });
 
-    return NextResponse.json(result);
+    return success(result);
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/distill', userId: user?.id });
   }
 }

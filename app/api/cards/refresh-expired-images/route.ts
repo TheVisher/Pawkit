@@ -10,13 +10,16 @@ import { getCurrentUser } from '@/lib/auth/get-user';
 import { prisma } from '@/lib/server/prisma';
 import { fetchAndUpdateCardMetadata } from '@/lib/server/cards';
 import { isExpiringImageUrl, isStoredImageUrl } from '@/lib/server/image-storage';
+import { handleApiError } from '@/lib/utils/api-error';
+import { unauthorized, success } from '@/lib/utils/api-responses';
 import type { PrismaCard } from '@/lib/types';
 
 export async function POST() {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return unauthorized();
     }
 
     const userId = user.id;
@@ -50,8 +53,8 @@ export async function POST() {
     const successful = results.filter(r => r.status === 'fulfilled').length;
     const failed = results.filter(r => r.status === 'rejected').length;
 
-    return NextResponse.json({
-      message: 'Image refresh completed',
+    return success({
+      message: `Image refresh completed: ${successful} successful, ${failed} failed out of ${cardsToRefresh.length} total`,
       total: cardsToRefresh.length,
       successful,
       failed,
@@ -59,7 +62,6 @@ export async function POST() {
     });
 
   } catch (error) {
-    console.error('[RefreshExpiredImages] Error:', error);
-    return NextResponse.json({ error: 'Failed to refresh images' }, { status: 500 });
+    return handleApiError(error, { route: '/api/cards/refresh-expired-images', userId: user?.id });
   }
 }

@@ -48,11 +48,11 @@ export default function TagsPage() {
     const tagMap = new Map<string, CardModel[]>();
 
     cards.forEach((card) => {
-      // Skip cards that are in private collections or marked as inDen (deprecated but still check)
+      // Skip cards that are in private collections (including 'the-den')
       const isInPrivateCollection = card.collections?.some(collectionSlug =>
         privateCollectionSlugs.has(collectionSlug)
       );
-      if (card.inDen || isInPrivateCollection) {
+      if (isInPrivateCollection) {
         return; // Skip this card
       }
 

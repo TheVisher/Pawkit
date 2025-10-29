@@ -289,13 +289,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                       key={card.id}
                       onAddToPawkit={(slug) => {
                         const collections = Array.from(new Set([slug, ...(card.collections || [])]));
-                        const updates: { collections: string[]; inDen?: boolean } = { collections };
-                        if (card.inDen) {
-                          updates.inDen = false;
-                        }
-                        updateCardInStore(card.id, updates);
+                        updateCardInStore(card.id, { collections });
                         setCards((prev) =>
-                          prev.map((c) => (c.id === card.id ? { ...c, ...updates } : c))
+                          prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
                         );
                       }}
                       onDelete={async () => {
@@ -394,14 +390,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 onImageLoad={handleImageLoad}
                 onAddToPawkit={(slug) => {
                 const collections = Array.from(new Set([slug, ...(card.collections || [])]));
-                // If card is in The Den, remove it when adding to regular Pawkit
-                const updates: { collections: string[]; inDen?: boolean } = { collections };
-                if (card.inDen) {
-                  updates.inDen = false;
-                }
-                updateCardInStore(card.id, updates);
+                updateCardInStore(card.id, { collections });
                 setCards((prev) =>
-                  prev.map((c) => (c.id === card.id ? { ...c, ...updates } : c))
+                  prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
                 );
               }}
               onDeleteCard={async () => {
@@ -829,7 +820,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                           {collection}
                         </span>
                       ))}
-                    {card.inDen && (
+                    {card.collections?.includes('the-den') && (
                       <span className="rounded bg-surface-soft/80 backdrop-blur-sm px-2 py-0.5 border border-purple-500/10">
                         The Den
                       </span>
@@ -905,7 +896,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                     {collection}
                   </span>
                 ))}
-              {card.inDen && (
+              {card.collections?.includes('the-den') && (
                 <span className="rounded bg-surface-soft px-2 py-0.5">
                   The Den
                 </span>

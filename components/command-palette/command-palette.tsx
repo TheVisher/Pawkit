@@ -303,7 +303,7 @@ export function CommandPalette({
     );
 
     // Add notes to commands (exclude private pawkit cards)
-    const notes = cards.filter((c) => (c.type === "md-note" || c.type === "text-note") && !c.inDen);
+    const notes = cards.filter((c) => (c.type === "md-note" || c.type === "text-note") && !c.collections?.includes('the-den'));
     notes.forEach((note) => {
       commands.push({
         id: `note-${note.id}`,
@@ -317,7 +317,7 @@ export function CommandPalette({
     });
 
     // Add bookmarks to commands (exclude private pawkit cards)
-    const bookmarks = cards.filter((c) => c.type === "url" && !c.inDen);
+    const bookmarks = cards.filter((c) => c.type === "url" && !c.collections?.includes('the-den'));
     bookmarks.forEach((bookmark) => {
       commands.push({
         id: `card-${bookmark.id}`,

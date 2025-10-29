@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getTimelineCards } from "@/lib/server/cards";
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { unauthorized, success } from "@/lib/utils/api-responses";
 
 export async function GET(request: NextRequest) {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { searchParams } = new URL(request.url);
@@ -19,8 +21,8 @@ export async function GET(request: NextRequest) {
 
     const groups = await getTimelineCards(user.id, selectedDays);
 
-    return NextResponse.json({ groups });
+    return success({ groups });
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/timeline', userId: user?.id });
   }
 }

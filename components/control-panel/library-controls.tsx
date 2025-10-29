@@ -83,13 +83,16 @@ export function LibraryControls() {
   const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
 
   // Extract all unique tags from cards (includes both user tags AND pawkit collections)
-  // Exclude cards in private pawkits (inDen: true)
+  // Exclude cards in private pawkits (cards with 'the-den' or other private collections)
   const allTags = useMemo(() => {
     const tagMap = new Map<string, number>();
 
     cards.forEach((card) => {
-      // Skip cards in private pawkits
-      if (card.inDen) return;
+      // Skip cards in private collections
+      const isInPrivateCollection = card.collections?.some(slug =>
+        slug === 'the-den'
+      );
+      if (isInPrivateCollection) return;
 
       // Add user-defined tags
       if (card.tags && card.tags.length > 0) {
@@ -101,8 +104,8 @@ export function LibraryControls() {
       // Add pawkit collections as tags (these are also filterable)
       if (card.collections && card.collections.length > 0) {
         card.collections.forEach((collection) => {
-          // Skip 'den-' prefixed collections
-          if (!collection.startsWith('den-')) {
+          // Skip private collections (like 'the-den')
+          if (collection !== 'the-den') {
             tagMap.set(collection, (tagMap.get(collection) || 0) + 1);
           }
         });

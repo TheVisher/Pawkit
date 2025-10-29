@@ -44,7 +44,7 @@ export function CustomCalendar({ cards, onDayClick, onCardClick, onCreateDailyNo
 
     // Scheduled cards
     cards
-      .filter((card) => card.scheduledDate && !card.inDen)
+      .filter((card) => card.scheduledDate && !card.collections?.includes('the-den'))
       .forEach((card) => {
         const dateStr = card.scheduledDate!.split('T')[0];
         if (!map.has(dateStr)) {
@@ -61,7 +61,7 @@ export function CustomCalendar({ cards, onDayClick, onCardClick, onCreateDailyNo
     const map = new Map<string, CardModel>();
 
     cards
-      .filter((card) => isDailyNote(card) && !card.inDen)
+      .filter((card) => isDailyNote(card) && !card.collections?.includes('the-den'))
       .forEach((card) => {
         const date = extractDateFromTitle(card.title!);
         if (date) {
