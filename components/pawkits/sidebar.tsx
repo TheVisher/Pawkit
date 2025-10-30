@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Folder, Lock } from "lucide-react";
 import { CollectionNode } from "@/lib/types";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 
@@ -258,7 +259,8 @@ function CollectionItem({
               {isExpanded ? "▼" : "▶"}
             </button>
           )}
-          <button className="flex-1 truncate text-left text-gray-300" onClick={() => onSelect(node.slug)}>
+          <button className="flex-1 truncate text-left text-gray-300 flex items-center gap-2" onClick={() => onSelect(node.slug)}>
+            {node.isPrivate ? <Lock size={14} className="flex-shrink-0" /> : <Folder size={14} className="flex-shrink-0" />}
             {node.name}
           </button>
         </div>

@@ -18,7 +18,8 @@ export function QuickAccessCard({ card }: QuickAccessCardProps) {
   
   // Get display settings for home view
   const viewSettings = useViewSettingsStore((state) => state.getSettings('home'));
-  const { showTitles, showUrls } = viewSettings;
+  const showTitles = (viewSettings as any)?.showTitles ?? true;
+  const showUrls = (viewSettings as any)?.showUrls ?? true;
 
   const handlePinToggle = async (e: React.MouseEvent) => {
     e.preventDefault();

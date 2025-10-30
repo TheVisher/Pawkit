@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { CardDTO } from '@/lib/server/cards';
 import { CollectionNode } from '@/lib/types';
+import { ENHANCED_DEMO_CARDS, ENHANCED_DEMO_COLLECTIONS } from './demo-data-enhanced';
 
 type DemoDataStore = {
   cards: CardDTO[];
@@ -13,8 +14,8 @@ type DemoDataStore = {
   updateCard: (id: string, updates: Partial<CardDTO>) => void;
   deleteCard: (id: string) => void;
   addCollection: (collectionData: { name: string; parentId?: string | null }) => void;
-  updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean }) => void;
-  deleteCollection: (id: string) => void;
+  updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; isPrivate?: boolean }) => void;
+  deleteCollection: (id: string, deleteCards?: boolean, deleteSubPawkits?: boolean) => void;
   reset: () => void;
 };
 
@@ -574,8 +575,8 @@ export const useDemoDataStore = create<DemoDataStore>()(
         }
 
         set({
-          cards: DEMO_CARDS,
-          collections: DEMO_COLLECTIONS,
+          cards: ENHANCED_DEMO_CARDS,
+          collections: ENHANCED_DEMO_COLLECTIONS,
           isInitialized: true,
         });
       },
@@ -644,26 +645,28 @@ export const useDemoDataStore = create<DemoDataStore>()(
         }));
       },
 
-      updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean }) => {
+      updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; isPrivate?: boolean }) => {
         set((state) => ({
           collections: state.collections.map((c) => (c.id === id ? { ...c, ...updates } : c)),
         }));
       },
 
-      deleteCollection: (id: string) => {
+      deleteCollection: (id: string, deleteCards?: boolean, deleteSubPawkits?: boolean) => {
         set((state) => ({
           collections: state.collections.filter((c) => c.id !== id),
-          cards: state.cards.map((card) => ({
-            ...card,
-            collections: card.collections?.filter((cId) => cId !== id) || [],
-          })),
+          cards: deleteCards
+            ? state.cards.filter((card) => !card.collections?.includes(id))
+            : state.cards.map((card) => ({
+                ...card,
+                collections: card.collections?.filter((cId) => cId !== id) || [],
+              })),
         }));
       },
 
       reset: () => {
         set({
-          cards: DEMO_CARDS,
-          collections: DEMO_COLLECTIONS,
+          cards: ENHANCED_DEMO_CARDS,
+          collections: ENHANCED_DEMO_COLLECTIONS,
           isInitialized: true,
         });
       },

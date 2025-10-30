@@ -32,10 +32,6 @@ export function CardSizeSlider({ open, onClose, view }: CardSizeSliderProps) {
     setLocalSize(settings.cardSize);
   }, [settings.cardSize]);
 
-  // Mobile uses 1-3, desktop uses 1-5
-  const maxSize = isMobile ? 3 : 5;
-  const steps = isMobile ? [1, 2, 3] : [1, 2, 3, 4, 5];
-
   const handleChange = (value: number) => {
     setLocalSize(value);
     setCardSize(view, value);
@@ -44,22 +40,7 @@ export function CardSizeSlider({ open, onClose, view }: CardSizeSliderProps) {
   if (!open || !mounted) return null;
 
   const getSizeLabel = (size: number) => {
-    if (isMobile) {
-      switch (size) {
-        case 1: return "Small";
-        case 2: return "Medium";
-        case 3: return "Large";
-        default: return "Medium";
-      }
-    }
-    switch (size) {
-      case 1: return "Extra Small";
-      case 2: return "Small";
-      case 3: return "Medium";
-      case 4: return "Large";
-      case 5: return "Extra Large";
-      default: return "Medium";
-    }
+    return `${size}%`;
   };
 
   const sliderContent = (
@@ -92,28 +73,15 @@ export function CardSizeSlider({ open, onClose, view }: CardSizeSliderProps) {
             <input
               type="range"
               min="1"
-              max={maxSize}
+              max="100"
               step="1"
               value={localSize}
               onChange={(e) => handleChange(Number(e.target.value))}
               className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider-thumb"
               style={{
-                background: `linear-gradient(to right, rgb(109, 92, 255) 0%, rgb(109, 92, 255) ${((localSize - 1) / (maxSize - 1)) * 100}%, rgb(55, 65, 81) ${((localSize - 1) / (maxSize - 1)) * 100}%, rgb(55, 65, 81) 100%)`
+                background: `linear-gradient(to right, rgb(109, 92, 255) 0%, rgb(109, 92, 255) ${((localSize - 1) / 99) * 100}%, rgb(55, 65, 81) ${((localSize - 1) / 99) * 100}%, rgb(55, 65, 81) 100%)`
               }}
             />
-            {/* Step markers */}
-            <div className="flex justify-between mt-2 px-1">
-              {steps.map((step) => (
-                <button
-                  key={step}
-                  onClick={() => handleChange(step)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    localSize >= step ? 'bg-accent' : 'bg-gray-600'
-                  }`}
-                  aria-label={`Set size to ${getSizeLabel(step)}`}
-                />
-              ))}
-            </div>
           </div>
 
           <button

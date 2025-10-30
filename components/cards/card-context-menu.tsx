@@ -11,61 +11,49 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { FolderPlus, Trash2, Home, FolderMinus, RefreshCw } from "lucide-react";
-import { CollectionNode } from "@/lib/types";
+import { FolderPlus, Trash2, FolderMinus, RefreshCw, Pin, PinOff } from "lucide-react";
+import { CollectionNode, CardType } from "@/lib/types";
 
 type CardContextMenuWrapperProps = {
   children: ReactNode;
   onAddToPawkit: (slug: string) => void;
   onDelete: () => void;
-  onAddToDen?: () => void;
-  filterDenOnly?: boolean; // If true, only show Den Pawkits
-  onAddToRegularPawkit?: (slug: string) => void; // For Den cards to move to regular Pawkits
   cardCollections?: string[]; // Current Pawkits the card is in
   onRemoveFromPawkit?: (slug: string) => void; // Remove from a specific Pawkit
   onRemoveFromAllPawkits?: () => void; // Remove from all Pawkits
   onFetchMetadata?: () => void; // Fetch metadata for the card
+  // Pin to sidebar (notes only)
+  cardId?: string;
+  cardType?: CardType;
+  isPinned?: boolean;
+  onPinToSidebar?: () => void;
+  onUnpinFromSidebar?: () => void;
 };
 
 export function CardContextMenuWrapper({
   children,
   onAddToPawkit,
   onDelete,
-  onAddToDen,
-  filterDenOnly = false,
-  onAddToRegularPawkit,
   cardCollections = [],
   onRemoveFromPawkit,
   onRemoveFromAllPawkits,
   onFetchMetadata,
+  cardId,
+  cardType,
+  isPinned = false,
+  onPinToSidebar,
+  onUnpinFromSidebar,
 }: CardContextMenuWrapperProps) {
   const [collections, setCollections] = useState<CollectionNode[]>([]);
-  const [regularCollections, setRegularCollections] = useState<CollectionNode[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchCollections = async () => {
     setLoading(true);
     try {
-      if (filterDenOnly && onAddToRegularPawkit) {
-        // Fetch both Den and regular Pawkits
-        const [denResponse, regularResponse] = await Promise.all([
-          fetch("/api/den/pawkits"),
-          fetch("/api/pawkits")
-        ]);
-        if (denResponse.ok && regularResponse.ok) {
-          const denData = await denResponse.json();
-          const regularData = await regularResponse.json();
-          setCollections(denData.collections || []);
-          setRegularCollections(regularData.tree || []);
-        }
-      } else {
-        // Fetch only one type
-        const endpoint = filterDenOnly ? "/api/den/pawkits" : "/api/pawkits";
-        const response = await fetch(endpoint);
-        if (response.ok) {
-          const data = await response.json();
-          setCollections(filterDenOnly ? data.collections || [] : data.tree || []);
-        }
+      const response = await fetch("/api/pawkits");
+      if (response.ok) {
+        const data = await response.json();
+        setCollections(data.tree || []);
       }
     } catch (error) {
       console.error("Failed to fetch collections:", error);
@@ -128,12 +116,11 @@ export function CardContextMenuWrapper({
 
   // Get names for current collections
   const getCurrentPawkitNames = () => {
-    const allCollections = filterDenOnly ? [...collections, ...regularCollections] : collections;
     // Ensure cardCollections is an array
     const collectionsArray = Array.isArray(cardCollections) ? cardCollections : [];
     return collectionsArray.map(slug => ({
       slug,
-      name: findCollectionName(slug, allCollections) || slug
+      name: findCollectionName(slug, collections) || slug
     }));
   };
 
@@ -143,30 +130,11 @@ export function CardContextMenuWrapper({
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent className="w-56">
-        {/* Show regular Pawkits menu when in Den */}
-        {filterDenOnly && onAddToRegularPawkit && (
-          <ContextMenuSub>
-            <ContextMenuSubTrigger>
-              <FolderPlus className="mr-2 h-4 w-4" />
-              Add to Pawkit
-            </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="max-h-[300px] overflow-y-auto">
-              {loading ? (
-                <ContextMenuItem disabled className="text-xs text-muted-foreground">
-                  Loading...
-                </ContextMenuItem>
-              ) : (
-                renderCollectionTree(regularCollections, onAddToRegularPawkit)
-              )}
-            </ContextMenuSubContent>
-          </ContextMenuSub>
-        )}
-
-        {/* Show Den Pawkits or regular Pawkits menu */}
+        {/* Add to Pawkit menu */}
         <ContextMenuSub>
           <ContextMenuSubTrigger>
             <FolderPlus className="mr-2 h-4 w-4" />
-            Add to {filterDenOnly ? "Den " : ""}Pawkit
+            Add to Pawkit
           </ContextMenuSubTrigger>
           <ContextMenuSubContent className="max-h-[300px] overflow-y-auto">
             {loading ? (
@@ -178,13 +146,6 @@ export function CardContextMenuWrapper({
             )}
           </ContextMenuSubContent>
         </ContextMenuSub>
-
-        {!filterDenOnly && onAddToDen && (
-          <ContextMenuItem onClick={onAddToDen}>
-            <Home className="mr-2 h-4 w-4" />
-            Add to The Den
-          </ContextMenuItem>
-        )}
 
         {/* Remove from Pawkits submenu */}
         {Array.isArray(cardCollections) && cardCollections.length > 0 && onRemoveFromPawkit && (
@@ -222,6 +183,23 @@ export function CardContextMenuWrapper({
             <RefreshCw className="mr-2 h-4 w-4" />
             Fetch metadata
           </ContextMenuItem>
+        )}
+
+        {/* Pin to Sidebar - only for notes */}
+        {(cardType === 'md-note' || cardType === 'text-note') && (
+          <>
+            {isPinned ? (
+              <ContextMenuItem onClick={onUnpinFromSidebar}>
+                <PinOff className="mr-2 h-4 w-4" />
+                Unpin from Sidebar
+              </ContextMenuItem>
+            ) : (
+              <ContextMenuItem onClick={onPinToSidebar}>
+                <Pin className="mr-2 h-4 w-4" />
+                Pin to Sidebar
+              </ContextMenuItem>
+            )}
+          </>
         )}
 
         <ContextMenuSeparator />

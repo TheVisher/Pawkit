@@ -4,11 +4,14 @@ import { useMemo, useEffect, useState } from "react";
 import { CollectionsGrid } from "@/components/pawkits/grid";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
-import { FolderOpen } from "lucide-react";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { FolderOpen, Plus } from "lucide-react";
+import { GlowButton } from "@/components/ui/glow-button";
 
 export default function CollectionsPage() {
   const { collections, cards, addCollection } = useDataStore();
   const { setOnCreatePawkit } = usePawkitActions();
+  const setContentType = usePanelStore((state) => state.setContentType);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [pawkitName, setPawkitName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,6 +22,11 @@ export default function CollectionsPage() {
     setOnCreatePawkit(() => () => setShowCreateModal(true));
     return () => setOnCreatePawkit(null);
   }, [setOnCreatePawkit]);
+
+  // Set the right panel content to show pawkits controls
+  useEffect(() => {
+    setContentType("pawkits-controls");
+  }, [setContentType]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +84,10 @@ export default function CollectionsPage() {
         count: pawkitCards.length,
         cards: pawkitCards,
         isPinned: root.pinned,
+        isPrivate: root.isPrivate,
+        hidePreview: root.hidePreview,
+        useCoverAsBackground: root.useCoverAsBackground,
+        coverImage: root.coverImage,
         hasChildren: root.children && root.children.length > 0
       };
     });
@@ -85,6 +97,18 @@ export default function CollectionsPage() {
 
   return (
     <>
+      {/* Create Pawkit Button - Fixed to top-right */}
+      <GlowButton
+        onClick={() => setShowCreateModal(true)}
+        variant="primary"
+        size="md"
+        className="fixed top-4 right-20 z-10 flex items-center gap-2"
+        title="Create Pawkit"
+      >
+        <Plus size={16} />
+        Create Pawkit
+      </GlowButton>
+
       <div className="space-y-10">
         {/* Page Header */}
         <div className="flex items-center gap-3">

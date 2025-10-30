@@ -1,20 +1,21 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
 import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
-import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { format, addDays, startOfDay } from "date-fns";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
-import { Plus, FileText, CalendarIcon } from "lucide-react";
+import { Plus, FileText, CalendarIcon, Inbox } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
+import { HorizontalScrollContainer } from "@/components/ui/horizontal-scroll-container";
 
 const GREETINGS = [
   "Welcome back",
@@ -25,7 +26,9 @@ const GREETINGS = [
 ];
 
 export default function HomePage() {
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const activeCardId = usePanelStore((state) => state.activeCardId);
+
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -59,21 +62,49 @@ export default function HomePage() {
     fetchProfile();
   }, []);
 
+  // Build private collection IDs helper
+  const privateCollectionIds = useMemo(() => {
+    const ids = new Set<string>();
+    const getAllCollectionIds = (nodes: any[]): void => {
+      for (const node of nodes) {
+        if (node.isPrivate) {
+          ids.add(node.id);
+        }
+        if (node.children && node.children.length > 0) {
+          getAllCollectionIds(node.children);
+        }
+      }
+    };
+    getAllCollectionIds(collections);
+    return ids;
+  }, [collections]);
+
   // Compute views from the single source of truth
   const recent = useMemo(() => {
     if (!cards || !Array.isArray(cards)) return [];
     return cards
-      .filter(c => !c.inDen) // Exclude Den cards
+      .filter(c => {
+        const isInPrivateCollection = c.collections?.some(collectionId =>
+          privateCollectionIds.has(collectionId)
+        );
+        return !isInPrivateCollection;
+      })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 5);
-  }, [cards]);
+      .slice(0, 15); // Increased from 5 to 15
+  }, [cards, privateCollectionIds]);
 
   const quickAccess = useMemo(() => {
     if (!cards || !Array.isArray(cards)) return [];
     return cards
-      .filter(c => c.pinned && !c.inDen) // Exclude Den cards
+      .filter(c => {
+        if (!c.pinned) return false;
+        const isInPrivateCollection = c.collections?.some(collectionId =>
+          privateCollectionIds.has(collectionId)
+        );
+        return !isInPrivateCollection;
+      })
       .slice(0, 8);
-  }, [cards]);
+  }, [cards, privateCollectionIds]);
 
   // Get pinned pawkits from collections (flatten tree and filter)
   const pinnedPawkits = useMemo(() => {
@@ -111,7 +142,7 @@ export default function HomePage() {
     if (!cards || !Array.isArray(cards)) return map;
 
     cards
-      .filter((card) => card.scheduledDate && !card.inDen)
+      .filter((card) => card.scheduledDate && !card.collections?.includes('the-den'))
       .forEach((card) => {
         const dateStr = card.scheduledDate!.split('T')[0];
         if (!map.has(dateStr)) {
@@ -129,19 +160,6 @@ export default function HomePage() {
   if (quickAccessUnique.length === 0) {
     quickAccessUnique = quickAccess;
   }
-
-  const activeCard = activeCardId && cards && Array.isArray(cards) ? cards.find(c => c.id === activeCardId) : null;
-
-  const handleUpdateCard = async (updated: CardModel) => {
-    await updateCard(updated.id, updated);
-  };
-
-  const handleDeleteCard = async () => {
-    if (activeCardId) {
-      await deleteCard(activeCardId);
-      setActiveCardId(null);
-    }
-  };
 
   const handleCreateQuickNote = async (date: Date) => {
     try {
@@ -182,7 +200,7 @@ export default function HomePage() {
       const dataStore = useDataStore.getState();
       const newCard = dataStore.cards.find(c => c.title === title);
       if (newCard) {
-        setActiveCardId(newCard.id);
+        openCardDetails(newCard.id);
         setSelectedDate(null);
       }
     } catch (error) {
@@ -197,7 +215,7 @@ export default function HomePage() {
     return cards.filter(card =>
       card.scheduledDate &&
       card.scheduledDate.split('T')[0] === dateStr &&
-      !card.inDen
+      !card.collections?.includes('the-den')
     );
   };
 
@@ -209,12 +227,12 @@ export default function HomePage() {
     const day = String(date.getDate()).padStart(2, '0');
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
     const title = `${year}-${month}-${day} - ${dayName}`;
-    return cards.find(c => c.title === title && !c.inDen);
+    return cards.find(c => c.title === title && !c.collections?.includes('the-den'));
   };
 
   return (
     <>
-      <div className="flex flex-1 flex-col gap-12 pb-16">
+      <div className="flex flex-1 flex-col gap-12 pb-16 min-h-full">
         <section className="relative text-center">
           <h1 className="text-4xl font-semibold text-gray-100 sm:text-5xl">
             <span className="mr-3 inline-block" aria-hidden="true">👋</span>
@@ -230,29 +248,16 @@ export default function HomePage() {
             </Link>
           </div>
           {recent.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <HorizontalScrollContainer>
               {recent.map((card) => (
+                <div key={card.id} className="flex-shrink-0 w-[322px]">
                 <RecentCard
                   key={card.id}
                   card={card}
-                  onClick={() => setActiveCardId(card.id)}
+                  onClick={() => openCardDetails(card.id)}
                   onAddToPawkit={async (slug) => {
                     const collections = Array.from(new Set([slug, ...(card.collections || [])]));
-                    // If card is in The Den, remove it when adding to regular Pawkit
-                    const updates: { collections: string[]; inDen?: boolean } = { collections };
-                    if (card.inDen) {
-                      updates.inDen = false;
-                    }
-                    await updateCard(card.id, updates);
-                  }}
-                  onAddToDen={async () => {
-                    const response = await fetch(`/api/cards/${card.id}/move-to-den`, {
-                      method: "PATCH",
-                    });
-                    if (response.ok) {
-                      // Card moved to Den, refresh the page data
-                      window.location.reload();
-                    }
+                    await updateCard(card.id, { collections });
                   }}
                   onDeleteCard={async () => {
                     await deleteCard(card.id);
@@ -265,8 +270,9 @@ export default function HomePage() {
                     await updateCard(card.id, { collections: [] });
                   }}
                 />
+                </div>
               ))}
-            </div>
+            </HorizontalScrollContainer>
           ) : (
             <EmptyState message="Add your first bookmark to see it here." />
           )}
@@ -279,18 +285,34 @@ export default function HomePage() {
             Manage shortcuts
           </Link>
         </div>
-        {(pinnedPawkits.length > 0 || quickAccessUnique.length > 0) ? (
-          <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-            {pinnedPawkits.map((pawkit) => (
-              <QuickAccessPawkitCard key={pawkit.id} pawkit={pawkit} />
-            ))}
-            {quickAccessUnique.map((item) => (
-              <QuickAccessCard key={item.id} card={item} />
-            ))}
-          </div>
-        ) : (
-          <EmptyState message="Pin cards or Pawkits to surface them here." />
-        )}
+        <HorizontalScrollContainer>
+          {/* Inbox Button - Always First */}
+          <Link href="/library" className="flex-shrink-0 w-[250px]">
+            <div className="card-hover h-full rounded-2xl border border-subtle bg-surface p-6 transition flex flex-col items-center justify-center gap-3 cursor-pointer">
+              <div className="p-3 rounded-full bg-purple-500/20">
+                <Inbox size={24} className="text-purple-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-foreground">Inbox</p>
+                <p className="text-xs text-muted-foreground mt-1">Unsorted items</p>
+              </div>
+            </div>
+          </Link>
+
+          {/* Pinned Pawkits */}
+          {pinnedPawkits.map((pawkit) => (
+            <div key={pawkit.id} className="flex-shrink-0 w-[250px]">
+              <QuickAccessPawkitCard pawkit={pawkit} />
+            </div>
+          ))}
+
+          {/* Pinned Cards */}
+          {quickAccessUnique.map((item) => (
+            <div key={item.id} className="flex-shrink-0 w-[250px]">
+              <QuickAccessCard card={item} />
+            </div>
+          ))}
+        </HorizontalScrollContainer>
       </section>
 
       <section className="mt-auto space-y-4">
@@ -300,12 +322,13 @@ export default function HomePage() {
             View full calendar
           </Link>
         </div>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-2 md:gap-3">
-          {weekDays.map((day, index) => {
+        <div className="max-w-[1800px] mx-auto">
+          <HorizontalScrollContainer>
+            {weekDays.map((day, index) => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayCards = cardsByDate.get(dateStr) || [];
             const isToday = format(new Date(), 'yyyy-MM-dd') === dateStr;
-            
+
             // Check if there's a daily note for this date
             const dailyNote = cards && Array.isArray(cards) ? cards.find(card => {
               if (!isDailyNote(card)) return false;
@@ -317,7 +340,7 @@ export default function HomePage() {
             return (
               <div
                 key={dateStr}
-                className={`card-hover rounded-2xl border bg-surface p-3 md:p-4 min-h-[160px] md:min-h-[200px] flex flex-col relative cursor-pointer transition-all ${
+                className={`card-hover rounded-2xl border bg-surface p-3 md:p-4 min-h-[160px] md:min-h-[200px] flex flex-col relative cursor-pointer transition-all flex-shrink-0 w-[180px] sm:w-[200px] md:w-[220px] ${
                   isToday ? 'border-accent' : 'border-subtle'
                 }`}
                 onClick={() => setSelectedDate(day)}
@@ -336,7 +359,7 @@ export default function HomePage() {
                       key={card.id}
                       onClick={(e) => {
                         e.stopPropagation();
-                        setActiveCardId(card.id);
+                        openCardDetails(card.id);
                       }}
                       className="w-full text-left p-1.5 md:p-2 rounded-lg bg-surface-soft hover:bg-surface-soft/80 transition-colors"
                     >
@@ -353,14 +376,14 @@ export default function HomePage() {
                     </button>
                   ))}
                 </div>
-                
+
                 {/* Daily Note Pill or Add Button - anchored to bottom */}
                 <div className="absolute bottom-2 left-2 right-2 flex justify-center">
                   {dailyNote && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setActiveCardId(dailyNote.id);
+                        openCardDetails(dailyNote.id);
                       }}
                       className="px-3 py-1.5 rounded-full bg-purple-500/20 backdrop-blur-md border border-purple-400/30 text-xs text-purple-200 hover:bg-purple-500/30 transition-colors flex items-center gap-1.5"
                     >
@@ -372,12 +395,13 @@ export default function HomePage() {
               </div>
             );
           })}
+          </HorizontalScrollContainer>
         </div>
       </section>
       </div>
 
       {/* Expanded Day View Modal */}
-      {selectedDate && !activeCard && isMounted && typeof document !== 'undefined' && document.body && (() => {
+      {selectedDate && !activeCardId && isMounted && typeof document !== 'undefined' && document.body && (() => {
         const scheduledCards = getCardsForDate(selectedDate);
         const dailyNote = getDailyNoteForDate(selectedDate);
 
@@ -412,7 +436,7 @@ export default function HomePage() {
                 {dailyNote ? (
                   <GlowButton
                     onClick={() => {
-                      setActiveCardId(dailyNote.id);
+                      openCardDetails(dailyNote.id);
                       setSelectedDate(null);
                     }}
                     variant="primary"
@@ -452,7 +476,7 @@ export default function HomePage() {
                       <button
                         key={card.id}
                         onClick={() => {
-                          setActiveCardId(card.id);
+                          openCardDetails(card.id);
                           setSelectedDate(null);
                         }}
                         className="w-full text-left p-3 rounded-lg bg-surface-soft hover:bg-surface transition-colors border border-subtle flex items-center gap-3"
@@ -504,20 +528,6 @@ export default function HomePage() {
           return null;
         }
       })()}
-
-      {activeCard && (
-        <CardDetailModal
-          card={activeCard as CardModel}
-          collections={collections}
-          onClose={() => setActiveCardId(null)}
-          onUpdate={handleUpdateCard}
-          onDelete={handleDeleteCard}
-          onNavigateToCard={(cardId) => {
-            // Navigate to the clicked note/card by changing the active card
-            setActiveCardId(cardId);
-          }}
-        />
-      )}
     </>
   );
 }
@@ -526,23 +536,22 @@ type CardProps = {
   card: CardModel;
   onClick: () => void;
   onAddToPawkit: (slug: string) => void;
-  onAddToDen: () => void;
   onDeleteCard: () => void;
   onRemoveFromPawkit: (slug: string) => void;
   onRemoveFromAllPawkits: () => void;
 };
 
-function RecentCard({ card, onClick, onAddToPawkit, onAddToDen, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardProps) {
+function RecentCard({ card, onClick, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardProps) {
   // Get display settings for home view
   const viewSettings = useViewSettingsStore((state) => state.getSettings('home'));
-  const { showTitles, showUrls } = viewSettings;
+  const showTitles = (viewSettings as any)?.showTitles ?? true;
+  const showUrls = (viewSettings as any)?.showUrls ?? true;
 
   const isNote = card.type === 'md-note' || card.type === 'text-note';
 
   return (
     <CardContextMenuWrapper
       onAddToPawkit={onAddToPawkit}
-      onAddToDen={onAddToDen}
       onDelete={onDeleteCard}
       cardCollections={card.collections || []}
       onRemoveFromPawkit={onRemoveFromPawkit}

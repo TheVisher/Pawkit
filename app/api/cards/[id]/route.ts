@@ -3,6 +3,7 @@ import { deleteCard, getCard, updateCard, softDeleteCard } from "@/lib/server/ca
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
+import { unauthorized, notFound, conflict, success, ErrorCodes } from "@/lib/utils/api-responses";
 
 // Force Node.js runtime for Prisma compatibility
 export const runtime = 'nodejs';
@@ -14,28 +15,30 @@ interface RouteParams {
 }
 
 export async function GET(_request: NextRequest, segmentData: RouteParams) {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const params = await segmentData.params;
     const card = await getCard(user.id, params.id);
     if (!card) {
-      return NextResponse.json({ message: "Not found" }, { status: 404 });
+      return notFound('Card');
     }
-    return NextResponse.json(card);
+    return success(card);
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/cards/[id]', userId: user?.id });
   }
 }
 
 export async function PATCH(request: NextRequest, segmentData: RouteParams) {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     // Check serverSync setting for write operations
@@ -50,6 +53,7 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
           {
             error: 'Local-Only Mode Active',
             message: 'Server sync is disabled. This operation cannot be performed in local-only mode. Please enable server sync in settings to sync your data to the cloud.',
+            code: 'LOCAL_ONLY_MODE',
             localOnly: true,
           },
           { status: 403 }
@@ -66,7 +70,7 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
     // Skip conflict detection for metadata updates (server-side operations)
     const body = await request.json();
     const isMetadataUpdate = body.metadata || body.title || body.description || body.image;
-    
+
     const ifUnmodifiedSince = request.headers.get('If-Unmodified-Since');
     if (ifUnmodifiedSince && !isMetadataUpdate) {
       const currentCard = await getCard(user.id, params.id);
@@ -76,37 +80,34 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
 
         // If server version is newer, reject the update (conflict detected)
         if (serverTimestamp > clientTimestamp) {
-          return NextResponse.json(
-            {
-              error: "Conflict",
-              message: "Card was modified by another device. Please refresh and try again.",
-              serverCard: currentCard
-            },
-            { status: 409 } // 409 Conflict
+          return conflict(
+            'Card was modified by another device. Please refresh and try again.',
+            { serverCard: currentCard }
           );
         }
       }
     }
 
     const card = await updateCard(user.id, params.id, body);
-    return NextResponse.json(card);
+    return success(card);
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/cards/[id]', userId: user?.id });
   }
 }
 
 export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const params = await segmentData.params;
     // Soft delete - move to trash
     await softDeleteCard(user.id, params.id);
-    return NextResponse.json({ ok: true });
+    return success({ ok: true });
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/cards/[id]', userId: user?.id });
   }
 }

@@ -28,7 +28,6 @@ const ACCENT_COLORS: { name: AccentColor; value: string }[] = [
 ];
 
 export function ProfileModal({ open, onClose, username, email = "", avatarUrl }: ProfileModalProps) {
-  const [name, setName] = useState(username);
   const [userEmail, setUserEmail] = useState(email);
   const [avatar, setAvatar] = useState(avatarUrl || "");
   const [avatarPreview, setAvatarPreview] = useState(avatarUrl || "");
@@ -41,7 +40,11 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   // Auth
   const { signOut } = useAuth();
 
-  // Settings from store
+  // Settings from store (including displayName)
+  const displayName = useSettingsStore((state) => state.displayName);
+  const setDisplayName = useSettingsStore((state) => state.setDisplayName);
+  const [name, setName] = useState(displayName || username);
+
   const theme = useSettingsStore((state) => state.theme);
   const accentColor = useSettingsStore((state) => state.accentColor);
   const notifications = useSettingsStore((state) => state.notifications);
@@ -91,23 +94,29 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Save display name
+      // Save display name to server
       const response = await fetch('/api/user', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName: name })
+        body: JSON.stringify({ displayName: name }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save profile');
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save profile');
       }
 
-      // Trigger a page refresh to update all components with new display name
-      window.location.reload();
+      // Also update local settings store for immediate UI update
+      setDisplayName(name);
+
+      // Close modal after a short delay for visual feedback
+      setTimeout(() => {
+        onClose();
+        setSaving(false);
+      }, 300);
     } catch (error) {
       console.error('Error saving profile:', error);
-      alert('Failed to save profile. Please try again.');
-    } finally {
+      alert(`Failed to save profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setSaving(false);
     }
   };

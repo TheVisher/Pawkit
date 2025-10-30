@@ -9,7 +9,7 @@ import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore, extractAndSaveLinks } from "@/lib/stores/data-store";
-import { localStorage } from "@/lib/services/local-storage";
+import { localDb } from "@/lib/services/local-storage";
 import { Toast } from "@/components/ui/toast";
 import { ReaderView } from "@/components/reader/reader-view";
 import { RichMDEditor } from "@/components/notes/md-editor";
@@ -20,11 +20,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen, Sparkles } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 import { GlowButton } from "@/components/ui/glow-button";
 import { useTrackCardView } from "@/lib/hooks/use-recent-history";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 type TagsTabProps = {
   content: string;
@@ -78,6 +79,27 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const isNote = card.type === "md-note" || card.type === "text-note";
   const [isMounted, setIsMounted] = useState(false);
 
+  // Open control panel with card details when modal opens
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const restorePreviousContent = usePanelStore((state) => state.restorePreviousContent);
+
+  // Get panel states for modal positioning
+  const isLeftOpen = usePanelStore((state) => state.isLeftOpen);
+  const leftMode = usePanelStore((state) => state.leftMode);
+  const isPanelOpen = usePanelStore((state) => state.isOpen);
+  const panelMode = usePanelStore((state) => state.mode);
+
+  // Calculate modal offset based on panel states
+  // Floating panels: 325px width + 16px margin on each side = 357px total space
+  // Anchored panels: 325px width, flush to edge
+  const leftOffset = isLeftOpen
+    ? (leftMode === "floating" ? "357px" : "325px")
+    : "0px";
+
+  const rightOffset = isPanelOpen
+    ? (panelMode === "floating" ? "357px" : "325px")
+    : "0px";
+
   // Track card view for recent history
   useTrackCardView(card);
 
@@ -86,6 +108,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     setIsMounted(true);
     return () => setIsMounted(false);
   }, []);
+
+  // Open control panel when card modal opens or card changes.
+  // Do NOT restore in cleanup here, because card switches (key changes)
+  // would trigger cleanup and incorrectly restore the panel.
+  useEffect(() => {
+    openCardDetails(card.id);
+  }, [card.id, openCardDetails]);
 
   // Initialize data store if not already initialized
   useEffect(() => {
@@ -99,14 +128,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   // when content is updated via the auto-save mechanism
   const [notes, setNotes] = useState(card.notes ?? "");
   const [content, setContent] = useState(card.content ?? "");
-  const [noteMode, setNoteMode] = useState<"preview" | "edit">("preview");
 
   // Wait for cards to load before building title map
   const [cardsReady, setCardsReady] = useState(false);
 
   useEffect(() => {
     if (allCards.length > 0 && !cardsReady) {
-      console.log('[Wiki-Link] Cards loaded, setting ready');
       setCardsReady(true);
     }
   }, [allCards.length, cardsReady]);
@@ -114,26 +141,16 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   // Create a map of note titles to IDs for wiki-link resolution
   const noteTitleMap = useMemo(() => {
     if (!cardsReady) {
-      console.log('[Wiki-Link] Cards not ready yet, returning empty map');
       return new Map<string, string>();
     }
 
     const map = new Map<string, string>();
-    console.log('[Wiki-Link] Building title map from cards:', {
-      totalCards: allCards.length,
-      noteCards: allCards.filter(c => c.type === 'md-note' || c.type === 'text-note').length,
-      notesWithTitles: allCards.filter(c => (c.type === 'md-note' || c.type === 'text-note') && c.title).length,
-      allNotes: allCards.filter(c => c.type === 'md-note' || c.type === 'text-note').map(c => ({ id: c.id, title: c.title, type: c.type })),
-    });
-
     allCards.forEach((c) => {
       if ((c.type === 'md-note' || c.type === 'text-note') && c.title) {
         map.set(c.title.toLowerCase(), c.id);
-        console.log('[Wiki-Link] Added to map:', c.title.toLowerCase(), '->', c.id);
       }
     });
 
-    console.log('[Wiki-Link] Final title map:', Array.from(map.entries()));
     return map;
   }, [allCards, cardsReady]);
 
@@ -264,17 +281,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           const matchedCard = !matchedNote ? findBestFuzzyMatch(linkText, cards, 0.7) : null;
           const cardId = matchedCard?.id;
 
-          console.log('[Wiki-Link Debug]', {
-            href,
-            linkText,
-            linkTextLower: linkText.toLowerCase(),
-            noteId,
-            cardId,
-            hasNavigateCallback: !!onNavigateToCard,
-            availableNoteTitles: Array.from(noteTitleMap.keys()),
-            availableCardTitles: Array.from(cardTitleMap.keys()),
-          });
-
           if (noteId && onNavigateToCard) {
             return (
               <button
@@ -326,15 +332,36 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [isPinned, setIsPinned] = useState(card.pinned ?? false);
-  const [isInDen, setIsInDen] = useState(card.inDen ?? false);
+  const [isInDen, setIsInDen] = useState(card.collections?.includes('the-den') ?? false);
   const [isReaderExpanded, setIsReaderExpanded] = useState(false);
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
+  // Bottom tab view mode: 'preview' | 'reader' | 'metadata'
+  const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'metadata'>('preview');
   const [denPawkitSlugs, setDenPawkitSlugs] = useState<Set<string>>(new Set());
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isModalExpanded, setIsModalExpanded] = useState(false);
+  const [noteMode, setNoteMode] = useState<'edit' | 'preview'>('preview');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [editedTitle, setEditedTitle] = useState(card.title || "");
+  const [showNoteToolbar, setShowNoteToolbar] = useState(true);
   const lastSavedNotesRef = useRef(card.notes ?? "");
   const lastSavedContentRef = useRef(card.content ?? "");
+  const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Calculate note metadata for display in top bar
+  const noteMetadata = useMemo(() => {
+    if (!isNote) return null;
+    const words = content.trim() ? content.trim().split(/\s+/).length : 0;
+    const characters = content.length;
+    const linkMatches = content.match(/\[\[([^\]]+)\]\]/g) || [];
+    const linkCount = linkMatches.length;
+    const tagMatches = content.match(/#([a-zA-Z0-9_-]+)/g) || [];
+    const tagCount = tagMatches.length;
+    return { words, characters, linkCount, tagCount };
+  }, [content, isNote]);
 
   // Fetch Den Pawkit slugs to differentiate from regular Pawkits
   useEffect(() => {
@@ -364,7 +391,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   useEffect(() => {
     setContent(card.content ?? "");
     lastSavedContentRef.current = card.content ?? "";
-  }, [card.id, card.content]);
+  }, [card.id]); // Removed card.content to prevent cursor jumping when typing
 
   useEffect(() => {
     setIsPinned(card.pinned ?? false);
@@ -377,7 +404,19 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   useEffect(() => {
     setIsReaderExpanded(false);
     setExtracting(false);
-  }, [card.id]);
+    setBottomTabMode('preview');
+    setIsModalExpanded(false);
+    setIsEditingTitle(false);
+    setEditedTitle(card.title || "");
+    setShowNoteToolbar(true); // Reset toolbar to visible when card changes
+    setIsInDen(card.collections?.includes('the-den') ?? false);
+    setIsPinned(card.pinned ?? false);
+    setArticleContent(card.articleContent ?? null);
+    setNotes(card.notes ?? "");
+    setContent(card.content ?? "");
+    lastSavedNotesRef.current = card.notes ?? "";
+    lastSavedContentRef.current = card.content ?? "";
+  }, [card.id, card.title]);
 
   // Save on modal close to ensure nothing is lost
   const handleClose = async () => {
@@ -402,19 +441,18 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }
 
     onClose();
+
+    // Only restore previous panel content on an actual close action
+    // (not during card switches).
+    try {
+      restorePreviousContent();
+    } catch (err) {
+      // no-op safeguard
+    }
   };
 
-  // Close on Escape key
-  useEffect(() => {
-    const handleKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        handleClose();
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notes, content, isNote]);
+  // Note: ESC key handling is managed by the keyboard shortcuts hook in layout.tsx
+  // This provides proper priority: autocomplete → modal → right panel → left panel
 
   // Debounced save notes to prevent constant re-renders
   useEffect(() => {
@@ -507,6 +545,60 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     setToast(newPinned ? "Pinned to home" : "Unpinned from home");
   };
 
+  const handleSaveTitle = async () => {
+    const trimmedTitle = editedTitle.trim();
+
+    // If title hasn't changed, just exit edit mode
+    if (trimmedTitle === card.title) {
+      setIsEditingTitle(false);
+      return;
+    }
+
+    try {
+      // Update store
+      await updateCardInStore(card.id, { title: trimmedTitle });
+
+      // Update parent component state
+      onUpdate({ ...card, title: trimmedTitle });
+
+      setIsEditingTitle(false);
+      setToast("Title updated");
+    } catch (error) {
+      console.error("Failed to update title:", error);
+      setToast("Failed to update title");
+    }
+  };
+
+  const handleTitleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSaveTitle();
+    } else if (e.key === "Escape") {
+      setEditedTitle(card.title || "");
+      setIsEditingTitle(false);
+    }
+  };
+
+  // Insert markdown formatting for notes
+  const insertMarkdown = (before: string, after: string = '') => {
+    const textarea = editorTextareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const selectedText = content.substring(start, end);
+    const newText = content.substring(0, start) + before + selectedText + after + content.substring(end);
+
+    setContent(newText);
+
+    // Restore focus and selection
+    setTimeout(() => {
+      textarea.focus();
+      const newCursorPos = start + before.length + selectedText.length + after.length;
+      textarea.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
+  };
+
   const handleAddToPawkit = async (slug: string) => {
     const currentCollections = card.collections || [];
     const isAlreadyIn = currentCollections.includes(slug);
@@ -514,33 +606,17 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       ? currentCollections.filter((s) => s !== slug)
       : Array.from(new Set([slug, ...currentCollections]));
 
-    const updates: { collections: string[]; inDen?: boolean } = { collections: nextCollections };
-
-    // Check if the slug is a Den Pawkit or regular Pawkit
-    const isDenPawkit = denPawkitSlugs.has(slug);
-
-    const wasInDen = card.inDen;
-
-    if (!isAlreadyIn) {
-      // Adding to a new Pawkit
-      if (isDenPawkit) {
-        // Adding to Den Pawkit - ensure inDen is true
-        updates.inDen = true;
-      } else {
-        // Adding to regular Pawkit - ensure inDen is false
-        updates.inDen = false;
-      }
-    }
-
     // Update the global store (optimistic update)
-    await updateCardInStore(card.id, updates);
+    await updateCardInStore(card.id, { collections: nextCollections });
 
     // Also update parent component state
-    const updated = { ...card, ...updates };
+    const updated = { ...card, collections: nextCollections };
     onUpdate(updated);
 
     // If card was in Den and is now being moved out, close the modal
-    if (wasInDen && updates.inDen === false) {
+    const wasInDen = card.collections?.includes('the-den');
+    const nowInDen = nextCollections.includes('the-den');
+    if (wasInDen && !nowInDen) {
       setToast("Moved out of The Den");
       // Close modal after a brief delay to show the toast
       setTimeout(() => handleClose(), 500);
@@ -628,14 +704,21 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   const handleMoveToDen = async () => {
     try {
-      // ✅ Use data store to update IndexedDB
       const newInDen = !isInDen;
-      await updateCardInStore(card.id, { inDen: newInDen });
+      const currentCollections = card.collections || [];
+
+      // Add or remove 'the-den' from collections
+      const nextCollections = newInDen
+        ? Array.from(new Set([...currentCollections, 'the-den']))
+        : currentCollections.filter(slug => slug !== 'the-den');
+
+      // Update the data store
+      await updateCardInStore(card.id, { collections: nextCollections });
 
       // Update local state immediately
       setIsInDen(newInDen);
 
-      const updated = { ...card, inDen: newInDen };
+      const updated = { ...card, collections: nextCollections };
 
       // Simply refresh the entire data store to get the latest state from server
       // This ensures consistency and will properly filter out Den items
@@ -646,10 +729,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         await useDataStore.getState().refresh();
       }
 
-      setToast(updated.inDen ? "Moved to The Den" : "Removed from The Den");
+      setToast(newInDen ? "Moved to The Den" : "Removed from The Den");
 
       // Close modal after moving to Den
-      if (updated.inDen) {
+      if (newInDen) {
         setTimeout(() => handleClose(), 500);
       }
     } catch (error) {
@@ -732,6 +815,16 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   if (!isMounted) return null;
 
+  // Helper function to get shortened domain for display
+  const getShortDomain = (url: string) => {
+    try {
+      const urlObj = new URL(url);
+      return urlObj.hostname.replace('www.', '');
+    } catch {
+      return url;
+    }
+  };
+
   const modalContent = (
     <>
       {/* Backdrop */}
@@ -740,50 +833,316 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         onClick={handleClose}
       />
 
-      {/* Centered Card Content */}
-      <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 md:p-8 md:pr-[424px] pointer-events-none">
+      {/* Centered Card Content - dynamically centered over content panel */}
+      <div
+        className="fixed inset-0 z-[101] flex items-center justify-center p-4 md:p-8 pointer-events-none"
+        style={{
+          left: leftOffset,
+          right: rightOffset,
+          transition: "left 0.3s ease-out, right 0.3s ease-out",
+        }}
+      >
         <div
-          className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative ${
-            isReaderExpanded ? "w-full h-full flex flex-col" : isYouTubeUrl(card.url) ? "w-full max-w-6xl" : isNote ? "w-full max-w-3xl h-[80vh] flex flex-col" : "max-w-full max-h-full"
+          className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative flex flex-col ${
+            isReaderExpanded || isModalExpanded
+              ? "w-full h-full"
+              : isYouTubeUrl(card.url)
+                ? "w-full max-w-6xl max-h-[85vh]"
+                : isNote
+                  ? "w-full max-w-3xl h-[80vh]"
+                  : "w-full max-w-4xl max-h-[90vh]"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Mobile Details Toggle Button */}
-          <button
-            onClick={() => setIsDetailsOpen(!isDetailsOpen)}
-            className="md:hidden absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-700 text-white rounded-full p-3 shadow-lg border border-gray-700"
-            title={isDetailsOpen ? "Hide details" : "Show details"}
-          >
-            {isDetailsOpen ? (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            ) : (
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
-          </button>
-          {/* Card Content - Image, Reader, YouTube Player, or Note Preview/Edit */}
-          <div className={`relative ${isReaderExpanded || isNote ? "flex-1 flex flex-col overflow-hidden" : ""}`}>
-            {isNote ? (
-              <>
-                {/* Note content area */}
-                <div className="flex-1 overflow-hidden p-8 min-h-0">
-                  <RichMDEditor
-                    content={content}
-                    onChange={setContent}
-                    placeholder="Start writing your note..."
-                    onNavigate={onNavigateToCard}
-                    onToggleFullscreen={() => setIsNoteExpanded(true)}
-                    customComponents={wikiLinkComponents}
+          {/* Top Bar - For all card types */}
+          <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm px-6 py-4 flex items-center justify-between flex-shrink-0 relative z-10">
+            <div className="flex-1 min-w-0">
+              {isEditingTitle ? (
+                // Edit mode for title
+                <input
+                  type="text"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onKeyDown={handleTitleKeyDown}
+                  onBlur={handleSaveTitle}
+                  autoFocus
+                  className="w-full text-lg font-semibold text-gray-100 bg-gray-800/50 border border-purple-500/50 rounded px-2 py-1 focus:outline-none focus:border-purple-400"
+                  placeholder="Enter title..."
+                />
+              ) : (
+                // Display mode with hover edit
+                <div className="group flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-gray-100 truncate">
+                    {card.title || "Untitled"}
+                  </h2>
+                  <button
+                    onClick={() => setIsEditingTitle(true)}
+                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-purple-400 transition-all flex-shrink-0 p-1"
+                    title="Edit title"
+                  >
+                    <Edit size={16} />
+                  </button>
+                </div>
+              )}
+              {isNote && noteMetadata ? (
+                // Note metadata under title (like domain for URL cards)
+                <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
+                  <span>{noteMetadata.words} words</span>
+                  <span>{noteMetadata.characters} chars</span>
+                  <span>{noteMetadata.linkCount} links</span>
+                  <span>{noteMetadata.tagCount} tags</span>
+                </div>
+              ) : (
+                // Domain for URL cards with hover effects
+                <a
+                  href={card.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-gray-400 hover:text-purple-400 hover:underline transition-colors truncate block mt-1"
+                  title={card.url}
+                >
+                  {getShortDomain(card.url)}
+                </a>
+              )}
+            </div>
+
+              <div className="flex items-center gap-2 ml-4">
+                {/* Expand Button */}
+                <button
+                  onClick={() => setIsModalExpanded(!isModalExpanded)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title={isModalExpanded ? "Restore size" : "Expand to fill window"}
+                >
+                  <Maximize2 size={20} className="text-gray-400" />
+                </button>
+
+                {/* Search Button */}
+                <button
+                  onClick={() => setToast("Search coming soon")}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Search within content"
+                >
+                  <Search size={20} className="text-gray-400" />
+                </button>
+
+                {/* Tag Button */}
+                <button
+                  onClick={() => setToast("Tags coming soon")}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Manage tags"
+                >
+                  <Tags size={20} className="text-gray-400" />
+                </button>
+
+                {/* 3-Dot Menu */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                    title="More options"
+                  >
+                    <MoreVertical size={20} className="text-gray-400" />
+                  </button>
+                  {isMenuOpen && (
+                    <>
+                      {/* Backdrop to close menu */}
+                      <div
+                        className="fixed inset-0 z-[300]"
+                        onClick={() => setIsMenuOpen(false)}
+                      />
+                      {/* Dropdown Menu */}
+                      <div className="absolute right-0 mt-2 w-48 rounded-lg border border-white/10 bg-gray-900 shadow-xl z-[301] overflow-hidden">
+                        <button
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            handleRefreshMetadata();
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center gap-2 transition-colors"
+                        >
+                          <RefreshCw size={16} />
+                          Refresh Preview
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            navigator.clipboard.writeText(card.url);
+                            setToast("Link copied to clipboard");
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center gap-2 transition-colors"
+                        >
+                          <Share2 size={16} />
+                          Share
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            handleTogglePin();
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center gap-2 transition-colors"
+                        >
+                          <Pin size={16} />
+                          {isPinned ? "Unpin from Home" : "Pin to Home"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setIsMenuOpen(false);
+                            handleDelete();
+                            handleClose();
+                          }}
+                          className="w-full px-4 py-2.5 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors border-t border-white/10"
+                        >
+                          <Trash2 size={16} />
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {/* Close Button */}
+                <button
+                  onClick={handleClose}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                  title="Close"
+                >
+                  <X size={20} className="text-gray-400" />
+                </button>
+              </div>
+          </div>
+
+          {/* Formatting Toolbar - Only for notes in edit mode */}
+          {isNote && noteMode === 'edit' && showNoteToolbar && (
+            <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm px-6 py-3 flex items-center gap-1 flex-wrap flex-shrink-0">
+              <button
+                onClick={() => insertMarkdown('**', '**')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Bold (Cmd+B)"
+              >
+                <Bold size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('*', '*')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Italic (Cmd+I)"
+              >
+                <Italic size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('~~', '~~')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Strikethrough"
+              >
+                <Strikethrough size={16} className="text-gray-300" />
+              </button>
+              <div className="w-px h-6 bg-white/10 mx-1" />
+              <button
+                onClick={() => insertMarkdown('# ', '')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Heading 1"
+              >
+                <Heading1 size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('## ', '')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Heading 2"
+              >
+                <Heading2 size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('### ', '')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Heading 3"
+              >
+                <Heading3 size={16} className="text-gray-300" />
+              </button>
+              <div className="w-px h-6 bg-white/10 mx-1" />
+              <button
+                onClick={() => insertMarkdown('`', '`')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Code (Cmd+E)"
+              >
+                <Code size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('[', '](url)')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Link"
+              >
+                <LinkIcon size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('[[', ']]')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Wiki Link (Cmd+K)"
+              >
+                <Link2 size={16} className="text-gray-300" />
+              </button>
+              <div className="w-px h-6 bg-white/10 mx-1" />
+              <button
+                onClick={() => insertMarkdown('\n- ', '')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Bullet List"
+              >
+                <List size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('\n1. ', '')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Numbered List"
+              >
+                <ListOrdered size={16} className="text-gray-300" />
+              </button>
+              <button
+                onClick={() => insertMarkdown('\n> ', '')}
+                className="p-2 rounded hover:bg-white/10 transition-colors"
+                title="Quote"
+              >
+                <Quote size={16} className="text-gray-300" />
+              </button>
+            </div>
+          )}
+
+          {/* Collapse Handle - Only for notes in edit mode */}
+          {isNote && noteMode === 'edit' && (
+            <div className="relative border-b border-white/10 flex-shrink-0">
+              <button
+                onClick={() => setShowNoteToolbar(!showNoteToolbar)}
+                className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 group z-10"
+                title={showNoteToolbar ? "Hide toolbar" : "Show toolbar"}
+              >
+                <div className="w-12 h-1.5 bg-white/10 group-hover:bg-purple-500/50 rounded-full transition-all duration-200 flex items-center justify-center">
+                  <ChevronDown
+                    size={16}
+                    className={`text-gray-400 group-hover:text-purple-400 transition-all duration-200 ${showNoteToolbar ? '' : 'rotate-180'}`}
                   />
                 </div>
-              </>
+              </button>
+            </div>
+          )}
+
+          {/* Card Content - Image, Reader, YouTube Player, or Note Preview/Edit */}
+          <div className="relative flex-1 overflow-hidden min-h-0">
+            {isNote ? (
+              // Note content area
+              <div className="h-full overflow-hidden p-[5px]">
+                <RichMDEditor
+                  content={content}
+                  onChange={setContent}
+                  placeholder="Start writing your note..."
+                  onNavigate={onNavigateToCard}
+                  onToggleFullscreen={() => setIsNoteExpanded(true)}
+                  customComponents={wikiLinkComponents}
+                  mode={noteMode}
+                  onModeChange={setNoteMode}
+                  hideControls={true}
+                  showToolbar={false}
+                  textareaRef={editorTextareaRef}
+                />
+              </div>
             ) : isYouTubeUrl(card.url) ? (
               // YouTube video embed in main content area
-              <div className="p-8 flex items-center justify-center min-h-[500px]">
-                <div className="w-full">
+              <div className="h-full flex items-center justify-center p-[5px]">
+                <div className="w-full max-w-6xl">
                   <div className="relative w-full bg-black rounded-2xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
                     <iframe
                       src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
@@ -797,31 +1156,192 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
               </div>
             ) : (
-              <div className="p-8">
-                {card.image ? (
-                  <img
-                    src={card.image}
-                    alt={card.title || "Card preview"}
-                    className="max-w-full max-h-[calc(90vh-4rem)] object-contain rounded-lg"
-                  />
-                ) : (
-                  <div className="text-center space-y-4">
-                    <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center">
-                      <span className="text-white text-4xl">🔗</span>
+              // URL card content with tabs - all tabs positioned absolutely to maintain size
+              <div className={`relative ${isModalExpanded ? 'h-full' : ''}`}>
+                <div className={`p-[5px] ${isModalExpanded ? 'h-full' : ''} ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
+                  <div className={`w-full flex items-center justify-center ${isModalExpanded ? 'h-full' : ''}`}>
+                    {card.image ? (
+                      <img
+                        src={card.image}
+                        alt={card.title || "Card preview"}
+                        className="max-w-full max-h-full object-contain rounded-lg"
+                      />
+                    ) : (
+                      <div className="text-center space-y-4">
+                        <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-4xl">🔗</span>
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-300">
+                          {card.title || card.domain || card.url}
+                        </h3>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {bottomTabMode === 'reader' && (
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto">
+                    {articleContent ? (
+                      <ReaderView
+                        title={card.title || card.domain || card.url}
+                        content={articleContent}
+                        url={card.url}
+                        isExpanded={false}
+                        onToggleExpand={() => setIsReaderExpanded(true)}
+                        onClose={onClose}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center space-y-4">
+                          <div className="text-gray-400 mb-4">
+                            <BookOpen size={48} className="mx-auto" />
+                          </div>
+                          <h3 className="text-xl font-semibold text-gray-300">No Article Content Yet</h3>
+                          <p className="text-sm text-gray-500 max-w-md mx-auto">
+                            Extract the article content for distraction-free reading
+                          </p>
+                          <Button
+                            onClick={handleExtractArticle}
+                            disabled={extracting}
+                            size="lg"
+                          >
+                            {extracting ? (
+                              <>
+                                <svg className="animate-spin h-4 w-4 mr-2" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                </svg>
+                                Kit is fetching...
+                              </>
+                            ) : (
+                              <>
+                                🐕 Let Kit Fetch Article
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {bottomTabMode === 'metadata' && (
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto flex items-start justify-center">
+                    <div className="max-w-2xl w-full space-y-6 py-8">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
+                        <div className="space-y-3 text-sm">
+                          <div className="flex justify-between py-2 border-b border-white/10">
+                            <span className="text-gray-400">Title</span>
+                            <span className="text-gray-200 text-right max-w-md truncate">{card.title || "—"}</span>
+                          </div>
+                          <div className="flex justify-between py-2 border-b border-white/10">
+                            <span className="text-gray-400">Domain</span>
+                            <span className="text-gray-200">{card.domain || "—"}</span>
+                          </div>
+                          <div className="flex justify-between py-2 border-b border-white/10">
+                            <span className="text-gray-400">URL</span>
+                            <a
+                              href={card.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-accent hover:underline max-w-md truncate"
+                            >
+                              {card.url}
+                            </a>
+                          </div>
+                          <div className="flex justify-between py-2 border-b border-white/10">
+                            <span className="text-gray-400">Created</span>
+                            <span className="text-gray-200">{new Date(card.createdAt).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between py-2 border-b border-white/10">
+                            <span className="text-gray-400">Updated</span>
+                            <span className="text-gray-200">{new Date(card.updatedAt).toLocaleString()}</span>
+                          </div>
+                          {card.description && (
+                            <div className="py-2">
+                              <span className="text-gray-400 block mb-2">Description</span>
+                              <p className="text-gray-200">{card.description}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-300">
-                      {card.title || card.domain || card.url}
-                    </h3>
                   </div>
                 )}
               </div>
             )}
           </div>
+
+          {/* Bottom Bar - For all card types */}
+          <div className="border-t border-white/10 bg-white/5 backdrop-blur-sm flex-shrink-0">
+            <div className="flex items-center justify-center gap-2 p-4">
+              {isNote ? (
+                // Note mode buttons
+                <>
+                  <Button
+                    onClick={() => setNoteMode('preview')}
+                    variant={noteMode === 'preview' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Eye size={16} />
+                    Preview
+                  </Button>
+                  <Button
+                    onClick={() => setNoteMode('edit')}
+                    variant={noteMode === 'edit' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Edit size={16} />
+                    Edit
+                  </Button>
+                </>
+              ) : isYouTubeUrl(card.url) ? (
+                // YouTube-specific info
+                <div className="text-sm text-gray-400">
+                  Video Player
+                </div>
+              ) : (
+                // URL cards with tabs
+                <>
+                  <Button
+                    onClick={() => setBottomTabMode('preview')}
+                    variant={bottomTabMode === 'preview' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Globe size={16} />
+                    Preview
+                  </Button>
+                  <Button
+                    onClick={() => setBottomTabMode('reader')}
+                    variant={bottomTabMode === 'reader' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <BookOpen size={16} />
+                    Reader
+                  </Button>
+                  <Button
+                    onClick={() => setBottomTabMode('metadata')}
+                    variant={bottomTabMode === 'metadata' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    <Tag size={16} />
+                    Metadata
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Right Slide-Out Sheet for Details */}
-      <div
+      {/* Right Slide-Out Sheet for Details - HIDDEN: Now using global control panel */}
+      {false && (<div
         className={`fixed top-0 right-0 h-full w-full md:w-[480px] border-l border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl z-[102] flex transition-transform duration-300 ${
           isDetailsOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
         }`}
@@ -934,12 +1454,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 <BacklinksPanel
                   noteId={card.id}
                   onNavigate={(cardId) => {
-                    console.log('[CardDetailModal] onNavigate called with cardId:', cardId);
                     if (onNavigateToCard) {
-                      console.log('[CardDetailModal] Calling onNavigateToCard');
                       onNavigateToCard(cardId);
-                    } else {
-                      console.log('[CardDetailModal] onNavigateToCard is not defined');
                     }
                   }}
                 />
@@ -1005,7 +1521,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             </div>
           </div>
         </Tabs>
-      </div>
+      </div>)}
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </>

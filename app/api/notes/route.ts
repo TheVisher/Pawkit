@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { listCards } from "@/lib/server/cards";
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { unauthorized, success } from "@/lib/utils/api-responses";
 
 export async function GET(request: NextRequest) {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const { searchParams } = new URL(request.url);
@@ -31,8 +33,8 @@ export async function GET(request: NextRequest) {
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-    return NextResponse.json({ items: allNotes });
+    return success({ items: allNotes });
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/notes', userId: user?.id });
   }
 }

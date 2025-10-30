@@ -1,10 +1,13 @@
-import { Collection, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import type { PrismaCollection } from "@/lib/types";
+// Use PrismaCollection instead of Collection from @prisma/client when Prisma client is not generated
+type Collection = PrismaCollection;
 import { prisma } from "@/lib/server/prisma";
 import { collectionCreateSchema, collectionUpdateSchema } from "@/lib/validators/collection";
 import { slugify } from "@/lib/utils/slug";
 import { unstable_cache, revalidateTag } from 'next/cache';
 
-const MAX_DEPTH = 4;
+const MAX_DEPTH = 10; // Allow deep nesting
 
 export type CollectionDTO = Omit<Collection, 'createdAt' | 'updatedAt' | 'deletedAt'> & {
   children: CollectionDTO[];
@@ -22,7 +25,7 @@ function mapCollection(collection: Collection): Omit<CollectionDTO, 'children'> 
   };
 }
 
-// Cache collections for 60 seconds to improve navigation speed
+// Cache collections for 5 seconds to improve navigation speed while keeping data fresh
 export const listCollections = unstable_cache(
   async (userId: string) => {
     const items = await prisma.collection.findMany({
@@ -33,11 +36,11 @@ export const listCollections = unstable_cache(
     const nodes = new Map<string, CollectionDTO>();
     const roots: CollectionDTO[] = [];
 
-    items.forEach((item) => {
+    items.forEach((item: PrismaCollection) => {
       nodes.set(item.id, { ...mapCollection(item), children: [] });
     });
 
-    nodes.forEach((node) => {
+    nodes.forEach((node: CollectionDTO) => {
       if (node.parentId && nodes.has(node.parentId)) {
         nodes.get(node.parentId)!.children.push(node);
       } else {
@@ -47,7 +50,7 @@ export const listCollections = unstable_cache(
 
     const sortTree = (tree: CollectionDTO[]) => {
       tree.sort((a, b) => a.name.localeCompare(b.name));
-      tree.forEach((node) => sortTree(node.children));
+      tree.forEach((node: CollectionDTO) => sortTree(node.children));
     };
 
     sortTree(roots);
@@ -55,7 +58,7 @@ export const listCollections = unstable_cache(
     return { tree: roots, flat: Array.from(nodes.values()) };
   },
   ['collections'],
-  { revalidate: 60, tags: ['collections'] }
+  { revalidate: 5, tags: ['collections'] }
 );
 
 async function ensureDepth(userId: string, parentId: string | undefined | null) {
@@ -141,7 +144,7 @@ export async function updateCollection(userId: string, id: string, payload: unkn
     await ensureDepth(userId, parsed.parentId);
   }
 
-  const data: Prisma.CollectionUpdateInput = {
+  const data: Record<string, any> = {
     ...parsed,
     parentId: parsed.parentId === undefined ? undefined : parsed.parentId ?? null
   };
@@ -151,11 +154,54 @@ export async function updateCollection(userId: string, id: string, payload: unkn
   }
 
   const updated = await prisma.collection.update({ where: { id, userId }, data });
+
+  // Handle isPrivate toggle: Update card inDen flags
+  if (parsed.isPrivate !== undefined && updated.slug) {
+    const newInDenValue = parsed.isPrivate;
+
+    // Find all cards in this collection using raw SQL for JSONB query
+    const cardsInCollection = await prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT id FROM "Card"
+      WHERE "userId" = ${userId}
+        AND deleted = false
+        AND collections::jsonb ? ${updated.slug}
+    `;
+
+    if (cardsInCollection.length > 0) {
+      // Update inDen flag for all cards in this collection
+      await prisma.card.updateMany({
+        where: {
+          id: { in: cardsInCollection.map((c: {id: string}) => c.id) }
+        },
+        data: {
+          inDen: newInDenValue
+        }
+      });
+    }
+  }
+
   revalidateTag('collections');
   return updated;
 }
 
-export async function deleteCollection(userId: string, id: string, deleteCards = false) {
+async function getAllDescendantIds(userId: string, parentId: string, tx: any): Promise<string[]> {
+  const children = await tx.collection.findMany({
+    where: { parentId, userId, deleted: false },
+    select: { id: true }
+  });
+
+  const childIds = children.map((c: { id: string }) => c.id);
+  const descendantIds: string[] = [...childIds];
+
+  for (const childId of childIds) {
+    const grandChildren = await getAllDescendantIds(userId, childId, tx);
+    descendantIds.push(...grandChildren);
+  }
+
+  return descendantIds;
+}
+
+export async function deleteCollection(userId: string, id: string, deleteCards = false, deleteSubPawkits = false) {
   const collection = await prisma.collection.findFirst({ where: { id, userId } });
   if (!collection) {
     return;
@@ -163,57 +209,71 @@ export async function deleteCollection(userId: string, id: string, deleteCards =
 
   const now = new Date();
 
-  await prisma.$transaction(async (tx) => {
-    // Move child collections to parent (they don't get deleted)
-    await tx.collection.updateMany({
-      where: { parentId: id, userId },
-      data: { parentId: collection.parentId }
-    });
+  await prisma.$transaction(async (tx: any) => {
+    let collectionIdsToDelete = [id];
 
-    if (deleteCards) {
-      // Soft delete all cards in this collection
-      await tx.card.updateMany({
-        where: {
-          userId,
-          collections: { contains: `"${collection.slug}"` },
-          deleted: false
-        },
+    if (deleteSubPawkits) {
+      // Recursively find all descendant collections
+      const descendantIds = await getAllDescendantIds(userId, id, tx);
+      collectionIdsToDelete = [id, ...descendantIds];
+    } else {
+      // Move child collections to parent (they don't get deleted)
+      await tx.collection.updateMany({
+        where: { parentId: id, userId },
+        data: { parentId: collection.parentId }
+      });
+    }
+
+    // Process each collection to delete
+    for (const collectionId of collectionIdsToDelete) {
+      const coll = await tx.collection.findFirst({ where: { id: collectionId, userId } });
+      if (!coll) continue;
+
+      if (deleteCards) {
+        // Soft delete all cards in this collection
+        await tx.card.updateMany({
+          where: {
+            userId,
+            collections: { contains: `"${coll.slug}"` },
+            deleted: false
+          },
+          data: {
+            deleted: true,
+            deletedAt: now
+          }
+        });
+      } else {
+        // Remove collection slug from all cards
+        const affectedCards = await tx.card.findMany({
+          where: {
+            userId,
+            collections: { contains: `"${coll.slug}"` },
+            deleted: false
+          }
+        });
+
+        for (const card of affectedCards) {
+          const collections: any = card.collections ? JSON.parse(card.collections) : [];
+          const filtered = Array.isArray(collections)
+            ? collections.filter((c: string) => c !== coll.slug)
+            : [];
+
+          await tx.card.update({
+            where: { id: card.id, userId },
+            data: { collections: JSON.stringify(filtered) }
+          });
+        }
+      }
+
+      // Soft delete the collection
+      await tx.collection.update({
+        where: { id: collectionId, userId },
         data: {
           deleted: true,
           deletedAt: now
         }
       });
-    } else {
-      // Remove collection slug from all cards
-      const affectedCards = await tx.card.findMany({
-        where: {
-          userId,
-          collections: { contains: `"${collection.slug}"` },
-          deleted: false
-        }
-      });
-
-      for (const card of affectedCards) {
-        const collections = card.collections ? JSON.parse(card.collections) : [];
-        const filtered = Array.isArray(collections)
-          ? collections.filter((c: string) => c !== collection.slug)
-          : [];
-
-        await tx.card.update({
-          where: { id: card.id, userId },
-          data: { collections: JSON.stringify(filtered) }
-        });
-      }
     }
-
-    // Soft delete the collection
-    await tx.collection.update({
-      where: { id, userId },
-      data: {
-        deleted: true,
-        deletedAt: now
-      }
-    });
   });
 
   revalidateTag('collections');
@@ -232,7 +292,7 @@ export async function pinnedCollections(userId: string, limit = 8) {
     take: limit
   });
 
-  return collections.map(c => ({ ...mapCollection(c), children: [] }));
+  return collections.map((c: PrismaCollection) => ({ ...mapCollection(c), children: [] }));
 }
 
 export async function getTrashCollections(userId: string) {
@@ -241,17 +301,46 @@ export async function getTrashCollections(userId: string) {
     orderBy: { deletedAt: "desc" }
   });
 
-  return collections.map(c => ({ ...mapCollection(c), children: [] }));
+  return collections.map((c: PrismaCollection) => ({ ...mapCollection(c), children: [] }));
 }
 
 export async function restoreCollection(userId: string, id: string) {
-  return prisma.collection.update({
+  const collection = await prisma.collection.findFirst({ where: { id, userId } });
+  if (!collection) {
+    throw new Error('Collection not found');
+  }
+
+  // Check if parent exists and is not deleted
+  let parentId = collection.parentId;
+  let restoredToRoot = false;
+
+  if (parentId) {
+    const parent = await prisma.collection.findFirst({
+      where: { id: parentId, userId }
+    });
+
+    // If parent doesn't exist or is deleted, restore to root level
+    if (!parent || parent.deleted) {
+      parentId = null;
+      restoredToRoot = true;
+    }
+  }
+
+  const updated = await prisma.collection.update({
     where: { id, userId },
     data: {
       deleted: false,
-      deletedAt: null
+      deletedAt: null,
+      parentId
     }
   });
+
+  revalidateTag('collections');
+
+  return {
+    collection: updated,
+    restoredToRoot
+  };
 }
 
 export async function permanentlyDeleteCollection(userId: string, id: string) {

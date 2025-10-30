@@ -30,7 +30,7 @@ export function SmartSearch({ onSelectCard, placeholder = "Search notes, cards, 
   // Filter cards to only include notes and cards with content, excluding Den cards
   const searchableCards = useMemo(() => {
     return cards.filter(card =>
-      !card.inDen &&
+      !card.collections?.includes('the-den') &&
       (card.type === 'md-note' || card.type === 'text-note' || card.type === 'url') &&
       (card.title || card.content || card.notes)
     );

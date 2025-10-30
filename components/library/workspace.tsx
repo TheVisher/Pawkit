@@ -149,6 +149,7 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
         setNextCursor={setNextCursor}
         hideControls={hideControls}
         area={area}
+        currentPawkitSlug={initialQuery.collection}
       />
     </DndContext>
   );

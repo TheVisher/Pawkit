@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/lib/hooks/use-toast";
 import { ToastContainer } from "@/components/ui/toast";
+import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 
 interface TagInfo {
   name: string;
@@ -18,20 +19,43 @@ interface TagInfo {
 }
 
 export default function TagsPage() {
-  const { cards } = useDataStore();
+  const { cards, collections } = useDataStore();
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<TagInfo | null>(null);
   const [editingTag, setEditingTag] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState("");
+  const [deleteConfirmTag, setDeleteConfirmTag] = useState<TagInfo | null>(null);
   const router = useRouter();
   const { toasts, dismissToast, success, error } = useToast();
 
   useEffect(() => {
-    // Extract all tags from cards and count usage
+    // Build a set of private collection SLUGS for fast lookup (cards store slugs, not IDs)
+    const privateCollectionSlugs = new Set<string>();
+    const getAllPrivateSlugs = (nodes: any[]): void => {
+      for (const node of nodes) {
+        if (node.isPrivate) {
+          privateCollectionSlugs.add(node.slug);
+        }
+        if (node.children && node.children.length > 0) {
+          getAllPrivateSlugs(node.children);
+        }
+      }
+    };
+    getAllPrivateSlugs(collections);
+
+    // Extract all tags from cards and count usage (excluding private cards)
     const tagMap = new Map<string, CardModel[]>();
 
     cards.forEach((card) => {
+      // Skip cards that are in private collections (including 'the-den')
+      const isInPrivateCollection = card.collections?.some(collectionSlug =>
+        privateCollectionSlugs.has(collectionSlug)
+      );
+      if (isInPrivateCollection) {
+        return; // Skip this card
+      }
+
       if (card.tags && card.tags.length > 0) {
         card.tags.forEach((tag) => {
           if (!tagMap.has(tag)) {
@@ -51,7 +75,7 @@ export default function TagsPage() {
       .sort((a, b) => b.count - a.count);
 
     setTags(tagInfos);
-  }, [cards]);
+  }, [cards, collections]);
 
   const filteredTags = tags.filter((tag) =>
     tag.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -86,27 +110,50 @@ export default function TagsPage() {
     const tag = tags.find((t) => t.name === tagName);
     if (!tag) return;
 
-    if (!confirm(`Are you sure you want to delete the tag "${tagName}"? This will remove it from ${tag.count} cards.`)) {
-      return;
-    }
+    // Show custom confirm modal instead of browser confirm
+    setDeleteConfirmTag(tag);
+  };
+
+  const confirmDeleteTag = async () => {
+    if (!deleteConfirmTag) return;
 
     try {
-      // Remove tag from all cards
+      const tagToDelete = deleteConfirmTag.name;
+
+      // FIRST: Clear this tag from any active filters to prevent filtering issues
+      const { getSettings, updateSettings } = useViewSettingsStore.getState();
+      const viewSettings = getSettings('tags');
+      if (viewSettings && viewSettings.viewSpecific) {
+        const selectedTags = (viewSettings.viewSpecific.selectedTags as string[]) || [];
+        if (selectedTags.includes(tagToDelete)) {
+          const updatedTags = selectedTags.filter(t => t !== tagToDelete);
+          await updateSettings('tags', {
+            viewSpecific: {
+              ...viewSettings.viewSpecific,
+              selectedTags: updatedTags
+            }
+          });
+        }
+      }
+
+      // SECOND: Remove tag from all cards
       const { updateCard } = useDataStore.getState();
-      for (const card of tag.cards) {
-        const updatedTags = card.tags?.filter((t) => t !== tagName) || [];
+      for (const card of deleteConfirmTag.cards) {
+        const updatedTags = card.tags?.filter((t) => t !== tagToDelete) || [];
         await updateCard(card.id, { tags: updatedTags });
       }
 
       setSelectedTag(null);
-      success(`Deleted tag "${tagName}" from ${tag.cards.length} cards`);
+      setDeleteConfirmTag(null);
+      success(`Deleted tag "${tagToDelete}" from ${deleteConfirmTag.cards.length} cards`);
     } catch (err) {
       error("Failed to delete tag");
+      setDeleteConfirmTag(null);
     }
   };
 
   const handleViewCards = (tag: TagInfo) => {
-    router.push(`/library?q=tag:${tag.name}`);
+    router.push(`/library?tag=${encodeURIComponent(tag.name)}`);
   };
 
   return (
@@ -139,7 +186,7 @@ export default function TagsPage() {
       </div>
 
       {/* Tags Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {filteredTags.map((tag) => (
           <div
             key={tag.name}
@@ -234,6 +281,38 @@ export default function TagsPage() {
 
       {/* Toast Container */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmTag && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setDeleteConfirmTag(null)}
+        >
+          <div
+            className="bg-surface rounded-2xl p-6 w-full max-w-md shadow-xl border border-subtle"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold text-foreground mb-4">Delete Tag?</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Are you sure you want to delete the tag <span className="text-accent font-medium">#{deleteConfirmTag.name}</span>? This will remove it from {deleteConfirmTag.count} {deleteConfirmTag.count === 1 ? 'card' : 'cards'}.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setDeleteConfirmTag(null)}
+                className="px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteTag}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { PawkitActions } from "./pawkit-actions";
+import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
+import { useMemo } from "react";
 
 type CollectionPreviewCard = {
   id: string;
@@ -10,6 +12,10 @@ type CollectionPreviewCard = {
   count: number;
   hasChildren?: boolean;
   isPinned?: boolean;
+  isPrivate?: boolean;
+  hidePreview?: boolean;
+  useCoverAsBackground?: boolean;
+  coverImage?: string | null;
   cards: Array<{
     id: string;
     title?: string | null;
@@ -33,6 +39,16 @@ const previewPositions = [
 export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGridProps) {
   const router = useRouter();
 
+  // Get pawkit size from view settings
+  const viewSettings = useViewSettingsStore((state) => state.getSettings("pawkits"));
+  const pawkitSize = viewSettings.cardSize || 50;
+
+  // Calculate minimum pawkit width based on size slider (1-100)
+  // 1 = 250px (smallest), 100 = 600px (largest)
+  const minPawkitWidth = useMemo(() => {
+    return Math.round(250 + ((pawkitSize - 1) / 99) * 350);
+  }, [pawkitSize]);
+
   if (!collections.length) {
     return (
       <div className="rounded-2xl border border-subtle bg-surface/60 p-12 text-center text-sm text-muted-foreground">
@@ -42,7 +58,12 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
   }
 
   return (
-    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+    <div
+      className="grid gap-6"
+      style={{
+        gridTemplateColumns: `repeat(auto-fill, minmax(${minPawkitWidth}px, 1fr))`
+      }}
+    >
       {collections.map((collection) => (
         <div
           key={collection.id}
@@ -53,21 +74,39 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
               router.push(`/library`);
             }
           }}
-          className="card-hover group relative flex h-56 cursor-pointer flex-col overflow-hidden rounded-2xl border border-subtle bg-surface/80 p-5 text-left"
+          className="card-hover group relative flex h-56 cursor-pointer flex-col overflow-visible rounded-2xl border-2 border-purple-500/30 bg-surface/80 p-5 text-left"
+          style={
+            collection.useCoverAsBackground && collection.coverImage
+              ? {
+                  backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.85)), url(${collection.coverImage})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }
+              : undefined
+          }
         >
-          <div className="relative z-10 flex items-center justify-between pb-4 text-sm text-muted-foreground">
+          <div className={`relative z-10 flex items-center justify-between pb-4 text-sm ${collection.useCoverAsBackground && collection.coverImage ? 'backdrop-blur-md bg-black/60 -mx-5 -mt-5 px-5 pt-5 rounded-t-2xl' : ''}`}>
             <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent">📁</span>
-              {collection.name}
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent backdrop-blur-sm">
+                {collection.isPrivate ? '🔒' : '📁'}
+              </span>
+              <span className={collection.useCoverAsBackground && collection.coverImage ? 'text-white font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]' : ''}>
+                {collection.name}
+              </span>
             </span>
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">{collection.count} item{collection.count === 1 ? "" : "s"}</span>
+              <span className={`text-xs ${collection.useCoverAsBackground && collection.coverImage ? 'text-white/90 font-semibold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]' : 'text-muted-foreground'}`}>
+                {collection.count} item{collection.count === 1 ? "" : "s"}
+              </span>
               {collection.slug && (
-                <div onClick={(e) => e.stopPropagation()}>
+                <div onClick={(e) => e.stopPropagation()} className="relative z-50">
                   <PawkitActions
                     pawkitId={collection.id}
                     pawkitName={collection.name}
                     isPinned={collection.isPinned}
+                    isPrivate={collection.isPrivate}
+                    hidePreview={collection.hidePreview}
+                    useCoverAsBackground={collection.useCoverAsBackground}
                     hasChildren={collection.hasChildren}
                     allPawkits={allPawkits}
                   />
@@ -75,11 +114,11 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
               )}
             </div>
           </div>
-          <div className="relative h-full w-full">
-            {collection.cards.slice(0, 3).map((card, index) => (
+          <div className="relative h-full w-full overflow-hidden">
+            {!collection.hidePreview && collection.cards.slice(0, 3).map((card, index) => (
               <PreviewTile key={card.id} card={card} positionClass={previewPositions[index] ?? "bottom-6 right-8 rotate-1"} />
             ))}
-            {collection.cards.length === 0 && (
+            {!collection.hidePreview && collection.cards.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center rounded-xl border border-dashed border-subtle bg-surface-soft/60 text-xs text-muted-foreground">
                 No previews yet
               </div>

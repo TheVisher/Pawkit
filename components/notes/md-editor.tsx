@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
@@ -48,13 +49,22 @@ type RichMDEditorProps = {
   onNavigate?: (noteId: string) => void;
   onToggleFullscreen?: () => void;
   customComponents?: any; // Custom ReactMarkdown components for wiki-links
+  mode?: "edit" | "preview"; // External mode control
+  onModeChange?: (mode: "edit" | "preview") => void; // External mode change handler
+  hideControls?: boolean; // Hide the mode toggle bar
+  showToolbar?: boolean; // Control toolbar visibility (for collapsible toolbar)
+  onToggleToolbar?: () => void; // Callback to toggle toolbar
+  textareaRef?: React.MutableRefObject<HTMLTextAreaElement | null>; // External ref to textarea
 };
 
-export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents }: RichMDEditorProps) {
-  const [mode, setMode] = useState<"edit" | "preview">("preview");
+export function RichMDEditor({ content, onChange, placeholder, onNavigate, onToggleFullscreen, customComponents, mode: externalMode, onModeChange, hideControls = false, showToolbar = true, onToggleToolbar, textareaRef: externalTextareaRef }: RichMDEditorProps) {
+  const [internalMode, setInternalMode] = useState<"edit" | "preview">("preview");
+  const mode = externalMode !== undefined ? externalMode : internalMode;
+  const setMode = onModeChange !== undefined ? onModeChange : setInternalMode;
   const [showTemplates, setShowTemplates] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = externalTextareaRef || internalTextareaRef;
   const cards = useDataStore((state) => state.cards);
 
   // Wiki-link autocomplete state
@@ -65,6 +75,11 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
   const [wikiLinkStartPos, setWikiLinkStartPos] = useState<number | null>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
   const justClosedRef = useRef(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Calculate metadata
   const metadata = useMemo(() => {
@@ -94,10 +109,10 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
     return map;
   }, [cards]);
 
-  // Get all notes for autocomplete (sorted by most recently updated)
+  // Get all cards for autocomplete (notes and URLs, sorted by most recently updated)
   const allNotes = useMemo(() => {
     return cards
-      .filter(card => (card.type === 'md-note' || card.type === 'text-note') && card.title && !card.inDen)
+      .filter(card => card.title && !card.collections?.includes('the-den'))
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [cards]);
 
@@ -272,9 +287,10 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
           return;
         }
         if (e.key === 'Escape') {
-          // IMPORTANT: stopPropagation prevents this from bubbling to parent modal
+          // IMPORTANT: stopImmediatePropagation prevents other ESC handlers from firing
           e.preventDefault();
           e.stopPropagation();
+          e.stopImmediatePropagation(); // Prevents modal/panel ESC handlers from running
           setAutocompleteOpen(false);
           setWikiLinkStartPos(null);
           setAutocompleteQuery('');
@@ -313,8 +329,9 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    // Use capture phase (true) to handle ESC before modal/panel handlers
+    document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, autocompleteOpen, autocompleteSuggestions, selectedIndex]);
 
@@ -500,7 +517,8 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
 
   return (
     <div className="flex flex-col h-full bg-surface rounded-lg border border-subtle overflow-hidden">
-      {/* Mode Toggle */}
+      {/* Mode Toggle - only show if hideControls is false */}
+      {!hideControls && (
       <div className="flex items-center justify-between px-3 py-2 bg-surface-muted border-b border-subtle">
         <div className="flex items-center gap-2">
           <button
@@ -547,10 +565,12 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
           </button>
         )}
       </div>
+      )}
 
       {mode === "edit" ? (
         <>
-          {/* Toolbar */}
+          {/* Toolbar - conditionally shown based on showToolbar */}
+          {showToolbar && (
           <div className="flex items-center gap-1 px-3 py-2 bg-surface-muted border-b border-subtle flex-wrap">
             <button
               onClick={() => insertMarkdown('**', '**')}
@@ -641,6 +661,29 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
               <Layout size={16} />
             </button>
           </div>
+          )}
+
+          {/* Collapse Handle - only show in edit mode when hideControls is true */}
+          {hideControls && onToggleToolbar && (
+            <div className="relative border-b border-white/10">
+              <button
+                onClick={onToggleToolbar}
+                className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 group"
+                title={showToolbar ? "Hide toolbar" : "Show toolbar"}
+              >
+                <div className="w-12 h-1.5 bg-white/10 group-hover:bg-purple-500/50 rounded-full transition-all duration-200 flex items-center justify-center">
+                  <svg
+                    className={`w-4 h-4 text-gray-400 group-hover:text-purple-400 transition-all duration-200 ${showToolbar ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </button>
+            </div>
+          )}
 
           {/* Template Dropdown */}
           {showTemplates && (
@@ -696,11 +739,11 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
               }}
             />
 
-            {/* Autocomplete Dropdown */}
-            {autocompleteOpen && autocompleteSuggestions.length > 0 && (
+            {/* Autocomplete Dropdown - Rendered as portal to avoid modal positioning issues */}
+            {isMounted && autocompleteOpen && autocompleteSuggestions.length > 0 && createPortal(
               <div
                 ref={autocompleteRef}
-                className="fixed z-50 bg-surface-muted border border-accent shadow-lg flex flex-col overflow-hidden"
+                className="fixed z-[110] bg-surface-muted border border-accent shadow-lg flex flex-col overflow-hidden"
                 style={{
                   top: `${autocompletePosition.top}px`,
                   left: `${autocompletePosition.left}px`,
@@ -712,7 +755,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
               >
                 {/* Sticky header */}
                 <div className="border-b border-subtle px-3 py-2 bg-surface-muted text-xs text-muted-foreground flex-shrink-0">
-                  {autocompleteQuery ? `Search: "${autocompleteQuery}"` : 'Recent notes'}
+                  {autocompleteQuery ? `Search: "${autocompleteQuery}"` : 'Recent cards'}
                 </div>
 
                 {/* Scrollable content area */}
@@ -728,14 +771,22 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <FileText size={14} className="flex-shrink-0" />
+                        {note.type === 'url' ? (
+                          <Globe size={14} className="flex-shrink-0" />
+                        ) : (
+                          <FileText size={14} className="flex-shrink-0" />
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-sm truncate">{note.title}</div>
-                          {note.content && (
+                          {note.type === 'url' ? (
+                            <div className="text-xs text-muted-foreground truncate mt-0.5">
+                              {note.domain || note.url}
+                            </div>
+                          ) : note.content ? (
                             <div className="text-xs text-muted-foreground truncate mt-0.5">
                               {note.content.substring(0, 60)}...
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     </button>
@@ -750,7 +801,8 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
                     <span>Esc to close</span>
                   </div>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         </>

@@ -1,5 +1,7 @@
-import { Card, Prisma } from "@prisma/client";
-import type { OldCardAgeThreshold, CardType, CardStatus } from "@/lib/types";
+import { Prisma } from "@prisma/client";
+import type { OldCardAgeThreshold, CardType, CardStatus, CardModel, PrismaCard } from "@/lib/types";
+// Use PrismaCard instead of Card from @prisma/client when Prisma client is not generated
+type Card = PrismaCard;
 import { prisma } from "@/lib/server/prisma";
 import { fetchPreviewMetadata } from "@/lib/server/metadata";
 import { cardCreateSchema, cardListQuerySchema, cardUpdateSchema } from "@/lib/validators/card";
@@ -13,18 +15,9 @@ export type CardInput = typeof cardCreateSchema._input;
 export type CardUpdateInput = typeof cardUpdateSchema._input;
 export type CardListQuery = typeof cardListQuerySchema._input;
 
-export type CardDTO = Omit<Card, 'tags' | 'collections' | 'metadata' | 'type' | 'status' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'scheduledDate'> & {
-  type: CardType;
-  status: CardStatus;
-  tags: string[];
-  collections: string[];
-  metadata: Record<string, unknown> | undefined;
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-  scheduledDate: string | null;
-  inDen: boolean;
-  encryptedContent: string | null;
+// CardDTO is the serialized version of a Prisma Card, which matches CardModel + userId
+export type CardDTO = CardModel & {
+  userId: string;
 };
 
 function serializeTags(tags: string[]): string | null {
@@ -58,8 +51,22 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
   const cardType = parsed.type || "url";
   const isNote = cardType === "md-note" || cardType === "text-note";
 
+  // Check if any of the collections are private pawkits
+  let inDen = false;
+  if (normalizedCollections.length > 0) {
+    const privateCollections = await prisma.collection.findMany({
+      where: {
+        userId,
+        slug: { in: normalizedCollections },
+        isPrivate: true
+      },
+      select: { slug: true }
+    });
+    inDen = privateCollections.length > 0;
+  }
+
   // Create card with different logic based on type
-  const data: Prisma.CardCreateInput = {
+  const data = {
     type: cardType,
     url: parsed.url || (isNote ? "" : ""),
     title: parsed.title ?? (cardType === "url" && parsed.url ? parsed.url : parsed.title) ?? (isNote ? "Untitled Note" : ""),
@@ -69,15 +76,50 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
     collections: serializeCollections(normalizedCollections),
     domain: parsed.url && parsed.url.length > 0 ? safeHost(parsed.url) : undefined,
     status: cardType === "url" ? "PENDING" : "READY",
+    inDen,
     user: { connect: { id: userId } }
   };
 
-  const created = await prisma.card.create({
-    data
-  });
+  try {
+    console.log('[createCard] Attempting to create card:', { userId, type: cardType, url: parsed.url, title: data.title });
+    const created = await prisma.card.create({
+      data
+    });
 
-  // Return immediately - metadata will be fetched in background for URL cards
-  return mapCard(created);
+    console.log('[createCard] Card created successfully:', created.id);
+    // Return immediately - metadata will be fetched in background for URL cards
+    return mapCard(created);
+  } catch (error) {
+    // Handle unique constraint violation (P2002) - duplicate userId + url
+    // Note: This should only happen for URL-type cards due to partial unique index
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      console.log('[createCard] P2002 ERROR - Duplicate detected for type:', cardType, 'URL:', parsed.url, 'Target:', error.meta?.target);
+
+      // Find and return the existing non-deleted card
+      // Look for cards of the same type to handle edge cases
+      const existingCard = await prisma.card.findFirst({
+        where: {
+          userId,
+          url: parsed.url || "",
+          type: cardType, // Look for cards of the same type
+          deleted: false // Exclude deleted cards
+        }
+      });
+
+      if (existingCard) {
+        console.log('[createCard] Returning existing card:', existingCard.id);
+        return mapCard(existingCard);
+      }
+
+      // If no non-deleted card found, this might be a deleted duplicate
+      // In this case, we should allow creation by re-throwing the error
+      // so the caller can handle it appropriately
+      console.error('[createCard] No existing non-deleted card found, but P2002 occurred. This should not happen!');
+    }
+
+    // Re-throw other errors
+    throw error;
+  }
 }
 
 export async function fetchAndUpdateCardMetadata(cardId: string, url: string, previewServiceUrl?: string): Promise<CardDTO> {
@@ -96,7 +138,7 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
       });
     }
 
-    const updateData: Prisma.CardUpdateInput = {
+    const updateData: Record<string, any> = {
       status: "READY"
     };
 
@@ -148,7 +190,7 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
 export async function listCards(userId: string, query: CardListQuery) {
   const parsed = cardListQuerySchema.parse(query);
   const limit = parsed.limit ?? 50;
-  const where: Prisma.CardWhereInput = { userId, deleted: false, inDen: false };
+  const where: Record<string, any> = { userId, deleted: false, inDen: false };
 
   if (parsed.q) {
     const term = parsed.q;
@@ -178,7 +220,7 @@ export async function listCards(userId: string, query: CardListQuery) {
     where.status = parsed.status;
   }
 
-  const orderBy: Prisma.CardOrderByWithRelationInput = { createdAt: "desc" };
+  const orderBy = { createdAt: "desc" as const };
 
   const items = await prisma.card.findMany({
     where,
@@ -216,7 +258,7 @@ export async function updateCard(userId: string, id: string, payload: CardUpdate
   const normalizedTags = parsed.tags ? normalizeTags(parsed.tags) : undefined;
   const normalizedCollections = parsed.collections ? normalizeCollections(parsed.collections) : undefined;
 
-  const data: Prisma.CardUpdateInput = {
+  const data: Record<string, any> = {
     ...parsed,
     tags: normalizedTags ? serializeTags(normalizedTags) : undefined,
     collections: normalizedCollections ? serializeCollections(normalizedCollections) : undefined,
@@ -225,6 +267,21 @@ export async function updateCard(userId: string, id: string, payload: CardUpdate
 
   if (parsed.url) {
     data.domain = safeHost(parsed.url);
+  }
+
+  // When collections are updated, check if any are private pawkits
+  // If so, set inDen to true to hide from Library/Timeline/Search
+  if (normalizedCollections !== undefined) {
+    const privateCollections = await prisma.collection.findMany({
+      where: {
+        userId,
+        slug: { in: normalizedCollections },
+        isPrivate: true
+      },
+      select: { slug: true }
+    });
+
+    data.inDen = privateCollections.length > 0;
   }
 
   const updated = await prisma.card.update({
@@ -240,7 +297,7 @@ export async function deleteCard(userId: string, id: string) {
 }
 
 export async function countCards(userId: string) {
-  const baseWhere: Prisma.CardWhereInput = { userId, deleted: false, inDen: false };
+  const baseWhere = { userId, deleted: false, inDen: false };
 
   const [total, ready, pending, error] = await Promise.all([
     prisma.card.count({ where: baseWhere }),
@@ -253,7 +310,7 @@ export async function countCards(userId: string) {
 }
 
 export async function quickAccessCards(userId: string, limit = 8) {
-  const baseWhere: Prisma.CardWhereInput = { userId, deleted: false, inDen: false };
+  const baseWhere = { userId, deleted: false, inDen: false };
 
   // Get pinned cards first
   const pinnedCards = await prisma.card.findMany({
@@ -269,8 +326,8 @@ export async function quickAccessCards(userId: string, limit = 8) {
 
   // Otherwise, fill remaining slots with most recently updated cards
   const remaining = limit - pinnedCards.length;
-  const pinnedIds = pinnedCards.map(card => card.id);
-  const excludePinned: Prisma.CardWhereInput = pinnedIds.length ? { id: { notIn: pinnedIds } } : {};
+  const pinnedIds = pinnedCards.map((card: PrismaCard) => card.id);
+  const excludePinned = pinnedIds.length ? { id: { notIn: pinnedIds } } : {};
 
   const recentCards = await prisma.card.findMany({
     where: {
@@ -312,7 +369,7 @@ export async function bulkAddCollection(userId: string, cardIds: string[], slug:
 
   const cards = await prisma.card.findMany({ where: { id: { in: cardIds }, userId } });
   await Promise.all(
-    cards.map((card) => {
+    cards.map((card: PrismaCard) => {
       const existing = new Set(parseJsonArray(card.collections));
       existing.add(slug);
       return prisma.card.update({
@@ -392,13 +449,51 @@ export async function getTrashCards(userId: string) {
 }
 
 export async function restoreCard(userId: string, id: string) {
-  return prisma.card.update({
+  const card = await prisma.card.findFirst({ where: { id, userId } });
+  if (!card) {
+    throw new Error('Card not found');
+  }
+
+  // Parse collections array
+  const collections: any = card.collections ? JSON.parse(card.collections) : [];
+  const collectionSlugs = Array.isArray(collections) ? collections : [];
+
+  let restoredToLibrary = false;
+  let cleanedCollections = collectionSlugs;
+
+  // If card has collections, check if they still exist
+  if (collectionSlugs.length > 0) {
+    const validCollections = await prisma.collection.findMany({
+      where: {
+        userId,
+        slug: { in: collectionSlugs },
+        deleted: false
+      },
+      select: { slug: true }
+    });
+
+    const validSlugs = validCollections.map((c: { slug: string }) => c.slug);
+    cleanedCollections = collectionSlugs.filter((slug: string) => validSlugs.includes(slug));
+
+    // If all collections were removed, card goes to library
+    if (cleanedCollections.length === 0 && collectionSlugs.length > 0) {
+      restoredToLibrary = true;
+    }
+  }
+
+  const updated = await prisma.card.update({
     where: { id, userId },
     data: {
       deleted: false,
-      deletedAt: null
+      deletedAt: null,
+      collections: JSON.stringify(cleanedCollections)
     }
   });
+
+  return {
+    card: updated,
+    restoredToLibrary
+  };
 }
 
 export async function permanentlyDeleteCard(userId: string, id: string) {
@@ -454,7 +549,7 @@ export async function getDigUpCards({
   limit = 20
 }: GetDigUpCardsParams): Promise<DigUpCardsResult> {
   // Build where clause based on filter mode
-  const where: Prisma.CardWhereInput = {
+  const where: Record<string, any> = {
     userId,
     deleted: false,
     inDen: false,

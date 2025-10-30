@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { localStorage } from "@/lib/services/local-storage";
+import { localDb } from "@/lib/services/local-storage";
 import { useDataStore } from "@/lib/stores/data-store";
 import { FileText, Bookmark, Globe } from "lucide-react";
 
@@ -51,10 +51,10 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
   useEffect(() => {
     async function loadLinks() {
       const [incoming, outgoing, cardRefs, cardBacklinks] = await Promise.all([
-        localStorage.getBacklinks(noteId),
-        localStorage.getNoteLinks(noteId),
-        localStorage.getNoteCardLinks(noteId),
-        localStorage.getCardBacklinks(noteId), // Get backlinks for cards too
+        localDb.getBacklinks(noteId),
+        localDb.getNoteLinks(noteId),
+        localDb.getNoteCardLinks(noteId),
+        localDb.getCardBacklinks(noteId), // Get backlinks for cards too
       ]);
       
       // Combine note backlinks and card backlinks
@@ -69,7 +69,7 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
   }, [noteId]); // Removed cards dependency to reduce re-renders
 
   const getCardTitle = (cardId: string) => {
-    const card = cards.find((c) => c.id === cardId && !c.inDen);
+    const card = cards.find((c) => c.id === cardId && !c.collections?.includes('the-den'));
     return card?.title || 'Untitled Note';
   };
 
