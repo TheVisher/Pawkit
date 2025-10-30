@@ -89,14 +89,18 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
     return mapCard(created);
   } catch (error) {
     // Handle unique constraint violation (P2002) - duplicate userId + url
+    // Note: This should only happen for URL-type cards due to partial unique index
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       console.log('[createCard] Duplicate detected, returning existing card for URL:', parsed.url);
 
-      // Find and return the existing card
+      // Find and return the existing non-deleted card
+      // Only look for URL-type cards since notes shouldn't trigger this constraint
       const existingCard = await prisma.card.findFirst({
         where: {
           userId,
-          url: parsed.url || ""
+          url: parsed.url || "",
+          type: "url", // Only look for URL cards
+          deleted: false // Exclude deleted cards
         }
       });
 
