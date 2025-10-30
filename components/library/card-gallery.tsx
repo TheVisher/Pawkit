@@ -746,6 +746,11 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
                   className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center justify-center"
+                  style={{
+                    // Chromium rendering optimization for backdrop-blur during transitions
+                    willChange: 'width',
+                    transform: 'translateZ(0)',
+                  }}
                 >
                   <span className="truncate max-w-full">
                     {(() => {
@@ -773,6 +778,11 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
                   className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center justify-center"
+                  style={{
+                    // Chromium rendering optimization for backdrop-blur during transitions
+                    willChange: 'width',
+                    transform: 'translateZ(0)',
+                  }}
                 >
                   <span className="truncate max-w-full">
                     {(() => {
@@ -818,7 +828,14 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
             {/* Glass pill title overlay at top - slightly narrower for note cards to avoid binder holes */}
             {showLabels && (
               <div className="absolute top-2 left-8 right-8 z-20">
-                <div className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center">
+                <div
+                  className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center"
+                  style={{
+                    // Chromium rendering optimization for backdrop-blur during transitions
+                    willChange: 'width',
+                    transform: 'translateZ(0)',
+                  }}
+                >
                   <span className="truncate max-w-full text-xs text-white">
                     {displayTitle}
                   </span>
