@@ -8,7 +8,7 @@ const nameSchema = z
 
 export const collectionCreateSchema = z.object({
   name: nameSchema,
-  parentId: z.string().optional()
+  parentId: z.string().nullable().optional()
 });
 
 export const collectionUpdateSchema = z
