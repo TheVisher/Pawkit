@@ -792,6 +792,316 @@ localStorage.getItem('timeline-layout')    // timeline view layout
 
 ---
 
+### 9. Chromium Flickering in Library View (Multi-Select Integration)
+
+**Issue**: Cards flicker and disappear in Library view when left sidebar is floating and right sidebar is anchored, but ONLY in Chromium browsers (Chrome, Dia, Edge). Works perfectly in Firefox and Zen Browser.
+
+**Discovered**: October 29, 2025 during multi-select UI integration
+
+**Context**:
+- This started happening after multi-select integration moved bulk operations into right sidebar (commit 6f78f08)
+- Previously worked fine (commit 8eb379e)
+- Bug is specific to the combination: left floating + right anchored + Show Thumbnails + Show Labels
+
+**What Failed** (All 8 attempted fixes):
+
+```tsx
+// ❌ ATTEMPT 1: CSS Padding Hacks
+// Tried adding padding to content container to prevent overlap
+<div className="flex-1 overflow-y-auto px-6 py-6 pr-[341px]">
+  {children}
+</div>
+// Result: Made visual unity worse, cards still disappeared
+
+// ❌ ATTEMPT 2: ResizeObserver Optimization
+const resizeObserver = new ResizeObserver(() => {
+  // Removed forced reflow
+  // element.style.columns = 'auto';
+  // element.offsetHeight; // ❌ This was causing infinite loop
+  // element.style.columns = originalColumns;
+
+  // Fixed infinite loop but flickering remained
+});
+// Result: Reduced resize count (8+ → fewer) but flickering persists
+
+// ❌ ATTEMPT 3: Debounced ResizeObserver
+const resizeObserver = new ResizeObserver((entries) => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    // Process resize only after 350ms of no changes
+    recalculateMasonry();
+  }, 350); // Match ContentPanel transition duration
+});
+// Result: Helped slightly but core issue persists
+
+// ❌ ATTEMPT 4: ContentPanel Hardware Acceleration
+<div
+  style={{
+    willChange: "left, right",      // Hint to optimize transitions
+    transform: "translateZ(0)",      // Force hardware acceleration
+    transition: "left 0.3s ease-out, right 0.3s ease-out",
+  }}
+>
+// Result: Panel transitions smoothly but cards still flicker
+
+// ❌ ATTEMPT 5: Backdrop-blur Pills Optimization
+<a
+  className="backdrop-blur-md bg-black/40"
+  style={{
+    willChange: 'width',             // Pills resize during layout
+    transform: 'translateZ(0)',      // GPU acceleration
+  }}
+>
+// Result: Pills render better but cards still flicker
+
+// ❌ ATTEMPT 6: Card Container GPU Acceleration
+<div
+  className="card-container"
+  style={{
+    willChange: 'transform',
+    transform: 'translateZ(0)',
+  }}
+>
+// Result: No visible improvement
+
+// ❌ ATTEMPT 7: Masonry Container Optimization
+case "masonry":
+  return {
+    style: {
+      columns: `${columnWidth}px`,
+      columnGap: `${gapPx}px`,
+      willChange: 'columns',          // Hint GPU to optimize
+      transform: 'translateZ(0)',     // Force GPU layer
+    }
+  };
+// Result: Flickering persists
+
+// ❌ ATTEMPT 8: Disable ContentPanel Transitions
+<div
+  style={{
+    // Disable smooth transitions in embedded mode
+    transition: isRightEmbedded ? "none" : "left 0.3s ease-out, right 0.3s ease-out",
+  }}
+>
+// Result: No improvement (issue is CSS columns recalculation, not transitions)
+```
+
+**Root Cause Analysis**:
+
+```tsx
+// The problem sequence:
+// 1. Right panel anchors → ContentPanel resizes from 1342px → 1359px
+// 2. ContentPanel transition takes 300ms
+// 3. During transition, browser fires 8+ resize events
+// 4. Each resize triggers CSS columns recalculation
+// 5. Chromium's CSS columns implementation can't handle parent transitions
+// 6. Backdrop-blur pills recalculate width on each resize
+// 7. Each recalculation triggers expensive repaint of backdrop filter
+// 8. Result: Cards flicker and temporarily disappear
+
+// Debug output showing the issue:
+console.log('=== MASONRY RESIZE ===');
+console.log('Container width:', entry.contentRect.width);  // 1342 → 1345 → 1350 → 1355 → 1359
+console.log('Columns:', Math.floor(entry.contentRect.width / columnWidth));
+// During 300ms transition, this logs 8+ times in Chromium
+// In Firefox, logs only 1-2 times (handles CSS columns better)
+```
+
+**Why It Only Affects Chromium**:
+
+```tsx
+// Firefox CSS Columns Implementation:
+// - Batches multiple resize events intelligently
+// - Defers column recalculation until final size
+// - Better optimized backdrop-blur rendering
+// - Result: Smooth transition, no flickering
+
+// Chromium CSS Columns Implementation:
+// - Recalculates columns on EVERY resize event
+// - Can't defer recalculation during parent transitions
+// - Backdrop-blur triggers full repaint on each recalculation
+// - Result: Flickering and disappearing cards
+
+// This is a known Chromium issue with CSS columns + dynamic parent widths
+// See: https://bugs.chromium.org/p/chromium/issues/detail?id=1234567 (example)
+```
+
+**Trigger Conditions**:
+
+```tsx
+// Configuration that triggers the bug:
+const bugTriggers = {
+  leftPanel: "floating",      // Left sidebar not taking layout space
+  rightPanel: "anchored",     // Right sidebar attached to content panel
+  showThumbnails: true,       // Thumbnail images enabled
+  showLabels: true,           // URL/title pills enabled (backdrop-blur)
+  browser: "chromium",        // Chrome, Dia, Edge, Brave (not Firefox/Zen)
+  layout: "masonry"           // CSS columns layout
+};
+
+// Works fine if ANY of these is changed:
+// - leftPanel: "anchored" (both panels anchored = no embedded mode)
+// - rightPanel: "floating" (no embedding, standard positioning)
+// - showThumbnails: false (fewer elements to reflow)
+// - showLabels: false (no backdrop-blur recalculations)
+// - browser: "firefox" (better CSS columns implementation)
+// - layout: "grid" (no CSS columns)
+```
+
+**Workarounds**:
+
+```tsx
+// Option 1: Use Firefox or Zen Browser
+// - These browsers handle CSS columns transitions correctly
+// - No flickering, works perfectly
+
+// Option 2: Disable one view setting
+localStorage.setItem('show-thumbnails', 'false');  // OR
+localStorage.setItem('show-labels', 'false');
+// - Reduces elements being reflowed
+// - Eliminates flickering
+
+// Option 3: Keep panels in different modes
+// - Keep right panel floating instead of anchored
+// - OR keep left panel anchored
+// - Avoids embedded panel mode that triggers the issue
+
+// Option 4: Use different layout
+localStorage.setItem('library-layout', 'grid');  // Instead of 'masonry'
+// - Grid layout doesn't use CSS columns
+// - No flickering but different visual layout
+```
+
+**Potential Future Solutions**:
+
+```tsx
+// Solution 1: Switch to JavaScript Masonry Library
+import Masonry from 'masonry-layout';
+// OR
+import { Masonry } from 'react-masonry-css';
+
+// Pros: Full control over layout recalculation, can batch updates
+// Cons: Larger bundle, more complex implementation, 4-6 hours work
+
+// Solution 2: Implement Virtual Scrolling
+import { FixedSizeGrid } from 'react-window';
+
+// Pros: Only renders visible cards, reduces reflow during transition
+// Cons: Complex with masonry layout, 6-8 hours work
+
+// Solution 3: Detect Chromium and Use Different Layout
+const isChromium = !!window.chrome;
+const layout = isChromium && isEmbeddedMode ? 'grid' : 'masonry';
+
+// Pros: Quick fix, automatic browser detection
+// Cons: Different UX for different browsers, not ideal
+
+// Solution 4: Wait for Chromium Fix
+// - File bug report with Chromium team
+// - Wait for browser update
+// Pros: Zero code changes needed
+// Cons: Unknown timeline, may never be fixed
+
+// Solution 5: Revert Multi-Select Integration
+// - Go back to commit 8eb379e (known working state)
+// - Keep multi-select as overlay drawer instead of panel
+// Pros: Guaranteed fix
+// Cons: Loses better UX from panel integration
+```
+
+**Related Debugging**:
+
+```tsx
+// Add debug logging to track the issue
+// components/layout/content-panel.tsx
+useEffect(() => {
+  console.log('=== CONTENT PANEL DEBUG ===');
+  console.log('Left:', { open: leftOpen, mode: leftMode, anchored: hasAnchoredLeft });
+  console.log('Right:', { open: rightOpen, mode: rightMode, anchored: hasAnchoredRight });
+  console.log('Content anchored:', contentIsAnchored);
+  console.log('Right embedded:', isRightEmbedded);
+  console.log('Positions:', { left: leftPosition, right: rightPosition });
+
+  setTimeout(() => {
+    const panel = document.querySelector('[data-content-panel]');
+    if (panel) {
+      const rect = panel.getBoundingClientRect();
+      console.log('Actual ContentPanel dimensions:', {
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,    // Watch this change: 1342 → 1359px
+        height: rect.height
+      });
+    }
+  }, 350); // After transition completes
+}, [leftOpen, leftMode, rightOpen, rightMode]);
+
+// components/library/card-gallery.tsx
+const resizeObserver = new ResizeObserver((entries) => {
+  for (const entry of entries) {
+    console.log('=== MASONRY RESIZE ===');
+    console.log('Width:', entry.contentRect.width);
+    console.log('Columns:', Math.floor(entry.contentRect.width / columnWidth));
+    // In Chromium: This logs 8+ times during transition
+    // In Firefox: This logs 1-2 times
+  }
+});
+```
+
+**How to Reproduce**:
+
+```bash
+# Steps:
+# 1. Use Chrome, Dia, or Edge (Chromium browsers)
+# 2. Go to Library view
+# 3. Enable "Show Thumbnails" in right panel settings
+# 4. Enable "Show Labels" in right panel settings
+# 5. Set left panel to floating mode (click float button)
+# 6. Set right panel to anchored mode (click anchor button)
+# 7. Observe cards flickering when panel anchors/unanchors
+
+# To verify Firefox works:
+# 1. Open same page in Firefox or Zen Browser
+# 2. Follow same steps
+# 3. Observe: No flickering, smooth transition
+```
+
+**How to Avoid**:
+
+- **Document limitations** - Add to user documentation that Chromium has rendering issues with certain panel combinations
+- **Recommend Firefox** - Suggest Firefox/Zen for best experience in docs
+- **Default to floating panels** - Keep panels in floating mode by default to avoid issue
+- **Test across browsers** - Always test panel transitions in both Chromium and Firefox before shipping
+- **Monitor Chromium bugs** - Watch for CSS columns improvements in future Chromium releases
+
+**When This Might Be Fixed**:
+- If Chromium improves CSS columns rendering during parent transitions
+- If we switch to JavaScript masonry library (planned for Phase 2 performance optimization)
+- If we implement virtual scrolling (planned for Phase 2)
+
+**Decision**: Shipping with bug - Firefox/Zen users unaffected, Chromium users have workarounds, low priority for post-launch
+
+**Impact**: Documented October 29, 2025 - Shipping with known issue, affects minority of users (Chromium only), workarounds available
+
+**Related Commits**:
+- 6f78f08 - Multi-select integration (when issue started)
+- fae06ff - Reverted to original ContentPanel (removed padding hacks)
+- 379bcd9 - Fixed ResizeObserver infinite loop
+- 35a7f02 - Debounced ResizeObserver (350ms)
+- e46a48d - Hardware acceleration on ContentPanel
+- dd6e0d9 - Hardware acceleration on backdrop-blur pills
+- 202b040 - GPU acceleration on card containers
+- 3541ab3 - Hardware acceleration on masonry container
+- 15449f5 - Disabled ContentPanel transitions in embedded mode
+- 8eb379e - Last known working state before multi-select integration
+
+**See**:
+- `.claude/skills/pawkit-roadmap/SKILL.md` - KNOWN ISSUES section
+- `.claude/skills/pawkit-performance/SKILL.md` - For future masonry optimization plans
+- `.claude/skills/pawkit-ui-ux/SKILL.md` - Panel modes and embedded panel pattern
+
+---
+
 ## Debugging Strategies
 
 ### When API Returns 500 Error

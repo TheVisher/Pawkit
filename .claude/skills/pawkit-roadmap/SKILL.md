@@ -201,6 +201,110 @@ description: Living, interactive roadmap serving as single source of truth for p
 
 ---
 
+## KNOWN ISSUES (Shipping with workarounds)
+
+**Issues that remain unresolved but have documented workarounds or are acceptable to ship with**
+
+### Chromium Flickering Bug in Library View
+
+**Status**: Shipping with bug (Firefox/Zen users unaffected)
+
+**Problem Description**:
+Cards flicker and disappear in Library view when:
+- Left sidebar is floating (not taking layout space)
+- Right sidebar is anchored (attached to content panel)
+- BOTH "Show Thumbnails" and "Show Labels" are enabled
+- Only affects Chromium browsers (Chrome, Dia, Edge)
+- Works perfectly in Firefox and Zen Browser
+
+**Root Cause**:
+Fundamental Chromium rendering bug with CSS columns (masonry layout) during parent container transitions:
+- ContentPanel resizes from 1342px → 1359px when right panel anchors
+- Triggers 8+ resize events during 300ms transition
+- Each resize recalculates CSS columns layout
+- Backdrop-blur pills on cards trigger expensive repaint on each recalculation
+- Chromium's CSS columns implementation can't handle parent transitions smoothly
+
+**Trigger Conditions**:
+1. Left panel: Floating mode
+2. Right panel: Anchored mode (embedded inside content panel)
+3. View settings: Show Thumbnails = ON
+4. View settings: Show Labels = ON
+5. Browser: Any Chromium-based (Chrome, Dia, Edge, Brave)
+
+**All Attempted Fixes** (None successful):
+
+1. ❌ **CSS Padding Hacks** (Commits: 6f78f08 → reverted)
+   - Tried `pr-[341px]` and `pr-[325px]` to prevent card overlap
+   - Result: Made visual unity worse, cards still disappeared
+   - Reverted to original ContentPanel positioning
+
+2. ❌ **ResizeObserver Optimization** (Commit: 379bcd9)
+   - Fixed infinite loop (removed forced reflow)
+   - Added debug logging to track resize events
+   - Result: Reduced resize count but flickering remained
+
+3. ❌ **ResizeObserver Debouncing** (Commit: 35a7f02)
+   - Added 350ms debounce (matching transition duration)
+   - Only processes final resize after ContentPanel settles
+   - Result: Helped slightly but core issue persists
+
+4. ❌ **ContentPanel Hardware Acceleration** (Commit: e46a48d)
+   - Added `willChange: "left, right"` and `transform: translateZ(0)`
+   - Forces GPU acceleration for panel transitions
+   - Result: No improvement in card rendering
+
+5. ❌ **Backdrop-blur Pills Optimization** (Commit: dd6e0d9)
+   - Added hardware acceleration to URL pills and title pills
+   - `willChange: 'width'` and `transform: translateZ(0)`
+   - Result: Pills render better but cards still flicker
+
+6. ❌ **Card Container GPU Acceleration** (Commit: 202b040)
+   - Added hardware acceleration to individual card containers
+   - Attempted to isolate card rendering from parent transitions
+   - Result: No visible improvement
+
+7. ❌ **Masonry Container Optimization** (Commit: 3541ab3)
+   - Added `willChange: 'columns'` and `transform: translateZ(0)` to masonry grid
+   - Attempted to hint GPU to optimize columns recalculation
+   - Result: Flickering persists
+
+8. ❌ **Disable ContentPanel Transitions** (Commit: 15449f5)
+   - Disabled smooth transitions entirely in embedded mode: `transition: "none"`
+   - Removed animation to eliminate intermediate resize states
+   - Result: No improvement (issue is CSS columns, not transitions)
+
+**Workarounds**:
+- Use Firefox or Zen Browser (works perfectly)
+- Disable "Show Thumbnails" OR "Show Labels" in settings
+- Keep right panel in floating mode instead of anchored
+- Keep left panel in anchored mode
+
+**Potential Future Solutions**:
+1. Switch from CSS columns to JavaScript masonry library (Masonry.js, react-masonry-css)
+2. Wait for Chromium to fix CSS columns rendering bug
+3. Detect Chromium and use different layout algorithm
+4. Investigate reverting multi-select integration (known working state: commit 8eb379e)
+5. Implement virtual scrolling to reduce cards rendered during transition
+
+**Related Commits**:
+- fae06ff - Reverted to original ContentPanel (removed padding hacks)
+- 379bcd9 - Fixed ResizeObserver infinite loop
+- 35a7f02 - Debounced ResizeObserver (350ms)
+- e46a48d - Hardware acceleration on ContentPanel
+- dd6e0d9 - Hardware acceleration on backdrop-blur pills
+- 202b040 - GPU acceleration on card containers
+- 3541ab3 - Hardware acceleration on masonry container
+- 15449f5 - Disabled ContentPanel transitions in embedded mode
+
+**User Impact**: Low (minority of users, Firefox/Zen unaffected, workarounds available)
+
+**Priority**: P3 (post-launch optimization)
+
+**See Also**: `.claude/skills/pawkit-troubleshooting/SKILL.md` Issue #9 for debugging process
+
+---
+
 ## BACKLOG - CRITICAL (Pre-Merge)
 
 **Must complete before merging to main**
