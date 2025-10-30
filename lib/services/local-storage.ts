@@ -131,11 +131,13 @@ class LocalStorage {
     if (!this.db) return [];
 
     const cards = await this.db.getAll('cards');
-    // Remove internal flags before returning
-    return cards.map(card => {
-      const { _locallyModified, _locallyCreated, _serverVersion, ...cleanCard } = card;
-      return cleanCard as CardDTO;
-    });
+    // Filter out soft-deleted cards and remove internal flags before returning
+    return cards
+      .filter(card => !card.deleted)
+      .map(card => {
+        const { _locallyModified, _locallyCreated, _serverVersion, ...cleanCard } = card;
+        return cleanCard as CardDTO;
+      });
   }
 
   async getCard(id: string): Promise<CardDTO | undefined> {
@@ -204,8 +206,14 @@ class LocalStorage {
     await this.init();
     if (!this.db) return;
 
-    await this.db.delete('cards', id);
-    // console.log('[LocalStorage] Deleted card:', id);
+    // Soft delete: mark as deleted instead of removing
+    const card = await this.db.get('cards', id);
+    if (card) {
+      card.deleted = true;
+      card.deletedAt = new Date().toISOString();
+      await this.db.put('cards', card);
+      console.log('[LocalStorage] Soft deleted card:', id);
+    }
   }
 
   async permanentlyDeleteCard(id: string): Promise<void> {

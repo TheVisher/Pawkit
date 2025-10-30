@@ -657,7 +657,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   /**
-   * Delete card: Remove from local first, then sync to server
+   * Delete card: Soft delete locally first, then sync to server via queue
    */
   deleteCard: async (id: string) => {
     // WRITE GUARD: Ensure this is the active device
@@ -672,27 +672,41 @@ export const useDataStore = create<DataStore>((set, get) => ({
       // STEP 0: Delete all note links for this card
       await localDb.deleteAllLinksForNote(id);
 
-      // STEP 1: Remove from local storage
+      // STEP 1: Soft delete in local storage (mark as deleted, don't remove)
       await localDb.deleteCard(id);
 
-      // STEP 2: Update Zustand for instant UI
+      // STEP 2: Update Zustand for instant UI (filter out deleted cards)
       set((state) => ({
         cards: state.cards.filter(c => c.id !== id),
       }));
 
-      console.log('[DataStore V2] Card deleted from local storage:', id);
+      console.log('[DataStore V2] Card soft deleted from local storage:', id);
 
-      // STEP 3: Sync to server (if enabled and not a temp card)
+      // STEP 3: Sync to server via queue (if enabled and not a temp card)
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync && !id.startsWith('temp_')) {
+        // Queue for sync (with retry on failure)
+        await syncQueue.enqueue({
+          type: 'DELETE_CARD',
+          targetId: id,
+        });
+
+        // Try immediate sync
         try {
-          await fetch(`/api/cards/${id}`, {
+          const response = await fetch(`/api/cards/${id}`, {
             method: 'DELETE',
           });
-          console.log('[DataStore V2] Card deleted from server:', id);
+
+          if (response.ok) {
+            console.log('[DataStore V2] Card deleted from server:', id);
+            // Remove from queue on success
+            await syncQueue.removeByTarget('DELETE_CARD', id);
+          } else {
+            console.warn('[DataStore V2] Failed to delete card from server, queued for retry:', id);
+          }
         } catch (error) {
-          console.error('[DataStore V2] Failed to sync card deletion:', error);
-          // Deletion is safe in local storage
+          console.error('[DataStore V2] Failed to sync card deletion, queued for retry:', error);
+          // Sync queue will retry later
         }
       }
     } catch (error) {
