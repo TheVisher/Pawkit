@@ -192,12 +192,14 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
         set({ isSyncing: true });
 
         try {
-          // Only send fields that the API validator accepts
+          // Map client fields to server fields (field names were refactored)
+          // Server still uses old names: showTitles, showUrls
+          // Client uses new names: showLabels, showMetadata
           const apiSettings = {
             layout: settings.layout,
             cardSize: settings.cardSize,
-            showTitles: settings.showTitles,
-            showUrls: settings.showUrls,
+            showTitles: settings.showMetadata,  // showMetadata -> showTitles (server field name)
+            showUrls: settings.showLabels,      // showLabels -> showUrls (server field name)
             showTags: settings.showTags,
             cardPadding: settings.cardPadding,
             sortBy: settings.sortBy,
