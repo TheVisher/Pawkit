@@ -76,6 +76,7 @@ description: Living, interactive roadmap serving as single source of truth for p
   Save same URL from two different browsers simultaneously
   Verify only one card created and both clients show same card
   Why: Validate the core issue from multi-session work is resolved
+  Note: Constraint enhanced Oct 30 - now partial index with WHERE type = 'url' (only applies to URL cards, not notes)
 
 ### Discoverability Improvements (User Feedback Priority)
 
@@ -133,6 +134,37 @@ description: Living, interactive roadmap serving as single source of truth for p
 ## COMPLETED WORK
 
 **Reference for what's done - do not modify this section**
+
+### October 30, 2025
+
+- ✅ **View Settings Sync - Complete Fix** (3 layers of bugs)
+  Fixed persistent 400 errors on PATCH /api/user/view-settings
+  Layer 1: Removed extra fields not in validator schema
+  Layer 2: Mapped client field names to server (showLabels → showUrls, showMetadata → showTitles)
+  Layer 3: Implemented bidirectional value scaling (1-100 ↔ 1-5/0-4)
+  Commits: e34fd55, 4cd2ea2, 2db570a
+
+- ✅ **Collection Create Schema Fix**
+  Fixed 400 errors when creating root-level Pawkits (null parentId rejected)
+  Changed schema from `z.string().optional()` to `z.string().nullable().optional()`
+  Commit: 8631dba
+
+- ✅ **Note Creation Bug - Complete Fix** (4 separate issues)
+  Fixed notes defaulting to daily notes and disappearing on refresh
+  Issue 1: Modal state persistence - added useEffect to reset state on open
+  Issue 2: Missing useMemo import - added to React imports
+  Issue 3: Missing tags parameter - updated handleCreateNote to accept/pass tags
+  Issue 4: Critical database constraint bug (see below)
+  Commits: d5d0c29, 49ae3ee, 9562bec, a09bc7b
+
+- ✅ **Database Constraint Fix - Partial Unique Index** (Critical)
+  Fixed notes triggering duplicate constraint errors and returning deleted cards
+  Root cause: Full unique index on (userId, url) applied to ALL card types
+  Solution: Replaced with partial unique index `WHERE type = 'url'`
+  Server error handler now checks card type and excludes deleted cards
+  Notes can now have duplicate/empty URLs, URL cards still prevent duplicates
+  Migration: 20251029192328_fix_card_unique_constraint
+  Commit: a09bc7b
 
 ### October 28-29, 2025
 
