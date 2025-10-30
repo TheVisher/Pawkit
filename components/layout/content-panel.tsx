@@ -110,7 +110,8 @@ export function ContentPanel({
         left: leftPosition,
         right: rightPosition,
         boxShadow: "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)",
-        transition: "left 0.3s ease-out, right 0.3s ease-out",
+        // Disable smooth transitions in embedded mode to prevent Chromium CSS columns flickering
+        transition: isRightEmbedded ? "none" : "left 0.3s ease-out, right 0.3s ease-out",
         // Chromium rendering fixes for embedded panel mode
         willChange: "left, right", // Hint to optimize transitions
         transform: "translateZ(0)", // Force hardware acceleration
