@@ -44,6 +44,14 @@ function LibraryPageContent() {
   // Get content type filter from view settings
   const contentTypeFilter = viewSettings.contentTypeFilter;
 
+  // Debug: Log content type filter
+  useEffect(() => {
+    console.log('=== LIBRARY PAGE DEBUG ===');
+    console.log('contentTypeFilter:', contentTypeFilter);
+    console.log('Total cards:', cards.length);
+    console.log('Filtered items:', items.length);
+  }, [contentTypeFilter, cards.length, items.length]);
+
   // Set the right panel content to show library controls
   useEffect(() => {
     setContentType("library-controls");
