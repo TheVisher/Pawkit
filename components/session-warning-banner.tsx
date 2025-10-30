@@ -15,16 +15,10 @@ export function SessionWarningBanner() {
   const { takeoverSession, hasOtherSessions, otherDevices } = useMultiSessionDetector();
   const [dismissed, setDismissed] = useState(false);
 
-  // Debug logging
-  console.log('[SessionBanner] Rendering with:', { hasOtherSessions, otherDevices, dismissed });
-
   // Don't show if dismissed or no other sessions detected
   if (dismissed || !hasOtherSessions) {
-    console.log('[SessionBanner] Not showing banner - dismissed:', dismissed, 'hasOtherSessions:', hasOtherSessions);
     return null;
   }
-
-  console.log('[SessionBanner] ✅ SHOWING BANNER');
 
   const handleTakeover = () => {
     takeoverSession();

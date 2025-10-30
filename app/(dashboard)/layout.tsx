@@ -87,12 +87,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Special case: left floating + right anchored = embedded mode
   const isRightPanelEmbedded = leftMode === "floating" && panelMode === "anchored" && isPanelOpen;
 
-  // Debug: Track panel state changes
+  // Track panel state changes
   useEffect(() => {
-    console.log('=== LAYOUT PANEL STATE CHANGE ===');
-    console.log('Left panel:', { isOpen: isLeftOpen, mode: leftMode });
-    console.log('Right panel:', { isOpen: isPanelOpen, mode: panelMode });
-    console.log('Embedded mode:', isRightPanelEmbedded);
+    // Panel state tracking for debugging if needed
   }, [isLeftOpen, leftMode, isPanelOpen, panelMode, isRightPanelEmbedded]);
 
   useEffect(() => {
@@ -167,7 +164,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Initialize activity tracking to mark this device as active
   useEffect(() => {
     initActivityTracking();
-    console.log('[Layout] Activity tracking initialized');
   }, []);
 
   const username = userData?.email || "";
@@ -282,12 +278,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Bulk operations handlers
   const handleBulkDelete = async () => {
     // TODO: Implement bulk delete - will be handled by library view
-    console.log('Bulk delete triggered');
   };
 
   const handleBulkMove = () => {
     // TODO: Implement bulk move - will be handled by library view
-    console.log('Bulk move triggered');
   };
 
   return (
