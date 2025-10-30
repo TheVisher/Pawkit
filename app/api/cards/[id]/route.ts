@@ -100,14 +100,51 @@ export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
   try {
     user = await getCurrentUser();
     if (!user) {
+      console.log('[DELETE] Unauthorized - no user');
       return unauthorized();
     }
 
+    // Check serverSync setting for write operations
+    try {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { serverSync: true },
+      });
+
+      console.log('[DELETE] User serverSync setting:', dbUser?.serverSync);
+
+      if (dbUser && !dbUser.serverSync) {
+        console.log('[DELETE] Blocked - serverSync disabled');
+        return NextResponse.json(
+          {
+            error: 'Local-Only Mode Active',
+            message: 'Server sync is disabled. This operation cannot be performed in local-only mode. Please enable server sync in settings to sync your data to the cloud.',
+            code: 'LOCAL_ONLY_MODE',
+            localOnly: true,
+          },
+          { status: 403 }
+        );
+      }
+    } catch (error) {
+      console.error('[DELETE] Failed to check serverSync setting:', error);
+      // On error, allow the operation to proceed (fail open for availability)
+    }
+
     const params = await segmentData.params;
+    console.log('[DELETE] Starting soft delete for card:', params.id, 'user:', user.id);
+
     // Soft delete - move to trash
-    await softDeleteCard(user.id, params.id);
-    return success({ ok: true });
+    const result = await softDeleteCard(user.id, params.id);
+    console.log('[DELETE] Soft delete completed:', {
+      cardId: params.id,
+      deleted: result.deleted,
+      deletedAt: result.deletedAt,
+      updatedAt: result.updatedAt
+    });
+
+    return success({ ok: true, cardId: params.id, deleted: result.deleted });
   } catch (error) {
+    console.error('[DELETE] Error during soft delete:', error);
     return handleApiError(error, { route: '/api/cards/[id]', userId: user?.id });
   }
 }
