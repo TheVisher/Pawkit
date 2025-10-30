@@ -1013,6 +1013,9 @@ function getLayoutConfig(layout: LayoutMode, cardSize: number = 50, cardSpacing:
         style: {
           columns: `${columnWidth}px`,
           columnGap: `${gapPx}px`,
+          // Chromium rendering optimizations for CSS columns during transitions
+          willChange: 'columns',
+          transform: 'translateZ(0)',
         }
       };
     case "list":
