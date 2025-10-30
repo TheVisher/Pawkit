@@ -192,15 +192,25 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
         set({ isSyncing: true });
 
         try {
+          // Only send fields that the API validator accepts
+          const apiSettings = {
+            layout: settings.layout,
+            cardSize: settings.cardSize,
+            showTitles: settings.showTitles,
+            showUrls: settings.showUrls,
+            showTags: settings.showTags,
+            cardPadding: settings.cardPadding,
+            sortBy: settings.sortBy,
+            sortOrder: settings.sortOrder,
+            viewSpecific: settings.viewSpecific ? JSON.stringify(settings.viewSpecific) : null,
+          };
+
           const response = await fetch('/api/user/view-settings', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               view,
-              settings: {
-                ...settings,
-                viewSpecific: settings.viewSpecific ? JSON.stringify(settings.viewSpecific) : null,
-              },
+              settings: apiSettings,
             }),
           });
 
