@@ -664,6 +664,10 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       {showThumbnail && layout !== "compact" && !isNote && (
         <div
           className={`relative ${hasTextSection ? "mb-3" : ""} w-full overflow-hidden rounded-xl bg-surface-soft ${layout === "masonry" ? "" : "aspect-video"} group/filmstrip`}
+          style={{
+            // Chromium rendering optimization to prevent flickering during transitions
+            transform: 'translateZ(0)',
+          }}
         >
           {/* Film sprocket holes for movie cards */}
           {isMovie && (
@@ -801,7 +805,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       )}
       {/* Notes: Document-shaped card with portrait aspect ratio */}
       {isNote && (
-        <div className="relative w-full group/note" style={{ aspectRatio: '3 / 2' }}>
+        <div className="relative w-full group/note" style={{ aspectRatio: '3 / 2', transform: 'translateZ(0)' }}>
           {/* Document-styled container with binder hole aesthetic */}
           <div className="absolute inset-0 flex flex-col p-4 pl-8 bg-surface-soft rounded-lg border border-purple-500/20 shadow-lg shadow-purple-900/10 overflow-hidden">
 
