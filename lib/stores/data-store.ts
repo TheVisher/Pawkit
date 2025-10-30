@@ -11,17 +11,25 @@ import { markDeviceActive, getSessionId } from '@/lib/utils/device-session';
 /**
  * Write guard: Ensures only the active tab/session can modify data
  * Prevents corruption from concurrent writes across multiple tabs
+ *
+ * NOTE: This only applies to USER-INITIATED writes (data-store methods).
+ * Sync operations bypass this by calling localDb methods directly.
  */
 function ensureActiveDevice(): boolean {
   const currentSessionId = getSessionId();
   const activeSessionId = localStorage.getItem('pawkit_active_device');
 
   if (activeSessionId && activeSessionId !== currentSessionId) {
-    console.error('[WriteGuard] ❌ Write blocked - another tab is active:', activeSessionId);
+    console.error('[WriteGuard] ❌ Write blocked - another tab is active:', {
+      currentSession: currentSessionId,
+      activeSession: activeSessionId,
+      stack: new Error().stack
+    });
     alert('Another tab is active. Please refresh and click "Use This Tab" to continue.');
     return false;
   }
 
+  console.log('[WriteGuard] ✅ Write allowed - this tab is active:', currentSessionId);
   return true;
 }
 
@@ -323,9 +331,22 @@ export const useDataStore = create<DataStore>((set, get) => ({
           localDb.getAllCollections(),
         ]);
 
+        console.log('[DataStore V2] 📦 After sync - loaded from localDb:', {
+          totalCards: allCards.length,
+          deletedCards: allCards.filter(c => c.deleted).length,
+          activeCards: allCards.filter(c => !c.deleted).length,
+          totalCollections: allCollections.length,
+          deletedCollections: allCollections.filter(c => c.deleted).length
+        });
+
         // CRITICAL: Filter out deleted items to prevent resurrection
         const filteredCards = allCards.filter(c => !c.deleted);
         const filteredCollections = allCollections.filter(c => !c.deleted);
+
+        console.log('[DataStore V2] 🔍 After filtering deleted items:', {
+          filteredCards: filteredCards.length,
+          filteredCollections: filteredCollections.length
+        });
 
         // DEDUPLICATION: Remove duplicate cards and clean up temp duplicates
         const [cards] = await deduplicateCards(filteredCards);
@@ -339,6 +360,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
           }
           seenCollectionIds.add(collection.id);
           return true;
+        });
+
+        console.log('[DataStore V2] ✅ Final state after deduplication:', {
+          cards: cards.length,
+          collections: collections.length
         });
 
         set({ cards, collections });
