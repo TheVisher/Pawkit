@@ -37,6 +37,18 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json();
 
+    // Check if server sync is enabled
+    const userProfile = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { serverSync: true }
+    });
+
+    // If server sync is disabled, return success without saving
+    // View settings will only be stored in localStorage
+    if (!userProfile?.serverSync) {
+      return success({ success: true, localOnly: true, message: 'Settings not synced (server sync disabled)' });
+    }
+
     // Validate input
     const validated = viewSettingsUpdateSchema.parse(body);
     const { view, settings } = validated;

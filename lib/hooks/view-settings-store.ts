@@ -223,16 +223,22 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
           });
 
           if (!response.ok) {
-            const error = await response.json();
-            if (error.localOnly) {
-              // Local-only mode is active on server - this is fine
-              console.log('[ViewSettings] Local-only mode active, settings stored locally only');
-            } else {
-              throw new Error('Failed to sync settings to server');
+            try {
+              const error = await response.json();
+              if (error.data?.localOnly) {
+                // Local-only mode is active on server - this is fine
+                console.log('[ViewSettings] Local-only mode active, settings stored locally only');
+              } else {
+                console.warn('[ViewSettings] Failed to sync to server (non-critical):', response.status);
+              }
+            } catch {
+              console.warn('[ViewSettings] Failed to sync to server (non-critical):', response.status);
             }
+          } else {
+            console.log('[ViewSettings] Successfully synced to server');
           }
         } catch (error) {
-          console.error('[ViewSettings] Failed to sync to server:', error);
+          console.warn('[ViewSettings] Failed to sync to server (non-critical):', error);
           // Don't throw - settings are still saved locally
         } finally {
           set({ isSyncing: false });
@@ -244,9 +250,11 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
 
         try {
           const response = await fetch('/api/user/view-settings');
-          
+
           if (!response.ok) {
-            throw new Error('Failed to load settings from server');
+            console.warn('[ViewSettings] Failed to load from server (non-critical):', response.status);
+            set({ isLoading: false });
+            return;
           }
 
           const data = await response.json();
@@ -280,10 +288,11 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
             });
 
             set({ settings: loadedSettings });
+            console.log('[ViewSettings] Successfully loaded from server');
           }
         } catch (error) {
-          console.error('[ViewSettings] Failed to load from server:', error);
-          // Keep local settings on error
+          console.warn('[ViewSettings] Failed to load from server (non-critical):', error);
+          // Keep local settings on error - settings are still available from localStorage
         } finally {
           set({ isLoading: false });
         }

@@ -8,32 +8,59 @@
  */
 
 import { useEffect, useState } from 'react';
-import { getDeviceId, getDeviceMetadata } from '@/lib/utils/device-session';
+import { getSessionId, getDeviceMetadata } from '@/lib/utils/device-session';
+
+type OtherDevice = {
+  deviceId: string;
+  timestamp: number;
+};
 
 type SessionState = {
-  otherDevices: never[];
+  otherDevices: OtherDevice[];
   isCheckingMultipleSessions: boolean;
 };
 
 export function useMultiSessionDetector() {
+  // Initialize state with safe defaults (no localStorage access during SSR)
   const [sessionState, setSessionState] = useState<SessionState>({
     otherDevices: [],
     isCheckingMultipleSessions: false,
   });
+
   const [isActive, setIsActive] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const currentDeviceId = getDeviceId();
 
-    // Check if another device is already active
-    const activeDeviceId = localStorage.getItem('pawkit_active_device');
-    if (activeDeviceId && activeDeviceId !== currentDeviceId) {
-      console.log('[MultiSession] Another device is active, starting in passive mode');
+    // Mark as mounted (client-side only)
+    setMounted(true);
+
+    const currentSessionId = getSessionId();
+
+    // Check if another session is already active
+    const activeSessionId = localStorage.getItem('pawkit_active_device');
+
+    if (activeSessionId && activeSessionId !== currentSessionId) {
       setIsActive(false);
-      return;
+
+      // Populate otherDevices so banner shows
+      setSessionState({
+        otherDevices: [{
+          deviceId: activeSessionId,
+          timestamp: Date.now()
+        }],
+        isCheckingMultipleSessions: false,
+      });
     } else {
-      // This is the active device, mark it in localStorage
-      localStorage.setItem('pawkit_active_device', currentDeviceId);
+      // This is the active session, mark it in localStorage
+      localStorage.setItem('pawkit_active_device', currentSessionId);
+      setIsActive(true);
+
+      // Clear other devices
+      setSessionState({
+        otherDevices: [],
+        isCheckingMultipleSessions: false,
+      });
     }
 
     // Note: Multi-session detection now uses localStorage only
@@ -42,10 +69,25 @@ export function useMultiSessionDetector() {
     // Listen for storage events (cross-tab communication)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'pawkit_active_device' && e.newValue) {
-        const activeDeviceId = e.newValue;
-        if (activeDeviceId !== currentDeviceId) {
-          console.log('[MultiSession] Another device took over, deactivating this session');
+        const activeSessionId = e.newValue;
+        if (activeSessionId !== currentSessionId) {
           setIsActive(false);
+
+          // Populate otherDevices so banner shows
+          setSessionState({
+            otherDevices: [{
+              deviceId: activeSessionId,
+              timestamp: Date.now()
+            }],
+            isCheckingMultipleSessions: false,
+          });
+        } else {
+          // This tab became active again
+          setIsActive(true);
+          setSessionState({
+            otherDevices: [],
+            isCheckingMultipleSessions: false,
+          });
         }
       }
     };
@@ -56,19 +98,17 @@ export function useMultiSessionDetector() {
     return () => {
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [isActive]);
+  }, []);
 
-  // Take over as active device
+  // Take over as active session
   const takeoverSession = () => {
-    const metadata = getDeviceMetadata();
+    const currentSessionId = getSessionId();
 
     try {
-      // Broadcast to other tabs that THIS device is now active
+      // Broadcast to other tabs that THIS session is now active
       // This will trigger the storage event listener in other tabs
-      localStorage.setItem('pawkit_active_device', metadata.deviceId);
+      localStorage.setItem('pawkit_active_device', currentSessionId);
       localStorage.setItem('pawkit_takeover_timestamp', Date.now().toString());
-
-      console.log('[MultiSession] Taking over as active device:', metadata.deviceId);
 
       // Ensure this session is marked as active
       setIsActive(true);

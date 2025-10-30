@@ -34,6 +34,7 @@ export async function PATCH(request: Request) {
   try {
     user = await getCurrentUser();
     if (!user) {
+      console.error('[PATCH /api/user] User is null, returning unauthorized');
       return unauthorized();
     }
 

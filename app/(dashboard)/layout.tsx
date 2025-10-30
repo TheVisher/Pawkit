@@ -5,11 +5,12 @@ import { ReactNode, useEffect, useState, useMemo } from "react";
 import { OmniBar } from "@/components/omni-bar";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
+import { SelectionStoreProvider, useSelection } from "@/lib/hooks/selection-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useNetworkSync } from "@/lib/hooks/use-network-sync";
 import { useSyncSettings } from "@/lib/hooks/use-sync-settings";
 import { useSyncTriggers } from "@/lib/hooks/use-sync-triggers";
+import { useLoadSettings } from "@/lib/hooks/use-load-settings";
 import { ConflictNotifications } from "@/components/conflict-notifications";
 import { ViewControls } from "@/components/layout/view-controls";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
@@ -158,6 +159,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Sync triggers hook manages periodic sync and event-based sync
   useSyncTriggers();
 
+  // Load user settings from server on mount (respects serverSync flag)
+  useLoadSettings();
+
   // Initialize activity tracking to mark this device as active
   useEffect(() => {
     initActivityTracking();
@@ -212,7 +216,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       setShowCommandPalette(true);
     },
     onEscape: () => {
-      // Priority: Close modals first, then right panel, then left panel
+      // Priority: Close modals first, then bulk operations (handled by BulkOperationsPanel), then right panel, then left panel
       if (showCommandPalette) {
         setShowCommandPalette(false);
       } else if (showCreateNoteModal) {
@@ -225,6 +229,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         // Close card detail modal and restore previous panel content
         setActiveCardId(null);
         restorePreviousContent();
+      } else if (contentType === "bulk-operations") {
+        // Bulk operations panel handles ESC itself by clearing selection
+        // Don't close the panel - let the selection clearing trigger restoration
+        return;
       } else if (isPanelOpen) {
         // Close right panel if no modals are open
         closePanel();

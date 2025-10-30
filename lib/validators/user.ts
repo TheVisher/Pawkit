@@ -32,6 +32,7 @@ export const viewSettingsUpdateSchema = z.object({
     "home",
     "favorites",
     "trash",
+    "tags",
   ], {
     errorMap: () => ({ message: "Invalid view type" }),
   }),

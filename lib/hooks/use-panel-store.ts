@@ -160,7 +160,19 @@ export const usePanelStore = create<PanelState>()(
       },
 
       openBulkOperations: () => {
-        set({ isOpen: true, contentType: "bulk-operations", activeCardId: null, wasAutoOpened: false });
+        const currentState = get();
+        // Store current content type as previous (if it's not already bulk-operations)
+        const previousContentType = currentState.contentType !== "bulk-operations"
+          ? currentState.contentType
+          : currentState.previousContentType;
+
+        set({
+          isOpen: true,
+          contentType: "bulk-operations",
+          activeCardId: null,
+          previousContentType,
+          wasAutoOpened: false
+        });
       },
 
       restorePreviousContent: () => {

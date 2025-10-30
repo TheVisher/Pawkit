@@ -6,19 +6,19 @@ import { syncService } from '@/lib/services/sync-service';
 import { syncQueue } from '@/lib/services/sync-queue';
 import { useConflictStore } from '@/lib/stores/conflict-store';
 import { useSettingsStore } from '@/lib/hooks/settings-store';
-import { markDeviceActive, getDeviceId } from '@/lib/utils/device-session';
+import { markDeviceActive, getSessionId } from '@/lib/utils/device-session';
 
 /**
- * Write guard: Ensures only the active device can modify data
- * Prevents corruption from concurrent writes across multiple devices
+ * Write guard: Ensures only the active tab/session can modify data
+ * Prevents corruption from concurrent writes across multiple tabs
  */
 function ensureActiveDevice(): boolean {
-  const currentDeviceId = getDeviceId();
-  const activeDeviceId = localStorage.getItem('pawkit_active_device');
+  const currentSessionId = getSessionId();
+  const activeSessionId = localStorage.getItem('pawkit_active_device');
 
-  if (activeDeviceId && activeDeviceId !== currentDeviceId) {
-    console.error('[WriteGuard] ❌ Write blocked - another device is active:', activeDeviceId);
-    alert('Another device is active. Please refresh and click "Use This Device" to continue.');
+  if (activeSessionId && activeSessionId !== currentSessionId) {
+    console.error('[WriteGuard] ❌ Write blocked - another tab is active:', activeSessionId);
+    alert('Another tab is active. Please refresh and click "Use This Tab" to continue.');
     return false;
   }
 

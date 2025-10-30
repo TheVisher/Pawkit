@@ -85,8 +85,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   useEffect(() => {
     if (selectedIds.length >= 2) {
       openBulkOperations();
-    } else if (selectedIds.length === 0) {
-      // Restore previous panel content when selection is cleared
+    } else if (selectedIds.length < 2) {
+      // Restore previous panel content when selection is cleared (0 or 1 card)
       restorePreviousContent();
     }
   }, [selectedIds.length, openBulkOperations, restorePreviousContent]);
