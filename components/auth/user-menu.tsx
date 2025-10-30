@@ -31,7 +31,7 @@ export function UserMenu() {
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none text-gray-100">
-                {user.displayName || 'Account'}
+                Account
               </p>
               <p className="text-xs leading-none text-gray-400">
                 {user.email}
