@@ -133,7 +133,7 @@ function OmniBarContent() {
     }
   };
 
-  const handleCreateNote = async (data: { type: string; title: string; content?: string }) => {
+  const handleCreateNote = async (data: { type: string; title: string; content?: string; tags?: string[] }) => {
     setShowNoteModal(false);
 
     // Create note optimistically - shows instantly!
@@ -141,7 +141,8 @@ function OmniBarContent() {
       type: data.type as 'md-note' | 'text-note',
       title: data.title,
       content: data.content || "",
-      url: "" // Empty URL for notes
+      url: "", // Empty URL for notes
+      tags: data.tags,
     });
 
     // Navigate immediately if needed
