@@ -68,6 +68,8 @@ export function CreateNoteModal({ open, onClose, onConfirm, dailyNoteExists = fa
       const actualType: CardType = noteType === "daily-note" ? "md-note" : noteType;
       const tags = noteType === "daily-note" ? ["daily"] : undefined;
 
+      console.log('[CreateNoteModal] Creating note with:', { noteType, actualType, tags, title: title.trim() });
+
       await onConfirm({
         type: actualType,
         title: title.trim(),
