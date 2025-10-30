@@ -94,5 +94,6 @@ export const cardListQuerySchema = z.object({
   type: z.enum(["url", "md-note", "text-note"]).optional(),
   status: z.enum(["PENDING", "READY", "ERROR"]).optional(),
   limit: z.coerce.number().int().min(1).max(10000).optional(),
-  cursor: z.string().optional()
+  cursor: z.string().optional(),
+  includeDeleted: z.coerce.boolean().optional()
 });

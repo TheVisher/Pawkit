@@ -98,7 +98,8 @@ export async function GET(request: NextRequest) {
       collection: query.collection,
       status,
       limit: query.limit ? parseInt(query.limit, 10) : undefined,
-      cursor: query.cursor
+      cursor: query.cursor,
+      includeDeleted: query.includeDeleted === 'true'
     };
     const result = await listCards(user.id, payload);
     return withCorsHeaders(success(result), corsHeaders);
