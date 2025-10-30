@@ -19,6 +19,130 @@ description: Track development progress, major milestones, and session history a
 
 ## Session History
 
+### Date: October 30, 2025 - Note Creation Bug Fixes & Database Constraint Repair
+
+**Accomplished**:
+
+1. **Fixed Missing useMemo Import**
+   - Added `useMemo` to React imports in `app/(dashboard)/layout.tsx`
+   - Caused ReferenceError when navigating to /notes page
+   - dailyNoteExists calculation required useMemo hook
+   - Commit: 49ae3ee
+
+2. **Fixed Note Creation Tags Parameter Bug**
+   - `handleCreateNote` functions weren't accepting or passing `tags` parameter
+   - Modal correctly sent `tags: ["daily"]` for daily notes and `tags: undefined` for regular notes
+   - But handlers in layout.tsx and omni-bar.tsx ignored the tags
+   - Result: Daily note tag never applied even when user selected "Daily Note"
+   - Fixed by adding `tags?: string[]` to function signature and passing to `addCard`
+   - Locations fixed:
+     - `app/(dashboard)/layout.tsx` handleCreateNote
+     - `components/omni-bar.tsx` handleCreateNote
+   - Commit: 9562bec
+
+3. **Fixed Note Creation State Persistence Bug**
+   - Users reported all notes defaulting to daily notes
+   - Root cause: Modal state persisted between opens
+   - If user clicked "Daily Note" then closed modal, `noteType` stayed "daily-note"
+   - Next open showed "Markdown" selected but created daily note
+   - Fixed by adding useEffect to reset all modal state when opening:
+     - Reset noteType to "md-note"
+     - Reset title, error, showTemplates
+     - Load last used template from localStorage
+   - Also added `dailyNoteExists` prop to all CreateNoteModal instances
+   - Commit: d5d0c29
+
+4. **Fixed Critical Database Constraint Bug**
+   - **Problem**: Creating notes triggered P2002 duplicate errors, returned deleted daily notes
+   - **Root Cause**: Full unique constraint on `(userId, url)` applied to ALL card types
+   - **Should Be**: Partial unique index with `WHERE type = 'url'` (only applies to URL cards)
+   - **Impact**: Every note with `url: ""` triggered duplicate error
+   - **Debugging Process**:
+     - Added extensive logging to track card creation flow
+     - Discovered server returning deleted card: `"deleted": true, "deletedAt": "2025-10-30T01:41:34.517Z"`
+     - P2002 error showed: `Target: [ 'userId', 'url' ]`
+     - Error handler only looked for `type: "url"` cards, missed md-note duplicates
+     - Found old deleted daily note being returned instead of creating new note
+
+5. **Database Migration to Fix Constraint**
+   - Created migration: `prisma/migrations/20251029192328_fix_card_unique_constraint/migration.sql`
+   - Migration actions:
+     1. Drop any full unique constraints on (userId, url)
+     2. Drop non-partial unique indexes
+     3. Create PARTIAL unique index with `WHERE type = 'url'`
+   - Result: Notes can have duplicate/empty URLs freely
+   - URL cards still prevented from duplicates
+   - Commit: a09bc7b
+
+6. **Improved Error Handling for Duplicates**
+   - Updated `lib/server/cards.ts` createCard function
+   - Changed duplicate lookup to match card type (not just "url")
+   - Added `deleted: false` filter to exclude deleted cards
+   - Added detailed logging for P2002 errors
+   - Commit: a09bc7b (same as migration)
+
+**Debug Logging Added**:
+```typescript
+// components/modals/create-note-modal.tsx
+console.log('[CreateNoteModal] Creating note with:', { noteType, actualType, tags, title });
+
+// lib/stores/data-store.ts
+console.log('[DataStore V2] Syncing card to server with payload:', JSON.stringify(cardData, null, 2));
+console.log('[DataStore V2] Server response:', JSON.stringify(serverCard, null, 2));
+
+// lib/server/cards.ts
+console.log('[createCard] Attempting to create card:', { userId, type, url, title });
+console.log('[createCard] P2002 ERROR - Duplicate detected for type:', cardType, 'URL:', url, 'Target:', error.meta?.target);
+```
+
+**Files Modified**:
+- `app/(dashboard)/layout.tsx` - Added useMemo import, fixed handleCreateNote tags
+- `components/omni-bar.tsx` - Fixed handleCreateNote tags parameter
+- `components/modals/create-note-modal.tsx` - Added state reset useEffect, debug logging
+- `lib/stores/data-store.ts` - Added debug logging for sync payload and response
+- `lib/server/cards.ts` - Improved error handling, added logging
+- `prisma/migrations/20251029192328_fix_card_unique_constraint/migration.sql` - New migration
+- `.claude/skills/pawkit-troubleshooting/SKILL.md` - Added Issues #10 and #11
+- `.claude/skills/pawkit-project-context/SKILL.md` - This session
+
+**Technical Details**:
+
+**The Full Error Chain**:
+1. User creates note with title "Testing notes again"
+2. Client sends: `{ type: "md-note", title: "Testing notes again", url: "", tags: undefined }`
+3. Server attempts to create card
+4. Database rejects with P2002: `UNIQUE constraint failed: Card.userId_url`
+5. Server catches P2002, looks for existing card
+6. Finds deleted daily note from 2025-10-29: `"deleted": true, "tags": ["daily"]`
+7. Server returns deleted card (WRONG!)
+8. Client shows card briefly, then card disappears on refresh (because deleted=true)
+9. User sees 409 Conflict error, no card created
+
+**The Fix**:
+1. Database migration removes full constraint
+2. Adds partial index: `WHERE type = 'url'` (notes excluded)
+3. Server error handler now:
+   - Looks for cards of same type (md-note, text-note, url)
+   - Excludes deleted cards: `deleted: false`
+   - Returns existing non-deleted card or re-throws error
+
+**Impact**: All note creation bugs resolved - users can now create regular notes, markdown notes, and daily notes correctly
+
+**Commits**:
+- 49ae3ee - fix: add missing useMemo import in dashboard layout
+- 9562bec - fix: pass tags parameter when creating notes
+- d5d0c29 - fix: reset note modal state on open + add dailyNoteExists prop
+- d893323 - debug: add logging to track note creation tags
+- 3cbf441 - fix: exclude deleted cards from duplicate detection
+- a09bc7b - fix: remove full unique constraint on Card(userId,url)
+
+**Next Steps**:
+- Monitor note creation in production
+- Watch for any remaining P2002 errors in logs
+- Consider removing debug logging once verified stable
+
+---
+
 ### Date: October 29, 2025 - User Feedback & Discoverability Focus (REVISED)
 
 **Accomplished**:
