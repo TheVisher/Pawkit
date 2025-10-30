@@ -238,13 +238,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   });
 
   // Handle create note from command palette
-  const handleCreateNote = async (data: { type: string; title: string; content?: string }) => {
+  const handleCreateNote = async (data: { type: string; title: string; content?: string; tags?: string[] }) => {
     setShowCreateNoteModal(false);
     await addCard({
       type: data.type as 'md-note' | 'text-note',
       title: data.title,
       content: data.content || "",
       url: "",
+      tags: data.tags,
     });
   };
 
