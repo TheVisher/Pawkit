@@ -328,13 +328,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         const card = cards?.find((c) => c.id === cardId);
         if (card) {
           // Get existing collections and add the new one
-          const existingCollections = card.collections
-            ? JSON.parse(card.collections)
-            : [];
+          const existingCollections = card.collections || [];
           if (!existingCollections.includes(pawkitSlug)) {
             existingCollections.push(pawkitSlug);
             await updateCard(cardId, {
-              collections: JSON.stringify(existingCollections),
+              collections: existingCollections,
             });
           }
         }
