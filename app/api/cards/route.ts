@@ -93,15 +93,33 @@ export async function GET(request: NextRequest) {
     const statusParam = query.status;
     const status = statusParam && ["PENDING", "READY", "ERROR"].includes(statusParam) ? statusParam as "PENDING" | "READY" | "ERROR" : undefined;
 
+    const includeDeletedParam = query.includeDeleted;
+    const includeDeleted = includeDeletedParam === 'true';
+
+    console.log('[GET /api/cards] Query params:', {
+      includeDeletedParam,
+      includeDeleted,
+      allParams: query
+    });
+
     const payload = {
       q: query.q,
       collection: query.collection,
       status,
       limit: query.limit ? parseInt(query.limit, 10) : undefined,
       cursor: query.cursor,
-      includeDeleted: query.includeDeleted === 'true'
+      includeDeleted
     };
+
+    console.log('[GET /api/cards] Payload to listCards:', payload);
+
     const result = await listCards(user.id, payload);
+
+    console.log('[GET /api/cards] Result:', {
+      itemsCount: result.items.length,
+      firstFewDeleted: result.items.slice(0, 5).map(c => ({ id: c.id, title: c.title, deleted: c.deleted }))
+    });
+
     return withCorsHeaders(success(result), corsHeaders);
   } catch (error) {
     return handleApiError(error, { route: '/api/cards', userId: user?.id });
