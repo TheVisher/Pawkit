@@ -3,16 +3,19 @@ import { getCurrentUser } from '@/lib/auth/get-user'
 import { prisma } from '@/lib/server/prisma'
 import { randomBytes } from 'crypto'
 import { rateLimit, getRateLimitHeaders } from '@/lib/utils/rate-limit'
+import { handleApiError } from '@/lib/utils/api-error'
+import { unauthorized, rateLimited, success } from '@/lib/utils/api-responses'
 import bcrypt from 'bcryptjs'
 
 /**
  * Generate a new extension token for the authenticated user
  */
 export async function POST(request: NextRequest) {
+  let user;
   try {
-    const user = await getCurrentUser()
+    user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return unauthorized()
     }
 
     // Rate limiting: 5 token generations per hour per user (prevents abuse)
@@ -25,13 +28,11 @@ export async function POST(request: NextRequest) {
     const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
 
     if (!rateLimitResult.allowed) {
-      return NextResponse.json(
-        { error: 'Too many token generation requests. Please try again later.' },
-        {
-          status: 429,
-          headers: rateLimitHeaders
-        }
-      );
+      const response = rateLimited('Too many token generation requests. Please try again later.');
+      Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value as string);
+      });
+      return response;
     }
 
     // Generate a secure random token (32 bytes = 64 hex characters)
@@ -51,13 +52,13 @@ export async function POST(request: NextRequest) {
 
     // Return the plain token to the user (they need this for the extension)
     // This is the only time they'll see it - it's hashed in the database
-    return NextResponse.json({ token }, { headers: rateLimitHeaders })
+    const response = success({ token });
+    Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value as string);
+    });
+    return response;
   } catch (error) {
-    console.error('Error generating extension token:', error)
-    return NextResponse.json(
-      { error: 'Failed to generate token' },
-      { status: 500 }
-    )
+    return handleApiError(error, { route: '/api/extension/token', userId: user?.id });
   }
 }
 
@@ -65,10 +66,11 @@ export async function POST(request: NextRequest) {
  * Revoke the user's extension token
  */
 export async function DELETE(request: NextRequest) {
+  let user;
   try {
-    const user = await getCurrentUser()
+    user = await getCurrentUser()
     if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return unauthorized()
     }
 
     await prisma.user.update({
@@ -79,12 +81,8 @@ export async function DELETE(request: NextRequest) {
       }
     })
 
-    return NextResponse.json({ success: true })
+    return success({ ok: true, message: 'Extension token revoked successfully' });
   } catch (error) {
-    console.error('Error revoking extension token:', error)
-    return NextResponse.json(
-      { error: 'Failed to revoke token' },
-      { status: 500 }
-    )
+    return handleApiError(error, { route: '/api/extension/token', userId: user?.id });
   }
 }

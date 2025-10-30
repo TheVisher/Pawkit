@@ -5,8 +5,9 @@ import { CardDTO } from "@/lib/server/cards";
 import { CollectionDTO } from "@/lib/server/collections";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import { localStorage } from "@/lib/services/local-storage";
+import { localDb } from "@/lib/services/local-storage";
 import { FileText, Folder } from "lucide-react";
+import { ToastContainer, ToastType } from "@/components/ui/toast";
 
 type CardTrashItem = CardDTO & { itemType: "card" };
 type PawkitTrashItem = CollectionDTO & { itemType: "pawkit" };
@@ -22,7 +23,17 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; itemType: "card" | "pawkit"; name: string } | null>(null);
   const [showEmptyConfirm, setShowEmptyConfirm] = useState(false);
+  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type?: ToastType }>>([]);
   const router = useRouter();
+
+  const showToast = (message: string, type: ToastType = "success") => {
+    const id = Date.now().toString();
+    setToasts(prev => [...prev, { id, message, type }]);
+  };
+
+  const dismissToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
 
   const allItems: TrashItem[] = [
     ...cards.map((card): CardTrashItem => ({ ...card, itemType: "card" as const })),
@@ -48,9 +59,22 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
 
       if (!response.ok) throw new Error("Failed to restore");
 
+      const data = await response.json();
+
+      // Show appropriate toast based on restore context
+      if (type === "pawkit" && data.restoredToRoot) {
+        showToast("Pawkit restored to root level (parent no longer exists)", "info");
+      } else if (type === "pawkit") {
+        showToast("Pawkit restored successfully", "success");
+      } else if (type === "card" && data.restoredToLibrary) {
+        showToast("Card restored to Library (Pawkit no longer exists)", "info");
+      } else if (type === "card") {
+        showToast("Card restored successfully", "success");
+      }
+
       router.refresh();
     } catch (error) {
-      alert(`Failed to restore ${type}`);
+      showToast(`Failed to restore ${type}`, "error");
     } finally {
       setLoading(null);
     }
@@ -74,10 +98,13 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
 
       // Also delete from IndexedDB
       if (deleteConfirm.itemType === "card") {
-        await localStorage.permanentlyDeleteCard(deleteConfirm.id);
+        await localDb.permanentlyDeleteCard(deleteConfirm.id);
       } else {
-        await localStorage.permanentlyDeleteCollection(deleteConfirm.id);
+        await localDb.permanentlyDeleteCollection(deleteConfirm.id);
       }
+
+      // Wait a bit to ensure server deletion completes before refresh
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       router.refresh();
     } catch (error) {
@@ -99,7 +126,11 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
       if (!response.ok) throw new Error("Failed to empty trash");
 
       // Also empty trash from IndexedDB
-      await localStorage.emptyTrash();
+      await localDb.emptyTrash();
+
+      // Wait a bit to ensure server deletion completes before refresh
+      // This prevents a race condition where sync pulls data before deletion finishes
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       router.refresh();
     } catch (error) {
@@ -307,6 +338,9 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
           </div>
         </div>
       )}
+
+      {/* Toast Container - only render on client */}
+      {toasts.length > 0 && <ToastContainer toasts={toasts} onDismiss={dismissToast} />}
     </div>
   );
 }

@@ -2,14 +2,15 @@
 
 import * as React from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { ChevronRight, Home, Library, FolderOpen, FileText, Trash2, Star, History, HelpCircle, User, Layers, Calendar, CalendarDays, CalendarClock, Flame, Clock } from "lucide-react";
+import { ChevronRight, Home, Library, FolderOpen, FileText, Star, User, Layers, Calendar, CalendarDays, CalendarClock, Flame, Clock, Tag, Lock } from "lucide-react";
 import { type CollectionNode } from "@/lib/types";
 import { ProfileModal } from "@/components/modals/profile-modal";
-import { DogHouseIcon } from "@/components/icons/dog-house";
 import { useDataStore } from "@/lib/stores/data-store";
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
+import { SyncStatus } from "@/components/sync/sync-status";
 import {
   Sidebar,
   SidebarContent,
@@ -37,17 +38,14 @@ type AppSidebarProps = {
 const navigationItems = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/library", label: "Library", icon: Library },
+  { href: "/tags", label: "Tags", icon: Tag },
   { href: "/notes", label: "Notes", icon: FileText },
   { href: "/calendar", label: "Calendar", icon: Calendar },
-  { href: "/den", label: "The Den", icon: DogHouseIcon },
   { href: "/distill", label: "Dig Up", icon: Layers },
 ];
 
-const bottomItems = [
-  { href: "/changelog", label: "Changelog", icon: History },
-  { href: "/trash", label: "Trash", icon: Trash2 },
-  { href: "/help", label: "Help", icon: HelpCircle },
-];
+// Note: Changelog, Trash, Help moved to right sidebar control panel
+// Removed bottomItems array as it's no longer used
 
 export function AppSidebar({ username, displayName, collections }: AppSidebarProps) {
   const pathname = usePathname();
@@ -212,7 +210,7 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
             <SidebarMenuButton size="lg" asChild>
               <Link href={isDemo ? "/demo/home" : "/home"}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg">
-                  <img src="/logo.png" alt="Pawkit" className="w-8 h-8" />
+                  <Image src="/logo.png" alt="Pawkit" width={32} height={32} className="w-8 h-8" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Pawkit</span>
@@ -287,7 +285,7 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
                               <div className="flex w-full items-center">
                                 <SidebarMenuSubButton asChild isActive={isCollectionActive} className="flex-1">
                                   <Link href={pawkitHref}>
-                                    <FolderOpen className="h-4 w-4" />
+                                    {collection.isPrivate ? <Lock className="h-4 w-4" /> : <FolderOpen className="h-4 w-4" />}
                                     <span>{collection.name}</span>
                                   </Link>
                                 </SidebarMenuSubButton>
@@ -315,6 +313,7 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
                                       <SidebarMenuSubItem key={child.id}>
                                         <SidebarMenuSubButton asChild isActive={pathname === childHref}>
                                           <Link href={childHref}>
+                                            {child.isPrivate ? <Lock className="h-4 w-4" /> : <FolderOpen className="h-4 w-4" />}
                                             <span>{child.name}</span>
                                           </Link>
                                         </SidebarMenuSubButton>
@@ -398,36 +397,8 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" onClick={() => setShowProfileModal(true)}>
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold text-sm">
-                {(displayName || username).charAt(0).toUpperCase()}
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{displayName || username}</span>
-                <span className="truncate text-xs text-muted-foreground">View profile</span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        {!isDemo && (
-          <>
-            <SidebarSeparator />
-            <SidebarMenu>
-              {bottomItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild size="sm" isActive={isActive(item.href)}>
-                    <Link href={item.href}>
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </>
-        )}
+        {/* Sync Status - Matches right sidebar keybind footer styling */}
+        <SyncStatus />
       </SidebarFooter>
 
       <ProfileModal

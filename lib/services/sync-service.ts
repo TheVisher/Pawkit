@@ -1,7 +1,8 @@
-import { localStorage } from './local-storage';
+import { localDb } from './local-storage';
 import { syncQueue } from './sync-queue';
 import { CardDTO } from '@/lib/server/cards';
 import { CollectionNode } from '@/lib/types';
+import { getDeviceMetadata, markDeviceActive } from '@/lib/utils/device-session';
 
 /**
  * BIDIRECTIONAL SYNC SERVICE
@@ -27,7 +28,49 @@ type SyncResult = {
 };
 
 class SyncService {
-  private isSyncing = false;
+  private syncPromise: Promise<SyncResult> | null = null;
+  private broadcastChannel: BroadcastChannel | null = null;
+  private otherTabSyncing = false;
+
+  constructor() {
+    // Initialize cross-tab coordination
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      this.broadcastChannel = new BroadcastChannel('pawkit-sync-lock');
+
+      this.broadcastChannel.onmessage = (event) => {
+        if (event.data.type === 'SYNC_START') {
+          this.otherTabSyncing = true;
+          console.log('[SyncService] Another tab started syncing');
+        } else if (event.data.type === 'SYNC_END') {
+          this.otherTabSyncing = false;
+          console.log('[SyncService] Another tab finished syncing');
+        }
+      };
+    }
+  }
+
+  /**
+   * Fetch helper with timeout support
+   */
+  private async fetchWithTimeout(url: string, options?: RequestInit, timeout = 30000): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      return response;
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      if (error.name === 'AbortError') {
+        throw new Error(`Request timeout after ${timeout}ms for ${url}`);
+      }
+      throw error;
+    }
+  }
 
   /**
    * Full bidirectional sync
@@ -36,18 +79,47 @@ class SyncService {
    * 3. Push local changes to server
    */
   async sync(): Promise<SyncResult> {
-    if (this.isSyncing) {
-      console.log('[SyncService] Sync already in progress, skipping');
+    // Return existing promise if sync is already in progress in this tab
+    if (this.syncPromise) {
+      console.log('[SyncService] Sync already in progress in this tab, returning existing promise');
+      return this.syncPromise;
+    }
+
+    // Check if another tab is syncing
+    if (this.otherTabSyncing) {
+      console.log('[SyncService] Another tab is syncing, skipping');
       return {
         success: false,
         pulled: { cards: 0, collections: 0 },
         pushed: { cards: 0, collections: 0 },
         conflicts: { cards: 0, collections: 0 },
-        errors: ['Sync already in progress'],
+        errors: ['Another tab is syncing'],
       };
     }
 
-    this.isSyncing = true;
+    // Mark this device as active when syncing
+    markDeviceActive();
+
+    // Notify other tabs that we're starting sync
+    this.broadcastChannel?.postMessage({ type: 'SYNC_START' });
+
+    // Create and store the sync promise
+    this.syncPromise = this._performSync();
+    try {
+      const result = await this.syncPromise;
+      return result;
+    } finally {
+      // Clear the promise reference
+      this.syncPromise = null;
+      // Notify other tabs that we're done
+      this.broadcastChannel?.postMessage({ type: 'SYNC_END' });
+    }
+  }
+
+  /**
+   * Internal sync implementation
+   */
+  private async _performSync(): Promise<SyncResult> {
     const result: SyncResult = {
       success: true,
       pulled: { cards: 0, collections: 0 },
@@ -70,24 +142,71 @@ class SyncService {
       result.pushed = pushResult.pushed;
       result.errors.push(...pushResult.errors);
 
-      // Step 3: Drain sync queue (retry any failed operations)
+      // Step 3: Process sync queue (retry any failed operations)
       await syncQueue.init();
-      const pendingOps = await syncQueue.getPending();
-      console.log('[SyncService] Processing', pendingOps.length, 'queued operations');
+      const queueResult = await syncQueue.process();
+      console.log('[SyncService] Processed sync queue:', queueResult);
 
       // Update last sync time
-      await localStorage.setLastSyncTime(Date.now());
+      await localDb.setLastSyncTime(Date.now());
 
       console.log('[SyncService] Sync complete:', result);
     } catch (error) {
       console.error('[SyncService] Sync failed:', error);
       result.success = false;
       result.errors.push(error instanceof Error ? error.message : 'Unknown error');
-    } finally {
-      this.isSyncing = false;
     }
 
     return result;
+  }
+
+  /**
+   * Create a snapshot of current local data for rollback
+   */
+  private async createSnapshot(): Promise<{
+    cards: CardDTO[];
+    collections: CollectionNode[];
+  }> {
+    const cards = await localDb.getAllCards();
+    const collections = await localDb.getAllCollections();
+
+    console.log('[SyncService] Created snapshot:', {
+      cards: cards.length,
+      collections: collections.length,
+    });
+
+    return { cards, collections };
+  }
+
+  /**
+   * Restore data from snapshot (rollback mechanism)
+   */
+  private async restoreSnapshot(snapshot: { cards: CardDTO[]; collections: CollectionNode[] }): Promise<void> {
+    console.log('[SyncService] ⚠️ Restoring from snapshot (rollback)...');
+
+    try {
+      // Note: This is a best-effort rollback. Individual saves may fail.
+      // In production, consider using IndexedDB transactions for true atomicity.
+
+      const restorePromises: Promise<void>[] = [];
+
+      // Restore cards
+      for (const card of snapshot.cards) {
+        restorePromises.push(localDb.saveCard(card, { fromServer: false }));
+      }
+
+      // Restore collections
+      for (const collection of snapshot.collections) {
+        restorePromises.push(localDb.saveCollection(collection, { fromServer: false }));
+      }
+
+      await Promise.all(restorePromises);
+
+      console.log('[SyncService] ✓ Snapshot restored successfully');
+    } catch (error) {
+      console.error('[SyncService] ❌ Failed to restore snapshot:', error);
+      throw new Error('Rollback failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
   }
 
   /**
@@ -104,57 +223,153 @@ class SyncService {
       errors: [] as string[],
     };
 
+    // Create snapshot for rollback in case of critical failure
+    let snapshot: { cards: CardDTO[]; collections: CollectionNode[] } | null = null;
+    let criticalErrorOccurred = false;
+
     try {
-      // Fetch from server
-      const [cardsRes, collectionsRes] = await Promise.all([
-        fetch('/api/cards?limit=10000'),
-        fetch('/api/pawkits'),
-      ]);
-
-      if (!cardsRes.ok || !collectionsRes.ok) {
-        result.errors.push('Failed to fetch from server');
-        return result;
-      }
-
-      const cardsData = await cardsRes.json();
-      const collectionsData = await collectionsRes.json();
-
-      const serverCards: CardDTO[] = cardsData.items || [];
-      const serverCollections: CollectionNode[] = collectionsData.tree || [];
-
-      console.log('[SyncService] Pulled from server:', {
-        cards: serverCards.length,
-        collections: serverCollections.length,
-      });
-
-      // Get local data
-      const localCards = await localStorage.getAllCards();
-      const localCollections = await localStorage.getAllCollections();
-
-      // Merge cards
-      const cardConflicts = await this.mergeCards(serverCards, localCards);
-      result.pulled.cards = serverCards.length;
-      result.conflicts.cards = cardConflicts;
-
-      // Merge collections
-      const collectionConflicts = await this.mergeCollections(serverCollections, localCollections);
-      result.pulled.collections = serverCollections.length;
-      result.conflicts.collections = collectionConflicts;
-
+      snapshot = await this.createSnapshot();
     } catch (error) {
-      console.error('[SyncService] Pull failed:', error);
-      result.errors.push(error instanceof Error ? error.message : 'Pull failed');
+      console.error('[SyncService] Failed to create snapshot, proceeding without rollback protection:', error);
+      // Continue without snapshot - risky but better than failing entirely
+    }
+
+    // Handle cards and collections independently to prevent one failure from affecting the other
+
+    // CARDS SYNC - Independent try-catch
+    try {
+      const cardsRes = await this.fetchWithTimeout('/api/cards?limit=10000');
+
+      if (cardsRes.ok) {
+        const cardsData = await cardsRes.json();
+        const serverCards: CardDTO[] = cardsData.items || [];
+
+        console.log('[SyncService] Pulled', serverCards.length, 'cards from server');
+
+        const localCards = await localDb.getAllCards();
+
+        // Merge cards - wrap in try-catch to detect critical merge failures
+        try {
+          const cardConflicts = await this.mergeCards(serverCards, localCards);
+          result.pulled.cards = serverCards.length;
+          result.conflicts.cards = cardConflicts;
+        } catch (mergeError) {
+          console.error('[SyncService] 🔴 CRITICAL: Card merge operation failed:', mergeError);
+          criticalErrorOccurred = true;
+          result.errors.push(`CRITICAL: Card merge failed: ${mergeError instanceof Error ? mergeError.message : 'Unknown error'}`);
+        }
+      } else {
+        // Network errors are not critical - can retry later
+        result.errors.push(`Failed to fetch cards: HTTP ${cardsRes.status}`);
+      }
+    } catch (error) {
+      // Network/timeout errors are not critical
+      console.error('[SyncService] Cards pull failed:', error);
+      result.errors.push(`Cards sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    // COLLECTIONS SYNC - Independent try-catch
+    try {
+      const collectionsRes = await this.fetchWithTimeout('/api/pawkits');
+
+      if (collectionsRes.ok) {
+        const collectionsData = await collectionsRes.json();
+        const serverCollections: CollectionNode[] = collectionsData.tree || [];
+
+        // Flatten collections tree to get accurate count
+        const flatServerCollections = this.flattenCollections(serverCollections);
+
+        console.log('[SyncService] Pulled', flatServerCollections.length, 'collections from server');
+
+        const localCollections = await localDb.getAllCollections();
+
+        // Merge collections - wrap in try-catch to detect critical merge failures
+        try {
+          const collectionConflicts = await this.mergeCollections(serverCollections, localCollections);
+          result.pulled.collections = flatServerCollections.length;
+          result.conflicts.collections = collectionConflicts;
+        } catch (mergeError) {
+          console.error('[SyncService] 🔴 CRITICAL: Collection merge operation failed:', mergeError);
+          criticalErrorOccurred = true;
+          result.errors.push(`CRITICAL: Collection merge failed: ${mergeError instanceof Error ? mergeError.message : 'Unknown error'}`);
+        }
+      } else {
+        // Network errors are not critical - can retry later
+        result.errors.push(`Failed to fetch collections: HTTP ${collectionsRes.status}`);
+      }
+    } catch (error) {
+      // Network/timeout errors are not critical
+      console.error('[SyncService] Collections pull failed:', error);
+      result.errors.push(`Collections sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+    // ROLLBACK MECHANISM: If critical error occurred during merge, restore from snapshot
+    if (criticalErrorOccurred && snapshot) {
+      console.error('[SyncService] 🔴 Critical error detected during pull - ROLLING BACK to snapshot');
+      try {
+        await this.restoreSnapshot(snapshot);
+        result.errors.push('ROLLBACK: Critical merge failure - local data restored from snapshot');
+      } catch (rollbackError) {
+        console.error('[SyncService] 💀 ROLLBACK FAILED:', rollbackError);
+        result.errors.push(`FATAL: Rollback failed after critical error: ${rollbackError instanceof Error ? rollbackError.message : 'Unknown error'}`);
+      }
     }
 
     return result;
   }
 
   /**
+   * Calculate metadata quality score based on field richness, not just presence
+   */
+  private calculateMetadataQuality(card: CardDTO): number {
+    let score = 0;
+
+    // Image: Valid URL (length > 10)
+    if (card.image && card.image.length > 10) {
+      score += 2;
+    }
+
+    // Description: Meaningful content (length > 50)
+    if (card.description && card.description.length > 50) {
+      score += 3;
+    }
+
+    // Article Content: Rich content (length > 200)
+    if (card.articleContent && card.articleContent.length > 200) {
+      score += 4;
+    }
+
+    // Metadata: Rich metadata object (more than 3 keys)
+    if (card.metadata && typeof card.metadata === 'object') {
+      const metadataKeys = Object.keys(card.metadata).length;
+      if (metadataKeys > 3) {
+        score += 1;
+      }
+    }
+
+    // Title: Meaningful title (length > 5, not just URL)
+    if (card.title && card.title.length > 5 && !card.title.startsWith('http')) {
+      score += 1;
+    }
+
+    return score;
+  }
+
+  /**
    * Merge server cards with local cards
-   * Strategy: Last-write-wins by updatedAt timestamp
+   * Strategy: Active device wins, then last-write-wins by updatedAt timestamp
+   * CRITICAL: Local deletions ALWAYS take precedence
    */
   private async mergeCards(serverCards: CardDTO[], localCards: CardDTO[]): Promise<number> {
     let conflicts = 0;
+
+    // Get device metadata - if this device is active, prefer local changes
+    const deviceMeta = getDeviceMetadata();
+    const preferLocal = deviceMeta.isActive;
+
+    if (preferLocal) {
+      console.log('[SyncService] 🎯 This device is ACTIVE - local changes will be preferred');
+    }
 
     // Create maps for easy lookup
     const localMap = new Map(localCards.map(c => [c.id, c]));
@@ -165,24 +380,113 @@ class SyncService {
       const localCard = localMap.get(serverCard.id);
 
       if (!localCard) {
-        // New card from server - add it
-        await localStorage.saveCard(serverCard, { fromServer: true });
+        // New card from server - add it ONLY if not deleted on server
+        if (!serverCard.deleted) {
+          await localDb.saveCard(serverCard, { fromServer: true });
+        }
       } else {
-        // Card exists locally - check for conflicts
+        // Card exists locally and on server - check for conflicts
         const serverTime = new Date(serverCard.updatedAt).getTime();
         const localTime = new Date(localCard.updatedAt).getTime();
 
+        // CRITICAL: Handle deletion conflicts with timestamp checks
+        if (localCard.deleted) {
+          // Local card is deleted - but check if server has newer non-deleted version
+          if (!serverCard.deleted && serverTime > localTime) {
+            // Server resurrected the card after local deletion with newer timestamp
+            console.log('[SyncService] ⚠️ Server resurrected card after deletion (newer timestamp), accepting:', serverCard.id);
+            await localDb.saveCard(serverCard, { fromServer: true });
+            continue;
+          }
+
+          // Local deletion is newer or equal - preserve it
+          console.log('[SyncService] Local card deletion is newer, preserving deletion:', localCard.id);
+          // Keep local deleted version, will be synced to server in push phase
+          continue;
+        }
+
+        // If server version is deleted, check timestamps
+        if (serverCard.deleted) {
+          // Only accept server deletion if it's newer than local version
+          if (serverTime >= localTime) {
+            console.log('[SyncService] Server card deletion is newer, accepting deletion:', serverCard.id);
+            await localDb.saveCard(serverCard, { fromServer: true });
+          } else {
+            console.log('[SyncService] Server card deletion is older than local edit, keeping local version:', serverCard.id);
+            conflicts++;
+          }
+          continue;
+        }
+
+        // Check if server has metadata that local doesn't have
+        // Metadata fields: title, description, image, domain, articleContent, metadata
+        const serverHasMetadata = serverCard.image || serverCard.description ||
+                                  serverCard.articleContent || serverCard.metadata;
+        const localHasMetadata = localCard.image || localCard.description ||
+                                 localCard.articleContent || localCard.metadata;
+
+        // SPECIAL CASE: If server has metadata but local doesn't, always merge metadata
+        // This ensures metadata fetched on other devices is never lost
+        if (serverHasMetadata && !localHasMetadata) {
+          console.log('[SyncService] 📥 Server has metadata, merging into local version:', serverCard.id);
+          const mergedCard = {
+            ...localCard,
+            // Take metadata fields from server
+            title: serverCard.title || localCard.title,
+            description: serverCard.description || localCard.description,
+            image: serverCard.image || localCard.image,
+            domain: serverCard.domain || localCard.domain,
+            articleContent: serverCard.articleContent || localCard.articleContent,
+            metadata: serverCard.metadata || localCard.metadata,
+            // Keep the later updatedAt to avoid re-syncing
+            updatedAt: serverTime > localTime ? serverCard.updatedAt : localCard.updatedAt,
+          };
+          await localDb.saveCard(mergedCard, { fromServer: true });
+          continue;
+        }
+
+        // If both have metadata, check if server's is higher quality
+        if (serverHasMetadata && localHasMetadata) {
+          const serverQuality = this.calculateMetadataQuality(serverCard);
+          const localQuality = this.calculateMetadataQuality(localCard);
+
+          // If server has significantly better metadata quality, prefer it regardless of timestamp
+          if (serverQuality > localQuality) {
+            console.log(`[SyncService] 📥 Server has higher quality metadata (${serverQuality} vs ${localQuality}), using server version:`, serverCard.id);
+            await localDb.saveCard(serverCard, { fromServer: true });
+            continue;
+          }
+        }
+
+        // ENHANCED: If this device is active, prefer local version ONLY if timestamps are close (within 1 hour)
+        const ONE_HOUR = 60 * 60 * 1000;
+        const timeDiff = Math.abs(serverTime - localTime);
+
+        if (preferLocal && localTime > 0 && timeDiff < ONE_HOUR) {
+          console.log('[SyncService] 🎯 Active device with recent timestamp - keeping local version:', localCard.id);
+          conflicts++;
+          continue;
+        }
+
+        // If server is much newer (>1 hour), prefer server even on active device
+        if (serverTime > localTime + ONE_HOUR) {
+          console.log(`[SyncService] Server version significantly newer (${Math.round(timeDiff / 60000)}min difference), using server despite active device:`, serverCard.id);
+          await localDb.saveCard(serverCard, { fromServer: true });
+          continue;
+        }
+
+        // Fallback to timestamp comparison
         if (serverTime > localTime) {
           // Server is newer - use server version
           console.log('[SyncService] Server version newer for card:', serverCard.id);
-          await localStorage.saveCard(serverCard, { fromServer: true });
+          await localDb.saveCard(serverCard, { fromServer: true });
         } else if (localTime > serverTime) {
           // Local is newer - keep local (will be pushed to server)
           console.log('[SyncService] Local version newer for card:', localCard.id);
           conflicts++;
         } else {
           // Same timestamp - update server version marker
-          await localStorage.saveCard(serverCard, { fromServer: true });
+          await localDb.saveCard(serverCard, { fromServer: true });
         }
       }
     }
@@ -199,30 +503,104 @@ class SyncService {
   }
 
   /**
+   * Flatten collection tree into a flat array, stripping children
+   * The tree structure will be rebuilt from parentId relationships
+   */
+  private flattenCollections(collections: CollectionNode[]): CollectionNode[] {
+    const flattened: CollectionNode[] = [];
+
+    const flatten = (nodes: CollectionNode[]) => {
+      for (const node of nodes) {
+        // Strip children array - tree will be rebuilt from parentId
+        const { children, ...nodeWithoutChildren } = node;
+        // Always set children to empty array to ensure clean state
+        flattened.push({ ...nodeWithoutChildren, children: [] } as CollectionNode);
+
+        if (children && children.length > 0) {
+          flatten(children);
+        }
+      }
+    };
+
+    flatten(collections);
+    return flattened;
+  }
+
+  /**
    * Merge server collections with local collections
+   * Strategy: Active device wins, then last-write-wins by updatedAt timestamp
+   * CRITICAL: Local deletions ALWAYS take precedence
    */
   private async mergeCollections(serverCollections: CollectionNode[], localCollections: CollectionNode[]): Promise<number> {
     let conflicts = 0;
 
-    const localMap = new Map(localCollections.map(c => [c.id, c]));
-    const serverMap = new Map(serverCollections.map(c => [c.id, c]));
+    // Get device metadata - if this device is active, prefer local changes
+    const deviceMeta = getDeviceMetadata();
+    const preferLocal = deviceMeta.isActive;
 
-    for (const serverCollection of serverCollections) {
+    // Flatten the tree structure to include all nested pawkits
+    const flatServerCollections = this.flattenCollections(serverCollections);
+
+    const localMap = new Map(localCollections.map(c => [c.id, c]));
+    const serverMap = new Map(flatServerCollections.map(c => [c.id, c]));
+
+    for (const serverCollection of flatServerCollections) {
       const localCollection = localMap.get(serverCollection.id);
 
       if (!localCollection) {
-        await localStorage.saveCollection(serverCollection, { fromServer: true });
+        // New collection from server - add it ONLY if not deleted on server
+        if (!serverCollection.deleted) {
+          await localDb.saveCollection(serverCollection, { fromServer: true });
+        }
       } else {
+        // Collection exists locally and on server - check for conflicts
         const serverTime = new Date(serverCollection.updatedAt).getTime();
         const localTime = new Date(localCollection.updatedAt).getTime();
 
+        // CRITICAL: Handle deletion conflicts with timestamp checks
+        if (localCollection.deleted) {
+          // Local collection is deleted - but check if server has newer non-deleted version
+          if (!serverCollection.deleted && serverTime > localTime) {
+            // Server resurrected the collection after local deletion with newer timestamp
+            console.log('[SyncService] ⚠️ Server resurrected collection after deletion (newer timestamp), accepting:', serverCollection.id);
+            await localDb.saveCollection(serverCollection, { fromServer: true });
+            continue;
+          }
+
+          // Local deletion is newer or equal - preserve it
+          console.log('[SyncService] Local collection deletion is newer, preserving deletion:', localCollection.id);
+          // Keep local deleted version, will be synced to server in push phase
+          continue;
+        }
+
+        // If server version is deleted, check timestamps
+        if (serverCollection.deleted) {
+          // Only accept server deletion if it's newer than local version
+          if (serverTime >= localTime) {
+            console.log('[SyncService] Server collection deletion is newer, accepting deletion:', serverCollection.id);
+            await localDb.saveCollection(serverCollection, { fromServer: true });
+          } else {
+            console.log('[SyncService] Server collection deletion is older than local edit, keeping local version:', serverCollection.id);
+            conflicts++;
+          }
+          continue;
+        }
+
+        // ENHANCED: If this device is active, ALWAYS prefer local version
+        if (preferLocal && localTime > 0) {
+          console.log('[SyncService] 🎯 Active device - keeping local collection:', localCollection.id);
+          conflicts++;
+          continue;
+        }
+
+        // Fallback to timestamp comparison
         if (serverTime > localTime) {
-          await localStorage.saveCollection(serverCollection, { fromServer: true });
+          await localDb.saveCollection(serverCollection, { fromServer: true });
         } else if (localTime > serverTime) {
           console.log('[SyncService] Local version newer for collection:', localCollection.id);
           conflicts++;
         } else {
-          await localStorage.saveCollection(serverCollection, { fromServer: true });
+          await localDb.saveCollection(serverCollection, { fromServer: true });
         }
       }
     }
@@ -243,7 +621,8 @@ class SyncService {
     };
 
     try {
-      const modifiedCards = await localStorage.getModifiedCards();
+      // Push modified cards
+      const modifiedCards = await localDb.getModifiedCards();
       console.log('[SyncService] Pushing', modifiedCards.length, 'modified cards to server');
 
       for (const card of modifiedCards) {
@@ -253,7 +632,7 @@ class SyncService {
 
           if (isTemp) {
             // Create new card on server
-            const response = await fetch('/api/cards', {
+            const response = await this.fetchWithTimeout('/api/cards', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(card),
@@ -261,16 +640,23 @@ class SyncService {
 
             if (response.ok) {
               const serverCard = await response.json();
-              // Replace temp card with server card
-              await localStorage.deleteCard(card.id);
-              await localStorage.saveCard(serverCard, { fromServer: true });
+              // ATOMIC REPLACEMENT: Save server card first, then delete temp
+              // This prevents data loss if operation is interrupted
+              await localDb.saveCard(serverCard, { fromServer: true });
+              await localDb.deleteCard(card.id);
               result.pushed.cards++;
             } else {
-              result.errors.push(`Failed to create card: ${card.id}`);
+              // Add to retry queue
+              await syncQueue.enqueue({
+                type: 'CREATE_CARD',
+                tempId: card.id,
+                payload: card,
+              });
+              result.errors.push(`Failed to create card ${card.id}: HTTP ${response.status}, queued for retry`);
             }
           } else {
-            // Update existing card on server
-            const response = await fetch(`/api/cards/${card.id}`, {
+            // Update existing card on server (includes deleted cards)
+            const response = await this.fetchWithTimeout(`/api/cards/${card.id}`, {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(card),
@@ -278,11 +664,11 @@ class SyncService {
 
             if (response.ok) {
               const serverCard = await response.json();
-              await localStorage.markCardSynced(card.id, serverCard.updatedAt);
+              await localDb.markCardSynced(card.id, serverCard.updatedAt);
               result.pushed.cards++;
             } else if (response.status === 404) {
               // Card doesn't exist on server - create it
-              const createResponse = await fetch('/api/cards', {
+              const createResponse = await this.fetchWithTimeout('/api/cards', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(card),
@@ -290,18 +676,140 @@ class SyncService {
 
               if (createResponse.ok) {
                 const serverCard = await createResponse.json();
-                await localStorage.markCardSynced(card.id, serverCard.updatedAt);
+                await localDb.markCardSynced(card.id, serverCard.updatedAt);
                 result.pushed.cards++;
               } else {
-                result.errors.push(`Failed to create card: ${card.id}`);
+                // Add to retry queue
+                await syncQueue.enqueue({
+                  type: 'CREATE_CARD',
+                  targetId: card.id,
+                  payload: card,
+                });
+                result.errors.push(`Failed to create card ${card.id}: HTTP ${createResponse.status}, queued for retry`);
               }
             } else {
-              result.errors.push(`Failed to update card: ${card.id}`);
+              // Add to retry queue
+              await syncQueue.enqueue({
+                type: 'UPDATE_CARD',
+                targetId: card.id,
+                payload: card,
+              });
+              result.errors.push(`Failed to update card ${card.id}: HTTP ${response.status}, queued for retry`);
             }
           }
         } catch (error) {
           console.error('[SyncService] Failed to push card:', card.id, error);
-          result.errors.push(`Failed to push card ${card.id}: ${error}`);
+          // Add to retry queue on network/unexpected errors
+          await syncQueue.enqueue({
+            type: card.id.startsWith('temp_') ? 'CREATE_CARD' : 'UPDATE_CARD',
+            tempId: card.id.startsWith('temp_') ? card.id : undefined,
+            targetId: !card.id.startsWith('temp_') ? card.id : undefined,
+            payload: card,
+          });
+          result.errors.push(`Failed to push card ${card.id}: ${error instanceof Error ? error.message : 'Unknown error'}, queued for retry`);
+        }
+      }
+
+      // Push modified collections
+      const modifiedCollections = await localDb.getModifiedCollections();
+      console.log('[SyncService] Pushing', modifiedCollections.length, 'modified collections to server');
+
+      for (const collection of modifiedCollections) {
+        try {
+          const isTemp = collection.id.startsWith('temp_');
+
+          if (isTemp) {
+            // Create new collection on server
+            const response = await this.fetchWithTimeout('/api/pawkits', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: collection.name,
+                parentId: collection.parentId,
+              }),
+            });
+
+            if (response.ok) {
+              const serverCollection = await response.json();
+              // ATOMIC REPLACEMENT: Save server collection first, then delete temp
+              // This prevents data loss if operation is interrupted
+              await localDb.saveCollection(serverCollection, { fromServer: true });
+              await localDb.deleteCollection(collection.id);
+              result.pushed.collections++;
+            } else {
+              // Add to retry queue
+              await syncQueue.enqueue({
+                type: 'CREATE_COLLECTION',
+                tempId: collection.id,
+                payload: {
+                  name: collection.name,
+                  parentId: collection.parentId,
+                },
+              });
+              result.errors.push(`Failed to create collection ${collection.id}: HTTP ${response.status}, queued for retry`);
+            }
+          } else {
+            // Update existing collection on server (includes deleted collections)
+            const response = await this.fetchWithTimeout(`/api/pawkits/${collection.id}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(collection),
+            });
+
+            if (response.ok) {
+              const serverCollection = await response.json();
+              await localDb.markCollectionSynced(collection.id, serverCollection.updatedAt);
+              result.pushed.collections++;
+            } else if (response.status === 404) {
+              // Collection doesn't exist on server - create it
+              const createResponse = await this.fetchWithTimeout('/api/pawkits', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  name: collection.name,
+                  parentId: collection.parentId,
+                }),
+              });
+
+              if (createResponse.ok) {
+                const serverCollection = await createResponse.json();
+                await localDb.markCollectionSynced(collection.id, serverCollection.updatedAt);
+                result.pushed.collections++;
+              } else {
+                // Add to retry queue
+                await syncQueue.enqueue({
+                  type: 'CREATE_COLLECTION',
+                  targetId: collection.id,
+                  payload: {
+                    name: collection.name,
+                    parentId: collection.parentId,
+                  },
+                });
+                result.errors.push(`Failed to create collection ${collection.id}: HTTP ${createResponse.status}, queued for retry`);
+              }
+            } else {
+              // Add to retry queue
+              await syncQueue.enqueue({
+                type: 'UPDATE_COLLECTION',
+                targetId: collection.id,
+                payload: collection,
+              });
+              result.errors.push(`Failed to update collection ${collection.id}: HTTP ${response.status}, queued for retry`);
+            }
+          }
+        } catch (error) {
+          console.error('[SyncService] Failed to push collection:', collection.id, error);
+          // Add to retry queue on network/unexpected errors
+          await syncQueue.enqueue({
+            type: collection.id.startsWith('temp_') ? 'CREATE_COLLECTION' : 'UPDATE_COLLECTION',
+            tempId: collection.id.startsWith('temp_') ? collection.id : undefined,
+            targetId: !collection.id.startsWith('temp_') ? collection.id : undefined,
+            payload: collection.id.startsWith('temp_') ? {
+              name: collection.name,
+              parentId: collection.parentId,
+            } : collection,
+          });
+          result.errors.push(`Failed to push collection ${collection.id}: ${error instanceof Error ? error.message : 'Unknown error'}, queued for retry`);
         }
       }
     } catch (error) {
@@ -320,12 +828,20 @@ class SyncService {
     pendingChanges: number;
     isSyncing: boolean;
   }> {
-    const stats = await localStorage.getStats();
+    const stats = await localDb.getStats();
     return {
       lastSync: stats.lastSync,
       pendingChanges: stats.modifiedCards,
-      isSyncing: this.isSyncing,
+      isSyncing: this.syncPromise !== null || this.otherTabSyncing,
     };
+  }
+
+  /**
+   * Cleanup method to close BroadcastChannel
+   */
+  destroy(): void {
+    this.broadcastChannel?.close();
+    this.broadcastChannel = null;
   }
 }
 

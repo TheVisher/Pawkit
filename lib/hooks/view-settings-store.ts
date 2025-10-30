@@ -5,25 +5,32 @@ import { persist } from "zustand/middleware";
 import { LayoutMode as LayoutModeType } from "@/lib/constants";
 
 export type LayoutMode = LayoutModeType; // Re-export for convenience
-export type ViewType = "library" | "notes" | "den" | "timeline" | "pawkits" | "home" | "favorites" | "trash";
+export type ViewType = "library" | "notes" | "timeline" | "pawkits" | "home" | "favorites" | "trash" | "tags";
 export type SortBy = "createdAt" | "title" | "url" | "updatedAt" | "pawkit";
 export type SortOrder = "asc" | "desc";
+
+export type ContentType = "url" | "md-note" | "text-note" | "image" | "document" | "audio" | "video" | "email" | "bookmark" | "highlight" | "folder" | "other";
 
 export type ViewSettings = {
   // Layout settings
   layout: LayoutMode;
-  cardSize: number; // 1-5 scale
-  
+  cardSize: number; // 1-100 scale (smooth)
+  cardSpacing: number; // 1-100 scale (gap between cards)
+
   // Display settings
-  showTitles: boolean;
-  showUrls: boolean;
+  showLabels: boolean; // Show URL pills on bookmarks and title pills on notes
+  showMetadata: boolean; // Show card info below (title, collections, etc.) for bookmarks
   showTags: boolean;
-  cardPadding: number; // 0-4 scale
-  
+  showPreview: boolean; // Show plain text preview for notes
+  cardPadding: number; // 1-100 scale (smooth)
+
+  // Filtering settings
+  contentTypeFilter: ContentType[]; // Array of content types to show (empty = show all)
+
   // Sorting settings
   sortBy: SortBy;
   sortOrder: SortOrder;
-  
+
   // View-specific settings (flexible JSON)
   viewSpecific?: Record<string, any>;
 };
@@ -41,10 +48,13 @@ export type ViewSettingsState = {
   updateSettings: (view: ViewType, updates: Partial<ViewSettings>) => Promise<void>;
   setLayout: (view: ViewType, layout: LayoutMode) => Promise<void>;
   setCardSize: (view: ViewType, size: number) => Promise<void>;
-  setShowTitles: (view: ViewType, show: boolean) => Promise<void>;
-  setShowUrls: (view: ViewType, show: boolean) => Promise<void>;
+  setCardSpacing: (view: ViewType, spacing: number) => Promise<void>;
+  setShowLabels: (view: ViewType, show: boolean) => Promise<void>;
+  setShowMetadata: (view: ViewType, show: boolean) => Promise<void>;
   setShowTags: (view: ViewType, show: boolean) => Promise<void>;
+  setShowPreview: (view: ViewType, show: boolean) => Promise<void>;
   setCardPadding: (view: ViewType, padding: number) => Promise<void>;
+  setContentTypeFilter: (view: ViewType, contentTypes: ContentType[]) => Promise<void>;
   setSortBy: (view: ViewType, sortBy: SortBy) => Promise<void>;
   setSortOrder: (view: ViewType, sortOrder: SortOrder) => Promise<void>;
   setViewSpecific: (view: ViewType, data: Record<string, any>) => Promise<void>;
@@ -56,11 +66,14 @@ export type ViewSettingsState = {
 
 const defaultSettings: ViewSettings = {
   layout: "grid",
-  cardSize: 3,
-  showTitles: true,
-  showUrls: true,
+  cardSize: 50, // Middle of 1-100 scale (was 3 on 1-5 scale)
+  cardSpacing: 16, // Default gap between cards
+  showLabels: true, // Show URL pills and note title pills
+  showMetadata: true, // Show card info below
   showTags: true,
-  cardPadding: 2,
+  showPreview: true, // Show note previews by default
+  cardPadding: 40, // Middle of 1-100 scale (was 2 on 0-4 scale)
+  contentTypeFilter: [], // Empty array = show all content types
   sortBy: "createdAt",
   sortOrder: "desc",
   viewSpecific: {},
@@ -69,12 +82,12 @@ const defaultSettings: ViewSettings = {
 const createDefaultSettings = (): Record<ViewType, ViewSettings> => ({
   library: { ...defaultSettings },
   notes: { ...defaultSettings, sortBy: "createdAt" },
-  den: { ...defaultSettings },
   timeline: { ...defaultSettings, layout: "grid" },
   pawkits: { ...defaultSettings },
   home: { ...defaultSettings },
   favorites: { ...defaultSettings },
   trash: { ...defaultSettings },
+  tags: { ...defaultSettings },
 });
 
 export const useViewSettingsStore = create<ViewSettingsState>()(
@@ -86,7 +99,14 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
 
       getSettings: (view) => {
         const settings = get().settings[view];
-        return settings || defaultSettings;
+        if (!settings) return defaultSettings;
+
+        // Migration: Convert old contentTypeFilter string to array
+        if (typeof settings.contentTypeFilter === 'string' || settings.contentTypeFilter === undefined) {
+          settings.contentTypeFilter = [];
+        }
+
+        return settings;
       },
 
       updateSettings: async (view, updates) => {
@@ -112,12 +132,12 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
         await get().updateSettings(view, { cardSize: size });
       },
 
-      setShowTitles: async (view, show) => {
-        await get().updateSettings(view, { showTitles: show });
+      setShowLabels: async (view, show) => {
+        await get().updateSettings(view, { showLabels: show });
       },
 
-      setShowUrls: async (view, show) => {
-        await get().updateSettings(view, { showUrls: show });
+      setShowMetadata: async (view, show) => {
+        await get().updateSettings(view, { showMetadata: show });
       },
 
       setShowTags: async (view, show) => {
@@ -126,6 +146,18 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
 
       setCardPadding: async (view, padding) => {
         await get().updateSettings(view, { cardPadding: padding });
+      },
+
+      setCardSpacing: async (view, spacing) => {
+        await get().updateSettings(view, { cardSpacing: spacing });
+      },
+
+      setShowPreview: async (view, show) => {
+        await get().updateSettings(view, { showPreview: show });
+      },
+
+      setContentTypeFilter: async (view, contentTypes) => {
+        await get().updateSettings(view, { contentTypeFilter: contentTypes });
       },
 
       setSortBy: async (view, sortBy) => {
@@ -160,29 +192,53 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
         set({ isSyncing: true });
 
         try {
+          // Map client fields to server fields:
+          // 1. Field names: showLabels/showMetadata (client) → showUrls/showTitles (server)
+          // 2. Value scales: cardSize 1-100 (client) → 1-5 (server), cardPadding 1-100 (client) → 0-4 (server)
+
+          // Scale cardSize from 1-100 to 1-5
+          const scaledCardSize = Math.round(((settings.cardSize - 1) / 99) * 4 + 1);
+          // Scale cardPadding from 1-100 to 0-4
+          const scaledCardPadding = Math.round((settings.cardPadding / 100) * 4);
+
+          const apiSettings = {
+            layout: settings.layout,
+            cardSize: scaledCardSize,
+            showTitles: settings.showMetadata,  // showMetadata -> showTitles (server field name)
+            showUrls: settings.showLabels,      // showLabels -> showUrls (server field name)
+            showTags: settings.showTags,
+            cardPadding: scaledCardPadding,
+            sortBy: settings.sortBy,
+            sortOrder: settings.sortOrder,
+            viewSpecific: settings.viewSpecific ? JSON.stringify(settings.viewSpecific) : null,
+          };
+
           const response = await fetch('/api/user/view-settings', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               view,
-              settings: {
-                ...settings,
-                viewSpecific: settings.viewSpecific ? JSON.stringify(settings.viewSpecific) : null,
-              },
+              settings: apiSettings,
             }),
           });
 
           if (!response.ok) {
-            const error = await response.json();
-            if (error.localOnly) {
-              // Local-only mode is active on server - this is fine
-              console.log('[ViewSettings] Local-only mode active, settings stored locally only');
-            } else {
-              throw new Error('Failed to sync settings to server');
+            try {
+              const error = await response.json();
+              if (error.data?.localOnly) {
+                // Local-only mode is active on server - this is fine
+                console.log('[ViewSettings] Local-only mode active, settings stored locally only');
+              } else {
+                console.warn('[ViewSettings] Failed to sync to server (non-critical):', response.status);
+              }
+            } catch {
+              console.warn('[ViewSettings] Failed to sync to server (non-critical):', response.status);
             }
+          } else {
+            console.log('[ViewSettings] Successfully synced to server');
           }
         } catch (error) {
-          console.error('[ViewSettings] Failed to sync to server:', error);
+          console.warn('[ViewSettings] Failed to sync to server (non-critical):', error);
           // Don't throw - settings are still saved locally
         } finally {
           set({ isSyncing: false });
@@ -194,9 +250,11 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
 
         try {
           const response = await fetch('/api/user/view-settings');
-          
+
           if (!response.ok) {
-            throw new Error('Failed to load settings from server');
+            console.warn('[ViewSettings] Failed to load from server (non-critical):', response.status);
+            set({ isLoading: false });
+            return;
           }
 
           const data = await response.json();
@@ -208,13 +266,20 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
             data.settings.forEach((item: any) => {
               const view = item.view as ViewType;
               if (view in loadedSettings) {
+                // Scale server values (1-5, 0-4) to client values (1-100)
+                const scaledCardSize = Math.round(((item.cardSize - 1) / 4) * 99 + 1);
+                const scaledCardPadding = Math.round((item.cardPadding / 4) * 100);
+
                 loadedSettings[view] = {
                   layout: item.layout as LayoutMode,
-                  cardSize: item.cardSize,
-                  showTitles: item.showTitles,
-                  showUrls: item.showUrls,
+                  cardSize: scaledCardSize,
+                  cardSpacing: item.cardSpacing || 16,
+                  showLabels: item.showLabels ?? (item.showTitles || item.showUrls) ?? true, // Migrate old settings
+                  showMetadata: item.showMetadata ?? item.showTitles ?? true, // Migrate old settings
                   showTags: item.showTags,
-                  cardPadding: item.cardPadding,
+                  showPreview: item.showPreview ?? true,
+                  cardPadding: scaledCardPadding,
+                  contentTypeFilter: item.contentTypeFilter || [],
                   sortBy: item.sortBy as SortBy,
                   sortOrder: item.sortOrder as SortOrder,
                   viewSpecific: item.viewSpecific ? JSON.parse(item.viewSpecific) : {},
@@ -223,10 +288,11 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
             });
 
             set({ settings: loadedSettings });
+            console.log('[ViewSettings] Successfully loaded from server');
           }
         } catch (error) {
-          console.error('[ViewSettings] Failed to load from server:', error);
-          // Keep local settings on error
+          console.warn('[ViewSettings] Failed to load from server (non-critical):', error);
+          // Keep local settings on error - settings are still available from localStorage
         } finally {
           set({ isLoading: false });
         }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Bookmark, Layout, ChevronRight, ChevronLeft } from "lucide-react";
+import { FileText, Bookmark, Layout, ChevronRight, ChevronLeft, CalendarDays } from "lucide-react";
 import { createPortal } from "react-dom";
 import { CardType } from "@/lib/types";
 import { Button } from "@/components/ui/button";
@@ -13,25 +13,35 @@ const LAST_TEMPLATE_KEY = "pawkit-last-used-template";
 type CreateNoteModalProps = {
   open: boolean;
   onClose: () => void;
-  onConfirm: (data: { type: CardType; title: string; content?: string }) => Promise<void>;
+  onConfirm: (data: { type: CardType; title: string; content?: string; tags?: string[] }) => Promise<void>;
+  dailyNoteExists?: boolean; // Whether today's daily note already exists
 };
 
-export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalProps) {
-  const [noteType, setNoteType] = useState<"md-note" | "text-note">("md-note");
+export function CreateNoteModal({ open, onClose, onConfirm, dailyNoteExists = false }: CreateNoteModalProps) {
+  const [noteType, setNoteType] = useState<"md-note" | "text-note" | "daily-note">("md-note");
   const [title, setTitle] = useState("");
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<NoteTemplate | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  // Load last used template on open
+  // Reset state when modal opens
   useEffect(() => {
-    if (open && typeof window !== 'undefined') {
-      const lastTemplateId = localStorage.getItem(LAST_TEMPLATE_KEY);
-      if (lastTemplateId) {
-        const template = getTemplateById(lastTemplateId);
-        if (template) {
-          setSelectedTemplate(template);
+    if (open) {
+      // Reset to default state
+      setNoteType("md-note");
+      setTitle("");
+      setError(null);
+      setShowTemplates(false);
+
+      // Load last used template
+      if (typeof window !== 'undefined') {
+        const lastTemplateId = localStorage.getItem(LAST_TEMPLATE_KEY);
+        if (lastTemplateId) {
+          const template = getTemplateById(lastTemplateId);
+          if (template) {
+            setSelectedTemplate(template);
+          }
         }
       }
     }
@@ -40,7 +50,7 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
   if (!open || typeof document === 'undefined') return null;
 
   const handleSubmit = async () => {
-    if (!title.trim()) {
+    if (!title.trim() && noteType !== "daily-note") {
       setError("Title is required");
       return;
     }
@@ -55,10 +65,16 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
         localStorage.setItem(LAST_TEMPLATE_KEY, selectedTemplate.id);
       }
 
+      const actualType: CardType = noteType === "daily-note" ? "md-note" : noteType;
+      const tags = noteType === "daily-note" ? ["daily"] : undefined;
+
+      console.log('[CreateNoteModal] Creating note with:', { noteType, actualType, tags, title: title.trim() });
+
       await onConfirm({
-        type: noteType,
+        type: actualType,
         title: title.trim(),
-        content
+        content,
+        tags
       });
       setTitle("");
       setNoteType("md-note");
@@ -112,24 +128,34 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Note Type
             </label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <Button
                 onClick={() => setNoteType("md-note")}
                 variant={noteType === "md-note" ? "default" : "secondary"}
-                className="flex-1"
+                className="w-full"
                 size="lg"
               >
                 <FileText size={16} className="mr-2" />
-                Markdown Note
+                Markdown
               </Button>
               <Button
                 onClick={() => setNoteType("text-note")}
                 variant={noteType === "text-note" ? "default" : "secondary"}
-                className="flex-1"
+                className="w-full"
                 size="lg"
               >
                 <FileText size={16} className="mr-2" />
-                Plain Text Note
+                Plain Text
+              </Button>
+              <Button
+                onClick={() => !dailyNoteExists && setNoteType("daily-note")}
+                variant={noteType === "daily-note" ? "default" : "secondary"}
+                className="w-full col-span-2"
+                size="lg"
+                disabled={dailyNoteExists}
+              >
+                <CalendarDays size={16} className="mr-2" />
+                {dailyNoteExists ? "Daily Note (Already Created)" : "Daily Note"}
               </Button>
             </div>
           </div>
@@ -200,34 +226,46 @@ export function CreateNoteModal({ open, onClose, onConfirm }: CreateNoteModalPro
           )}
 
           {/* Title Input */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Title
-            </label>
-            <Input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleSubmit();
-                }
-              }}
-              placeholder="Enter note title..."
-              autoFocus
-            />
-          </div>
+          {noteType !== "daily-note" && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Title
+                </label>
+                <Input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleSubmit();
+                    }
+                  }}
+                  placeholder="Enter note title..."
+                  autoFocus
+                />
+              </div>
 
-          {/* Generate Title Button */}
-          <Button
-            onClick={handleGenerateTitle}
-            disabled={generating}
-            variant="secondary"
-            className="w-full justify-start"
-          >
-            {generating ? "Generating..." : "🎲 Generate Random Title"}
-          </Button>
+              {/* Generate Title Button */}
+              <Button
+                onClick={handleGenerateTitle}
+                disabled={generating}
+                variant="secondary"
+                className="w-full justify-start"
+              >
+                {generating ? "Generating..." : "🎲 Generate Random Title"}
+              </Button>
+            </>
+          )}
+
+          {noteType === "daily-note" && (
+            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
+              <p className="text-sm text-gray-300">
+                Daily note will be created with today&apos;s date as the title.
+              </p>
+            </div>
+          )}
 
           {error && (
             <p className="text-sm text-rose-400 bg-rose-900/20 rounded px-3 py-2">

@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/utils/api-error";
+import { unauthorized, success } from "@/lib/utils/api-responses";
 import { getCurrentUser } from "@/lib/auth/get-user";
-import { countCards, listCards } from "@/lib/server/cards";
+import { countCards, listCards, type CardDTO } from "@/lib/server/cards";
 import { listCollections, type CollectionDTO } from "@/lib/server/collections";
 import { prisma } from "@/lib/server/prisma";
 import { parseJsonArray } from "@/lib/utils/json";
 import { safeHost } from "@/lib/utils/strings";
+import type { PrismaCard } from "@/lib/types";
 
 function flattenCollections(nodes: CollectionDTO[]): CollectionDTO[] {
   const result: CollectionDTO[] = [];
@@ -19,10 +21,11 @@ function flattenCollections(nodes: CollectionDTO[]): CollectionDTO[] {
 }
 
 export async function GET() {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     const [{ tree }, rootCards, totals] = await Promise.all([
@@ -61,7 +64,7 @@ export async function GET() {
         count: cards.length,
         hasChildren: (node.children && node.children.length > 0) || false,
         isPinned: node.pinned || false,
-        cards: cards.map((card) => ({
+        cards: cards.map((card: PrismaCard) => ({
           id: card.id,
           title: card.title,
           url: card.url,
@@ -76,7 +79,7 @@ export async function GET() {
       name: "All cards",
       slug: null,
       count: totals.total,
-      cards: rootCards.items.map((card) => ({
+      cards: rootCards.items.map((card: CardDTO) => ({
         id: card.id,
         title: card.title,
         url: card.url,
@@ -94,8 +97,8 @@ export async function GET() {
       slug: node.slug,
     }));
 
-    return NextResponse.json({ gridItems, allPawkits });
+    return success({ gridItems, allPawkits });
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/pawkits/preview', userId: user?.id });
   }
 }

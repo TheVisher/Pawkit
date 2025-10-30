@@ -5,6 +5,8 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { handleApiError } from '@/lib/utils/api-error';
+import { success } from '@/lib/utils/api-responses';
 
 export async function POST() {
   try {
@@ -20,13 +22,16 @@ export async function POST() {
     const { data: buckets, error: listError } = await supabase.storage.listBuckets();
 
     if (listError) {
-      return NextResponse.json({ error: 'Failed to list buckets', details: listError }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to list buckets', code: 'STORAGE_ERROR', details: listError },
+        { status: 500 }
+      );
     }
 
     const bucketExists = buckets?.some(b => b.name === BUCKET_NAME);
 
     if (bucketExists) {
-      return NextResponse.json({ message: 'Bucket already exists', bucket: BUCKET_NAME });
+      return success({ message: 'Bucket already exists', bucket: BUCKET_NAME });
     }
 
     // Create the bucket
@@ -37,16 +42,19 @@ export async function POST() {
     });
 
     if (error) {
-      return NextResponse.json({ error: 'Failed to create bucket', details: error }, { status: 500 });
+      return NextResponse.json(
+        { error: 'Failed to create bucket', code: 'STORAGE_ERROR', details: error },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({
+    return success({
       message: 'Bucket created successfully',
       bucket: BUCKET_NAME,
       data
     });
 
   } catch (error) {
-    return NextResponse.json({ error: 'Unexpected error', details: error }, { status: 500 });
+    return handleApiError(error, { route: '/api/admin/setup-storage' });
   }
 }

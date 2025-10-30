@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 
@@ -8,12 +9,15 @@ type PawkitActionsProps = {
   pawkitId: string;
   pawkitName: string;
   isPinned?: boolean;
+  isPrivate?: boolean;
+  hidePreview?: boolean;
+  useCoverAsBackground?: boolean;
   hasChildren?: boolean;
   allPawkits?: Array<{ id: string; name: string; slug: string }>;
   onDeleteSuccess?: () => void;
 };
 
-export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChildren = false, allPawkits = [], onDeleteSuccess }: PawkitActionsProps) {
+export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivate = false, hidePreview = false, useCoverAsBackground = false, hasChildren = false, allPawkits = [], onDeleteSuccess }: PawkitActionsProps) {
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRenameModal, setShowRenameModal] = useState(false);
@@ -22,15 +26,27 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [deleteCards, setDeleteCards] = useState(false);
+  const [deleteSubPawkits, setDeleteSubPawkits] = useState(false);
   const [pinned, setPinned] = useState(isPinned);
+  const [isPrivateState, setIsPrivateState] = useState(isPrivate);
+  const [hidePreviewState, setHidePreviewState] = useState(hidePreview);
+  const [useCoverAsBackgroundState, setUseCoverAsBackgroundState] = useState(useCoverAsBackground);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const [mounted, setMounted] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
   const { deleteCollection, updateCollection } = useDemoAwareStore();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleDelete = async () => {
     setLoading(true);
     try {
-      await deleteCollection(pawkitId, deleteCards);
+      await deleteCollection(pawkitId, deleteCards, deleteSubPawkits);
       setShowDeleteConfirm(false);
       router.push("/pawkits");
       onDeleteSuccess?.();
@@ -78,9 +94,49 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
     }
   };
 
+  const handlePrivateToggle = async () => {
+    try {
+      setIsPrivateState(!isPrivateState);
+      setShowMenu(false);
+      await updateCollection(pawkitId, { isPrivate: !isPrivateState });
+    } catch (err) {
+      alert("Failed to toggle privacy");
+      setIsPrivateState(isPrivateState); // Revert on error
+    }
+  };
+
+  const handleHidePreviewToggle = async () => {
+    try {
+      setHidePreviewState(!hidePreviewState);
+      setShowMenu(false);
+      await updateCollection(pawkitId, { hidePreview: !hidePreviewState });
+    } catch (err) {
+      // Silently revert on error - database columns may not exist yet
+      console.warn("Failed to toggle preview visibility (database migration may be pending):", err);
+      setHidePreviewState(hidePreviewState);
+    }
+  };
+
+  const handleCoverAsBackgroundToggle = async () => {
+    try {
+      setUseCoverAsBackgroundState(!useCoverAsBackgroundState);
+      setShowMenu(false);
+      await updateCollection(pawkitId, { useCoverAsBackground: !useCoverAsBackgroundState });
+    } catch (err) {
+      // Silently revert on error - database columns may not exist yet
+      console.warn("Failed to toggle cover background (database migration may be pending):", err);
+      setUseCoverAsBackgroundState(useCoverAsBackgroundState);
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      // Check if click is outside both the button container AND the portal menu
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        menuRef.current && !menuRef.current.contains(target)
+      ) {
         setShowMenu(false);
       }
     };
@@ -96,10 +152,18 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
 
   return (
     <>
-      <div className="relative" ref={menuRef}>
+      <div className="relative" ref={containerRef}>
         <button
+          ref={buttonRef}
           onClick={(e) => {
             e.stopPropagation();
+            if (!showMenu && buttonRef.current) {
+              const rect = buttonRef.current.getBoundingClientRect();
+              setMenuPosition({
+                top: rect.bottom + 8,
+                left: rect.right - 224 // 224px = w-56 menu width
+              });
+            }
             setShowMenu(!showMenu);
           }}
           className="flex items-center justify-center h-9 w-9 rounded text-gray-400 hover:bg-gray-900 hover:text-gray-100 transition-colors"
@@ -111,8 +175,12 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
           </svg>
         </button>
 
-        {showMenu && (
-          <div className="absolute right-0 mt-2 w-48 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-50">
+        {showMenu && mounted && createPortal(
+          <div
+            ref={menuRef}
+            className="fixed w-56 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-[9999]"
+            style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
+          >
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -122,6 +190,35 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
             >
               {pinned ? "Unpin from Quick Access" : "Pin to Quick Access"}
             </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePrivateToggle();
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors"
+            >
+              {isPrivateState ? "🔓 Mark as Public" : "🔒 Mark as Private"}
+            </button>
+            <div className="border-t border-gray-800 my-1" />
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleHidePreviewToggle();
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors"
+            >
+              {hidePreviewState ? "Show Preview" : "Hide Preview"}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCoverAsBackgroundToggle();
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors"
+            >
+              {useCoverAsBackgroundState ? "Remove Cover Background" : "Use Cover as Background"}
+            </button>
+            <div className="border-t border-gray-800 my-1" />
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -152,12 +249,13 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
             >
               Delete
             </button>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
+      {showDeleteConfirm && mounted && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => setShowDeleteConfirm(false)}
@@ -172,14 +270,33 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
               <div className="mb-4 p-3 rounded bg-yellow-900/20 border border-yellow-700/50">
                 <p className="text-sm text-yellow-200 font-medium">⚠️ Warning</p>
                 <p className="text-xs text-yellow-300/80 mt-1">
-                  This Pawkit contains sub-Pawkits. Deleting it will also delete all sub-Pawkits.
+                  This Pawkit contains sub-Pawkits. Choose whether to delete them or move them to root level.
                 </p>
               </div>
             )}
 
             <p className="text-sm text-gray-400 mb-4">
-              This will move this Pawkit{hasChildren ? " and all its sub-Pawkits" : ""} to Trash. You can restore it within 30 days.
+              This will move this Pawkit to Trash. You can restore it within 30 days.
             </p>
+
+            {hasChildren && (
+              <div className="mb-4 p-3 rounded bg-gray-900 border border-gray-800">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={deleteSubPawkits}
+                    onChange={(e) => setDeleteSubPawkits(e.target.checked)}
+                    className="rounded bg-gray-800 border-gray-700 text-accent focus:ring-accent"
+                  />
+                  <span className="text-sm text-gray-300">Delete all sub-Pawkits</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1 ml-6">
+                  {deleteSubPawkits
+                    ? "All sub-Pawkits will be moved to Trash individually"
+                    : "Sub-Pawkits will be moved to root level"}
+                </p>
+              </div>
+            )}
 
             <div className="mb-4 p-3 rounded bg-gray-900 border border-gray-800">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -215,11 +332,12 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Rename Modal */}
-      {showRenameModal && (
+      {showRenameModal && mounted && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => !loading && setShowRenameModal(false)}
@@ -262,11 +380,12 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Move Modal */}
-      {showMoveModal && (
+      {showMoveModal && mounted && createPortal(
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
           onClick={() => !loading && setShowMoveModal(false)}
@@ -323,7 +442,8 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, hasChild
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

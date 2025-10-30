@@ -2,12 +2,15 @@ import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
+import { userUpdateSchema } from "@/lib/validators/user";
+import { unauthorized, success } from "@/lib/utils/api-responses";
 
 export async function GET() {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     // Get user profile from database
@@ -16,33 +19,37 @@ export async function GET() {
       select: { email: true, displayName: true, serverSync: true }
     });
 
-    return NextResponse.json({
+    return success({
       email: user.email,
       displayName: profile?.displayName || null,
       serverSync: profile?.serverSync ?? true
     });
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/user', userId: user?.id });
   }
 }
 
 export async function PATCH(request: Request) {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      console.error('[PATCH /api/user] User is null, returning unauthorized');
+      return unauthorized();
     }
 
     const body = await request.json();
-    const { displayName, serverSync } = body;
+
+    // Validate input
+    const validated = userUpdateSchema.parse(body);
 
     // Build update data object
     const updateData: any = {};
-    if (displayName !== undefined) {
-      updateData.displayName = displayName || null;
+    if (validated.displayName !== undefined) {
+      updateData.displayName = validated.displayName || null;
     }
-    if (serverSync !== undefined) {
-      updateData.serverSync = serverSync;
+    if (validated.serverSync !== undefined) {
+      updateData.serverSync = validated.serverSync;
     }
 
     // Update user profile
@@ -52,8 +59,8 @@ export async function PATCH(request: Request) {
       select: { email: true, displayName: true, serverSync: true }
     });
 
-    return NextResponse.json(updated);
+    return success(updated);
   } catch (error) {
-    return handleApiError(error);
+    return handleApiError(error, { route: '/api/user', userId: user?.id });
   }
 }

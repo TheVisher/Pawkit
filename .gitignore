@@ -11,6 +11,15 @@ dev.db
 dev.db-journal
 nul
 
+# Database files
+prisma/dev.db
+prisma/dev.db-journal
+
+# Extension build artifacts
+packages/extension/dist-*
+packages/extension/pawkit-*/assets/*
+packages/extension/pawkit-chrome 2/
+
 # Keep backups local only - NEVER commit actual database backups
 backups/
 

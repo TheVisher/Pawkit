@@ -81,7 +81,7 @@ export function useNetworkSync() {
       if (navigator.onLine) {
         safeDrain();
       }
-    }, 300000); // Every 5 minutes - only for ensuring pending writes sync
+    }, 600000); // Every 10 minutes - only for ensuring pending writes sync
 
     // Initial drain attempt on mount (handles app startup)
     if (navigator.onLine) {

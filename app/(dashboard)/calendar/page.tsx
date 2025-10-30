@@ -3,15 +3,16 @@
 import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useDataStore } from "@/lib/stores/data-store";
-import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { CustomCalendar } from "@/components/calendar/custom-calendar";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/daily-notes";
 import { CalendarIcon } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 
 export default function CalendarPage() {
-  const { cards, collections, addCard } = useDataStore();
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const { cards, addCard } = useDataStore();
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const activeCardId = usePanelStore((state) => state.activeCardId);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -20,10 +21,6 @@ export default function CalendarPage() {
     setIsMounted(true);
     return () => setIsMounted(false);
   }, []);
-
-  const activeCard = useMemo(() => {
-    return cards.find((card) => card.id === activeCardId) ?? null;
-  }, [cards, activeCardId]);
 
   const handleCreateDailyNote = async (date: Date) => {
     const title = generateDailyNoteTitle(date);
@@ -42,7 +39,7 @@ export default function CalendarPage() {
       const dataStore = useDataStore.getState();
       const newCard = dataStore.cards.find(c => c.title === title);
       if (newCard) {
-        setActiveCardId(newCard.id);
+        openCardDetails(newCard.id);
         setSelectedDate(null);
       }
     } catch (error) {
@@ -56,14 +53,14 @@ export default function CalendarPage() {
     return cards.filter(card =>
       card.scheduledDate &&
       card.scheduledDate.split('T')[0] === dateStr &&
-      !card.inDen
+      !card.collections?.includes('the-den')
     );
   };
 
   // Get daily note for a specific date
   const getDailyNoteForDate = (date: Date) => {
     const title = generateDailyNoteTitle(date);
-    return cards.find(c => c.title === title && !c.inDen);
+    return cards.find(c => c.title === title && !c.collections?.includes('the-den'));
   };
 
   return (
@@ -87,12 +84,12 @@ export default function CalendarPage() {
       <CustomCalendar
         cards={cards}
         onDayClick={(date) => setSelectedDate(date)}
-        onCardClick={(card) => setActiveCardId(card.id)}
+        onCardClick={(card) => openCardDetails(card.id)}
         onCreateDailyNote={handleCreateDailyNote}
       />
 
       {/* Expanded Day View Modal */}
-      {selectedDate && !activeCard && isMounted && (() => {
+      {selectedDate && !activeCardId && isMounted && (() => {
         const scheduledCards = getCardsForDate(selectedDate);
         const dailyNote = getDailyNoteForDate(selectedDate);
 
@@ -127,7 +124,7 @@ export default function CalendarPage() {
                 {dailyNote ? (
                   <GlowButton
                     onClick={() => {
-                      setActiveCardId(dailyNote.id);
+                      openCardDetails(dailyNote.id);
                       setSelectedDate(null);
                     }}
                     variant="primary"
@@ -167,7 +164,7 @@ export default function CalendarPage() {
                       <button
                         key={card.id}
                         onClick={() => {
-                          setActiveCardId(card.id);
+                          openCardDetails(card.id);
                           setSelectedDate(null);
                         }}
                         className="w-full text-left p-3 rounded-lg bg-surface-soft hover:bg-surface transition-colors border border-subtle flex items-center gap-3"
@@ -214,17 +211,6 @@ export default function CalendarPage() {
 
         return createPortal(modalContent, document.body);
       })()}
-
-      {/* Card Detail Modal */}
-      {activeCard && (
-        <CardDetailModal
-          card={activeCard}
-          collections={collections || []}
-          onClose={() => setActiveCardId(null)}
-          onUpdate={() => {}}
-          onDelete={() => setActiveCardId(null)}
-        />
-      )}
     </div>
   );
 }

@@ -22,30 +22,30 @@ type SortOption = {
 };
 
 const SORT_OPTIONS: SortOption[] = [
-  { 
-    value: "createdAt", 
-    label: "Date Added", 
-    availableFor: ["library", "notes", "den", "timeline", "pawkits", "favorites", "trash", "home"] 
+  {
+    value: "createdAt",
+    label: "Date Added",
+    availableFor: ["library", "notes", "timeline", "pawkits", "favorites", "trash", "home", "tags"]
   },
-  { 
-    value: "title", 
-    label: "Title", 
-    availableFor: ["library", "notes", "den", "timeline", "pawkits", "favorites", "trash"] 
+  {
+    value: "title",
+    label: "Title",
+    availableFor: ["library", "notes", "timeline", "pawkits", "favorites", "trash", "tags"]
   },
-  { 
-    value: "url", 
-    label: "URL", 
-    availableFor: ["library", "den", "favorites", "trash"] 
+  {
+    value: "url",
+    label: "URL",
+    availableFor: ["library", "favorites", "trash"]
   },
-  { 
-    value: "updatedAt", 
-    label: "Last Modified", 
-    availableFor: ["library", "notes", "den", "timeline", "pawkits", "favorites", "trash"] 
+  {
+    value: "updatedAt",
+    label: "Last Modified",
+    availableFor: ["library", "notes", "timeline", "pawkits", "favorites", "trash", "tags"]
   },
-  { 
-    value: "pawkit", 
-    label: "Pawkit", 
-    availableFor: ["library", "favorites", "trash"] 
+  {
+    value: "pawkit",
+    label: "Pawkit",
+    availableFor: ["library", "favorites", "trash"]
   },
 ];
 

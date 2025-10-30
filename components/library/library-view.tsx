@@ -6,11 +6,12 @@ import { CardModel, CollectionNode } from "@/lib/types";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useCardEvents } from "@/lib/hooks/card-events-store";
 import { useViewSettingsStore, type LayoutMode } from "@/lib/hooks/view-settings-store";
+import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import { sortCards } from "@/lib/utils/sort-cards";
-import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import { format } from "date-fns";
-import { Library } from "lucide-react";
+import { Library, Settings } from "lucide-react";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 type TimelineGroup = {
   date: string;
@@ -32,6 +33,7 @@ type LibraryViewProps = {
   query?: {
     q?: string;
     collection?: string;
+    tag?: string;
     status?: string;
   };
   viewMode?: "normal" | "timeline";
@@ -56,12 +58,42 @@ export function LibraryView({
   const [cards, setCards] = useState<CardModel[]>(initialCards);
   const [timelineGroups, setTimelineGroups] = useState<TimelineGroup[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeCardId, setActiveCardId] = useState<string | null>(null);
-  
+
+  // Use panel store to open card details
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
+
+  // Create a map from collection ID to collection name
+  const collectionIdToName = useMemo(() => {
+    const map = new Map<string, string>();
+    const addToMap = (nodes: CollectionNode[]) => {
+      nodes.forEach(node => {
+        map.set(node.id, node.name);
+        if (node.children) {
+          addToMap(node.children);
+        }
+      });
+    };
+    addToMap(collectionsTree);
+    return map;
+  }, [collectionsTree]);
+
   // Get view settings from the store
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
-  const { cardSize, sortBy, sortOrder } = viewSettings;
-  
+  const setLayoutInStore = useViewSettingsStore((state) => state.setLayout);
+  const setCardSizeInStore = useViewSettingsStore((state) => state.setCardSize);
+  const setShowMetadata = useViewSettingsStore((state) => state.setShowMetadata);
+  const setShowLabels = useViewSettingsStore((state) => state.setShowLabels);
+  const setSortBy = useViewSettingsStore((state) => state.setSortBy);
+  const { cardSize, sortBy, sortOrder, showMetadata: showTitles, showLabels: showUrls } = viewSettings;
+
+  // Get selected tags from store (managed by control panel)
+  // Use tags directly from store without filtering - trust the control panel
+  const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
+
+  // Get global settings (thumbnails)
+  const showThumbnails = useSettingsStore((state) => state.showThumbnails);
+  const setShowThumbnails = useSettingsStore((state) => state.setShowThumbnails);
+
   // Use hydration-safe layout to prevent SSR mismatches
   const [layout, setLayout] = useState<LayoutMode>("grid");
   const [isHydrated, setIsHydrated] = useState(false);
@@ -76,10 +108,21 @@ export function LibraryView({
     setCards(initialCards);
   }, [initialCards]);
 
-  // Sort cards based on view settings
+  // Sort and filter cards based on view settings and selected tags
   const sortedCards = useMemo(() => {
-    return sortCards(cards, sortBy, sortOrder);
-  }, [cards, sortBy, sortOrder]);
+    let filtered = cards;
+
+    // Filter by selected tags (checks both tags AND collections/pawkits)
+    if (selectedTags.length > 0) {
+      filtered = filtered.filter((card) =>
+        selectedTags.some((tag) =>
+          card.tags?.includes(tag) || card.collections?.includes(tag)
+        )
+      );
+    }
+
+    return sortCards(filtered, sortBy, sortOrder);
+  }, [cards, sortBy, sortOrder, selectedTags]);
 
   const newCard = useCardEvents((state) => state.newCard);
   const clearNewCard = useCardEvents((state) => state.clearNewCard);
@@ -128,14 +171,6 @@ export function LibraryView({
     [timelineGroups]
   );
 
-  // Get active card object
-  const activeCard = useMemo(() => {
-    if (viewMode === "timeline") {
-      return allTimelineCards.find((card) => card.id === activeCardId) ?? null;
-    }
-    return sortedCards.find((card) => card.id === activeCardId) ?? null;
-  }, [viewMode, allTimelineCards, sortedCards, activeCardId]);
-
   const formatDateHeader = (dateStr: string) => {
     const date = new Date(dateStr + 'T00:00:00');
     return format(date, "MMMM do, yyyy");
@@ -152,7 +187,7 @@ export function LibraryView({
       event.preventDefault();
       return;
     }
-    setActiveCardId(card.id);
+    openCardDetails(card.id);
   };
 
 
@@ -255,9 +290,9 @@ export function LibraryView({
           )}
           {card.collections && card.collections.length > 0 && !isCompact && (
             <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
-              {card.collections.map((collection) => (
-                <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
-                  {collection}
+              {card.collections.map((collectionId) => (
+                <span key={collectionId} className="rounded bg-surface-soft px-2 py-0.5">
+                  {collectionIdToName.get(collectionId) || collectionId}
                 </span>
               ))}
             </div>
@@ -281,6 +316,7 @@ export function LibraryView({
                 {viewMode === "timeline"
                   ? `${timelineGroups.reduce((sum, g) => sum + g.cards.length, 0)} card(s)`
                   : `${sortedCards.length} card(s)`}
+                {selectedTags.length > 0 && ` · ${selectedTags.length} tag filter(s)`}
               </p>
             </div>
           </div>
@@ -337,34 +373,6 @@ export function LibraryView({
         )}
       </div>
 
-      {/* Card Detail Modal for Timeline */}
-      {activeCard && viewMode === "timeline" && (
-        <CardDetailModal
-          card={activeCard}
-          collections={collectionsTree}
-          onClose={() => setActiveCardId(null)}
-          onUpdate={(updatedCard) => {
-            setTimelineGroups((prev) =>
-              prev.map((group) => ({
-                ...group,
-                cards: group.cards.map((card) =>
-                  card.id === updatedCard.id ? updatedCard : card
-                )
-              }))
-            );
-          }}
-          onDelete={() => {
-            setTimelineGroups((prev) =>
-              prev.map((group) => ({
-                ...group,
-                cards: group.cards.filter((card) => card.id !== activeCardId)
-              }))
-              .filter((group) => group.cards.length > 0)
-            );
-            setActiveCardId(null);
-          }}
-        />
-      )}
     </>
   );
 }

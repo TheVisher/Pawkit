@@ -1,16 +1,27 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
+import { handleApiError } from "@/lib/utils/api-error";
+import { unauthorized, success } from "@/lib/utils/api-responses";
+
+type DebugCard = {
+  id: string;
+  title: string | null;
+  inDen: boolean;
+  deleted: boolean;
+  url: string;
+};
 
 export async function GET() {
+  let user;
   try {
-    const user = await getCurrentUser();
+    user = await getCurrentUser();
     if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return unauthorized();
     }
 
     // Get ALL cards including Den items
-    const allCards = await prisma.card.findMany({
+    const allCards: DebugCard[] = await prisma.card.findMany({
       where: {
         userId: user.id,
         deleted: false
@@ -26,12 +37,12 @@ export async function GET() {
         updatedAt: "desc"
       },
       take: 20
-    });
+    }) as any;
 
-    const denCards = allCards.filter(c => c.inDen);
-    const regularCards = allCards.filter(c => !c.inDen);
+    const denCards = allCards.filter((c: DebugCard) => c.inDen);
+    const regularCards = allCards.filter((c: DebugCard) => !c.inDen);
 
-    return NextResponse.json({
+    return success({
       total: allCards.length,
       denCount: denCards.length,
       regularCount: regularCards.length,
@@ -39,7 +50,6 @@ export async function GET() {
       regularCards
     });
   } catch (error) {
-    console.error("Debug error:", error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    return handleApiError(error, { route: '/api/debug/cards', userId: user?.id });
   }
 }
