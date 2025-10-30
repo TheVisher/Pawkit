@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
+import { ReactNode, useEffect, useState, useMemo } from "react";
 // Removed useSWR - using local-first data store instead
 import { OmniBar } from "@/components/omni-bar";
 import { AppSidebar } from "@/components/sidebar/app-sidebar";
