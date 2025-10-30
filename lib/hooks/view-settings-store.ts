@@ -192,16 +192,22 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
         set({ isSyncing: true });
 
         try {
-          // Map client fields to server fields (field names were refactored)
-          // Server still uses old names: showTitles, showUrls
-          // Client uses new names: showLabels, showMetadata
+          // Map client fields to server fields:
+          // 1. Field names: showLabels/showMetadata (client) → showUrls/showTitles (server)
+          // 2. Value scales: cardSize 1-100 (client) → 1-5 (server), cardPadding 1-100 (client) → 0-4 (server)
+
+          // Scale cardSize from 1-100 to 1-5
+          const scaledCardSize = Math.round(((settings.cardSize - 1) / 99) * 4 + 1);
+          // Scale cardPadding from 1-100 to 0-4
+          const scaledCardPadding = Math.round((settings.cardPadding / 100) * 4);
+
           const apiSettings = {
             layout: settings.layout,
-            cardSize: settings.cardSize,
+            cardSize: scaledCardSize,
             showTitles: settings.showMetadata,  // showMetadata -> showTitles (server field name)
             showUrls: settings.showLabels,      // showLabels -> showUrls (server field name)
             showTags: settings.showTags,
-            cardPadding: settings.cardPadding,
+            cardPadding: scaledCardPadding,
             sortBy: settings.sortBy,
             sortOrder: settings.sortOrder,
             viewSpecific: settings.viewSpecific ? JSON.stringify(settings.viewSpecific) : null,
@@ -252,15 +258,19 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
             data.settings.forEach((item: any) => {
               const view = item.view as ViewType;
               if (view in loadedSettings) {
+                // Scale server values (1-5, 0-4) to client values (1-100)
+                const scaledCardSize = Math.round(((item.cardSize - 1) / 4) * 99 + 1);
+                const scaledCardPadding = Math.round((item.cardPadding / 4) * 100);
+
                 loadedSettings[view] = {
                   layout: item.layout as LayoutMode,
-                  cardSize: item.cardSize,
+                  cardSize: scaledCardSize,
                   cardSpacing: item.cardSpacing || 16,
                   showLabels: item.showLabels ?? (item.showTitles || item.showUrls) ?? true, // Migrate old settings
                   showMetadata: item.showMetadata ?? item.showTitles ?? true, // Migrate old settings
                   showTags: item.showTags,
                   showPreview: item.showPreview ?? true,
-                  cardPadding: item.cardPadding,
+                  cardPadding: scaledCardPadding,
                   contentTypeFilter: item.contentTypeFilter || [],
                   sortBy: item.sortBy as SortBy,
                   sortOrder: item.sortOrder as SortOrder,
