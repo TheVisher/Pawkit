@@ -25,14 +25,23 @@ export function CreateNoteModal({ open, onClose, onConfirm, dailyNoteExists = fa
   const [selectedTemplate, setSelectedTemplate] = useState<NoteTemplate | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
 
-  // Load last used template on open
+  // Reset state when modal opens
   useEffect(() => {
-    if (open && typeof window !== 'undefined') {
-      const lastTemplateId = localStorage.getItem(LAST_TEMPLATE_KEY);
-      if (lastTemplateId) {
-        const template = getTemplateById(lastTemplateId);
-        if (template) {
-          setSelectedTemplate(template);
+    if (open) {
+      // Reset to default state
+      setNoteType("md-note");
+      setTitle("");
+      setError(null);
+      setShowTemplates(false);
+
+      // Load last used template
+      if (typeof window !== 'undefined') {
+        const lastTemplateId = localStorage.getItem(LAST_TEMPLATE_KEY);
+        if (lastTemplateId) {
+          const template = getTemplateById(lastTemplateId);
+          if (template) {
+            setSelectedTemplate(template);
+          }
         }
       }
     }
