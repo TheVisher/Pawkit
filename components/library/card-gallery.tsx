@@ -132,13 +132,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
         console.log('CSS column-count:', computedStyle.columnCount);
         console.log('CSS column-gap:', computedStyle.columnGap);
 
-        // Force a reflow when the container size changes
-        const originalColumns = element.style.columns;
-        element.style.columns = 'auto';
-        element.offsetHeight;
-        element.style.columns = originalColumns;
-
-        console.log('After reflow - CSS columns:', window.getComputedStyle(element).columns);
+        // REMOVED: The forced reflow was creating an infinite resize loop!
+        // The masonry layout will adjust automatically when container width changes.
       }
     });
 
@@ -301,13 +296,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
       <div>
         {layout === "list" ? (
             // Table-style list view like Fabric
-            <div
-              className="w-full overflow-x-auto"
-              style={{
-                // Add right padding when right panel is embedded to prevent table from rendering behind it
-                paddingRight: isRightEmbedded ? '341px' : undefined,
-              }}
-            >
+            <div className="w-full overflow-x-auto">
               <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b border-subtle text-xs text-muted-foreground">
@@ -421,16 +410,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             </table>
           </div>
         ) : (
-          <div
-            className={layoutConfig.className}
-            style={{
-              ...layoutConfig.style,
-              // Add right padding when right panel is embedded to prevent cards from rendering behind it
-              // Panel is 325px width + 16px margin = 341px total
-              paddingRight: isRightEmbedded ? '341px' : undefined,
-            }}
-            data-masonry-gallery
-          >
+          <div className={layoutConfig.className} style={layoutConfig.style} data-masonry-gallery>
             {cards.map((card) => (
               <CardCell
                 key={card.id}
