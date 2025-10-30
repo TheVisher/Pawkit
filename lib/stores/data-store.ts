@@ -452,6 +452,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       // STEP 3: Sync to server in background (if enabled)
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync) {
+        console.log('[DataStore V2] Syncing card to server with payload:', JSON.stringify(cardData, null, 2));
         // Queue for sync
         await syncQueue.enqueue({
           type: 'CREATE_CARD',
@@ -469,6 +470,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
           if (response.ok) {
             const serverCard = await response.json();
+            console.log('[DataStore V2] Server response:', JSON.stringify(serverCard, null, 2));
 
             // Update link references if this was a temp card
             if (tempId.startsWith('temp_')) {
