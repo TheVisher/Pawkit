@@ -70,13 +70,13 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              // Script sources - allow Vercel scripts on dev and preview
+              // Script sources - Next.js requires 'unsafe-eval' and 'unsafe-inline' even in production
               allowVercelScripts
                 ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://vercel.live https://vercel.live"
-                : "script-src 'self' blob:",
+                : "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
               allowVercelScripts
                 ? "script-src-elem 'self' 'unsafe-inline' blob: https://vercel.live https://*.vercel-scripts.com"
-                : "script-src-elem 'self' blob:",
+                : "script-src-elem 'self' 'unsafe-inline' blob:",
               // Styles
               "style-src 'self' 'unsafe-inline' blob:",
               "style-src-elem 'self' 'unsafe-inline'",
