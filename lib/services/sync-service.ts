@@ -238,7 +238,8 @@ class SyncService {
 
     // CARDS SYNC - Independent try-catch
     try {
-      const cardsRes = await this.fetchWithTimeout('/api/cards?limit=10000');
+      // Include deleted cards in sync to properly handle remote deletions
+      const cardsRes = await this.fetchWithTimeout('/api/cards?limit=10000&includeDeleted=true');
 
       if (cardsRes.ok) {
         const cardsData = await cardsRes.json();

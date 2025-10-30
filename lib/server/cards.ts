@@ -190,7 +190,13 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
 export async function listCards(userId: string, query: CardListQuery) {
   const parsed = cardListQuerySchema.parse(query);
   const limit = parsed.limit ?? 50;
-  const where: Record<string, any> = { userId, deleted: false, inDen: false };
+  // For sync operations, includeDeleted=true allows fetching deleted cards
+  // For regular queries, default to deleted=false to hide deleted cards
+  const where: Record<string, any> = {
+    userId,
+    deleted: parsed.includeDeleted ? undefined : false,
+    inDen: false
+  };
 
   if (parsed.q) {
     const term = parsed.q;
