@@ -410,8 +410,15 @@ class SyncService {
         if (serverCard.deleted) {
           // Only accept server deletion if it's newer than local version
           if (serverTime >= localTime) {
-            console.log('[SyncService] Server card deletion is newer, accepting deletion:', serverCard.id);
+            console.log('[SyncService] 🗑️ Applying remote deletion:', {
+              cardId: serverCard.id,
+              title: serverCard.title,
+              serverTime,
+              localTime,
+              deletedAt: serverCard.deletedAt
+            });
             await localDb.saveCard(serverCard, { fromServer: true });
+            console.log('[SyncService] ✅ Deleted card saved to localDb:', serverCard.id);
           } else {
             console.log('[SyncService] Server card deletion is older than local edit, keeping local version:', serverCard.id);
             conflicts++;
