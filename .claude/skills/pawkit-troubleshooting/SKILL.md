@@ -1100,6 +1100,237 @@ const resizeObserver = new ResizeObserver((entries) => {
 - `.claude/skills/pawkit-performance/SKILL.md` - For future masonry optimization plans
 - `.claude/skills/pawkit-ui-ux/SKILL.md` - Panel modes and embedded panel pattern
 
+### 10. Note Creation Defaulting to Daily Notes
+
+**Issue**: When creating a note, all notes were defaulting to daily notes regardless of user selection. State persisted between modal opens.
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Modal state persists between opens
+export function CreateNoteModal({ open, onClose, onConfirm }: Props) {
+  const [noteType, setNoteType] = useState<"md-note" | "text-note" | "daily-note">("md-note");
+  const [title, setTitle] = useState("");
+
+  // ❌ State persists - if user clicked "Daily Note" then closed modal,
+  // noteType stays "daily-note" on next open
+
+  if (!open) return null;
+  // ... modal content
+}
+```
+
+**The Fix**:
+```tsx
+// ✅ CORRECT: Reset state when modal opens
+export function CreateNoteModal({ open, onClose, onConfirm }: Props) {
+  const [noteType, setNoteType] = useState<"md-note" | "text-note" | "daily-note">("md-note");
+  const [title, setTitle] = useState("");
+
+  // ✅ Reset to default state when modal opens
+  useEffect(() => {
+    if (open) {
+      setNoteType("md-note");
+      setTitle("");
+      setError(null);
+      setShowTemplates(false);
+      // ... load last template if exists
+    }
+  }, [open]);
+
+  // ... modal content
+}
+```
+
+**Root Cause**:
+- React component state persists across renders
+- When user clicks "Daily Note" button then closes modal without submitting
+- Next time modal opens, `noteType` is still set to `"daily-note"`
+- User sees "Markdown" selected but note is created as daily note
+
+**How to Avoid**:
+- **ALWAYS** reset form state when modals open
+- Use `useEffect` with `open` dependency to reset state
+- Reset ALL form fields (inputs, selections, errors, etc.)
+- Common for modals, drawers, and multi-step forms
+
+**Related Issue - Missing Tags Parameter**:
+
+The note creation handlers also needed to accept and pass the `tags` parameter:
+
+```tsx
+// ❌ WRONG: Handler doesn't accept or pass tags
+const handleCreateNote = async (data: { type: string; title: string; content?: string }) => {
+  await addCard({
+    type: data.type as 'md-note' | 'text-note',
+    title: data.title,
+    content: data.content || "",
+    url: "",
+    // ❌ Missing tags - modal sends tags but handler ignores them
+  });
+};
+
+// ✅ CORRECT: Accept and pass tags parameter
+const handleCreateNote = async (data: {
+  type: string;
+  title: string;
+  content?: string;
+  tags?: string[]
+}) => {
+  await addCard({
+    type: data.type as 'md-note' | 'text-note',
+    title: data.title,
+    content: data.content || "",
+    url: "",
+    tags: data.tags,  // ✅ Pass tags to store
+  });
+};
+```
+
+**Where to Fix**:
+- Modal component: `components/modals/create-note-modal.tsx`
+- Layout handler: `app/(dashboard)/layout.tsx`
+- OmniBar handler: `components/omni-bar.tsx`
+
+**Impact**: Fixed October 30, 2025 - Users can now create regular notes instead of always creating daily notes
+
+**See**: `.claude/skills/pawkit-ui-ux/SKILL.md` for modal state management patterns
+
+---
+
+### 11. Duplicate Card Issue - Deleted Cards Returned
+
+**Issue**: Creating new notes triggered duplicate constraint errors and returned deleted daily notes instead of creating new notes. Server returned 409 Conflict errors.
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Full unique constraint on ALL card types
+// This was the database constraint that existed:
+CREATE UNIQUE INDEX "Card_userId_url_key"
+ON "Card"("userId", "url");
+// ❌ Applies to ALL cards including notes with empty URLs
+
+// Result: Every note with url="" triggers P2002 duplicate error
+```
+
+**Debug Output**:
+```typescript
+// Client sends:
+{
+  "type": "md-note",
+  "title": "Testing notes again",
+  "content": "",
+  "url": ""
+}
+
+// Server response (WRONG - returning deleted daily note):
+{
+  "id": "cmhcc60ss0001l404oegzz57u",
+  "type": "md-note",
+  "title": "2025-10-29 - Wednesday",  // Old deleted note
+  "deleted": true,                     // Deleted!
+  "deletedAt": "2025-10-30T01:41:34.517Z",
+  "tags": ["daily"]
+}
+
+// Error in logs:
+[createCard] P2002 ERROR - Duplicate detected for type: md-note URL:  Target: [ 'userId', 'url' ]
+```
+
+**The Fix - Part 1: Database Migration**:
+```sql
+-- ✅ CORRECT: Remove full constraint, keep only partial index for URL cards
+DO $$
+BEGIN
+    -- Drop any full unique constraints on (userId, url)
+    IF EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'Card_userId_url_key'
+        AND contype = 'u'
+    ) THEN
+        ALTER TABLE "Card" DROP CONSTRAINT "Card_userId_url_key";
+    END IF;
+
+    -- Drop non-partial unique index if exists
+    IF EXISTS (
+        SELECT 1 FROM pg_indexes
+        WHERE indexname = 'Card_userId_url_key'
+        AND indexdef NOT LIKE '%WHERE%'
+    ) THEN
+        DROP INDEX "Card_userId_url_key";
+    END IF;
+END $$;
+
+-- ✅ Create PARTIAL unique index - ONLY for URL-type cards
+CREATE UNIQUE INDEX IF NOT EXISTS "Card_userId_url_key"
+ON "Card"("userId", "url")
+WHERE "type" = 'url';  -- ✅ Notes excluded from constraint
+```
+
+**The Fix - Part 2: Error Handling**:
+```tsx
+// ✅ CORRECT: Look for existing cards of same type, exclude deleted
+try {
+  const created = await prisma.card.create({ data });
+  return mapCard(created);
+} catch (error) {
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+    console.log('[createCard] P2002 ERROR - Duplicate detected for type:', cardType);
+
+    // ✅ Find existing non-deleted card of same type
+    const existingCard = await prisma.card.findFirst({
+      where: {
+        userId,
+        url: parsed.url || "",
+        type: cardType,        // ✅ Same type (md-note, text-note, url)
+        deleted: false         // ✅ Exclude deleted cards
+      }
+    });
+
+    if (existingCard) {
+      return mapCard(existingCard);
+    }
+  }
+  throw error;
+}
+```
+
+**Root Cause**:
+1. Database had **full unique constraint** on `(userId, url)` for ALL card types
+2. Should only apply to `type = 'url'` cards (partial unique index)
+3. Notes with empty URLs (`url: ""`) triggered P2002 duplicate errors
+4. Error handler looked for existing card but only checked `type: "url"`
+5. When creating `md-note` with `url: ""`, it found old deleted daily note
+6. Server returned deleted card with `deleted: true`
+7. Client displayed card briefly then it disappeared on refresh
+
+**How to Avoid**:
+- **ALWAYS** use partial unique indexes when constraint shouldn't apply to all rows
+- **NEVER** return deleted records from lookup queries
+- Use `deleted: false` or `deletedAt: null` in WHERE clauses
+- Log P2002 errors with target field to debug constraint violations
+- Test edge cases: empty strings, null values, deleted records
+
+**Where to Check**:
+- Database constraints: `SELECT * FROM pg_indexes WHERE tablename = 'Card';`
+- Prisma schema: `schema.prisma` - Document partial indexes in comments
+- Server error handling: `lib/server/cards.ts`
+- Duplicate detection logic: Always exclude soft-deleted records
+
+**Migration File**:
+- `prisma/migrations/20251029192328_fix_card_unique_constraint/migration.sql`
+
+**Impact**: Fixed October 30, 2025 - Notes can now be created freely without triggering duplicate errors
+
+**Prevention**:
+- Document partial indexes in schema comments
+- Add test for creating multiple notes with empty URLs
+- Test deleted record exclusion in all lookup queries
+- Monitor P2002 errors in production logs
+
+**See**:
+- `.claude/skills/pawkit-migrations/SKILL.md` for migration patterns
+- `.claude/skills/pawkit-conventions/SKILL.md` for data model conventions
+
 ---
 
 ## Debugging Strategies
