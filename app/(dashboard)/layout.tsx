@@ -41,6 +41,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { loadFromServer } = useViewSettingsStore();
   const router = useRouter();
 
+  // Check if today's daily note exists
+  const dailyNoteExists = useMemo(() => {
+    const today = new Date();
+    const { findDailyNoteForDate } = require('@/lib/utils/daily-notes');
+    return findDailyNoteForDate(cards, today) !== null;
+  }, [cards]);
+
   // Global modal state management - single source of truth for card modals
   const panelActiveCardId = usePanelStore((state) => state.activeCardId);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
@@ -351,6 +358,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             open={showCreateNoteModal}
             onClose={() => setShowCreateNoteModal(false)}
             onConfirm={handleCreateNote}
+            dailyNoteExists={dailyNoteExists}
           />
 
           {/* Add Card Modal */}

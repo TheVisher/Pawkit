@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, KeyboardEvent, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { isProbablyUrl } from "@/lib/utils/strings";
 import { AddCardModal } from "@/components/modals/add-card-modal";
@@ -9,6 +9,7 @@ import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { findDailyNoteForDate } from "@/lib/utils/daily-notes";
 
 const TEXT_SEARCH_DEBOUNCE_MS = 250;
 
@@ -22,10 +23,16 @@ function OmniBarContent() {
   const [showModal, setShowModal] = useState(false);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
-  const { addCard: addCardToStore } = useDemoAwareStore();
+  const { addCard: addCardToStore, cards } = useDemoAwareStore();
   const lastSearchedRef = useRef(initialQuery);
   const isTypingRef = useRef(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Check if today's daily note exists
+  const dailyNoteExists = useMemo(() => {
+    const today = new Date();
+    return findDailyNoteForDate(cards, today) !== null;
+  }, [cards]);
 
   const navigateToLibrary = useCallback(
     (query: string | null) => {
@@ -255,6 +262,7 @@ function OmniBarContent() {
         open={showNoteModal}
         onClose={() => setShowNoteModal(false)}
         onConfirm={handleCreateNote}
+        dailyNoteExists={dailyNoteExists}
       />
     </div>
   );
