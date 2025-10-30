@@ -19,11 +19,18 @@ export async function getCurrentUser(): Promise<PrismaUser | null> {
     const supabase = await createClient()
     const { data: { user }, error } = await supabase.auth.getUser()
 
-    if (error || !user) {
+    if (error) {
+      console.error('[getCurrentUser] Supabase auth error:', error);
+      return null
+    }
+
+    if (!user) {
+      console.error('[getCurrentUser] No user from Supabase');
       return null
     }
 
     if (!user.email) {
+      console.error('[getCurrentUser] User has no email');
       return null
     }
 

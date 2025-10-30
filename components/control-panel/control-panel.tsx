@@ -10,6 +10,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { ProfileModal } from "@/components/modals/profile-modal";
+import { useSettingsStore } from "@/lib/hooks/settings-store";
 
 export type ControlPanelMode = "floating" | "anchored";
 
@@ -29,6 +31,11 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
   // Mode can be controlled or uncontrolled
   const [internalMode, setInternalMode] = useState<ControlPanelMode>("floating");
   const mode = controlledMode ?? internalMode;
+  const [showProfile, setShowProfile] = useState(false);
+
+  // Get display name from settings store (local-only)
+  const storedDisplayName = useSettingsStore((state) => state.displayName);
+  const effectiveDisplayName = storedDisplayName || displayName || username;
 
   const handleModeToggle = () => {
     const newMode = mode === "floating" ? "anchored" : "floating";
@@ -161,17 +168,18 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
+                  onClick={() => setShowProfile(true)}
                   className="rounded-full hover:ring-2 hover:ring-white/20 transition-all"
                   aria-label="Profile"
                 >
                   <div className="flex aspect-square size-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold text-base">
-                    {(displayName || username || "U").charAt(0).toUpperCase()}
+                    {(effectiveDisplayName || "U").charAt(0).toUpperCase()}
                   </div>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="z-[200]">
                 <div className="text-center">
-                  <div className="font-semibold">{displayName || username || "User"}</div>
+                  <div className="font-semibold">{effectiveDisplayName || "User"}</div>
                   <div className="text-xs text-muted-foreground">View profile</div>
                 </div>
               </TooltipContent>
@@ -217,6 +225,14 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
           </div>
         </div>
       </div>
+
+      {/* Profile Modal */}
+      <ProfileModal
+        open={showProfile}
+        onClose={() => setShowProfile(false)}
+        username={username}
+        email={username}
+      />
     </>
   );
 }

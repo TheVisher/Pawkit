@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { CardModel } from "@/lib/types";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { X, Trash2, FolderInput, FileText, Bookmark } from "lucide-react";
@@ -14,6 +15,19 @@ export function BulkOperationsPanel({ cards, onBulkDelete, onBulkMove }: BulkOpe
   const selectedIds = useSelection((state) => state.selectedIds);
   const toggle = useSelection((state) => state.toggle);
   const clear = useSelection((state) => state.clear);
+
+  // Handle ESC key to clear selection and close bulk operations
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        clear();
+        // The useEffect in card-gallery will handle restoring previous content
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [clear]);
 
   // Get selected cards
   const selectedCards = cards.filter((card) => selectedIds.includes(card.id));

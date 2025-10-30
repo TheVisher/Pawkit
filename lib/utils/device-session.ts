@@ -9,8 +9,27 @@ const DEVICE_ID_KEY = 'pawkit-device-id';
 const LAST_ACTIVE_KEY = 'pawkit-last-active';
 const ACTIVITY_THRESHOLD = 5 * 60 * 1000; // 5 minutes
 
+// Session ID - unique per tab/window (stored in memory, not localStorage)
+let sessionId: string | null = null;
+
+/**
+ * Get or create a unique session ID for this tab/window
+ * Each tab gets its own unique ID (not shared via localStorage)
+ */
+export function getSessionId(): string {
+  if (typeof window === 'undefined') return 'server';
+
+  if (!sessionId) {
+    // Generate a new session ID unique to this tab
+    sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+  }
+
+  return sessionId;
+}
+
 /**
  * Get or create a unique device ID for this browser/device
+ * This is shared across all tabs via localStorage
  */
 export function getDeviceId(): string {
   if (typeof window === 'undefined') return 'server';

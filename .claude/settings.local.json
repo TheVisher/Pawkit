@@ -38,7 +38,13 @@
       "Bash(git revert:*)",
       "Skill(pawkit-roadmap)",
       "Bash(npx prisma db push:*)",
-      "Skill(pawkit-ui-ux)"
+      "Skill(pawkit-ui-ux)",
+      "Read(//c/Users/VishLap/.claude/skills/pawkit-project-context/**)",
+      "Read(//c/Users/VishLap/.claude/skills/pawkit-troubleshooting/**)",
+      "Read(//c/Users/VishLap/.claude/skills/pawkit-ui-ux/**)",
+      "Read(//c/Users/VishLap/.claude/skills/pawkit-roadmap/**)",
+      "Skill(pawkit-troubleshooting)",
+      "Skill(pawkit-project-context)"
     ],
     "deny": [],
     "ask": []

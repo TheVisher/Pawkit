@@ -21,11 +21,10 @@ model User {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  cards          Card[]
-  collections    Collection[]
-  viewSettings   UserViewSettings[]
-  settings       UserSettings?
-  deviceSessions DeviceSession[]
+  cards       Card[]
+  collections Collection[]
+  viewSettings UserViewSettings[]
+  settings    UserSettings?
 }
 
 model Card {
@@ -140,25 +139,9 @@ model UserSettings {
   pinnedNoteIds       String  @default("[]") // JSON: string[]
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
+  updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-}
-
-model DeviceSession {
-  id         String   @id
-  userId     String
-  deviceId   String
-  deviceName String
-  browser    String?
-  os         String?
-  lastActive DateTime @default(now())
-  createdAt  DateTime @default(now())
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, deviceId])
-  @@index([userId])
-  @@index([userId, lastActive])
 }
 
