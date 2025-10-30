@@ -19,6 +19,7 @@ import { CommandPalette } from "@/components/command-palette/command-palette";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
 import { AddCardModal } from "@/components/modals/add-card-modal";
 import { KeyboardShortcutsModal } from "@/components/modals/keyboard-shortcuts-modal";
+import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { useKeyboardShortcuts } from "@/lib/hooks/use-keyboard-shortcuts";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -37,6 +38,48 @@ import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import type { CardModel } from "@/lib/types";
 import { initActivityTracking } from "@/lib/utils/device-session";
 import { SessionWarningBanner } from "@/components/session-warning-banner";
+
+// Wrapper component that provides bulk operation handlers with access to selection store
+function BulkOperationsPanelWithHandlers({
+  cards,
+  collections,
+  deleteCard,
+  updateCard,
+  setShowMoveToPawkitModal,
+  setBulkMoveCardIds,
+}: {
+  cards: any[];
+  collections: any[];
+  deleteCard: (id: string) => Promise<void>;
+  updateCard: (id: string, updates: any) => Promise<void>;
+  setShowMoveToPawkitModal: (show: boolean) => void;
+  setBulkMoveCardIds: (ids: string[]) => void;
+}) {
+  const selectedIds = useSelection((state) => state.selectedIds);
+  const clear = useSelection((state) => state.clear);
+
+  const handleBulkDelete = async () => {
+    // Delete all selected cards
+    await Promise.all(selectedIds.map((id) => deleteCard(id)));
+    // Clear selection after deletion
+    clear();
+  };
+
+  const handleBulkMove = () => {
+    // Store selected IDs for the modal handler to use
+    setBulkMoveCardIds(selectedIds);
+    // Show the move to pawkit modal
+    setShowMoveToPawkitModal(true);
+  };
+
+  return (
+    <BulkOperationsPanel
+      cards={cards}
+      onBulkDelete={handleBulkDelete}
+      onBulkMove={handleBulkMove}
+    />
+  );
+}
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
@@ -63,6 +106,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
   const [showCreateCardModal, setShowCreateCardModal] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [showMoveToPawkitModal, setShowMoveToPawkitModal] = useState(false);
+  const [bulkMoveCardIds, setBulkMoveCardIds] = useState<string[]>([]);
 
   // Global Control Panel state (right panel) - use consistent selectors
   const isPanelOpen = usePanelStore((state) => state.isOpen);
@@ -275,13 +320,28 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     openCardDetails(cardId);
   };
 
-  // Bulk operations handlers
-  const handleBulkDelete = async () => {
-    // TODO: Implement bulk delete - will be handled by library view
-  };
-
-  const handleBulkMove = () => {
-    // TODO: Implement bulk move - will be handled by library view
+  // Handler for bulk moving cards to a pawkit
+  const handleBulkMoveToPawkit = async (pawkitSlug: string) => {
+    // Move all selected cards to the pawkit by updating their collections
+    await Promise.all(
+      bulkMoveCardIds.map(async (cardId) => {
+        const card = cards?.find((c) => c.id === cardId);
+        if (card) {
+          // Get existing collections and add the new one
+          const existingCollections = card.collections
+            ? JSON.parse(card.collections)
+            : [];
+          if (!existingCollections.includes(pawkitSlug)) {
+            existingCollections.push(pawkitSlug);
+            await updateCard(cardId, {
+              collections: JSON.stringify(existingCollections),
+            });
+          }
+        }
+      })
+    );
+    // Clear the stored card IDs
+    setBulkMoveCardIds([]);
   };
 
   return (
@@ -411,6 +471,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             }
           />
 
+          {/* Move to Pawkit Modal */}
+          <MoveToPawkitModal
+            open={showMoveToPawkitModal}
+            onClose={() => setShowMoveToPawkitModal(false)}
+            onConfirm={handleBulkMoveToPawkit}
+          />
+
           {/* Left Panel Toggle Button - Only show when closed */}
           {!isLeftOpen && (
             <button
@@ -478,10 +545,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               {animatingContentType === "pawkits-controls" && <PawkitsControls />}
               {animatingContentType === "card-details" && <CardDetailsPanel />}
               {animatingContentType === "bulk-operations" && (
-                <BulkOperationsPanel
+                <BulkOperationsPanelWithHandlers
                   cards={cards || []}
-                  onBulkDelete={handleBulkDelete}
-                  onBulkMove={handleBulkMove}
+                  collections={collections}
+                  deleteCard={deleteCard}
+                  updateCard={updateCard}
+                  setShowMoveToPawkitModal={setShowMoveToPawkitModal}
+                  setBulkMoveCardIds={setBulkMoveCardIds}
                 />
               )}
               {animatingContentType === "calendar-controls" && (
