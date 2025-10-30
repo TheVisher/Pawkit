@@ -113,33 +113,38 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   }, [layout, imageLoadCount]);
 
   // Additional safeguard: Use ResizeObserver to detect layout changes
+  // Debounced to prevent excessive updates during ContentPanel transitions (Chromium fix)
   useEffect(() => {
     if (layout !== "masonry") return;
 
     const gallery = document.querySelector('[data-masonry-gallery]');
     if (!gallery) return;
 
+    let resizeTimeout: NodeJS.Timeout;
+
     const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        console.log('=== MASONRY RESIZE DEBUG ===');
-        console.log('Container width:', entry.contentRect.width);
-        console.log('Container height:', entry.contentRect.height);
+      // Debounce resize events to avoid flickering during transitions
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        for (const entry of entries) {
+          console.log('=== MASONRY RESIZE DEBUG (debounced) ===');
+          console.log('Container width:', entry.contentRect.width);
+          console.log('Container height:', entry.contentRect.height);
 
-        const element = gallery as HTMLElement;
-        const computedStyle = window.getComputedStyle(element);
-        console.log('CSS columns:', computedStyle.columns);
-        console.log('CSS column-width:', computedStyle.columnWidth);
-        console.log('CSS column-count:', computedStyle.columnCount);
-        console.log('CSS column-gap:', computedStyle.columnGap);
-
-        // REMOVED: The forced reflow was creating an infinite resize loop!
-        // The masonry layout will adjust automatically when container width changes.
-      }
+          const element = gallery as HTMLElement;
+          const computedStyle = window.getComputedStyle(element);
+          console.log('CSS columns:', computedStyle.columns);
+          console.log('CSS column-width:', computedStyle.columnWidth);
+          console.log('CSS column-count:', computedStyle.columnCount);
+          console.log('CSS column-gap:', computedStyle.columnGap);
+        }
+      }, 350); // Wait for ContentPanel transition to complete (300ms + 50ms buffer)
     });
 
     resizeObserver.observe(gallery);
 
     return () => {
+      clearTimeout(resizeTimeout);
       resizeObserver.disconnect();
     };
   }, [layout]);
