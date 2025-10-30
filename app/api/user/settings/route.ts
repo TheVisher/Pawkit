@@ -109,6 +109,6 @@ export async function PATCH(request: Request) {
       pinnedNoteIds
     });
   } catch (error) {
-    return handleApiError(error, { route: '/api/user/settings', userId: user?.id, body });
+    return handleApiError(error, { route: '/api/user/settings', userId: user?.id });
   }
 }
