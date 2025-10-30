@@ -437,13 +437,45 @@ export async function getTimelineCards(userId: string, days = 30): Promise<Timel
 }
 
 export async function softDeleteCard(userId: string, id: string) {
-  return prisma.card.update({
+  console.log('[softDeleteCard] Starting delete:', { userId, cardId: id });
+
+  // Check if card exists before attempting update
+  const existingCard = await prisma.card.findFirst({
+    where: { id, userId },
+    select: { id: true, deleted: true, title: true }
+  });
+
+  console.log('[softDeleteCard] Existing card:', existingCard);
+
+  if (!existingCard) {
+    console.error('[softDeleteCard] Card not found:', { userId, cardId: id });
+    throw new Error(`Card ${id} not found for user ${userId}`);
+  }
+
+  const result = await prisma.card.update({
     where: { id, userId },
     data: {
       deleted: true,
       deletedAt: new Date()
     }
   });
+
+  console.log('[softDeleteCard] Update result:', {
+    id: result.id,
+    deleted: result.deleted,
+    deletedAt: result.deletedAt,
+    updatedAt: result.updatedAt
+  });
+
+  // Verify the update persisted
+  const verifyCard = await prisma.card.findFirst({
+    where: { id, userId },
+    select: { id: true, deleted: true, deletedAt: true }
+  });
+
+  console.log('[softDeleteCard] Verification after update:', verifyCard);
+
+  return result;
 }
 
 export async function getTrashCards(userId: string) {
