@@ -190,6 +190,11 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
 export async function listCards(userId: string, query: CardListQuery) {
   const parsed = cardListQuerySchema.parse(query);
   const limit = parsed.limit ?? 50;
+
+  console.log('[listCards] Input query:', query);
+  console.log('[listCards] Parsed query:', parsed);
+  console.log('[listCards] includeDeleted:', parsed.includeDeleted);
+
   // For sync operations, includeDeleted=true allows fetching deleted cards
   // For regular queries, default to deleted=false to hide deleted cards
   const where: Record<string, any> = {
@@ -197,6 +202,8 @@ export async function listCards(userId: string, query: CardListQuery) {
     deleted: parsed.includeDeleted ? undefined : false,
     inDen: false
   };
+
+  console.log('[listCards] WHERE clause:', where);
 
   if (parsed.q) {
     const term = parsed.q;
@@ -236,12 +243,24 @@ export async function listCards(userId: string, query: CardListQuery) {
     skip: parsed.cursor ? 1 : 0
   });
 
+  console.log('[listCards] Raw items from DB:', {
+    count: items.length,
+    firstFewDeleted: items.slice(0, 5).map(c => ({ id: c.id, title: c.title, deleted: c.deleted }))
+  });
+
   const hasMore = items.length > limit;
   const sliced = hasMore ? items.slice(0, limit) : items;
   const nextCursor = hasMore ? sliced[sliced.length - 1]?.id : undefined;
 
+  const mapped = sliced.map(mapCard);
+
+  console.log('[listCards] Mapped items:', {
+    count: mapped.length,
+    firstFewDeleted: mapped.slice(0, 5).map(c => ({ id: c.id, title: c.title, deleted: c.deleted }))
+  });
+
   return {
-    items: sliced.map(mapCard),
+    items: mapped,
     nextCursor
   };
 }
