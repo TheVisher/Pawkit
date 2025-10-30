@@ -81,32 +81,40 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
   };
 
   try {
+    console.log('[createCard] Attempting to create card:', { userId, type: cardType, url: parsed.url, title: data.title });
     const created = await prisma.card.create({
       data
     });
 
+    console.log('[createCard] Card created successfully:', created.id);
     // Return immediately - metadata will be fetched in background for URL cards
     return mapCard(created);
   } catch (error) {
     // Handle unique constraint violation (P2002) - duplicate userId + url
     // Note: This should only happen for URL-type cards due to partial unique index
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      console.log('[createCard] Duplicate detected, returning existing card for URL:', parsed.url);
+      console.log('[createCard] P2002 ERROR - Duplicate detected for type:', cardType, 'URL:', parsed.url, 'Target:', error.meta?.target);
 
       // Find and return the existing non-deleted card
-      // Only look for URL-type cards since notes shouldn't trigger this constraint
+      // Look for cards of the same type to handle edge cases
       const existingCard = await prisma.card.findFirst({
         where: {
           userId,
           url: parsed.url || "",
-          type: "url", // Only look for URL cards
+          type: cardType, // Look for cards of the same type
           deleted: false // Exclude deleted cards
         }
       });
 
       if (existingCard) {
+        console.log('[createCard] Returning existing card:', existingCard.id);
         return mapCard(existingCard);
       }
+
+      // If no non-deleted card found, this might be a deleted duplicate
+      // In this case, we should allow creation by re-throwing the error
+      // so the caller can handle it appropriately
+      console.error('[createCard] No existing non-deleted card found, but P2002 occurred. This should not happen!');
     }
 
     // Re-throw other errors
