@@ -54,8 +54,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [showCreateCardModal, setShowCreateCardModal] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
-  // Global Control Panel state (right panel)
-  const { isOpen: isPanelOpen, mode: panelMode, contentType, close: closePanel, setMode: setPanelMode, toggle: togglePanel } = usePanelStore();
+  // Global Control Panel state (right panel) - use consistent selectors
+  const isPanelOpen = usePanelStore((state) => state.isOpen);
+  const panelMode = usePanelStore((state) => state.mode);
+  const contentType = usePanelStore((state) => state.contentType);
+  const closePanel = usePanelStore((state) => state.close);
+  const setPanelMode = usePanelStore((state) => state.setMode);
+  const togglePanel = usePanelStore((state) => state.toggle);
 
   // Left Navigation Panel state
   const isLeftOpen = usePanelStore((state) => state.isLeftOpen);
@@ -71,6 +76,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Determine if right panel should be embedded inside content panel
   // Special case: left floating + right anchored = embedded mode
   const isRightPanelEmbedded = leftMode === "floating" && panelMode === "anchored" && isPanelOpen;
+
+  // Debug: Track panel state changes
+  useEffect(() => {
+    console.log('=== LAYOUT PANEL STATE CHANGE ===');
+    console.log('Left panel:', { isOpen: isLeftOpen, mode: leftMode });
+    console.log('Right panel:', { isOpen: isPanelOpen, mode: panelMode });
+    console.log('Embedded mode:', isRightPanelEmbedded);
+  }, [isLeftOpen, leftMode, isPanelOpen, panelMode, isRightPanelEmbedded]);
 
   useEffect(() => {
     if (contentType !== animatingContentType) {
