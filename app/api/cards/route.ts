@@ -96,11 +96,6 @@ export async function GET(request: NextRequest) {
     const includeDeletedParam = query.includeDeleted;
     const includeDeleted = includeDeletedParam === 'true';
 
-      includeDeletedParam,
-      includeDeleted,
-      allParams: query
-    });
-
     const payload = {
       q: query.q,
       collection: query.collection,
@@ -112,10 +107,6 @@ export async function GET(request: NextRequest) {
 
 
     const result = await listCards(user.id, payload);
-
-      itemsCount: result.items.length,
-      firstFewDeleted: result.items.slice(0, 5).map(c => ({ id: c.id, title: c.title, deleted: c.deleted }))
-    });
 
     return withCorsHeaders(success(result), corsHeaders);
   } catch (error) {

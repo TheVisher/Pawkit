@@ -290,13 +290,6 @@ export function LeftNavigationPanel({
       return;
     }
 
-      cardId: activeCard.id,
-      cardTitle: activeCard.title,
-      collectionSlug,
-      collectionName,
-      currentCollections: activeCard.collections
-    });
-
     // Start animation (use slug for consistency)
     setAnimatingPawkit(collectionSlug);
 

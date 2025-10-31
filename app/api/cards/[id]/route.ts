@@ -131,11 +131,6 @@ export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
 
     // Soft delete - move to trash
     const result = await softDeleteCard(user.id, params.id);
-      cardId: params.id,
-      deleted: result.deleted,
-      deletedAt: result.deletedAt,
-      updatedAt: result.updatedAt
-    });
 
     return success({ ok: true, cardId: params.id, deleted: result.deleted });
   } catch (error) {

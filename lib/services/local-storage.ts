@@ -245,10 +245,6 @@ class LocalStorage {
     }
 
     await tx.done;
-
-      cards: deletedCards.length,
-      collections: deletedCollections.length
-    });
   }
 
   async getModifiedCards(): Promise<CardDTO[]> {
@@ -474,9 +470,6 @@ class LocalStorage {
     }
 
     await tx.done;
-      cards: data.cards?.length || 0,
-      collections: data.collections?.length || 0,
-    });
   }
 
   async clear(): Promise<void> {
@@ -488,7 +481,6 @@ class LocalStorage {
     await tx.objectStore('collections').clear();
     await tx.objectStore('metadata').clear();
     await tx.done;
-
   }
 
   // ==================== NOTE LINKS ====================
@@ -553,9 +545,6 @@ class LocalStorage {
 
     await tx.done;
 
-      outgoing: outgoingLinks.length,
-      incoming: incomingLinks.length,
-    });
   }
 
   async updateLinkReferences(oldNoteId: string, newNoteId: string): Promise<void> {
@@ -590,9 +579,6 @@ class LocalStorage {
 
     await tx.done;
 
-      outgoing: outgoingLinks.length,
-      incoming: incomingLinks.length,
-    });
   }
 
   // ==================== NOTE CARD LINKS ====================
@@ -656,9 +642,6 @@ class LocalStorage {
 
     await tx.done;
 
-      outgoing: outgoingLinks.length,
-      incoming: incomingLinks.length,
-    });
   }
 
   // ==================== STATS ====================

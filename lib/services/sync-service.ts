@@ -365,10 +365,6 @@ class SyncService {
         // New card from server - save it (including deleted cards for proper sync state)
         // We need to know about deleted cards so the UI doesn't show stale data
         await localDb.saveCard(serverCard, { fromServer: true });
-          id: serverCard.id,
-          deleted: serverCard.deleted,
-          title: serverCard.title
-        });
       } else {
         // Card exists locally and on server - check for conflicts
         const serverTime = new Date(serverCard.updatedAt).getTime();
@@ -392,12 +388,6 @@ class SyncService {
         if (serverCard.deleted) {
           // Only accept server deletion if it's newer than local version
           if (serverTime >= localTime) {
-              cardId: serverCard.id,
-              title: serverCard.title,
-              serverTime,
-              localTime,
-              deletedAt: serverCard.deletedAt
-            });
             await localDb.saveCard(serverCard, { fromServer: true });
           } else {
             conflicts++;
@@ -530,10 +520,6 @@ class SyncService {
       if (!localCollection) {
         // New collection from server - save it (including deleted for proper sync state)
         await localDb.saveCollection(serverCollection, { fromServer: true });
-          id: serverCollection.id,
-          deleted: serverCollection.deleted,
-          name: serverCollection.name
-        });
       } else {
         // Collection exists locally and on server - check for conflicts
         const serverTime = new Date(serverCollection.updatedAt).getTime();
