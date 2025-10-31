@@ -23,11 +23,12 @@ export type ControlPanelProps = {
   onModeChange?: (mode: ControlPanelMode) => void;
   children: ReactNode;
   embedded?: boolean; // Special mode: embedded inside content panel
+  floatingOverContent?: boolean; // Special mode: floating over visible content (needs darker glass)
   username?: string;
   displayName?: string | null;
 };
 
-export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange, children, embedded = false, username = "", displayName = null }: ControlPanelProps) {
+export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange, children, embedded = false, floatingOverContent = false, username = "", displayName = null }: ControlPanelProps) {
   const router = useRouter();
   // Mode can be controlled or uncontrolled
   const [internalMode, setInternalMode] = useState<ControlPanelMode>("floating");
@@ -77,7 +78,10 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
       <div
         className={`
           ${positionClasses}
-          bg-white/5 backdrop-blur-lg
+          ${floatingOverContent
+            ? "bg-black/40 backdrop-blur-xl backdrop-saturate-150"
+            : "bg-white/5 backdrop-blur-lg"
+          }
           flex flex-col
           animate-slide-in-right
           ${styleClasses}
