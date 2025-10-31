@@ -842,11 +842,11 @@ export function LeftNavigationPanel({
             </div>
             <div className="flex items-center justify-between">
               <span>Paste URL</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">⌘V</kbd>
+              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">Cmd/Ctrl + V</kbd>
             </div>
             <div className="flex items-center justify-between">
               <span>Add card</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">⌘P</kbd>
+              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">Cmd/Ctrl + P</kbd>
             </div>
             <button
               onClick={() => {
