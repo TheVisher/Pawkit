@@ -807,35 +807,50 @@ export function LeftNavigationPanel({
 
           {/* Pawkits Section */}
           {collections.length > 0 && (
-            <PanelSection
-              id="left-pawkits"
-              title="Pawkits"
-              icon={<FolderOpen className={`h-4 w-4 ${pathname === pathPrefix + "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
-              active={pathname === pathPrefix + "/pawkits"}
-              onClick={() => {
-                handleNavigate("/pawkits");
-                // Ensure section is expanded when clicking header
-                if (collapsedSections["left-pawkits"]) {
-                  toggleSection("left-pawkits");
-                }
-              }}
-              action={
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowCreatePawkitModal(true);
-                  }}
-                  className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100"
-                  title="Create new pawkit"
-                >
-                  <Plus size={16} />
-                </button>
-              }
+            <GenericContextMenu
+              items={[
+                {
+                  label: "View All Pawkits",
+                  icon: FolderOpen,
+                  onClick: () => handleNavigate("/pawkits"),
+                },
+                {
+                  label: "Create New Pawkit",
+                  icon: Plus,
+                  onClick: () => setShowCreatePawkitModal(true),
+                },
+              ]}
             >
-              <div className="space-y-1">
-                {collections.map((collection) => renderCollectionTree(collection, 0))}
-              </div>
-            </PanelSection>
+              <PanelSection
+                id="left-pawkits"
+                title="Pawkits"
+                icon={<FolderOpen className={`h-4 w-4 ${pathname === pathPrefix + "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
+                active={pathname === pathPrefix + "/pawkits"}
+                onClick={() => {
+                  handleNavigate("/pawkits");
+                  // Ensure section is expanded when clicking header
+                  if (collapsedSections["left-pawkits"]) {
+                    toggleSection("left-pawkits");
+                  }
+                }}
+                action={
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowCreatePawkitModal(true);
+                    }}
+                    className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100"
+                    title="Create new pawkit"
+                  >
+                    <Plus size={16} />
+                  </button>
+                }
+              >
+                <div className="space-y-1">
+                  {collections.map((collection) => renderCollectionTree(collection, 0))}
+                </div>
+              </PanelSection>
+            </GenericContextMenu>
           )}
 
           {/* Notes Section */}
