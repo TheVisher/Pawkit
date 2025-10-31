@@ -137,6 +137,20 @@ description: Living, interactive roadmap serving as single source of truth for p
 
 ### October 30, 2025
 
+- ✅ **Delete Synchronization - Complete Fix** (5 critical bugs)
+  Fixed deleted cards appearing in Library and data corruption issues
+  Bug 1: Deleted cards injecting into state via .map() operations (5 locations in data-store.ts)
+  Bug 2: Deduplication using soft delete instead of hard delete (line 100)
+  Bug 3: addCard() using soft delete for temp cards (line 531)
+  Bug 4: Sync service using soft delete for temp cards (line 661 in sync-service.ts)
+  Bug 5: Deduplication removing legitimate server cards with same titles
+  Root cause: Confusion between soft delete (user deletions to trash) vs hard delete (internal cleanup)
+  Solution: Changed all internal cleanup to use permanentlyDeleteCard(), added checks before .map() operations, skip deduplication when both cards have real server IDs
+  Impact: Deleted cards no longer appear in Library, data no longer corrupts on navigation, all 26 "missing" cards preserved
+  Debug tools: Created /debug/database-compare page with Force Full Sync and Resolve Mismatches buttons
+  Commits: 85ed692, 61ba60e, 699e796, b56dff1, 476d04a
+  Merged to main: d2b881c
+
 - ✅ **View Settings Sync - Complete Fix** (3 layers of bugs)
   Fixed persistent 400 errors on PATCH /api/user/view-settings
   Layer 1: Removed extra fields not in validator schema

@@ -75,6 +75,17 @@ description: Track development progress, major milestones, and session history a
      - Final stats breakdown
    - Commit: b56dff1
 
+6. **Fixed Fifth Bug: Deduplication Removing Legitimate Server Cards**
+   - **Problem**: Comprehensive logging revealed 26 cards being removed as "duplicates"
+   - **Root Cause**: Priority 3 logic treated "both real OR both temp" together
+   - When both cards had real server IDs, deduplication removed one based on createdAt
+   - These were legitimate separate cards that happened to have same title
+   - Test cards with titles like "SYNC TEST" were being removed
+   - **Fix**: Added explicit Priority 3 check - skip deduplication when BOTH are real server cards
+   - Real server cards are ALWAYS legitimate, even if they share title/URL
+   - Deduplication now ONLY removes temp cards
+   - Commit: 476d04a
+
 **Key Technical Details**:
 
 **Critical Distinction - Soft Delete vs Hard Delete**:
@@ -115,13 +126,13 @@ async permanentlyDeleteCard(id: string): Promise<void> {
 - 61ba60e - Fix deduplication using soft delete instead of hard delete
 - 699e796 - Fix two more locations using soft delete for temp cards
 - b56dff1 - Add comprehensive logging for missing cards investigation
+- 476d04a - Fix deduplication removing legitimate server cards
+- dcee287 - Update skills with delete sync bug fixes
+- d2b881c - Merge fix/delete-sync to main
 
-**Impact**: All delete synchronization bugs fixed - deleted cards no longer appear in library, data no longer corrupts on navigation
+**Impact**: All 5 delete synchronization bugs fixed - deleted cards no longer appear in library, data no longer corrupts on navigation, all 26 missing cards preserved
 
-**Next Steps**:
-- Deploy fix/delete-sync branch and test
-- Observe comprehensive logging to identify why 26 cards missing
-- Suspected issue: deduplication removing test cards with duplicate URLs/titles
+**Result**: Perfect sync achieved! Force Full Sync now shows "Perfect Sync" with all cards present. Merged to main and deployed.
 
 ---
 
