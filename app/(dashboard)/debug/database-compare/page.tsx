@@ -42,7 +42,7 @@ export default function DatabaseComparePage() {
 
       // Fetch from local IndexedDB (including deleted cards)
       await localDb.init();
-      const localCards = await localDb.getAllCards();
+      const localCards = await localDb.getAllCards(true); // includeDeleted: true
 
       // Get last sync timestamp
       const lastSyncStats = await localDb.getStats();
