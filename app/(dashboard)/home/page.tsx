@@ -13,7 +13,7 @@ import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { format, addDays, startOfDay } from "date-fns";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
-import { Plus, FileText, CalendarIcon, Inbox } from "lucide-react";
+import { Plus, FileText, CalendarIcon } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import { HorizontalScrollContainer } from "@/components/ui/horizontal-scroll-container";
 
@@ -286,19 +286,6 @@ export default function HomePage() {
           </Link>
         </div>
         <HorizontalScrollContainer>
-          {/* Inbox Button - Always First */}
-          <Link href="/library" className="flex-shrink-0 w-[250px]">
-            <div className="card-hover h-full rounded-2xl border border-subtle bg-surface p-6 transition flex flex-col items-center justify-center gap-3 cursor-pointer">
-              <div className="p-3 rounded-full bg-purple-500/20">
-                <Inbox size={24} className="text-purple-400" />
-              </div>
-              <div className="text-center">
-                <p className="text-sm font-semibold text-foreground">Inbox</p>
-                <p className="text-xs text-muted-foreground mt-1">Unsorted items</p>
-              </div>
-            </div>
-          </Link>
-
           {/* Pinned Pawkits */}
           {pinnedPawkits.map((pawkit) => (
             <div key={pawkit.id} className="flex-shrink-0 w-[250px]">
