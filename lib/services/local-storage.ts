@@ -212,7 +212,6 @@ class LocalStorage {
       card.deleted = true;
       card.deletedAt = new Date().toISOString();
       await this.db.put('cards', card);
-      console.log('[LocalStorage] Soft deleted card:', id);
     }
   }
 
@@ -221,7 +220,6 @@ class LocalStorage {
     if (!this.db) return;
 
     await this.db.delete('cards', id);
-    console.log('[LocalStorage] Permanently deleted card:', id);
   }
 
   async emptyTrash(): Promise<void> {
@@ -247,11 +245,6 @@ class LocalStorage {
     }
 
     await tx.done;
-
-    console.log('[LocalStorage] Emptied trash:', {
-      cards: deletedCards.length,
-      collections: deletedCollections.length
-    });
   }
 
   async getModifiedCards(): Promise<CardDTO[]> {
@@ -346,7 +339,6 @@ class LocalStorage {
     };
 
     await this.db.put('collections', collectionToSave);
-    console.log('[LocalStorage] Saved collection:', collection.id, options);
   }
 
   async deleteCollection(id: string): Promise<void> {
@@ -354,7 +346,6 @@ class LocalStorage {
     if (!this.db) return;
 
     await this.db.delete('collections', id);
-    console.log('[LocalStorage] Deleted collection:', id);
   }
 
   async permanentlyDeleteCollection(id: string): Promise<void> {
@@ -362,7 +353,6 @@ class LocalStorage {
     if (!this.db) return;
 
     await this.db.delete('collections', id);
-    console.log('[LocalStorage] Permanently deleted collection:', id);
   }
 
   async getModifiedCollections(): Promise<CollectionNode[]> {
@@ -480,10 +470,6 @@ class LocalStorage {
     }
 
     await tx.done;
-    console.log('[LocalStorage] Imported data:', {
-      cards: data.cards?.length || 0,
-      collections: data.collections?.length || 0,
-    });
   }
 
   async clear(): Promise<void> {
@@ -495,8 +481,6 @@ class LocalStorage {
     await tx.objectStore('collections').clear();
     await tx.objectStore('metadata').clear();
     await tx.done;
-
-    console.log('[LocalStorage] Cleared all data');
   }
 
   // ==================== NOTE LINKS ====================
@@ -514,7 +498,6 @@ class LocalStorage {
     };
 
     await this.db.put('noteLinks', link);
-    console.log('[LocalStorage] Added note link:', sourceId, '->', targetId);
   }
 
   async getNoteLinks(noteId: string): Promise<Array<{ id: string; targetNoteId: string; linkText: string; createdAt: string }>> {
@@ -538,7 +521,6 @@ class LocalStorage {
     if (!this.db) return;
 
     await this.db.delete('noteLinks', linkId);
-    console.log('[LocalStorage] Deleted note link:', linkId);
   }
 
   async deleteAllLinksForNote(noteId: string): Promise<void> {
@@ -563,10 +545,6 @@ class LocalStorage {
 
     await tx.done;
 
-    console.log('[LocalStorage] Deleted all links for note:', noteId, {
-      outgoing: outgoingLinks.length,
-      incoming: incomingLinks.length,
-    });
   }
 
   async updateLinkReferences(oldNoteId: string, newNoteId: string): Promise<void> {
@@ -601,10 +579,6 @@ class LocalStorage {
 
     await tx.done;
 
-    console.log('[LocalStorage] Updated link references:', oldNoteId, '->', newNoteId, {
-      outgoing: outgoingLinks.length,
-      incoming: incomingLinks.length,
-    });
   }
 
   // ==================== NOTE CARD LINKS ====================
@@ -623,7 +597,6 @@ class LocalStorage {
     };
 
     await this.db.put('noteCardLinks', link);
-    console.log('[LocalStorage] Added note card link:', sourceId, '->', targetCardId, `(${linkType})`);
   }
 
   async getNoteCardLinks(noteId: string): Promise<Array<{ id: string; targetCardId: string; linkText: string; linkType: 'card' | 'url'; createdAt: string }>> {
@@ -647,7 +620,6 @@ class LocalStorage {
     if (!this.db) return;
 
     await this.db.delete('noteCardLinks', linkId);
-    console.log('[LocalStorage] Deleted note card link:', linkId);
   }
 
   async deleteAllCardLinksForNote(noteId: string): Promise<void> {
@@ -670,10 +642,6 @@ class LocalStorage {
 
     await tx.done;
 
-    console.log('[LocalStorage] Deleted all card links for note:', noteId, {
-      outgoing: outgoingLinks.length,
-      incoming: incomingLinks.length,
-    });
   }
 
   // ==================== STATS ====================

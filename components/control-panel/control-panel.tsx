@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ProfileModal } from "@/components/modals/profile-modal";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { SyncStatus } from "@/components/sync/sync-status";
 
 export type ControlPanelMode = "floating" | "anchored";
 
@@ -22,11 +23,12 @@ export type ControlPanelProps = {
   onModeChange?: (mode: ControlPanelMode) => void;
   children: ReactNode;
   embedded?: boolean; // Special mode: embedded inside content panel
+  floatingOverContent?: boolean; // Special mode: floating over visible content (needs darker glass)
   username?: string;
   displayName?: string | null;
 };
 
-export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange, children, embedded = false, username = "", displayName = null }: ControlPanelProps) {
+export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange, children, embedded = false, floatingOverContent = false, username = "", displayName = null }: ControlPanelProps) {
   const router = useRouter();
   // Mode can be controlled or uncontrolled
   const [internalMode, setInternalMode] = useState<ControlPanelMode>("floating");
@@ -76,7 +78,10 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
       <div
         className={`
           ${positionClasses}
-          bg-white/5 backdrop-blur-lg
+          ${floatingOverContent
+            ? "bg-black/40 backdrop-blur-xl backdrop-saturate-150"
+            : "bg-white/5 backdrop-blur-lg"
+          }
           flex flex-col
           animate-slide-in-right
           ${styleClasses}
@@ -197,33 +202,8 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
           {children}
         </div>
 
-        {/* Keyboard Shortcuts Footer - Fixed at bottom */}
-        <div className="px-4 py-3 border-t border-white/5">
-          <div className="text-xs text-muted-foreground space-y-2">
-            <div className="flex items-center justify-between">
-              <span>Quick search</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">/</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Paste URL</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">⌘V</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Add card</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">⌘P</kbd>
-            </div>
-            <button
-              onClick={() => {
-                // Trigger the help modal
-                const helpEvent = new KeyboardEvent('keydown', { key: '?' });
-                document.dispatchEvent(helpEvent);
-              }}
-              className="text-accent hover:underline text-xs mt-1"
-            >
-              View all shortcuts →
-            </button>
-          </div>
-        </div>
+        {/* Sync Status Footer - Fixed at bottom */}
+        <SyncStatus />
       </div>
 
       {/* Profile Modal */}

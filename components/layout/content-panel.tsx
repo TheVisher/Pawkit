@@ -71,24 +71,12 @@ export function ContentPanel({
 
   // Debug logging to track panel state and dimensions
   useEffect(() => {
-    console.log('=== CONTENT PANEL DEBUG ===');
-    console.log('Left:', { open: leftOpen, mode: leftMode, anchored: hasAnchoredLeft });
-    console.log('Right:', { open: rightOpen, mode: rightMode, anchored: hasAnchoredRight });
-    console.log('Content anchored:', contentIsAnchored);
-    console.log('Right embedded:', isRightEmbedded);
-    console.log('Positions:', { left: leftPosition, right: rightPosition });
 
     // Log actual dimensions after render
     setTimeout(() => {
       const panel = document.querySelector('[data-content-panel]');
       if (panel) {
         const rect = panel.getBoundingClientRect();
-        console.log('Actual ContentPanel dimensions:', {
-          left: rect.left,
-          right: rect.right,
-          width: rect.width,
-          height: rect.height
-        });
       }
     }, 350); // Wait for transition to complete
   }, [leftOpen, leftMode, rightOpen, rightMode, leftPosition, rightPosition, contentIsAnchored, isRightEmbedded, hasAnchoredLeft, hasAnchoredRight]);
