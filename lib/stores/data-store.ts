@@ -38,6 +38,8 @@ function ensureActiveDevice(): boolean {
  * Returns [deduplicated cards, IDs to delete from IndexedDB]
  */
 async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]> {
+  console.log('[deduplicateCards] Starting deduplication for', cards.length, 'cards');
+
   const seenCardIds = new Set<string>();
   const seenCardUrls = new Map<string, string>(); // url/title -> cardId mapping
   const cardsToDelete: string[] = []; // IDs of duplicate cards to delete from IndexedDB
@@ -96,7 +98,11 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
 
   // Delete temp duplicates from IndexedDB (permanently, not soft delete)
   if (cardsToDelete.length > 0) {
-    console.log('[DataStore V2] 🧹 Permanently deleting', cardsToDelete.length, 'duplicate temp cards from IndexedDB');
+    console.log('[deduplicateCards] 🧹 Permanently deleting', cardsToDelete.length, 'duplicate cards from IndexedDB');
+    console.log('[deduplicateCards] Cards to delete:', cardsToDelete.map(id => {
+      const card = cards.find(c => c.id === id);
+      return { id, title: card?.title, url: card?.url };
+    }));
     await Promise.all(cardsToDelete.map(id => localDb.permanentlyDeleteCard(id)));
   }
 
@@ -108,11 +114,18 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
     }
     // Skip duplicate IDs
     if (seenCardIds.has(card.id)) {
-      console.warn('[DataStore V2] Removing duplicate card:', card.id);
+      console.warn('[deduplicateCards] Removing duplicate card ID:', card.id, card.title);
       return false;
     }
     seenCardIds.add(card.id);
     return true;
+  });
+
+  console.log('[deduplicateCards] Deduplication complete:', {
+    input: cards.length,
+    output: deduplicated.length,
+    removed: cards.length - deduplicated.length,
+    deletedFromDB: cardsToDelete.length
   });
 
   return [deduplicated, cardsToDelete];
