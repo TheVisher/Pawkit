@@ -41,6 +41,22 @@ function LibraryPageContent() {
   // Read from global store - instant, no API calls
   const { cards, collections } = useDataStore();
 
+  // DEBUG: Log deleted cards in store
+  useEffect(() => {
+    const deletedCount = cards.filter(c => c.deleted).length;
+    if (deletedCount > 0) {
+      console.error('[Library] ⚠️ DELETED CARDS IN STORE:', deletedCount);
+      console.error('[Library] Deleted cards:', cards.filter(c => c.deleted).map(c => ({
+        id: c.id,
+        title: c.title,
+        deleted: c.deleted,
+        deletedAt: c.deletedAt
+      })));
+    } else {
+      console.log('[Library] ✅ No deleted cards in store');
+    }
+  }, [cards]);
+
   // Get content type filter from view settings
   const contentTypeFilter = viewSettings.contentTypeFilter;
 
