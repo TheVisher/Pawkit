@@ -440,7 +440,77 @@ export function LeftNavigationPanel({
     const textSize = depth === 0 ? "text-sm" : "text-xs";
     const padding = depth === 0 ? "px-3 py-2" : "px-3 py-1.5";
 
+    // Helper function to build move submenu items recursively
+    const buildMoveMenuItems = (
+      collections: CollectionNode[],
+      currentCollectionId: string
+    ): any[] => {
+      const items: any[] = [];
+
+      for (const col of collections) {
+        // Skip the current collection and its descendants
+        if (col.id === currentCollectionId) continue;
+
+        const hasChildren = col.children && col.children.length > 0;
+
+        if (hasChildren) {
+          // Filter out current collection from children
+          const filteredChildren = col.children.filter(
+            (child) => child.id !== currentCollectionId
+          );
+
+          if (filteredChildren.length > 0) {
+            items.push({
+              type: "submenu" as const,
+              label: col.name,
+              items: [
+                {
+                  label: `Move to ${col.name}`,
+                  onClick: async () => {
+                    try {
+                      await updateCollection(currentCollectionId, { parentId: col.id });
+                    } catch (err) {
+                      console.error("Failed to move collection:", err);
+                    }
+                  },
+                },
+                { type: "separator" as const },
+                ...buildMoveMenuItems(filteredChildren, currentCollectionId),
+              ],
+            });
+          } else {
+            // No valid children, just add the parent option
+            items.push({
+              label: col.name,
+              onClick: async () => {
+                try {
+                  await updateCollection(currentCollectionId, { parentId: col.id });
+                } catch (err) {
+                  console.error("Failed to move collection:", err);
+                }
+              },
+            });
+          }
+        } else {
+          items.push({
+            label: col.name,
+            onClick: async () => {
+              try {
+                await updateCollection(currentCollectionId, { parentId: col.id });
+              } catch (err) {
+                console.error("Failed to move collection:", err);
+              }
+            },
+          });
+        }
+      }
+
+      return items;
+    };
+
     // Define context menu items for collection management
+    const moveMenuItems = buildMoveMenuItems(collections, collection.id);
+
     const contextMenuItems = [
       {
         label: "Open",
@@ -471,36 +541,22 @@ export function LeftNavigationPanel({
         },
       },
       {
-        label: "Move",
+        type: "submenu" as const,
+        label: "Move to",
         icon: ArrowUpDown,
-        onClick: async () => {
-          const slug = window.prompt("Enter parent collection slug (leave blank for root)", "");
-          if (slug === null) return; // User cancelled
-          const trimmed = slug.trim();
-          let parentId: string | null = null;
-          if (trimmed.length) {
-            // Find parent by slug
-            const findBySlug = (slug: string, list: CollectionNode[]): CollectionNode | undefined => {
-              for (const item of list) {
-                if (item.slug === slug) return item;
-                const child = findBySlug(slug, item.children ?? []);
-                if (child) return child;
+        items: [
+          {
+            label: "Root (Top Level)",
+            onClick: async () => {
+              try {
+                await updateCollection(collection.id, { parentId: null });
+              } catch (err) {
+                console.error("Failed to move collection:", err);
               }
-              return undefined;
-            };
-            const target = findBySlug(trimmed, collections);
-            if (!target) {
-              alert("Collection slug not found");
-              return;
-            }
-            parentId = target.id;
-          }
-          try {
-            await updateCollection(collection.id, { parentId });
-          } catch (err) {
-            console.error("Failed to move collection:", err);
-          }
-        },
+            },
+          },
+          ...(moveMenuItems.length > 0 ? [{ type: "separator" as const }, ...moveMenuItems] : []),
+        ],
       },
       { type: "separator" as const },
       {
