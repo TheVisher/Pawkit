@@ -11,14 +11,124 @@ description: Track development progress, major milestones, and session history a
 
 ## Current Status
 
-**Branch**: `feat/multi-session-detection` (merged), `fix/delete-sync` (in progress)
-**Status**: Debugging delete synchronization and state management issues
-**Last Updated**: October 30, 2025
-**Next Steps**: Deploy and test comprehensive logging to identify missing cards issue
+**Branch**: `claude/fix-main-bugs-011CUfH4XKwHPJ29z3vN8LRb`
+**Status**: Context menu system implementation and bug fixes complete
+**Last Updated**: October 31, 2025
+**Next Steps**: Test all context menu functionality, verify visual consistency
 
 ---
 
 ## Session History
+
+### Date: October 31, 2025 - Context Menu System & UI Fixes
+
+**Accomplished**:
+
+1. **Implemented Reusable Context Menu System**
+   - Created `hooks/use-context-menu.ts` - Custom hook for context menu state management
+   - Created `components/ui/generic-context-menu.tsx` - Reusable wrapper with array-based API
+   - Supports icons, separators, submenus, shortcuts, destructive actions
+   - Simple array-based configuration for easy implementation
+   - TypeScript types for full type safety
+
+2. **Created Comprehensive Context Menu Audit**
+   - Documented all existing context menu patterns in codebase
+   - Created `CONTEXT_MENU_AUDIT.md` with comprehensive analysis
+   - Identified 3 existing patterns, 5 components with menus, 6+ missing menus
+   - Provided recommendations for standardization
+
+3. **Fixed Left Sidebar Context Menu**
+   - Added context menus to Pawkit collections in left navigation panel
+   - Previously showed browser default menu, now shows custom menu
+   - Menu items: Open, New sub-collection, Rename, Move, Delete
+   - Used GenericContextMenu wrapper for consistency
+
+4. **Fixed Z-Index Issues**
+   - Context menus were rendering behind sidebar (z-index 102)
+   - Updated GenericContextMenu to use z-[9999] on both ContextMenuContent and ContextMenuSubContent
+   - Documented z-index hierarchy: z-0 (base) → z-10 (floating) → z-50 (overlays) → z-[102] (sidebars) → z-[150] (modals) → z-[9999] (context menus)
+
+5. **Fixed PAWKITS Header Context Menu**
+   - First attempt: Wrapping PanelSection didn't work (asChild issue)
+   - Technical learning: GenericContextMenu with asChild only works with simple elements, not complex components
+   - Solution: Inlined header structure and wrapped button directly
+   - Menu items: View All Pawkits, Create New Pawkit
+
+6. **Replaced window.prompt() with Glassmorphism Modal**
+   - Created custom modal for renaming Pawkits
+   - Features: Auto-focus, Enter/Escape handling, loading state, toast notification
+   - Modal styling: bg-white/5, backdrop-blur-lg, border-white/10, shadow-glow-accent
+   - Maintains visual consistency with app design language
+
+7. **Fixed Move Menu UX**
+   - Replaced text prompt asking for slug with visual submenu
+   - Shows all available Pawkits in hierarchical structure
+   - Created `buildMoveMenuItems()` helper function for recursive menu building
+   - Filters out current collection (can't move into itself)
+
+8. **Fixed ESC Key Handling in Modal**
+   - Problem: ESC was closing sidebar instead of modal (event bubbling)
+   - Solution: Added useEffect with document-level keydown listener
+   - Used capture phase (third param = true) to intercept before bubbling
+   - Calls stopPropagation() and preventDefault()
+   - Behavior: First ESC closes modal, second ESC closes sidebar
+
+9. **Updated Skills Documentation**
+   - Updated roadmap skill with all completed work from October 31, 2025
+   - Updated troubleshooting skill with 4 new context menu issues (Issues #11-14)
+   - Updated UI/UX skill with comprehensive Context Menu section including z-index hierarchy
+
+**Key Technical Details**:
+
+**Z-Index Hierarchy**:
+```
+z-0       // Base layer (most content)
+z-10      // Floating elements (cards, pills)
+z-50      // Overlays (drawers, modals)
+z-[102]   // Sidebars (left/right panels)
+z-[150]   // Modal overlays (backgrounds)
+z-[9999]  // Context menus (ALWAYS ON TOP)
+```
+
+**Event Capture Pattern for Modals**:
+```typescript
+useEffect(() => {
+  if (!modalOpen) return;
+
+  const handleEsc = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      e.preventDefault();
+      handleClose();
+    }
+  };
+
+  // Capture phase to intercept before parent handlers
+  document.addEventListener("keydown", handleEsc, true);
+  return () => document.removeEventListener("keydown", handleEsc, true);
+}, [modalOpen]);
+```
+
+**asChild Prop Limitation**:
+- Only works with simple HTML elements (button, div, a)
+- Does NOT work with complex components
+- Solution: Inline component structure and wrap specific element
+
+**Files Modified**:
+- `hooks/use-context-menu.ts` (Created)
+- `components/ui/generic-context-menu.tsx` (Created)
+- `CONTEXT_MENU_AUDIT.md` (Created)
+- `components/navigation/left-navigation-panel.tsx` (Multiple updates)
+- `components/pawkits/sidebar.tsx` (Updated to use GenericContextMenu)
+- `.claude/skills/pawkit-roadmap/SKILL.md` (Updated)
+- `.claude/skills/pawkit-troubleshooting/SKILL.md` (Updated)
+- `.claude/skills/pawkit-ui-ux/SKILL.md` (Updated)
+
+**Commits**: Multiple commits on branch `claude/fix-main-bugs-011CUfH4XKwHPJ29z3vN8LRb`
+
+**Impact**: Standardized context menu system across application, improved UX consistency, fixed multiple visual and interaction bugs
+
+---
 
 ### Date: October 30, 2025 (Night) - Delete Synchronization Bug Fixes
 

@@ -13,6 +13,24 @@ description: Living document of issues encountered, their fixes, and prevention 
 
 1. [How to Use This Document](#how-to-use-this-document)
 2. [Known Issues & Fixes](#known-issues--fixes)
+   - Variable Scope in Try-Catch Blocks
+   - 'deleted' Field Not in Prisma Schema
+   - PATCH vs PUT for Updates
+   - Missing CORS Headers
+   - Den Field Migration Timing
+   - extractAndSaveLinks Performance
+   - Multi-Session Conflict Detection
+   - 'Failed to sync settings to server' Error
+   - Chromium Flickering in Library View
+   - Note Creation Defaulting to Daily Notes
+   - Context Menus Rendering Behind Sidebar (z-index)
+   - GenericContextMenu asChild Not Working with Complex Components
+   - ESC Key Closing Sidebar Instead of Modal
+   - Window.prompt() Breaking Visual Consistency
+   - Duplicate Card Issue - Deleted Cards Returned
+   - Deleted Cards Appearing in Library View
+   - Deduplication Corrupting Data
+   - Deduplication Removing Legitimate Server Cards
 3. [Debugging Strategies](#debugging-strategies)
 4. [How to Add New Issues](#how-to-add-new-issues)
 5. [Maintenance](#maintenance)
@@ -1197,7 +1215,527 @@ const handleCreateNote = async (data: {
 
 ---
 
-### 11. Duplicate Card Issue - Deleted Cards Returned
+### 11. Context Menus Rendering Behind Sidebar
+
+**Issue**: Context menus rendered behind the left sidebar (z-index 102), making them invisible or partially obscured when right-clicking on Pawkit collections.
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Default z-index too low
+// components/ui/generic-context-menu.tsx
+export function GenericContextMenu({ children, items }: Props) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+      <ContextMenuContent className="w-56">
+        {/* ❌ No z-index specified - uses Radix default z-50 */}
+        {renderItems(items)}
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+
+// components/navigation/left-navigation-panel.tsx
+// Left sidebar has z-[102]
+<div className="fixed left-0 top-0 h-screen w-64 bg-background/95 backdrop-blur-sm border-r border-border z-[102]">
+  {/* Sidebar content */}
+</div>
+
+// ❌ Result: Context menu (z-50) appears behind sidebar (z-102)
+```
+
+**The Fix**:
+```tsx
+// ✅ CORRECT: Use z-[9999] for context menus
+// components/ui/generic-context-menu.tsx
+export function GenericContextMenu({ children, items, className }: Props) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+      <ContextMenuContent className={`z-[9999] ${className ?? "w-56"}`}>
+        {renderItems(items)}
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
+
+// ✅ Also apply to submenus
+const renderItems = (items: ContextMenuItemConfig[]) => {
+  if (item.type === "submenu") {
+    return (
+      <ContextMenuSub key={`submenu-${index}`}>
+        <ContextMenuSubTrigger>{item.label}</ContextMenuSubTrigger>
+        <ContextMenuSubContent className="z-[9999] max-h-[300px] overflow-y-auto">
+          {renderItems(item.items)}
+        </ContextMenuSubContent>
+      </ContextMenuSub>
+    );
+  }
+};
+```
+
+**Z-Index Hierarchy**:
+```tsx
+// Pawkit z-index layers (from lowest to highest):
+z-0       // Base layer (most content)
+z-10      // Floating elements (cards, pills)
+z-50      // Overlays (drawers, modals)
+z-[102]   // Sidebars (left/right panels)
+z-[150]   // Modal overlays (backgrounds)
+z-[9999]  // Context menus (always on top)
+```
+
+**How to Avoid**:
+- **ALWAYS** use z-[9999] for context menus and dropdowns
+- Context menus should ALWAYS appear above all other UI elements
+- Test context menus in areas with high z-index elements (sidebars, modals)
+- Document z-index hierarchy in UI/UX skill
+- Use z-index sparingly - only when necessary for layering
+
+**Impact**: Fixed October 31, 2025 - Context menus now appear above all UI elements including sidebars
+
+**Commit**: Part of context menu implementation work
+
+**See**: `.claude/skills/pawkit-ui-ux/SKILL.md` for z-index hierarchy documentation
+
+---
+
+### 12. GenericContextMenu asChild Not Working with Complex Components
+
+**Issue**: Wrapping `PanelSection` component with `GenericContextMenu` didn't work - right-click showed browser default menu instead of custom menu.
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Wrapping complex component with ContextMenuTrigger
+// components/navigation/left-navigation-panel.tsx
+<GenericContextMenu
+  items={[
+    { label: "View All Pawkits", icon: FolderOpen, onClick: () => router.push("/pawkits") },
+    { label: "Create New Pawkit", icon: Plus, onClick: () => setShowCreatePawkitModal(true) },
+  ]}
+>
+  <PanelSection
+    title="PAWKITS"
+    icon={FolderOpen}
+    count={collections.length}
+    isExpanded={!collapsedSections["left-pawkits"]}
+    onToggle={() => toggleSection("left-pawkits")}
+  />
+</GenericContextMenu>
+// ❌ Context menu doesn't appear - browser menu shows instead
+```
+
+**Why It Failed**:
+```tsx
+// PanelSection is a complex component with internal structure:
+function PanelSection({ title, icon, count, isExpanded, onToggle }: Props) {
+  return (
+    <div className="flex items-center justify-between">
+      <button onClick={handleNavigate}>
+        {/* Button with icon and title */}
+      </button>
+      <div className="flex items-center gap-2">
+        {/* Action buttons */}
+      </div>
+    </div>
+  );
+}
+
+// ContextMenuTrigger with asChild expects:
+// 1. Single direct child element (not a component)
+// 2. Element to forward props (onClick, onContextMenu, etc.)
+// 3. PanelSection has internal buttons that intercept events
+// 4. Result: Context menu trigger never fires
+```
+
+**The Fix**:
+```tsx
+// ✅ CORRECT: Inline structure and wrap the button directly
+<div className={`w-full flex items-center gap-2 group relative ${pathname === pathPrefix + "/pawkits" ? "pb-2" : ""}`}>
+  <GenericContextMenu
+    items={[
+      { label: "View All Pawkits", icon: FolderOpen, onClick: () => handleNavigate("/pawkits") },
+      { label: "Create New Pawkit", icon: Plus, onClick: () => setShowCreatePawkitModal(true) },
+    ]}
+  >
+    {/* ✅ Wrap the button element directly */}
+    <button
+      onClick={() => {
+        handleNavigate("/pawkits");
+        if (collapsedSections["left-pawkits"]) toggleSection("left-pawkits");
+      }}
+      className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1"
+    >
+      <FolderOpen className={`h-4 w-4 ${pathname === pathPrefix + "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />
+      <h3 className={`text-sm font-semibold uppercase tracking-wide transition-all ${pathname === pathPrefix + "/pawkits" ? "text-accent-foreground drop-shadow-glow-accent" : "text-foreground"}`}>
+        Pawkits
+      </h3>
+    </button>
+  </GenericContextMenu>
+  {/* Action buttons outside context menu wrapper */}
+  <button onClick={() => router.push("/pawkits/create")} className="...">
+    <Plus className="h-4 w-4" />
+  </button>
+</div>
+```
+
+**How to Avoid**:
+- **NEVER** wrap complex components with ContextMenuTrigger asChild
+- ContextMenuTrigger asChild works with:
+  - Simple HTML elements (`<div>`, `<button>`, `<a>`, etc.)
+  - Single-element components that forward refs
+  - Elements without internal event handlers
+- For complex components:
+  - Inline the structure
+  - Wrap the specific element you want the menu on
+  - Move other elements outside the wrapper
+- Test context menus actually appear (not browser default)
+
+**Technical Explanation**:
+```tsx
+// How asChild works (Radix UI pattern):
+<ContextMenuTrigger asChild>
+  <button>Click me</button>
+</ContextMenuTrigger>
+
+// Radix clones the child and adds props:
+const enhancedChild = React.cloneElement(children, {
+  onContextMenu: handleContextMenu,
+  onClick: handleClick,
+  // ... other event handlers
+});
+
+// ❌ Doesn't work with components:
+<ContextMenuTrigger asChild>
+  <MyComponent />  {/* Can't clone component, props won't forward */}
+</ContextMenuTrigger>
+
+// ✅ Works with elements:
+<ContextMenuTrigger asChild>
+  <button />  {/* Element can be cloned and enhanced */}
+</ContextMenuTrigger>
+```
+
+**Impact**: Fixed October 31, 2025 - PAWKITS header now has working context menu
+
+**Commit**: Part of context menu implementation work
+
+**See**:
+- Radix UI docs on asChild pattern
+- `.claude/skills/pawkit-ui-ux/SKILL.md` for component composition patterns
+
+---
+
+### 13. ESC Key Closing Sidebar Instead of Modal
+
+**Issue**: When Rename Pawkit modal was open, pressing ESC closed the sidebar instead of the modal. Event was bubbling up to parent handlers.
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Modal only handles ESC in input onKeyDown
+// components/navigation/left-navigation-panel.tsx
+{showRenameModal && (
+  <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div className="..." onClick={(e) => e.stopPropagation()}>
+      <input
+        onKeyDown={(e) => {
+          if (e.key === "Enter") handleRenameCollection();
+          else if (e.key === "Escape") {
+            setShowRenameModal(false);
+            // ❌ This only works when input is focused
+            // ❌ Event still bubbles to sidebar ESC handler
+          }
+        }}
+      />
+    </div>
+  </div>
+)}
+
+// Left sidebar has global ESC handler:
+useEffect(() => {
+  const handleEsc = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      toggleLeftSidebar();  // ❌ This fires even when modal is open
+    }
+  };
+  document.addEventListener("keydown", handleEsc);
+  return () => document.removeEventListener("keydown", handleEsc);
+}, []);
+
+// ❌ Result: ESC closes sidebar, modal stays open
+```
+
+**Event Flow**:
+```tsx
+// Event phases:
+// 1. CAPTURE phase (document → target) - Runs first
+// 2. TARGET phase (on element itself)
+// 3. BUBBLE phase (target → document) - Runs last
+
+// Default behavior (bubble phase):
+User presses ESC
+  → Input onKeyDown (bubble) - Handles ESC
+  → Modal div onClick (bubble) - Ignored
+  → Sidebar ESC handler (bubble) - Also handles ESC!
+  → ❌ Both handlers fire!
+```
+
+**The Fix**:
+```tsx
+// ✅ CORRECT: Use capture phase to intercept ESC before bubbling
+useEffect(() => {
+  if (!showRenameModal) return;
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();  // ✅ Prevent bubbling to parent handlers
+      e.preventDefault();   // ✅ Prevent default browser behavior
+
+      if (!renamingCollection) {
+        setShowRenameModal(false);
+        setRenameValue("");
+        setRenameCollectionId(null);
+        setRenameCollectionName("");
+      }
+    }
+  };
+
+  // ✅ Third parameter = true → Use CAPTURE phase
+  document.addEventListener("keydown", handleKeyDown, true);
+
+  return () => {
+    document.removeEventListener("keydown", handleKeyDown, true);
+  };
+}, [showRenameModal, renamingCollection]);
+
+// Event flow with fix:
+User presses ESC
+  → Modal ESC handler (CAPTURE) - Handles ESC, calls stopPropagation()
+  → Event propagation STOPPED
+  → Sidebar ESC handler NEVER FIRES
+  → ✅ Only modal closes!
+```
+
+**Capture Phase vs Bubble Phase**:
+```tsx
+// Bubble phase (default):
+document.addEventListener("keydown", handler);         // Fires LAST
+document.addEventListener("keydown", handler, false);  // Same as above
+
+// Capture phase:
+document.addEventListener("keydown", handler, true);   // Fires FIRST
+
+// Use cases:
+// - Bubble phase: Normal event handling (most cases)
+// - Capture phase: Intercept events before they reach children
+//                  Perfect for modals/overlays that need priority
+```
+
+**How to Avoid**:
+- Use **capture phase** for modal/overlay ESC handlers
+- Call `stopPropagation()` to prevent bubbling to parent handlers
+- Call `preventDefault()` to prevent default browser behavior
+- Add/remove listener in useEffect based on modal state
+- Test: First ESC closes modal, second ESC closes sidebar
+
+**Common Pattern for Modals**:
+```tsx
+// Pattern for all modals that need ESC priority:
+useEffect(() => {
+  if (!modalOpen) return;
+
+  const handleEsc = (e: KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      e.preventDefault();
+      handleClose();
+    }
+  };
+
+  // ✅ Capture phase to intercept before parent handlers
+  document.addEventListener("keydown", handleEsc, true);
+  return () => document.removeEventListener("keydown", handleEsc, true);
+}, [modalOpen]);
+```
+
+**Impact**: Fixed October 31, 2025 - ESC now closes modal first, then sidebar on second press
+
+**Commit**: Part of rename modal implementation
+
+**See**:
+- MDN: Event flow and phases
+- `.claude/skills/pawkit-ui-ux/SKILL.md` for modal event handling patterns
+
+---
+
+### 14. Window.prompt() Breaking Visual Consistency
+
+**Issue**: Using `window.prompt()` for rename/create/move operations broke app's visual consistency with ugly browser default dialogs. Users expected glassmorphism modals matching the app design.
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Browser default prompt
+const renameCollection = async (node: CollectionNode) => {
+  const name = window.prompt("Rename collection", node.name);
+  if (!name || name === node.name) return;
+
+  try {
+    await updateCollection(node.id, { name });
+  } catch (err) {
+    console.error("Failed to rename collection");
+  }
+};
+
+// ❌ Result: Ugly browser default dialog
+// - No styling control
+// - Doesn't match app design
+// - No loading state
+// - No validation feedback
+// - Inconsistent with rest of app
+```
+
+**The Fix**:
+```tsx
+// ✅ CORRECT: Custom glassmorphism modal
+// 1. Add state for modal
+const [showRenameModal, setShowRenameModal] = useState(false);
+const [renameCollectionId, setRenameCollectionId] = useState<string | null>(null);
+const [renameCollectionName, setRenameCollectionName] = useState("");
+const [renameValue, setRenameValue] = useState("");
+const [renamingCollection, setRenamingCollection] = useState(false);
+
+// 2. Handler opens modal instead of prompt
+const handleRenameClick = (collection: CollectionNode) => {
+  setRenameCollectionId(collection.id);
+  setRenameCollectionName(collection.name);
+  setRenameValue(collection.name);
+  setShowRenameModal(true);
+};
+
+// 3. Rename handler with loading state
+const handleRenameCollection = async () => {
+  const trimmedName = renameValue.trim();
+  if (!trimmedName || !renameCollectionId || renamingCollection) return;
+
+  setRenamingCollection(true);
+  try {
+    await updateCollection(renameCollectionId, { name: trimmedName });
+    setToastMessage("Pawkit Renamed");
+    setShowToast(true);
+    setShowRenameModal(false);
+    // Reset state
+  } catch (error) {
+    console.error('Failed to rename collection:', error);
+  } finally {
+    setRenamingCollection(false);
+  }
+};
+
+// 4. Glassmorphism modal JSX
+{showRenameModal && (
+  <div
+    className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+    onClick={() => {
+      if (!renamingCollection) {
+        setShowRenameModal(false);
+        // Reset state
+      }
+    }}
+  >
+    <div
+      className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 shadow-glow-accent p-6 w-full max-w-md mx-4"
+      onClick={(e) => e.stopPropagation()}
+    >
+      <h3 className="text-lg font-semibold text-foreground mb-4">
+        Rename Pawkit
+      </h3>
+      <input
+        type="text"
+        value={renameValue}
+        onChange={(e) => setRenameValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") handleRenameCollection();
+        }}
+        className="w-full rounded-lg bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-foreground placeholder-muted-foreground border border-white/10 focus:border-accent focus:outline-none transition-colors"
+        autoFocus
+        disabled={renamingCollection}
+      />
+      <div className="flex gap-2 mt-4">
+        <button
+          onClick={() => {
+            if (!renamingCollection) setShowRenameModal(false);
+          }}
+          className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          disabled={renamingCollection}
+        >
+          Esc to Cancel
+        </button>
+        <button
+          onClick={handleRenameCollection}
+          className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-50"
+          disabled={renamingCollection || !renameValue.trim()}
+        >
+          {renamingCollection ? "Renaming..." : "Enter to Rename"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+```
+
+**Glassmorphism Modal Pattern**:
+```tsx
+// Required elements for glassmorphism modals:
+const modalStyles = {
+  // Overlay
+  overlay: "fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm",
+
+  // Modal container
+  container: "bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 shadow-glow-accent p-6 w-full max-w-md mx-4",
+
+  // Input field
+  input: "w-full rounded-lg bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-foreground placeholder-muted-foreground border border-white/10 focus:border-accent focus:outline-none transition-colors",
+
+  // Primary button
+  primary: "px-4 py-2 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-50",
+
+  // Secondary button
+  secondary: "px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+};
+```
+
+**Features to Include**:
+- ✅ Auto-focus input field
+- ✅ Enter to confirm, ESC to cancel (with proper event handling)
+- ✅ Loading state with disabled inputs during async operations
+- ✅ Toast notification on success
+- ✅ Click outside to close (with stopPropagation on modal)
+- ✅ Validation (disable submit if invalid)
+- ✅ Reset state when modal closes
+
+**How to Avoid**:
+- **NEVER** use `window.prompt()` or `window.confirm()` in the app
+- Always use custom modals with glassmorphism styling
+- Match app's visual design language
+- Provide loading states for async operations
+- Use toast notifications for success feedback
+- Test keyboard shortcuts (Enter, ESC)
+
+**Where to Replace**:
+All instances of:
+- `window.prompt()` → Custom input modal
+- `window.confirm()` → Custom confirmation modal
+- `window.alert()` → Toast notification
+
+**Impact**: Fixed October 31, 2025 - All prompts now use app-styled modals maintaining visual consistency
+
+**Commit**: Part of rename modal implementation
+
+**See**: `.claude/skills/pawkit-ui-ux/SKILL.md` for glassmorphism design patterns and modal components
+
+---
+
+### 15. Duplicate Card Issue - Deleted Cards Returned
 
 **Issue**: Creating new notes triggered duplicate constraint errors and returned deleted daily notes instead of creating new notes. Server returned 409 Conflict errors.
 
@@ -2013,6 +2551,7 @@ After adding a new issue:
 - Migration timing
 - Prisma query errors
 - Index missing
+- Deduplication logic
 
 **Sync**:
 - Multi-session conflicts
@@ -2025,6 +2564,15 @@ After adding a new issue:
 - Excessive re-renders
 - No virtualization
 - IndexedDB optimization
+- Browser-specific rendering (Chromium flickering)
+
+**UI/UX**:
+- Context menu z-index issues
+- asChild prop with complex components
+- Event propagation (ESC key handling)
+- Modal state management
+- Window.prompt() vs custom modals
+- Visual consistency (glassmorphism)
 
 **Security**:
 - Auth failures
@@ -2056,7 +2604,7 @@ After adding a new issue:
 
 ---
 
-**Last Updated**: October 2025 (Initial creation)
+**Last Updated**: October 31, 2025 (Added context menu issues)
 **Next Review**: January 2026 (Quarterly)
 
 **This is a living document. Keep it current!**

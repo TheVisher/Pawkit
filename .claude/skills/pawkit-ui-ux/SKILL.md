@@ -872,6 +872,337 @@ import {
 
 ---
 
+### 8. CONTEXT MENUS
+
+**Purpose**: Right-click menus for cards, Pawkit collections, and other interactive elements
+
+**Implementation**: Uses Radix UI's Context Menu primitives with reusable `GenericContextMenu` wrapper component
+
+**Created**: October 31, 2025 (Context Menu System Implementation)
+
+#### Z-Index Hierarchy
+
+**CRITICAL**: Context menus must ALWAYS appear above all other UI elements.
+
+```tsx
+// Pawkit z-index layers (from lowest to highest):
+z-0       // Base layer (most content)
+z-10      // Floating elements (cards, pills)
+z-50      // Overlays (drawers, modals)
+z-[102]   // Sidebars (left/right panels)
+z-[150]   // Modal overlays (backgrounds)
+z-[9999]  // Context menus (ALWAYS ON TOP)
+```
+
+**Why z-[9999]?**
+- Context menus must appear above sidebars (z-[102])
+- Context menus must appear above modal overlays (z-[150])
+- Using z-[9999] ensures they're always visible regardless of other UI layers
+- Applies to both ContextMenuContent AND ContextMenuSubContent
+
+#### GenericContextMenu Component
+
+**Location**: `components/ui/generic-context-menu.tsx`
+
+**Purpose**: Reusable wrapper with simple array-based API supporting icons, separators, submenus, shortcuts, and destructive actions
+
+**Basic Usage**:
+```tsx
+import { GenericContextMenu } from "@/components/ui/generic-context-menu";
+import { FolderPlus, Edit3, Trash2 } from "lucide-react";
+
+<GenericContextMenu
+  items={[
+    {
+      label: "Create New",
+      icon: FolderPlus,
+      onClick: () => handleCreate(),
+    },
+    { type: "separator" },
+    {
+      label: "Rename",
+      icon: Edit3,
+      onClick: () => handleRename(),
+    },
+    {
+      label: "Delete",
+      icon: Trash2,
+      onClick: () => handleDelete(),
+      destructive: true,  // Red text color
+    },
+  ]}
+>
+  <div>Right-click me</div>
+</GenericContextMenu>
+```
+
+**With Submenu**:
+```tsx
+<GenericContextMenu
+  items={[
+    {
+      type: "submenu",
+      label: "Move to",
+      icon: ArrowUpDown,
+      items: [
+        { label: "Root (Top Level)", onClick: () => moveToRoot() },
+        { type: "separator" },
+        { label: "Projects", onClick: () => moveTo("projects") },
+        { label: "Archive", onClick: () => moveTo("archive") },
+      ],
+    },
+  ]}
+>
+  <div>Right-click for move menu</div>
+</GenericContextMenu>
+```
+
+**TypeScript Types**:
+```tsx
+export type ContextMenuItemConfig = {
+  type?: "item" | "separator" | "submenu";
+  label?: string;
+  icon?: LucideIcon;
+  onClick?: () => void;
+  disabled?: boolean;
+  destructive?: boolean;  // Red text for delete actions
+  shortcut?: string;      // Display keyboard shortcut (e.g., "⌘D")
+  items?: ContextMenuItemConfig[];  // For submenus
+};
+
+export interface GenericContextMenuProps {
+  children: ReactNode;
+  items: ContextMenuItemConfig[];
+  className?: string;  // Override default width
+}
+```
+
+#### Implementation Details
+
+**CRITICAL: asChild Prop Usage**
+
+The `asChild` prop only works with simple HTML elements, NOT complex components:
+
+```tsx
+// ✅ CORRECT: Wrap simple elements
+<GenericContextMenu items={menuItems}>
+  <button className="...">Click me</button>
+</GenericContextMenu>
+
+// ✅ CORRECT: Wrap simple div
+<GenericContextMenu items={menuItems}>
+  <div className="...">
+    <h3>Title</h3>
+    <p>Content</p>
+  </div>
+</GenericContextMenu>
+
+// ❌ WRONG: Wrap complex components
+<GenericContextMenu items={menuItems}>
+  <MyCustomComponent prop={value} />
+  {/* Context menu won't work - browser default menu will show */}
+</GenericContextMenu>
+```
+
+**Why?** Radix UI's `asChild` pattern uses `React.cloneElement()` to add event handlers. This only works with elements, not components.
+
+**Solution**: Inline the component structure and wrap the specific element:
+
+```tsx
+// Instead of wrapping the component:
+<GenericContextMenu items={menuItems}>
+  <PanelSection title="Collections" />
+</GenericContextMenu>
+
+// Inline and wrap the button:
+<div className="panel-section">
+  <GenericContextMenu items={menuItems}>
+    <button className="title-button">
+      Collections
+    </button>
+  </GenericContextMenu>
+  {/* Other panel section elements */}
+</div>
+```
+
+#### Where Context Menus Are Used
+
+**Cards** (`components/cards/card-context-menu.tsx`):
+- Add to Pawkit (submenu with collection tree)
+- Remove from Pawkit (submenu with current collections)
+- Fetch metadata (for URL cards)
+- Pin/Unpin to sidebar (for notes)
+- Delete
+
+**Pawkit Collections** (left sidebar, `components/navigation/left-navigation-panel.tsx`):
+- Open (navigate to collection)
+- New sub-collection
+- Rename
+- Move to (submenu with available destinations)
+- Delete
+
+**PAWKITS Header** (left sidebar):
+- View All Pawkits
+- Create New Pawkit
+
+**Right Sidebar Collections** (`components/pawkits/sidebar.tsx`):
+- New sub-collection
+- Rename
+- Move
+- Delete
+
+#### Visual Styling
+
+Context menus use glass morphism with subtle borders:
+
+```tsx
+<ContextMenuContent className="
+  z-[9999]           // CRITICAL: Always on top
+  w-56               // Default width (can override)
+  backdrop-blur-lg   // Glass effect
+  bg-gray-950/95     // Dark background with transparency
+  border border-white/10  // Subtle border
+  rounded-lg         // Rounded corners
+  shadow-lg          // Drop shadow
+  p-1                // Internal padding
+">
+  {/* Menu items */}
+</ContextMenuContent>
+```
+
+**Menu Items**:
+```tsx
+<ContextMenuItem className="
+  flex items-center gap-2     // Icon + text layout
+  px-2 py-1.5                 // Padding
+  text-sm                     // Text size
+  rounded                     // Rounded corners
+  cursor-pointer              // Pointer cursor
+  hover:bg-white/10           // Hover state
+  focus:bg-white/10           // Keyboard focus
+  transition-colors           // Smooth transition
+">
+  <Icon className="h-4 w-4" />
+  Label
+</ContextMenuItem>
+```
+
+**Destructive Items** (red for delete):
+```tsx
+<ContextMenuItem className="text-rose-400 hover:text-rose-300">
+  <Trash2 className="mr-2 h-4 w-4" />
+  Delete
+</ContextMenuItem>
+```
+
+**Submenus**:
+```tsx
+<ContextMenuSub>
+  <ContextMenuSubTrigger className="
+    flex items-center justify-between
+    px-2 py-1.5 text-sm rounded
+    cursor-pointer
+    hover:bg-white/10
+  ">
+    Move to
+    <ChevronRight className="h-4 w-4" />
+  </ContextMenuSubTrigger>
+  <ContextMenuSubContent className="
+    z-[9999]           // CRITICAL: Same high z-index
+    max-h-[300px]      // Max height
+    overflow-y-auto    // Scrollable if needed
+  ">
+    {/* Submenu items */}
+  </ContextMenuSubContent>
+</ContextMenuSub>
+```
+
+#### Common Patterns
+
+**Collection Tree Submenu**:
+```tsx
+// Build hierarchical collection menu recursively
+const buildCollectionMenu = (collections: CollectionNode[]): ContextMenuItemConfig[] => {
+  return collections.map(collection => {
+    const hasChildren = collection.children && collection.children.length > 0;
+
+    if (hasChildren) {
+      return {
+        type: "submenu",
+        label: collection.name,
+        items: [
+          { label: `Add to ${collection.name}`, onClick: () => addTo(collection.slug) },
+          { type: "separator" },
+          ...buildCollectionMenu(collection.children)
+        ]
+      };
+    }
+
+    return {
+      label: collection.name,
+      onClick: () => addTo(collection.slug)
+    };
+  });
+};
+```
+
+**Dynamic Menu Items** (fetch collections on open):
+```tsx
+const [collections, setCollections] = useState<CollectionNode[]>([]);
+
+const fetchCollections = async () => {
+  const response = await fetch("/api/pawkits");
+  const data = await response.json();
+  setCollections(data.tree || []);
+};
+
+<ContextMenu onOpenChange={(open) => open && fetchCollections()}>
+  <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+  <ContextMenuContent>
+    {/* Render collections */}
+  </ContextMenuContent>
+</ContextMenu>
+```
+
+#### ✅ DO
+
+- **ALWAYS** use z-[9999] on ContextMenuContent and ContextMenuSubContent
+- Wrap simple HTML elements with ContextMenuTrigger asChild
+- Fetch dynamic menu items using `onOpenChange` handler
+- Use icons from lucide-react for consistency
+- Use `destructive: true` for delete/remove actions
+- Test context menus appear above sidebars and modals
+- Use submenus for hierarchical options (collections, categories)
+- Add separators to group related actions
+
+#### ❌ DON'T
+
+- **NEVER** wrap complex components with ContextMenuTrigger asChild
+- Don't use z-index lower than z-[9999] for context menus
+- Don't use window.prompt() - use proper modals instead
+- Don't forget to stop event propagation in modal handlers
+- Don't use flat purple backgrounds (use glass morphism)
+- Don't skip the backdrop-blur on menu content
+- Don't use emojis in menu items (use lucide-react icons)
+
+#### Troubleshooting
+
+**Context menu shows browser default menu**:
+- Problem: Wrapping a complex component with asChild
+- Solution: Inline the structure and wrap the specific element
+
+**Context menu appears behind sidebar**:
+- Problem: Missing or incorrect z-index
+- Solution: Add `z-[9999]` to ContextMenuContent and ContextMenuSubContent
+
+**ESC key closes sidebar instead of modal**:
+- Problem: Event bubbling to parent handlers
+- Solution: Use capture phase with `document.addEventListener("keydown", handler, true)`
+
+**See**: `.claude/skills/pawkit-troubleshooting/SKILL.md` for detailed troubleshooting of context menu issues (Issues #11-14)
+
+---
+
 ## COMPONENT USAGE RULES
 
 ### When to Use Each Pattern
@@ -884,6 +1215,7 @@ import {
 | **GlassPopover** | Dropdown menus, filter options | Workspace switcher dropdown, action menus |
 | **GlassSlider** | Adjustable values in control panel | Opacity, spacing, size controls |
 | **NavItem** | View switching navigation | Library, Calendar, Timeline tabs |
+| **GenericContextMenu** | Right-click menus on interactive elements | Card actions, Pawkit collection management |
 
 ### Glow Application Decision Tree
 
@@ -1143,7 +1475,7 @@ Before marking UI work complete, verify:
 
 ---
 
-**Last Updated**: October 29, 2025
+**Last Updated**: October 31, 2025 (Added Context Menu System)
 **Design System**: Selective Glow v1.0
 **Status**: Official Pawkit UI Language
 
