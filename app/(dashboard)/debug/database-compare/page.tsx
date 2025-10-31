@@ -129,10 +129,43 @@ export default function DatabaseComparePage() {
       console.log('[ForceSync] 📥 Fetched', serverCards.length, 'cards from server');
 
       // Save all cards to local IndexedDB
+      let savedCount = 0;
+      let failedCount = 0;
+      const failedCards: string[] = [];
+
       for (const card of serverCards) {
-        await localDb.saveCard(card, { fromServer: true });
+        try {
+          await localDb.saveCard(card, { fromServer: true });
+          savedCount++;
+        } catch (error) {
+          console.error('[ForceSync] Failed to save card:', card.id, card.title, error);
+          failedCount++;
+          failedCards.push(card.id);
+        }
       }
-      console.log('[ForceSync] ✅ Saved all cards to local IndexedDB');
+
+      console.log('[ForceSync] ✅ Saved to local IndexedDB:', {
+        attempted: serverCards.length,
+        succeeded: savedCount,
+        failed: failedCount,
+        failedCards: failedCards.length > 0 ? failedCards : 'none'
+      });
+
+      // Verify what's actually in IndexedDB after saving
+      const verifyCards = await localDb.getAllCards(true); // Include deleted
+      console.log('[ForceSync] 🔍 Verification - Cards in IndexedDB:', verifyCards.length);
+      console.log('[ForceSync] 🔍 Verification breakdown:', {
+        total: verifyCards.length,
+        active: verifyCards.filter(c => !c.deleted).length,
+        deleted: verifyCards.filter(c => c.deleted).length,
+        diff: serverCards.length - verifyCards.length
+      });
+
+      if (serverCards.length !== verifyCards.length) {
+        console.error('[ForceSync] ⚠️ MISMATCH! Expected', serverCards.length, 'but got', verifyCards.length);
+        const missingIds = serverCards.filter(sc => !verifyCards.find(vc => vc.id === sc.id)).map(c => ({ id: c.id, title: c.title }));
+        console.error('[ForceSync] Missing cards:', missingIds);
+      }
 
       // Fetch all collections from server
       const collectionsRes = await fetch('/api/pawkits');
