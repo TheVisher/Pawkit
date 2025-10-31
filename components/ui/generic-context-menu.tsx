@@ -69,7 +69,7 @@ export function GenericContextMenu({
               {Icon && <Icon className="mr-2 h-4 w-4" />}
               {item.label}
             </ContextMenuSubTrigger>
-            <ContextMenuSubContent className="max-h-[300px] overflow-y-auto">
+            <ContextMenuSubContent className="z-[9999] max-h-[300px] overflow-y-auto">
               {renderItems(item.items)}
             </ContextMenuSubContent>
           </ContextMenuSub>
@@ -98,7 +98,7 @@ export function GenericContextMenu({
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent className={className ?? "w-56"}>
+      <ContextMenuContent className={`z-[9999] ${className ?? "w-56"}`}>
         {renderItems(items)}
       </ContextMenuContent>
     </ContextMenu>
