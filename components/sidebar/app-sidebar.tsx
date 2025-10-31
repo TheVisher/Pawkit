@@ -10,7 +10,9 @@ import { ProfileModal } from "@/components/modals/profile-modal";
 import { useDataStore } from "@/lib/stores/data-store";
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
+import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { SyncStatus } from "@/components/sync/sync-status";
+import { KeyboardShortcuts } from "@/components/sidebar/keyboard-shortcuts";
 import {
   Sidebar,
   SidebarContent,
@@ -61,6 +63,9 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
 
   // Recent history
   const { recentItems } = useRecentHistory();
+
+  // Get sidebar visibility settings
+  const showKeyboardShortcutsInSidebar = useSettingsStore((state) => state.showKeyboardShortcutsInSidebar);
 
   // Load Pawkits expansion state from localStorage
   React.useEffect(() => {
@@ -397,8 +402,8 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
       </SidebarContent>
 
       <SidebarFooter>
-        {/* Sync Status - Matches right sidebar keybind footer styling */}
-        <SyncStatus />
+        {/* Keyboard Shortcuts - Conditional based on settings */}
+        {showKeyboardShortcutsInSidebar && <KeyboardShortcuts />}
       </SidebarFooter>
 
       <ProfileModal

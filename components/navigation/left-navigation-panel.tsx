@@ -140,6 +140,9 @@ export function LeftNavigationPanel({
   // Get pinned notes
   const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
   const reorderPinnedNotes = useSettingsStore((state) => state.reorderPinnedNotes);
+
+  // Get sidebar visibility settings
+  const showKeyboardShortcutsInSidebar = useSettingsStore((state) => state.showKeyboardShortcutsInSidebar);
   const pinnedNotes = useMemo(() => {
     return pinnedNoteIds
       .map(id => cards.find(card => card.id === id))
@@ -1078,33 +1081,35 @@ export function LeftNavigationPanel({
           )}
         </div>
 
-        {/* Keyboard Shortcuts Footer - Fixed at bottom */}
-        <div className="px-4 py-3 border-t border-white/5">
-          <div className="text-xs text-muted-foreground space-y-2">
-            <div className="flex items-center justify-between">
-              <span>Quick search</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">/</kbd>
+        {/* Keyboard Shortcuts Footer - Fixed at bottom - Conditional based on settings */}
+        {showKeyboardShortcutsInSidebar && (
+          <div className="px-4 py-3 border-t border-white/5">
+            <div className="text-xs text-muted-foreground space-y-2">
+              <div className="flex items-center justify-between">
+                <span>Quick search</span>
+                <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">/</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Paste URL</span>
+                <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">Cmd/Ctrl + V</kbd>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Add card</span>
+                <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">Cmd/Ctrl + P</kbd>
+              </div>
+              <button
+                onClick={() => {
+                  // Trigger the help modal
+                  const helpEvent = new KeyboardEvent('keydown', { key: '?' });
+                  document.dispatchEvent(helpEvent);
+                }}
+                className="text-accent hover:underline text-xs mt-1"
+              >
+                View all shortcuts →
+              </button>
             </div>
-            <div className="flex items-center justify-between">
-              <span>Paste URL</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">Cmd/Ctrl + V</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Add card</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">Cmd/Ctrl + P</kbd>
-            </div>
-            <button
-              onClick={() => {
-                // Trigger the help modal
-                const helpEvent = new KeyboardEvent('keydown', { key: '?' });
-                document.dispatchEvent(helpEvent);
-              }}
-              className="text-accent hover:underline text-xs mt-1"
-            >
-              View all shortcuts →
-            </button>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Create Pawkit Modal */}

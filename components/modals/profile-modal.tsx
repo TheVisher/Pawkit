@@ -49,25 +49,31 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   const accentColor = useSettingsStore((state) => state.accentColor);
   const notifications = useSettingsStore((state) => state.notifications);
   const autoSave = useSettingsStore((state) => state.autoSave);
-  const compactMode = useSettingsStore((state) => state.compactMode);
-  const showPreviews = useSettingsStore((state) => state.showPreviews);
   const autoFetchMetadata = useSettingsStore((state) => state.autoFetchMetadata);
-  const showThumbnails = useSettingsStore((state) => state.showThumbnails);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
   const serverSync = useSettingsStore((state) => state.serverSync);
   const autoSyncOnReconnect = useSettingsStore((state) => state.autoSyncOnReconnect);
+
+  // New sidebar visibility settings
+  const showSyncStatusInSidebar = useSettingsStore((state) => state.showSyncStatusInSidebar);
+  const showKeyboardShortcutsInSidebar = useSettingsStore((state) => state.showKeyboardShortcutsInSidebar);
+
+  // New default preferences
+  const defaultView = useSettingsStore((state) => state.defaultView);
+  const defaultSort = useSettingsStore((state) => state.defaultSort);
 
   const setTheme = useSettingsStore((state) => state.setTheme);
   const setAccentColor = useSettingsStore((state) => state.setAccentColor);
   const setNotifications = useSettingsStore((state) => state.setNotifications);
   const setAutoSave = useSettingsStore((state) => state.setAutoSave);
-  const setCompactMode = useSettingsStore((state) => state.setCompactMode);
-  const setShowPreviews = useSettingsStore((state) => state.setShowPreviews);
   const setAutoFetchMetadata = useSettingsStore((state) => state.setAutoFetchMetadata);
-  const setShowThumbnails = useSettingsStore((state) => state.setShowThumbnails);
   const setPreviewServiceUrl = useSettingsStore((state) => state.setPreviewServiceUrl);
   const setServerSync = useSettingsStore((state) => state.setServerSync);
   const setAutoSyncOnReconnect = useSettingsStore((state) => state.setAutoSyncOnReconnect);
+  const setShowSyncStatusInSidebar = useSettingsStore((state) => state.setShowSyncStatusInSidebar);
+  const setShowKeyboardShortcutsInSidebar = useSettingsStore((state) => state.setShowKeyboardShortcutsInSidebar);
+  const setDefaultView = useSettingsStore((state) => state.setDefaultView);
+  const setDefaultSort = useSettingsStore((state) => state.setDefaultSort);
 
   if (!open || typeof document === 'undefined') return null;
 
@@ -203,7 +209,7 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xl backdrop-saturate-150 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
@@ -221,16 +227,17 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
         </div>
 
         <div className="p-4 md:p-6">
-          <Tabs defaultValue="general" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 gap-1">
-              <TabsTrigger value="general" className="text-xs md:text-sm">General</TabsTrigger>
+          <Tabs defaultValue="account" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 gap-1">
+              <TabsTrigger value="account" className="text-xs md:text-sm">Account</TabsTrigger>
               <TabsTrigger value="appearance" className="text-xs md:text-sm">Appearance</TabsTrigger>
               <TabsTrigger value="preferences" className="text-xs md:text-sm">Preferences</TabsTrigger>
-              <TabsTrigger value="data" className="text-xs md:text-sm">Data</TabsTrigger>
+              <TabsTrigger value="sync-data" className="text-xs md:text-sm">Sync & Data</TabsTrigger>
+              <TabsTrigger value="advanced" className="text-xs md:text-sm">Advanced</TabsTrigger>
             </TabsList>
 
-            {/* General Tab */}
-            <TabsContent value="general" className="space-y-6 mt-6 h-[550px] overflow-y-auto">
+            {/* Account Tab */}
+            <TabsContent value="account" className="space-y-6 mt-6 h-[550px] overflow-y-auto">
               {/* Avatar Section */}
               <div className="space-y-4">
                 <Label className="text-gray-300">Profile Picture</Label>
@@ -310,6 +317,19 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                 <p className="text-xs text-gray-500">
                   Username cannot be changed
                 </p>
+              </div>
+
+              {/* Sign Out - Moved from footer */}
+              <div className="pt-6 border-t border-white/10">
+                <GlowButton
+                  onClick={() => signOut()}
+                  variant="danger"
+                  size="md"
+                  className="w-full"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign Out
+                </GlowButton>
               </div>
             </TabsContent>
 
@@ -430,36 +450,6 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label className="text-gray-300">Compact Mode</Label>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Show more content on screen
-                    </p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 rounded"
-                    checked={compactMode}
-                    onChange={(e) => setCompactMode(e.target.checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-gray-300">Show Previews</Label>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Display image and link previews in cards
-                    </p>
-                  </div>
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 rounded"
-                    checked={showPreviews}
-                    onChange={(e) => setShowPreviews(e.target.checked)}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
                     <Label className="text-gray-300">Auto-fetch Metadata</Label>
                     <p className="text-sm text-gray-500 mt-1">
                       Automatically fetch metadata from preview service
@@ -475,38 +465,79 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label className="text-gray-300">Show Thumbnails</Label>
+                    <Label className="text-gray-300">Show sync status in right sidebar</Label>
                     <p className="text-sm text-gray-500 mt-1">
-                      Show thumbnails in card views
+                      Display sync status panel at bottom of right sidebar
                     </p>
                   </div>
                   <input
                     type="checkbox"
                     className="h-5 w-5 rounded"
-                    checked={showThumbnails}
-                    onChange={(e) => setShowThumbnails(e.target.checked)}
+                    checked={showSyncStatusInSidebar}
+                    onChange={(e) => setShowSyncStatusInSidebar(e.target.checked)}
                   />
                 </div>
 
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-gray-300">Show keyboard shortcuts in left sidebar</Label>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Display keyboard shortcuts panel in sidebar
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 rounded"
+                    checked={showKeyboardShortcutsInSidebar}
+                    onChange={(e) => setShowKeyboardShortcutsInSidebar(e.target.checked)}
+                  />
+                </div>
+
+                {/* Default View */}
                 <div className="space-y-2">
-                  <Label htmlFor="preview-url" className="text-gray-300">
-                    Preview Service URL
+                  <Label htmlFor="default-view" className="text-gray-300">
+                    Default View
                   </Label>
                   <p className="text-sm text-gray-500">
-                    Must contain {`{{url}}`} token
+                    Fallback view when no remembered state (your last-used view is always remembered per-collection)
                   </p>
-                  <Input
-                    id="preview-url"
-                    value={previewServiceUrl}
-                    onChange={(e) => setPreviewServiceUrl(e.target.value)}
-                    placeholder="https://example.com/preview?url={{url}}"
-                  />
+                  <select
+                    id="default-view"
+                    value={defaultView}
+                    onChange={(e) => setDefaultView(e.target.value as "grid" | "masonry" | "list")}
+                    className="w-full rounded-lg bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-foreground border border-white/10 focus:border-accent focus:outline-none transition-colors"
+                  >
+                    <option value="grid">Grid</option>
+                    <option value="masonry">Masonry</option>
+                    <option value="list">List</option>
+                  </select>
+                </div>
+
+                {/* Default Sort */}
+                <div className="space-y-2">
+                  <Label htmlFor="default-sort" className="text-gray-300">
+                    Default Sort
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Fallback sort when no remembered state (your last-used sort is always remembered per-collection)
+                  </p>
+                  <select
+                    id="default-sort"
+                    value={defaultSort}
+                    onChange={(e) => setDefaultSort(e.target.value as "dateAdded" | "recentlyModified" | "title" | "domain")}
+                    className="w-full rounded-lg bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-foreground border border-white/10 focus:border-accent focus:outline-none transition-colors"
+                  >
+                    <option value="dateAdded">Date Added</option>
+                    <option value="recentlyModified">Recently Modified</option>
+                    <option value="title">Title</option>
+                    <option value="domain">Domain</option>
+                  </select>
                 </div>
               </div>
             </TabsContent>
 
-            {/* Data Tab */}
-            <TabsContent value="data" className="space-y-6 mt-6 h-[550px] overflow-y-auto">
+            {/* Sync & Data Tab */}
+            <TabsContent value="sync-data" className="space-y-6 mt-6 h-[550px] overflow-y-auto">
               <div className="space-y-4">
                 <div>
                   <Label className="text-gray-300">Sync Settings</Label>
@@ -547,6 +578,37 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                       />
                     </div>
                   )}
+
+                  {/* Coming Soon Section */}
+                  <div className="p-4 rounded-lg border border-gray-700/50 bg-gray-900/30 opacity-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <Label className="text-gray-400 text-sm">Coming Soon</Label>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-gray-500 text-sm">Sync Frequency</Label>
+                          <p className="text-xs text-gray-600 mt-1">
+                            How often to sync with server
+                          </p>
+                        </div>
+                        <select disabled className="rounded px-2 py-1 text-xs bg-gray-800/50 text-gray-600 border border-gray-700/50">
+                          <option>Every 5 min</option>
+                        </select>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <Label className="text-gray-500 text-sm">Conflict Resolution</Label>
+                          <p className="text-xs text-gray-600 mt-1">
+                            How to handle sync conflicts
+                          </p>
+                        </div>
+                        <select disabled className="rounded px-2 py-1 text-xs bg-gray-800/50 text-gray-600 border border-gray-700/50">
+                          <option>Ask me</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -559,9 +621,9 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                 </div>
                 <div className="flex items-center justify-between p-4 rounded-lg border border-gray-800 bg-gray-900/50">
                   <div>
-                    <Label className="text-gray-300">Include Den in Export</Label>
+                    <Label className="text-gray-300">Include Private Pawkits in Export</Label>
                     <p className="text-sm text-gray-500 mt-1">
-                      Include Den cards and collections when exporting
+                      Include private cards and collections when exporting
                     </p>
                   </div>
                   <input
@@ -628,26 +690,43 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                 </div>
               </div>
             </TabsContent>
+
+            {/* Advanced Tab */}
+            <TabsContent value="advanced" className="space-y-6 mt-6 h-[550px] overflow-y-auto">
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-gray-300">Developer Options</Label>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Advanced settings for developers
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="preview-url" className="text-gray-300">
+                    Preview Service URL
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Must contain {`{{url}}`} token
+                  </p>
+                  <Input
+                    id="preview-url"
+                    value={previewServiceUrl}
+                    onChange={(e) => setPreviewServiceUrl(e.target.value)}
+                    placeholder="https://example.com/preview?url={{url}}"
+                  />
+                </div>
+              </div>
+            </TabsContent>
           </Tabs>
         </div>
 
-        <div className="sticky bottom-0 border-t border-white/10 bg-white/5 backdrop-blur-lg p-6 flex justify-between items-center">
-          <GlowButton
-            onClick={() => signOut()}
-            variant="danger"
-            size="md"
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
+        <div className="sticky bottom-0 border-t border-white/10 bg-white/5 backdrop-blur-lg p-6 flex justify-end gap-3">
+          <GlowButton onClick={onClose} variant="primary" size="md">
+            Cancel
           </GlowButton>
-          <div className="flex gap-3">
-            <GlowButton onClick={onClose} variant="primary" size="md">
-              Cancel
-            </GlowButton>
-            <GlowButton onClick={handleSave} variant="success" size="md" disabled={saving}>
-              {saving ? "Saving..." : "Save Changes"}
-            </GlowButton>
-          </div>
+          <GlowButton onClick={handleSave} variant="success" size="md" disabled={saving}>
+            {saving ? "Saving..." : "Save Changes"}
+          </GlowButton>
         </div>
       </div>
     </div>

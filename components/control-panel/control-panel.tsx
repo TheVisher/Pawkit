@@ -39,6 +39,9 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
   const storedDisplayName = useSettingsStore((state) => state.displayName);
   const effectiveDisplayName = storedDisplayName || displayName || username;
 
+  // Get sidebar visibility settings
+  const showSyncStatusInSidebar = useSettingsStore((state) => state.showSyncStatusInSidebar);
+
   const handleModeToggle = () => {
     const newMode = mode === "floating" ? "anchored" : "floating";
     if (onModeChange) {
@@ -202,8 +205,8 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
           {children}
         </div>
 
-        {/* Sync Status Footer - Fixed at bottom */}
-        <SyncStatus />
+        {/* Sync Status Footer - Fixed at bottom - Conditional based on settings */}
+        {showSyncStatusInSidebar && <SyncStatus />}
       </div>
 
       {/* Profile Modal */}
