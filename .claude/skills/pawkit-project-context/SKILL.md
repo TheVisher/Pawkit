@@ -11,14 +11,119 @@ description: Track development progress, major milestones, and session history a
 
 ## Current Status
 
-**Branch**: `main`
-**Status**: Production ready - Multi-session detection merged
+**Branch**: `feat/multi-session-detection` (merged), `fix/delete-sync` (in progress)
+**Status**: Debugging delete synchronization and state management issues
 **Last Updated**: October 30, 2025
-**Next Steps**: Monitor production deployment, remove debug logging if needed
+**Next Steps**: Deploy and test comprehensive logging to identify missing cards issue
 
 ---
 
 ## Session History
+
+### Date: October 30, 2025 (Night) - Delete Synchronization Bug Fixes
+
+**Accomplished**:
+
+1. **Fixed Critical Bug: Deleted Cards Injecting Into State**
+   - **Problem**: Library showing deleted cards even though sync works correctly
+   - **Root Cause**: When cards are updated with conflicts or successful syncs, code fetches from server and maps into state using `.map(c => c.id === id ? serverCard : c)`
+   - If `serverCard.deleted === true`, deleted card injected into state, bypassing all filtering
+   - **Found 5 Locations** where this happened in data-store.ts:
+     - Lines 659, 676: Conflict resolution
+     - Line 712: Successful update
+     - Line 552: Metadata fetch
+     - Line 535: Card creation sync
+   - **Fix**: Added checks before all `.map()` operations to filter out deleted cards
+   - Commit: 85ed692
+
+2. **Fixed Critical Bug: Deduplication Corrupting Data**
+   - **Problem**: Navigating to Library page corrupts IndexedDB - 25 cards incorrectly marked as deleted
+   - **Root Cause**: `deduplicateCards()` called `localDb.deleteCard()` to remove duplicates
+   - `deleteCard()` performs SOFT DELETE (sets `deleted=true`) not hard delete
+   - Duplicate cards were being marked as deleted in IndexedDB
+   - **Fix**: Changed line 100 in data-store.ts from `localDb.deleteCard()` to `localDb.permanentlyDeleteCard()`
+   - Commit: 61ba60e
+
+3. **Fixed Two More Soft Delete Bugs**
+   - After comprehensive search, found TWO MORE places using soft delete for temp cards:
+     - data-store.ts:531 - `addCard()` replacing temp card with server card
+     - sync-service.ts:661 - Sync service replacing temp card with real ID
+   - Both were using `deleteCard()` instead of `permanentlyDeleteCard()`
+   - **Fix**: Changed both locations to use hard delete
+   - Commit: 699e796
+
+4. **Created Debug Page for Database Comparison**
+   - Built `/debug/database-compare` page to compare Supabase vs IndexedDB
+   - Shows total/active/deleted counts for both server and local
+   - Identifies cards that exist only on server or only locally
+   - Identifies deletion mismatches (server=active but local=deleted)
+   - Added "Resolve Mismatches" button to fix conflicts (server as source of truth)
+   - Added "Force Full Sync" button to clear local and re-download from server
+   - Commit: 76fe9f4
+
+5. **Added Comprehensive Logging for Missing Cards Investigation**
+   - **Problem**: Force Full Sync shows "Perfect Sync" but 26 cards are missing
+   - **Added Logging to Force Full Sync**:
+     - Track save success/failure for each card
+     - Immediate verification of IndexedDB contents
+     - Compare server vs IndexedDB counts
+     - List missing cards with IDs and titles
+   - **Added Logging to Deduplication**:
+     - Show input/output counts
+     - Display which cards marked as duplicates
+     - Show card details (ID, title, URL)
+     - Final stats breakdown
+   - Commit: b56dff1
+
+**Key Technical Details**:
+
+**Critical Distinction - Soft Delete vs Hard Delete**:
+```typescript
+// SOFT DELETE (for user deletions to trash):
+async deleteCard(id: string): Promise<void> {
+  const card = await this.db.get('cards', id);
+  if (card) {
+    card.deleted = true;
+    card.deletedAt = new Date().toISOString();
+    await this.db.put('cards', card);
+  }
+}
+
+// HARD DELETE (for internal cleanup):
+async permanentlyDeleteCard(id: string): Promise<void> {
+  await this.db.delete('cards', id);
+}
+```
+
+**Bug Pattern**: Using soft delete when hard delete is needed causes cards to be marked as deleted and synced across devices.
+
+**Files Modified**:
+- `lib/stores/data-store.ts` - Fixed 3 locations (lines 100, 531, and 5 state injection points)
+- `lib/services/sync-service.ts` - Fixed 1 location (line 661)
+- `app/(dashboard)/debug/database-compare/page.tsx` - Created debug page with comparison and sync tools
+- `lib/services/local-storage.ts` - Added `includeDeleted` parameter to getAllCards/getAllCollections
+- `lib/validators/card.ts` - Added includeDeleted to cardListQuerySchema
+- `lib/server/cards.ts` - Updated listCards to support includeDeleted
+- `app/api/cards/route.ts` - Pass includeDeleted parameter
+- `app/(dashboard)/library/page.tsx` - Added debug logging
+
+**Commits**:
+- 3a711b1 - Add debug logging to library page for deleted cards
+- 259e4f0 - Update deletion filters to explicit checks
+- 76fe9f4 - Add Resolve Mismatches feature to debug page
+- 85ed692 - Fix deleted cards injecting into state via .map() operations
+- 61ba60e - Fix deduplication using soft delete instead of hard delete
+- 699e796 - Fix two more locations using soft delete for temp cards
+- b56dff1 - Add comprehensive logging for missing cards investigation
+
+**Impact**: All delete synchronization bugs fixed - deleted cards no longer appear in library, data no longer corrupts on navigation
+
+**Next Steps**:
+- Deploy fix/delete-sync branch and test
+- Observe comprehensive logging to identify why 26 cards missing
+- Suspected issue: deduplication removing test cards with duplicate URLs/titles
+
+---
 
 ### Date: October 30, 2025 (Evening) - Production Deployment & Environment Sync
 

@@ -1201,6 +1201,240 @@ const handleCreateNote = async (data: {
 
 **Issue**: Creating new notes triggered duplicate constraint errors and returned deleted daily notes instead of creating new notes. Server returned 409 Conflict errors.
 
+---
+
+### 12. Deleted Cards Appearing in Library View
+
+**Issue**: Deleted cards appearing in Library view even though sync works correctly and cards are properly marked as deleted in database.
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Deleted cards injected into state during updates
+export const useDataStore = create<DataState>((set, get) => ({
+  updateCard: async (id: string) => {
+    // After successful update, fetch latest from server
+    const serverCard = await fetchCardFromServer(id);
+
+    // ❌ This injects deleted card into state if serverCard.deleted === true
+    set((state) => ({
+      cards: state.cards.map(c => c.id === id ? serverCard : c)
+    }));
+  }
+}));
+```
+
+**The Fix**:
+```tsx
+// ✅ CORRECT: Check if server card is deleted before mapping into state
+export const useDataStore = create<DataState>((set, get) => ({
+  updateCard: async (id: string) => {
+    // After successful update, fetch latest from server
+    const serverCard = await fetchCardFromServer(id);
+
+    // ✅ If server card is deleted, remove from state instead of mapping
+    if (serverCard.deleted === true) {
+      console.log('[DataStore] Server card is deleted, removing from state:', id);
+      set((state) => ({
+        cards: state.cards.filter(c => c.id !== id)
+      }));
+    } else {
+      // Only map non-deleted cards
+      set((state) => ({
+        cards: state.cards.map(c => c.id === id ? serverCard : c)
+      }));
+    }
+  }
+}));
+```
+
+**Root Cause**:
+- During sync operations, code fetches latest card from server
+- Uses `.map()` to replace card in state with server version
+- If server card has `deleted: true`, deleted card is injected directly into state
+- All filtering in `initialize()`, `sync()`, and `refresh()` is bypassed
+- Deleted card appears in Library even though it shouldn't
+
+**Locations Found** (lib/stores/data-store.ts):
+1. **Line 659** - Conflict resolution with server wins
+2. **Line 676** - Conflict resolution with local wins
+3. **Line 712** - Successful update sync response
+4. **Line 552** - Metadata fetch after update
+5. **Line 535** - Card creation sync response
+
+**How to Avoid**:
+- **NEVER** use `.map()` to inject server cards without checking `deleted` status
+- **ALWAYS** check if `serverCard.deleted === true` before mapping
+- Use `.filter(c => c.id !== id)` to remove deleted cards
+- Add debug logging when deleted cards are filtered out
+- Validate state after all sync operations
+
+**Prevention Pattern**:
+```tsx
+// Pattern for all server card updates:
+if (serverCard.deleted === true) {
+  // Remove from state
+  set((state) => ({
+    cards: state.cards.filter(c => c.id !== serverCard.id)
+  }));
+} else {
+  // Update in state
+  set((state) => ({
+    cards: state.cards.map(c => c.id === serverCard.id ? serverCard : c)
+  }));
+}
+```
+
+**Impact**: Fixed October 30, 2025 - Deleted cards no longer appear in Library view
+
+**Commit**: 85ed692
+
+**See**: `.claude/skills/pawkit-sync-patterns/SKILL.md` for state management patterns
+
+---
+
+### 13. Deduplication Corrupting Data
+
+**Issue**: Navigating to Library page corrupts IndexedDB - 25 cards incorrectly marked as deleted. Force Full Sync shows perfect data, but clicking Library corrupts it.
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Using soft delete to remove duplicates
+async function deduplicateCards(cards: CardDTO[]): Promise<CardDTO[]> {
+  const cardsToDelete = findDuplicates(cards);
+
+  // ❌ deleteCard() performs SOFT DELETE (sets deleted=true)
+  await Promise.all(cardsToDelete.map(id => localDb.deleteCard(id)));
+
+  // ❌ Result: Duplicates marked as deleted in IndexedDB
+  // ❌ These sync to server and other devices
+  return cards.filter(c => !cardsToDelete.includes(c.id));
+}
+```
+
+**The Fix**:
+```tsx
+// ✅ CORRECT: Use hard delete to permanently remove duplicates
+async function deduplicateCards(cards: CardDTO[]): Promise<CardDTO[]> {
+  console.log('[deduplicateCards] Starting deduplication for', cards.length, 'cards');
+
+  const cardsToDelete = findDuplicates(cards);
+
+  // Log cards being removed
+  for (const id of cardsToDelete) {
+    const card = cards.find(c => c.id === id);
+    console.log('[deduplicateCards] Removing duplicate:', {
+      id: card?.id,
+      title: card?.title,
+      url: card?.url
+    });
+  }
+
+  // ✅ permanentlyDeleteCard() completely removes from IndexedDB
+  await Promise.all(cardsToDelete.map(id => localDb.permanentlyDeleteCard(id)));
+
+  console.log('[deduplicateCards] Deduplication complete:', {
+    input: cards.length,
+    output: cards.length - cardsToDelete.length,
+    removed: cardsToDelete.length
+  });
+
+  return cards.filter(c => !cardsToDelete.includes(c.id));
+}
+```
+
+**Root Cause**:
+- `deduplicateCards()` runs when Library loads to clean up duplicate temp cards
+- Function calls `localDb.deleteCard()` to remove duplicates
+- `deleteCard()` is for USER deletions (soft delete to trash)
+- Soft delete sets `deleted: true` and `deletedAt: timestamp`
+- These "deleted" cards then sync to server
+- Result: 25 cards incorrectly marked as deleted
+
+**Critical Distinction**:
+```tsx
+// SOFT DELETE (for user deletions to trash)
+async deleteCard(id: string): Promise<void> {
+  const card = await this.db.get('cards', id);
+  if (card) {
+    card.deleted = true;  // ❌ Marks as deleted
+    card.deletedAt = new Date().toISOString();
+    await this.db.put('cards', card);
+  }
+}
+
+// HARD DELETE (for internal cleanup)
+async permanentlyDeleteCard(id: string): Promise<void> {
+  await this.db.delete('cards', id);  // ✅ Completely removes
+}
+```
+
+**How to Avoid**:
+- **NEVER** use `deleteCard()` for internal cleanup
+- Use `permanentlyDeleteCard()` for:
+  - Removing temp cards
+  - Deduplication
+  - Replacing temporary IDs
+  - Any non-user-facing deletion
+- Use `deleteCard()` ONLY for user-triggered deletions to trash
+- Add logging to track which cards are being removed
+- Test deduplication doesn't corrupt data
+
+**Related Bugs - Same Pattern**:
+
+After fixing deduplication, found TWO MORE locations with same bug:
+
+**Bug Location 2 - data-store.ts:531**:
+```tsx
+// ❌ WRONG: Soft delete when replacing temp card
+async addCard(data: CardInput) {
+  const tempCard = { ...data, id: generateTempId() };
+
+  // Save temp card locally
+  await localDb.saveCard(tempCard);
+
+  // Sync to server
+  const serverCard = await syncToServer(tempCard);
+
+  // Replace temp with real card
+  await localDb.deleteCard(tempCard.id);  // ❌ WRONG! Uses soft delete
+  await localDb.saveCard(serverCard);
+}
+
+// ✅ CORRECT: Hard delete temp card
+await localDb.permanentlyDeleteCard(tempCard.id);  // ✅ Completely removes
+```
+
+**Bug Location 3 - sync-service.ts:661**:
+```tsx
+// ❌ WRONG: Soft delete during sync
+async syncCard(card: CardDTO) {
+  if (card.id.startsWith('temp_')) {
+    const serverCard = await pushToServer(card);
+
+    // Replace temp ID with real ID
+    await localDb.deleteCard(card.id);  // ❌ WRONG! Uses soft delete
+    await localDb.saveCard(serverCard);
+  }
+}
+
+// ✅ CORRECT: Hard delete temp card
+await localDb.permanentlyDeleteCard(card.id);  // ✅ Completely removes
+```
+
+**Impact**: Fixed October 30, 2025 - Data no longer corrupts when navigating to Library
+
+**Commits**:
+- 61ba60e - Fixed deduplication (line 100)
+- 699e796 - Fixed addCard and sync-service (lines 531, 661)
+
+**See**: `.claude/skills/pawkit-conventions/SKILL.md` for soft vs hard delete patterns
+
+---
+
+### 11. Duplicate Card Issue - Deleted Cards Returned
+
+**Issue**: Creating new notes triggered duplicate constraint errors and returned deleted daily notes instead of creating new notes. Server returned 409 Conflict errors.
+
 **What Failed**:
 ```tsx
 // ❌ WRONG: Full unique constraint on ALL card types
