@@ -126,14 +126,14 @@ class LocalStorage {
 
   // ==================== CARDS ====================
 
-  async getAllCards(): Promise<CardDTO[]> {
+  async getAllCards(includeDeleted = false): Promise<CardDTO[]> {
     await this.init();
     if (!this.db) return [];
 
     const cards = await this.db.getAll('cards');
-    // Filter out soft-deleted cards and remove internal flags before returning
+    // Filter out soft-deleted cards unless explicitly requested
     return cards
-      .filter(card => !card.deleted)
+      .filter(card => includeDeleted || !card.deleted)
       .map(card => {
         const { _locallyModified, _locallyCreated, _serverVersion, ...cleanCard } = card;
         return cleanCard as CardDTO;
@@ -284,15 +284,17 @@ class LocalStorage {
 
   // ==================== COLLECTIONS ====================
 
-  async getAllCollections(): Promise<CollectionNode[]> {
+  async getAllCollections(includeDeleted = false): Promise<CollectionNode[]> {
     await this.init();
     if (!this.db) return [];
 
     const collections = await this.db.getAll('collections');
-    const cleanCollections = collections.map(collection => {
-      const { _locallyModified, _locallyCreated, _serverVersion, ...cleanCollection } = collection;
-      return cleanCollection as CollectionNode;
-    });
+    const cleanCollections = collections
+      .filter(collection => includeDeleted || !collection.deleted)
+      .map(collection => {
+        const { _locallyModified, _locallyCreated, _serverVersion, ...cleanCollection } = collection;
+        return cleanCollection as CollectionNode;
+      });
 
     // Build tree structure from flat list based on parentId
     return this.buildCollectionTree(cleanCollections);
