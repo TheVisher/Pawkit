@@ -135,6 +135,141 @@ description: Living, interactive roadmap serving as single source of truth for p
 
 **Reference for what's done - do not modify this section**
 
+### October 31, 2025
+
+- ✅ **Context Menu System Implementation** (Complete reusable system)
+  Created standardized context menu system for consistent UX across the app
+  **Components Created:**
+  - `hooks/use-context-menu.ts` - Custom hook for context menu state management
+  - `components/ui/generic-context-menu.tsx` - Reusable wrapper with simple array-based API
+  - Supports icons, separators, submenus, keyboard shortcuts, destructive actions
+  **Initial Implementation:**
+  - Added to Pawkit sidebar (CollectionsSidebar component)
+  - Replaced inline management buttons with right-click menu
+  **Commits:** 267f2dd, 595651a
+
+- ✅ **Context Menu Audit** (Comprehensive documentation)
+  Documented all existing context menu implementations across the app
+  Created CONTEXT_MENU_AUDIT.md with:
+  - Complete inventory of existing patterns (CardContextMenuWrapper, GenericContextMenu, useContextMenu hook)
+  - Analysis of which views have/missing context menus
+  - Identified inconsistencies and gaps
+  - Recommendations for high/medium/low priority additions
+  - Code examples for each pattern
+  - Design guidelines for when/where to add context menus
+  **Key Findings:**
+  - 5 components have context menus, 6+ views missing them
+  - High priority gaps: Pinned notes in sidebar, trash view items
+  - Medium priority: Recently viewed items
+  **Commit:** 595651a
+
+- ✅ **Left Sidebar Context Menu Implementation** (Fixed missing menus)
+  Added context menus to all Pawkit collections in left navigation panel
+  **Issue:** Left sidebar had separate collection tree implementation without context menus
+  **Solution:** Added GenericContextMenu to renderCollectionTree function
+  **Menu Items:**
+  - Open (navigate to Pawkit)
+  - New sub-collection (create nested Pawkit)
+  - Rename (with modal)
+  - Move to (with submenu showing all available locations)
+  - Delete (with confirmation)
+  **Commits:** aaf15b7, 90371fc, a11ec8e
+
+- ✅ **Context Menu Z-Index Fix** (Critical visibility issue)
+  Context menus were rendering behind left sidebar (z-[102])
+  **Solution:** Updated GenericContextMenu to use z-[9999] on:
+  - ContextMenuContent (main menu)
+  - ContextMenuSubContent (nested submenus)
+  **Result:** Context menus now always appear as topmost layer above all UI elements
+  **Commit:** 90371fc
+
+- ✅ **Move Menu UX Improvement** (Replaced text prompt with visual submenu)
+  Replaced terrible window.prompt() UX with visual Pawkit submenu
+  **Before:** Prompt asked users to type collection slug (error-prone, no visual feedback)
+  **After:** Hover over "Move to" → visual menu with all available Pawkits
+  **Implementation:**
+  - Created buildMoveMenuItems() helper function
+  - Recursively builds submenu from collection tree
+  - Filters out current collection (can't move into itself)
+  - Handles nested collections with proper submenu structure
+  - Includes "Root (Top Level)" option
+  **Commit:** a11ec8e
+
+- ✅ **PAWKITS Header Context Menu** (Fixed after multiple attempts)
+  Added working context menu to "PAWKITS" section header in left sidebar
+  **Previous Attempts Failed:** Wrapping PanelSection blocked events
+  **Solution:** Inlined header structure, wrapped title button directly with GenericContextMenu
+  **Menu Items:**
+  - View All Pawkits (navigate to /pawkits)
+  - Create New Pawkit (open create dialog)
+  **Technical Learning:** GenericContextMenu with asChild works when wrapping button elements, not complex components
+  **Commit:** 1db0de1
+
+- ✅ **Rename Modal with Glassmorphism** (Replaced browser prompts)
+  Replaced ugly window.prompt() with beautiful modal matching app design
+  **New Modal Features:**
+  - Glassmorphism styling (bg-white/5 backdrop-blur-lg)
+  - Border with glow (border-white/10 shadow-glow-accent)
+  - Auto-focus input field
+  - Enter to confirm, Escape to cancel
+  - Loading state during API call
+  - Toast notification on success
+  **State Management:** Added showRenameModal, renameCollectionId, renameCollectionName, renameValue, renamingCollection
+  **Handler:** handleRenameCollection() validates input, calls updateCollection API, shows toast
+  **Commit:** 1db0de1
+
+- ✅ **ESC Key Handling in Rename Modal** (Fixed event bubbling)
+  ESC key now closes modal instead of sidebar
+  **Problem:** ESC event bubbled up to sidebar's close handler
+  **Solution:** Added useEffect with document-level keydown listener
+  - Uses capture phase (addEventListener 3rd param = true)
+  - Intercepts ESC before it bubbles to parent components
+  - Calls stopPropagation() and preventDefault()
+  - Properly cleans up listener when modal closes
+  **Behavior:** First ESC closes modal, second ESC closes sidebar
+  **Commit:** 63df231
+
+- ✅ **Debug Logging Cleanup** (Removed ~200+ console.log statements)
+  Cleaned up excessive debug logging from delete sync fixes
+  **What Was Removed:**
+  - Debug noise from data-store.ts, sync-service.ts, local-storage.ts
+  - CRUD operation logs
+  - Masonry resize debug logs
+  - Modal open/close logs
+  - Navigation debug logs
+  **What Was Kept:**
+  - Duplicate detection warnings
+  - Write guard errors
+  - Bug detection logs (deleted cards appearing)
+  - Sync failures
+  - Auth errors
+  **Also Deleted:** Entire app/debug folder (debug routes and database compare page)
+  **Files Modified:** 15 files with ~200+ log statements removed
+
+- ✅ **Inbox Button Removal** (Cleaned up home view)
+  Removed useless inbox button from home view quick access area
+  **What Was Removed:**
+  - Inbox button component (lines 289-300 in app/(dashboard)/home/page.tsx)
+  - Inbox icon import from lucide-react
+  **Reason:** Dead feature, served no purpose, cluttered UI
+
+- ✅ **Sidebar Panel Swap** (Improved information hierarchy)
+  Swapped info panels between left and right sidebars for better UX
+  **Changes:**
+  - Keyboard shortcuts: Moved FROM right sidebar TO left sidebar (always visible)
+  - Sync status: Moved FROM left sidebar TO right sidebar (occasionally open)
+  **Rationale:** Keyboard shortcuts more frequently needed than sync status
+  **Files Modified:**
+  - components/control-panel/control-panel.tsx (replaced keyboard shortcuts with SyncStatus)
+  - components/navigation/left-navigation-panel.tsx (replaced SyncStatus with keyboard shortcuts)
+
+- ✅ **Keyboard Shortcuts Cross-Platform Format** (Better clarity for Windows users)
+  Updated sidebar keyboard shortcuts to show both Mac and Windows
+  **Before:** Mac-only symbols (⌘V, ⌘P)
+  **After:** Cross-platform text (Cmd/Ctrl + V, Cmd/Ctrl + P)
+  **Location:** Left navigation panel keyboard shortcuts footer
+  **Rationale:** Matches keyboard shortcuts modal style, clearer for Windows users
+
 ### October 30, 2025
 
 - ✅ **Delete Synchronization - Complete Fix** (5 critical bugs)

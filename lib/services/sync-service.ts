@@ -40,10 +40,8 @@ class SyncService {
       this.broadcastChannel.onmessage = (event) => {
         if (event.data.type === 'SYNC_START') {
           this.otherTabSyncing = true;
-          console.log('[SyncService] Another tab started syncing');
         } else if (event.data.type === 'SYNC_END') {
           this.otherTabSyncing = false;
-          console.log('[SyncService] Another tab finished syncing');
         }
       };
     }
@@ -81,13 +79,11 @@ class SyncService {
   async sync(): Promise<SyncResult> {
     // Return existing promise if sync is already in progress in this tab
     if (this.syncPromise) {
-      console.log('[SyncService] Sync already in progress in this tab, returning existing promise');
       return this.syncPromise;
     }
 
     // Check if another tab is syncing
     if (this.otherTabSyncing) {
-      console.log('[SyncService] Another tab is syncing, skipping');
       return {
         success: false,
         pulled: { cards: 0, collections: 0 },
@@ -129,8 +125,6 @@ class SyncService {
     };
 
     try {
-      console.log('[SyncService] Starting sync...');
-
       // Step 1: Pull from server and merge
       const pullResult = await this.pullFromServer();
       result.pulled = pullResult.pulled;
@@ -144,13 +138,10 @@ class SyncService {
 
       // Step 3: Process sync queue (retry any failed operations)
       await syncQueue.init();
-      const queueResult = await syncQueue.process();
-      console.log('[SyncService] Processed sync queue:', queueResult);
+      await syncQueue.process();
 
       // Update last sync time
       await localDb.setLastSyncTime(Date.now());
-
-      console.log('[SyncService] Sync complete:', result);
     } catch (error) {
       console.error('[SyncService] Sync failed:', error);
       result.success = false;
@@ -170,11 +161,6 @@ class SyncService {
     const cards = await localDb.getAllCards();
     const collections = await localDb.getAllCollections();
 
-    console.log('[SyncService] Created snapshot:', {
-      cards: cards.length,
-      collections: collections.length,
-    });
-
     return { cards, collections };
   }
 
@@ -182,7 +168,6 @@ class SyncService {
    * Restore data from snapshot (rollback mechanism)
    */
   private async restoreSnapshot(snapshot: { cards: CardDTO[]; collections: CollectionNode[] }): Promise<void> {
-    console.log('[SyncService] ⚠️ Restoring from snapshot (rollback)...');
 
     try {
       // Note: This is a best-effort rollback. Individual saves may fail.
@@ -202,7 +187,6 @@ class SyncService {
 
       await Promise.all(restorePromises);
 
-      console.log('[SyncService] ✓ Snapshot restored successfully');
     } catch (error) {
       console.error('[SyncService] ❌ Failed to restore snapshot:', error);
       throw new Error('Rollback failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -245,7 +229,6 @@ class SyncService {
         const cardsData = await cardsRes.json();
         const serverCards: CardDTO[] = cardsData.items || [];
 
-        console.log('[SyncService] Pulled', serverCards.length, 'cards from server');
 
         const localCards = await localDb.getAllCards();
 
@@ -280,7 +263,6 @@ class SyncService {
         // Flatten collections tree to get accurate count
         const flatServerCollections = this.flattenCollections(serverCollections);
 
-        console.log('[SyncService] Pulled', flatServerCollections.length, 'collections from server');
 
         const localCollections = await localDb.getAllCollections();
 
@@ -369,7 +351,6 @@ class SyncService {
     const preferLocal = deviceMeta.isActive;
 
     if (preferLocal) {
-      console.log('[SyncService] 🎯 This device is ACTIVE - local changes will be preferred');
     }
 
     // Create maps for easy lookup
@@ -384,11 +365,6 @@ class SyncService {
         // New card from server - save it (including deleted cards for proper sync state)
         // We need to know about deleted cards so the UI doesn't show stale data
         await localDb.saveCard(serverCard, { fromServer: true });
-        console.log('[SyncService] 📥 Synced new card from server:', {
-          id: serverCard.id,
-          deleted: serverCard.deleted,
-          title: serverCard.title
-        });
       } else {
         // Card exists locally and on server - check for conflicts
         const serverTime = new Date(serverCard.updatedAt).getTime();
@@ -399,13 +375,11 @@ class SyncService {
           // Local card is deleted - but check if server has newer non-deleted version
           if (!serverCard.deleted && serverTime > localTime) {
             // Server resurrected the card after local deletion with newer timestamp
-            console.log('[SyncService] ⚠️ Server resurrected card after deletion (newer timestamp), accepting:', serverCard.id);
             await localDb.saveCard(serverCard, { fromServer: true });
             continue;
           }
 
           // Local deletion is newer or equal - preserve it
-          console.log('[SyncService] Local card deletion is newer, preserving deletion:', localCard.id);
           // Keep local deleted version, will be synced to server in push phase
           continue;
         }
@@ -414,17 +388,8 @@ class SyncService {
         if (serverCard.deleted) {
           // Only accept server deletion if it's newer than local version
           if (serverTime >= localTime) {
-            console.log('[SyncService] 🗑️ Applying remote deletion:', {
-              cardId: serverCard.id,
-              title: serverCard.title,
-              serverTime,
-              localTime,
-              deletedAt: serverCard.deletedAt
-            });
             await localDb.saveCard(serverCard, { fromServer: true });
-            console.log('[SyncService] ✅ Deleted card saved to localDb:', serverCard.id);
           } else {
-            console.log('[SyncService] Server card deletion is older than local edit, keeping local version:', serverCard.id);
             conflicts++;
           }
           continue;
@@ -440,7 +405,6 @@ class SyncService {
         // SPECIAL CASE: If server has metadata but local doesn't, always merge metadata
         // This ensures metadata fetched on other devices is never lost
         if (serverHasMetadata && !localHasMetadata) {
-          console.log('[SyncService] 📥 Server has metadata, merging into local version:', serverCard.id);
           const mergedCard = {
             ...localCard,
             // Take metadata fields from server
@@ -464,7 +428,6 @@ class SyncService {
 
           // If server has significantly better metadata quality, prefer it regardless of timestamp
           if (serverQuality > localQuality) {
-            console.log(`[SyncService] 📥 Server has higher quality metadata (${serverQuality} vs ${localQuality}), using server version:`, serverCard.id);
             await localDb.saveCard(serverCard, { fromServer: true });
             continue;
           }
@@ -475,14 +438,12 @@ class SyncService {
         const timeDiff = Math.abs(serverTime - localTime);
 
         if (preferLocal && localTime > 0 && timeDiff < ONE_HOUR) {
-          console.log('[SyncService] 🎯 Active device with recent timestamp - keeping local version:', localCard.id);
           conflicts++;
           continue;
         }
 
         // If server is much newer (>1 hour), prefer server even on active device
         if (serverTime > localTime + ONE_HOUR) {
-          console.log(`[SyncService] Server version significantly newer (${Math.round(timeDiff / 60000)}min difference), using server despite active device:`, serverCard.id);
           await localDb.saveCard(serverCard, { fromServer: true });
           continue;
         }
@@ -490,11 +451,9 @@ class SyncService {
         // Fallback to timestamp comparison
         if (serverTime > localTime) {
           // Server is newer - use server version
-          console.log('[SyncService] Server version newer for card:', serverCard.id);
           await localDb.saveCard(serverCard, { fromServer: true });
         } else if (localTime > serverTime) {
           // Local is newer - keep local (will be pushed to server)
-          console.log('[SyncService] Local version newer for card:', localCard.id);
           conflicts++;
         } else {
           // Same timestamp - update server version marker
@@ -506,7 +465,6 @@ class SyncService {
     // Check for cards that exist locally but not on server
     for (const localCard of localCards) {
       if (!serverMap.has(localCard.id)) {
-        console.log('[SyncService] Card exists locally but not on server:', localCard.id);
         // Keep it - will be pushed to server
       }
     }
@@ -562,11 +520,6 @@ class SyncService {
       if (!localCollection) {
         // New collection from server - save it (including deleted for proper sync state)
         await localDb.saveCollection(serverCollection, { fromServer: true });
-        console.log('[SyncService] 📥 Synced new collection from server:', {
-          id: serverCollection.id,
-          deleted: serverCollection.deleted,
-          name: serverCollection.name
-        });
       } else {
         // Collection exists locally and on server - check for conflicts
         const serverTime = new Date(serverCollection.updatedAt).getTime();
@@ -577,13 +530,11 @@ class SyncService {
           // Local collection is deleted - but check if server has newer non-deleted version
           if (!serverCollection.deleted && serverTime > localTime) {
             // Server resurrected the collection after local deletion with newer timestamp
-            console.log('[SyncService] ⚠️ Server resurrected collection after deletion (newer timestamp), accepting:', serverCollection.id);
             await localDb.saveCollection(serverCollection, { fromServer: true });
             continue;
           }
 
           // Local deletion is newer or equal - preserve it
-          console.log('[SyncService] Local collection deletion is newer, preserving deletion:', localCollection.id);
           // Keep local deleted version, will be synced to server in push phase
           continue;
         }
@@ -592,10 +543,8 @@ class SyncService {
         if (serverCollection.deleted) {
           // Only accept server deletion if it's newer than local version
           if (serverTime >= localTime) {
-            console.log('[SyncService] Server collection deletion is newer, accepting deletion:', serverCollection.id);
             await localDb.saveCollection(serverCollection, { fromServer: true });
           } else {
-            console.log('[SyncService] Server collection deletion is older than local edit, keeping local version:', serverCollection.id);
             conflicts++;
           }
           continue;
@@ -603,7 +552,6 @@ class SyncService {
 
         // ENHANCED: If this device is active, ALWAYS prefer local version
         if (preferLocal && localTime > 0) {
-          console.log('[SyncService] 🎯 Active device - keeping local collection:', localCollection.id);
           conflicts++;
           continue;
         }
@@ -612,7 +560,6 @@ class SyncService {
         if (serverTime > localTime) {
           await localDb.saveCollection(serverCollection, { fromServer: true });
         } else if (localTime > serverTime) {
-          console.log('[SyncService] Local version newer for collection:', localCollection.id);
           conflicts++;
         } else {
           await localDb.saveCollection(serverCollection, { fromServer: true });
@@ -638,7 +585,6 @@ class SyncService {
     try {
       // Push modified cards
       const modifiedCards = await localDb.getModifiedCards();
-      console.log('[SyncService] Pushing', modifiedCards.length, 'modified cards to server');
 
       for (const card of modifiedCards) {
         try {
@@ -727,7 +673,6 @@ class SyncService {
 
       // Push modified collections
       const modifiedCollections = await localDb.getModifiedCollections();
-      console.log('[SyncService] Pushing', modifiedCollections.length, 'modified collections to server');
 
       for (const collection of modifiedCollections) {
         try {

@@ -44,9 +44,6 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
 
   // Debug: Log embedded state changes
   useEffect(() => {
-    console.log('=== CARD GALLERY EMBEDDED MODE ===');
-    console.log('isRightEmbedded:', isRightEmbedded);
-    console.log('Will apply 341px right padding:', isRightEmbedded);
   }, [isRightEmbedded]);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -127,16 +124,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
         for (const entry of entries) {
-          console.log('=== MASONRY RESIZE DEBUG (debounced) ===');
-          console.log('Container width:', entry.contentRect.width);
-          console.log('Container height:', entry.contentRect.height);
 
           const element = gallery as HTMLElement;
           const computedStyle = window.getComputedStyle(element);
-          console.log('CSS columns:', computedStyle.columns);
-          console.log('CSS column-width:', computedStyle.columnWidth);
-          console.log('CSS column-count:', computedStyle.columnCount);
-          console.log('CSS column-gap:', computedStyle.columnGap);
         }
       }, 350); // Wait for ContentPanel transition to complete (300ms + 50ms buffer)
     });

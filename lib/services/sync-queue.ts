@@ -76,7 +76,6 @@ class SyncQueue {
     });
 
     if (duplicate) {
-      console.log('[SyncQueue] Duplicate operation detected, skipping:', duplicate.id);
       return duplicate.id; // Return existing operation ID
     }
 
@@ -90,7 +89,6 @@ class SyncQueue {
     };
 
     await this.db.add('operations', queueOperation);
-    console.log('[SyncQueue] Enqueued operation:', id, operation.type);
     return id;
   }
 
@@ -127,7 +125,6 @@ class SyncQueue {
     if (!this.db) return;
 
     await this.db.delete('operations', id);
-    console.log('[SyncQueue] Removed operation:', id);
   }
 
   // Remove operation by type and target ID (for immediate sync success)
@@ -142,7 +139,6 @@ class SyncQueue {
 
     for (const op of toRemove) {
       await this.db.delete('operations', op.id);
-      console.log('[SyncQueue] Removed operation by target:', type, targetId);
     }
   }
 
@@ -172,7 +168,6 @@ class SyncQueue {
     if (operation && operation.status === 'failed') {
       operation.status = 'pending';
       await tx.store.put(operation);
-      console.log('[SyncQueue] Retrying operation:', id);
     }
     await tx.done;
   }
@@ -183,7 +178,6 @@ class SyncQueue {
     if (!this.db) return;
 
     await this.db.clear('operations');
-    console.log('[SyncQueue] Cleared all operations');
   }
 
   // Get count of pending operations
@@ -203,7 +197,6 @@ class SyncQueue {
     let success = 0;
     let failed = 0;
 
-    console.log('[SyncQueue] Processing', pending.length, 'operations');
 
     for (const operation of pending) {
       try {
@@ -263,7 +256,6 @@ class SyncQueue {
         if (response.ok) {
           await this.remove(operation.id);
           success++;
-          console.log('[SyncQueue] Operation completed:', operation.id);
         } else {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
@@ -280,7 +272,6 @@ class SyncQueue {
       }
     }
 
-    console.log('[SyncQueue] Processing complete:', { success, failed });
     return { success, failed };
   }
 }

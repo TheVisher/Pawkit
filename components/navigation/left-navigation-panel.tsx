@@ -2,13 +2,13 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical } from "lucide-react";
-import { SyncStatus } from "@/components/sync/sync-status";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2 } from "lucide-react";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { GenericContextMenu } from "@/components/ui/generic-context-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -82,12 +82,19 @@ export function LeftNavigationPanel({
   const [hoveredCreatePawkit, setHoveredCreatePawkit] = useState<string | null>(null);
   const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
 
+  // Rename modal state
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameCollectionId, setRenameCollectionId] = useState<string | null>(null);
+  const [renameCollectionName, setRenameCollectionName] = useState("");
+  const [renameValue, setRenameValue] = useState("");
+  const [renamingCollection, setRenamingCollection] = useState(false);
+
   // Detect if we're in demo mode
   const isDemo = pathname?.startsWith('/demo');
   const pathPrefix = isDemo ? '/demo' : '';
 
   // Get cards and data (demo-aware)
-  const { cards, addCard, updateCard, addCollection } = useDemoAwareStore();
+  const { cards, addCard, updateCard, addCollection, updateCollection, deleteCollection } = useDemoAwareStore();
   const { recentItems } = useRecentHistory();
 
   // Get active card from panel store
@@ -214,6 +221,31 @@ export function LeftNavigationPanel({
     }
   }, [pathname, collections]);
 
+  // Handle ESC key to close rename modal (prevent closing sidebar)
+  useEffect(() => {
+    if (!showRenameModal) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation(); // Prevent sidebar from closing
+        e.preventDefault();
+        if (!renamingCollection) {
+          setShowRenameModal(false);
+          setRenameValue("");
+          setRenameCollectionId(null);
+          setRenameCollectionName("");
+        }
+      }
+    };
+
+    // Add listener with capture phase to intercept before it bubbles
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [showRenameModal, renamingCollection]);
+
   // Navigate to today's note
   const goToTodaysNote = useCallback(async () => {
     const today = new Date();
@@ -287,17 +319,8 @@ export function LeftNavigationPanel({
   // Add card to collection
   const addToCollection = async (collectionSlug: string, collectionName: string) => {
     if (!activeCard) {
-      console.log('[addToCollection] No active card');
       return;
     }
-
-    console.log('[addToCollection] Adding card to collection:', {
-      cardId: activeCard.id,
-      cardTitle: activeCard.title,
-      collectionSlug,
-      collectionName,
-      currentCollections: activeCard.collections
-    });
 
     // Start animation (use slug for consistency)
     setAnimatingPawkit(collectionSlug);
@@ -306,13 +329,11 @@ export function LeftNavigationPanel({
     const currentCollections = activeCard.collections || [];
     if (!currentCollections.includes(collectionSlug)) {
       const newCollections = [...currentCollections, collectionSlug];
-      console.log('[addToCollection] Updating card with collections:', newCollections);
 
       await updateCard(activeCard.id, {
         collections: newCollections
       });
 
-      console.log('[addToCollection] Card updated successfully');
 
       // Show toast
       setToastMessage(`Added to ${collectionName}`);
@@ -323,7 +344,6 @@ export function LeftNavigationPanel({
         setShowToast(false);
       }, 2000);
     } else {
-      console.log('[addToCollection] Card already in collection');
     }
 
     // End animation after 1500ms (matches animation duration)
@@ -393,6 +413,43 @@ export function LeftNavigationPanel({
     }
   };
 
+  const handleRenameCollection = async () => {
+    const trimmedName = renameValue.trim();
+    if (!trimmedName || !renameCollectionId || renamingCollection) return;
+    if (trimmedName === renameCollectionName) {
+      // No change, just close
+      setShowRenameModal(false);
+      setRenameValue("");
+      setRenameCollectionId(null);
+      setRenameCollectionName("");
+      return;
+    }
+
+    setRenamingCollection(true);
+    try {
+      await updateCollection(renameCollectionId, { name: trimmedName });
+
+      // Show toast
+      setToastMessage("Pawkit Renamed");
+      setShowToast(true);
+
+      // Hide toast after 2 seconds
+      setTimeout(() => {
+        setShowToast(false);
+      }, 2000);
+
+      // Reset and close modal
+      setShowRenameModal(false);
+      setRenameValue("");
+      setRenameCollectionId(null);
+      setRenameCollectionName("");
+    } catch (error) {
+      console.error('Failed to rename collection:', error);
+    } finally {
+      setRenamingCollection(false);
+    }
+  };
+
   if (!open) return null;
 
   // Sortable Pinned Note component
@@ -452,7 +509,138 @@ export function LeftNavigationPanel({
     const textSize = depth === 0 ? "text-sm" : "text-xs";
     const padding = depth === 0 ? "px-3 py-2" : "px-3 py-1.5";
 
-    return (
+    // Helper function to build move submenu items recursively
+    const buildMoveMenuItems = (
+      collections: CollectionNode[],
+      currentCollectionId: string
+    ): any[] => {
+      const items: any[] = [];
+
+      for (const col of collections) {
+        // Skip the current collection and its descendants
+        if (col.id === currentCollectionId) continue;
+
+        const hasChildren = col.children && col.children.length > 0;
+
+        if (hasChildren) {
+          // Filter out current collection from children
+          const filteredChildren = col.children.filter(
+            (child) => child.id !== currentCollectionId
+          );
+
+          if (filteredChildren.length > 0) {
+            items.push({
+              type: "submenu" as const,
+              label: col.name,
+              items: [
+                {
+                  label: `Move to ${col.name}`,
+                  onClick: async () => {
+                    try {
+                      await updateCollection(currentCollectionId, { parentId: col.id });
+                    } catch (err) {
+                      console.error("Failed to move collection:", err);
+                    }
+                  },
+                },
+                { type: "separator" as const },
+                ...buildMoveMenuItems(filteredChildren, currentCollectionId),
+              ],
+            });
+          } else {
+            // No valid children, just add the parent option
+            items.push({
+              label: col.name,
+              onClick: async () => {
+                try {
+                  await updateCollection(currentCollectionId, { parentId: col.id });
+                } catch (err) {
+                  console.error("Failed to move collection:", err);
+                }
+              },
+            });
+          }
+        } else {
+          items.push({
+            label: col.name,
+            onClick: async () => {
+              try {
+                await updateCollection(currentCollectionId, { parentId: col.id });
+              } catch (err) {
+                console.error("Failed to move collection:", err);
+              }
+            },
+          });
+        }
+      }
+
+      return items;
+    };
+
+    // Define context menu items for collection management
+    const moveMenuItems = buildMoveMenuItems(collections, collection.id);
+
+    const contextMenuItems = [
+      {
+        label: "Open",
+        icon: FolderOpen,
+        onClick: () => handleNavigate(pawkitHref),
+      },
+      {
+        label: "New sub-collection",
+        icon: FolderPlus,
+        onClick: () => {
+          setParentPawkitId(collection.id);
+          setShowCreatePawkitModal(true);
+        },
+      },
+      { type: "separator" as const },
+      {
+        label: "Rename",
+        icon: Edit3,
+        onClick: () => {
+          setRenameCollectionId(collection.id);
+          setRenameCollectionName(collection.name);
+          setRenameValue(collection.name);
+          setShowRenameModal(true);
+        },
+      },
+      {
+        type: "submenu" as const,
+        label: "Move to",
+        icon: ArrowUpDown,
+        items: [
+          {
+            label: "Root (Top Level)",
+            onClick: async () => {
+              try {
+                await updateCollection(collection.id, { parentId: null });
+              } catch (err) {
+                console.error("Failed to move collection:", err);
+              }
+            },
+          },
+          ...(moveMenuItems.length > 0 ? [{ type: "separator" as const }, ...moveMenuItems] : []),
+        ],
+      },
+      { type: "separator" as const },
+      {
+        label: "Delete",
+        icon: Trash2,
+        onClick: async () => {
+          const confirmed = window.confirm(`Delete collection "${collection.name}"?`);
+          if (!confirmed) return;
+          try {
+            await deleteCollection(collection.id);
+          } catch (err) {
+            console.error("Failed to delete collection:", err);
+          }
+        },
+        destructive: true,
+      },
+    ];
+
+    const collectionContent = (
       <div key={collection.id}>
         <div
           className="flex items-center gap-1 group/pawkit"
@@ -599,6 +787,13 @@ export function LeftNavigationPanel({
         )}
       </div>
     );
+
+    // Wrap with context menu
+    return (
+      <GenericContextMenu items={contextMenuItems}>
+        {collectionContent}
+      </GenericContextMenu>
+    );
   };
 
   return (
@@ -733,35 +928,72 @@ export function LeftNavigationPanel({
 
           {/* Pawkits Section */}
           {collections.length > 0 && (
-            <PanelSection
-              id="left-pawkits"
-              title="Pawkits"
-              icon={<FolderOpen className={`h-4 w-4 ${pathname === pathPrefix + "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
-              active={pathname === pathPrefix + "/pawkits"}
-              onClick={() => {
-                handleNavigate("/pawkits");
-                // Ensure section is expanded when clicking header
-                if (collapsedSections["left-pawkits"]) {
-                  toggleSection("left-pawkits");
-                }
-              }}
-              action={
+            <div className="space-y-3 pb-3">
+              <div className={`w-full flex items-center gap-2 group relative ${pathname === pathPrefix + "/pawkits" ? "pb-2" : ""}`}>
+                <GenericContextMenu
+                  items={[
+                    {
+                      label: "View All Pawkits",
+                      icon: FolderOpen,
+                      onClick: () => handleNavigate("/pawkits"),
+                    },
+                    {
+                      label: "Create New Pawkit",
+                      icon: Plus,
+                      onClick: () => setShowCreatePawkitModal(true),
+                    },
+                  ]}
+                >
+                  <button
+                    onClick={() => {
+                      handleNavigate("/pawkits");
+                      // Ensure section is expanded when clicking header
+                      if (collapsedSections["left-pawkits"]) {
+                        toggleSection("left-pawkits");
+                      }
+                    }}
+                    className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1"
+                  >
+                    <FolderOpen className={`h-4 w-4 ${pathname === pathPrefix + "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />
+                    <h3 className={`text-sm font-semibold uppercase tracking-wide transition-all ${
+                      pathname === pathPrefix + "/pawkits" ? "text-accent-foreground drop-shadow-glow-accent" : "text-foreground"
+                    }`}>
+                      Pawkits
+                    </h3>
+                  </button>
+                </GenericContextMenu>
+                {pathname === pathPrefix + "/pawkits" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
+                )}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowCreatePawkitModal(true);
                   }}
-                  className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100"
+                  className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100 flex-shrink-0"
                   title="Create new pawkit"
                 >
                   <Plus size={16} />
                 </button>
-              }
-            >
-              <div className="space-y-1">
-                {collections.map((collection) => renderCollectionTree(collection, 0))}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleSection("left-pawkits");
+                  }}
+                  className="p-1 rounded transition-colors hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                >
+                  <ChevronRight
+                    size={14}
+                    className={`transition-transform ${collapsedSections["left-pawkits"] ? "" : "rotate-90"}`}
+                  />
+                </button>
               </div>
-            </PanelSection>
+              {!collapsedSections["left-pawkits"] && (
+                <div className="space-y-1">
+                  {collections.map((collection) => renderCollectionTree(collection, 0))}
+                </div>
+              )}
+            </div>
           )}
 
           {/* Notes Section */}
@@ -846,8 +1078,33 @@ export function LeftNavigationPanel({
           )}
         </div>
 
-        {/* Sync Status Footer - Matches right sidebar keybind footer styling */}
-        <SyncStatus />
+        {/* Keyboard Shortcuts Footer - Fixed at bottom */}
+        <div className="px-4 py-3 border-t border-white/5">
+          <div className="text-xs text-muted-foreground space-y-2">
+            <div className="flex items-center justify-between">
+              <span>Quick search</span>
+              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">/</kbd>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Paste URL</span>
+              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">Cmd/Ctrl + V</kbd>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Add card</span>
+              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">Cmd/Ctrl + P</kbd>
+            </div>
+            <button
+              onClick={() => {
+                // Trigger the help modal
+                const helpEvent = new KeyboardEvent('keydown', { key: '?' });
+                document.dispatchEvent(helpEvent);
+              }}
+              className="text-accent hover:underline text-xs mt-1"
+            >
+              View all shortcuts →
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Create Pawkit Modal */}
@@ -909,6 +1166,74 @@ export function LeftNavigationPanel({
                 disabled={creatingPawkit || !newPawkitName.trim()}
               >
                 {creatingPawkit ? "Creating..." : "Enter to Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename Pawkit Modal */}
+      {showRenameModal && (
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => {
+            if (!renamingCollection) {
+              setShowRenameModal(false);
+              setRenameValue("");
+              setRenameCollectionId(null);
+              setRenameCollectionName("");
+            }
+          }}
+        >
+          <div
+            className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 shadow-glow-accent p-6 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Rename Pawkit
+            </h3>
+            <input
+              type="text"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleRenameCollection();
+                } else if (e.key === "Escape") {
+                  if (!renamingCollection) {
+                    setShowRenameModal(false);
+                    setRenameValue("");
+                    setRenameCollectionId(null);
+                    setRenameCollectionName("");
+                  }
+                }
+              }}
+              placeholder="Pawkit name"
+              className="w-full rounded-lg bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-foreground placeholder-muted-foreground border border-white/10 focus:border-accent focus:outline-none transition-colors"
+              autoFocus
+              disabled={renamingCollection}
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => {
+                  if (!renamingCollection) {
+                    setShowRenameModal(false);
+                    setRenameValue("");
+                    setRenameCollectionId(null);
+                    setRenameCollectionName("");
+                  }
+                }}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+                disabled={renamingCollection}
+              >
+                Esc to Cancel
+              </button>
+              <button
+                onClick={handleRenameCollection}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-50"
+                disabled={renamingCollection || !renameValue.trim()}
+              >
+                {renamingCollection ? "Renaming..." : "Enter to Rename"}
               </button>
             </div>
           </div>

@@ -51,6 +51,12 @@ export function LibraryControls() {
   const collapsedSections = usePanelStore((state) => state.collapsedSections);
   const toggleSection = usePanelStore((state) => state.toggleSection);
 
+  // Detect if panel is floating over content (for conditional styling)
+  const leftMode = usePanelStore((state) => state.leftMode);
+  const panelMode = usePanelStore((state) => state.mode);
+  const isPanelOpen = usePanelStore((state) => state.isOpen);
+  const isFloatingOverContent = leftMode === "anchored" && panelMode === "floating" && isPanelOpen;
+
   // Get view settings from store
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
   const setLayout = useViewSettingsStore((state) => state.setLayout);
@@ -237,7 +243,11 @@ export function LibraryControls() {
         <button
           onClick={handleClearContentTypes}
           disabled={contentTypeFilter.length === 0}
-          className="text-xs text-accent hover:text-accent/80 transition-colors mb-1 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-accent"
+          className={`text-xs transition-colors mb-1 disabled:cursor-not-allowed ${
+            isFloatingOverContent
+              ? "text-purple-300 hover:text-purple-200 disabled:opacity-40 disabled:hover:text-purple-300"
+              : "text-accent hover:text-accent/80 disabled:opacity-30 disabled:hover:text-accent"
+          }`}
         >
           Clear all filters
         </button>

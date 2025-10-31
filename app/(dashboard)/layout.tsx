@@ -132,6 +132,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Special case: left floating + right anchored = embedded mode
   const isRightPanelEmbedded = leftMode === "floating" && panelMode === "anchored" && isPanelOpen;
 
+  // Determine if right panel is floating over content (needs darker glass for readability)
+  // Special case: left anchored + right floating = floating over visible content
+  const isRightPanelFloatingOverContent = leftMode === "anchored" && panelMode === "floating" && isPanelOpen;
+
   // Track panel state changes
   useEffect(() => {
     // Panel state tracking for debugging if needed
@@ -530,6 +534,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             mode={panelMode}
             onModeChange={setPanelMode}
             embedded={isRightPanelEmbedded}
+            floatingOverContent={isRightPanelFloatingOverContent}
             username={username}
             displayName={displayName}
           >
