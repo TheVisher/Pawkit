@@ -82,6 +82,13 @@ export function LeftNavigationPanel({
   const [hoveredCreatePawkit, setHoveredCreatePawkit] = useState<string | null>(null);
   const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
 
+  // Rename modal state
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameCollectionId, setRenameCollectionId] = useState<string | null>(null);
+  const [renameCollectionName, setRenameCollectionName] = useState("");
+  const [renameValue, setRenameValue] = useState("");
+  const [renamingCollection, setRenamingCollection] = useState(false);
+
   // Detect if we're in demo mode
   const isDemo = pathname?.startsWith('/demo');
   const pathPrefix = isDemo ? '/demo' : '';
@@ -381,6 +388,43 @@ export function LeftNavigationPanel({
     }
   };
 
+  const handleRenameCollection = async () => {
+    const trimmedName = renameValue.trim();
+    if (!trimmedName || !renameCollectionId || renamingCollection) return;
+    if (trimmedName === renameCollectionName) {
+      // No change, just close
+      setShowRenameModal(false);
+      setRenameValue("");
+      setRenameCollectionId(null);
+      setRenameCollectionName("");
+      return;
+    }
+
+    setRenamingCollection(true);
+    try {
+      await updateCollection(renameCollectionId, { name: trimmedName });
+
+      // Show toast
+      setToastMessage("Pawkit Renamed");
+      setShowToast(true);
+
+      // Hide toast after 2 seconds
+      setTimeout(() => {
+        setShowToast(false);
+      }, 2000);
+
+      // Reset and close modal
+      setShowRenameModal(false);
+      setRenameValue("");
+      setRenameCollectionId(null);
+      setRenameCollectionName("");
+    } catch (error) {
+      console.error('Failed to rename collection:', error);
+    } finally {
+      setRenamingCollection(false);
+    }
+  };
+
   if (!open) return null;
 
   // Sortable Pinned Note component
@@ -529,15 +573,11 @@ export function LeftNavigationPanel({
       {
         label: "Rename",
         icon: Edit3,
-        onClick: async () => {
-          const name = window.prompt("Rename collection", collection.name);
-          if (name && name !== collection.name) {
-            try {
-              await updateCollection(collection.id, { name });
-            } catch (err) {
-              console.error("Failed to rename collection:", err);
-            }
-          }
+        onClick: () => {
+          setRenameCollectionId(collection.id);
+          setRenameCollectionName(collection.name);
+          setRenameValue(collection.name);
+          setShowRenameModal(true);
         },
       },
       {
@@ -863,50 +903,72 @@ export function LeftNavigationPanel({
 
           {/* Pawkits Section */}
           {collections.length > 0 && (
-            <GenericContextMenu
-              items={[
-                {
-                  label: "View All Pawkits",
-                  icon: FolderOpen,
-                  onClick: () => handleNavigate("/pawkits"),
-                },
-                {
-                  label: "Create New Pawkit",
-                  icon: Plus,
-                  onClick: () => setShowCreatePawkitModal(true),
-                },
-              ]}
-            >
-              <PanelSection
-                id="left-pawkits"
-                title="Pawkits"
-                icon={<FolderOpen className={`h-4 w-4 ${pathname === pathPrefix + "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
-                active={pathname === pathPrefix + "/pawkits"}
-                onClick={() => {
-                  handleNavigate("/pawkits");
-                  // Ensure section is expanded when clicking header
-                  if (collapsedSections["left-pawkits"]) {
-                    toggleSection("left-pawkits");
-                  }
-                }}
-                action={
+            <div className="space-y-3 pb-3">
+              <div className={`w-full flex items-center gap-2 group relative ${pathname === pathPrefix + "/pawkits" ? "pb-2" : ""}`}>
+                <GenericContextMenu
+                  items={[
+                    {
+                      label: "View All Pawkits",
+                      icon: FolderOpen,
+                      onClick: () => handleNavigate("/pawkits"),
+                    },
+                    {
+                      label: "Create New Pawkit",
+                      icon: Plus,
+                      onClick: () => setShowCreatePawkitModal(true),
+                    },
+                  ]}
+                >
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowCreatePawkitModal(true);
+                    onClick={() => {
+                      handleNavigate("/pawkits");
+                      // Ensure section is expanded when clicking header
+                      if (collapsedSections["left-pawkits"]) {
+                        toggleSection("left-pawkits");
+                      }
                     }}
-                    className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100"
-                    title="Create new pawkit"
+                    className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1"
                   >
-                    <Plus size={16} />
+                    <FolderOpen className={`h-4 w-4 ${pathname === pathPrefix + "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />
+                    <h3 className={`text-sm font-semibold uppercase tracking-wide transition-all ${
+                      pathname === pathPrefix + "/pawkits" ? "text-accent-foreground drop-shadow-glow-accent" : "text-foreground"
+                    }`}>
+                      Pawkits
+                    </h3>
                   </button>
-                }
-              >
+                </GenericContextMenu>
+                {pathname === pathPrefix + "/pawkits" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
+                )}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCreatePawkitModal(true);
+                  }}
+                  className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100 flex-shrink-0"
+                  title="Create new pawkit"
+                >
+                  <Plus size={16} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleSection("left-pawkits");
+                  }}
+                  className="p-1 rounded transition-colors hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                >
+                  <ChevronRight
+                    size={14}
+                    className={`transition-transform ${collapsedSections["left-pawkits"] ? "" : "rotate-90"}`}
+                  />
+                </button>
+              </div>
+              {!collapsedSections["left-pawkits"] && (
                 <div className="space-y-1">
                   {collections.map((collection) => renderCollectionTree(collection, 0))}
                 </div>
-              </PanelSection>
-            </GenericContextMenu>
+              )}
+            </div>
           )}
 
           {/* Notes Section */}
@@ -1079,6 +1141,74 @@ export function LeftNavigationPanel({
                 disabled={creatingPawkit || !newPawkitName.trim()}
               >
                 {creatingPawkit ? "Creating..." : "Enter to Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename Pawkit Modal */}
+      {showRenameModal && (
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => {
+            if (!renamingCollection) {
+              setShowRenameModal(false);
+              setRenameValue("");
+              setRenameCollectionId(null);
+              setRenameCollectionName("");
+            }
+          }}
+        >
+          <div
+            className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 shadow-glow-accent p-6 w-full max-w-md mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Rename Pawkit
+            </h3>
+            <input
+              type="text"
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleRenameCollection();
+                } else if (e.key === "Escape") {
+                  if (!renamingCollection) {
+                    setShowRenameModal(false);
+                    setRenameValue("");
+                    setRenameCollectionId(null);
+                    setRenameCollectionName("");
+                  }
+                }
+              }}
+              placeholder="Pawkit name"
+              className="w-full rounded-lg bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-foreground placeholder-muted-foreground border border-white/10 focus:border-accent focus:outline-none transition-colors"
+              autoFocus
+              disabled={renamingCollection}
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => {
+                  if (!renamingCollection) {
+                    setShowRenameModal(false);
+                    setRenameValue("");
+                    setRenameCollectionId(null);
+                    setRenameCollectionName("");
+                  }
+                }}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+                disabled={renamingCollection}
+              >
+                Esc to Cancel
+              </button>
+              <button
+                onClick={handleRenameCollection}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-50"
+                disabled={renamingCollection || !renameValue.trim()}
+              >
+                {renamingCollection ? "Renaming..." : "Enter to Rename"}
               </button>
             </div>
           </div>
