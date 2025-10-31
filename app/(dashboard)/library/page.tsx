@@ -117,7 +117,7 @@ function LibraryPageContent() {
 
     // Exclude deleted cards, cards in The Den, or in private collections
     filtered = filtered.filter(card => {
-      if (card.deleted) return false;
+      if (card.deleted === true) return false;
       if (card.collections?.includes('the-den')) return false;
       const isInPrivateCollection = card.collections?.some(collectionSlug =>
         privateCollectionSlugs.has(collectionSlug)
