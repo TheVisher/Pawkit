@@ -3,9 +3,10 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Folder, Lock } from "lucide-react";
+import { Folder, Lock, FolderPlus, Edit3, ArrowUpDown, Trash2 } from "lucide-react";
 import { CollectionNode } from "@/lib/types";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { GenericContextMenu, ContextMenuItemConfig } from "@/components/ui/generic-context-menu";
 
 export type CollectionsSidebarProps = {
   tree: CollectionNode[];
@@ -240,7 +241,36 @@ function CollectionItem({
   const isActiveDrop = activeSlug === node.slug;
   const hasChildren = node.children && node.children.length > 0;
 
-  return (
+  // Define context menu items
+  const contextMenuItems: ContextMenuItemConfig[] = showManagementControls
+    ? [
+        {
+          label: "New sub-collection",
+          icon: FolderPlus,
+          onClick: () => onCreate(node.id),
+        },
+        { type: "separator" },
+        {
+          label: "Rename",
+          icon: Edit3,
+          onClick: () => onRename(node),
+        },
+        {
+          label: "Move",
+          icon: ArrowUpDown,
+          onClick: () => onMove(node),
+        },
+        { type: "separator" },
+        {
+          label: "Delete",
+          icon: Trash2,
+          onClick: () => onDelete(node),
+          destructive: true,
+        },
+      ]
+    : [];
+
+  const content = (
     <div
       ref={setNodeRef}
       className={`rounded px-2 py-1 transition-colors ${isActiveDrop ? "bg-gray-800" : isSelected ? "bg-gray-900" : "hover:bg-gray-900"}`}
@@ -264,22 +294,6 @@ function CollectionItem({
             {node.name}
           </button>
         </div>
-        {showManagementControls && (
-          <div className="flex items-center gap-1">
-            <button className="rounded bg-gray-800 px-1 text-[10px]" onClick={() => onCreate(node.id)}>
-              +
-            </button>
-            <button className="rounded bg-gray-800 px-1 text-[10px]" onClick={() => onRename(node)}>
-              ✎
-            </button>
-            <button className="rounded bg-gray-800 px-1 text-[10px]" onClick={() => onMove(node)}>
-              ↕
-            </button>
-            <button className="rounded bg-gray-800 px-1 text-[10px] text-rose-400" onClick={() => onDelete(node)}>
-              ×
-            </button>
-          </div>
-        )}
       </div>
       {hasChildren && isExpanded && (
         <div className="mt-1 space-y-1">
@@ -302,6 +316,15 @@ function CollectionItem({
         </div>
       )}
     </div>
+  );
+
+  // Wrap with context menu if management controls are enabled
+  return showManagementControls ? (
+    <GenericContextMenu items={contextMenuItems}>
+      {content}
+    </GenericContextMenu>
+  ) : (
+    content
   );
 }
 
