@@ -100,7 +100,6 @@ export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
   try {
     user = await getCurrentUser();
     if (!user) {
-      console.log('[DELETE] Unauthorized - no user');
       return unauthorized();
     }
 
@@ -111,10 +110,8 @@ export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
         select: { serverSync: true },
       });
 
-      console.log('[DELETE] User serverSync setting:', dbUser?.serverSync);
 
       if (dbUser && !dbUser.serverSync) {
-        console.log('[DELETE] Blocked - serverSync disabled');
         return NextResponse.json(
           {
             error: 'Local-Only Mode Active',
@@ -131,11 +128,9 @@ export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
     }
 
     const params = await segmentData.params;
-    console.log('[DELETE] Starting soft delete for card:', params.id, 'user:', user.id);
 
     // Soft delete - move to trash
     const result = await softDeleteCard(user.id, params.id);
-    console.log('[DELETE] Soft delete completed:', {
       cardId: params.id,
       deleted: result.deleted,
       deletedAt: result.deletedAt,

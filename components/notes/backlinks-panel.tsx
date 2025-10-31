@@ -106,12 +106,9 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      console.log('[BacklinksPanel] Backlink clicked:', backlink.sourceNoteId);
                       if (onNavigate) {
-                        console.log('[BacklinksPanel] Calling onNavigate with:', backlink.sourceNoteId);
                         onNavigate(backlink.sourceNoteId);
                       } else {
-                        console.log('[BacklinksPanel] onNavigate is not defined');
                       }
                     }}
                     className="text-sm text-accent hover:underline text-left flex-1 cursor-pointer"
@@ -151,12 +148,9 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log('[BacklinksPanel] Outgoing link clicked:', link.targetNoteId);
                     if (onNavigate) {
-                      console.log('[BacklinksPanel] Calling onNavigate with:', link.targetNoteId);
                       onNavigate(link.targetNoteId);
                     } else {
-                      console.log('[BacklinksPanel] onNavigate is not defined');
                     }
                   }}
                   className="text-sm text-accent hover:underline text-left w-full cursor-pointer"
@@ -199,14 +193,11 @@ export function BacklinksPanel({ noteId, onNavigate }: BacklinksPanelProps) {
                   </span>
                   <button
                     onClick={(e) => {
-                      console.log('[BacklinksPanel] Card reference clicked:', ref.targetCardId);
                       e.preventDefault();
                       e.stopPropagation();
                       if (onNavigate) {
-                        console.log('[BacklinksPanel] Calling onNavigate with:', ref.targetCardId);
                         onNavigate(ref.targetCardId);
                       } else {
-                        console.log('[BacklinksPanel] onNavigate is not defined');
                       }
                     }}
                     className="text-sm text-blue-400 hover:text-blue-300 truncate hover:underline cursor-pointer text-left"

@@ -53,7 +53,6 @@ function LibraryPageContent() {
         deletedAt: c.deletedAt
       })));
     } else {
-      console.log('[Library] ✅ No deleted cards in store');
     }
   }, [cards]);
 
@@ -181,22 +180,16 @@ function LibraryPageContent() {
 
   // Debug: Log content type filter and card types (after items is computed)
   useEffect(() => {
-    console.log('=== LIBRARY PAGE DEBUG ===');
-    console.log('contentTypeFilter:', contentTypeFilter);
-    console.log('Total cards:', cards.length);
-    console.log('Filtered items:', items.length);
 
     // Log card type distribution
     const typeCount: Record<string, number> = {};
     items.forEach(card => {
       typeCount[card.type] = (typeCount[card.type] || 0) + 1;
     });
-    console.log('Card types in filtered items:', typeCount);
 
     // Check if we're showing notes when we shouldn't
     const noteCount = items.filter(c => c.type === 'md-note' || c.type === 'text-note').length;
     if (noteCount > 0 && contentTypeFilter.length === 0) {
-      console.warn('⚠️ WARNING: Showing', noteCount, 'notes in Library view with no filter!');
     }
   }, [contentTypeFilter, cards.length, items]);
 

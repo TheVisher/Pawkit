@@ -60,7 +60,6 @@ function CollectionPageContent() {
     if (showCreateModal) {
       // Delay to let dropdown close completely and modal render
       const timer = setTimeout(() => {
-        console.log('[FOCUS] Attempting to focus input, ref:', inputRef.current);
         inputRef.current?.focus();
       }, 150);
       return () => clearTimeout(timer);
@@ -239,19 +238,16 @@ function CollectionPageContent() {
       return;
     }
 
-    console.log('[CREATE] Starting sub-pawkit creation:', trimmedName, 'parent:', currentCollection.id);
     setLoading(true);
     setError(null);
 
     try {
-      console.log('[CREATE] Sending POST request...');
       const response = await fetch("/api/pawkits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmedName, parentId: currentCollection.id }),
       });
 
-      console.log('[CREATE] Response status:', response.status);
 
       if (!response.ok) {
         const data = await response.json();
@@ -261,16 +257,13 @@ function CollectionPageContent() {
       }
 
       const newPawkit = await response.json();
-      console.log('[CREATE] Created pawkit:', newPawkit);
 
       setPawkitName("");
       setShowCreateModal(false);
       setLoading(false);
 
-      console.log('[CREATE] Calling refresh()...');
       // Refresh the Zustand store to get the new sub-pawkit
       await refresh();
-      console.log('[CREATE] Refresh complete');
     } catch (err) {
       console.error('[CREATE] Error:', err);
       setError("Failed to create Sub-Pawkit");
@@ -332,26 +325,21 @@ function CollectionPageContent() {
   };
 
   const handleDeletePawkit = async () => {
-    console.log("handleDeletePawkit called", currentCollection.id);
     setLoading(true);
     setShowDeletePawkitConfirm(false);
 
     try {
-      console.log("Sending DELETE request to /api/pawkits/" + currentCollection.id);
       const response = await fetch(`/api/pawkits/${currentCollection.id}`, {
         method: "DELETE",
       });
 
-      console.log("DELETE response status:", response.status);
 
       if (!response.ok) {
         throw new Error("Failed to delete Pawkit");
       }
 
-      console.log("Delete successful, refreshing store...");
       // Refresh the Zustand store and navigate
       await refresh();
-      console.log("Navigating to /pawkits");
       router.push("/pawkits");
     } catch (err) {
       console.error("Delete error:", err);

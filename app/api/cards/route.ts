@@ -96,7 +96,6 @@ export async function GET(request: NextRequest) {
     const includeDeletedParam = query.includeDeleted;
     const includeDeleted = includeDeletedParam === 'true';
 
-    console.log('[GET /api/cards] Query params:', {
       includeDeletedParam,
       includeDeleted,
       allParams: query
@@ -111,11 +110,9 @@ export async function GET(request: NextRequest) {
       includeDeleted
     };
 
-    console.log('[GET /api/cards] Payload to listCards:', payload);
 
     const result = await listCards(user.id, payload);
 
-    console.log('[GET /api/cards] Result:', {
       itemsCount: result.items.length,
       firstFewDeleted: result.items.slice(0, 5).map(c => ({ id: c.id, title: c.title, deleted: c.deleted }))
     });
