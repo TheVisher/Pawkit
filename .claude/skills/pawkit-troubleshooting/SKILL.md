@@ -1431,6 +1431,134 @@ await localDb.permanentlyDeleteCard(card.id);  // ✅ Completely removes
 
 ---
 
+### 14. Deduplication Removing Legitimate Server Cards
+
+**Issue**: Force Full Sync shows "Perfect Sync" but 26 cards are missing. Comprehensive logging revealed deduplication was removing legitimate server cards just because they had the same title.
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Removes real server cards when they have same title
+async function deduplicateCards(cards: CardDTO[]): Promise<CardDTO[]> {
+  for (const card of cards) {
+    const key = card.url || card.title || card.id;
+    if (seenCardUrls.has(key)) {
+      const existingCard = cards.find(c => c.id === seenCardUrls.get(key));
+      const isTempExisting = existingId?.startsWith('temp_');
+      const isTempDuplicate = card.id.startsWith('temp_');
+
+      // Priority 3: Both are real OR both are temp - keep older one
+      if (!isTempExisting && !isTempDuplicate) {
+        // ❌ WRONG! Both have real server IDs but treating as duplicate
+        const existingTime = new Date(existingCard.createdAt).getTime();
+        const duplicateTime = new Date(card.createdAt).getTime();
+
+        if (duplicateTime > existingTime) {
+          cardsToDelete.push(card.id);  // ❌ Deleting legitimate card!
+        }
+      }
+    }
+  }
+}
+```
+
+**Debug Output Showing the Bug**:
+```typescript
+// Console showed:
+[DataStore V2] ⚠️ DUPLICATE DETECTED - Same content, different IDs:
+{
+  existing: "cmhe11aet0000la0471dhden3",  // Real server ID
+  duplicate: "cmhe11ozf0000kw0479j7jtr1",  // Also real server ID!
+  key: "SYNC TEST",                       // Same title
+  isTempExisting: false,                  // Not temp
+  isTempDuplicate: false,                 // Not temp
+  existingCreatedAt: "2025-10-30T...",
+  duplicateCreatedAt: "2025-10-30T..."
+}
+[DataStore V2] 🧹 Cleaning up newer duplicate: cmhe11ozf0000kw0479j7jtr1
+// ❌ WRONG! This is a legitimate card that happens to have same title
+```
+
+**The Fix**:
+```tsx
+// ✅ CORRECT: Skip deduplication when both cards have real server IDs
+async function deduplicateCards(cards: CardDTO[]): Promise<CardDTO[]> {
+  for (const card of cards) {
+    const key = card.url || card.title || card.id;
+    if (seenCardUrls.has(key)) {
+      const existingCard = cards.find(c => c.id === seenCardUrls.get(key));
+      const isTempExisting = existingId?.startsWith('temp_');
+      const isTempDuplicate = card.id.startsWith('temp_');
+
+      // Priority 1: Duplicate is temp, existing is real → Delete temp
+      if (isTempDuplicate && !isTempExisting) {
+        cardsToDelete.push(card.id);
+      }
+      // Priority 2: Existing is temp, duplicate is real → Delete temp
+      else if (isTempExisting && !isTempDuplicate) {
+        cardsToDelete.push(existingId);
+        seenCardUrls.set(key, card.id);
+      }
+      // Priority 3: Both are REAL server cards - DON'T deduplicate!
+      else if (!isTempExisting && !isTempDuplicate) {
+        console.log('[DataStore V2] ✅ Both cards have server IDs, keeping both:', {
+          existing: existingId,
+          duplicate: card.id,
+          title: card.title
+        });
+        // ✅ Don't delete! These are legitimate separate cards
+        seenCardUrls.set(card.id, card.id); // Track separately
+      }
+      // Priority 4: Both are temp → Keep older one
+      else {
+        if (duplicateTime > existingTime) {
+          cardsToDelete.push(card.id);
+        } else {
+          cardsToDelete.push(existingId);
+        }
+      }
+    }
+  }
+}
+```
+
+**Root Cause**:
+- Deduplication logic was designed to clean up temp cards during sync
+- Priority 3 case handled "both real OR both temp" together
+- When both cards had real server IDs, it treated them as duplicates
+- Removed one based on `createdAt` timestamp
+- These were actually legitimate separate cards that happened to have the same title
+- 26 test cards with titles like "SYNC TEST" and "Final delete test" were being removed
+
+**How to Avoid**:
+- **NEVER** deduplicate cards when BOTH have real server IDs
+- Deduplication should ONLY remove temp cards:
+  - When replacing temp with real (one is temp, one is real)
+  - When multiple temp cards exist (both are temp)
+- Real server cards are ALWAYS legitimate, even if they share title/URL
+- Add explicit check: `if (!isTempExisting && !isTempDuplicate)` → keep both
+- Log when skipping deduplication for real cards
+
+**Deduplication Rules** (in priority order):
+1. **Duplicate is temp, existing is real** → Delete temp (replace with real)
+2. **Existing is temp, duplicate is real** → Delete temp (replace with real)
+3. **Both are real server cards** → Keep both! (Skip deduplication)
+4. **Both are temp cards** → Delete newer one (keep older by createdAt)
+
+**How This Was Found**:
+1. User reported 26 cards missing after Force Full Sync
+2. Added comprehensive logging to Force Full Sync (track save success/failure)
+3. Added comprehensive logging to deduplication (show what's removed and why)
+4. Logs revealed all 26 cards were real server IDs being flagged as "duplicates"
+5. Root cause: Priority 3 logic didn't distinguish between "both real" and "both temp"
+
+**Impact**: Fixed October 30, 2025 - All 26 missing cards now preserved, deduplication only removes temp cards
+
+**Commit**: 476d04a
+
+**See**: `.claude/skills/pawkit-sync-patterns/SKILL.md` for deduplication patterns
+
+---
+
 ### 11. Duplicate Card Issue - Deleted Cards Returned
 
 **Issue**: Creating new notes triggered duplicate constraint errors and returned deleted daily notes instead of creating new notes. Server returned 409 Conflict errors.
