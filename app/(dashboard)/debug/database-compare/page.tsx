@@ -31,6 +31,7 @@ export default function DatabaseComparePage() {
   const [stats, setStats] = useState<DatabaseStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [resolving, setResolving] = useState(false);
 
   const loadStats = async () => {
     setLoading(true);
@@ -174,6 +175,88 @@ export default function DatabaseComparePage() {
     }
   };
 
+  const resolveMismatches = async () => {
+    if (!confirm('This will fix deletion mismatches by treating the server as the source of truth. Continue?')) {
+      return;
+    }
+
+    setResolving(true);
+    try {
+      console.log('[ResolveMismatches] Starting resolution...');
+
+      // Fetch from server (including deleted cards)
+      const serverRes = await fetch('/api/cards?limit=10000&includeDeleted=true');
+      const serverData = await serverRes.json();
+      const serverCards: CardDTO[] = serverData.items || [];
+
+      // Fetch from local IndexedDB (including deleted cards)
+      await localDb.init();
+      const localCards = await localDb.getAllCards(true);
+
+      // Build a map for quick lookup
+      const serverCardMap = new Map(serverCards.map(c => [c.id, c]));
+
+      let fixedCount = 0;
+
+      // Find and fix mismatches where server=active but local=deleted
+      for (const localCard of localCards) {
+        const serverCard = serverCardMap.get(localCard.id);
+
+        if (serverCard && serverCard.deleted !== localCard.deleted) {
+          // Server is the source of truth - update local to match server
+          if (!serverCard.deleted && localCard.deleted) {
+            // Server says active, local says deleted - restore locally
+            console.log('[ResolveMismatches] Restoring card locally:', {
+              id: localCard.id,
+              title: localCard.title,
+              serverDeleted: serverCard.deleted,
+              localDeleted: localCard.deleted
+            });
+
+            const restoredCard = {
+              ...localCard,
+              deleted: false,
+              deletedAt: null,
+              updatedAt: serverCard.updatedAt, // Use server's timestamp
+            };
+
+            await localDb.saveCard(restoredCard, { fromServer: true });
+            fixedCount++;
+          } else if (serverCard.deleted && !localCard.deleted) {
+            // Server says deleted, local says active - delete locally
+            console.log('[ResolveMismatches] Deleting card locally:', {
+              id: localCard.id,
+              title: localCard.title,
+              serverDeleted: serverCard.deleted,
+              localDeleted: localCard.deleted
+            });
+
+            const deletedCard = {
+              ...localCard,
+              deleted: true,
+              deletedAt: serverCard.deletedAt || new Date().toISOString(),
+              updatedAt: serverCard.updatedAt,
+            };
+
+            await localDb.saveCard(deletedCard, { fromServer: true });
+            fixedCount++;
+          }
+        }
+      }
+
+      console.log('[ResolveMismatches] ✅ Fixed', fixedCount, 'mismatches');
+      alert(`Fixed ${fixedCount} deletion mismatches. Refreshing comparison...`);
+
+      // Reload stats
+      await loadStats();
+    } catch (error) {
+      console.error('[ResolveMismatches] Failed:', error);
+      alert('Failed to resolve mismatches. Check console for details.');
+    } finally {
+      setResolving(false);
+    }
+  };
+
   useEffect(() => {
     loadStats();
   }, []);
@@ -206,6 +289,9 @@ export default function DatabaseComparePage() {
         <div className="flex gap-4">
           <Button onClick={loadStats} variant="outline" disabled={loading}>
             Refresh
+          </Button>
+          <Button onClick={resolveMismatches} variant="default" disabled={resolving || !stats || stats.differences.deletionMismatch.length === 0}>
+            {resolving ? 'Resolving...' : 'Resolve Mismatches'}
           </Button>
           <Button onClick={forceFullSync} variant="destructive" disabled={syncing}>
             {syncing ? 'Syncing...' : 'Force Full Sync'}
