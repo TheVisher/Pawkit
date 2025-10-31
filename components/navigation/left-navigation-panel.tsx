@@ -2,12 +2,13 @@
 
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2 } from "lucide-react";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { GenericContextMenu } from "@/components/ui/generic-context-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -86,7 +87,7 @@ export function LeftNavigationPanel({
   const pathPrefix = isDemo ? '/demo' : '';
 
   // Get cards and data (demo-aware)
-  const { cards, addCard, updateCard, addCollection } = useDemoAwareStore();
+  const { cards, addCard, updateCard, addCollection, updateCollection, deleteCollection } = useDemoAwareStore();
   const { recentItems } = useRecentHistory();
 
   // Get active card from panel store
@@ -439,7 +440,86 @@ export function LeftNavigationPanel({
     const textSize = depth === 0 ? "text-sm" : "text-xs";
     const padding = depth === 0 ? "px-3 py-2" : "px-3 py-1.5";
 
-    return (
+    // Define context menu items for collection management
+    const contextMenuItems = [
+      {
+        label: "Open",
+        icon: FolderOpen,
+        onClick: () => handleNavigate(pawkitHref),
+      },
+      {
+        label: "New sub-collection",
+        icon: FolderPlus,
+        onClick: () => {
+          setParentPawkitId(collection.id);
+          setShowCreatePawkitModal(true);
+        },
+      },
+      { type: "separator" as const },
+      {
+        label: "Rename",
+        icon: Edit3,
+        onClick: async () => {
+          const name = window.prompt("Rename collection", collection.name);
+          if (name && name !== collection.name) {
+            try {
+              await updateCollection(collection.id, { name });
+            } catch (err) {
+              console.error("Failed to rename collection:", err);
+            }
+          }
+        },
+      },
+      {
+        label: "Move",
+        icon: ArrowUpDown,
+        onClick: async () => {
+          const slug = window.prompt("Enter parent collection slug (leave blank for root)", "");
+          if (slug === null) return; // User cancelled
+          const trimmed = slug.trim();
+          let parentId: string | null = null;
+          if (trimmed.length) {
+            // Find parent by slug
+            const findBySlug = (slug: string, list: CollectionNode[]): CollectionNode | undefined => {
+              for (const item of list) {
+                if (item.slug === slug) return item;
+                const child = findBySlug(slug, item.children ?? []);
+                if (child) return child;
+              }
+              return undefined;
+            };
+            const target = findBySlug(trimmed, collections);
+            if (!target) {
+              alert("Collection slug not found");
+              return;
+            }
+            parentId = target.id;
+          }
+          try {
+            await updateCollection(collection.id, { parentId });
+          } catch (err) {
+            console.error("Failed to move collection:", err);
+          }
+        },
+      },
+      { type: "separator" as const },
+      {
+        label: "Delete",
+        icon: Trash2,
+        onClick: async () => {
+          const confirmed = window.confirm(`Delete collection "${collection.name}"?`);
+          if (!confirmed) return;
+          try {
+            await deleteCollection(collection.id);
+          } catch (err) {
+            console.error("Failed to delete collection:", err);
+          }
+        },
+        destructive: true,
+      },
+    ];
+
+    const collectionContent = (
       <div key={collection.id}>
         <div
           className="flex items-center gap-1 group/pawkit"
@@ -585,6 +665,13 @@ export function LeftNavigationPanel({
           </div>
         )}
       </div>
+    );
+
+    // Wrap with context menu
+    return (
+      <GenericContextMenu items={contextMenuItems}>
+        {collectionContent}
+      </GenericContextMenu>
     );
   };
 
