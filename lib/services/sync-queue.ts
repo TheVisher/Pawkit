@@ -130,6 +130,22 @@ class SyncQueue {
     console.log('[SyncQueue] Removed operation:', id);
   }
 
+  // Remove operation by type and target ID (for immediate sync success)
+  async removeByTarget(type: OperationType, targetId: string): Promise<void> {
+    await this.init();
+    if (!this.db) return;
+
+    const operations = await this.db.getAll('operations');
+    const toRemove = operations.filter(op =>
+      op.type === type && op.targetId === targetId
+    );
+
+    for (const op of toRemove) {
+      await this.db.delete('operations', op.id);
+      console.log('[SyncQueue] Removed operation by target:', type, targetId);
+    }
+  }
+
   // Mark operation as failed
   async markFailed(id: string): Promise<void> {
     await this.init();

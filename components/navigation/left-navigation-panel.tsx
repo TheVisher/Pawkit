@@ -136,7 +136,7 @@ export function LeftNavigationPanel({
   const pinnedNotes = useMemo(() => {
     return pinnedNoteIds
       .map(id => cards.find(card => card.id === id))
-      .filter((note): note is NonNullable<typeof note> => note != null && !note.deleted); // Filter out deleted or non-existent notes
+      .filter((note): note is NonNullable<typeof note> => note != null && note.deleted !== true); // Filter out deleted or non-existent notes
   }, [pinnedNoteIds, cards]);
 
   // Drag and drop for pinned notes
