@@ -77,11 +77,6 @@ export function ContentPanel({
       const panel = document.querySelector('[data-content-panel]');
       if (panel) {
         const rect = panel.getBoundingClientRect();
-          left: rect.left,
-          right: rect.right,
-          width: rect.width,
-          height: rect.height
-        });
       }
     }, 350); // Wait for transition to complete
   }, [leftOpen, leftMode, rightOpen, rightMode, leftPosition, rightPosition, contentIsAnchored, isRightEmbedded, hasAnchoredLeft, hasAnchoredRight]);
