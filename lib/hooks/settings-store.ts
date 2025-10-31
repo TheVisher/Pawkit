@@ -44,7 +44,11 @@ async function syncSettingsToServer(state: SettingsState) {
         autoSyncOnReconnect: state.autoSyncOnReconnect,
         cardSize: state.cardSize,
         displaySettings: state.displaySettings,
-        pinnedNoteIds: state.pinnedNoteIds
+        pinnedNoteIds: state.pinnedNoteIds,
+        showSyncStatusInSidebar: state.showSyncStatusInSidebar,
+        showKeyboardShortcutsInSidebar: state.showKeyboardShortcutsInSidebar,
+        defaultView: state.defaultView,
+        defaultSort: state.defaultSort
       })
     });
   } catch (error) {
@@ -80,6 +84,12 @@ export type SettingsState = {
   displaySettings: Record<Area, DisplaySettings>;
   // Pinned notes (max 3)
   pinnedNoteIds: string[];
+  // Sidebar panel visibility
+  showSyncStatusInSidebar: boolean;
+  showKeyboardShortcutsInSidebar: boolean;
+  // Default fallback preferences (used when no remembered state)
+  defaultView: "grid" | "masonry" | "list";
+  defaultSort: "dateAdded" | "recentlyModified" | "title" | "domain";
   setDisplayName: (value: string) => void;
   setAutoFetchMetadata: (value: boolean) => void;
   setShowThumbnails: (value: boolean) => void;
@@ -102,6 +112,12 @@ export type SettingsState = {
   pinNote: (noteId: string) => boolean; // Returns false if already at max (3)
   unpinNote: (noteId: string) => void;
   reorderPinnedNotes: (noteIds: string[]) => void;
+  // Sidebar panel visibility setters
+  setShowSyncStatusInSidebar: (value: boolean) => void;
+  setShowKeyboardShortcutsInSidebar: (value: boolean) => void;
+  // Default preferences setters
+  setDefaultView: (value: "grid" | "masonry" | "list") => void;
+  setDefaultSort: (value: "dateAdded" | "recentlyModified" | "title" | "domain") => void;
   // Server sync
   loadFromServer: () => Promise<void>;
 };
@@ -139,6 +155,12 @@ export const useSettingsStore = create<SettingsState>()(
       },
       // Initialize pinned notes as empty array
       pinnedNoteIds: [],
+      // Initialize sidebar panel visibility
+      showSyncStatusInSidebar: true,
+      showKeyboardShortcutsInSidebar: true,
+      // Initialize default preferences
+      defaultView: "masonry",
+      defaultSort: "dateAdded",
       setDisplayName: (value) => {
         set({ displayName: value });
         // Don't sync display name to server - it's local only
@@ -268,6 +290,24 @@ export const useSettingsStore = create<SettingsState>()(
         set({ pinnedNoteIds: validIds });
         debouncedSync(get());
       },
+      // Sidebar panel visibility setters
+      setShowSyncStatusInSidebar: (value) => {
+        set({ showSyncStatusInSidebar: value });
+        debouncedSync(get());
+      },
+      setShowKeyboardShortcutsInSidebar: (value) => {
+        set({ showKeyboardShortcutsInSidebar: value });
+        debouncedSync(get());
+      },
+      // Default preferences setters
+      setDefaultView: (value) => {
+        set({ defaultView: value });
+        debouncedSync(get());
+      },
+      setDefaultSort: (value) => {
+        set({ defaultSort: value });
+        debouncedSync(get());
+      },
       // Load settings from server
       loadFromServer: async () => {
         try {
@@ -289,7 +329,11 @@ export const useSettingsStore = create<SettingsState>()(
                 autoSyncOnReconnect: settings.autoSyncOnReconnect,
                 cardSize: settings.cardSize,
                 displaySettings: settings.displaySettings,
-                pinnedNoteIds: settings.pinnedNoteIds
+                pinnedNoteIds: settings.pinnedNoteIds,
+                showSyncStatusInSidebar: settings.showSyncStatusInSidebar ?? true,
+                showKeyboardShortcutsInSidebar: settings.showKeyboardShortcutsInSidebar ?? true,
+                defaultView: settings.defaultView ?? "masonry",
+                defaultSort: settings.defaultSort ?? "dateAdded"
               });
             }
           }
