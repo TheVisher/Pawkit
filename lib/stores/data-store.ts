@@ -94,10 +94,10 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
     }
   }
 
-  // Delete temp duplicates from IndexedDB
+  // Delete temp duplicates from IndexedDB (permanently, not soft delete)
   if (cardsToDelete.length > 0) {
-    console.log('[DataStore V2] 🧹 Deleting', cardsToDelete.length, 'duplicate temp cards from IndexedDB');
-    await Promise.all(cardsToDelete.map(id => localDb.deleteCard(id)));
+    console.log('[DataStore V2] 🧹 Permanently deleting', cardsToDelete.length, 'duplicate temp cards from IndexedDB');
+    await Promise.all(cardsToDelete.map(id => localDb.permanentlyDeleteCard(id)));
   }
 
   // Second pass: remove duplicate IDs and temp cards marked for deletion
