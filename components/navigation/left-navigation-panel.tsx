@@ -287,11 +287,9 @@ export function LeftNavigationPanel({
   // Add card to collection
   const addToCollection = async (collectionSlug: string, collectionName: string) => {
     if (!activeCard) {
-      console.log('[addToCollection] No active card');
       return;
     }
 
-    console.log('[addToCollection] Adding card to collection:', {
       cardId: activeCard.id,
       cardTitle: activeCard.title,
       collectionSlug,
@@ -306,13 +304,11 @@ export function LeftNavigationPanel({
     const currentCollections = activeCard.collections || [];
     if (!currentCollections.includes(collectionSlug)) {
       const newCollections = [...currentCollections, collectionSlug];
-      console.log('[addToCollection] Updating card with collections:', newCollections);
 
       await updateCard(activeCard.id, {
         collections: newCollections
       });
 
-      console.log('[addToCollection] Card updated successfully');
 
       // Show toast
       setToastMessage(`Added to ${collectionName}`);
@@ -323,7 +319,6 @@ export function LeftNavigationPanel({
         setShowToast(false);
       }, 2000);
     } else {
-      console.log('[addToCollection] Card already in collection');
     }
 
     // End animation after 1500ms (matches animation duration)

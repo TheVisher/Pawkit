@@ -29,7 +29,6 @@ function ensureActiveDevice(): boolean {
     return false;
   }
 
-  console.log('[WriteGuard] ✅ Write allowed - this tab is active:', currentSessionId);
   return true;
 }
 
@@ -38,8 +37,6 @@ function ensureActiveDevice(): boolean {
  * Returns [deduplicated cards, IDs to delete from IndexedDB]
  */
 async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]> {
-  console.log('[deduplicateCards] Starting deduplication for', cards.length, 'cards');
-
   const seenCardIds = new Set<string>();
   const seenCardUrls = new Map<string, string>(); // url/title -> cardId mapping
   const cardsToDelete: string[] = []; // IDs of duplicate cards to delete from IndexedDB
@@ -65,12 +62,10 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
 
       // Priority 1: If the duplicate is a temp card and the existing is real, delete the temp
       if (isTempDuplicate && !isTempExisting) {
-        console.log('[DataStore V2] 🧹 Cleaning up temp duplicate:', card.id);
         cardsToDelete.push(card.id);
       }
       // Priority 2: If the existing is temp and the duplicate is real, delete the temp
       else if (isTempExisting && !isTempDuplicate) {
-        console.log('[DataStore V2] 🧹 Cleaning up temp duplicate:', existingId);
         cardsToDelete.push(existingId!);
         // Update the map to point to the real card
         seenCardUrls.set(key, card.id);
@@ -78,11 +73,6 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
       // Priority 3: Both are REAL server cards - DON'T deduplicate!
       // These are legitimate separate cards that happen to have the same title/URL
       else if (!isTempExisting && !isTempDuplicate) {
-        console.log('[DataStore V2] ✅ Both cards have server IDs, keeping both:', {
-          existing: existingId,
-          duplicate: card.id,
-          title: card.title
-        });
         // Don't add to cardsToDelete - keep both cards!
         // Add current card to map with a different key to track it separately
         seenCardUrls.set(card.id, card.id); // Use ID as key to ensure uniqueness
@@ -94,11 +84,9 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
 
         if (duplicateTime > existingTime) {
           // Current card is newer, delete it and keep existing
-          console.log('[DataStore V2] 🧹 Cleaning up newer temp duplicate:', card.id);
           cardsToDelete.push(card.id);
         } else {
           // Existing card is newer, delete it and keep current
-          console.log('[DataStore V2] 🧹 Cleaning up newer temp duplicate:', existingId);
           cardsToDelete.push(existingId!);
           seenCardUrls.set(key, card.id);
         }
@@ -110,11 +98,6 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
 
   // Delete temp duplicates from IndexedDB (permanently, not soft delete)
   if (cardsToDelete.length > 0) {
-    console.log('[deduplicateCards] 🧹 Permanently deleting', cardsToDelete.length, 'duplicate cards from IndexedDB');
-    console.log('[deduplicateCards] Cards to delete:', cardsToDelete.map(id => {
-      const card = cards.find(c => c.id === id);
-      return { id, title: card?.title, url: card?.url };
-    }));
     await Promise.all(cardsToDelete.map(id => localDb.permanentlyDeleteCard(id)));
   }
 
@@ -131,13 +114,6 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
     }
     seenCardIds.add(card.id);
     return true;
-  });
-
-  console.log('[deduplicateCards] Deduplication complete:', {
-    input: cards.length,
-    output: deduplicated.length,
-    removed: cards.length - deduplicated.length,
-    deletedFromDB: cardsToDelete.length
   });
 
   return [deduplicated, cardsToDelete];
@@ -177,29 +153,19 @@ export function extractTags(content: string): string[] {
  * Wiki-link syntax: [[Note Title]]
  */
 export async function extractAndSaveLinks(sourceId: string, content: string, allCards: CardDTO[]): Promise<void> {
-  console.log('[extractAndSaveLinks] Starting extraction for:', sourceId);
-  console.log('[extractAndSaveLinks] Content:', content);
-  console.log('[extractAndSaveLinks] Available cards:', allCards.length);
-
   // Extract all [[...]] patterns from content
   const linkRegex = /\[\[([^\]]+)\]\]/g;
   const matches = [...content.matchAll(linkRegex)];
 
-  console.log('[extractAndSaveLinks] Found matches:', matches.map(m => m[1]));
-
   // Get existing links to avoid duplicates
   const existingLinks = await localDb.getNoteLinks(sourceId);
   const existingTargets = new Set(existingLinks.map(l => l.targetNoteId));
-
-  console.log('[extractAndSaveLinks] Existing links:', existingLinks.length);
 
   // Track which links we found in current content
   const foundTargetIds = new Set<string>();
 
   for (const match of matches) {
     const linkText = match[1].trim();
-
-    console.log('[extractAndSaveLinks] Looking for note titled:', linkText);
 
     // Find note by fuzzy title match (case-insensitive, partial match)
     const targetNote = allCards.find(c =>
@@ -208,17 +174,12 @@ export async function extractAndSaveLinks(sourceId: string, content: string, all
       c.title.toLowerCase().includes(linkText.toLowerCase())
     );
 
-    console.log('[extractAndSaveLinks] Found target note:', targetNote ? targetNote.id : 'NOT FOUND');
-
     if (targetNote && targetNote.id !== sourceId) {
       foundTargetIds.add(targetNote.id);
 
       // Only add link if it doesn't exist yet
       if (!existingTargets.has(targetNote.id)) {
         await localDb.addNoteLink(sourceId, targetNote.id, linkText);
-        console.log('[DataStore V2] Created link:', sourceId, '->', targetNote.id);
-      } else {
-        console.log('[extractAndSaveLinks] Link already exists:', sourceId, '->', targetNote.id);
       }
     }
   }
@@ -227,11 +188,8 @@ export async function extractAndSaveLinks(sourceId: string, content: string, all
   for (const existingLink of existingLinks) {
     if (!foundTargetIds.has(existingLink.targetNoteId)) {
       await localDb.deleteNoteLink(existingLink.id);
-      console.log('[DataStore V2] Removed link:', existingLink.id);
     }
   }
-
-  console.log('[extractAndSaveLinks] Extraction complete. Created/kept:', foundTargetIds.size, 'links');
 }
 
 type DataStore = {
@@ -271,11 +229,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
    */
   initialize: async () => {
     if (get().isInitialized) {
-      console.log('[DataStore V2] Already initialized');
       return;
     }
 
-    console.log('[DataStore V2] Initializing from local storage...');
     set({ isLoading: true });
 
     try {
@@ -307,8 +263,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const deletedInFiltered = cards.filter(c => c.deleted === true);
       if (deletedInFiltered.length > 0) {
         console.error('[DataStore V2] ❌ BUG: Deleted cards after filtering in initialize():', deletedInFiltered.map(c => ({ id: c.id, title: c.title, deleted: c.deleted })));
-      } else {
-        console.log('[DataStore V2] ✅ No deleted cards in filtered array before setState (initialize)');
       }
 
       set({
@@ -316,11 +270,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
         collections,
         isInitialized: true,
         isLoading: false,
-      });
-
-      console.log('[DataStore V2] Loaded from local:', {
-        cards: cards.length,
-        collections: collections.length,
       });
 
       // NOTE: Removed aggressive auto-sync on page load
@@ -342,19 +291,16 @@ export const useDataStore = create<DataStore>((set, get) => ({
   sync: async () => {
     const serverSync = useSettingsStore.getState().serverSync;
     if (!serverSync) {
-      console.log('[DataStore V2] Sync skipped - server sync disabled');
       return;
     }
 
     if (get().isSyncing) {
-      console.log('[DataStore V2] Sync already in progress');
       return;
     }
 
     set({ isSyncing: true });
 
     try {
-      console.log('[DataStore V2] Starting sync...');
       const result = await syncService.sync();
 
       if (result.success) {
@@ -364,22 +310,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
           localDb.getAllCollections(),
         ]);
 
-        console.log('[DataStore V2] 📦 After sync - loaded from localDb:', {
-          totalCards: allCards.length,
-          deletedCards: allCards.filter(c => c.deleted === true).length,
-          activeCards: allCards.filter(c => c.deleted !== true).length,
-          totalCollections: allCollections.length,
-          deletedCollections: allCollections.filter(c => c.deleted === true).length
-        });
-
         // CRITICAL: Filter out deleted items to prevent resurrection
         const filteredCards = allCards.filter(c => c.deleted !== true);
         const filteredCollections = allCollections.filter(c => c.deleted !== true);
-
-        console.log('[DataStore V2] 🔍 After filtering deleted items:', {
-          filteredCards: filteredCards.length,
-          filteredCollections: filteredCollections.length
-        });
 
         // DEDUPLICATION: Remove duplicate cards and clean up temp duplicates
         const [cards] = await deduplicateCards(filteredCards);
@@ -395,22 +328,13 @@ export const useDataStore = create<DataStore>((set, get) => ({
           return true;
         });
 
-        console.log('[DataStore V2] ✅ Final state after deduplication:', {
-          cards: cards.length,
-          collections: collections.length
-        });
-
         // DEBUG: Log deleted cards before setting state
         const deletedInFiltered = cards.filter(c => c.deleted === true);
         if (deletedInFiltered.length > 0) {
           console.error('[DataStore V2] ❌ BUG: Deleted cards after filtering in sync():', deletedInFiltered.map(c => ({ id: c.id, title: c.title, deleted: c.deleted })));
-        } else {
-          console.log('[DataStore V2] ✅ No deleted cards in filtered array before setState (sync)');
         }
 
         set({ cards, collections });
-
-        console.log('[DataStore V2] Sync complete:', result);
       } else {
         console.error('[DataStore V2] Sync failed:', result.errors);
       }
@@ -425,7 +349,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Refresh: Reload from local storage
    */
   refresh: async () => {
-    console.log('[DataStore V2] Refreshing from local storage...');
     set({ isLoading: true });
 
     try {
@@ -456,16 +379,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const deletedInFiltered = cards.filter(c => c.deleted === true);
       if (deletedInFiltered.length > 0) {
         console.error('[DataStore V2] ❌ BUG: Deleted cards after filtering in refresh():', deletedInFiltered.map(c => ({ id: c.id, title: c.title, deleted: c.deleted })));
-      } else {
-        console.log('[DataStore V2] ✅ No deleted cards in filtered array before setState (refresh)');
       }
 
       set({ cards, collections, isLoading: false });
-
-      console.log('[DataStore V2] Refreshed:', {
-        cards: cards.length,
-        collections: collections.length,
-      });
     } catch (error) {
       console.error('[DataStore V2] Refresh failed:', error);
       set({ isLoading: false });
@@ -522,12 +438,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
         cards: [newCard, ...state.cards],
       }));
 
-      console.log('[DataStore V2] Card added to local storage:', newCard.id);
-
       // STEP 3: Sync to server in background (if enabled)
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync) {
-        console.log('[DataStore V2] Syncing card to server with payload:', JSON.stringify(cardData, null, 2));
         // Queue for sync
         await syncQueue.enqueue({
           type: 'CREATE_CARD',
@@ -545,7 +458,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
           if (response.ok) {
             const serverCard = await response.json();
-            console.log('[DataStore V2] Server response:', JSON.stringify(serverCard, null, 2));
 
             // Update link references if this was a temp card
             if (tempId.startsWith('temp_')) {
@@ -558,7 +470,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
             // CRITICAL: If server card is deleted, remove from state instead of replacing
             if (serverCard.deleted === true) {
-              console.log('[DataStore V2] Server card is deleted after creation, removing from state:', serverCard.id);
               set((state) => ({
                 cards: state.cards.filter(c => c.id !== tempId),
               }));
@@ -567,8 +478,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
                 cards: state.cards.map(c => c.id === tempId ? serverCard : c),
               }));
             }
-
-            console.log('[DataStore V2] Card synced to server:', serverCard.id);
 
             // Fetch metadata if it's a URL card
             if (serverCard.type === 'url' && serverCard.url) {
@@ -584,7 +493,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
                   // CRITICAL: If card is deleted, remove from state instead of updating
                   if (updatedCard.deleted === true) {
-                    console.log('[DataStore V2] Card is deleted after metadata fetch, removing from state:', serverCard.id);
                     set((state) => ({
                       cards: state.cards.filter(c => c.id !== serverCard.id),
                     }));
@@ -636,27 +544,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
       await localDb.saveCard(updatedCard, { localOnly: true });
 
       // STEP 1.5: Extract and save wiki-links if this is a note
-      console.log('[DataStore V2] Checking extraction condition:', {
-        cardType: updatedCard.type,
-        isNote: updatedCard.type === 'md-note' || updatedCard.type === 'text-note',
-        hasContentInUpdates: 'content' in updates,
-        updatesKeys: Object.keys(updates),
-        content: updatedCard.content?.substring(0, 100) + '...'
-      });
-
       if ((updatedCard.type === 'md-note' || updatedCard.type === 'text-note') && 'content' in updates) {
-        console.log('[DataStore V2] CALLING extractAndSaveLinks');
         await extractAndSaveLinks(id, updatedCard.content || '', get().cards);
-      } else {
-        console.log('[DataStore V2] SKIPPED extraction - condition not met');
       }
 
       // STEP 2: Update Zustand for instant UI
       set((state) => ({
         cards: state.cards.map(c => c.id === id ? updatedCard : c),
       }));
-
-      console.log('[DataStore V2] Card updated in local storage:', id);
 
       // STEP 3: Sync to server in background (if enabled)
       const serverSync = useSettingsStore.getState().serverSync;
@@ -700,7 +595,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
                 // CRITICAL: If merged card is deleted, remove from state instead of updating
                 if (mergedCard.deleted === true) {
-                  console.log('[DataStore V2] Server card is deleted during conflict resolution, removing from state:', id);
                   set((state) => ({
                     cards: state.cards.filter(c => c.id !== id),
                   }));
@@ -726,7 +620,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
                   // CRITICAL: If final card is deleted, remove from state instead of updating
                   if (finalCard.deleted === true) {
-                    console.log('[DataStore V2] Final server card is deleted after retry, removing from state:', id);
                     set((state) => ({
                       cards: state.cards.filter(c => c.id !== id),
                     }));
@@ -735,7 +628,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
                       cards: state.cards.map(c => c.id === id ? finalCard : c),
                     }));
                   }
-                  console.log('[DataStore V2] Card update retry succeeded:', id);
                 } else {
                   console.warn('[DataStore V2] Card update retry failed, keeping local version:', id);
                 }
@@ -753,7 +645,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
             // CRITICAL: If server card is deleted, remove from state instead of updating
             if (serverCard.deleted === true) {
-              console.log('[DataStore V2] Server card is deleted after successful update, removing from state:', id);
               set((state) => ({
                 cards: state.cards.filter(c => c.id !== id),
               }));
@@ -762,7 +653,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
                 cards: state.cards.map(c => c.id === id ? serverCard : c),
               }));
             }
-            console.log('[DataStore V2] Card synced to server:', id);
           }
         } catch (error) {
           console.error('[DataStore V2] Failed to sync card update:', error);
@@ -799,8 +689,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
         cards: state.cards.filter(c => c.id !== id),
       }));
 
-      console.log('[DataStore V2] Card soft deleted from local storage:', id);
-
       // STEP 3: Sync to server via queue (if enabled and not a temp card)
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync && !id.startsWith('temp_')) {
@@ -818,7 +706,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
           });
 
           if (response.ok) {
-            console.log('[DataStore V2] Card deleted from server:', id);
             // Remove from queue on success
             await syncQueue.removeByTarget('DELETE_CARD', id);
           } else {
@@ -871,8 +758,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const collections = allCollections.filter(c => c.deleted !== true);
       set({ collections });
 
-      console.log('[DataStore V2] Collection added to local storage:', newCollection.id);
-
       // Sync to server if enabled
       const serverSync = useSettingsStore.getState().serverSync;
       if (serverSync) {
@@ -894,8 +779,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
             const allCollections = await localDb.getAllCollections();
             const collections = allCollections.filter(c => c.deleted !== true);
             set({ collections });
-
-            console.log('[DataStore V2] Collection synced to server:', serverCollection.id);
           }
         } catch (error) {
           console.error('[DataStore V2] Failed to sync collection:', error);
@@ -934,8 +817,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
         const allCollections = await localDb.getAllCollections();
         const activeCollections = allCollections.filter(c => c.deleted !== true);
         set({ collections: activeCollections });
-
-        console.log('[DataStore V2] Collection updated locally:', id);
       }
 
       // STEP 3: Sync to server in background (if enabled)
@@ -949,7 +830,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
           });
 
           if (response.ok) {
-            console.log('[DataStore V2] Collection synced to server:', id);
+            // Success - collection synced
           }
         } catch (error) {
           console.error('[DataStore V2] Failed to sync collection to server:', error);
@@ -1028,8 +909,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
         const allCollections = await localDb.getAllCollections();
         const activeCollections = allCollections.filter(c => c.deleted !== true);
         set({ collections: activeCollections });
-
-        console.log('[DataStore V2] Collection(s) deleted locally:', collectionsToDelete);
       }
 
       // STEP 3: Sync to server in background (if enabled)
@@ -1047,7 +926,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
           });
 
           if (response.ok) {
-            console.log('[DataStore V2] Collection synced to server:', id);
+            // Success - collection deleted
           }
         } catch (error) {
           console.error('[DataStore V2] Failed to sync deletion to server:', error);
@@ -1064,7 +943,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Just calls sync()
    */
   drainQueue: async () => {
-    console.log('[DataStore V2] drainQueue() called - redirecting to sync()');
     await get().sync();
   },
 
@@ -1087,8 +965,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-
-      console.log('[DataStore V2] Data exported successfully');
     } catch (error) {
       console.error('[DataStore V2] Failed to export data:', error);
       throw error;
@@ -1107,8 +983,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
       // Refresh UI from local storage
       await get().refresh();
-
-      console.log('[DataStore V2] Data imported successfully');
     } catch (error) {
       console.error('[DataStore V2] Failed to import data:', error);
       throw error;
