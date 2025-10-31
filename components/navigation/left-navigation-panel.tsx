@@ -3,7 +3,6 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical } from "lucide-react";
-import { SyncStatus } from "@/components/sync/sync-status";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
@@ -834,8 +833,33 @@ export function LeftNavigationPanel({
           )}
         </div>
 
-        {/* Sync Status Footer - Matches right sidebar keybind footer styling */}
-        <SyncStatus />
+        {/* Keyboard Shortcuts Footer - Fixed at bottom */}
+        <div className="px-4 py-3 border-t border-white/5">
+          <div className="text-xs text-muted-foreground space-y-2">
+            <div className="flex items-center justify-between">
+              <span>Quick search</span>
+              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">/</kbd>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Paste URL</span>
+              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">⌘V</kbd>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>Add card</span>
+              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">⌘P</kbd>
+            </div>
+            <button
+              onClick={() => {
+                // Trigger the help modal
+                const helpEvent = new KeyboardEvent('keydown', { key: '?' });
+                document.dispatchEvent(helpEvent);
+              }}
+              className="text-accent hover:underline text-xs mt-1"
+            >
+              View all shortcuts →
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Create Pawkit Modal */}

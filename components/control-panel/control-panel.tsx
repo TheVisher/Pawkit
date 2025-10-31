@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ProfileModal } from "@/components/modals/profile-modal";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { SyncStatus } from "@/components/sync/sync-status";
 
 export type ControlPanelMode = "floating" | "anchored";
 
@@ -197,33 +198,8 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
           {children}
         </div>
 
-        {/* Keyboard Shortcuts Footer - Fixed at bottom */}
-        <div className="px-4 py-3 border-t border-white/5">
-          <div className="text-xs text-muted-foreground space-y-2">
-            <div className="flex items-center justify-between">
-              <span>Quick search</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">/</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Paste URL</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">⌘V</kbd>
-            </div>
-            <div className="flex items-center justify-between">
-              <span>Add card</span>
-              <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">⌘P</kbd>
-            </div>
-            <button
-              onClick={() => {
-                // Trigger the help modal
-                const helpEvent = new KeyboardEvent('keydown', { key: '?' });
-                document.dispatchEvent(helpEvent);
-              }}
-              className="text-accent hover:underline text-xs mt-1"
-            >
-              View all shortcuts →
-            </button>
-          </div>
-        </div>
+        {/* Sync Status Footer - Fixed at bottom */}
+        <SyncStatus />
       </div>
 
       {/* Profile Modal */}
