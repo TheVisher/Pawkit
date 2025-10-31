@@ -221,6 +221,31 @@ export function LeftNavigationPanel({
     }
   }, [pathname, collections]);
 
+  // Handle ESC key to close rename modal (prevent closing sidebar)
+  useEffect(() => {
+    if (!showRenameModal) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.stopPropagation(); // Prevent sidebar from closing
+        e.preventDefault();
+        if (!renamingCollection) {
+          setShowRenameModal(false);
+          setRenameValue("");
+          setRenameCollectionId(null);
+          setRenameCollectionName("");
+        }
+      }
+    };
+
+    // Add listener with capture phase to intercept before it bubbles
+    document.addEventListener("keydown", handleKeyDown, true);
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [showRenameModal, renamingCollection]);
+
   // Navigate to today's note
   const goToTodaysNote = useCallback(async () => {
     const today = new Date();
