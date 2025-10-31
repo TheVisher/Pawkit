@@ -133,7 +133,7 @@ class LocalStorage {
     const cards = await this.db.getAll('cards');
     // Filter out soft-deleted cards unless explicitly requested
     return cards
-      .filter(card => includeDeleted || !card.deleted)
+      .filter(card => includeDeleted || card.deleted !== true)
       .map(card => {
         const { _locallyModified, _locallyCreated, _serverVersion, ...cleanCard } = card;
         return cleanCard as CardDTO;
@@ -290,7 +290,7 @@ class LocalStorage {
 
     const collections = await this.db.getAll('collections');
     const cleanCollections = collections
-      .filter(collection => includeDeleted || !collection.deleted)
+      .filter(collection => includeDeleted || collection.deleted !== true)
       .map(collection => {
         const { _locallyModified, _locallyCreated, _serverVersion, ...cleanCollection } = collection;
         return cleanCollection as CollectionNode;
