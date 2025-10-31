@@ -75,18 +75,30 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
         // Update the map to point to the real card
         seenCardUrls.set(key, card.id);
       }
-      // Priority 3: Both are real OR both are temp - keep the older one (by createdAt)
+      // Priority 3: Both are REAL server cards - DON'T deduplicate!
+      // These are legitimate separate cards that happen to have the same title/URL
+      else if (!isTempExisting && !isTempDuplicate) {
+        console.log('[DataStore V2] ✅ Both cards have server IDs, keeping both:', {
+          existing: existingId,
+          duplicate: card.id,
+          title: card.title
+        });
+        // Don't add to cardsToDelete - keep both cards!
+        // Add current card to map with a different key to track it separately
+        seenCardUrls.set(card.id, card.id); // Use ID as key to ensure uniqueness
+      }
+      // Priority 4: Both are temp - keep the older one (by createdAt)
       else {
         const existingTime = existingCard ? new Date(existingCard.createdAt).getTime() : 0;
         const duplicateTime = new Date(card.createdAt).getTime();
 
         if (duplicateTime > existingTime) {
           // Current card is newer, delete it and keep existing
-          console.log('[DataStore V2] 🧹 Cleaning up newer duplicate:', card.id);
+          console.log('[DataStore V2] 🧹 Cleaning up newer temp duplicate:', card.id);
           cardsToDelete.push(card.id);
         } else {
           // Existing card is newer, delete it and keep current
-          console.log('[DataStore V2] 🧹 Cleaning up newer duplicate:', existingId);
+          console.log('[DataStore V2] 🧹 Cleaning up newer temp duplicate:', existingId);
           cardsToDelete.push(existingId!);
           seenCardUrls.set(key, card.id);
         }
