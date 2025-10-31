@@ -190,7 +190,20 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
 export async function listCards(userId: string, query: CardListQuery) {
   const parsed = cardListQuerySchema.parse(query);
   const limit = parsed.limit ?? 50;
-  const where: Record<string, any> = { userId, deleted: false, inDen: false };
+
+  console.log('[listCards] Input query:', query);
+  console.log('[listCards] Parsed query:', parsed);
+  console.log('[listCards] includeDeleted:', parsed.includeDeleted);
+
+  // For sync operations, includeDeleted=true allows fetching deleted cards
+  // For regular queries, default to deleted=false to hide deleted cards
+  const where: Record<string, any> = {
+    userId,
+    deleted: parsed.includeDeleted ? undefined : false,
+    inDen: false
+  };
+
+  console.log('[listCards] WHERE clause:', where);
 
   if (parsed.q) {
     const term = parsed.q;
@@ -230,12 +243,24 @@ export async function listCards(userId: string, query: CardListQuery) {
     skip: parsed.cursor ? 1 : 0
   });
 
+  console.log('[listCards] Raw items from DB:', {
+    count: items.length,
+    firstFewDeleted: items.slice(0, 5).map(c => ({ id: c.id, title: c.title, deleted: c.deleted }))
+  });
+
   const hasMore = items.length > limit;
   const sliced = hasMore ? items.slice(0, limit) : items;
   const nextCursor = hasMore ? sliced[sliced.length - 1]?.id : undefined;
 
+  const mapped = sliced.map(mapCard);
+
+  console.log('[listCards] Mapped items:', {
+    count: mapped.length,
+    firstFewDeleted: mapped.slice(0, 5).map(c => ({ id: c.id, title: c.title, deleted: c.deleted }))
+  });
+
   return {
-    items: sliced.map(mapCard),
+    items: mapped,
     nextCursor
   };
 }
@@ -431,13 +456,45 @@ export async function getTimelineCards(userId: string, days = 30): Promise<Timel
 }
 
 export async function softDeleteCard(userId: string, id: string) {
-  return prisma.card.update({
+  console.log('[softDeleteCard] Starting delete:', { userId, cardId: id });
+
+  // Check if card exists before attempting update
+  const existingCard = await prisma.card.findFirst({
+    where: { id, userId },
+    select: { id: true, deleted: true, title: true }
+  });
+
+  console.log('[softDeleteCard] Existing card:', existingCard);
+
+  if (!existingCard) {
+    console.error('[softDeleteCard] Card not found:', { userId, cardId: id });
+    throw new Error(`Card ${id} not found for user ${userId}`);
+  }
+
+  const result = await prisma.card.update({
     where: { id, userId },
     data: {
       deleted: true,
       deletedAt: new Date()
     }
   });
+
+  console.log('[softDeleteCard] Update result:', {
+    id: result.id,
+    deleted: result.deleted,
+    deletedAt: result.deletedAt,
+    updatedAt: result.updatedAt
+  });
+
+  // Verify the update persisted
+  const verifyCard = await prisma.card.findFirst({
+    where: { id, userId },
+    select: { id: true, deleted: true, deletedAt: true }
+  });
+
+  console.log('[softDeleteCard] Verification after update:', verifyCard);
+
+  return result;
 }
 
 export async function getTrashCards(userId: string) {

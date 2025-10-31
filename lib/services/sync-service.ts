@@ -238,7 +238,8 @@ class SyncService {
 
     // CARDS SYNC - Independent try-catch
     try {
-      const cardsRes = await this.fetchWithTimeout('/api/cards?limit=10000');
+      // Include deleted cards in sync to properly handle remote deletions
+      const cardsRes = await this.fetchWithTimeout('/api/cards?limit=10000&includeDeleted=true');
 
       if (cardsRes.ok) {
         const cardsData = await cardsRes.json();
@@ -380,10 +381,14 @@ class SyncService {
       const localCard = localMap.get(serverCard.id);
 
       if (!localCard) {
-        // New card from server - add it ONLY if not deleted on server
-        if (!serverCard.deleted) {
-          await localDb.saveCard(serverCard, { fromServer: true });
-        }
+        // New card from server - save it (including deleted cards for proper sync state)
+        // We need to know about deleted cards so the UI doesn't show stale data
+        await localDb.saveCard(serverCard, { fromServer: true });
+        console.log('[SyncService] 📥 Synced new card from server:', {
+          id: serverCard.id,
+          deleted: serverCard.deleted,
+          title: serverCard.title
+        });
       } else {
         // Card exists locally and on server - check for conflicts
         const serverTime = new Date(serverCard.updatedAt).getTime();
@@ -409,8 +414,15 @@ class SyncService {
         if (serverCard.deleted) {
           // Only accept server deletion if it's newer than local version
           if (serverTime >= localTime) {
-            console.log('[SyncService] Server card deletion is newer, accepting deletion:', serverCard.id);
+            console.log('[SyncService] 🗑️ Applying remote deletion:', {
+              cardId: serverCard.id,
+              title: serverCard.title,
+              serverTime,
+              localTime,
+              deletedAt: serverCard.deletedAt
+            });
             await localDb.saveCard(serverCard, { fromServer: true });
+            console.log('[SyncService] ✅ Deleted card saved to localDb:', serverCard.id);
           } else {
             console.log('[SyncService] Server card deletion is older than local edit, keeping local version:', serverCard.id);
             conflicts++;
@@ -548,10 +560,13 @@ class SyncService {
       const localCollection = localMap.get(serverCollection.id);
 
       if (!localCollection) {
-        // New collection from server - add it ONLY if not deleted on server
-        if (!serverCollection.deleted) {
-          await localDb.saveCollection(serverCollection, { fromServer: true });
-        }
+        // New collection from server - save it (including deleted for proper sync state)
+        await localDb.saveCollection(serverCollection, { fromServer: true });
+        console.log('[SyncService] 📥 Synced new collection from server:', {
+          id: serverCollection.id,
+          deleted: serverCollection.deleted,
+          name: serverCollection.name
+        });
       } else {
         // Collection exists locally and on server - check for conflicts
         const serverTime = new Date(serverCollection.updatedAt).getTime();
@@ -640,10 +655,10 @@ class SyncService {
 
             if (response.ok) {
               const serverCard = await response.json();
-              // ATOMIC REPLACEMENT: Save server card first, then delete temp
+              // ATOMIC REPLACEMENT: Save server card first, then permanently delete temp
               // This prevents data loss if operation is interrupted
               await localDb.saveCard(serverCard, { fromServer: true });
-              await localDb.deleteCard(card.id);
+              await localDb.permanentlyDeleteCard(card.id);
               result.pushed.cards++;
             } else {
               // Add to retry queue
