@@ -655,10 +655,10 @@ class SyncService {
 
             if (response.ok) {
               const serverCard = await response.json();
-              // ATOMIC REPLACEMENT: Save server card first, then delete temp
+              // ATOMIC REPLACEMENT: Save server card first, then permanently delete temp
               // This prevents data loss if operation is interrupted
               await localDb.saveCard(serverCard, { fromServer: true });
-              await localDb.deleteCard(card.id);
+              await localDb.permanentlyDeleteCard(card.id);
               result.pushed.cards++;
             } else {
               // Add to retry queue

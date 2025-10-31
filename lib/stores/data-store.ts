@@ -527,8 +527,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
               await localDb.updateLinkReferences(tempId, serverCard.id);
             }
 
-            // Replace temp card with server card
-            await localDb.deleteCard(tempId);
+            // Replace temp card with server card (permanently remove temp, not soft delete)
+            await localDb.permanentlyDeleteCard(tempId);
             await localDb.saveCard(serverCard, { fromServer: true });
 
             // CRITICAL: If server card is deleted, remove from state instead of replacing
