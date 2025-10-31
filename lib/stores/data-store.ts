@@ -278,6 +278,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
         return true;
       });
 
+      // DEBUG: Log deleted cards before setting state
+      const deletedInFiltered = cards.filter(c => c.deleted === true);
+      if (deletedInFiltered.length > 0) {
+        console.error('[DataStore V2] ❌ BUG: Deleted cards after filtering in initialize():', deletedInFiltered.map(c => ({ id: c.id, title: c.title, deleted: c.deleted })));
+      } else {
+        console.log('[DataStore V2] ✅ No deleted cards in filtered array before setState (initialize)');
+      }
+
       set({
         cards,
         collections,
@@ -367,6 +375,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
           collections: collections.length
         });
 
+        // DEBUG: Log deleted cards before setting state
+        const deletedInFiltered = cards.filter(c => c.deleted === true);
+        if (deletedInFiltered.length > 0) {
+          console.error('[DataStore V2] ❌ BUG: Deleted cards after filtering in sync():', deletedInFiltered.map(c => ({ id: c.id, title: c.title, deleted: c.deleted })));
+        } else {
+          console.log('[DataStore V2] ✅ No deleted cards in filtered array before setState (sync)');
+        }
+
         set({ cards, collections });
 
         console.log('[DataStore V2] Sync complete:', result);
@@ -410,6 +426,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
         seenCollectionIds.add(collection.id);
         return true;
       });
+
+      // DEBUG: Log deleted cards before setting state
+      const deletedInFiltered = cards.filter(c => c.deleted === true);
+      if (deletedInFiltered.length > 0) {
+        console.error('[DataStore V2] ❌ BUG: Deleted cards after filtering in refresh():', deletedInFiltered.map(c => ({ id: c.id, title: c.title, deleted: c.deleted })));
+      } else {
+        console.log('[DataStore V2] ✅ No deleted cards in filtered array before setState (refresh)');
+      }
 
       set({ cards, collections, isLoading: false });
 
@@ -507,9 +531,17 @@ export const useDataStore = create<DataStore>((set, get) => ({
             await localDb.deleteCard(tempId);
             await localDb.saveCard(serverCard, { fromServer: true });
 
-            set((state) => ({
-              cards: state.cards.map(c => c.id === tempId ? serverCard : c),
-            }));
+            // CRITICAL: If server card is deleted, remove from state instead of replacing
+            if (serverCard.deleted === true) {
+              console.log('[DataStore V2] Server card is deleted after creation, removing from state:', serverCard.id);
+              set((state) => ({
+                cards: state.cards.filter(c => c.id !== tempId),
+              }));
+            } else {
+              set((state) => ({
+                cards: state.cards.map(c => c.id === tempId ? serverCard : c),
+              }));
+            }
 
             console.log('[DataStore V2] Card synced to server:', serverCard.id);
 
@@ -524,9 +556,18 @@ export const useDataStore = create<DataStore>((set, get) => ({
                 if (updatedCardRes.ok) {
                   const updatedCard = await updatedCardRes.json();
                   await localDb.saveCard(updatedCard, { fromServer: true });
-                  set((state) => ({
-                    cards: state.cards.map(c => c.id === serverCard.id ? updatedCard : c),
-                  }));
+
+                  // CRITICAL: If card is deleted, remove from state instead of updating
+                  if (updatedCard.deleted === true) {
+                    console.log('[DataStore V2] Card is deleted after metadata fetch, removing from state:', serverCard.id);
+                    set((state) => ({
+                      cards: state.cards.filter(c => c.id !== serverCard.id),
+                    }));
+                  } else {
+                    set((state) => ({
+                      cards: state.cards.map(c => c.id === serverCard.id ? updatedCard : c),
+                    }));
+                  }
                 }
               }).catch(() => {
                 // Silently fail - card is already created
@@ -631,9 +672,18 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
                 // Save merged version locally
                 await localDb.saveCard(mergedCard, { localOnly: true });
-                set((state) => ({
-                  cards: state.cards.map(c => c.id === id ? mergedCard : c),
-                }));
+
+                // CRITICAL: If merged card is deleted, remove from state instead of updating
+                if (mergedCard.deleted === true) {
+                  console.log('[DataStore V2] Server card is deleted during conflict resolution, removing from state:', id);
+                  set((state) => ({
+                    cards: state.cards.filter(c => c.id !== id),
+                  }));
+                } else {
+                  set((state) => ({
+                    cards: state.cards.map(c => c.id === id ? mergedCard : c),
+                  }));
+                }
 
                 // Retry the update with the new timestamp
                 const retryResponse = await fetch(`/api/cards/${id}`, {
@@ -648,9 +698,18 @@ export const useDataStore = create<DataStore>((set, get) => ({
                 if (retryResponse.ok) {
                   const finalCard = await retryResponse.json();
                   await localDb.saveCard(finalCard, { fromServer: true });
-                  set((state) => ({
-                    cards: state.cards.map(c => c.id === id ? finalCard : c),
-                  }));
+
+                  // CRITICAL: If final card is deleted, remove from state instead of updating
+                  if (finalCard.deleted === true) {
+                    console.log('[DataStore V2] Final server card is deleted after retry, removing from state:', id);
+                    set((state) => ({
+                      cards: state.cards.filter(c => c.id !== id),
+                    }));
+                  } else {
+                    set((state) => ({
+                      cards: state.cards.map(c => c.id === id ? finalCard : c),
+                    }));
+                  }
                   console.log('[DataStore V2] Card update retry succeeded:', id);
                 } else {
                   console.warn('[DataStore V2] Card update retry failed, keeping local version:', id);
@@ -666,9 +725,18 @@ export const useDataStore = create<DataStore>((set, get) => ({
           } else if (response.ok) {
             const serverCard = await response.json();
             await localDb.saveCard(serverCard, { fromServer: true });
-            set((state) => ({
-              cards: state.cards.map(c => c.id === id ? serverCard : c),
-            }));
+
+            // CRITICAL: If server card is deleted, remove from state instead of updating
+            if (serverCard.deleted === true) {
+              console.log('[DataStore V2] Server card is deleted after successful update, removing from state:', id);
+              set((state) => ({
+                cards: state.cards.filter(c => c.id !== id),
+              }));
+            } else {
+              set((state) => ({
+                cards: state.cards.map(c => c.id === id ? serverCard : c),
+              }));
+            }
             console.log('[DataStore V2] Card synced to server:', id);
           }
         } catch (error) {
