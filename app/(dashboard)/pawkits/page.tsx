@@ -75,7 +75,9 @@ export default function CollectionsPage() {
 
     // Create grid items with preview cards
     const gridItems = collections.map(root => {
-      const pawkitCards = cards.filter(card => card.collections.includes(root.slug));
+      const pawkitCards = cards.filter(card => 
+        card.collections.includes(root.slug) && card.deleted !== true
+      );
 
       return {
         id: root.id,
