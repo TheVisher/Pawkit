@@ -262,8 +262,9 @@ function LibraryPageContent() {
     const card = rediscoverStore.queue[rediscoverStore.currentIndex];
     if (!card || card.id !== cardId) return;
 
-    // Update session stats
-    rediscoverStore.updateStats(action);
+    // Update session stats - map action to stat key
+    const statKey = action === "keep" ? "kept" : "deleted";
+    rediscoverStore.updateStats(statKey);
 
     // Handle action
     if (action === "keep") {
