@@ -85,11 +85,20 @@ export default function CollectionsPage() {
         cards: pawkitCards,
         isPinned: root.pinned,
         isPrivate: root.isPrivate,
+        isSystem: root.isSystem,
         hidePreview: root.hidePreview,
         useCoverAsBackground: root.useCoverAsBackground,
         coverImage: root.coverImage,
         hasChildren: root.children && root.children.length > 0
       };
+    })
+    // Sort: System Pawkits first, then pinned, then by name
+    .sort((a, b) => {
+      if (a.isSystem && !b.isSystem) return -1;
+      if (!a.isSystem && b.isSystem) return 1;
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return a.name.localeCompare(b.name);
     });
 
     return { gridItems, allPawkits };

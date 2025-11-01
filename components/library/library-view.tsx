@@ -10,7 +10,7 @@ import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import { sortCards } from "@/lib/utils/sort-cards";
 import { format } from "date-fns";
-import { Library, Settings } from "lucide-react";
+import { Library, Settings, Sparkles } from "lucide-react";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 type TimelineGroup = {
@@ -320,6 +320,19 @@ export function LibraryView({
               </p>
             </div>
           </div>
+
+          {/* Rediscover Button */}
+          <button
+            onClick={() => {
+              const params = new URLSearchParams(searchParams.toString());
+              params.set("mode", "rediscover");
+              router.push(`/library?${params.toString()}`);
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/20 border border-accent/30 hover:bg-accent/30 hover:border-accent/50 text-accent-foreground transition-all group"
+          >
+            <Sparkles className="h-4 w-4 group-hover:rotate-12 transition-transform" />
+            <span className="font-medium">Rediscover</span>
+          </button>
         </div>
 
         {/* Timeline View */}

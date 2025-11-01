@@ -1,11 +1,13 @@
 "use client";
 
 import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Grid, List, LayoutGrid, Columns, Tag, SortAsc, Eye, Maximize2, File, ArrowUpDown } from "lucide-react";
+import { Grid, List, LayoutGrid, Columns, Tag, SortAsc, Eye, Maximize2, File, ArrowUpDown, Heart, Trash2, Clock, FolderPlus, EyeOff } from "lucide-react";
+import Image from "next/image";
 import { useViewSettingsStore, type SortBy, type ContentType } from "@/lib/hooks/view-settings-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
 import { useRouter, usePathname } from "next/navigation";
 import { useMemo } from "react";
 
@@ -42,6 +44,9 @@ export function LibraryControls() {
   const router = useRouter();
   const pathname = usePathname();
   const { cards } = useDataStore();
+
+  // Get Rediscover mode state
+  const rediscoverStore = useRediscoverStore();
 
   // Detect if we're in demo mode
   const isDemo = pathname?.startsWith('/demo');
@@ -193,10 +198,135 @@ export function LibraryControls() {
     setSortOrder("library", sortOrder === "asc" ? "desc" : "asc");
   };
 
+  // Calculate total actions for stats
+  const totalActions = rediscoverStore.stats.kept + rediscoverStore.stats.deleted +
+                      rediscoverStore.stats.snoozed + rediscoverStore.stats.addedToPawkit +
+                      rediscoverStore.stats.neverShow;
+
   return (
     <>
-      {/* Tags Filter Section */}
-      {allTags.length > 0 && (
+      {rediscoverStore.isActive ? (
+        // Rediscover Mode: Flexbox layout with scrollable kept cards and fixed stats
+        <div className="flex flex-col h-full -my-6">
+          {/* Kept Cards Section - Scrollable */}
+          <div className="flex-1 overflow-y-auto py-6">
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              <Heart className="h-5 w-5 text-accent" />
+              Kept Cards
+            </h2>
+
+            {rediscoverStore.keptCards.length === 0 ? (
+              <div className="text-center text-muted-foreground text-sm py-8">
+                No cards kept yet
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {rediscoverStore.keptCards.map((card) => (
+                  <div
+                    key={card.id}
+                    className="flex gap-3 p-3 rounded-lg bg-white/5 border border-white/10"
+                  >
+                    {/* Thumbnail */}
+                    <div className="relative w-16 h-16 flex-shrink-0 rounded overflow-hidden bg-white/5">
+                      {card.image ? (
+                        <Image
+                          src={card.image}
+                          alt={card.title || "Card"}
+                          fill
+                          className="object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-pink-500/20" />
+                      )}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-foreground truncate">
+                        {card.title || "Untitled"}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {card.domain || (card.url ? new URL(card.url).hostname : "")}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Session Stats Section - Fixed at bottom */}
+          <div className="-mx-4 px-4 py-3 border-t border-white/5 backdrop-blur-md">
+            <div className="text-xs text-muted-foreground space-y-2">
+              {/* Kept */}
+              <div className="flex items-center justify-between hover:bg-white/5 -mx-1 px-1 py-1 rounded transition-colors">
+                <div className="flex items-center gap-2">
+                  <Heart className="h-3.5 w-3.5 text-accent" />
+                  <span className="text-accent">Kept</span>
+                </div>
+                <span className="font-semibold text-accent">{rediscoverStore.stats.kept}</span>
+              </div>
+
+              {/* Added to Pawkit */}
+              {rediscoverStore.stats.addedToPawkit > 0 && (
+                <div className="flex items-center justify-between hover:bg-white/5 -mx-1 px-1 py-1 rounded transition-colors">
+                  <div className="flex items-center gap-2">
+                    <FolderPlus className="h-3.5 w-3.5" />
+                    <span>Added to Pawkit</span>
+                  </div>
+                  <span className="font-semibold text-foreground">{rediscoverStore.stats.addedToPawkit}</span>
+                </div>
+              )}
+
+              {/* Deleted */}
+              {rediscoverStore.stats.deleted > 0 && (
+                <div className="flex items-center justify-between hover:bg-white/5 -mx-1 px-1 py-1 rounded transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Trash2 className="h-3.5 w-3.5 text-red-400" />
+                    <span className="text-red-400">Deleted</span>
+                  </div>
+                  <span className="font-semibold text-red-400">{rediscoverStore.stats.deleted}</span>
+                </div>
+              )}
+
+              {/* Snoozed */}
+              {rediscoverStore.stats.snoozed > 0 && (
+                <div className="flex items-center justify-between hover:bg-white/5 -mx-1 px-1 py-1 rounded transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>Snoozed</span>
+                  </div>
+                  <span className="font-semibold text-foreground">{rediscoverStore.stats.snoozed}</span>
+                </div>
+              )}
+
+              {/* Never Show */}
+              {rediscoverStore.stats.neverShow > 0 && (
+                <div className="flex items-center justify-between hover:bg-white/5 -mx-1 px-1 py-1 rounded transition-colors">
+                  <div className="flex items-center gap-2">
+                    <EyeOff className="h-3.5 w-3.5" />
+                    <span>Hidden</span>
+                  </div>
+                  <span className="font-semibold text-foreground">{rediscoverStore.stats.neverShow}</span>
+                </div>
+              )}
+
+              {/* Total */}
+              <div className="pt-2 border-t border-white/5">
+                <div className="flex items-center justify-between">
+                  <span>Total Actions</span>
+                  <span className="font-semibold text-foreground">{totalActions}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        // Normal Library Controls
+        <>
+          {/* Tags Filter Section */}
+          {allTags.length > 0 && (
         <PanelSection
           id="library-tags"
           title="Tags"
@@ -464,6 +594,8 @@ export function LibraryControls() {
           onChange={handleShowPreviewChange}
         />
       </PanelSection>
+        </>
+      )}
     </>
   );
 }

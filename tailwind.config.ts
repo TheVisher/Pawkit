@@ -104,6 +104,31 @@ const config: Config = {
   				'50%': { transform: 'scale(1)', opacity: '0.8' },
   				'75%': { transform: 'scale(1)', opacity: '0.8' },
   				'100%': { transform: 'scale(0.8)', opacity: '0' }
+  			},
+  			'wave-slow': {
+  				'0%, 100%': { transform: 'translate(0%, 0%) scale(1)' },
+  				'50%': { transform: 'translate(-10%, 5%) scale(1.1)' }
+  			},
+  			'wave-medium': {
+  				'0%, 100%': { transform: 'translate(0%, 0%) rotate(0deg)' },
+  				'50%': { transform: 'translate(15%, -10%) rotate(3deg)' }
+  			},
+  			'wave-fast': {
+  				'0%, 100%': { transform: 'translate(0%, 0%) scale(1)' },
+  				'33%': { transform: 'translate(-15%, 10%) scale(1.05)' },
+  				'66%': { transform: 'translate(10%, -5%) scale(0.95)' }
+  			},
+  			'aurora-top': {
+  				'0%, 100%': { opacity: '0.2', transform: 'translateY(0%)' },
+  				'50%': { opacity: '0.3', transform: 'translateY(10%)' }
+  			},
+  			'aurora-bottom': {
+  				'0%, 100%': { opacity: '0.25', transform: 'translateY(0%)' },
+  				'50%': { opacity: '0.35', transform: 'translateY(-10%)' }
+  			},
+  			'mesh-rotate': {
+  				'0%': { transform: 'rotate(0deg)' },
+  				'100%': { transform: 'rotate(360deg)' }
   			}
   		},
   		animation: {
@@ -112,7 +137,13 @@ const config: Config = {
   			'slide-down': 'slide-down 0.3s ease-out',
   			'fade-in': 'fade-in 0.3s ease-out',
   			'ping-once': 'ping-once 0.5s ease-out',
-  			'expand-contract-fade': 'expand-contract-fade 1.5s ease-in-out forwards'
+  			'expand-contract-fade': 'expand-contract-fade 1.5s ease-in-out forwards',
+  			'wave-slow': 'wave-slow 30s ease-in-out infinite',
+  			'wave-medium': 'wave-medium 20s ease-in-out infinite',
+  			'wave-fast': 'wave-fast 15s ease-in-out infinite',
+  			'aurora-top': 'aurora-top 25s ease-in-out infinite',
+  			'aurora-bottom': 'aurora-bottom 25s ease-in-out infinite reverse',
+  			'mesh-rotate': 'mesh-rotate 60s linear infinite'
   		}
   	}
   },
