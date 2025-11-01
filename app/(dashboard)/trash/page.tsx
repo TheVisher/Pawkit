@@ -2,19 +2,38 @@ import { getTrashCards, purgeOldTrashItems } from "@/lib/server/cards";
 import { getTrashCollections } from "@/lib/server/collections";
 import { TrashView } from "@/components/trash/trash-view";
 import { requireUser } from "@/lib/auth/get-user";
+import { redirect } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
 export default async function TrashPage() {
-  const user = await requireUser();
+  let user;
+  try {
+    user = await requireUser();
+  } catch (error) {
+    // If auth fails, redirect to login
+    console.error('[TrashPage] Authentication error:', error);
+    redirect('/login');
+  }
 
-  // Auto-purge items older than 30 days
-  await purgeOldTrashItems(user.id);
+  // Auto-purge items older than 30 days (non-blocking - don't fail if this errors)
+  try {
+    await purgeOldTrashItems(user.id);
+  } catch (purgeError) {
+    console.error('[TrashPage] Failed to purge old trash items:', purgeError);
+    // Continue even if purge fails
+  }
 
-  const [cards, pawkits] = await Promise.all([
-    getTrashCards(user.id),
-    getTrashCollections(user.id)
-  ]);
+  try {
+    const [cards, pawkits] = await Promise.all([
+      getTrashCards(user.id),
+      getTrashCollections(user.id)
+    ]);
 
-  return <TrashView cards={cards} pawkits={pawkits} />;
+    return <TrashView cards={cards} pawkits={pawkits} />;
+  } catch (error) {
+    console.error('[TrashPage] Error loading trash data:', error);
+    // Return empty state on error instead of crashing
+    return <TrashView cards={[]} pawkits={[]} />;
+  }
 }

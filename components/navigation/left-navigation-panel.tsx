@@ -1,13 +1,15 @@
 "use client";
 
 import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2 } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2 } from "lucide-react";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
 import { GenericContextMenu } from "@/components/ui/generic-context-menu";
 import {
   Tooltip,
@@ -44,7 +46,6 @@ type NavItem = {
 const navigationItems: NavItem[] = [
   { id: "library", label: "Library", icon: Library, path: "/library" },
   { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
-  { id: "distill", label: "Dig Up", icon: Layers, path: "/distill" },
 ];
 
 export type LeftPanelMode = "floating" | "anchored";
@@ -143,6 +144,10 @@ export function LeftNavigationPanel({
 
   // Get sidebar visibility settings
   const showKeyboardShortcutsInSidebar = useSettingsStore((state) => state.showKeyboardShortcutsInSidebar);
+
+  // Get Rediscover mode state
+  const rediscoverStore = useRediscoverStore();
+
   const pinnedNotes = useMemo(() => {
     return pinnedNoteIds
       .map(id => cards.find(card => card.id === id))
@@ -887,8 +892,82 @@ export function LeftNavigationPanel({
             WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)"
           }}
         >
-          {/* Home Section */}
-          <PanelSection
+          {rediscoverStore.isActive ? (
+            // Rediscover Queue View
+            <div className="flex flex-col h-full">
+              {/* Header - Fixed */}
+              <div className="space-y-4 flex-shrink-0">
+                <h2 className="text-lg font-semibold text-foreground">Queue</h2>
+
+                {/* Filter Dropdown */}
+                <div className="relative">
+                  <select
+                    value={rediscoverStore.filter}
+                    onChange={(e) => rediscoverStore.setFilter(e.target.value as any)}
+                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-foreground appearance-none cursor-pointer hover:bg-white/10 transition-colors"
+                  >
+                    <option value="uncategorized">Uncategorized</option>
+                    <option value="all">All Bookmarks</option>
+                    <option value="untagged">Untagged</option>
+                    <option value="never-opened">Never Opened</option>
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                </div>
+
+                {/* Counter */}
+                <div className="text-sm text-muted-foreground">
+                  {rediscoverStore.queue.length - rediscoverStore.currentIndex} {rediscoverStore.queue.length - rediscoverStore.currentIndex === 1 ? 'card' : 'cards'} remaining
+                </div>
+              </div>
+
+              {/* Queue List - Scrollable, fills remaining height */}
+              <div className="flex-1 overflow-y-auto mt-6">
+                <div className="space-y-3">
+                  {rediscoverStore.queue.slice(rediscoverStore.currentIndex + 1).length === 0 ? (
+                    <div className="text-center text-muted-foreground text-sm py-8">
+                      No more cards in queue
+                    </div>
+                  ) : (
+                    rediscoverStore.queue.slice(rediscoverStore.currentIndex + 1).map((card, index) => (
+                      <div
+                        key={card.id}
+                        className="flex gap-3 p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                      >
+                        {/* Thumbnail */}
+                        <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-white/5">
+                          {card.image ? (
+                            <Image
+                              src={card.image}
+                              alt={card.title || "Card"}
+                              fill
+                              className="object-cover"
+                              unoptimized
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-pink-500/20" />
+                          )}
+                        </div>
+
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-foreground truncate">
+                            {card.title || "Untitled"}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">
+                            {card.domain || (card.url ? new URL(card.url).hostname : "")}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            // Normal Navigation View
+            <>
+              {/* Home Section */}
+              <PanelSection
             id="left-home"
             title="Home"
             icon={<Home className={`h-4 w-4 ${pathname === pathPrefix + "/home" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
@@ -1078,6 +1157,8 @@ export function LeftNavigationPanel({
                 ))}
               </div>
             </PanelSection>
+          )}
+            </>
           )}
         </div>
 

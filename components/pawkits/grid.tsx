@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { PawkitActions } from "./pawkit-actions";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { useMemo } from "react";
+import { Inbox } from "lucide-react";
 
 type CollectionPreviewCard = {
   id: string;
@@ -13,6 +14,7 @@ type CollectionPreviewCard = {
   hasChildren?: boolean;
   isPinned?: boolean;
   isPrivate?: boolean;
+  isSystem?: boolean;
   hidePreview?: boolean;
   useCoverAsBackground?: boolean;
   coverImage?: string | null;
@@ -74,7 +76,11 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
               router.push(`/library`);
             }
           }}
-          className="card-hover group relative flex h-56 cursor-pointer flex-col overflow-visible rounded-2xl border-2 border-purple-500/30 bg-surface/80 p-5 text-left"
+          className={`card-hover group relative flex h-56 cursor-pointer flex-col overflow-visible rounded-2xl border-2 p-5 text-left ${
+            collection.isSystem
+              ? 'border-purple-500/50 bg-purple-950/20 shadow-[0_0_20px_rgba(168,85,247,0.15)] hover:shadow-[0_0_30px_rgba(168,85,247,0.25)]'
+              : 'border-purple-500/30 bg-surface/80'
+          }`}
           style={
             collection.useCoverAsBackground && collection.coverImage
               ? {
@@ -87,8 +93,12 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
         >
           <div className={`relative z-10 flex items-center justify-between pb-4 text-sm ${collection.useCoverAsBackground && collection.coverImage ? 'backdrop-blur-md bg-black/60 -mx-5 -mt-5 px-5 pt-5 rounded-t-2xl' : ''}`}>
             <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent backdrop-blur-sm">
-                {collection.isPrivate ? '🔒' : '📁'}
+              <span className={`flex h-8 w-8 items-center justify-center rounded-lg backdrop-blur-sm ${
+                collection.isSystem
+                  ? 'bg-purple-500/30 text-purple-300'
+                  : 'bg-accent/20 text-accent'
+              }`}>
+                {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : '📁'}
               </span>
               <span className={collection.useCoverAsBackground && collection.coverImage ? 'text-white font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]' : ''}>
                 {collection.name}
@@ -98,7 +108,7 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
               <span className={`text-xs ${collection.useCoverAsBackground && collection.coverImage ? 'text-white/90 font-semibold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]' : 'text-muted-foreground'}`}>
                 {collection.count} item{collection.count === 1 ? "" : "s"}
               </span>
-              {collection.slug && (
+              {collection.slug && !collection.isSystem && (
                 <div onClick={(e) => e.stopPropagation()} className="relative z-50">
                   <PawkitActions
                     pawkitId={collection.id}
