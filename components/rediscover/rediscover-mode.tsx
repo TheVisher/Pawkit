@@ -96,7 +96,7 @@ export function RediscoverMode({ currentCard, onAction, onExit, remainingCount }
         <div className="text-center space-y-4">
           <div className="text-6xl">🎉</div>
           <h2 className="text-2xl font-semibold text-foreground">All done!</h2>
-          <p className="text-muted-foreground">You've reviewed all available cards.</p>
+          <p className="text-muted-foreground">You&apos;ve reviewed all available cards.</p>
           <button
             onClick={handleExit}
             className="px-6 py-3 rounded-lg bg-accent text-accent-foreground font-medium hover:bg-accent/90 transition-colors"
