@@ -85,7 +85,7 @@ function CollectionPageContent() {
       : DEFAULT_LAYOUT;
 
   // Read from global store
-  const { cards, collections, updateCard, deleteCard, refresh } = useDataStore();
+  const { cards, collections, updateCard, deleteCard, addCollection, updateCollection, deleteCollection } = useDataStore();
 
   // Filter cards for this specific collection
   const items = useMemo(() => {
@@ -181,7 +181,9 @@ function CollectionPageContent() {
     }
 
     return currentCollection.children.map((child: any) => {
-      const pawkitCards = cards.filter(card => card.collections.includes(child.slug) && card.deleted !== true);
+      const pawkitCards = cards.filter(card => 
+        card.collections.includes(child.slug) && card.deleted !== true
+      );
 
       return {
         id: child.id,
@@ -242,28 +244,12 @@ function CollectionPageContent() {
     setError(null);
 
     try {
-      const response = await fetch("/api/pawkits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmedName, parentId: currentCollection.id }),
-      });
-
-
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.message || "Failed to create Sub-Pawkit");
-        setLoading(false);
-        return;
-      }
-
-      const newPawkit = await response.json();
+      // Use data-store method for local-first behavior
+      await addCollection({ name: trimmedName, parentId: currentCollection.id });
 
       setPawkitName("");
       setShowCreateModal(false);
       setLoading(false);
-
-      // Refresh the Zustand store to get the new sub-pawkit
-      await refresh();
     } catch (err) {
       console.error('[CREATE] Error:', err);
       setError("Failed to create Sub-Pawkit");
@@ -276,22 +262,12 @@ function CollectionPageContent() {
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/pawkits/${currentCollection.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: renameValue.trim() }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to rename Pawkit");
-      }
+      // Use data-store method for local-first behavior
+      await updateCollection(currentCollection.id, { name: renameValue.trim() });
 
       setShowRenamePawkitModal(false);
       setRenameValue("");
       setLoading(false);
-
-      // Refresh the Zustand store to get the updated name
-      await refresh();
     } catch (err) {
       alert("Failed to rename Pawkit");
       setLoading(false);
@@ -301,22 +277,14 @@ function CollectionPageContent() {
   const handleMovePawkit = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/pawkits/${currentCollection.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ parentId: selectedMoveTarget }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to move Pawkit");
-      }
+      // Use data-store method for local-first behavior
+      await updateCollection(currentCollection.id, { parentId: selectedMoveTarget });
 
       setShowMovePawkitModal(false);
       setSelectedMoveTarget(null);
       setLoading(false);
 
-      // Refresh the Zustand store and navigate
-      await refresh();
+      // Navigate after successful move
       router.push("/pawkits");
     } catch (err) {
       alert("Failed to move Pawkit");
@@ -329,17 +297,11 @@ function CollectionPageContent() {
     setShowDeletePawkitConfirm(false);
 
     try {
-      const response = await fetch(`/api/pawkits/${currentCollection.id}`, {
-        method: "DELETE",
-      });
+      // Use data-store method for local-first behavior
+      // deleteCards=false, deleteSubPawkits=false to soft delete only
+      await deleteCollection(currentCollection.id, false, false);
 
-
-      if (!response.ok) {
-        throw new Error("Failed to delete Pawkit");
-      }
-
-      // Refresh the Zustand store and navigate
-      await refresh();
+      // Navigate after successful delete
       router.push("/pawkits");
     } catch (err) {
       console.error("Delete error:", err);
@@ -356,17 +318,11 @@ function CollectionPageContent() {
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/pawkits/${currentCollection.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ coverImage: coverImageUrl.trim() || null }),
+      // Use data-store method for local-first behavior
+      await updateCollection(currentCollection.id, { 
+        coverImage: coverImageUrl.trim() || null 
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to update cover image");
-      }
-
-      await refresh();
       setShowCoverImageModal(false);
       setCoverImageUrl("");
     } catch (err) {
@@ -475,17 +431,10 @@ function CollectionPageContent() {
                       // Save the position using the ref value (not stale closure)
                       setLoading(true);
                       try {
-                        const response = await fetch(`/api/pawkits/${currentCollection.id}`, {
-                          method: "PATCH",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({ coverImagePosition: Math.round(dragPositionRef.current) }),
+                        // Use data-store method for local-first behavior
+                        await updateCollection(currentCollection.id, { 
+                          coverImagePosition: Math.round(dragPositionRef.current) 
                         });
-                        if (!response.ok) {
-                          const errorData = await response.json();
-                          console.error("API error:", errorData);
-                          throw new Error("Failed to update position");
-                        }
-                        await refresh();
                         setIsRepositioning(false);
                       } catch (err) {
                         console.error("Position update error:", err);
