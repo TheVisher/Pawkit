@@ -9,7 +9,7 @@ import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { AnimatedBackground } from "@/components/rediscover/animated-background";
 import { RediscoverMode, RediscoverAction } from "@/components/rediscover/rediscover-mode";
-import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
+import { useRediscoverStore, RediscoverFilter } from "@/lib/hooks/rediscover-store";
 import { CardModel } from "@/lib/types";
 
 function LibraryPageContent() {
@@ -203,7 +203,7 @@ function LibraryPageContent() {
   }, [contentTypeFilter, cards.length, items]);
 
   // Apply filter to get filtered cards
-  const getFilteredCards = (filterType: ReturnType<typeof useRediscoverStore>["filter"]) => {
+  const getFilteredCards = (filterType: RediscoverFilter) => {
     // Start with bookmarks only (exclude notes)
     let filtered = items.filter(card => card.type === "url");
 
