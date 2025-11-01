@@ -76,6 +76,7 @@ export type PrismaCollection = {
   deletedAt: Date | null;
   inDen: boolean;
   isPrivate: boolean;
+  isSystem: boolean;
   passwordHash: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -118,6 +119,7 @@ export type CollectionNode = {
   deleted: boolean;
   inDen?: boolean;
   isPrivate?: boolean;
+  isSystem?: boolean;
   hidePreview?: boolean; // Hide card preview tiles on pawkit card
   useCoverAsBackground?: boolean; // Use cover image as pawkit card background
   userId: string;

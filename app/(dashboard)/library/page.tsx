@@ -1,12 +1,16 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useMemo, Suspense, useEffect } from "react";
+import { useMemo, Suspense, useEffect, useState } from "react";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { LibraryView } from "@/components/library/library-view";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { AnimatedBackground } from "@/components/rediscover/animated-background";
+import { RediscoverMode, RediscoverAction } from "@/components/rediscover/rediscover-mode";
+import { useRediscoverStore, RediscoverFilter } from "@/lib/hooks/rediscover-store";
+import { CardModel } from "@/lib/types";
 
 function LibraryPageContent() {
   const searchParams = useSearchParams();
@@ -23,6 +27,11 @@ function LibraryPageContent() {
   const layoutParam = searchParams.get("layout") as LayoutMode | null;
   const viewParam = searchParams.get("view") || "normal";
   const daysParam = searchParams.get("days") || "30";
+  const mode = searchParams.get("mode") || "normal";
+
+  // Rediscover mode state from store
+  const rediscoverStore = useRediscoverStore();
+  const isRediscoverMode = mode === "rediscover";
 
   // Read from localStorage first, then URL param, then default
   const savedLayout = typeof window !== 'undefined' ? localStorage.getItem("library-layout") as LayoutMode | null : null;
@@ -97,7 +106,7 @@ function LibraryPageContent() {
   }, [tag, cards, searchParams, router, viewSettings, updateViewSettings]);
 
   // Filter cards based on search params (client-side filtering)
-  const items = useMemo(() => {
+  const items = useMemo((): CardModel[] => {
     // Build a set of private collection SLUGS for fast lookup (cards store slugs, not IDs)
     const privateCollectionSlugs = new Set<string>();
     const getAllPrivateSlugs = (nodes: any[]): void => {
@@ -192,6 +201,112 @@ function LibraryPageContent() {
     if (noteCount > 0 && contentTypeFilter.length === 0) {
     }
   }, [contentTypeFilter, cards.length, items]);
+
+  // Apply filter to get filtered cards
+  const getFilteredCards = (filterType: RediscoverFilter) => {
+    // Start with bookmarks only (exclude notes)
+    let filtered = items.filter(card => card.type === "url");
+
+    switch (filterType) {
+      case "uncategorized":
+        // No tags and no collections
+        filtered = filtered.filter(card =>
+          (!card.tags || card.tags.length === 0) &&
+          (!card.collections || card.collections.length === 0)
+        );
+        break;
+      case "all":
+        // All bookmarks (already filtered above)
+        break;
+      case "untagged":
+        // No tags (but may have collections)
+        filtered = filtered.filter(card => !card.tags || card.tags.length === 0);
+        break;
+      case "never-opened":
+        // TODO: Add lastOpenedAt field to track this
+        // For now, treat as uncategorized
+        filtered = filtered.filter(card =>
+          (!card.tags || card.tags.length === 0) &&
+          (!card.collections || card.collections.length === 0)
+        );
+        break;
+    }
+
+    return filtered;
+  };
+
+  // Initialize Rediscover queue when entering Rediscover mode or filter changes
+  useEffect(() => {
+    if (isRediscoverMode) {
+      const filtered = getFilteredCards(rediscoverStore.filter);
+      rediscoverStore.setQueue(filtered);
+      rediscoverStore.setCurrentIndex(0);
+      rediscoverStore.setActive(true);
+
+      // Only reset stats on initial entry
+      if (rediscoverStore.queue.length === 0) {
+        rediscoverStore.reset();
+        rediscoverStore.setActive(true);
+        rediscoverStore.setQueue(filtered);
+      }
+    } else {
+      // Exit Rediscover mode
+      if (rediscoverStore.isActive) {
+        rediscoverStore.reset();
+      }
+    }
+  }, [isRediscoverMode, rediscoverStore.filter, items]);
+
+  // Handlers for Rediscover mode
+  const handleRediscoverAction = async (action: RediscoverAction, cardId: string) => {
+    const card = rediscoverStore.queue[rediscoverStore.currentIndex];
+    if (!card || card.id !== cardId) return;
+
+    // Update session stats - map action to stat key
+    const statKey = action === "keep" ? "kept" : "deleted";
+    rediscoverStore.updateStats(statKey);
+
+    // Handle action
+    if (action === "keep") {
+      rediscoverStore.addKeptCard(card);
+    } else if (action === "delete") {
+      // Delete the card
+      await useDataStore.getState().deleteCard(cardId);
+    }
+
+    // Move to next card
+    rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
+  };
+
+  const handleExitRediscover = () => {
+    // Remove mode=rediscover from URL
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("mode");
+    router.push(`/library?${params.toString()}`);
+
+    // Reset will happen in useEffect when mode changes
+  };
+
+  // Get current card for Rediscover mode
+  const currentCard = rediscoverStore.currentIndex < rediscoverStore.queue.length
+    ? rediscoverStore.queue[rediscoverStore.currentIndex]
+    : null;
+  const remainingCount = rediscoverStore.queue.length - rediscoverStore.currentIndex;
+
+  // Render Rediscover mode or normal Library view
+  if (isRediscoverMode) {
+    return (
+      <>
+        <AnimatedBackground />
+        <RediscoverMode
+          currentCard={currentCard}
+          onAction={handleRediscoverAction}
+          onExit={handleExitRediscover}
+          remainingCount={remainingCount}
+        />
+      </>
+    );
+  }
 
   return (
     <LibraryView

@@ -36,6 +36,8 @@ function NotesPageContent() {
     getAllPrivateSlugs(collections);
 
     let notes = cards.filter(c => {
+      // Skip deleted cards
+      if (c.deleted === true) return false;
       // Must be a note type
       if (c.type !== 'md-note' && c.type !== 'text-note') return false;
 

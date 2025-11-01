@@ -84,6 +84,8 @@ export default function HomePage() {
     if (!cards || !Array.isArray(cards)) return [];
     return cards
       .filter(c => {
+        // Skip deleted cards
+        if (c.deleted === true) return false;
         const isInPrivateCollection = c.collections?.some(collectionId =>
           privateCollectionIds.has(collectionId)
         );
@@ -97,6 +99,8 @@ export default function HomePage() {
     if (!cards || !Array.isArray(cards)) return [];
     return cards
       .filter(c => {
+        // Skip deleted cards
+        if (c.deleted === true) return false;
         if (!c.pinned) return false;
         const isInPrivateCollection = c.collections?.some(collectionId =>
           privateCollectionIds.has(collectionId)

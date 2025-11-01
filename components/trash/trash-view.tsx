@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { CardDTO } from "@/lib/server/cards";
 import { CollectionDTO } from "@/lib/server/collections";
 import { useRouter } from "next/navigation";
@@ -8,6 +8,8 @@ import { formatDistanceToNow } from "date-fns";
 import { localDb } from "@/lib/services/local-storage";
 import { FileText, Folder } from "lucide-react";
 import { ToastContainer, ToastType } from "@/components/ui/toast";
+import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { useDataStore } from "@/lib/stores/data-store";
 
 type CardTrashItem = CardDTO & { itemType: "card" };
 type PawkitTrashItem = CollectionDTO & { itemType: "pawkit" };
@@ -18,13 +20,93 @@ type TrashViewProps = {
   pawkits: CollectionDTO[];
 };
 
-export function TrashView({ cards, pawkits }: TrashViewProps) {
+export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashViewProps) {
   const [filter, setFilter] = useState<"all" | "cards" | "pawkits">("all");
   const [loading, setLoading] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; itemType: "card" | "pawkit"; name: string } | null>(null);
   const [showEmptyConfirm, setShowEmptyConfirm] = useState(false);
   const [toasts, setToasts] = useState<Array<{ id: string; message: string; type?: ToastType }>>([]);
+  const [localCards, setLocalCards] = useState<CardDTO[]>([]);
+  const [localPawkits, setLocalPawkits] = useState<CollectionDTO[]>([]);
   const router = useRouter();
+  const serverSync = useSettingsStore((state) => state.serverSync);
+  const refreshDataStore = useDataStore((state) => state.refresh);
+
+  // Load deleted items from local storage
+  const loadLocalTrash = useCallback(async () => {
+    try {
+      // Get all cards including deleted ones
+      const allCards = await localDb.getAllCards(true); // includeDeleted = true
+      const deletedCards = allCards.filter(c => c.deleted === true);
+      setLocalCards(deletedCards);
+
+      // Get all collections including deleted ones
+      const allCollections = await localDb.getAllCollections(true); // includeDeleted = true
+      // Flatten the tree structure since trash items shouldn't have children
+      const flatCollections = allCollections.reduce<CollectionDTO[]>((acc, collection) => {
+        const flatten = (node: typeof collection): CollectionDTO[] => {
+          // Convert CollectionNode to CollectionDTO format
+          // CollectionDTO requires passwordHash which CollectionNode doesn't have in local storage
+          // Also ensure all optional fields have proper defaults
+          const dto: CollectionDTO = {
+            ...node,
+            parentId: node.parentId ?? null, // Convert undefined to null
+            coverImage: node.coverImage ?? null,
+            coverImagePosition: node.coverImagePosition ?? null,
+            hidePreview: node.hidePreview ?? false,
+            useCoverAsBackground: node.useCoverAsBackground ?? false,
+            inDen: node.inDen ?? false,
+            isPrivate: node.isPrivate ?? false,
+            isSystem: node.isSystem ?? false,
+            passwordHash: null, // Local storage doesn't store passwordHash
+            children: [], // Trash items don't need children
+            deletedAt: (node as any).deletedAt || null, // Ensure deletedAt is present
+          };
+          const result: CollectionDTO[] = [dto];
+          if (node.children && node.children.length > 0) {
+            node.children.forEach(child => {
+              result.push(...flatten(child));
+            });
+          }
+          return result;
+        };
+        return [...acc, ...flatten(collection)];
+      }, []);
+      const deletedCollections = flatCollections.filter(c => c.deleted === true);
+      setLocalPawkits(deletedCollections);
+    } catch (error) {
+      console.error('[TrashView] Failed to load local trash:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Always load local trash to merge with server data
+    loadLocalTrash();
+  }, [loadLocalTrash, serverSync, serverCards.length, serverPawkits.length]); // Reload when sync status or server data changes
+
+  // Merge server and local data - prefer server data for items that exist on both
+  // This handles the case where serverSync is enabled but some items were deleted locally before sync
+  const mergedCards = (() => {
+    const serverCardIds = new Set(serverCards.map(c => c.id));
+    // Add server cards first, then add local cards that aren't on server
+    return [
+      ...serverCards,
+      ...localCards.filter(c => !serverCardIds.has(c.id))
+    ];
+  })();
+
+  const mergedPawkits = (() => {
+    const serverPawkitIds = new Set(serverPawkits.map(p => p.id));
+    // Add server pawkits first, then add local pawkits that aren't on server
+    return [
+      ...serverPawkits,
+      ...localPawkits.filter(p => !serverPawkitIds.has(p.id))
+    ];
+  })();
+
+  // Use merged data (server + local) when serverSync is enabled, or just local when disabled
+  const cards = serverSync ? mergedCards : localCards;
+  const pawkits = serverSync ? mergedPawkits : localPawkits;
 
   const showToast = (message: string, type: ToastType = "success") => {
     const id = Date.now().toString();
@@ -72,6 +154,9 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
         showToast("Card restored successfully", "success");
       }
 
+      // Reload local trash and refresh data-store after restore
+      await loadLocalTrash();
+      await refreshDataStore(); // Update data-store with restored item
       router.refresh();
     } catch (error) {
       showToast(`Failed to restore ${type}`, "error");
@@ -106,6 +191,8 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
       // Wait a bit to ensure server deletion completes before refresh
       await new Promise(resolve => setTimeout(resolve, 100));
 
+      // Reload local trash after permanent delete
+      await loadLocalTrash();
       router.refresh();
     } catch (error) {
       alert(`Failed to permanently delete ${deleteConfirm.itemType}`);
@@ -132,6 +219,8 @@ export function TrashView({ cards, pawkits }: TrashViewProps) {
       // This prevents a race condition where sync pulls data before deletion finishes
       await new Promise(resolve => setTimeout(resolve, 200));
 
+      // Reload local trash after emptying
+      await loadLocalTrash();
       router.refresh();
     } catch (error) {
       alert("Failed to empty trash");
