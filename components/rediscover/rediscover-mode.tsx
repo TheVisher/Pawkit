@@ -209,14 +209,15 @@ type ActionButtonProps = {
   label: string;
   shortcut?: string;
   onClick: () => void;
-  variant?: "primary" | "danger" | "muted";
+  variant?: "default" | "primary" | "danger" | "muted";
 };
 
 function ActionButton({ icon: Icon, label, shortcut, onClick, variant = "default" }: ActionButtonProps) {
-  const variantClasses = {
+  const variantClasses: Record<NonNullable<ActionButtonProps["variant"]>, string> = {
     default: "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 text-foreground",
     primary: "bg-accent/20 border-accent/30 hover:bg-accent/30 hover:border-accent/50 text-accent-foreground hover:shadow-lg hover:shadow-accent/20",
     danger: "bg-red-500/20 border-red-500/30 hover:bg-red-500/30 hover:border-red-500/50 text-red-200 hover:shadow-lg hover:shadow-red-500/20",
+    muted: "bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 text-muted-foreground",
   };
 
   return (
