@@ -4,6 +4,7 @@ import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
 import { unauthorized, notFound, conflict, success, ErrorCodes } from "@/lib/utils/api-responses";
+import { ensureToCategorizePawkit, getToCategorizeSlug } from "@/lib/utils/system-pawkits";
 
 // Force Node.js runtime for Prisma compatibility
 export const runtime = 'nodejs';
@@ -85,6 +86,14 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
             { serverCard: currentCard }
           );
         }
+      }
+    }
+
+    // Ensure "To Categorize" system Pawkit exists if card is being added to it
+    if (body.collections && Array.isArray(body.collections)) {
+      const toCategorizeSlug = getToCategorizeSlug();
+      if (body.collections.includes(toCategorizeSlug)) {
+        await ensureToCategorizePawkit(user.id);
       }
     }
 
