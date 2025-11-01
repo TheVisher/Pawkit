@@ -106,7 +106,7 @@ function LibraryPageContent() {
   }, [tag, cards, searchParams, router, viewSettings, updateViewSettings]);
 
   // Filter cards based on search params (client-side filtering)
-  const items = useMemo(() => {
+  const items = useMemo((): CardModel[] => {
     // Build a set of private collection SLUGS for fast lookup (cards store slugs, not IDs)
     const privateCollectionSlugs = new Set<string>();
     const getAllPrivateSlugs = (nodes: any[]): void => {
