@@ -10,6 +10,7 @@ export type PanelContentType =
   | "notes-controls"
   | "pawkits-controls"
   | "calendar-controls"
+  | "day-details"
   | "bulk-operations"
   | "closed";
 
@@ -55,6 +56,7 @@ export type PanelState = {
   openCardDetails: (cardId: string) => void;
   openNotesControls: () => void;
   openCalendarControls: () => void;
+  openDayDetails: () => void;
   openBulkOperations: () => void;
   restorePreviousContent: () => void;
 };
@@ -77,16 +79,35 @@ export const usePanelStore = create<PanelState>()(
       },
 
       close: () => {
-        set({ isOpen: false, contentType: "closed", activeCardId: null });
+        const currentState = get();
+        // Store current content type as previous (unless it's already closed or a temporary overlay)
+        const shouldStorePrevious =
+          currentState.contentType !== "closed" &&
+          currentState.contentType !== "card-details" &&
+          currentState.contentType !== "day-details" &&
+          currentState.contentType !== "bulk-operations";
+
+        const previousContentType = shouldStorePrevious
+          ? currentState.contentType
+          : currentState.previousContentType;
+
+        set({
+          isOpen: false,
+          contentType: "closed",
+          activeCardId: null,
+          previousContentType
+        });
       },
 
       toggle: () => {
-        const { isOpen } = get();
+        const { isOpen, previousContentType } = get();
         if (isOpen) {
           get().close();
         } else {
-          // Manual toggle should mark as not auto-opened
-          set({ isOpen: true, contentType: "library-controls", wasAutoOpened: false });
+          // Manual toggle should restore previous content or default to library-controls
+          const contentToRestore =
+            previousContentType !== "closed" ? previousContentType : "library-controls";
+          set({ isOpen: true, contentType: contentToRestore, wasAutoOpened: false });
         }
       },
 
@@ -157,6 +178,22 @@ export const usePanelStore = create<PanelState>()(
 
       openCalendarControls: () => {
         set({ isOpen: true, contentType: "calendar-controls", activeCardId: null, wasAutoOpened: false });
+      },
+
+      openDayDetails: () => {
+        const currentState = get();
+        // Store current content type as previous (if it's not already day-details)
+        const previousContentType = currentState.contentType !== "day-details"
+          ? currentState.contentType
+          : currentState.previousContentType;
+
+        set({
+          isOpen: true,
+          contentType: "day-details",
+          activeCardId: null,
+          previousContentType,
+          wasAutoOpened: false,
+        });
       },
 
       openBulkOperations: () => {
