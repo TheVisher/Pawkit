@@ -116,8 +116,8 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onCreat
         </div>
       </div>
 
-      {/* Week days in vertical list */}
-      <div className="space-y-3">
+      {/* Week days in horizontal columns */}
+      <div className="grid grid-cols-7 gap-3">
         {weekDays.map((day, index) => {
           const dateStr = format(day, 'yyyy-MM-dd');
           const dayCards = cardsByDate.get(dateStr) || [];
@@ -127,7 +127,7 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onCreat
           return (
             <div
               key={index}
-              className={`card-hover rounded-2xl border transition-all cursor-pointer p-4 ${
+              className={`card-hover rounded-2xl border transition-all cursor-pointer flex flex-col ${
                 isCurrentDay
                   ? 'border-accent bg-accent/5'
                   : 'border-subtle bg-surface'
@@ -135,80 +135,65 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onCreat
               onClick={() => onDayClick?.(day)}
             >
               {/* Day header */}
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <div className={`text-lg font-semibold ${
-                    isCurrentDay ? 'text-accent' : 'text-foreground'
-                  }`}>
-                    {format(day, 'EEEE')}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {format(day, 'MMMM d, yyyy')}
-                  </div>
+              <div className="p-3 border-b border-white/5">
+                <div className={`text-sm font-semibold text-center ${
+                  isCurrentDay ? 'text-accent' : 'text-foreground'
+                }`}>
+                  {format(day, 'EEE')}
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {dayCards.length + (dailyNote ? 1 : 0)} item(s)
+                <div className="text-xs text-muted-foreground text-center mt-0.5">
+                  {format(day, 'MMM d')}
                 </div>
               </div>
 
-              {/* Daily note */}
-              {dailyNote && (
-                <div className="mb-3">
+              {/* Events container - scrollable */}
+              <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[500px]">
+                {/* Daily note */}
+                {dailyNote && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onCardClick?.(dailyNote);
                     }}
-                    className="w-full px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 transition-colors flex items-center gap-2 text-left"
+                    className="w-full px-2 py-2 rounded-lg bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 transition-colors flex items-center gap-2 text-left"
                   >
-                    <FileText size={14} className="text-purple-300 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-xs font-medium text-purple-200 block truncate">
-                        Daily Note
-                      </span>
+                    <FileText size={12} className="text-purple-300 flex-shrink-0" />
+                    <span className="text-xs font-medium text-purple-200 truncate">
+                      Note
+                    </span>
+                  </button>
+                )}
+
+                {/* Scheduled cards */}
+                {dayCards.map((card) => (
+                  <button
+                    key={card.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCardClick?.(card);
+                    }}
+                    className="w-full text-left px-2 py-2 rounded-lg bg-surface-soft hover:bg-surface transition-colors border border-subtle"
+                  >
+                    {card.image && (
+                      <img
+                        src={card.image}
+                        alt=""
+                        className="w-full h-16 rounded object-cover mb-2"
+                      />
+                    )}
+                    <div className="text-xs font-medium text-foreground truncate">
+                      {card.title || card.domain || card.url}
                     </div>
                   </button>
-                </div>
-              )}
+                ))}
 
-              {/* Scheduled cards */}
-              {dayCards.length > 0 && (
-                <div className="space-y-2">
-                  {dayCards.map((card) => (
-                    <button
-                      key={card.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onCardClick?.(card);
-                      }}
-                      className="w-full text-left px-3 py-2 rounded-lg bg-surface-soft hover:bg-surface transition-colors border border-subtle flex items-center gap-3"
-                    >
-                      {card.image && (
-                        <img
-                          src={card.image}
-                          alt=""
-                          className="w-10 h-10 rounded object-cover flex-shrink-0"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">
-                          {card.title || card.domain || card.url}
-                        </div>
-                        <div className="text-xs text-muted-foreground truncate">
-                          {card.domain || card.url}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Empty state */}
-              {!dailyNote && dayCards.length === 0 && (
-                <div className="text-sm text-muted-foreground text-center py-4">
-                  No events scheduled
-                </div>
-              )}
+                {/* Empty state */}
+                {!dailyNote && dayCards.length === 0 && (
+                  <div className="text-xs text-muted-foreground text-center py-4">
+                    No events
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
