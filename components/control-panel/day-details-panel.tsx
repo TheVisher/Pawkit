@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -8,13 +8,16 @@ import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/da
 import { CalendarIcon, X, Plus } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import Image from "next/image";
+import { AddEventModal } from "@/components/modals/add-event-modal";
 
 export function DayDetailsPanel() {
   const { cards, addCard } = useDataStore();
   const selectedDay = useCalendarStore((state) => state.selectedDay);
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
-  const restorePreviousContent = usePanelStore((state) => state.restorePreviousContent);
+  const openCalendarControls = usePanelStore((state) => state.openCalendarControls);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
+
+  const [showAddEventModal, setShowAddEventModal] = useState(false);
 
   // Get cards scheduled for the selected date
   const scheduledCards = useMemo(() => {
@@ -62,15 +65,15 @@ export function DayDetailsPanel() {
 
   const handleClose = () => {
     setSelectedDay(null);
-    restorePreviousContent();
+    openCalendarControls();
+  };
+
+  const handleAddEvent = () => {
+    setShowAddEventModal(true);
   };
 
   if (!selectedDay) {
-    return (
-      <div className="p-4 text-center text-muted-foreground">
-        Select a day to view details
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -187,19 +190,27 @@ export function DayDetailsPanel() {
           )}
         </div>
 
-        {/* Add Card Button */}
+        {/* Add Event Button */}
         <div className="pt-4 border-t border-white/10">
           <button
+            onClick={handleAddEvent}
             className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
               hover:bg-white/10 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]
               transition-all duration-200 flex items-center justify-center gap-2
               text-sm font-medium text-muted-foreground hover:text-foreground"
           >
             <Plus size={16} />
-            Add card to this day
+            Add Event
           </button>
         </div>
       </div>
+
+      {/* Add Event Modal */}
+      <AddEventModal
+        open={showAddEventModal}
+        onClose={() => setShowAddEventModal(false)}
+        scheduledDate={selectedDay}
+      />
     </div>
   );
 }
