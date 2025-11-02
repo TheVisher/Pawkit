@@ -200,7 +200,7 @@ export default function PawkitLanding() {
           <ProofCard
             title="Library View"
             description="Browse your complete collection with grid, list, and timeline layouts"
-            imagePath="/images/screenshots/Library-view.jpeg"
+            imagePath="/images/screenshots/Libraryview.jpeg"
           />
           <ProofCard
             title="Notes"
