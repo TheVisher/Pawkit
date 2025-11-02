@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, Suspense } from "react";
+import { useMemo, Suspense, useEffect } from "react";
 import { LibraryView } from "@/components/library/library-view";
 import { CardModel, CollectionNode } from "@/lib/types";
-import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { useDataStore } from "@/lib/stores/data-store";
 
 // Generate realistic fake bookmark data
 const FAKE_CARDS: CardModel[] = [
@@ -1073,50 +1074,41 @@ const FAKE_COLLECTIONS: CollectionNode[] = [
 ];
 
 function DemoPageContent() {
+  const setContentType = usePanelStore((state) => state.setContentType);
+  const setCollections = useDataStore((state) => state.setCollections);
+  const setCards = useDataStore((state) => state.setCards);
+
   // Memoize the fake data
   const items = useMemo(() => FAKE_CARDS, []);
   const collections = useMemo(() => FAKE_COLLECTIONS, []);
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-white/10 bg-surface/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Pawkit Demo</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Showcase with {items.length} realistic bookmarks
-              </p>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              Demo Mode
-            </div>
-          </div>
-        </div>
-      </div>
+  // Populate the global store with fake data for the navigation panels
+  useEffect(() => {
+    setCards(items);
+    setCollections(collections);
+  }, [items, collections, setCards, setCollections]);
 
-      {/* Main Content */}
-      <div className="container mx-auto px-6 py-8">
-        <LibraryView
-          initialCards={items}
-          initialNextCursor={undefined}
-          collectionsTree={collections}
-          query={{}}
-          viewMode="normal"
-          timelineDays={30}
-        />
-      </div>
-    </div>
+  // Set the right panel content to show library controls
+  useEffect(() => {
+    setContentType("library-controls");
+  }, [setContentType]);
+
+  return (
+    <LibraryView
+      initialCards={items}
+      initialNextCursor={undefined}
+      collectionsTree={collections}
+      query={{}}
+      viewMode="normal"
+      timelineDays={30}
+    />
   );
 }
 
 export default function DemoPage() {
   return (
-    <SelectionStoreProvider>
-      <Suspense fallback={<div>Loading...</div>}>
-        <DemoPageContent />
-      </Suspense>
-    </SelectionStoreProvider>
+    <Suspense fallback={<div>Loading...</div>}>
+      <DemoPageContent />
+    </Suspense>
   );
 }
