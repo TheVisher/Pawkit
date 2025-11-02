@@ -81,7 +81,7 @@ interface LocalStorageDB extends DBSchema {
 class LocalStorage {
   private db: IDBPDatabase<LocalStorageDB> | null = null;
   private readonly DB_NAME = 'pawkit-local-storage';
-  private readonly DB_VERSION = 4; // Bumped for note card links support
+  private readonly DB_VERSION = 4; // Version 4: note card links support
 
   async init(): Promise<void> {
     if (this.db) return;
@@ -120,6 +120,10 @@ class LocalStorage {
           noteCardLinksStore.createIndex('by-source', 'sourceNoteId');
           noteCardLinksStore.createIndex('by-target', 'targetCardId');
         }
+
+        // NOTE: Skipping by-deleted index for now - IndexedDB boolean indexes
+        // have cross-browser compatibility issues. Will implement in future with
+        // string-based deleted status or compound indexes.
       },
     });
   }
@@ -132,6 +136,9 @@ class LocalStorage {
 
     const cards = await this.db.getAll('cards');
     // Filter out soft-deleted cards unless explicitly requested
+    // NOTE: We're not using an index for this yet because IndexedDB
+    // doesn't handle boolean indexes well cross-browser. Future optimization:
+    // convert deleted to a string field ("true"/"false") or use a compound index.
     return cards
       .filter(card => includeDeleted || card.deleted !== true)
       .map(card => {

@@ -45,7 +45,9 @@
       "Read(//c/Users/VishLap/.claude/skills/pawkit-roadmap/**)",
       "Skill(pawkit-troubleshooting)",
       "Skill(pawkit-project-context)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []
