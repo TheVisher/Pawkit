@@ -135,6 +135,57 @@ description: Living, interactive roadmap serving as single source of truth for p
 
 **Reference for what's done - do not modify this section**
 
+### January 2, 2025
+
+- ✅ **Calendar View Improvements - Complete Sidebar Control System** (6+ hours total)
+  Implemented comprehensive calendar sidebar control panel with month navigation, filters, and week view
+  **Major Components Created:**
+  - `components/control-panel/calendar-controls.tsx` - Main sidebar controls with month grid, filters, quick actions
+  - `components/control-panel/day-details-panel.tsx` - Day-specific detail view that slides in
+  - `components/calendar/week-view.tsx` - Week view with horizontal columns (7 days side-by-side)
+  - `components/modals/add-event-modal.tsx` - Modal for adding scheduled events to specific dates
+  - `lib/hooks/use-calendar-store.ts` - Calendar-specific Zustand store for state management
+  **Calendar Controls Features:**
+  - Month grid selector (3x4 grid Jan-Dec) replaces center panel navigation
+  - Content type filters for future AI detection (Movies/Shows, Concerts, Deadlines, Product Launches, Other Events, Daily Notes)
+  - Quick actions: Jump to Today, View This Week/Month toggle
+  - Upcoming events preview (next 5 chronologically ordered events)
+  - "View all" link when more than 5 events exist
+  - Collapsible sections with persistent state
+  **Day Details Panel:**
+  - Shows daily note and scheduled cards for selected day
+  - "Add Event" button opens modal (uses createPortal to escape sidebar stacking)
+  - Close button returns to calendar controls
+  - ESC key handling integrated with layout
+  **Week View:**
+  - Horizontal columns layout (grid-cols-7)
+  - Each day is compact vertical column with scrollable events
+  - Shows day name, date, daily note, and scheduled cards
+  - Dynamic toggle button changes between "View This Week" and "View This Month"
+  **State Management:**
+  - Added CalendarViewMode type ("month" | "week")
+  - Calendar store manages currentMonth, viewMode, selectedDay, contentFilters
+  - Panel store updated with "calendar-controls" and "day-details" content types
+  - Custom calendar sidebar only appears in calendar view
+  **Bug Fixes:**
+  - Fixed sidebar persistence when toggling on/off (preserves previousContentType)
+  - Fixed modal rendering using createPortal to document.body with z-[200]
+  - Fixed view mode switching to properly show week view (not just jump to today)
+  - Changed week view from vertical full-width days to horizontal columns
+  **Files Created:**
+  - `components/control-panel/calendar-controls.tsx`
+  - `components/control-panel/day-details-panel.tsx`
+  - `components/calendar/week-view.tsx`
+  - `components/modals/add-event-modal.tsx`
+  - `lib/hooks/use-calendar-store.ts`
+  **Files Modified:**
+  - `lib/hooks/use-panel-store.ts` - Added calendar content types, updated close/toggle
+  - `app/(dashboard)/calendar/page.tsx` - Uses calendar store, renders correct view
+  - `app/(dashboard)/layout.tsx` - Integrated CalendarControls and DayDetailsPanel
+  - `components/calendar/custom-calendar.tsx` - Accepts currentMonth prop
+  **Branch:** `calendar-view-improvements`
+  **Impact:** Calendar now has dedicated sidebar with full navigation, filtering, and view controls
+
 ### October 31, 2025
 
 - ✅ **Context Menu System Implementation** (Complete reusable system)

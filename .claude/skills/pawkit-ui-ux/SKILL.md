@@ -872,7 +872,391 @@ import {
 
 ---
 
-### 8. CONTEXT MENUS
+### 8. CALENDAR COMPONENTS
+
+**Purpose**: Calendar-specific UI patterns for month/week navigation, day details, and event management
+
+**Created**: January 2, 2025 (Calendar View Improvements)
+
+#### Month Grid Selector
+
+**Use Case**: Quick month navigation without arrows - direct jump to any month
+
+**Pattern**: 3x4 grid of month buttons (Jan-Dec) in calendar sidebar controls
+
+```tsx
+<div className="grid grid-cols-4 gap-2">
+  {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month, index) => {
+    const monthDate = new Date(currentMonth.getFullYear(), index, 1);
+    const isCurrentMonth = isSameMonth(monthDate, currentMonth);
+    const isToday = isSameMonth(monthDate, new Date());
+
+    return (
+      <button
+        key={month}
+        onClick={() => setCurrentMonth(monthDate)}
+        className={cn(
+          "px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+          isCurrentMonth
+            ? "bg-purple-500/20 border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)] text-purple-200"
+            : "bg-surface-soft border border-subtle text-muted-foreground hover:border-purple-500/50 hover:text-foreground"
+        )}
+      >
+        {month}
+      </button>
+    );
+  })}
+</div>
+```
+
+**✅ DO**:
+- Use 3x4 grid layout (grid-cols-4)
+- Show all 12 months at once for quick access
+- Highlight current month with purple glow
+- Show subtle indicator for today's month
+- Use abbreviated month names (Jan, Feb, etc.)
+
+**❌ DON'T**:
+- Use dropdown select (less visual, requires clicks)
+- Use prev/next arrows only (slower navigation)
+- Hide months behind menus
+
+#### Content Type Filters
+
+**Use Case**: Filter calendar events by type for future AI auto-categorization
+
+**Pattern**: Checkbox filters with glass pill styling
+
+```tsx
+const contentFilters = [
+  { id: "movies-shows", label: "Movies & Shows", icon: Film },
+  { id: "concerts-events", label: "Concerts & Events", icon: Music },
+  { id: "deadlines", label: "Deadlines", icon: Clock },
+  { id: "product-launches", label: "Product Launches", icon: Rocket },
+  { id: "other-events", label: "Other Events", icon: Calendar },
+  { id: "daily-notes", label: "Daily Notes", icon: FileText },
+];
+
+<div className="space-y-2">
+  {contentFilters.map((filter) => (
+    <label
+      key={filter.id}
+      className="flex items-center gap-2 p-2 rounded-lg hover:bg-surface-soft transition-colors cursor-pointer"
+    >
+      <input
+        type="checkbox"
+        checked={activeFilters.includes(filter.id)}
+        onChange={() => toggleContentFilter(filter.id)}
+        className="rounded border-subtle"
+      />
+      <filter.icon size={16} className="text-muted-foreground" />
+      <span className="text-sm text-foreground">{filter.label}</span>
+    </label>
+  ))}
+</div>
+```
+
+**✅ DO**:
+- Use lucide-react icons for each filter type
+- Store filter state in calendar store
+- Prepare for future AI detection
+- Make filters collapsible to save space
+
+**❌ DON'T**:
+- Hard-code event type detection (prepare for AI)
+- Use radio buttons (events can have multiple types)
+
+#### Week View Layout
+
+**Use Case**: Show week at a glance with all events visible
+
+**Pattern**: Horizontal columns (7 days side-by-side) with vertical scrolling per day
+
+```tsx
+<div className="grid grid-cols-7 gap-3">
+  {weekDays.map((day, index) => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    const dayCards = cardsByDate.get(dateStr) || [];
+    const dailyNote = dailyNotesByDate.get(dateStr);
+    const isCurrentDay = isClient ? isSameDay(day, new Date()) : false;
+
+    return (
+      <div
+        key={index}
+        className={cn(
+          "card-hover rounded-2xl border transition-all flex flex-col",
+          isCurrentDay
+            ? "border-accent bg-accent/5"
+            : "border-subtle bg-surface"
+        )}
+      >
+        {/* Day header */}
+        <div className="p-3 border-b border-white/5">
+          <div className="text-sm font-semibold text-center">
+            {format(day, 'EEE')}
+          </div>
+          <div className={cn(
+            "text-xs text-center",
+            isCurrentDay ? "text-accent" : "text-muted-foreground"
+          )}>
+            {format(day, 'MMM d')}
+          </div>
+        </div>
+
+        {/* Scrollable events container */}
+        <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[500px]">
+          {/* Daily note */}
+          {dailyNote && (
+            <button className="w-full text-left px-2 py-1.5 rounded-lg bg-purple-500/20 border border-purple-400/30 text-xs text-purple-200">
+              <FileText size={12} className="inline mr-1" />
+              Daily Note
+            </button>
+          )}
+
+          {/* Scheduled cards */}
+          {dayCards.map((card) => (
+            <button
+              key={card.id}
+              className="w-full text-left px-2 py-1 rounded-lg bg-surface-soft hover:bg-surface transition-colors text-xs"
+            >
+              {card.title || card.domain || card.url}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  })}
+</div>
+```
+
+**✅ DO**:
+- Use grid-cols-7 for side-by-side days
+- Make each day column scrollable independently
+- Highlight today with accent color
+- Show day name (EEE) and date (MMM d)
+- Use max-h-[500px] to prevent excessive height
+
+**❌ DON'T**:
+- Use full-width horizontal layout (hard to scan)
+- Make entire week scroll together
+- Show too many events per day (truncate or scroll)
+
+#### Day Details Panel
+
+**Use Case**: Detailed view of single day when clicked from calendar
+
+**Pattern**: Sidebar panel that slides in (replaces calendar controls temporarily)
+
+```tsx
+export function DayDetailsPanel() {
+  const selectedDay = useCalendarStore((state) => state.selectedDay);
+  const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
+  const { openCalendarControls } = usePanelStore();
+
+  const handleClose = () => {
+    setSelectedDay(null);
+    openCalendarControls(); // Return to calendar controls
+  };
+
+  if (!selectedDay) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-muted-foreground">Select a day to view details</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">
+          {format(selectedDay, 'EEEE, MMMM d, yyyy')}
+        </h2>
+        <GlowButton onClick={handleClose} variant="ghost" size="sm">
+          Close Daily View
+        </GlowButton>
+      </div>
+
+      {/* Daily Note */}
+      {dailyNote && (
+        <div className="p-4 rounded-2xl border border-subtle bg-surface">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText size={16} className="text-purple-400" />
+            <span className="font-medium">{dailyNote.title}</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {dailyNote.content?.substring(0, 200)}...
+          </p>
+        </div>
+      )}
+
+      {/* Scheduled Cards */}
+      <div className="space-y-2">
+        <h3 className="text-sm font-semibold text-foreground">
+          Scheduled ({scheduledCards.length})
+        </h3>
+        {scheduledCards.map((card) => (
+          <div key={card.id} className="p-3 rounded-lg bg-surface-soft border border-subtle">
+            {card.title || card.domain || card.url}
+          </div>
+        ))}
+      </div>
+
+      {/* Add Event Button */}
+      <GlowButton onClick={() => setShowAddEventModal(true)} variant="primary">
+        + Add Event
+      </GlowButton>
+    </div>
+  );
+}
+```
+
+**✅ DO**:
+- Return to calendar controls on close (not blank state)
+- Show full date format (EEEE, MMMM d, yyyy)
+- Group daily note and scheduled events clearly
+- Use createPortal for Add Event modal
+
+**❌ DON'T**:
+- Show blank screen when no day selected
+- Use restorePreviousContent() on close (causes blank screen)
+- Render modal inside panel (z-index issues)
+
+#### Add Event Modal
+
+**Use Case**: Quick event creation for specific date from calendar
+
+**Pattern**: Glass modal with title/URL inputs, rendered at document.body
+
+```tsx
+export function AddEventModal({
+  open,
+  onClose,
+  scheduledDate,
+}: AddEventModalProps) {
+  const { addCard } = useDataStore();
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+
+    await addCard({
+      type: 'url',
+      title: title.trim(),
+      url: url.trim() || undefined,
+      scheduledDate: scheduledDate.toISOString(),
+      tags: [],
+      collections: []
+    });
+
+    onClose();
+    setTitle("");
+    setUrl("");
+  };
+
+  if (!open) return null;
+
+  const modalContent = (
+    <div
+      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg p-6 w-full max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="text-xl font-semibold mb-4">Add Event</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Event title"
+            className="w-full px-4 py-2 rounded-lg bg-surface border border-subtle"
+          />
+          <input
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            placeholder="URL (optional)"
+            className="w-full px-4 py-2 rounded-lg bg-surface border border-subtle"
+          />
+          <div className="flex gap-3">
+            <GlowButton type="button" onClick={onClose} variant="ghost">
+              Cancel
+            </GlowButton>
+            <GlowButton type="submit" variant="primary">
+              Add Event
+            </GlowButton>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+
+  return createPortal(modalContent, document.body);
+}
+```
+
+**✅ DO**:
+- Use createPortal to render at document.body
+- Use z-[200] to appear above sidebar (z-[102])
+- Include both title and URL fields
+- Clear form on submit/close
+
+**❌ DON'T**:
+- Render modal inside sidebar component (z-index issues)
+- Forget to stopPropagation on modal click
+- Use z-index lower than sidebar
+
+#### Dynamic View Toggle Button
+
+**Use Case**: Switch between month and week view from calendar controls
+
+**Pattern**: Button label changes based on current view mode
+
+```tsx
+const viewMode = useCalendarStore((state) => state.viewMode);
+const setViewMode = useCalendarStore((state) => state.setViewMode);
+const setCurrentMonth = useCalendarStore((state) => state.setCurrentMonth);
+
+const handleToggleView = () => {
+  setCurrentMonth(new Date()); // Jump to current month/week
+  setViewMode(viewMode === "week" ? "month" : "week");
+};
+
+<GlowButton onClick={handleToggleView} variant="secondary" className="w-full">
+  {viewMode === "week" ? (
+    <>
+      <Calendar size={16} />
+      View This Month
+    </>
+  ) : (
+    <>
+      <CalendarRange size={16} />
+      View This Week
+    </>
+  )}
+</GlowButton>
+```
+
+**✅ DO**:
+- Change button label based on view mode
+- Jump to current month/week on toggle
+- Use Calendar icon for month, CalendarRange for week
+- Show what the button WILL switch to (not current state)
+
+**❌ DON'T**:
+- Keep static "View This Week" label
+- Just jump to today without changing view mode
+- Show current mode (confusing - show action instead)
+
+---
+
+### 9. CONTEXT MENUS
 
 **Purpose**: Right-click menus for cards, Pawkit collections, and other interactive elements
 
