@@ -226,16 +226,13 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
             try {
               const error = await response.json();
               if (error.data?.localOnly) {
-                // Local-only mode is active on server - this is fine
-                console.log('[ViewSettings] Local-only mode active, settings stored locally only');
+                // Local-only mode is active on server - this is fine, settings stored locally only
               } else {
                 console.warn('[ViewSettings] Failed to sync to server (non-critical):', response.status);
               }
             } catch {
               console.warn('[ViewSettings] Failed to sync to server (non-critical):', response.status);
             }
-          } else {
-            console.log('[ViewSettings] Successfully synced to server');
           }
         } catch (error) {
           console.warn('[ViewSettings] Failed to sync to server (non-critical):', error);
@@ -288,7 +285,6 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
             });
 
             set({ settings: loadedSettings });
-            console.log('[ViewSettings] Successfully loaded from server');
           }
         } catch (error) {
           console.warn('[ViewSettings] Failed to load from server (non-critical):', error);

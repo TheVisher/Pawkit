@@ -23,16 +23,12 @@ export function useSyncTriggers() {
   useEffect(() => {
     // Don't set up triggers if server sync is disabled
     if (!serverSync) {
-      console.log('[SyncTriggers] Server sync disabled, skipping triggers');
       return;
     }
-
-    console.log('[SyncTriggers] Setting up sync triggers');
 
     // 1. Periodic sync every 60 seconds
     const intervalId = setInterval(async () => {
       if (navigator.onLine) {
-        console.log('[SyncTriggers] Periodic sync triggered');
         try {
           await syncQueue.process();
         } catch (error) {
@@ -43,7 +39,6 @@ export function useSyncTriggers() {
 
     // 2. Sync when internet connection is restored
     const handleOnline = async () => {
-      console.log('[SyncTriggers] Internet reconnected, syncing...');
       try {
         await syncQueue.process();
       } catch (error) {
@@ -53,7 +48,6 @@ export function useSyncTriggers() {
 
     // 3. Sync before page unload
     const handleBeforeUnload = async () => {
-      console.log('[SyncTriggers] Page unloading, syncing...');
       try {
         // This is best-effort - browser may kill the request
         await syncQueue.process();
@@ -65,10 +59,8 @@ export function useSyncTriggers() {
     // 4. Sync when tab becomes visible again
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        console.log('[SyncTriggers] Tab visible again, checking for pending changes...');
         const pending = await syncQueue.getPendingCount();
         if (pending > 0) {
-          console.log(`[SyncTriggers] Found ${pending} pending changes, syncing...`);
           try {
             await syncQueue.process();
           } catch (error) {
@@ -89,7 +81,6 @@ export function useSyncTriggers() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      console.log('[SyncTriggers] Cleaned up sync triggers');
     };
   }, [serverSync]);
 }
