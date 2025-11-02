@@ -81,7 +81,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
+    // CRITICAL: Clear Supabase session completely
     await supabase.auth.signOut()
+
+    // CRITICAL: Force router refresh to clear any cached user data
+    router.refresh()
     router.push('/login')
   }
 

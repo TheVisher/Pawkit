@@ -4,13 +4,14 @@ import type { PrismaUser } from '@/lib/types'
 import { unstable_cache } from 'next/cache'
 
 // Cache user lookup for 5 minutes to avoid repeated database queries
+// CRITICAL: Cache key MUST include userId to prevent cross-user data leakage
 const getCachedUser = unstable_cache(
   async (userId: string) => {
     return prisma.user.findUnique({
       where: { id: userId }
     })
   },
-  ['user-by-id'],
+  ['user-by-id'], // This will be combined with the userId parameter
   { revalidate: 300, tags: ['user'] }
 )
 
