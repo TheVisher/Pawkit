@@ -198,16 +198,19 @@ export default function PawkitLanding() {
         </h2>
         <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           <ProofCard
-            title="Library with Pawkits"
-            description="Nested collections keep everything organized"
+            title="Library View"
+            description="Browse your complete collection with grid, list, and timeline layouts"
+            imagePath="/images/screenshots/Library-view.jpeg"
           />
           <ProofCard
-            title="The Den"
-            description="Your encrypted private space"
+            title="Notes"
+            description="Create and manage rich markdown notes with powerful editing"
+            imagePath="/images/screenshots/Notesview.png"
           />
           <ProofCard
-            title="Reader Mode"
-            description="Clean, distraction-free article view"
+            title="Pawkits"
+            description="Organize bookmarks into visual collections with preview cards"
+            imagePath="/images/screenshots/Pawkitsview.png"
           />
         </div>
       </section>
