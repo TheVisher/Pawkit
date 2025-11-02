@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, Suspense } from "react";
 import { LibraryView } from "@/components/library/library-view";
 import { CardModel, CollectionNode } from "@/lib/types";
 
@@ -1071,7 +1071,7 @@ const FAKE_COLLECTIONS: CollectionNode[] = [
   },
 ];
 
-export default function DemoPage() {
+function DemoPageContent() {
   // Memoize the fake data
   const items = useMemo(() => FAKE_CARDS, []);
   const collections = useMemo(() => FAKE_COLLECTIONS, []);
@@ -1107,5 +1107,13 @@ export default function DemoPage() {
         />
       </div>
     </div>
+  );
+}
+
+export default function DemoPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <DemoPageContent />
+    </Suspense>
   );
 }
