@@ -36,8 +36,10 @@ export type CalendarContentFilter =
 export function CalendarControls() {
   // Get state from calendar store
   const currentMonth = useCalendarStore((state) => state.currentMonth);
+  const viewMode = useCalendarStore((state) => state.viewMode);
   const contentFilters = useCalendarStore((state) => state.contentFilters);
   const setCurrentMonth = useCalendarStore((state) => state.setCurrentMonth);
+  const setViewMode = useCalendarStore((state) => state.setViewMode);
   const toggleContentFilter = useCalendarStore((state) => state.toggleContentFilter);
   const clearContentFilters = useCalendarStore((state) => state.clearContentFilters);
 
@@ -76,25 +78,22 @@ export function CalendarControls() {
   const handleMonthClick = (monthValue: number) => {
     const newDate = setMonth(currentMonth, monthValue);
     setCurrentMonth(newDate);
+    setViewMode("month"); // Switch to month view when selecting a month
   };
 
   const handleContentFilterToggle = (filter: CalendarContentFilter) => {
     toggleContentFilter(filter);
   };
 
-  const handleAddEvent = () => {
-    // TODO: Implement add event modal
-    console.log("Add event manually");
-  };
-
   const handleJumpToToday = () => {
     setCurrentMonth(new Date());
+    setViewMode("month");
   };
 
   const handleViewThisWeek = () => {
-    // For now, just jump to current week's month
-    // In the future, this could switch to a week view
+    // Switch to week view mode
     setCurrentMonth(new Date());
+    setViewMode("week");
   };
 
   return (
@@ -189,7 +188,7 @@ export function CalendarControls() {
       <PanelSection
         id="calendar-quick-actions"
         title="Quick Actions"
-        icon={<Plus className="h-4 w-4 text-accent" />}
+        icon={<CalendarCheck className="h-4 w-4 text-accent" />}
       >
         <div className="space-y-2">
           <button
@@ -212,17 +211,6 @@ export function CalendarControls() {
           >
             <CalendarRange size={16} />
             View This Week
-          </button>
-
-          <button
-            onClick={handleAddEvent}
-            className="w-full px-4 py-2.5 rounded-lg bg-purple-500/10 border border-purple-500/30
-              hover:bg-purple-500/20 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]
-              transition-all duration-200 flex items-center justify-center gap-2
-              text-sm font-medium text-purple-200"
-          >
-            <Plus size={16} />
-            Add Event Manually
           </button>
         </div>
       </PanelSection>
