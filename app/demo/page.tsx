@@ -3,6 +3,7 @@
 import { useMemo, Suspense } from "react";
 import { LibraryView } from "@/components/library/library-view";
 import { CardModel, CollectionNode } from "@/lib/types";
+import { SelectionStoreProvider } from "@/lib/hooks/selection-store";
 
 // Generate realistic fake bookmark data
 const FAKE_CARDS: CardModel[] = [
@@ -1112,8 +1113,10 @@ function DemoPageContent() {
 
 export default function DemoPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
-      <DemoPageContent />
-    </Suspense>
+    <SelectionStoreProvider>
+      <Suspense fallback={<div>Loading...</div>}>
+        <DemoPageContent />
+      </Suspense>
+    </SelectionStoreProvider>
   );
 }
