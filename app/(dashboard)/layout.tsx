@@ -16,6 +16,7 @@ import { ConflictNotifications } from "@/components/conflict-notifications";
 import { ViewControls } from "@/components/layout/view-controls";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { PawkitActionsProvider } from "@/lib/contexts/pawkit-actions-context";
+import { useAuth } from "@/lib/contexts/auth-context";
 import { CommandPalette } from "@/components/command-palette/command-palette";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
 import { AddCardModal } from "@/components/modals/add-card-modal";
@@ -85,8 +86,9 @@ function BulkOperationsPanelWithHandlers({
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const { user, loading: authLoading } = useAuth();
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
-  const { collections, initialize, isInitialized, refresh, addCard, cards, updateCard, deleteCard } = useDataStore();
+  const { collections, initialize, isInitialized, refresh, addCard, cards, updateCard, deleteCard, reset } = useDataStore();
   const { loadFromServer } = useViewSettingsStore();
   const router = useRouter();
 
@@ -177,12 +179,42 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     fetchUser();
   }, []);
 
-  // Initialize data store on mount - fetches from server ONCE
+  // Reset data store when user changes to prevent data leakage
+  // CRITICAL: This clears the previous user's data before loading new user's data
   useEffect(() => {
+    // Skip if auth is still loading
+    if (authLoading) return;
+
+    // If user ID changed (including logout), reset the store
+    // This ensures each user gets a fresh store with their own data
+    if (isInitialized) {
+      console.log('[Dashboard Layout] User changed, resetting data store');
+      reset();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]); // Only trigger when user ID changes
+
+  // Initialize data store ONLY after auth is ready and user is available
+  // CRITICAL: This prevents "Cannot initialize database without userId" errors
+  useEffect(() => {
+    // Wait for auth to finish loading
+    if (authLoading) {
+      console.log('[Dashboard Layout] Waiting for auth to finish loading...');
+      return;
+    }
+
+    // Ensure we have a user (required for user-specific IndexedDB database)
+    if (!user) {
+      console.log('[Dashboard Layout] No user found, skipping data store initialization');
+      return;
+    }
+
+    // Initialize data store if not already initialized
     if (!isInitialized) {
+      console.log('[Dashboard Layout] Auth ready, user available, initializing data store for user:', user.id);
       initialize();
     }
-  }, [isInitialized, initialize]);
+  }, [authLoading, user, isInitialized, initialize]);
 
   // Load view settings from server on mount
   useEffect(() => {

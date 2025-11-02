@@ -204,6 +204,7 @@ type DataStore = {
 
   // Actions
   initialize: () => Promise<void>;
+  reset: () => void; // Reset state when user changes
   sync: () => Promise<void>;
   addCard: (cardData: Partial<CardDTO>) => Promise<void>;
   updateCard: (id: string, updates: Partial<CardDTO>) => Promise<void>;
@@ -226,6 +227,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
   /**
    * Initialize: Load from IndexedDB (source of truth)
+   * CRITICAL: Requires userId to be set first via localDb.setUserId()
    */
   initialize: async () => {
     if (get().isInitialized) {
@@ -235,11 +237,20 @@ export const useDataStore = create<DataStore>((set, get) => ({
     set({ isLoading: true });
 
     try {
+      console.log('[DataStore V2] Initializing...');
+
+      // CRITICAL: Wait for database to be ready
+      // If userId hasn't been set yet, localDb will throw an error
+      // This is caught and we retry initialization when auth is ready
+      await localDb.init();
+
       // ALWAYS load from local IndexedDB first
       const [allCards, allCollections] = await Promise.all([
         localDb.getAllCards(),
         localDb.getAllCollections(),
       ]);
+
+      console.log('[DataStore V2] Loaded from IndexedDB:', allCards.length, 'cards,', allCollections.length, 'collections');
 
       // CRITICAL: Filter out deleted items (soft-deleted items go to trash)
       const filteredCards = allCards.filter(c => c.deleted !== true);
@@ -283,6 +294,21 @@ export const useDataStore = create<DataStore>((set, get) => ({
       console.error('[DataStore V2] Failed to initialize:', error);
       set({ isLoading: false });
     }
+  },
+
+  /**
+   * Reset: Clear state when user changes
+   * CRITICAL: Called when switching between users to prevent data leakage
+   */
+  reset: () => {
+    console.log('[DataStore V2] Resetting state for user switch');
+    set({
+      cards: [],
+      collections: [],
+      isInitialized: false,
+      isLoading: false,
+      isSyncing: false,
+    });
   },
 
   /**
