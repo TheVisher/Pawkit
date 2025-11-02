@@ -191,6 +191,7 @@ export async function listCards(userId: string, query: CardListQuery) {
   const parsed = cardListQuerySchema.parse(query);
   const limit = parsed.limit ?? 50;
 
+  console.log('[listCards] 🔍 FILTERING CARDS FOR USER:', userId);
   console.log('[listCards] Input query:', query);
   console.log('[listCards] Parsed query:', parsed);
   console.log('[listCards] includeDeleted:', parsed.includeDeleted);
@@ -203,7 +204,7 @@ export async function listCards(userId: string, query: CardListQuery) {
     inDen: false
   };
 
-  console.log('[listCards] WHERE clause:', where);
+  console.log('[listCards] 📋 WHERE clause (userId should match):', JSON.stringify(where, null, 2));
 
   if (parsed.q) {
     const term = parsed.q;
@@ -243,10 +244,25 @@ export async function listCards(userId: string, query: CardListQuery) {
     skip: parsed.cursor ? 1 : 0
   });
 
-  console.log('[listCards] Raw items from DB:', {
+  console.log('[listCards] 📊 Raw items from DB:', {
     count: items.length,
-    firstFewDeleted: items.slice(0, 5).map(c => ({ id: c.id, title: c.title, deleted: c.deleted }))
+    requestedUserId: userId,
+    firstFewWithUserId: items.slice(0, 5).map(c => ({
+      id: c.id,
+      title: c.title,
+      userId: c.userId, // CHECK IF THIS MATCHES requestedUserId
+      deleted: c.deleted
+    }))
   });
+
+  // CRITICAL CHECK: Verify all returned cards belong to the requested user
+  const foreignCards = items.filter(c => c.userId !== userId);
+  if (foreignCards.length > 0) {
+    console.error('[listCards] 🚨🚨🚨 DATA LEAK DETECTED! Cards from other users returned:', {
+      requestedUserId: userId,
+      foreignCards: foreignCards.map(c => ({ id: c.id, title: c.title, userId: c.userId }))
+    });
+  }
 
   const hasMore = items.length > limit;
   const sliced = hasMore ? items.slice(0, limit) : items;
@@ -254,9 +270,9 @@ export async function listCards(userId: string, query: CardListQuery) {
 
   const mapped = sliced.map(mapCard);
 
-  console.log('[listCards] Mapped items:', {
+  console.log('[listCards] ✅ Mapped items:', {
     count: mapped.length,
-    firstFewDeleted: mapped.slice(0, 5).map(c => ({ id: c.id, title: c.title, deleted: c.deleted }))
+    firstFewDeleted: mapped.slice(0, 5).map(c => ({ id: c.id, title: c.title, userId: c.userId, deleted: c.deleted }))
   });
 
   return {

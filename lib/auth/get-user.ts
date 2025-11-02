@@ -35,11 +35,18 @@ export async function getCurrentUser(): Promise<PrismaUser | null> {
       return null
     }
 
+    console.log('[getCurrentUser] 🔑 Supabase user:', {
+      id: user.id,
+      email: user.email,
+      timestamp: new Date().toISOString()
+    });
+
     // Try to get user from cache/database
     let dbUser = await getCachedUser(user.id)
 
     // If user doesn't exist, create them (only happens on first login)
     if (!dbUser) {
+      console.log('[getCurrentUser] Creating new user in database:', user.id);
       dbUser = await prisma.user.upsert({
         where: { id: user.id },
         update: {
@@ -53,9 +60,14 @@ export async function getCurrentUser(): Promise<PrismaUser | null> {
       })
     }
 
+    console.log('[getCurrentUser] ✅ Returning dbUser:', {
+      id: dbUser.id,
+      email: dbUser.email
+    });
+
     return dbUser
   } catch (error) {
-    console.error('Error in getCurrentUser:', error)
+    console.error('[getCurrentUser] ❌ Error:', error)
     return null
   }
 }

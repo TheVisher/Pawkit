@@ -85,8 +85,15 @@ export async function GET(request: NextRequest) {
   try {
     user = await getAuthenticatedUser(request);
     if (!user) {
+      console.log('[API /cards GET] ❌ No authenticated user');
       return withCorsHeaders(unauthorized(), corsHeaders);
     }
+
+    console.log('[API /cards GET] ✅ Authenticated user:', {
+      id: user.id,
+      email: user.email,
+      timestamp: new Date().toISOString()
+    });
 
     const { searchParams } = new URL(request.url);
     const query = Object.fromEntries(searchParams.entries());
@@ -105,11 +112,13 @@ export async function GET(request: NextRequest) {
       includeDeleted
     };
 
-
+    console.log('[API /cards GET] Calling listCards with userId:', user.id);
     const result = await listCards(user.id, payload);
+    console.log('[API /cards GET] listCards returned', result.items.length, 'cards for user:', user.id);
 
     return withCorsHeaders(success(result), corsHeaders);
   } catch (error) {
+    console.error('[API /cards GET] Error:', error);
     return handleApiError(error, { route: '/api/cards', userId: user?.id });
   }
 }
@@ -121,8 +130,15 @@ export async function POST(request: NextRequest) {
   try {
     user = await getAuthenticatedUser(request);
     if (!user) {
+      console.log('[API /cards POST] ❌ No authenticated user');
       return withCorsHeaders(unauthorized(), corsHeaders);
     }
+
+    console.log('[API /cards POST] ✅ Authenticated user:', {
+      id: user.id,
+      email: user.email,
+      timestamp: new Date().toISOString()
+    });
 
     // Rate limiting: 60 card creations per minute per user
     const rateLimitResult = rateLimit({
@@ -141,7 +157,9 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log('[API /cards POST] Creating card for user:', user.id, 'with type:', body.type, 'title:', body.title);
     const card = await createCard(user.id, body);
+    console.log('[API /cards POST] ✅ Card created:', card.id, 'for user:', card.userId);
 
     // Auto-fetch metadata for URL cards created via extension
     if (body.source === 'webext' && card.type === 'url' && card.url) {
@@ -153,6 +171,7 @@ export async function POST(request: NextRequest) {
 
     return withCorsHeaders(created(card), { ...corsHeaders, ...rateLimitHeaders });
   } catch (error) {
+    console.error('[API /cards POST] Error:', error);
     return handleApiError(error, { route: '/api/cards', userId: user?.id });
   }
 }
