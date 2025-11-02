@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { SelectionStoreProvider, useSelection } from "@/lib/hooks/selection-store";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { useNetworkSync } from "@/lib/hooks/use-network-sync";
 import { useSyncSettings } from "@/lib/hooks/use-sync-settings";
 import { useSyncTriggers } from "@/lib/hooks/use-sync-triggers";
@@ -28,6 +29,8 @@ import { ControlPanel } from "@/components/control-panel/control-panel";
 import { LibraryControls } from "@/components/control-panel/library-controls";
 import { NotesControls } from "@/components/control-panel/notes-controls";
 import { PawkitsControls } from "@/components/control-panel/pawkits-controls";
+import { CalendarControls } from "@/components/control-panel/calendar-controls";
+import { DayDetailsPanel } from "@/components/control-panel/day-details-panel";
 import { CardDetailsPanel } from "@/components/control-panel/card-details-panel";
 import { BulkOperationsPanel } from "@/components/control-panel/bulk-operations-panel";
 import { LeftNavigationPanel } from "@/components/navigation/left-navigation-panel";
@@ -275,6 +278,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       } else if (panelActiveCardId) {
         // Close card detail modal and restore previous panel content
         setActiveCardId(null);
+        restorePreviousContent();
+      } else if (contentType === "day-details") {
+        // Close day details and clear selected day
+        useCalendarStore.getState().setSelectedDay(null);
         restorePreviousContent();
       } else if (contentType === "bulk-operations") {
         // Bulk operations panel handles ESC itself by clearing selection
@@ -557,11 +564,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   setBulkMoveCardIds={setBulkMoveCardIds}
                 />
               )}
-              {animatingContentType === "calendar-controls" && (
-                <div className="p-4">
-                  <p className="text-sm text-muted-foreground">Calendar controls coming soon...</p>
-                </div>
-              )}
+              {animatingContentType === "calendar-controls" && <CalendarControls />}
+              {animatingContentType === "day-details" && <DayDetailsPanel />}
             </div>
           </ControlPanel>
 
