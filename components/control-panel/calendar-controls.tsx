@@ -90,10 +90,10 @@ export function CalendarControls() {
     setViewMode("month");
   };
 
-  const handleViewThisWeek = () => {
-    // Switch to week view mode
+  const handleToggleView = () => {
+    // Toggle between week and month view
     setCurrentMonth(new Date());
-    setViewMode("week");
+    setViewMode(viewMode === "week" ? "month" : "week");
   };
 
   return (
@@ -203,14 +203,23 @@ export function CalendarControls() {
           </button>
 
           <button
-            onClick={handleViewThisWeek}
+            onClick={handleToggleView}
             className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10
               hover:bg-white/10 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]
               transition-all duration-200 flex items-center justify-center gap-2
               text-sm font-medium text-muted-foreground hover:text-foreground"
           >
-            <CalendarRange size={16} />
-            View This Week
+            {viewMode === "week" ? (
+              <>
+                <Calendar size={16} />
+                View This Month
+              </>
+            ) : (
+              <>
+                <CalendarRange size={16} />
+                View This Week
+              </>
+            )}
           </button>
         </div>
       </PanelSection>
