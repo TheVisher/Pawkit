@@ -666,19 +666,106 @@ Fundamental Chromium rendering bug with CSS columns (masonry layout) during pare
 
 **Phase 2: Performance Optimization (Weeks 3-6)**
 
-### Priority 1: IndexedDB Performance
+**Context**: Comprehensive performance analysis completed Nov 1, 2025. App will degrade at 500+ cards, become unusable at 1,000+ cards without these optimizations. Total potential impact: -2.25MB bundle, -90% DOM nodes, -60% re-renders.
 
-- [ ] Add IndexedDB indexes (2-3 hours) - [impl: ] [test: ] [done: ]
-  Why: 50-70% faster queries on large datasets
-  Impact: App stays responsive with 1000+ cards
-  Risk: Medium (requires migration)
-  Command: `claude-code "Optimize IndexedDB schema in lib/services/local-storage.ts: 1) Add composite index on (userId, updatedAt) for faster sync queries, 2) Add index on (userId, type) for filtering, 3) Add full-text search index on title and content fields, 4) Test query performance with 1000+ cards"`
+### Quick Wins - IMMEDIATE (Week 1: ~6 hours total, massive impact)
 
-- [ ] Optimize IndexedDB queries (3-4 hours) - [impl: ] [test: ] [done: ]
-  Why: Faster app load, smoother scrolling
-  Impact: Better performance with large datasets
+**Recommended: Start here for maximum ROI**
+
+- [ ] Remove unused date libraries (15 min) - **CRITICAL** - [impl: ] [test: ] [done: ]
+  Why: 10MB of unused dependencies (moment 5.2MB, luxon 4.5MB) - only using date-fns
+  Impact: -500KB bundle reduction, cleaner dependencies
+  Risk: Low (already using date-fns exclusively)
+  Command: `npm uninstall moment moment-timezone luxon && npm prune && npm run build`
+
+- [ ] Add by-deleted IndexedDB index (30 min) - **CRITICAL** - [impl: ] [test: ] [done: ]
+  Why: Currently loading ALL cards including trash items on app init
+  Impact: -30% memory usage, faster app startup
+  Risk: Medium (requires IndexedDB migration to version 5)
+  Files: `lib/services/local-storage.ts` (add index, bump DB_VERSION to 5)
+  Command: `claude-code "Add by-deleted index to IndexedDB: 1) Update LocalStorageDB interface to add 'by-deleted': boolean index, 2) Add migration in upgrade() for version 5: cardStore.createIndex('by-deleted', 'deleted'), 3) Bump DB_VERSION to 5, 4) Create getAllActiveCards() method using index instead of filtering all cards, 5) Test migration with existing data"`
+
+- [ ] Lazy load MD Editor (1 hour) - **HIGH** - [impl: ] [test: ] [done: ]
+  Why: @uiw/react-md-editor is 4.2MB, loaded even when not editing
+  Impact: -400KB bundle, faster initial load
+  Risk: Low (straightforward dynamic import)
+  Files: `components/notes/md-editor.tsx`
+  Command: `claude-code "Lazy load MD Editor: 1) Replace direct import with dynamic import using Next.js dynamic(), 2) Add loading skeleton (glass card with pulse animation), 3) Set ssr: false, 4) Test that editor loads correctly when needed, 5) Verify bundle size reduction in build output"`
+
+- [ ] Virtualize List View (4 hours) - **HIGH** - [impl: ] [test: ] [done: ]
+  Why: Rendering ALL cards in DOM (500 cards = 50,000 DOM nodes)
+  Impact: -90% DOM nodes (500 cards → 50 rendered), smooth 60fps scrolling
+  Risk: Medium (requires react-window or @tanstack/react-virtual)
+  Files: `components/library/card-gallery.tsx` (list view table section)
+  Command: `claude-code "Install @tanstack/react-virtual and virtualize List View: 1) npm install @tanstack/react-virtual, 2) In card-gallery.tsx, wrap list view table with useVirtualizer, 3) Render only visible rows (estimateSize: 60px), 4) Add 5 row overscan for smooth scrolling, 5) Test with 500+ cards, 6) Verify scroll position maintained on updates"`
+
+**Total Quick Wins Impact:**
+- Bundle: -1.3MB (-33%)
+- Memory: -30%
+- DOM nodes: -90% (for list view)
+- Time investment: 6 hours
+- Performance at scale: 500 cards → 2,000+ cards supported
+
+### Medium Priority - Grid/Masonry Virtualization (Week 2-3: ~16 hours)
+
+- [ ] Virtualize Grid View (8 hours) - **MEDIUM** - [impl: ] [test: ] [done: ]
+  Why: Grid layout also renders all cards, same performance issues as list
+  Impact: -90% DOM nodes for grid view
+  Risk: Medium (responsive columns make this complex)
+  Files: `components/library/card-gallery.tsx` (grid view section)
+  Command: `claude-code "Virtualize Grid View: 1) Calculate responsive columns based on viewport width and cardSize setting, 2) Use @tanstack/react-virtual to virtualize rows, 3) Each virtual row contains multiple cards (columns), 4) estimateSize: 300px per row, 5) Handle window resize to recalculate columns, 6) Test with various card sizes and viewport widths, 7) Verify smooth scrolling at 500+ cards"`
+
+- [ ] Add remaining IndexedDB indexes (1 hour) - **MEDIUM** - [impl: ] [test: ] [done: ]
+  Why: by-type, by-tag, by-url indexes speed up common queries
+  Impact: 95% faster filtered queries (500ms → 25ms on 1,000 cards)
+  Risk: Low (non-breaking index additions)
+  Files: `lib/services/local-storage.ts`
+  Command: `claude-code "Add remaining IndexedDB indexes in version 5 migration: 1) by-type index for notes filtering, 2) by-tag index (multiEntry) for tag filtering, 3) by-url index for duplicate detection, 4) Create helper methods: getAllNotes(), getCardsByTag(), getCardByUrl(), 5) Update data-store.ts to use indexed queries where applicable, 6) Test query performance improvement"`
+
+- [ ] Fix inline functions in CardGallery (3 hours) - **MEDIUM** - [impl: ] [test: ] [done: ]
+  Why: 40+ inline functions created on EVERY render bypass React.memo optimization
+  Impact: -60% re-renders at scale, smoother interactions
+  Risk: Medium (requires careful useCallback refactoring)
+  Files: `components/library/card-gallery.tsx` (lines 318-447)
+  Command: `claude-code "Fix inline functions in CardGallery: 1) Extract all inline handlers to useCallback at component top, 2) Pass stable callbacks to CardCell instead of inline functions, 3) Consider callback factory pattern: handleCardAction(cardId, action, data), 4) Verify CardCell memo is working (add React DevTools Profiler check), 5) Test that all card interactions still work correctly"`
+
+- [ ] Lazy load Calendar component (2 hours) - **MEDIUM** - [impl: ] [test: ] [done: ]
+  Why: react-big-calendar pulls in moment/dayjs (heavy), only used in Calendar view
+  Impact: -600KB bundle
   Risk: Low
-  Command: `claude-code "Review all IndexedDB queries in lib/services/local-storage.ts and lib/stores/data-store.ts: 1) Use indexes for all queries, 2) Limit result sets with pagination, 3) Add query result caching for frequently accessed data, 4) Profile slow queries and optimize"`
+  Files: `components/calendar/custom-calendar.tsx`, `app/(dashboard)/calendar/page.tsx`
+  Command: `claude-code "Lazy load Calendar: 1) Wrap CustomCalendar with Next.js dynamic(), 2) Add loading skeleton matching calendar layout, 3) Set ssr: false, 4) Consider replacing react-big-calendar with lighter alternative in future, 5) Verify calendar loads correctly when navigating to /calendar"`
+
+- [ ] Optimize Zustand selectors (2 hours) - **MEDIUM** - [impl: ] [test: ] [done: ]
+  Why: 10+ individual store subscriptions in library-view.tsx cause frequent re-renders
+  Impact: -40% re-renders from store updates
+  Risk: Low
+  Files: `components/library/library-view.tsx`, `components/notes/notes-view.tsx`
+  Command: `claude-code "Optimize Zustand selectors: 1) Import shallow from 'zustand/shallow', 2) Group related selectors into single subscription with shallow comparison, 3) Review all useDataStore, useSelection, usePanelStore calls, 4) Example: combine 5 individual subscriptions into one object selector, 5) Use React DevTools Profiler to verify re-render reduction"`
+
+**Total Medium Priority Impact:**
+- DOM nodes: -90% for grid view (completes virtualization)
+- Re-renders: -50% overall
+- Bundle: -600KB additional
+- Query speed: -95% for indexed queries
+- Time investment: 16 hours
+
+### Priority 1: IndexedDB Performance (COVERED ABOVE - DO NOT DUPLICATE)
+
+**NOTE**: IndexedDB optimization tasks moved to Quick Wins and Medium Priority sections above for better organization.
+
+- [MOVED TO QUICK WINS] Add by-deleted index (30 min)
+- [MOVED TO MEDIUM PRIORITY] Add by-type, by-tag, by-url indexes (1 hour)
+- [MOVED TO MEDIUM PRIORITY] Optimize queries to use indexes
+
+### Priority 2: Rendering Performance (COVERED ABOVE - DO NOT DUPLICATE)
+
+**NOTE**: Virtualization and re-render optimization tasks moved to Quick Wins and Medium Priority sections above.
+
+- [MOVED TO QUICK WINS] Virtualize List View (4 hours)
+- [MOVED TO MEDIUM PRIORITY] Virtualize Grid View (8 hours)
+- [MOVED TO MEDIUM PRIORITY] Fix inline functions (3 hours)
+- [MOVED TO MEDIUM PRIORITY] Optimize Zustand selectors (2 hours)
 
 ### Priority 2: Rendering Performance
 

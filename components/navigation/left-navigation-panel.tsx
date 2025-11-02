@@ -525,8 +525,8 @@ export function LeftNavigationPanel({
       const items: any[] = [];
 
       for (const col of collections) {
-        // Skip the current collection and its descendants
-        if (col.id === currentCollectionId) continue;
+        // Skip the current collection, its descendants, and deleted collections
+        if (col.id === currentCollectionId || col.deleted) continue;
 
         const hasChildren = col.children && col.children.length > 0;
 
@@ -790,7 +790,7 @@ export function LeftNavigationPanel({
         {/* Recursively render children */}
         {hasChildren && isExpanded && collection.children && (
           <div className="ml-6 mt-1 space-y-1">
-            {collection.children.map((child) => renderCollectionTree(child, depth + 1))}
+            {collection.children.filter(c => !c.deleted).map((child) => renderCollectionTree(child, depth + 1))}
           </div>
         )}
       </div>
@@ -1072,7 +1072,7 @@ export function LeftNavigationPanel({
               </div>
               {!collapsedSections["left-pawkits"] && (
                 <div className="space-y-1">
-                  {collections.map((collection) => renderCollectionTree(collection, 0))}
+                  {collections.filter(p => !p.deleted).map((collection) => renderCollectionTree(collection, 0))}
                 </div>
               )}
             </div>
