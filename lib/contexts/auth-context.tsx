@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
+import { localDb } from '@/lib/services/local-storage'
 
 type AuthContextType = {
   user: User | null
@@ -23,16 +24,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null)
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      const newUser = session?.user ?? null
+      setUser(newUser)
+
+      // CRITICAL: Initialize user-specific IndexedDB database
+      // Each user gets their own separate database to prevent data leakage
+      if (newUser) {
+        console.log('[AuthProvider] User logged in, initializing database for user:', newUser.id)
+        await localDb.setUserId(newUser.id)
+      } else {
+        console.log('[AuthProvider] No user, closing database')
+        await localDb.close()
+      }
+
       setLoading(false)
     })
 
     // Listen for changes on auth state (sign in, sign out, etc.)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const newUser = session?.user ?? null
+      setUser(newUser)
+
+      // CRITICAL: Switch to new user's database or close if logging out
+      if (newUser) {
+        console.log('[AuthProvider] User changed, switching to database for user:', newUser.id)
+        await localDb.setUserId(newUser.id)
+      } else {
+        console.log('[AuthProvider] User logged out, closing database')
+        await localDb.close()
+      }
+
       setLoading(false)
       router.refresh()
     })

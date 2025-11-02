@@ -11,6 +11,12 @@ import { CollectionNode } from '@/lib/types';
  * - Backup/recovery
  *
  * User data is NEVER lost even if server is wiped.
+ *
+ * CRITICAL SECURITY FIX (2025-01-02):
+ * Each user gets their own separate IndexedDB database to prevent data leakage.
+ * Database name format: 'pawkit-{userId}'
+ * When users switch or log out, the database is closed and a new one is opened.
+ * This ensures complete data isolation between users on the same browser.
  */
 
 // IndexedDB schema for local storage
@@ -80,13 +86,71 @@ interface LocalStorageDB extends DBSchema {
 
 class LocalStorage {
   private db: IDBPDatabase<LocalStorageDB> | null = null;
-  private readonly DB_NAME = 'pawkit-local-storage';
+  private userId: string | null = null;
   private readonly DB_VERSION = 4; // Version 4: note card links support
+
+  /**
+   * Get the database name for the current user
+   * CRITICAL: Each user gets their own IndexedDB database to prevent data leakage
+   */
+  private getDbName(): string {
+    if (!this.userId) {
+      throw new Error('[LocalStorage] Cannot access database without userId. Call setUserId() first.');
+    }
+    return `pawkit-${this.userId}`;
+  }
+
+  /**
+   * Set the user ID and reinitialize the database
+   * This is called when a user logs in or switches users
+   * Each user gets their own separate IndexedDB database
+   */
+  async setUserId(userId: string | null): Promise<void> {
+    // If userId hasn't changed, nothing to do
+    if (this.userId === userId && this.db) {
+      return;
+    }
+
+    console.log('[LocalStorage] Setting userId:', userId);
+
+    // Close existing database if open
+    if (this.db) {
+      console.log('[LocalStorage] Closing previous database for user:', this.userId);
+      this.db.close();
+      this.db = null;
+    }
+
+    this.userId = userId;
+
+    // Initialize new database for this user
+    if (userId) {
+      await this.init();
+    }
+  }
+
+  /**
+   * Close the current database
+   * Called during logout or user switch
+   */
+  async close(): Promise<void> {
+    if (this.db) {
+      console.log('[LocalStorage] Closing database for user:', this.userId);
+      this.db.close();
+      this.db = null;
+    }
+    this.userId = null;
+  }
 
   async init(): Promise<void> {
     if (this.db) return;
+    if (!this.userId) {
+      throw new Error('[LocalStorage] Cannot initialize database without userId');
+    }
 
-    this.db = await openDB<LocalStorageDB>(this.DB_NAME, this.DB_VERSION, {
+    const dbName = this.getDbName();
+    console.log('[LocalStorage] Initializing database:', dbName);
+
+    this.db = await openDB<LocalStorageDB>(dbName, this.DB_VERSION, {
       upgrade(db, oldVersion, newVersion, transaction) {
         // Create cards store
         if (!db.objectStoreNames.contains('cards')) {
