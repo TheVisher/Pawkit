@@ -236,7 +236,7 @@ export default function PawkitLanding() {
               number="2"
               title="Organize"
               icon={<Folder className="w-10 h-10 text-[#7c3aed]" />}
-              description="Drop into Pawkits. Tag, note, or toss in The Den for privacy."
+              description="Drop into Pawkits. Tag, note, and organize however you like."
             />
             <StepCard
               number="3"
@@ -398,15 +398,15 @@ function StepCard({
   description,
 }: { number: string; title: string; icon: React.ReactNode; description: string }) {
   return (
-    <div className="relative">
-      <Card className="p-8 bg-[rgba(255,255,255,0.03)] border-2 border-[rgba(255,255,255,0.08)] rounded-2xl backdrop-blur-sm hover:border-[#7c3aed]/30 transition-all duration-300">
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#7c3aed] to-[#a36bff] text-white text-2xl font-bold shadow-lg shadow-[#7c3aed]/25">
+    <div className="relative h-full">
+      <Card className="p-8 bg-[rgba(255,255,255,0.03)] border-2 border-[rgba(255,255,255,0.08)] rounded-2xl backdrop-blur-sm hover:border-[#7c3aed]/30 transition-all duration-300 h-full flex flex-col">
+        <div className="text-center space-y-4 flex-1 flex flex-col">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#7c3aed] to-[#a36bff] text-white text-2xl font-bold shadow-lg shadow-[#7c3aed]/25 mx-auto">
             {number}
           </div>
           <div className="flex justify-center">{icon}</div>
           <h3 className="text-2xl font-semibold text-[#f5f5f7]">{title}</h3>
-          <p className="text-[#a3a3b0] leading-relaxed">{description}</p>
+          <p className="text-[#a3a3b0] leading-relaxed flex-1">{description}</p>
         </div>
       </Card>
     </div>
