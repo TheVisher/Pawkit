@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -18,6 +19,13 @@ export function DayDetailsPanel() {
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
 
   const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Track if component is mounted (for portal rendering)
+  useEffect(() => {
+    setIsMounted(true);
+    return () => setIsMounted(false);
+  }, []);
 
   // Get cards scheduled for the selected date
   const scheduledCards = useMemo(() => {
@@ -205,12 +213,15 @@ export function DayDetailsPanel() {
         </div>
       </div>
 
-      {/* Add Event Modal */}
-      <AddEventModal
-        open={showAddEventModal}
-        onClose={() => setShowAddEventModal(false)}
-        scheduledDate={selectedDay}
-      />
+      {/* Add Event Modal - Rendered via portal */}
+      {isMounted && showAddEventModal && createPortal(
+        <AddEventModal
+          open={showAddEventModal}
+          onClose={() => setShowAddEventModal(false)}
+          scheduledDate={selectedDay}
+        />,
+        document.body
+      )}
     </div>
   );
 }
