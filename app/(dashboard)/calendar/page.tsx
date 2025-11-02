@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useDataStore } from "@/lib/stores/data-store";
 import { CustomCalendar } from "@/components/calendar/custom-calendar";
+import { WeekView } from "@/components/calendar/week-view";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/daily-notes";
@@ -15,8 +16,9 @@ export default function CalendarPage() {
   const openDayDetails = usePanelStore((state) => state.openDayDetails);
   const activeCardId = usePanelStore((state) => state.activeCardId);
 
-  // Get current month from calendar store
+  // Get current month and view mode from calendar store
   const currentMonth = useCalendarStore((state) => state.currentMonth);
+  const viewMode = useCalendarStore((state) => state.viewMode);
   const setCurrentMonth = useCalendarStore((state) => state.setCurrentMonth);
   const selectedDay = useCalendarStore((state) => state.selectedDay);
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
@@ -68,20 +70,32 @@ export default function CalendarPage() {
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Calendar</h1>
             <p className="text-sm text-muted-foreground">
-              View your scheduled cards and daily notes by date
+              {viewMode === "week"
+                ? "Week view - detailed view of your schedule"
+                : "View your scheduled cards and daily notes by date"}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Custom Calendar */}
-      <CustomCalendar
-        cards={cards}
-        currentMonth={currentMonth}
-        onDayClick={handleDayClick}
-        onCardClick={(card) => openCardDetails(card.id)}
-        onCreateDailyNote={handleCreateDailyNote}
-      />
+      {/* Conditional Calendar View */}
+      {viewMode === "week" ? (
+        <WeekView
+          cards={cards}
+          currentMonth={currentMonth}
+          onDayClick={handleDayClick}
+          onCardClick={(card) => openCardDetails(card.id)}
+          onCreateDailyNote={handleCreateDailyNote}
+        />
+      ) : (
+        <CustomCalendar
+          cards={cards}
+          currentMonth={currentMonth}
+          onDayClick={handleDayClick}
+          onCardClick={(card) => openCardDetails(card.id)}
+          onCreateDailyNote={handleCreateDailyNote}
+        />
+      )}
     </div>
   );
 }
