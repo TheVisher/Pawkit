@@ -28,14 +28,12 @@ export function useNetworkSync() {
   useEffect(() => {
     // Skip all syncing if server sync is disabled
     if (!serverSync) {
-      console.log('[NetworkSync] Server sync disabled - running in local-only mode');
       return;
     }
 
     // If server sync is enabled but autoSyncOnReconnect is disabled, skip automatic draining
     // (User must manually trigger sync)
     if (!autoSyncOnReconnect) {
-      console.log('[NetworkSync] Server sync enabled but auto-sync on reconnect disabled - manual sync required');
       return;
     }
     const MIN_DRAIN_INTERVAL = 5000; // Don't drain more than once per 5 seconds
@@ -45,7 +43,6 @@ export function useNetworkSync() {
 
       // Prevent duplicate drains
       if (isDrainingRef.current || (now - lastDrainRef.current) < MIN_DRAIN_INTERVAL) {
-        console.log('[NetworkSync] Skipping drain - too soon or already draining');
         return;
       }
 
@@ -53,7 +50,6 @@ export function useNetworkSync() {
       lastDrainRef.current = now;
 
       try {
-        console.log('[NetworkSync] Connection restored - draining queue');
         await drainQueue();
       } catch (error) {
         console.error('[NetworkSync] Failed to drain queue:', error);
@@ -64,12 +60,11 @@ export function useNetworkSync() {
 
     // Listen for network status changes
     const handleOnline = () => {
-      console.log('[NetworkSync] Browser is online');
       safeDrain();
     };
 
     const handleOffline = () => {
-      console.log('[NetworkSync] Browser is offline');
+      // Connection lost - queued operations will sync when connection returns
     };
 
     window.addEventListener('online', handleOnline);

@@ -29,7 +29,6 @@ export function useSyncSettings() {
         // If localStorage and database differ, update both to match localStorage
         // This gives localStorage (user's local preference) priority
         if (dbServerSync !== serverSync) {
-          console.log('[SyncSettings] Syncing serverSync:', serverSync, '-> database');
           await setServerSync(serverSync);
         }
       } catch (error) {
