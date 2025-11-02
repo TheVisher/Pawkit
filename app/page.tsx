@@ -165,8 +165,8 @@ export default function PawkitLanding() {
           />
           <FeatureCard
             icon={<Lock className="w-10 h-10 text-[#7c3aed]" />}
-            title="The Den"
-            description="Zero-knowledge encryption for sensitive bookmarks—only you hold the keys."
+            title="Private Collections"
+            description="End-to-end encrypted collections for sensitive bookmarks—only you hold the keys."
           />
           <FeatureCard
             icon={<FolderTree className="w-10 h-10 text-[#7c3aed]" />}
