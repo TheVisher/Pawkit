@@ -8,13 +8,19 @@ import { ChevronLeft, ChevronRight, Plus, FileText } from "lucide-react";
 
 type CustomCalendarProps = {
   cards: CardModel[];
+  currentMonth?: Date;
   onDayClick?: (date: Date) => void;
   onCardClick?: (card: CardModel) => void;
   onCreateDailyNote?: (date: Date) => void;
 };
 
-export function CustomCalendar({ cards, onDayClick, onCardClick, onCreateDailyNote }: CustomCalendarProps) {
-  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+export function CustomCalendar({
+  cards,
+  currentMonth = new Date(),
+  onDayClick,
+  onCardClick,
+  onCreateDailyNote
+}: CustomCalendarProps) {
   const [isClient, setIsClient] = useState(false);
 
   // Mark as client-side after mount to prevent hydration issues
@@ -73,55 +79,13 @@ export function CustomCalendar({ cards, onDayClick, onCardClick, onCreateDailyNo
     return map;
   }, [cards]);
 
-  const goToPreviousMonth = () => {
-    setCurrentMonth(prev => {
-      const monthStart = startOfMonth(prev);
-      return addDays(monthStart, -1);
-    });
-  };
-
-  const goToNextMonth = () => {
-    setCurrentMonth(prev => {
-      const monthEnd = endOfMonth(prev);
-      return addDays(monthEnd, 1);
-    });
-  };
-
-  const goToToday = () => {
-    setCurrentMonth(new Date());
-  };
-
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header - showing current month/year */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-semibold text-foreground">
-            {format(currentMonth, 'MMMM yyyy')}
-          </h2>
-          <button
-            onClick={goToToday}
-            className="px-3 py-1.5 rounded-lg bg-surface-soft text-sm text-muted-foreground hover:text-foreground hover:bg-surface transition-colors"
-          >
-            Today
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={goToPreviousMonth}
-            className="p-2 rounded-lg bg-surface-soft text-foreground hover:bg-surface transition-colors"
-            aria-label="Previous month"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <button
-            onClick={goToNextMonth}
-            className="p-2 rounded-lg bg-surface-soft text-foreground hover:bg-surface transition-colors"
-            aria-label="Next month"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
+        <h2 className="text-2xl font-semibold text-foreground">
+          {format(currentMonth, 'MMMM yyyy')}
+        </h2>
       </div>
 
       {/* Weekday headers */}
