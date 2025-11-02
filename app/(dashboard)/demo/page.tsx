@@ -4,7 +4,6 @@ import { useMemo, Suspense, useEffect } from "react";
 import { LibraryView } from "@/components/library/library-view";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
-import { useDataStore } from "@/lib/stores/data-store";
 
 // Generate realistic fake bookmark data
 const FAKE_CARDS: CardModel[] = [
@@ -1075,18 +1074,10 @@ const FAKE_COLLECTIONS: CollectionNode[] = [
 
 function DemoPageContent() {
   const setContentType = usePanelStore((state) => state.setContentType);
-  const setCollections = useDataStore((state) => state.setCollections);
-  const setCards = useDataStore((state) => state.setCards);
 
   // Memoize the fake data
   const items = useMemo(() => FAKE_CARDS, []);
   const collections = useMemo(() => FAKE_COLLECTIONS, []);
-
-  // Populate the global store with fake data for the navigation panels
-  useEffect(() => {
-    setCards(items);
-    setCollections(collections);
-  }, [items, collections, setCards, setCollections]);
 
   // Set the right panel content to show library controls
   useEffect(() => {
