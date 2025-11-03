@@ -28,6 +28,9 @@ const ACCENT_COLORS: { name: AccentColor; value: string }[] = [
 ];
 
 export function ProfileModal({ open, onClose, username, email = "", avatarUrl }: ProfileModalProps) {
+  // Debug: Log when modal renders
+  console.log('[ProfileModal] Component rendering, open:', open);
+
   const [userEmail, setUserEmail] = useState(email);
   const [avatar, setAvatar] = useState(avatarUrl || "");
   const [avatarPreview, setAvatarPreview] = useState(avatarUrl || "");
@@ -39,6 +42,9 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
 
   // Auth
   const { signOut } = useAuth();
+
+  // Debug: Log signOut function
+  console.log('[ProfileModal] signOut function available:', typeof signOut);
 
   // Settings from store (including displayName)
   const displayName = useSettingsStore((state) => state.displayName);
@@ -320,7 +326,18 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
               </div>
 
               {/* Sign Out - Moved from footer */}
-              <div className="pt-6 border-t border-white/10">
+              <div className="pt-6 border-t border-white/10 space-y-2">
+                {/* DEBUG: Simple button test */}
+                <button
+                  onClick={() => {
+                    console.log('[ProfileModal] TEST BUTTON CLICKED!');
+                    alert('Test button works!');
+                  }}
+                  className="w-full px-4 py-2 bg-blue-500 text-white rounded"
+                >
+                  TEST: Click Me First
+                </button>
+
                 <GlowButton
                   onClick={() => {
                     console.log('[ProfileModal] Sign Out button clicked!');
