@@ -349,10 +349,19 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                     alert('🔴 SIGN OUT CLICKED - Check console!');
                     console.log('[ProfileModal] 🔴 Sign Out button clicked!');
                     console.error('[ProfileModal] 🔴 Sign Out ERROR LOG TEST');
+                    console.warn('[ProfileModal] 🔴 Sign Out WARNING LOG TEST');
+
+                    console.log('[ProfileModal] 🟡 About to call preventDefault...');
                     e.preventDefault();
+                    console.log('[ProfileModal] 🟡 preventDefault called');
+
                     e.stopPropagation();
+                    console.log('[ProfileModal] 🟡 stopPropagation called');
+
+                    console.log('[ProfileModal] 🟡 After preventDefault, before try block');
 
                     try {
+                      console.log('[ProfileModal] 🔵 ENTERED TRY BLOCK');
                       console.log('[ProfileModal] 🔵 About to call signOut...');
                       console.log('[ProfileModal] 🔵 signOut function type:', typeof signOut);
                       console.log('[ProfileModal] 🔵 signOut function:', signOut);
@@ -361,10 +370,14 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
 
                       console.log('[ProfileModal] ✅ signOut completed successfully');
                     } catch (err) {
-                      console.error('[ProfileModal] ❌ signOut FAILED with error:', err);
+                      console.error('[ProfileModal] ❌ CAUGHT ERROR in try/catch');
+                      console.error('[ProfileModal] ❌ Error object:', err);
+                      console.error('[ProfileModal] ❌ Error message:', err instanceof Error ? err.message : 'No message');
                       console.error('[ProfileModal] ❌ Error stack:', err instanceof Error ? err.stack : 'No stack');
                       alert('Sign out failed: ' + (err instanceof Error ? err.message : String(err)));
                     }
+
+                    console.log('[ProfileModal] 🟣 After try/catch block - execution complete');
                   }}
                   variant="danger"
                   size="md"
