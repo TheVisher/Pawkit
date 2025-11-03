@@ -46,16 +46,23 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   // Debug: Log signOut function
   console.log('[ProfileModal] signOut function available:', typeof signOut);
 
-  // Ultra-minimal handler function for Sign Out
-  const handleSignOutClick = () => {
-    console.log('🚨🚨🚨 HANDLER CALLED 🚨🚨🚨');
-    alert('HANDLER WAS CALLED!');
-    window.location.href = '/login'; // Bypass signOut for now
+  // Sign Out handler - now actually calling signOut
+  const handleSignOutClick = async () => {
+    console.log('🚨 HANDLER: Starting sign out process');
+
+    try {
+      console.log('🚨 HANDLER: Calling signOut()...');
+      await signOut();
+      console.log('🚨 HANDLER: signOut() completed successfully!');
+    } catch (err) {
+      console.error('🚨 HANDLER: signOut() FAILED:', err);
+      alert('Sign out error: ' + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
   // Verify handler was created
-  console.log('🔍 handleSignOutClick defined:', typeof handleSignOutClick);
-  console.log('🔍 handleSignOutClick value:', handleSignOutClick);
+  console.log('🔍 ProfileModal: handleSignOutClick defined:', typeof handleSignOutClick);
+  console.log('🔍 ProfileModal: signOut available:', typeof signOut);
 
   // Settings from store (including displayName)
   const displayName = useSettingsStore((state) => state.displayName);
@@ -354,24 +361,14 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                   TEST: Click Me First
                 </button>
 
-                {/* Ultra-minimal Sign Out button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    console.log('🔴 INLINE HANDLER FIRED');
-                    alert('Inline handler works!');
-                  }}
-                  className="w-full px-4 py-2 bg-green-600 text-white rounded-lg mb-2"
-                >
-                  TEST: Inline Handler
-                </button>
-
+                {/* Actual Sign Out button */}
                 <button
                   type="button"
                   onClick={handleSignOutClick}
-                  className="w-full px-4 py-2 bg-red-600 text-white rounded-lg"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600/20 border border-red-500/30 hover:bg-red-600/30 rounded-lg text-white transition-colors"
                 >
-                  TEST: Named Handler
+                  <LogOut className="h-4 w-4" />
+                  Sign Out
                 </button>
               </div>
             </TabsContent>
