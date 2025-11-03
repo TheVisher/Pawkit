@@ -344,28 +344,11 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
               </div>
 
               {/* Sign Out - Moved from footer */}
-              <div className="pt-6 border-t border-white/10 space-y-2">
-                {/* DEBUG: Simple button test */}
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    alert('✅ TEST BUTTON CLICKED - Check console!');
-                    console.log('[ProfileModal] ✅ TEST BUTTON CLICKED!');
-                    console.error('[ProfileModal] ✅ TEST ERROR LOG');
-                    console.warn('[ProfileModal] ✅ TEST WARNING LOG');
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  className="w-full px-4 py-2 bg-blue-500 text-white rounded"
-                >
-                  TEST: Click Me First
-                </button>
-
-                {/* Actual Sign Out button */}
+              <div className="pt-6 border-t border-white/10">
                 <button
                   type="button"
                   onClick={handleSignOutClick}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600/20 border border-red-500/30 hover:bg-red-600/30 rounded-lg text-white transition-colors"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600/20 border border-red-500/30 hover:bg-red-600/30 hover:border-red-500/50 rounded-lg text-white transition-colors"
                 >
                   <LogOut className="h-4 w-4" />
                   Sign Out
