@@ -329,9 +329,14 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
               <div className="pt-6 border-t border-white/10 space-y-2">
                 {/* DEBUG: Simple button test */}
                 <button
-                  onClick={() => {
-                    console.log('[ProfileModal] TEST BUTTON CLICKED!');
-                    alert('Test button works!');
+                  type="button"
+                  onClick={(e) => {
+                    alert('✅ TEST BUTTON CLICKED - Check console!');
+                    console.log('[ProfileModal] ✅ TEST BUTTON CLICKED!');
+                    console.error('[ProfileModal] ✅ TEST ERROR LOG');
+                    console.warn('[ProfileModal] ✅ TEST WARNING LOG');
+                    e.preventDefault();
+                    e.stopPropagation();
                   }}
                   className="w-full px-4 py-2 bg-blue-500 text-white rounded"
                 >
@@ -339,10 +344,16 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                 </button>
 
                 <GlowButton
-                  onClick={() => {
-                    console.log('[ProfileModal] Sign Out button clicked!');
+                  type="button"
+                  onClick={(e) => {
+                    alert('🔴 SIGN OUT CLICKED - Check console!');
+                    console.log('[ProfileModal] 🔴 Sign Out button clicked!');
+                    console.error('[ProfileModal] 🔴 Sign Out ERROR LOG TEST');
+                    e.preventDefault();
+                    e.stopPropagation();
                     signOut().catch((err) => {
                       console.error('[ProfileModal] Sign out failed:', err);
+                      alert('Sign out failed: ' + err.message);
                     });
                   }}
                   variant="danger"
