@@ -20,9 +20,7 @@ const DB_VERSION = 4;
 
 export interface MigrationResult {
   success: boolean;
-  cardsM
-
-igrated: number;
+  cardsMigrated: number;
   collectionsMigrated: number;
   metadataMigrated: number;
   errors: string[];
