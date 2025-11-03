@@ -413,11 +413,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     setIsInDen(card.collections?.includes('the-den') ?? false);
     setIsPinned(card.pinned ?? false);
     setArticleContent(card.articleContent ?? null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     setNotes(card.notes ?? "");
     setContent(card.content ?? "");
     lastSavedNotesRef.current = card.notes ?? "";
     lastSavedContentRef.current = card.content ?? "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.id, card.title]);
 
   // Save on modal close to ensure nothing is lost
