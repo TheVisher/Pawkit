@@ -322,7 +322,12 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
               {/* Sign Out - Moved from footer */}
               <div className="pt-6 border-t border-white/10">
                 <GlowButton
-                  onClick={() => signOut()}
+                  onClick={() => {
+                    console.log('[ProfileModal] Sign Out button clicked!');
+                    signOut().catch((err) => {
+                      console.error('[ProfileModal] Sign out failed:', err);
+                    });
+                  }}
                   variant="danger"
                   size="md"
                   className="w-full"
