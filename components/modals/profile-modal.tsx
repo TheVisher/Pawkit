@@ -345,16 +345,26 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
 
                 <GlowButton
                   type="button"
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     alert('🔴 SIGN OUT CLICKED - Check console!');
                     console.log('[ProfileModal] 🔴 Sign Out button clicked!');
                     console.error('[ProfileModal] 🔴 Sign Out ERROR LOG TEST');
                     e.preventDefault();
                     e.stopPropagation();
-                    signOut().catch((err) => {
-                      console.error('[ProfileModal] Sign out failed:', err);
-                      alert('Sign out failed: ' + err.message);
-                    });
+
+                    try {
+                      console.log('[ProfileModal] 🔵 About to call signOut...');
+                      console.log('[ProfileModal] 🔵 signOut function type:', typeof signOut);
+                      console.log('[ProfileModal] 🔵 signOut function:', signOut);
+
+                      await signOut();
+
+                      console.log('[ProfileModal] ✅ signOut completed successfully');
+                    } catch (err) {
+                      console.error('[ProfileModal] ❌ signOut FAILED with error:', err);
+                      console.error('[ProfileModal] ❌ Error stack:', err instanceof Error ? err.stack : 'No stack');
+                      alert('Sign out failed: ' + (err instanceof Error ? err.message : String(err)));
+                    }
                   }}
                   variant="danger"
                   size="md"
