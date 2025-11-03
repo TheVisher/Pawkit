@@ -46,6 +46,27 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   // Debug: Log signOut function
   console.log('[ProfileModal] signOut function available:', typeof signOut);
 
+  // Separate handler function for Sign Out
+  const handleSignOutClick = async () => {
+    console.log('handleSignOutClick: Step 1 - Function called');
+    console.log('handleSignOutClick: Step 2 - Before try block');
+
+    try {
+      console.log('handleSignOutClick: Step 3 - Inside try block');
+      console.log('handleSignOutClick: Step 4 - About to call signOut');
+      console.log('handleSignOutClick: Step 5 - signOut type:', typeof signOut);
+
+      await signOut();
+
+      console.log('handleSignOutClick: Step 6 - signOut completed');
+    } catch (err) {
+      console.error('handleSignOutClick: Step 7 - ERROR caught:', err);
+      alert('Sign out failed: ' + (err instanceof Error ? err.message : String(err)));
+    }
+
+    console.log('handleSignOutClick: Step 8 - Function complete');
+  };
+
   // Settings from store (including displayName)
   const displayName = useSettingsStore((state) => state.displayName);
   const setDisplayName = useSettingsStore((state) => state.setDisplayName);
@@ -343,49 +364,15 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
                   TEST: Click Me First
                 </button>
 
-                <GlowButton
+                {/* Simplified Sign Out button with named handler */}
+                <button
                   type="button"
-                  onClick={async (e) => {
-                    alert('🔴 SIGN OUT CLICKED - Check console!');
-                    console.log('[ProfileModal] 🔴 Sign Out button clicked!');
-                    console.error('[ProfileModal] 🔴 Sign Out ERROR LOG TEST');
-                    console.warn('[ProfileModal] 🔴 Sign Out WARNING LOG TEST');
-
-                    console.log('[ProfileModal] 🟡 About to call preventDefault...');
-                    e.preventDefault();
-                    console.log('[ProfileModal] 🟡 preventDefault called');
-
-                    e.stopPropagation();
-                    console.log('[ProfileModal] 🟡 stopPropagation called');
-
-                    console.log('[ProfileModal] 🟡 After preventDefault, before try block');
-
-                    try {
-                      console.log('[ProfileModal] 🔵 ENTERED TRY BLOCK');
-                      console.log('[ProfileModal] 🔵 About to call signOut...');
-                      console.log('[ProfileModal] 🔵 signOut function type:', typeof signOut);
-                      console.log('[ProfileModal] 🔵 signOut function:', signOut);
-
-                      await signOut();
-
-                      console.log('[ProfileModal] ✅ signOut completed successfully');
-                    } catch (err) {
-                      console.error('[ProfileModal] ❌ CAUGHT ERROR in try/catch');
-                      console.error('[ProfileModal] ❌ Error object:', err);
-                      console.error('[ProfileModal] ❌ Error message:', err instanceof Error ? err.message : 'No message');
-                      console.error('[ProfileModal] ❌ Error stack:', err instanceof Error ? err.stack : 'No stack');
-                      alert('Sign out failed: ' + (err instanceof Error ? err.message : String(err)));
-                    }
-
-                    console.log('[ProfileModal] 🟣 After try/catch block - execution complete');
-                  }}
-                  variant="danger"
-                  size="md"
-                  className="w-full"
+                  onClick={handleSignOutClick}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600/20 border border-red-500/30 hover:bg-red-600/30 hover:border-red-500/50 rounded-lg transition-all"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign Out
-                </GlowButton>
+                  <LogOut className="h-4 w-4" />
+                  Sign Out (Simplified)
+                </button>
               </div>
             </TabsContent>
 
