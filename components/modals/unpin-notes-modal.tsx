@@ -33,7 +33,7 @@ export function UnpinNotesModal({ open, onClose, pinnedNotes, onUnpin }: UnpinNo
         <div className="border-b border-gray-800 p-4">
           <h2 className="text-xl font-semibold text-gray-100">Maximum Pins Reached</h2>
           <p className="text-sm text-gray-400 mt-1">
-            You can only pin 3 notes. Unpin one to add a new one.
+            You can only pin 10 notes. Unpin one to add a new one.
           </p>
         </div>
 
