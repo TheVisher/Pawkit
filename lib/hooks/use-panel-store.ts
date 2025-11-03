@@ -227,6 +227,47 @@ export const usePanelStore = create<PanelState>()(
           set({ contentType: previousContentType, activeCardId: null });
         }
       },
+
+      // USER SWITCHING: Reset panel state for new user/workspace
+      _switchUser: async (userId: string, workspaceId: string) => {
+        console.log('[PanelStore] Switching user context', { userId, workspaceId });
+
+        // Reset to defaults (UI state, doesn't need server sync)
+        set({
+          mode: "anchored",
+          isOpen: false,
+          contentType: "library-controls",
+          previousContentType: "closed",
+          activeCardId: null,
+          collapsedSections: {},
+          wasAutoOpened: false,
+          leftMode: "floating",
+          isLeftOpen: true,
+        });
+
+        // Try to load from user-specific localStorage
+        const key = `control-panel-state-${userId}-${workspaceId}`;
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.state) {
+              // Only restore persisted fields
+              set({
+                mode: parsed.state.mode ?? "anchored",
+                isOpen: parsed.state.isOpen ?? false,
+                contentType: parsed.state.contentType ?? "library-controls",
+                collapsedSections: parsed.state.collapsedSections ?? {},
+                leftMode: parsed.state.leftMode ?? "floating",
+                isLeftOpen: parsed.state.isLeftOpen ?? true,
+              });
+              console.log('[PanelStore] Loaded from localStorage:', key);
+            }
+          }
+        } catch (error) {
+          console.error('[PanelStore] Error loading from localStorage:', error);
+        }
+      },
     }),
     {
       name: "control-panel-state",
