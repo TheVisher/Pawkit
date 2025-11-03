@@ -88,7 +88,11 @@ export function LibraryView({
 
   // Get selected tags from store (managed by control panel)
   // Use tags directly from store without filtering - trust the control panel
-  const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
+  // Wrap in useMemo to prevent dependency issues
+  const selectedTags = useMemo(
+    () => (viewSettings.viewSpecific?.selectedTags as string[]) || [],
+    [viewSettings.viewSpecific?.selectedTags]
+  );
 
   // Get global settings (thumbnails)
   const showThumbnails = useSettingsStore((state) => state.showThumbnails);
@@ -97,7 +101,7 @@ export function LibraryView({
   // Use hydration-safe layout to prevent SSR mismatches
   const [layout, setLayout] = useState<LayoutMode>("grid");
   const [isHydrated, setIsHydrated] = useState(false);
-  
+
   useEffect(() => {
     setIsHydrated(true);
     setLayout(viewSettings.layout || "grid");

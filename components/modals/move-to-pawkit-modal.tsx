@@ -28,6 +28,7 @@ export function MoveToPawkitModal({ open, onClose, onConfirm }: MoveToPawkitModa
       setSelectedSlug(null);
       loadPawkits();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
