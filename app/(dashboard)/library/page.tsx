@@ -243,6 +243,7 @@ function LibraryPageContent() {
         rediscoverStore.reset();
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRediscoverMode, rediscoverStore.filter, items]);
 
   // Handlers for Rediscover mode
