@@ -341,6 +341,58 @@ export const useSettingsStore = create<SettingsState>()(
           console.error('[Settings] Failed to load from server:', error);
         }
       },
+
+      // USER SWITCHING: Reset and reload settings for new user/workspace
+      _switchUser: async (userId: string, workspaceId: string) => {
+        console.log('[Settings] Switching user context', { userId, workspaceId });
+
+        // Reset to defaults
+        set({
+          displayName: "",
+          autoFetchMetadata: true,
+          showThumbnails: true,
+          previewServiceUrl: DEFAULT_PREVIEW_URL,
+          theme: "dark",
+          accentColor: "purple",
+          notifications: true,
+          autoSave: true,
+          compactMode: false,
+          showPreviews: true,
+          serverSync: true,
+          autoSyncOnReconnect: true,
+          cardSize: 3,
+          displaySettings: {
+            library: { ...defaultDisplaySettings },
+            home: { ...defaultDisplaySettings },
+            den: { ...defaultDisplaySettings },
+            pawkit: { ...defaultDisplaySettings },
+            notes: { ...defaultDisplaySettings },
+          },
+          pinnedNoteIds: [],
+          showSyncStatusInSidebar: true,
+          showKeyboardShortcutsInSidebar: true,
+          defaultView: "masonry",
+          defaultSort: "dateAdded",
+        });
+
+        // Try to load from user-specific localStorage
+        const key = `vbm-settings-${userId}-${workspaceId}`;
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.state) {
+              set(parsed.state);
+              console.log('[Settings] Loaded from localStorage:', key);
+            }
+          }
+        } catch (error) {
+          console.error('[Settings] Error loading from localStorage:', error);
+        }
+
+        // Load from server
+        await get().loadFromServer();
+      },
     }),
     {
       name: "vbm-settings"

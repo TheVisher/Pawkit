@@ -293,6 +293,35 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
           set({ isLoading: false });
         }
       },
+
+      // USER SWITCHING: Reset and reload view settings for new user/workspace
+      _switchUser: async (userId: string, workspaceId: string) => {
+        console.log('[ViewSettings] Switching user context', { userId, workspaceId });
+
+        // Reset to defaults
+        set({
+          settings: createDefaultSettings(),
+          isLoading: false,
+        });
+
+        // Try to load from user-specific localStorage
+        const key = `view-settings-storage-${userId}-${workspaceId}`;
+        try {
+          const stored = localStorage.getItem(key);
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            if (parsed.state && parsed.state.settings) {
+              set({ settings: parsed.state.settings });
+              console.log('[ViewSettings] Loaded from localStorage:', key);
+            }
+          }
+        } catch (error) {
+          console.error('[ViewSettings] Error loading from localStorage:', error);
+        }
+
+        // Load from server
+        await get().loadFromServer();
+      },
     }),
     {
       name: "view-settings-storage",
