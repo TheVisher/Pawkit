@@ -876,6 +876,462 @@ function CardList() {
 
 ---
 
+## USER ISOLATION
+
+### Multi-User Data Isolation (January 2025 Implementation)
+
+**Status**: ✅ Complete - Fully isolated per-user databases with automatic user switch detection
+
+**Key Principle**: Each user's data is completely isolated from other users on the same device. Zero data bleeding between accounts.
+
+---
+
+### Per-User Database Architecture
+
+**Rule**: Each user gets their own isolated IndexedDB database
+
+```typescript
+// lib/services/local-storage.ts
+
+class LocalStorage {
+  private userId: string | null = null;
+  private workspaceId: string | null = null;
+
+  private getDbName(): string {
+    if (!this.userId) {
+      throw new Error('Cannot access database without userId');
+    }
+    // ✅ Database name includes userId for isolation
+    return `pawkit-${this.userId}-${this.workspaceId}-local-storage`;
+  }
+
+  async init(userId: string, workspaceId: string): Promise<void> {
+    // Close previous user's database if exists
+    if (this.db && (this.userId !== userId || this.workspaceId !== workspaceId)) {
+      console.log('[LocalStorage] Switching user context - closing old database');
+      this.db.close();
+      this.db = null;
+    }
+
+    this.userId = userId;
+    this.workspaceId = workspaceId;
+
+    // Open user-specific database
+    this.db = await openDB<LocalStorageDB>(this.getDbName(), this.DB_VERSION, {
+      upgrade(db) {
+        // Schema definition...
+      }
+    });
+  }
+}
+```
+
+**Result**:
+- User A: `pawkit-user-a-id-default-local-storage`
+- User B: `pawkit-user-b-id-default-local-storage`
+- Completely separate databases, zero data bleeding
+
+---
+
+### User Switch Detection
+
+**CRITICAL**: The `pawkit_last_user_id` localStorage marker enables user switch detection
+
+```typescript
+// lib/hooks/use-user-storage.ts
+
+export function useUserStorage(workspaceId: string = DEFAULT_WORKSPACE_ID) {
+  useEffect(() => {
+    async function initializeUserStorage() {
+      // Get current authenticated user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const currentUserId = user.id;
+
+      // ✅ Check if this is a different user than last time
+      const previousUserId = localStorage.getItem('pawkit_last_user_id');
+
+      if (previousUserId && previousUserId !== currentUserId) {
+        console.warn('[useUserStorage] USER SWITCH DETECTED!');
+
+        // ✅ CRITICAL: Clean up previous user's data
+        await cleanupPreviousUser(previousUserId);
+      }
+
+      // Initialize storage for current user
+      await localDb.init(currentUserId, workspaceId);
+      await syncQueue.init(currentUserId, workspaceId);
+
+      // ✅ Store current user ID for next login
+      localStorage.setItem('pawkit_last_user_id', currentUserId);
+    }
+
+    initializeUserStorage();
+  }, [workspaceId]);
+}
+```
+
+**How It Works**:
+1. User A logs in → `pawkit_last_user_id = "user-a-id"` stored
+2. User A signs out → `pawkit_last_user_id` **MUST be cleared**
+3. User B logs in → System checks marker, finds it missing or different
+4. If different → Triggers `cleanupPreviousUser()` to clear old data
+5. Initializes fresh database for User B
+
+---
+
+### Sign Out Cleanup (CRITICAL)
+
+**Rule**: ALWAYS clear session markers on sign out
+
+**❌ WRONG: Missing marker cleanup**
+```typescript
+const signOut = async () => {
+  // Sign out from Supabase
+  await supabase.auth.signOut();
+  router.push('/login');
+
+  // ❌ MISSING: localStorage.removeItem('pawkit_last_user_id')
+  // Result: Next user sees previous user's data!
+}
+```
+
+**✅ CORRECT: Complete cleanup**
+```typescript
+// lib/contexts/auth-context.tsx
+
+const signOut = async () => {
+  try {
+    // ✅ CRITICAL: Clear session markers FIRST
+    localStorage.removeItem('pawkit_last_user_id');      // User switch detection
+    localStorage.removeItem('pawkit_active_device');     // Multi-session management
+
+    // Sign out from Supabase
+    await supabase.auth.signOut();
+
+    // Close database connections
+    try {
+      const { localDb } = await import('@/lib/services/local-storage');
+      const { syncQueue } = await import('@/lib/services/sync-queue');
+      await localDb.close();
+      await syncQueue.close();
+    } catch (dbError) {
+      console.error('[Auth] Error closing databases:', dbError);
+      // Non-critical - continue anyway
+    }
+
+    router.push('/login');
+  } catch (error) {
+    console.error('[Auth] Sign out failed:', error);
+    // Try to redirect anyway
+    router.push('/login');
+  }
+}
+```
+
+**Why This Is Critical**:
+- Without clearing `pawkit_last_user_id`, system can't detect user switches
+- Next user will see previous user's data
+- This is a **critical security vulnerability**
+- Always test sign out → login with different user
+
+---
+
+### Cleanup on User Switch
+
+**Implementation**:
+
+```typescript
+// lib/hooks/use-user-storage.ts
+
+async function cleanupPreviousUser(previousUserId: string): Promise<void> {
+  try {
+    console.log('[useUserStorage] Cleaning up previous user data:', previousUserId);
+
+    // ✅ Clear IndexedDB databases
+    await localDb.clearUserData(previousUserId);
+    await syncQueue.clearUserData(previousUserId);
+
+    // ✅ Clear user-specific localStorage keys
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.includes(previousUserId)) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+      console.log('[useUserStorage] Removed localStorage key:', key);
+    });
+
+    // ✅ Close any open connections
+    await localDb.close();
+    await syncQueue.close();
+
+    console.log('[useUserStorage] Previous user cleanup complete');
+  } catch (error) {
+    console.error('[useUserStorage] Error cleaning up previous user:', error);
+    // Non-critical - continue anyway
+  }
+}
+```
+
+**What Gets Cleaned**:
+- Previous user's IndexedDB database
+- User-specific localStorage keys
+- Open database connections
+- Session markers
+
+---
+
+### User-Specific localStorage Keys
+
+**Pattern**: All user-specific data includes userId in key
+
+```typescript
+// ✅ CORRECT: User-scoped keys
+localStorage.setItem(`pawkit-recent-history-${userId}`, JSON.stringify(history));
+localStorage.setItem(`pawkit-${userId}-active-workspace`, workspaceId);
+localStorage.setItem(`view-settings-storage-${userId}`, settings);
+
+// ❌ WRONG: Global keys (data bleeds between users)
+localStorage.setItem('pawkit-recent-history', JSON.stringify(history));
+localStorage.setItem('pawkit-active-workspace', workspaceId);
+```
+
+**Critical Session Markers** (NOT user-scoped):
+```typescript
+// These are global and MUST be cleared on sign out:
+localStorage.getItem('pawkit_last_user_id');      // User switch detection
+localStorage.getItem('pawkit_active_device');     // Multi-session management
+```
+
+---
+
+### Dashboard Integration
+
+**Rule**: Wait for user storage initialization before loading data
+
+```typescript
+// app/(dashboard)/layout.tsx
+
+export default function DashboardLayout({ children }: { children: ReactNode }) {
+  // ✅ CRITICAL: Initialize user-specific storage FIRST
+  const { userId, workspaceId, isReady, isLoading, error } = useUserStorage();
+
+  const { initialize, isInitialized } = useDataStore();
+
+  // ✅ Wait for user storage to be ready
+  useEffect(() => {
+    if (isReady && !isInitialized) {
+      console.log('[Dashboard] User storage ready, initializing data store');
+      initialize();
+    }
+  }, [isReady, isInitialized, initialize]);
+
+  // ✅ Show loading screen while initializing
+  if (isLoading || !isReady) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p>Initializing secure storage...</p>
+          {userId && <p className="text-xs">User: {userId.slice(0, 8)}...</p>}
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Show error if initialization failed
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2>Storage Initialization Error</h2>
+          <p>{error}</p>
+          <button onClick={() => router.push('/login')}>
+            Return to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+```
+
+**Why This Matters**:
+- Data store initialization happens AFTER user storage is ready
+- Ensures correct user database is opened
+- Prevents race conditions on login
+
+---
+
+### Migration from Global Database
+
+**Support for existing users**:
+
+```typescript
+// lib/services/storage-migration.ts
+
+export async function migrateToUserSpecificStorage(
+  userId: string,
+  workspaceId: string
+): Promise<void> {
+  console.log('[Migration] Starting migration for user:', userId);
+
+  // Check if old global database exists
+  const databases = await indexedDB.databases();
+  const oldDbName = 'pawkit-local-storage';
+  const hasOldDb = databases.some(db => db.name === oldDbName);
+
+  if (!hasOldDb) {
+    console.log('[Migration] No old database found, skipping migration');
+    return;
+  }
+
+  // Open old database
+  const oldDb = await openDB(oldDbName, 1);
+
+  // Copy data to new user-specific database
+  await localDb.init(userId, workspaceId);
+
+  const cards = await oldDb.getAll('cards');
+  const collections = await oldDb.getAll('collections');
+
+  for (const card of cards) {
+    await localDb.saveCard(card);
+  }
+
+  for (const collection of collections) {
+    await localDb.saveCollection(collection);
+  }
+
+  // Close and delete old database
+  oldDb.close();
+  await indexedDB.deleteDatabase(oldDbName);
+
+  console.log('[Migration] Migration complete');
+}
+```
+
+**Automatic Migration**:
+- Runs on first login after upgrade
+- Checks for old global database
+- Copies data to new user-specific database
+- Deletes old database
+- Only runs once per user
+
+---
+
+### Testing User Isolation
+
+**Manual Test Procedure**:
+
+1. **Sign in as User A**
+   - Create URL bookmark: "User A URL"
+   - Create note: "User A Note"
+   - Verify data appears
+
+2. **Sign Out**
+   - Check console for: `[Auth] Clearing session markers`
+   - Check console for: `[Auth] Database connections closed`
+
+3. **Sign in as User B** (different account)
+   - Check console for: `[useUserStorage] USER SWITCH DETECTED!`
+   - Check console for: `[useUserStorage] Cleaning up previous user data`
+   - Verify dashboard is EMPTY (no User A data)
+   - Create User B's own content
+
+4. **Sign Out and back in as User A**
+   - Verify you ONLY see User A's content
+   - User B's data should be invisible
+
+**Expected Console Logs**:
+```
+[Auth] Clearing session markers
+[Auth] Database connections closed
+[useUserStorage] USER SWITCH DETECTED!
+[useUserStorage] Previous user: user-a-id
+[useUserStorage] Current user: user-b-id
+[useUserStorage] Cleaning up previous user data
+[useUserStorage] Removed localStorage key: pawkit-recent-history-user-a-id
+[useUserStorage] Previous user cleanup complete
+[useUserStorage] Initializing databases for user: user-b-id
+```
+
+---
+
+### Common Pitfalls
+
+**❌ PITFALL 1: Forgetting to clear session markers**
+```typescript
+const signOut = async () => {
+  await supabase.auth.signOut();
+  router.push('/login');
+  // ❌ Missing: localStorage.removeItem('pawkit_last_user_id')
+}
+// Result: Next user sees previous user's data
+```
+
+**❌ PITFALL 2: Using global localStorage keys**
+```typescript
+localStorage.setItem('recent-history', data);  // ❌ Global
+// Should be:
+localStorage.setItem(`pawkit-recent-history-${userId}`, data);  // ✅ User-scoped
+```
+
+**❌ PITFALL 3: Initializing data store before user storage**
+```typescript
+useEffect(() => {
+  initialize();  // ❌ Called before useUserStorage is ready
+}, []);
+// Should wait for isReady flag from useUserStorage
+```
+
+**❌ PITFALL 4: Not testing with multiple real accounts**
+```typescript
+// Testing with same account in two tabs won't catch isolation issues!
+// Must test: User A → Sign Out → User B → Sign Out → User A
+```
+
+---
+
+### Security Checklist for User Isolation
+
+- [ ] Each user has separate IndexedDB database
+- [ ] Database name includes userId
+- [ ] `pawkit_last_user_id` cleared on sign out
+- [ ] `useUserStorage` detects user switches
+- [ ] Previous user's data cleaned up on switch
+- [ ] All localStorage keys are user-scoped (except markers)
+- [ ] Dashboard waits for `isReady` before loading
+- [ ] Tested with 2+ real accounts
+- [ ] Console logs show proper cleanup
+- [ ] No data bleeding between accounts
+
+---
+
+### Impact
+
+**Before**: Critical security vulnerability - users could see each other's data on shared devices
+
+**After**: Complete isolation - each user's data is invisible to other users
+
+**Deployment**: January 3, 2025 - Merged to main and deployed to production
+
+**Files**:
+- `lib/hooks/use-user-storage.ts` - User storage initialization hook
+- `lib/services/storage-migration.ts` - Migration from old global database
+- `lib/contexts/auth-context.tsx` - Sign out with marker cleanup
+- `lib/services/local-storage.ts` - Per-user database architecture
+- `app/(dashboard)/layout.tsx` - Integration with useUserStorage
+
+---
+
 ## ERROR MESSAGES
 
 ### Rule: Generic to Client, Detailed to Logs

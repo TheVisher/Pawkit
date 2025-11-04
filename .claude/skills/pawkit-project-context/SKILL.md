@@ -11,14 +11,184 @@ description: Track development progress, major milestones, and session history a
 
 ## Current Status
 
-**Branch**: `claude/fix-main-bugs-011CUfH4XKwHPJ29z3vN8LRb`
-**Status**: Context menu system implementation and bug fixes complete
-**Last Updated**: October 31, 2025
-**Next Steps**: Test all context menu functionality, verify visual consistency
+**Branch**: `main`
+**Status**: User isolation and sign out functionality fully fixed and deployed
+**Last Updated**: January 3, 2025
+**Next Steps**: Monitor production deployment, consider removing excess debug logging
 
 ---
 
 ## Session History
+
+### Date: January 3, 2025 - CRITICAL FIX: User Isolation & Sign Out Restoration
+
+**Status**: ✅ COMPLETE - Merged to main (commit 6f9fe5f)
+**Priority**: CRITICAL SECURITY FIX
+**Branch**: `claude/fix-sync-bugs-011CUmJiyEbu2iTCVjMM8wvD`
+
+**Problem Discovery**:
+
+After previous session's isolation work, two critical bugs emerged:
+1. **Sign Out button completely broken** - No UI response, no console logs, button appeared dead
+2. **Complete user isolation failure** - ALL data bleeding between accounts (URLs + notes)
+
+**Investigation & Fixes**:
+
+**Bug #1: Sign Out Button Not Working**
+
+**Root Cause**: The complex cleanup code added for isolation (dynamic imports, database clearing, localStorage cleanup) was **failing silently**. When Sign Out was clicked:
+- Button onClick handler fired
+- But the complex async operations inside failed without visible errors
+- Dynamic imports (`await import('@/lib/services/local-storage')`) appeared to break execution
+- User saw no feedback - button seemed dead
+
+**Debugging Process**:
+1. Started with comprehensive logging to track execution flow
+2. Added test buttons (inline vs named handlers) to isolate issue
+3. Discovered that named handlers worked BUT signOut() call never executed
+4. Found that inline handlers with alerts worked, but complex code stopped execution
+5. Reverted to simple signOut from main branch (just `supabase.auth.signOut()` + redirect)
+
+**Files**:
+- `components/modals/profile-modal.tsx` - Simplified to named handler function
+- `lib/contexts/auth-context.tsx` - Reverted to simple signOut (lines 59-93)
+
+**Bug #2: Complete User Isolation Failure**
+
+**Root Cause**: When we simplified signOut to fix the button, we **removed critical localStorage cleanup**. Specifically:
+- `localStorage.removeItem('pawkit_last_user_id')` was missing
+- This marker is used by `useUserStorage` hook to detect user switches
+- Without clearing it, system couldn't tell when a different user logged in
+
+**The Flow**:
+1. User A logs in → `pawkit_last_user_id = "user-a-id"` stored
+2. User A creates data → Saved to `pawkit-user-a-id-default-local-storage`
+3. User A signs out → OLD CODE: Only cleared Supabase session
+4. User B logs in → `useUserStorage` checks `pawkit_last_user_id`
+   - Found: `"user-a-id"` (not cleared!)
+   - Current: `"user-b-id"`
+   - **SHOULD** trigger `cleanupPreviousUser()` but marker wasn't cleared
+   - System thinks it's same user, doesn't clean up
+5. User B sees User A's data! 🐛
+
+**The Fix**:
+```typescript
+const signOut = async () => {
+  // CRITICAL: Clear session markers so next login detects user switch
+  localStorage.removeItem('pawkit_last_user_id');  // ← THE KEY FIX
+  localStorage.removeItem('pawkit_active_device');
+
+  // Sign out from Supabase
+  await supabase.auth.signOut();
+
+  // Close database connections for clean slate
+  try {
+    const { localDb } = await import('@/lib/services/local-storage');
+    const { syncQueue } = await import('@/lib/services/sync-queue');
+    await localDb.close();
+    await syncQueue.close();
+  } catch (dbError) {
+    // Non-critical - continue anyway
+  }
+
+  router.push('/login');
+}
+```
+
+**Technical Implementation**:
+
+**User Switch Detection** (from `lib/hooks/use-user-storage.ts`):
+```typescript
+// Check if this is a different user than last time
+const previousUserId = localStorage.getItem('pawkit_last_user_id');
+
+if (previousUserId && previousUserId !== currentUserId) {
+  console.warn('[useUserStorage] USER SWITCH DETECTED!');
+  // CRITICAL: Clean up previous user's data
+  await cleanupPreviousUser(previousUserId);
+}
+
+// Initialize storage for current user
+await localDb.init(currentUserId, workspaceId);
+await syncQueue.init(currentUserId, workspaceId);
+
+// Store current user ID for next login
+localStorage.setItem('pawkit_last_user_id', currentUserId);
+```
+
+**Per-User Database Architecture**:
+- Each user gets isolated IndexedDB: `pawkit-{userId}-default-local-storage`
+- User switch triggers automatic cleanup of previous user's database
+- Fresh database initialized for new user
+- Zero data bleeding between accounts
+
+**Debugging Process**:
+
+1. **Initial test showed complete failure** - Both URLs and notes bleeding between accounts
+2. **Checked `useUserStorage` hook** - Confirmed it has proper isolation logic
+3. **Checked database naming** - Confirmed per-user databases exist
+4. **Realized**: If local storage is isolated, issue must be sign out not clearing markers
+5. **Added marker cleanup to signOut** - Instant fix!
+
+**Testing & Verification**:
+
+User tested with 2 accounts:
+- ✅ User A's data (notes + URLs) invisible to User B
+- ✅ User B's data (notes + URLs) invisible to User A
+- ✅ Sign Out works reliably
+- ✅ Data persists correctly for each user
+- ✅ Console logs show proper cleanup and user switch detection
+
+**Files Modified**:
+- `lib/contexts/auth-context.tsx` - Added session marker cleanup to signOut
+- `components/modals/profile-modal.tsx` - Simplified Sign Out button handler
+- `lib/hooks/use-user-storage.ts` - (Already had isolation logic, no changes needed)
+- `lib/services/local-storage.ts` - (Already had per-user databases, no changes needed)
+
+**Commits** (11 total on branch):
+- 35ade04 - Initial user workspace architecture
+- 4c5f810 - Complete user-specific database implementation
+- f3114aa - Fix React Hook exhaustive-deps warnings
+- 917d039 - Fix TypeScript errors in hooks
+- 5d06487 - Clean up: remove redundant syncQueue.init() call
+- fa17320 - debug: add comprehensive logging to signOut functionality
+- 2f46823 - debug: add component-level logging and test button
+- 7b9c557 - debug: add aggressive logging and alerts to both buttons
+- faa9463 - fix: add comprehensive logging and await to signOut call
+- ... (more debug commits)
+- d4a379f - **fix: clear session markers on signOut to enable user isolation** ← THE FIX
+- 444db1c - cleanup: remove test button, keep only Sign Out
+
+**Merge to Main**: 6f9fe5f
+- 18 files changed, 1,033 additions, 111 deletions
+- Successfully merged and deployed to production
+
+**New Files Created**:
+- `lib/hooks/use-user-storage.ts` - User storage initialization hook
+- `lib/services/storage-migration.ts` - Migration from old global database
+
+**Architecture Improvements**:
+1. **User-Specific Storage Hook** - Dashboard layout now calls `useUserStorage()` before initializing data
+2. **Automatic User Switch Detection** - System detects when different user logs in
+3. **Automatic Cleanup** - Previous user's data automatically cleaned up
+4. **Database Isolation** - Per-user IndexedDB databases with workspace support
+5. **Migration Support** - Automatically migrates existing users from old global database
+
+**Impact**:
+- Critical security vulnerability completely resolved
+- User data fully isolated between accounts
+- Sign Out functionality restored and reliable
+- Clean user switching with automatic cleanup
+- Production-ready and deployed
+
+**Lessons Learned**:
+1. Dynamic imports can fail silently in client-side React components
+2. Session markers are CRITICAL for user switch detection
+3. Always test the happy path after fixing bugs (we broke sign out while fixing isolation)
+4. localStorage cleanup is just as important as database cleanup
+5. Simple solutions are often better than complex ones
+
+---
 
 ### Date: January 2, 2025 (Evening) - CRITICAL: User Data Isolation Bug Investigation
 

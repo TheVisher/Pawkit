@@ -135,6 +135,87 @@ description: Living, interactive roadmap serving as single source of truth for p
 
 **Reference for what's done - do not modify this section**
 
+### January 3, 2025
+
+- ✅ **CRITICAL FIX: User Isolation & Sign Out Restoration** (Full day debug session)
+  Fixed two critical bugs that emerged after isolation implementation
+  **Branch:** `claude/fix-sync-bugs-011CUmJiyEbu2iTCVjMM8wvD`
+  **Merged to main:** Commit 6f9fe5f (18 files changed, 1,033 additions, 111 deletions)
+
+  **Bug #1 - Sign Out Button Not Working:**
+  - **Symptom:** Button completely dead - no UI response, no console logs, appeared broken
+  - **Root Cause:** Complex cleanup code with dynamic imports failing silently
+  - **Fix:** Reverted to simple signOut (Supabase signOut + redirect) with essential cleanup
+  - **Key Learning:** Dynamic imports can fail silently in React client components
+
+  **Bug #2 - Complete User Isolation Failure:**
+  - **Symptom:** ALL data bleeding between accounts (URLs + notes visible across users)
+  - **Root Cause:** Missing `localStorage.removeItem('pawkit_last_user_id')` in signOut
+  - **Impact:** useUserStorage couldn't detect user switches, no cleanup triggered
+  - **Fix:** Added session marker cleanup to signOut function
+  - **The Critical Line:** `localStorage.removeItem('pawkit_last_user_id');`
+
+  **How User Switch Detection Works:**
+  ```typescript
+  // On login, check for user switch
+  const previousUserId = localStorage.getItem('pawkit_last_user_id');
+  if (previousUserId && previousUserId !== currentUserId) {
+    // Different user detected - cleanup previous user's data
+    await cleanupPreviousUser(previousUserId);
+  }
+  ```
+
+  **Architecture Improvements:**
+  - User-specific IndexedDB databases: `pawkit-{userId}-default-local-storage`
+  - Automatic user switch detection via localStorage marker
+  - Automatic cleanup of previous user's data on switch
+  - Clean signOut that closes connections and clears markers
+  - Migration support for existing users from old global database
+
+  **Testing & Verification:**
+  - ✅ User A's data invisible to User B
+  - ✅ User B's data invisible to User A
+  - ✅ Sign Out works reliably
+  - ✅ Data persists correctly per user
+
+  **New Files Created:**
+  - `lib/hooks/use-user-storage.ts` - User storage initialization hook
+  - `lib/services/storage-migration.ts` - Migration from old global database
+
+  **Files Modified:**
+  - `lib/contexts/auth-context.tsx` - Fixed signOut with marker cleanup
+  - `components/modals/profile-modal.tsx` - Simplified Sign Out button
+  - `lib/services/local-storage.ts` - Per-user database architecture
+  - `lib/services/sync-queue.ts` - User-aware sync queue
+  - `app/(dashboard)/layout.tsx` - Integrated useUserStorage hook
+  - `lib/hooks/settings-store.ts` - User-specific settings
+  - `lib/hooks/view-settings-store.ts` - User-specific view preferences
+  - Plus 10 more files with isolation improvements
+
+  **Debugging Process:**
+  - Comprehensive logging at every execution step
+  - Test buttons (inline vs named handlers) to isolate issues
+  - Verified database naming and isolation logic
+  - Identified localStorage marker as missing piece
+  - Tested with 2 real user accounts across sign in/out cycles
+
+  **Impact:**
+  - Critical security vulnerability completely resolved
+  - User data fully isolated between accounts
+  - Sign Out functionality restored and reliable
+  - Clean user switching with automatic cleanup
+  - Production-ready and deployed
+
+  **Lessons Learned:**
+  1. Dynamic imports can fail silently - keep critical code simple
+  2. Session markers are CRITICAL for user switch detection
+  3. Always test happy path after fixing bugs (we broke sign out while fixing isolation)
+  4. localStorage cleanup is as important as database cleanup
+  5. Simple solutions often better than complex ones
+
+  **Commits:** 11 total including debug iterations and final fix
+  **Time:** Full day debugging session with extensive testing
+
 ### January 2, 2025
 
 - ✅ **Calendar View Improvements - Complete Sidebar Control System** (6+ hours total)
