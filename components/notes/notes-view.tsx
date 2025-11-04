@@ -34,7 +34,11 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
 
   // Get selected tags from view settings (checks both tags AND collections)
   // Use tags directly from store without filtering - trust the control panel
-  const selectedTags = (viewSettings.viewSpecific?.selectedTags as string[]) || [];
+  // Wrap in useMemo to prevent dependency issues
+  const selectedTags = useMemo(
+    () => (viewSettings.viewSpecific?.selectedTags as string[]) || [],
+    [viewSettings.viewSpecific?.selectedTags]
+  );
 
   // Use hydration-safe layout to prevent SSR mismatches
   const [layout, setLayout] = useState<LayoutMode>("grid");
@@ -76,6 +80,7 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
     // Listen for hash changes
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cards, isHydrated]);
 
   // Sort and filter cards based on view settings and selected tags

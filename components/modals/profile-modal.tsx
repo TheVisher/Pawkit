@@ -28,6 +28,9 @@ const ACCENT_COLORS: { name: AccentColor; value: string }[] = [
 ];
 
 export function ProfileModal({ open, onClose, username, email = "", avatarUrl }: ProfileModalProps) {
+  // Debug: Log when modal renders
+  console.log('[ProfileModal] Component rendering, open:', open);
+
   const [userEmail, setUserEmail] = useState(email);
   const [avatar, setAvatar] = useState(avatarUrl || "");
   const [avatarPreview, setAvatarPreview] = useState(avatarUrl || "");
@@ -39,6 +42,27 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
 
   // Auth
   const { signOut } = useAuth();
+
+  // Debug: Log signOut function
+  console.log('[ProfileModal] signOut function available:', typeof signOut);
+
+  // Sign Out handler - now actually calling signOut
+  const handleSignOutClick = async () => {
+    console.log('🚨 HANDLER: Starting sign out process');
+
+    try {
+      console.log('🚨 HANDLER: Calling signOut()...');
+      await signOut();
+      console.log('🚨 HANDLER: signOut() completed successfully!');
+    } catch (err) {
+      console.error('🚨 HANDLER: signOut() FAILED:', err);
+      alert('Sign out error: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  // Verify handler was created
+  console.log('🔍 ProfileModal: handleSignOutClick defined:', typeof handleSignOutClick);
+  console.log('🔍 ProfileModal: signOut available:', typeof signOut);
 
   // Settings from store (including displayName)
   const displayName = useSettingsStore((state) => state.displayName);
@@ -321,15 +345,14 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
 
               {/* Sign Out - Moved from footer */}
               <div className="pt-6 border-t border-white/10">
-                <GlowButton
-                  onClick={() => signOut()}
-                  variant="danger"
-                  size="md"
-                  className="w-full"
+                <button
+                  type="button"
+                  onClick={handleSignOutClick}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600/20 border border-red-500/30 hover:bg-red-600/30 hover:border-red-500/50 rounded-lg text-white transition-colors"
                 >
-                  <LogOut className="mr-2 h-4 w-4" />
+                  <LogOut className="h-4 w-4" />
                   Sign Out
-                </GlowButton>
+                </button>
               </div>
             </TabsContent>
 

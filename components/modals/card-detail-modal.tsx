@@ -328,7 +328,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       // Regular link
       return <a href={href} className="text-accent hover:underline" target="_blank" rel="noopener noreferrer" {...props}>{children}</a>;
     },
-  }), [noteTitleMap, cardTitleMap, allCards, onNavigateToCard]);
+  }), [cardTitleMap, allCards, onNavigateToCard]);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [isPinned, setIsPinned] = useState(card.pinned ?? false);
@@ -391,6 +391,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   useEffect(() => {
     setContent(card.content ?? "");
     lastSavedContentRef.current = card.content ?? "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.id]); // Removed card.content to prevent cursor jumping when typing
 
   useEffect(() => {
@@ -416,6 +417,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     setContent(card.content ?? "");
     lastSavedNotesRef.current = card.notes ?? "";
     lastSavedContentRef.current = card.content ?? "";
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card.id, card.title]);
 
   // Save on modal close to ensure nothing is lost

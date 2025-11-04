@@ -388,6 +388,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
       setWikiLinkStartPos(null);
       setAutocompleteQuery('');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [content, mode, wikiLinkStartPos, autocompleteOpen]);
 
   // Track content changes for save status

@@ -41,6 +41,7 @@ import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import type { CardModel } from "@/lib/types";
 import { initActivityTracking } from "@/lib/utils/device-session";
 import { SessionWarningBanner } from "@/components/session-warning-banner";
+import { useUserStorage } from "@/lib/hooks/use-user-storage";
 
 // Wrapper component that provides bulk operation handlers with access to selection store
 function BulkOperationsPanelWithHandlers({
@@ -85,6 +86,9 @@ function BulkOperationsPanelWithHandlers({
 }
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  // CRITICAL: Initialize user-specific storage FIRST (security fix)
+  const { userId, workspaceId, isReady, isLoading, error } = useUserStorage();
+
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
   const { collections, initialize, isInitialized, refresh, addCard, cards, updateCard, deleteCard } = useDataStore();
   const { loadFromServer } = useViewSettingsStore();
@@ -161,8 +165,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
   }, [contentType, animatingContentType, setActiveCardId]);
 
-  // Fetch user data once on mount (no SWR polling)
+  // Fetch user data once user storage is ready
   useEffect(() => {
+    if (!isReady) return;
+
     const fetchUser = async () => {
       try {
         const response = await fetch('/api/user');
@@ -175,19 +181,22 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       }
     };
     fetchUser();
-  }, []);
+  }, [isReady]);
 
-  // Initialize data store on mount - fetches from server ONCE
+  // Initialize data store ONLY after user storage is ready (security fix)
   useEffect(() => {
-    if (!isInitialized) {
+    if (isReady && !isInitialized) {
+      console.log('[Dashboard] User storage ready, initializing data store');
       initialize();
     }
-  }, [isInitialized, initialize]);
+  }, [isReady, isInitialized, initialize]);
 
-  // Load view settings from server on mount
+  // Load view settings ONLY after user storage is ready
   useEffect(() => {
-    loadFromServer();
-  }, [loadFromServer]);
+    if (isReady) {
+      loadFromServer();
+    }
+  }, [isReady, loadFromServer]);
 
   // DISABLED: This was causing excessive syncing and card duplication
   // Sync is now handled by useNetworkSync hook with proper debouncing
@@ -352,6 +361,38 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     // Clear the stored card IDs
     setBulkMoveCardIds([]);
   };
+
+  // Show loading screen while user storage is initializing
+  if (isLoading || !isReady) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent mx-auto"></div>
+          <p className="text-muted-foreground">Initializing secure storage...</p>
+          {userId && <p className="text-xs text-muted-foreground/60">User: {userId.slice(0, 8)}...</p>}
+        </div>
+      </div>
+    );
+  }
+
+  // Show error screen if storage initialization failed
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center space-y-4 max-w-md p-6">
+          <div className="text-red-500 text-4xl">⚠️</div>
+          <h2 className="text-xl font-semibold">Storage Initialization Error</h2>
+          <p className="text-muted-foreground">{error}</p>
+          <button
+            onClick={() => router.push('/login')}
+            className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90"
+          >
+            Return to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <SelectionStoreProvider>
