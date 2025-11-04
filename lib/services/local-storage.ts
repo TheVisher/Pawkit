@@ -3,7 +3,7 @@ import { CardDTO } from '@/lib/server/cards';
 import { CollectionNode } from '@/lib/types';
 
 /**
- * LOCAL-FIRST STORAGE LAYER
+ * LOCAL-FIRST STORAGE LAYER WITH WORKSPACE SUPPORT
  *
  * This is the PRIMARY source of truth for all user data.
  * The server is ONLY used for:
@@ -11,7 +11,14 @@ import { CollectionNode } from '@/lib/types';
  * - Backup/recovery
  *
  * User data is NEVER lost even if server is wiped.
+ *
+ * SECURITY: Each user has isolated IndexedDB databases per workspace.
+ * Database naming: pawkit-${userId}-${workspaceId}-local-storage
+ * Default workspace: "default" (until workspace UI is implemented)
  */
+
+// Default workspace ID (used until workspace feature is built)
+export const DEFAULT_WORKSPACE_ID = 'default';
 
 // IndexedDB schema for local storage
 interface LocalStorageDB extends DBSchema {
@@ -80,13 +87,48 @@ interface LocalStorageDB extends DBSchema {
 
 class LocalStorage {
   private db: IDBPDatabase<LocalStorageDB> | null = null;
-  private readonly DB_NAME = 'pawkit-local-storage';
+  private userId: string | null = null;
+  private workspaceId: string | null = null;
   private readonly DB_VERSION = 4; // Version 4: note card links support
 
-  async init(): Promise<void> {
-    if (this.db) return;
+  /**
+   * Get user-specific database name with workspace support
+   */
+  private getDbName(): string {
+    if (!this.userId) {
+      throw new Error('[LocalStorage] userId not initialized - cannot get database name');
+    }
+    if (!this.workspaceId) {
+      throw new Error('[LocalStorage] workspaceId not initialized - cannot get database name');
+    }
+    return `pawkit-${this.userId}-${this.workspaceId}-local-storage`;
+  }
 
-    this.db = await openDB<LocalStorageDB>(this.DB_NAME, this.DB_VERSION, {
+  /**
+   * Initialize database for specific user and workspace
+   * @param userId - User's unique ID
+   * @param workspaceId - Workspace ID (defaults to DEFAULT_WORKSPACE_ID)
+   */
+  async init(userId: string, workspaceId: string = DEFAULT_WORKSPACE_ID): Promise<void> {
+    // Already initialized for this user and workspace
+    if (this.db && this.userId === userId && this.workspaceId === workspaceId) {
+      return;
+    }
+
+    // Switching users or workspaces - close old database
+    if (this.db && (this.userId !== userId || this.workspaceId !== workspaceId)) {
+      console.log('[LocalStorage] Switching context, closing old database', {
+        from: { userId: this.userId, workspaceId: this.workspaceId },
+        to: { userId, workspaceId }
+      });
+      this.db.close();
+      this.db = null;
+    }
+
+    this.userId = userId;
+    this.workspaceId = workspaceId;
+
+    this.db = await openDB<LocalStorageDB>(this.getDbName(), this.DB_VERSION, {
       upgrade(db, oldVersion, newVersion, transaction) {
         // Create cards store
         if (!db.objectStoreNames.contains('cards')) {
@@ -126,13 +168,73 @@ class LocalStorage {
         // string-based deleted status or compound indexes.
       },
     });
+
+    console.log(`[LocalStorage] Initialized for user: ${userId}, workspace: ${workspaceId}`);
+  }
+
+  /**
+   * Clear ALL workspace data for a specific user (used on logout)
+   * This deletes all workspace databases for the user
+   */
+  async clearUserData(userId: string): Promise<void> {
+    console.log(`[LocalStorage] Clearing all data for user: ${userId}`);
+
+    // Get all databases and find ones matching this user
+    const databases = await indexedDB.databases();
+    const userDatabases = databases.filter(db =>
+      db.name?.startsWith(`pawkit-${userId}-`) && db.name?.endsWith('-local-storage')
+    );
+
+    console.log(`[LocalStorage] Found ${userDatabases.length} workspace databases to delete for user ${userId}`);
+
+    // Delete all workspace databases for this user
+    for (const db of userDatabases) {
+      if (db.name) {
+        await indexedDB.deleteDatabase(db.name);
+        console.log(`[LocalStorage] Deleted database: ${db.name}`);
+      }
+    }
+  }
+
+  /**
+   * Clear data for a specific workspace (used when deleting a workspace)
+   */
+  async clearWorkspaceData(userId: string, workspaceId: string): Promise<void> {
+    const dbName = `pawkit-${userId}-${workspaceId}-local-storage`;
+    console.log(`[LocalStorage] Clearing workspace data: ${dbName}`);
+    await indexedDB.deleteDatabase(dbName);
+  }
+
+  /**
+   * Close current database connection and clear context
+   */
+  async close(): Promise<void> {
+    if (this.db) {
+      console.log('[LocalStorage] Closing database connection');
+      this.db.close();
+      this.db = null;
+      this.userId = null;
+      this.workspaceId = null;
+    }
+  }
+
+  /**
+   * Get current user context (for debugging)
+   */
+  getContext(): { userId: string | null; workspaceId: string | null; isInitialized: boolean } {
+    return {
+      userId: this.userId,
+      workspaceId: this.workspaceId,
+      isInitialized: this.db !== null
+    };
   }
 
   // ==================== CARDS ====================
 
   async getAllCards(includeDeleted = false): Promise<CardDTO[]> {
-    await this.init();
-    if (!this.db) return [];
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const cards = await this.db.getAll('cards');
     // Filter out soft-deleted cards unless explicitly requested
@@ -148,8 +250,9 @@ class LocalStorage {
   }
 
   async getCard(id: string): Promise<CardDTO | undefined> {
-    await this.init();
-    if (!this.db) return undefined;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const card = await this.db.get('cards', id);
     if (!card) return undefined;
@@ -159,8 +262,9 @@ class LocalStorage {
   }
 
   async saveCard(card: CardDTO, options?: { localOnly?: boolean; fromServer?: boolean }): Promise<void> {
-    await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const existing = await this.db.get('cards', card.id);
 
@@ -210,8 +314,9 @@ class LocalStorage {
   }
 
   async deleteCard(id: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     // Soft delete: mark as deleted instead of removing
     const card = await this.db.get('cards', id);
@@ -223,15 +328,17 @@ class LocalStorage {
   }
 
   async permanentlyDeleteCard(id: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     await this.db.delete('cards', id);
   }
 
   async emptyTrash(): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     // Get all deleted cards and collections
     const allCards = await this.db.getAll('cards');
@@ -255,8 +362,9 @@ class LocalStorage {
   }
 
   async getModifiedCards(): Promise<CardDTO[]> {
-    await this.init();
-    if (!this.db) return [];
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const allCards = await this.db.getAll('cards');
     return allCards
@@ -268,8 +376,9 @@ class LocalStorage {
   }
 
   async markCardSynced(id: string, serverVersion: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const card = await this.db.get('cards', id);
     if (!card) return;
@@ -285,8 +394,9 @@ class LocalStorage {
   // ==================== COLLECTIONS ====================
 
   async getAllCollections(includeDeleted = false): Promise<CollectionNode[]> {
-    await this.init();
-    if (!this.db) return [];
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const collections = await this.db.getAll('collections');
     const cleanCollections = collections
@@ -333,8 +443,9 @@ class LocalStorage {
   }
 
   async saveCollection(collection: CollectionNode, options?: { localOnly?: boolean; fromServer?: boolean }): Promise<void> {
-    await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const existing = await this.db.get('collections', collection.id);
 
@@ -349,22 +460,25 @@ class LocalStorage {
   }
 
   async deleteCollection(id: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     await this.db.delete('collections', id);
   }
 
   async permanentlyDeleteCollection(id: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     await this.db.delete('collections', id);
   }
 
   async getModifiedCollections(): Promise<CollectionNode[]> {
-    await this.init();
-    if (!this.db) return [];
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const allCollections = await this.db.getAll('collections');
     return allCollections
@@ -376,8 +490,9 @@ class LocalStorage {
   }
 
   async markCollectionSynced(id: string, serverVersion: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const collection = await this.db.get('collections', id);
     if (!collection) return;
@@ -393,16 +508,18 @@ class LocalStorage {
   // ==================== METADATA ====================
 
   async getMetadata(key: string): Promise<any> {
-    await this.init();
-    if (!this.db) return null;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const item = await this.db.get('metadata', key);
     return item?.value;
   }
 
   async setMetadata(key: string, value: any): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     await this.db.put('metadata', {
       key,
@@ -429,8 +546,9 @@ class LocalStorage {
     exportedAt: string;
     version: number;
   }> {
-    await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const cards = await this.getAllCards();
     const collections = await this.getAllCollections();
@@ -447,8 +565,9 @@ class LocalStorage {
     cards?: CardDTO[];
     collections?: CollectionNode[];
   }): Promise<void> {
-    await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const tx = this.db.transaction(['cards', 'collections'], 'readwrite');
 
@@ -480,8 +599,9 @@ class LocalStorage {
   }
 
   async clear(): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const tx = this.db.transaction(['cards', 'collections', 'metadata'], 'readwrite');
     await tx.objectStore('cards').clear();
@@ -493,8 +613,9 @@ class LocalStorage {
   // ==================== NOTE LINKS ====================
 
   async addNoteLink(sourceId: string, targetId: string, linkText: string): Promise<void> {
-    await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const link = {
       id: `${sourceId}-${targetId}`,
@@ -508,31 +629,35 @@ class LocalStorage {
   }
 
   async getNoteLinks(noteId: string): Promise<Array<{ id: string; targetNoteId: string; linkText: string; createdAt: string }>> {
-    await this.init();
-    if (!this.db) return [];
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const links = await this.db.getAllFromIndex('noteLinks', 'by-source', noteId);
     return links;
   }
 
   async getBacklinks(noteId: string): Promise<Array<{ id: string; sourceNoteId: string; linkText: string; createdAt: string }>> {
-    await this.init();
-    if (!this.db) return [];
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const backlinks = await this.db.getAllFromIndex('noteLinks', 'by-target', noteId);
     return backlinks;
   }
 
   async deleteNoteLink(linkId: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     await this.db.delete('noteLinks', linkId);
   }
 
   async deleteAllLinksForNote(noteId: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     // Delete all outgoing links (where this note is the source)
     const outgoingLinks = await this.getNoteLinks(noteId);
@@ -555,8 +680,9 @@ class LocalStorage {
   }
 
   async updateLinkReferences(oldNoteId: string, newNoteId: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const outgoingLinks = await this.getNoteLinks(oldNoteId);
     const incomingLinks = await this.getBacklinks(oldNoteId);
@@ -591,8 +717,9 @@ class LocalStorage {
   // ==================== NOTE CARD LINKS ====================
 
   async addNoteCardLink(sourceId: string, targetCardId: string, linkText: string, linkType: 'card' | 'url'): Promise<void> {
-    await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const link = {
       id: `${sourceId}-card-${targetCardId}`,
@@ -607,31 +734,35 @@ class LocalStorage {
   }
 
   async getNoteCardLinks(noteId: string): Promise<Array<{ id: string; targetCardId: string; linkText: string; linkType: 'card' | 'url'; createdAt: string }>> {
-    await this.init();
-    if (!this.db) return [];
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const links = await this.db.getAllFromIndex('noteCardLinks', 'by-source', noteId);
     return links;
   }
 
   async getCardBacklinks(cardId: string): Promise<Array<{ id: string; sourceNoteId: string; linkText: string; linkType: 'card' | 'url'; createdAt: string }>> {
-    await this.init();
-    if (!this.db) return [];
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const backlinks = await this.db.getAllFromIndex('noteCardLinks', 'by-target', cardId);
     return backlinks;
   }
 
   async deleteNoteCardLink(linkId: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     await this.db.delete('noteCardLinks', linkId);
   }
 
   async deleteAllCardLinksForNote(noteId: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const outgoingLinks = await this.getNoteCardLinks(noteId);
     const incomingLinks = await this.getCardBacklinks(noteId);
@@ -659,7 +790,6 @@ class LocalStorage {
     modifiedCards: number;
     lastSync: number | null;
   }> {
-    await this.init();
     if (!this.db) {
       return {
         totalCards: 0,

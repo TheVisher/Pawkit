@@ -1,6 +1,9 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { CardDTO } from '@/lib/server/cards';
 
+// Default workspace ID (matches local-storage.ts)
+export const DEFAULT_WORKSPACE_ID = 'default';
+
 // Operation types that can be queued
 type OperationType = 'CREATE_CARD' | 'UPDATE_CARD' | 'DELETE_CARD' | 'CREATE_COLLECTION' | 'UPDATE_COLLECTION' | 'DELETE_COLLECTION';
 
@@ -27,14 +30,48 @@ interface SyncQueueDB extends DBSchema {
 
 class SyncQueue {
   private db: IDBPDatabase<SyncQueueDB> | null = null;
-  private readonly DB_NAME = 'pawkit-sync-queue';
+  private userId: string | null = null;
+  private workspaceId: string | null = null;
   private readonly DB_VERSION = 1;
 
-  // Initialize the database
-  async init(): Promise<void> {
-    if (this.db) return;
+  /**
+   * Get user-specific database name with workspace support
+   */
+  private getDbName(): string {
+    if (!this.userId) {
+      throw new Error('[SyncQueue] userId not initialized - cannot get database name');
+    }
+    if (!this.workspaceId) {
+      throw new Error('[SyncQueue] workspaceId not initialized - cannot get database name');
+    }
+    return `pawkit-${this.userId}-${this.workspaceId}-sync-queue`;
+  }
 
-    this.db = await openDB<SyncQueueDB>(this.DB_NAME, this.DB_VERSION, {
+  /**
+   * Initialize database for specific user and workspace
+   * @param userId - User's unique ID
+   * @param workspaceId - Workspace ID (defaults to DEFAULT_WORKSPACE_ID)
+   */
+  async init(userId: string, workspaceId: string = DEFAULT_WORKSPACE_ID): Promise<void> {
+    // Already initialized for this user and workspace
+    if (this.db && this.userId === userId && this.workspaceId === workspaceId) {
+      return;
+    }
+
+    // Switching users or workspaces - close old database
+    if (this.db && (this.userId !== userId || this.workspaceId !== workspaceId)) {
+      console.log('[SyncQueue] Switching context, closing old database', {
+        from: { userId: this.userId, workspaceId: this.workspaceId },
+        to: { userId, workspaceId }
+      });
+      this.db.close();
+      this.db = null;
+    }
+
+    this.userId = userId;
+    this.workspaceId = workspaceId;
+
+    this.db = await openDB<SyncQueueDB>(this.getDbName(), this.DB_VERSION, {
       upgrade(db) {
         // Create operations store if it doesn't exist
         if (!db.objectStoreNames.contains('operations')) {
@@ -44,12 +81,72 @@ class SyncQueue {
         }
       },
     });
+
+    console.log(`[SyncQueue] Initialized for user: ${userId}, workspace: ${workspaceId}`);
+  }
+
+  /**
+   * Clear ALL workspace data for a specific user (used on logout)
+   * This deletes all workspace sync queues for the user
+   */
+  async clearUserData(userId: string): Promise<void> {
+    console.log(`[SyncQueue] Clearing all data for user: ${userId}`);
+
+    // Get all databases and find ones matching this user
+    const databases = await indexedDB.databases();
+    const userDatabases = databases.filter(db =>
+      db.name?.startsWith(`pawkit-${userId}-`) && db.name?.endsWith('-sync-queue')
+    );
+
+    console.log(`[SyncQueue] Found ${userDatabases.length} workspace databases to delete for user ${userId}`);
+
+    // Delete all workspace databases for this user
+    for (const db of userDatabases) {
+      if (db.name) {
+        await indexedDB.deleteDatabase(db.name);
+        console.log(`[SyncQueue] Deleted database: ${db.name}`);
+      }
+    }
+  }
+
+  /**
+   * Clear data for a specific workspace
+   */
+  async clearWorkspaceData(userId: string, workspaceId: string): Promise<void> {
+    const dbName = `pawkit-${userId}-${workspaceId}-sync-queue`;
+    console.log(`[SyncQueue] Clearing workspace data: ${dbName}`);
+    await indexedDB.deleteDatabase(dbName);
+  }
+
+  /**
+   * Close current database connection and clear context
+   */
+  async close(): Promise<void> {
+    if (this.db) {
+      console.log('[SyncQueue] Closing database connection');
+      this.db.close();
+      this.db = null;
+      this.userId = null;
+      this.workspaceId = null;
+    }
+  }
+
+  /**
+   * Get current user context (for debugging)
+   */
+  getContext(): { userId: string | null; workspaceId: string | null; isInitialized: boolean } {
+    return {
+      userId: this.userId,
+      workspaceId: this.workspaceId,
+      isInitialized: this.db !== null
+    };
   }
 
   // Add operation to queue
   async enqueue(operation: Omit<QueueOperation, 'id' | 'timestamp' | 'retries' | 'status'>): Promise<string> {
-    await this.init();
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.db) {
+      throw new Error('[SyncQueue] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     // Check for duplicate pending operations
     const existing = await this.db.getAll('operations');
@@ -94,8 +191,9 @@ class SyncQueue {
 
   // Get all pending operations
   async getPending(): Promise<QueueOperation[]> {
-    await this.init();
-    if (!this.db) return [];
+    if (!this.db) {
+      throw new Error('[SyncQueue] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const tx = this.db.transaction('operations', 'readonly');
     const index = tx.store.index('by-status');
@@ -107,8 +205,9 @@ class SyncQueue {
 
   // Mark operation as processing
   async markProcessing(id: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[SyncQueue] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const tx = this.db.transaction('operations', 'readwrite');
     const operation = await tx.store.get(id);
@@ -121,16 +220,18 @@ class SyncQueue {
 
   // Remove operation from queue (after successful sync)
   async remove(id: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[SyncQueue] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     await this.db.delete('operations', id);
   }
 
   // Remove operation by type and target ID (for immediate sync success)
   async removeByTarget(type: OperationType, targetId: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[SyncQueue] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const operations = await this.db.getAll('operations');
     const toRemove = operations.filter(op =>
@@ -144,8 +245,9 @@ class SyncQueue {
 
   // Mark operation as failed
   async markFailed(id: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[SyncQueue] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const tx = this.db.transaction('operations', 'readwrite');
     const operation = await tx.store.get(id);
@@ -160,8 +262,9 @@ class SyncQueue {
 
   // Reset failed operation to pending (for manual retry)
   async retryFailed(id: string): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[SyncQueue] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     const tx = this.db.transaction('operations', 'readwrite');
     const operation = await tx.store.get(id);
@@ -174,16 +277,18 @@ class SyncQueue {
 
   // Clear all operations (use with caution!)
   async clear(): Promise<void> {
-    await this.init();
-    if (!this.db) return;
+    if (!this.db) {
+      throw new Error('[SyncQueue] Database not initialized. Call init(userId, workspaceId) first.');
+    }
 
     await this.db.clear('operations');
   }
 
   // Get count of pending operations
   async getPendingCount(): Promise<number> {
-    await this.init();
-    if (!this.db) return 0;
+    if (!this.db) {
+      return 0;
+    }
 
     const tx = this.db.transaction('operations', 'readonly');
     const index = tx.store.index('by-status');

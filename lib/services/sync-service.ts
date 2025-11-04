@@ -137,7 +137,7 @@ class SyncService {
       result.errors.push(...pushResult.errors);
 
       // Step 3: Process sync queue (retry any failed operations)
-      await syncQueue.init();
+      // Note: syncQueue is already initialized by useUserStorage hook
       await syncQueue.process();
 
       // Update last sync time

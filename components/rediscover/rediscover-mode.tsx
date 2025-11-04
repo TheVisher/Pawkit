@@ -50,6 +50,7 @@ export function RediscoverMode({ currentCard, onAction, onExit, remainingCount }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCard, isProcessing]);
 
   // Card entering animation
@@ -60,6 +61,7 @@ export function RediscoverMode({ currentCard, onAction, onExit, remainingCount }
       const timer = setTimeout(() => setCardTransition(null), 300);
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCard?.id]);
 
   const handleAction = (action: RediscoverAction) => {
