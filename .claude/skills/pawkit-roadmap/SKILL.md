@@ -186,6 +186,62 @@ description: Living, interactive roadmap serving as single source of truth for p
   **Branch:** `calendar-view-improvements`
   **Impact:** Calendar now has dedicated sidebar with full navigation, filtering, and view controls
 
+- 🔍 **User Data Isolation Bug Investigation** (IN PROGRESS - Branch: `user-isolation-debug`)
+  **CRITICAL SECURITY ISSUE**: Cards created in Account A appear in Account B after login/logout
+  **Status**: Under investigation with comprehensive server-side logging
+
+  **Problems Discovered:**
+  1. **IndexedDB was globally shared** - All users on same browser shared 'pawkit-local-storage'
+     - ✅ FIXED: Changed to user-specific databases 'pawkit-{userId}'
+     - Each user gets separate IndexedDB database
+     - Database switches when users log in/out
+
+  2. **Recently viewed items shared** - localStorage key was global 'pawkit-recent-history'
+     - ✅ FIXED: Changed to user-specific 'pawkit-recent-history-{userId}'
+     - Each user sees only their own recently viewed items
+
+  3. **Database initialization race condition** - DataStore.initialize() called before auth ready
+     - ✅ FIXED: Added authLoading check before initialization
+     - Dashboard waits for auth before calling initialize()
+     - Data store resets when user changes
+
+  4. **Auth cache contamination** - Next.js router cached previous user's session
+     - ✅ FIXED: Added router.refresh() before router.push() on logout
+     - Clears all cached route data including user session
+
+  5. **SERVER-SIDE DATA LEAK** - Cards still appearing across accounts (UNDER INVESTIGATION)
+     - URLs duplicate between accounts (cards spin without metadata)
+     - Notes seem isolated, but URLs leak
+     - Added comprehensive logging to trace userId through request chain
+
+  **Debugging Added** (Branch: `user-isolation-debug`):
+  - `getCurrentUser()` - Logs Supabase user ID and email
+  - API `/cards` GET/POST - Logs authenticated user for each request
+  - `listCards()` - CRITICAL: Detects if database returns foreign user cards
+  - 🚨 Alert if `foreignCards.length > 0` - Proves data leak at database level
+
+  **Next Steps**:
+  - Deploy user-isolation-debug branch to Vercel preview
+  - Test creating cards in Account A, switching to Account B
+  - Check server logs for userId tracking through request chain
+  - Look for "🚨 DATA LEAK DETECTED" in logs
+  - Identify exact point where user isolation breaks
+
+  **Files Modified**:
+  - `lib/services/local-storage.ts` - User-specific database naming
+  - `lib/contexts/auth-context.tsx` - Database switching on login/logout
+  - `lib/hooks/use-recent-history.ts` - User-specific localStorage keys
+  - `lib/stores/data-store.ts` - Reset function, auth wait logic
+  - `app/(dashboard)/layout.tsx` - Auth-aware initialization
+  - `lib/auth/get-user.ts` - Debugging logs for auth flow
+  - `app/api/cards/route.ts` - Debugging logs for API requests
+  - `lib/server/cards.ts` - Foreign card detection in listCards
+
+  **Branch**: `user-isolation-debug` (4 commits)
+  **Main Branch**: Clean and stable (reverted debug commits via force push)
+  **Impact**: Security vulnerability affecting multi-user environments
+  **Priority**: CRITICAL - Must be fixed before production use
+
 ### October 31, 2025
 
 - ✅ **Context Menu System Implementation** (Complete reusable system)

@@ -20,6 +20,219 @@ description: Track development progress, major milestones, and session history a
 
 ## Session History
 
+### Date: January 2, 2025 (Evening) - CRITICAL: User Data Isolation Bug Investigation
+
+**Status**: UNDER INVESTIGATION - Branch: `user-isolation-debug`
+**Priority**: CRITICAL SECURITY ISSUE - Multiple users on same browser share data
+**Impact**: Cards created in Account A appear in Account B after login/logout
+
+**Problem Discovery**:
+
+User reported critical security bug: IndexedDB and localStorage were not user-specific. When multiple users logged into same browser:
+- User A's cards appeared in User B's library
+- Recently viewed items leaked between accounts
+- URLs duplicated without metadata (cards spin forever)
+- Notes appeared isolated but URL cards leaked
+
+**Investigation Summary**:
+
+Discovered and addressed **5 separate isolation problems**:
+
+1. **IndexedDB Globally Shared** - ✅ FIXED
+   - **Symptom**: All users shared single database `'pawkit-local-storage'`
+   - **Fix**: Changed to per-user databases `'pawkit-{userId}'`
+   - **Files**: `lib/services/local-storage.ts`, `lib/contexts/auth-context.tsx`
+   - **Commit**: Initial user isolation fixes
+
+2. **Recently Viewed Items Shared** - ✅ FIXED
+   - **Symptom**: Sidebar recently viewed showed cards from all users
+   - **Fix**: Changed localStorage key to `'pawkit-recent-history-{userId}'`
+   - **Files**: `lib/hooks/use-recent-history.ts`
+   - **Commit**: Same commit as above
+
+3. **Database Initialization Race Condition** - ✅ FIXED
+   - **Symptom**: "Cannot initialize database without userId" errors
+   - **Root Cause**: DataStore.initialize() called before auth set userId
+   - **Fix**: Dashboard layout waits for `authLoading=false` AND `user!=null`
+   - **Files**: `app/(dashboard)/layout.tsx`
+   - **Commit**: Same commit as above
+
+4. **Auth Cache Contamination** - ✅ FIXED
+   - **Symptom**: Next.js router cached previous user's session data
+   - **Fix**: Added `router.refresh()` before navigation in signOut
+   - **Files**: `lib/contexts/auth-context.tsx`
+   - **Commit**: Same commit as above
+
+5. **SERVER-SIDE DATA LEAK** - 🔍 UNDER INVESTIGATION
+   - **Symptom**: Cards (URLs specifically) still duplicate between accounts
+   - **Status**: Added comprehensive server-side logging to debug
+   - **Logging Points**:
+     - `getCurrentUser()` - Track which user Supabase returns
+     - API `/cards` GET/POST - Track authenticated user ID
+     - `listCards()` - Detect if database returns foreign user cards
+   - **Next Step**: Deploy and check logs for "🚨 DATA LEAK DETECTED" alerts
+
+**Technical Implementation**:
+
+**Per-User IndexedDB Pattern**:
+```typescript
+class LocalStorage {
+  private userId: string | null = null;
+
+  private getDbName(): string {
+    if (!this.userId) {
+      throw new Error('Cannot access database without userId');
+    }
+    return `pawkit-${this.userId}`; // USER-SPECIFIC DATABASE
+  }
+
+  async setUserId(userId: string | null): Promise<void> {
+    if (this.db) {
+      this.db.close(); // Close previous user's database
+      this.db = null;
+    }
+    this.userId = userId;
+    if (userId) await this.init(); // Open new user's database
+  }
+}
+```
+
+**Auth-Coordinated Database Switching**:
+```typescript
+// lib/contexts/auth-context.tsx
+supabase.auth.onAuthStateChange(async (_event, session) => {
+  const newUser = session?.user ?? null;
+  setUser(newUser);
+
+  if (newUser) {
+    await localDb.setUserId(newUser.id); // Switch to user's database
+  } else {
+    await localDb.close(); // Close on logout
+  }
+
+  router.refresh(); // Clear Next.js cache
+});
+```
+
+**Per-User localStorage Keys**:
+```typescript
+// lib/hooks/use-recent-history.ts
+function getStorageKey(userId: string | null): string {
+  if (!userId) return "pawkit-recent-history";
+  return `pawkit-recent-history-${userId}`; // USER-SPECIFIC KEY
+}
+```
+
+**Auth-Aware Initialization**:
+```typescript
+// app/(dashboard)/layout.tsx
+useEffect(() => {
+  if (authLoading) return; // Wait for auth
+  if (!user) return; // Require user
+  if (!isInitialized) {
+    initialize(); // Now safe to initialize
+  }
+}, [authLoading, user, isInitialized, initialize]);
+```
+
+**Data Store Reset on User Switch**:
+```typescript
+// lib/stores/data-store.ts
+reset: () => {
+  console.log('[DataStore V2] Resetting state for user switch');
+  set({
+    cards: [],
+    collections: [],
+    isInitialized: false,
+    isLoading: false,
+    isSyncing: false,
+  });
+}
+```
+
+**Server-Side Debugging (user-isolation-debug branch)**:
+```typescript
+// lib/auth/get-user.ts
+console.log('[getCurrentUser] 🔑 Supabase user:', {
+  id: user.id,
+  email: user.email,
+  timestamp: new Date().toISOString()
+});
+
+// app/api/cards/route.ts
+console.log('[API /cards GET] ✅ Authenticated user:', {
+  id: user.id,
+  email: user.email
+});
+
+// lib/server/cards.ts
+const foreignCards = items.filter(c => c.userId !== userId);
+if (foreignCards.length > 0) {
+  console.error('[listCards] 🚨🚨🚨 DATA LEAK DETECTED!', {
+    requestedUserId: userId,
+    foreignCards: foreignCards.map(c => ({
+      id: c.id,
+      title: c.title,
+      userId: c.userId
+    }))
+  });
+}
+```
+
+**Branch Structure**:
+- **main**: Clean and stable (reset to commit 110a1c7)
+- **user-isolation-debug**: Contains all fixes + comprehensive logging (4 commits)
+
+**Files Modified**:
+- `lib/services/local-storage.ts` - Per-user database naming, setUserId/close methods
+- `lib/contexts/auth-context.tsx` - Database switching on auth changes, router refresh
+- `lib/hooks/use-recent-history.ts` - Per-user localStorage keys
+- `lib/stores/data-store.ts` - Auth-aware initialization, reset() method
+- `app/(dashboard)/layout.tsx` - Wait for auth before initialization
+- `lib/auth/get-user.ts` - Debugging logs (debug branch only)
+- `app/api/cards/route.ts` - Debugging logs (debug branch only)
+- `lib/server/cards.ts` - Debugging logs (debug branch only)
+
+**Commits** (on user-isolation-debug):
+1. Initial user isolation fixes (IndexedDB + recently viewed + race condition + auth cache)
+2. Server-side debugging logs added to getCurrentUser
+3. Server-side debugging logs added to /api/cards
+4. Server-side debugging logs added to listCards with foreign card detection
+
+**Current Status**:
+- 4 out of 5 isolation problems fixed
+- Server-side data leak still under investigation
+- Comprehensive logging in place to identify leak source
+- Main branch kept clean, all work on user-isolation-debug branch
+
+**Next Steps for Continuation**:
+1. Deploy `user-isolation-debug` branch to Vercel for testing
+2. Test card creation:
+   - Create URL card in Account A
+   - Switch to Account B
+   - Verify card does NOT appear in Account B
+3. Check Vercel server logs for debugging output:
+   - Look for userId mismatch between getCurrentUser → API → listCards
+   - Look for "🚨 DATA LEAK DETECTED" alert
+   - Track userId through entire request chain
+4. Identify exact layer where user isolation breaks:
+   - Is Supabase returning wrong user?
+   - Is API middleware failing to authenticate correctly?
+   - Is database WHERE clause not filtering?
+5. Fix root cause once identified
+6. Remove debugging logs
+7. Merge user-isolation-debug to main
+8. Verify in production with multiple test accounts
+
+**User Feedback**:
+- "Okay, it seems to be working. But there is one issue. The recently viewed items..." (Led to fix #2)
+- "Nope, not isolated still. If I create cards on one or the other, it creates it on the other still. Notes don't seem to, but URLs seem to be duplicating..." (Led to debug logging)
+- "We need to make this a different branch, not sure why this is getting put on main" (Led to branch cleanup)
+
+**Impact**: Critical security vulnerability partially addressed. Local storage isolation complete. Server-side isolation debugging in progress. Cannot deploy to production until fully resolved.
+
+---
+
 ### Date: January 2, 2025 - Calendar View Improvements & Sidebar Control System
 
 **Accomplished**:
