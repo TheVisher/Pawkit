@@ -6,6 +6,8 @@ import Link from "next/link";
 import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
 import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
+import { DailyDigWidget } from "@/components/home/daily-dig-widget";
+import { QuickActionsCard } from "@/components/home/quick-actions-card";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
@@ -242,6 +244,12 @@ export default function HomePage() {
             <span className="mr-3 inline-block" aria-hidden="true">👋</span>
             {displayName ? `${greeting}, ${displayName}` : "Welcome to Pawkit!"}
           </h1>
+        </section>
+
+        {/* Daily Dig Widget and Quick Actions */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <DailyDigWidget cards={cards} />
+          <QuickActionsCard />
         </section>
 
         <section className="space-y-4">

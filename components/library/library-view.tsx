@@ -77,6 +77,14 @@ export function LibraryView({
     return map;
   }, [collectionsTree]);
 
+  // Count never-opened cards (URL bookmarks only, not notes)
+  const neverOpenedCount = useMemo(() => {
+    return initialCards.filter(card =>
+      card.type === "url" &&
+      (!card.lastOpenedAt || card.openCount === 0)
+    ).length;
+  }, [initialCards]);
+
   // Get view settings from the store
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
   const setLayoutInStore = useViewSettingsStore((state) => state.setLayout);
@@ -332,10 +340,15 @@ export function LibraryView({
               params.set("mode", "rediscover");
               router.push(`/library?${params.toString()}`);
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/20 border border-accent/30 hover:bg-accent/30 hover:border-accent/50 text-accent-foreground transition-all group"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/20 border border-accent/30 hover:bg-accent/30 hover:border-accent/50 text-accent-foreground transition-all group relative"
           >
             <Sparkles className="h-4 w-4 group-hover:rotate-12 transition-transform" />
             <span className="font-medium">Rediscover</span>
+            {neverOpenedCount > 0 && (
+              <span className="ml-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-accent text-white">
+                {neverOpenedCount}
+              </span>
+            )}
           </button>
         </div>
 
