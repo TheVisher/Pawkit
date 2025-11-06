@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/services/auth-service";
-import { db } from "@/lib/services/db";
+import { getCurrentUser } from "@/lib/auth/get-user";
+import { prisma } from "@/lib/server/prisma";
+import { handleApiError } from "@/lib/utils/api-error";
+import { unauthorized, notFound, badRequest, success } from "@/lib/utils/api-responses";
+
+// Force Node.js runtime for Prisma compatibility
+export const runtime = 'nodejs';
 
 /**
  * POST /api/cards/[id]/track-open
@@ -10,11 +15,12 @@ export async function POST(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  let user;
   try {
     // Authenticate user
-    const session = await auth();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    user = await getCurrentUser();
+    if (!user) {
+      return unauthorized();
     }
 
     const params = await context.params;
@@ -23,26 +29,23 @@ export async function POST(
 
     // Validate accessType
     if (!['modal', 'external', 'rediscover'].includes(accessType)) {
-      return NextResponse.json(
-        { error: "Invalid access type" },
-        { status: 400 }
-      );
+      return badRequest("Invalid access type");
     }
 
     // Verify card belongs to user
-    const card = await db.card.findFirst({
+    const card = await prisma.card.findFirst({
       where: {
         id: cardId,
-        userId: session.user.id,
+        userId: user.id,
       },
     });
 
     if (!card) {
-      return NextResponse.json({ error: "Card not found" }, { status: 404 });
+      return notFound('Card');
     }
 
     // Update card tracking fields
-    const updatedCard = await db.card.update({
+    const updatedCard = await prisma.card.update({
       where: { id: cardId },
       data: {
         lastOpenedAt: new Date(),
@@ -53,17 +56,12 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({
-      success: true,
+    return success({
       lastOpenedAt: updatedCard.lastOpenedAt,
       openCount: updatedCard.openCount,
       lastAccessType: updatedCard.lastAccessType,
     });
   } catch (error) {
-    console.error("[track-open] Error tracking card open:", error);
-    return NextResponse.json(
-      { error: "Failed to track card open" },
-      { status: 500 }
-    );
+    return handleApiError(error, { route: '/api/cards/[id]/track-open', userId: user?.id });
   }
 }
