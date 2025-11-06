@@ -93,7 +93,10 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
       metadata: undefined,
       inDen: false,
       encryptedContent: null,
-      scheduledDate: null
+      scheduledDate: null,
+      lastOpenedAt: null,
+      openCount: 0,
+      lastAccessType: null
     });
 
     setLoading(false);
