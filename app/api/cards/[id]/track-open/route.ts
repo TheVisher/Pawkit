@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
 import { handleApiError } from "@/lib/utils/api-error";
-import { unauthorized, notFound, badRequest, success } from "@/lib/utils/api-responses";
+import { unauthorized, notFound, validationError, success } from "@/lib/utils/api-responses";
 
 // Force Node.js runtime for Prisma compatibility
 export const runtime = 'nodejs';
@@ -29,7 +29,7 @@ export async function POST(
 
     // Validate accessType
     if (!['modal', 'external', 'rediscover'].includes(accessType)) {
-      return badRequest("Invalid access type");
+      return validationError("Invalid access type");
     }
 
     // Verify card belongs to user
