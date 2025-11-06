@@ -76,8 +76,9 @@ export function useRecentHistory() {
 
 /**
  * Hook to track when a card is viewed
+ * This tracks both recent history (localStorage) and card open tracking (database)
  */
-export function useTrackCardView(card: CardModel | null) {
+export function useTrackCardView(card: CardModel | null, accessType: 'modal' | 'external' | 'rediscover' = 'modal') {
   const { addToHistory } = useRecentHistory();
 
   useEffect(() => {
@@ -85,6 +86,7 @@ export function useTrackCardView(card: CardModel | null) {
 
     const isNote = card.type === "md-note" || card.type === "text-note";
 
+    // Track in recent history (localStorage)
     addToHistory({
       id: card.id,
       title: card.title || card.url || "Untitled",
@@ -92,6 +94,29 @@ export function useTrackCardView(card: CardModel | null) {
       url: card.url,
       image: card.image || undefined,
     });
+
+    // Track card open in database (async, don't await)
+    trackCardOpen(card.id, accessType).catch(err => {
+      console.error('[useTrackCardView] Failed to track card open:', err);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.id]); // Only track when card ID changes
+}
+
+/**
+ * Track when a card is opened in the database
+ */
+export async function trackCardOpen(cardId: string, accessType: 'modal' | 'external' | 'rediscover' = 'modal'): Promise<void> {
+  try {
+    await fetch(`/api/cards/${cardId}/track-open`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ accessType }),
+    });
+  } catch (error) {
+    console.error('[trackCardOpen] Failed to track card open:', error);
+    throw error;
+  }
 }

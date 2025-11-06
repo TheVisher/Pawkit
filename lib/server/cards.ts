@@ -39,7 +39,10 @@ function mapCard(card: Card): CardDTO {
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
     deletedAt: card.deletedAt?.toISOString() ?? null,
-    scheduledDate: card.scheduledDate?.toISOString() ?? null
+    scheduledDate: card.scheduledDate?.toISOString() ?? null,
+    lastOpenedAt: card.lastOpenedAt?.toISOString() ?? null,
+    openCount: card.openCount ?? 0,
+    lastAccessType: card.lastAccessType ?? null
   };
 }
 

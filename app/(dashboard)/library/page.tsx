@@ -211,11 +211,9 @@ function LibraryPageContent() {
         filtered = filtered.filter(card => !card.tags || card.tags.length === 0);
         break;
       case "never-opened":
-        // TODO: Add lastOpenedAt field to track this
-        // For now, treat as uncategorized
+        // Filter cards that have never been opened
         filtered = filtered.filter(card =>
-          (!card.tags || card.tags.length === 0) &&
-          (!card.collections || card.collections.length === 0)
+          !card.lastOpenedAt || card.openCount === 0
         );
         break;
     }

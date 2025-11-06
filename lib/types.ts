@@ -56,6 +56,9 @@ export type PrismaCard = {
   inDen: boolean;
   encryptedContent: string | null;
   scheduledDate: Date | null;
+  lastOpenedAt: Date | null;
+  openCount: number;
+  lastAccessType: string | null;
   createdAt: Date;
   updatedAt: Date;
   userId: string;
@@ -104,6 +107,9 @@ export type CardModel = {
   inDen: boolean;
   encryptedContent: string | null;
   scheduledDate: string | null;
+  lastOpenedAt: string | null;
+  openCount: number;
+  lastAccessType: string | null;
   createdAt: string;
   updatedAt: string;
 };

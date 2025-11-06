@@ -49,6 +49,9 @@ model Card {
   inDen           Boolean   @default(false)
   encryptedContent String?
   scheduledDate   DateTime?
+  lastOpenedAt    DateTime? // Track when card was last opened
+  openCount       Int       @default(0) // Track how many times card was opened
+  lastAccessType  String?   // Track access type: 'modal', 'external', 'rediscover'
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   userId          String
@@ -58,6 +61,7 @@ model Card {
   @@index([userId, deleted])
   @@index([userId, inDen])
   @@index([userId, scheduledDate])
+  @@index([userId, lastOpenedAt]) // Index for never-opened filtering
   // Note: Unique constraint on (userId, url) is applied via custom migration
   // with WHERE type = 'url' to exclude notes from the constraint
 }
