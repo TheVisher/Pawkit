@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Isolation Test</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #fff;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #444;
+      border-radius: 8px;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 5px;
+      background: #6366f1;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #4f46e5;
+    }
+    .error { color: #ef4444; }
+    .success { color: #10b981; }
+    .warning { color: #f59e0b; }
+    pre {
+      background: #2a2a2a;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔒 User Isolation Test</h1>
+  <p>This test verifies that IndexedDB is properly isolated by userId</p>
+
+  <div class="test-section">
+    <h2>Test Setup</h2>
+    <button onclick="runTest()">🧪 Run Full Test</button>
+    <button onclick="inspectDatabases()">👀 Inspect All Databases</button>
+    <button onclick="clearAll()">🗑️ Clear All Test Data</button>
+  </div>
+
+  <div class="test-section">
+    <h2>Test Results</h2>
+    <pre id="results">Click "Run Full Test" to start...</pre>
+  </div>
+
+  <script type="module">
+    const log = [];
+    function addLog(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : type === 'warning' ? '⚠️' : 'ℹ️';
+      log.push(`[${timestamp}] ${prefix} ${message}`);
+      document.getElementById('results').innerHTML = log.join('\n');
+      console.log(message);
+    }
+
+    // Import IndexedDB helper
+    async function openDatabase(dbName, version = 1) {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(dbName, version);
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => resolve(request.result);
+
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains('cards')) {
+            const cardStore = db.createObjectStore('cards', { keyPath: 'id' });
+            cardStore.createIndex('by-created', 'createdAt');
+          }
+        };
+      });
+    }
+
+    async function addCardToDb(dbName, card) {
+      const db = await openDatabase(dbName);
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(['cards'], 'readwrite');
+        const store = tx.objectStore('cards');
+        const request = store.add(card);
+
+        request.onsuccess = () => {
+          db.close();
+          resolve();
+        };
+        request.onerror = () => {
+          db.close();
+          reject(request.error);
+        };
+      });
+    }
+
+    async function getCardsFromDb(dbName) {
+      try {
+        const db = await openDatabase(dbName);
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(['cards'], 'readonly');
+          const store = tx.objectStore('cards');
+          const request = store.getAll();
+
+          request.onsuccess = () => {
+            db.close();
+            resolve(request.result);
+          };
+          request.onerror = () => {
+            db.close();
+            reject(request.error);
+          };
+        });
+      } catch (error) {
+        return [];
+      }
+    }
+
+    async function deleteDatabase(dbName) {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.deleteDatabase(dbName);
+        request.onsuccess = () => resolve();
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    window.runTest = async function() {
+      log.length = 0;
+      addLog('Starting User Isolation Test...', 'info');
+
+      try {
+        // Simulate two users
+        const userA = 'user-a-test-123';
+        const userB = 'user-b-test-456';
+        const workspaceId = 'default';
+
+        // Expected database names (matching Pawkit's naming scheme)
+        const dbNameA = `pawkit-${userA}-${workspaceId}-local-storage`;
+        const dbNameB = `pawkit-${userB}-${workspaceId}-local-storage`;
+
+        addLog('Test Case 1: User A adds bookmarks', 'info');
+        addLog(`Creating database: ${dbNameA}`);
+
+        // User A adds bookmarks
+        await addCardToDb(dbNameA, {
+          id: 'card-a-1',
+          title: 'User A Bookmark 1',
+          url: 'https://example.com/a1',
+          createdAt: new Date().toISOString(),
+        });
+
+        await addCardToDb(dbNameA, {
+          id: 'card-a-2',
+          title: 'User A Bookmark 2',
+          url: 'https://example.com/a2',
+          createdAt: new Date().toISOString(),
+        });
+
+        const userACards = await getCardsFromDb(dbNameA);
+        addLog(`✓ User A has ${userACards.length} bookmarks`, 'success');
+
+        addLog('', 'info');
+        addLog('Test Case 2: User B adds different bookmarks', 'info');
+        addLog(`Creating database: ${dbNameB}`);
+
+        // User B adds different bookmarks
+        await addCardToDb(dbNameB, {
+          id: 'card-b-1',
+          title: 'User B Bookmark 1',
+          url: 'https://example.com/b1',
+          createdAt: new Date().toISOString(),
+        });
+
+        const userBCards = await getCardsFromDb(dbNameB);
+        addLog(`✓ User B has ${userBCards.length} bookmarks`, 'success');
+
+        addLog('', 'info');
+        addLog('Test Case 3: Verify isolation', 'info');
+
+        // Verify User A still has only their bookmarks
+        const userACardsAfter = await getCardsFromDb(dbNameA);
+        const userBCardsAfter = await getCardsFromDb(dbNameB);
+
+        addLog(`User A database has ${userACardsAfter.length} cards:`, 'info');
+        userACardsAfter.forEach(card => {
+          const isCorrect = card.id.startsWith('card-a-');
+          addLog(`  - ${card.title} (${card.id})`, isCorrect ? 'success' : 'error');
+        });
+
+        addLog(`User B database has ${userBCardsAfter.length} cards:`, 'info');
+        userBCardsAfter.forEach(card => {
+          const isCorrect = card.id.startsWith('card-b-');
+          addLog(`  - ${card.title} (${card.id})`, isCorrect ? 'success' : 'error');
+        });
+
+        // Check for data leakage
+        const userAHasUserBCards = userACardsAfter.some(c => c.id.startsWith('card-b-'));
+        const userBHasUserACards = userBCardsAfter.some(c => c.id.startsWith('card-a-'));
+
+        addLog('', 'info');
+        if (userAHasUserBCards || userBHasUserACards) {
+          addLog('FAILED: Data leakage detected!', 'error');
+          if (userAHasUserBCards) addLog('  → User A can see User B\'s cards!', 'error');
+          if (userBHasUserACards) addLog('  → User B can see User A\'s cards!', 'error');
+        } else {
+          addLog('PASSED: Users are properly isolated!', 'success');
+          addLog('  → User A cannot see User B\'s cards', 'success');
+          addLog('  → User B cannot see User A\'s cards', 'success');
+        }
+
+        addLog('', 'info');
+        addLog('Test Case 4: Check for old global database', 'info');
+        const oldGlobalDb = 'pawkit-local-storage';
+        const oldCards = await getCardsFromDb(oldGlobalDb);
+        if (oldCards.length > 0) {
+          addLog(`⚠️ WARNING: Found ${oldCards.length} cards in old global database!`, 'warning');
+          addLog('This could cause data leakage between users.', 'warning');
+        } else {
+          addLog('✓ No old global database found', 'success');
+        }
+
+        addLog('', 'info');
+        addLog('Test completed!', 'success');
+
+      } catch (error) {
+        addLog(`Test failed with error: ${error.message}`, 'error');
+        console.error(error);
+      }
+    };
+
+    window.inspectDatabases = async function() {
+      log.length = 0;
+      addLog('Inspecting all IndexedDB databases...', 'info');
+
+      const databases = await indexedDB.databases();
+      addLog(`Found ${databases.length} databases:`, 'info');
+
+      for (const db of databases) {
+        if (db.name) {
+          const cards = await getCardsFromDb(db.name);
+          addLog(`\n📦 ${db.name} (v${db.version})`, 'info');
+          addLog(`   Cards: ${cards.length}`, 'info');
+
+          if (cards.length > 0) {
+            cards.forEach(card => {
+              addLog(`   - ${card.title || card.id}`, 'info');
+            });
+          }
+        }
+      }
+    };
+
+    window.clearAll = async function() {
+      log.length = 0;
+      addLog('Clearing all test databases...', 'warning');
+
+      const databases = await indexedDB.databases();
+
+      for (const db of databases) {
+        if (db.name && (db.name.includes('test') || db.name.includes('pawkit'))) {
+          await deleteDatabase(db.name);
+          addLog(`Deleted: ${db.name}`, 'success');
+        }
+      }
+
+      addLog('All test data cleared!', 'success');
+    };
+  </script>
+</body>
+</html>

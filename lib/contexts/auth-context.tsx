@@ -60,10 +60,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[Auth] Sign out initiated');
 
     try {
-      // CRITICAL: Clear user session markers BEFORE signing out
-      // This allows useUserStorage to detect user switches on next login
-      console.log('[Auth] Clearing session markers');
-      localStorage.removeItem('pawkit_last_user_id');
+      // CRITICAL: Do NOT clear pawkit_last_user_id here!
+      // We need it to persist so useUserStorage can detect user switches
+      // and clean up the previous user's data.
+      // Only clear the active device marker to allow new sessions.
+      console.log('[Auth] Clearing active device marker');
       localStorage.removeItem('pawkit_active_device');
 
       // Sign out from Supabase

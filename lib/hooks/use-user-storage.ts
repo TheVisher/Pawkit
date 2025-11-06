@@ -207,6 +207,10 @@ async function cleanupPreviousUser(previousUserId: string): Promise<void> {
     await localDb.close();
     await syncQueue.close();
 
+    // Clear the previous user's ID from localStorage
+    // This will be replaced with the new user's ID after initialization
+    localStorage.removeItem('pawkit_last_user_id');
+
     console.log('[useUserStorage] Previous user cleanup complete');
   } catch (error) {
     console.error('[useUserStorage] Error cleaning up previous user:', error);
