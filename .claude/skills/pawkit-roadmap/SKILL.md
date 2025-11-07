@@ -674,6 +674,260 @@ Fundamental Chromium rendering bug with CSS columns (masonry layout) during pare
 
 ---
 
+## BACKLOG - CRITICAL SYNC FIXES (Priority 0)
+
+**Status**: DOCUMENTED - January 4, 2025 comprehensive analysis complete
+**Context**: Deep-dive analysis revealed 8 critical categories of sync issues causing card duplication, cross-device failures, and data corruption
+**Root Cause**: IndexDB V2 migration introduced race conditions, missing transaction boundaries, and flawed multi-tab coordination
+**Impact**: Users experiencing duplicate cards, collections not syncing, cross-device data inconsistencies
+**Decision**: Document now, fix later when prioritized
+
+### Critical Issues Identified
+
+#### Race Conditions (CRITICAL - 5 issues)
+
+**Issue 1.1: Multi-Tab Sync Collision** (8-12 hours) - [impl: ] [test: ] [done: ]
+- **Location**: `lib/services/sync-service.ts:79-113`
+- **Problem**: BroadcastChannel coordination allows simultaneous sync from multiple tabs
+- **Impact**: Both tabs pull from server, merge different versions, create duplicate cards
+- **Root Cause**: `otherTabSyncing` flag has race window - Tab B starts sync before Tab A's broadcast processed
+- **Why**: Write guard system in data-store.ts:18-33 bypassed by sync operations (line 16 comment admits this)
+- **User Impact**: Card duplication, corrupted collections when multiple tabs open
+- **Fix**: Implement distributed lock using localStorage with timestamps and exponential backoff
+
+**Issue 1.2: Temp ID → Server ID Race Condition** (6-8 hours) - [impl: ] [test: ] [done: ]
+- **Location**: `lib/stores/data-store.ts:394-519`
+- **Problem**: 4-step process has 3 race windows where temp cards can leak into sync
+- **Critical Sequence**:
+  1. Save with temp ID to IndexDB
+  2. Update UI immediately (temp card visible)
+  3. Sync to server (network delay)
+  4. Replace temp with real ID (delete + save)
+- **Race Windows**:
+  - Window 1: Between step 2-4, other tab syncs and sees temp card
+  - Window 2: Between delete and save in step 4, temp card in limbo
+  - Window 3: If step 3 fails, temp card persists AND is in sync queue
+- **User Impact**: "Ghost" duplicate cards that persist, temp IDs visible in UI
+- **Fix**: Use client-generated UUIDs instead of temp_ prefix, eliminate ID replacement pattern
+
+**Issue 1.3: Deduplication False Positives** (4-6 hours) - [impl: ] [test: ] [done: ]
+- **Location**: `lib/stores/data-store.ts:39-120`
+- **Problem**: Three separate deduplication flaws
+  - **Flaw 1**: Deleted card resurrection (lines 472-481) - cards duplicated before deletion detected
+  - **Flaw 2**: Runs on every sync (lines 248-249) - reactive bandaid for proactive issue
+  - **Flaw 3**: URL/Title collision (line 46) - legitimate cards treated as duplicates
+- **User Impact**: Two cards with same title incorrectly merged, deleted cards reappear briefly
+- **Fix**: Remove client-side deduplication entirely, enforce uniqueness at database level with proper constraints
+
+**Issue 1.4: Metadata Quality Score Data Loss** (3-4 hours) - [impl: ] [test: ] [done: ]
+- **Location**: `lib/services/sync-service.ts:306-434`
+- **Problem**: Background metadata fetches score higher than user edits, overwrite local changes
+- **Scenario**:
+  1. User edits card on Device A (adds notes, tags, moves to collection)
+  2. Device B fetches rich metadata from server (high quality score)
+  3. Sync runs on Device A
+  4. User's local changes overwritten because server metadata scored higher
+- **Current Mitigation**: 1-hour window check (lines 425-434) insufficient
+- **User Impact**: User loses their manual edits when automatic metadata fetching runs
+- **Fix**: Separate user-edited fields from auto-fetched metadata, never overwrite user edits
+
+**Issue 1.5: Database Initialization Race** (2-3 hours) - [impl: ] [test: ] [done: ]
+- **Location**: `lib/stores/data-store.ts:230-286`
+- **Problem**: Two components can call initialize() simultaneously
+- **Race**: Both check `isInitialized`, both see `false`, both start loading
+- **Evidence**: Line 275 comment "removed aggressive auto-sync to prevent race conditions" - treating symptoms
+- **User Impact**: Double initialization, possible data duplication on app load
+- **Fix**: Use proper initialization guard (atomic compare-and-swap pattern)
+
+#### Database-Level Issues (HIGH - 2 issues)
+
+**Issue 2.1: Incomplete Unique Index** (2-3 hours) - [impl: ] [test: ] [done: ]
+- **Location**: `prisma/schema.prisma:61-63`
+- **Problem**: Partial unique constraint not in schema, only in migration
+- **Issues**:
+  - Constraint not declared in schema (only migration comment)
+  - Only covers `type = 'url'`, allows duplicate URLs if type differs
+  - No constraint on `(userId, title)` for notes
+  - createCard catches P2002 reactively instead of preventing
+- **Evidence**: Commit `a9c6f0e` added "database-level duplicate prevention" but only for URL cards
+- **User Impact**: Duplicate notes possible, URL cards with different types can duplicate
+- **Fix**: Add comprehensive unique constraints to schema for all card types
+
+**Issue 2.2: No Optimistic Locking** (4-6 hours) - [impl: ] [test: ] [done: ]
+- **Location**: `app/api/cards/[id]/route.ts:70-91`
+- **Problem**: If-Unmodified-Since header check has gaps
+- **Issues**:
+  - Only for PATCH operations
+  - **Skipped for metadata updates** (line 73) - metadata updates bypass conflict detection
+  - Two devices can update same card's metadata simultaneously
+- **User Impact**: Metadata updates from different devices silently overwrite each other
+- **Fix**: Add `version` field to all entities, increment on every change, reject updates if version doesn't match
+
+#### Sync Flow Architecture (CRITICAL - 3 issues)
+
+**Issue 3.1: Missing Transaction Boundaries** (8-10 hours) - [impl: ] [test: ] [done: ]
+- **Location**: `lib/services/sync-service.ts:198-302` (pullFromServer)
+- **Problem**: Pull operation is not atomic
+- **Critical Flaw**:
+  ```typescript
+  // Pull cards
+  const serverCards = await fetchWithTimeout('/api/cards');
+  await mergeCards(serverCards, localCards); // Can fail mid-merge
+
+  // Pull collections
+  const serverCollections = await fetchWithTimeout('/api/pawkits');
+  await mergeCollections(serverCollections, localCollections); // Can fail mid-merge
+  ```
+- **Issue**: If mergeCards succeeds but mergeCollections fails, data inconsistent
+- **Rollback Flaw**: Lines 210-299 create snapshot but restoring uses Promise.all (line 188) - can partially fail
+- **No IndexDB Transaction**: Line 174 comment admits this
+- **User Impact**: Partial syncs leave database in corrupted state
+- **Fix**: Wrap all sync operations in IndexDB transactions with proper rollback
+
+**Issue 3.2: Collection Tree Flattening Loses Parents** (6-8 hours) - [impl: ] [test: ] [done: ]
+- **Location**: `lib/services/sync-service.ts:479-497` and `lib/services/local-storage.ts:416-443`
+- **Problem**: Tree flattening and rebuilding loses parent relationships
+- **Process**:
+  ```typescript
+  // Sync service flattens tree
+  const flatServerCollections = this.flattenCollections(serverCollections);
+
+  // Local storage rebuilds tree from parentId
+  private buildCollectionTree(flatCollections) {
+    // Rebuilds based on parentId relationships
+  }
+  ```
+- **Race Condition**:
+  1. Device A deletes parent collection P
+  2. Device B moves child collection C under P
+  3. Sync runs, Server has: P (deleted), C (parentId = P)
+  4. Local rebuilds tree, C becomes orphaned at root
+- **User Impact**: Collections randomly appear at wrong hierarchy level
+- **Fix**: Sync collections as operations (move/delete/rename) not as state snapshots
+
+**Issue 3.3: No Cache Invalidation Strategy** (4-6 hours) - [impl: ] [test: ] [done: ]
+- **Location**: Throughout `lib/stores/data-store.ts`
+- **Problem**: Zustand state updated manually after every operation with no rollback
+- **Example** (lines 437-439):
+  ```typescript
+  set((state) => ({
+    cards: [newCard, ...state.cards],
+  }));
+  ```
+- **Issues**:
+  - If operation fails after state update, UI shows inconsistent data
+  - No rollback mechanism for Zustand state
+  - Refresh (lines 351-389) re-reads from IndexDB but stale state visible during window
+- **User Impact**: UI temporarily shows incorrect state when operations fail
+- **Fix**: Implement proper cache invalidation with optimistic UI rollback
+
+#### Concurrency Issues (MEDIUM - 2 issues)
+
+**Issue 4.1: Sync Queue Not Idempotent** (3-4 hours) - [impl: ] [test: ] [done: ]
+- **Location**: `lib/services/sync-queue.ts:146-190` (enqueue method)
+- **Problem**: Duplicate detection only checks `pending` or `processing` status
+- **Flaw**:
+  ```typescript
+  const duplicate = existing.find(op => {
+    if (op.type !== operation.type) return false;
+    if (op.targetId === operation.targetId &&
+        (op.status === 'pending' || op.status === 'processing')) {
+      return true; // Only checks these statuses
+    }
+    return false;
+  });
+  ```
+- **Issue**: If operation fails and becomes `failed`, enqueueing same operation creates duplicate in queue
+- **Evidence**: Lines 696-701 in data-store.ts enqueue DELETE, lines 702-718 immediately execute it - if network fails, queued twice
+- **User Impact**: Same operation synced multiple times, potential duplicate data
+- **Fix**: Check all statuses including `failed`, deduplicate by resource ID regardless of status
+
+**Issue 4.2: useUserStorage Hook Order Race** (2-3 hours) - [impl: ] [test: ] [done: ]
+- **Location**: `lib/hooks/use-user-storage.ts:26-143` and `app/(dashboard)/layout.tsx`
+- **Problem**: Components can mount before useUserStorage completes
+- **Flow**:
+  ```typescript
+  useEffect(() => {
+    async function initializeUserStorage() {
+      await localDb.init(userId, workspaceId);
+      await syncQueue.init(userId, workspaceId);
+
+      // Then import stores (lines 93-111)
+      const { useSettingsStore } = await import('@/lib/hooks/settings-store');
+    }
+  }, [workspaceId]);
+  ```
+- **Race**: Components using useDataStore can mount before IndexDB initialized for correct user
+- **User Impact**: Operations attempt to read/write before database ready for user context
+- **Fix**: Add initialization guard at top of all hooks that access IndexDB
+
+### Root Cause Analysis
+
+**Primary Cause: IndexDB V2 Migration**
+- Introduced multi-user database architecture
+- Changed from single global database to per-user databases
+- Added workspace concept (default vs custom workspaces)
+- Migration happened October 2025 (commits: 35ade04, 4c5f810, f3114aa)
+
+**What Changed**:
+- Database naming: `pawkit-local-storage` → `pawkit-{userId}-{workspaceId}-local-storage`
+- Init pattern: Single init → Dynamic init with user context
+- Sync queue: Global → Per-user-per-workspace
+- Multi-session detection: Added active session tracking
+
+**What Broke**:
+1. **BroadcastChannel coordination** - worked for single DB, fails with multiple user contexts
+2. **Temp ID pattern** - worked when only one user, races with multi-user sync
+3. **Transaction boundaries** - worked with simple operations, fails with complex multi-user flows
+4. **Deduplication logic** - worked reactively for single user, insufficient for multi-user/multi-device
+
+**Git Evidence**:
+- Commit `61ba60e`: Fixed deduplication soft-deleting cards (reactive fix)
+- Commit `476d04a`: Skip deduplication for server cards (bandaid for temp ID issue)
+- Commit `c60c41b`: Fixed local deletions overwritten (collection timing issue)
+- Commit `e8be3fa`: Prevent duplicate operations (sync queue idempotency)
+
+### Recommended Fix Priority
+
+**Top 3 Fixes (80% of Issues)**:
+
+1. **Eliminate Temp ID Pattern** (6-8 hours) - CRITICAL
+   - Use client-generated UUIDs
+   - Remove ID replacement logic entirely
+   - Add conflict resolution on server for UUID collisions
+   - **Impact**: Eliminates primary duplicate card issue
+
+2. **Add Distributed Lock for Multi-Tab Sync** (4-6 hours) - CRITICAL
+   - Use localStorage with timestamps for tab-level mutex
+   - Add exponential backoff for lock acquisition
+   - Prevent concurrent sync operations
+   - **Impact**: Eliminates multi-tab sync collision
+
+3. **Wrap Operations in IndexDB Transactions** (8-10 hours) - CRITICAL
+   - Add transaction boundaries to all multi-step operations
+   - Implement rollback-safe snapshots
+   - Use atomic operations where possible
+   - **Impact**: Ensures data consistency, prevents corruption
+
+**Total Time for Top 3**: 18-24 hours
+**Expected Impact**: Resolve 80% of user-visible sync issues
+
+### Prevention Guidelines
+
+**When Making Future Sync Changes**:
+1. ✅ Always wrap multi-step operations in transactions
+2. ✅ Never use temporary IDs that can leak into sync
+3. ✅ Implement distributed locks for cross-tab operations
+4. ✅ Use vector clocks or operation sequence numbers for causality
+5. ✅ Add optimistic locking (version fields) to all entities
+6. ✅ Test with multiple tabs and multiple devices
+7. ✅ Monitor for duplicate creation in production
+8. ✅ Use preventive constraints (database) not reactive deduplication (client)
+
+**Reference**: See `.claude/skills/pawkit-sync-patterns/SKILL.md` section "KNOWN ARCHITECTURAL FLAWS" for detailed analysis
+
+---
+
 ## BACKLOG - CRITICAL (Pre-Merge)
 
 **Must complete before merging to main**

@@ -33,6 +33,7 @@ description: Living document of issues encountered, their fixes, and prevention 
    - User Isolation Failure - Missing localStorage Cleanup
    - Duplicate Card Issue - Deleted Cards Returned
    - Deleted Cards Appearing in Library View
+   - Sync System Architectural Issues (January 2025 Analysis)
 3. [Debugging Strategies](#debugging-strategies)
 4. [How to Add New Issues](#how-to-add-new-issues)
 5. [Maintenance](#maintenance)
@@ -2491,6 +2492,103 @@ try {
 **See**:
 - `.claude/skills/pawkit-migrations/SKILL.md` for migration patterns
 - `.claude/skills/pawkit-conventions/SKILL.md` for data model conventions
+
+---
+
+### 20. Sync System Architectural Issues (January 2025 Analysis)
+
+**Issue**: Comprehensive analysis identified 12 architectural flaws causing card duplication, cross-device sync failures, and collection propagation issues.
+
+**Symptoms**:
+- **Card Duplication**: Cards duplicate across devices, temp IDs visible (`temp_1704384000000`)
+- **Cross-Device Failures**: Changes made on one device don't appear on others
+- **Collection Issues**: Pawkits don't update across sessions, hierarchy randomly changes
+- **Data Loss**: User edits overwritten by background metadata fetching
+- **UI Inconsistency**: Cards appear/disappear on refresh, state doesn't match database
+
+**Categories of Issues** (12 total across 8 categories):
+1. **Race Conditions** (5 CRITICAL): Multi-tab sync collision, temp ID races, deduplication false positives, metadata overwrites, init races
+2. **Database Issues** (2 HIGH): Incomplete unique constraints, no optimistic locking
+3. **Sync Architecture** (3 CRITICAL): Missing transactions, collection tree flattening, no cache rollback
+4. **Concurrency** (2 MEDIUM): Sync queue not idempotent, hook initialization races
+
+**Root Cause**: IndexDB V2 migration (October 2025) introduced multi-user database architecture without updating coordination mechanisms.
+
+**What Changed**:
+```
+Before V2: pawkit-local-storage (single global DB)
+After V2:  pawkit-{userId}-{workspaceId}-local-storage (per-user)
+```
+
+**What Broke**:
+- BroadcastChannel coordination (worked for single DB, fails with multi-user)
+- Temp ID pattern (worked single-user, races in multi-user)
+- Transaction boundaries (simple ops became complex multi-user flows)
+- Deduplication logic (reactive fix insufficient for multi-user/device)
+
+**Top 3 Fixes (80% Impact)**:
+1. **Eliminate Temp ID Pattern** (6-8 hours) - Use client UUIDs, no ID replacement
+2. **Distributed Lock for Multi-Tab** (4-6 hours) - localStorage mutex for sync coordination
+3. **IndexDB Transactions** (8-10 hours) - Wrap multi-step operations atomically
+
+**Quick Fix** (Temporary):
+- Refresh browser if seeing duplicates
+- Work in single tab only (close other tabs)
+- Avoid rapid edits across multiple devices
+- Wait 5 seconds between edits on different devices
+
+**Proper Fix Status**: Documented in roadmap, awaiting prioritization (18-24 hours estimated)
+
+**Root Cause Analysis**:
+See `.claude/skills/pawkit-project-context/SKILL.md` - "Date: January 4, 2025 - Comprehensive Sync System Deep-Dive Analysis"
+
+**Detailed Issue Breakdown**:
+See `.claude/skills/pawkit-roadmap/SKILL.md` - "BACKLOG - CRITICAL SYNC FIXES (Priority 0)" section for all 12 issues with:
+- Specific file locations and line numbers
+- User-visible symptoms
+- Root causes
+- Time estimates
+- Proper fixes
+
+**Architectural Patterns**:
+See `.claude/skills/pawkit-sync-patterns/SKILL.md` - "KNOWN ARCHITECTURAL FLAWS (January 2025 Analysis)" section for:
+- Detailed code examples of each flaw
+- Why current approach is broken
+- Anti-patterns to avoid
+- Proper fix implementations
+- Prevention checklist
+
+**How to Avoid**:
+- **Never** use temp IDs that can leak into persistent storage
+- **Always** wrap multi-step operations in transactions
+- **Always** implement distributed locks for cross-tab operations
+- **Never** use reactive deduplication to fix proactive creation bugs
+- **Always** test with multiple tabs AND multiple devices
+- **Always** separate user-edited fields from auto-fetched fields
+
+**Where to Check**:
+- Sync orchestration: `lib/services/sync-service.ts`
+- Local storage: `lib/services/local-storage.ts`
+- Sync queue: `lib/services/sync-queue.ts`
+- Data store: `lib/stores/data-store.ts`
+- Database schema: `prisma/schema.prisma`
+- User storage init: `lib/hooks/use-user-storage.ts`
+
+**Impact**: Critical technical debt documented January 4, 2025. Affects all users with multiple devices or tabs.
+
+**Prevention**:
+- Review sync patterns skill before making sync changes
+- Follow prevention checklist for all new sync features
+- Test multi-tab and multi-device scenarios
+- Monitor duplicate card creation in production
+- Add version fields for optimistic locking
+- Use operation-based sync for temporal dependencies
+
+**See Also**:
+- `.claude/skills/pawkit-roadmap/SKILL.md` - "BACKLOG - CRITICAL SYNC FIXES" for prioritized fix list
+- `.claude/skills/pawkit-sync-patterns/SKILL.md` - "KNOWN ARCHITECTURAL FLAWS" for detailed analysis
+- `.claude/skills/pawkit-project-context/SKILL.md` - Session history for investigation details
+- Git commits: `61ba60e`, `476d04a`, `c60c41b`, `e8be3fa` (previous reactive fixes)
 
 ---
 

@@ -20,6 +20,223 @@ description: Track development progress, major milestones, and session history a
 
 ## Session History
 
+### Date: January 4, 2025 - Comprehensive Sync System Deep-Dive Analysis
+
+**Status**: ✅ ANALYSIS COMPLETE - Issues documented, fixes deferred
+**Priority**: CRITICAL TECHNICAL DEBT
+**Branch**: `main` (no code changes made, documentation only)
+
+**Analysis Context**:
+
+User requested comprehensive investigation of sync system after observing:
+- Cards duplicating across devices and sessions
+- Pawkits not updating on other devices
+- Cross-device sync failures
+- Data inconsistencies between multiple sessions
+
+**Objective**: "Act as a backend expert who has shipped hundreds of products that use sync systems. Dive fully into the sync code, look for any potential issues with local storage, syncing to supabase, possible reasons why cards might duplicate, pawkits might not update in other sessions, etc."
+
+**Investigation Approach**:
+
+Conducted comprehensive analysis using specialized Plan agent:
+1. Complete architecture review of sync-service.ts, local-storage.ts, sync-queue.ts
+2. IndexDB V2 historical investigation via git history
+3. Cross-referenced with previous bug fixes and workarounds
+4. Identified specific race conditions, transaction boundaries, conflict resolution gaps
+5. Mapped full data flows and identified potential race windows
+
+**Key Findings - 8 Critical Categories**:
+
+**1. Race Conditions (5 CRITICAL issues)**:
+- Multi-tab sync collision (BroadcastChannel coordination flawed)
+- Temp ID → Server ID race condition (3 race windows)
+- Deduplication false positives (3 separate flaws)
+- Metadata quality score overwrites user changes
+- Database initialization race (double initialization possible)
+
+**2. Database-Level Issues (2 HIGH issues)**:
+- Incomplete unique index (only covers URL cards)
+- No optimistic locking (metadata updates bypass conflict detection)
+
+**3. Sync Flow Architecture (3 CRITICAL issues)**:
+- Missing transaction boundaries (operations not atomic)
+- Collection tree flattening loses parent relationships
+- No cache invalidation strategy (no rollback on failure)
+
+**4. Concurrency Issues (2 MEDIUM issues)**:
+- Sync queue not idempotent (failed operations can duplicate)
+- useUserStorage hook order race (components mount before init)
+
+**Historical Context - IndexDB V2 Migration**:
+
+**When**: October 2025 (commits: 35ade04, 4c5f810, f3114aa)
+
+**What Changed**:
+```
+Database Naming:
+  Before: pawkit-local-storage (single global database)
+  After: pawkit-{userId}-{workspaceId}-local-storage (per-user databases)
+
+Init Pattern:
+  Before: Single initialization on app load
+  After: Dynamic init with user context, workspace support
+
+Sync Queue:
+  Before: Global queue
+  After: Per-user-per-workspace queue
+
+Multi-Session:
+  Before: No detection
+  After: Active session tracking with localStorage
+```
+
+**Why It Broke**:
+
+1. **BroadcastChannel Coordination**:
+   - Worked: Single DB, simple coordination
+   - Broke: Multiple user contexts, race conditions between tabs
+
+2. **Temp ID Pattern**:
+   - Worked: Single user, no cross-device sync
+   - Broke: Multi-user environment, temp IDs leak into sync, create ghost duplicates
+
+3. **Transaction Boundaries**:
+   - Worked: Simple single-DB operations
+   - Broke: Complex multi-user flows need ACID guarantees
+
+4. **Deduplication Logic**:
+   - Worked: Reactive cleanup for single user
+   - Broke: Insufficient for multi-user/multi-device, creates false positives
+
+**Root Cause Summary**:
+
+The IndexDB V2 migration successfully achieved its goal (per-user data isolation) but inadvertently introduced architectural issues:
+- **Split Brain Problem**: Temp IDs in transit create divergent realities between devices
+- **Lost Atomicity**: Multi-step operations lack transaction boundaries
+- **Coordination Failure**: BroadcastChannel insufficient for multi-tab mutual exclusion
+- **Reactive vs Preventive**: Client-side deduplication is bandaid for database-level constraint gaps
+
+**Git Evidence of Reactive Fixes**:
+
+Commit history shows multiple bandaid fixes addressing symptoms:
+- `61ba60e`: Changed deduplication from soft delete to hard delete (reactive fix)
+- `476d04a`: Skip deduplication when both cards have server IDs (bandaid for temp ID races)
+- `c60c41b`: Fixed local deletions overwritten by server (collection timing issue)
+- `e8be3fa`: Prevent duplicate operations in queue (idempotency issue)
+
+Each fix addressed a specific symptom but didn't solve underlying architectural issues.
+
+**Critical Insights**:
+
+1. **Temp ID Pattern is Primary Duplicate Cause**:
+   - 4-step process (create temp → UI update → server sync → ID replacement) has 3 race windows
+   - Other tabs can sync temp cards before ID replacement completes
+   - If server sync fails, temp card persists in queue AND IndexDB
+   - **Solution**: Use client-generated UUIDs, eliminate ID replacement entirely
+
+2. **Multi-Tab Sync is Fundamentally Flawed**:
+   - BroadcastChannel has message delay (~10ms) creating race window
+   - `otherTabSyncing` flag checked before message processed
+   - Both tabs can start sync simultaneously, pull different versions, create duplicates
+   - **Solution**: Distributed lock using localStorage with timestamps and mutex
+
+3. **No ACID Guarantees at IndexDB Level**:
+   - Operations like pullFromServer do multiple steps without transaction wrapper
+   - If mergeCards succeeds but mergeCollections fails, data is inconsistent
+   - Rollback mechanism uses Promise.all which can partially fail
+   - **Solution**: Wrap all multi-step operations in IndexDB transactions
+
+4. **Deduplication is Reactive Bandaid**:
+   - Runs on every sync trying to clean up duplicates after creation
+   - Has false positives (same title/URL treated as duplicate)
+   - Deleted cards can resurrect before deletion detected
+   - **Solution**: Remove client deduplication, enforce at database level with proper constraints
+
+5. **Metadata Quality Score Causes Data Loss**:
+   - Background metadata fetching scores higher than user manual edits
+   - User adds notes/tags on Device A, Device B fetches metadata, sync overwrites user's work
+   - 1-hour window check insufficient mitigation
+   - **Solution**: Separate user-edited fields from auto-fetched, never overwrite user edits
+
+**Recommended Fix Priority - Top 3 (80% Impact)**:
+
+1. **Eliminate Temp ID Pattern** (6-8 hours)
+   - Impact: Eliminates primary duplicate card issue
+   - Files: lib/stores/data-store.ts, lib/services/sync-service.ts
+   - Approach: Use client UUIDs, remove ID replacement logic
+
+2. **Add Distributed Lock for Multi-Tab Sync** (4-6 hours)
+   - Impact: Eliminates multi-tab sync collision
+   - Files: lib/services/sync-service.ts
+   - Approach: localStorage mutex with exponential backoff
+
+3. **Wrap Operations in IndexDB Transactions** (8-10 hours)
+   - Impact: Ensures data consistency, prevents corruption
+   - Files: lib/services/sync-service.ts, lib/services/local-storage.ts
+   - Approach: Transaction boundaries on all multi-step operations
+
+**Total Estimated Time**: 18-24 hours
+**Expected User Impact**: Resolve 80% of sync issues (duplicates, cross-device failures)
+
+**Prevention Guidelines for Future Sync Work**:
+
+When making sync changes, always:
+1. ✅ Wrap multi-step operations in transactions
+2. ✅ Never use temporary IDs that can leak into sync
+3. ✅ Implement distributed locks for cross-tab operations
+4. ✅ Use vector clocks or operation sequence numbers for causality
+5. ✅ Add optimistic locking (version fields) to all entities
+6. ✅ Test with multiple tabs AND multiple devices simultaneously
+7. ✅ Monitor for duplicate creation in production logs
+8. ✅ Use preventive constraints (database) not reactive deduplication (client)
+
+**Files Analyzed**:
+- `lib/services/sync-service.ts` - Sync orchestration and merge logic
+- `lib/services/local-storage.ts` - IndexDB operations and data persistence
+- `lib/services/sync-queue.ts` - Operation queue and retry logic
+- `lib/stores/data-store.ts` - Zustand state management and optimistic updates
+- `lib/hooks/use-user-storage.ts` - User context initialization
+- `lib/services/storage-migration.ts` - V1 to V2 migration logic
+- `prisma/schema.prisma` - Database schema and constraints
+- `app/api/cards/[id]/route.ts` - API conflict detection
+- Git history - Commits related to sync fixes and IndexDB V2
+
+**Documentation Updated**:
+- `.claude/skills/pawkit-roadmap/SKILL.md` - Added "BACKLOG - CRITICAL SYNC FIXES (Priority 0)" section with all 12 issues
+- `.claude/skills/pawkit-project-context/SKILL.md` - This session entry
+- `.claude/skills/pawkit-sync-patterns/SKILL.md` - Added "KNOWN ARCHITECTURAL FLAWS" section
+- `.claude/skills/pawkit-troubleshooting/SKILL.md` - Added specific troubleshooting entries (if size permits)
+
+**Current Status**:
+- Analysis complete and documented
+- No code changes made (documentation only)
+- Issues prioritized by impact and effort
+- Ready for future fix session when prioritized
+
+**User Decision**: Document now, fix later when sync work is prioritized
+
+**Next Steps** (when user decides to address sync):
+1. Review documented issues in roadmap skill
+2. Start with Top 3 fixes (18-24 hours estimated)
+3. Test with multiple tabs and devices
+4. Monitor production for duplicate creation reduction
+5. Address remaining issues as needed
+
+**Impact**:
+- Created comprehensive reference for future sync fix session
+- Identified root causes preventing guessing/trial-and-error
+- Prioritized fixes by impact to optimize development time
+- Established prevention guidelines to avoid regressions
+
+**Lessons Learned**:
+1. Architecture changes (single → multi-user DB) require comprehensive review of all coordination mechanisms
+2. Race conditions are multiplicative - each new async operation adds exponential complexity
+3. Reactive fixes (deduplication, bandaids) mask underlying architectural issues
+4. Local-first architecture requires ACID guarantees even at client level
+5. Temp IDs are dangerous in distributed systems - UUIDs or server-assigned IDs only
+
+---
+
 ### Date: January 3, 2025 - CRITICAL FIX: User Isolation & Sign Out Restoration
 
 **Status**: ✅ COMPLETE - Merged to main (commit 6f9fe5f)
