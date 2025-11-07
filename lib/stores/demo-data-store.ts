@@ -45,6 +45,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-2',
@@ -70,6 +73,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-3',
@@ -95,6 +101,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: new Date('2025-02-01').toISOString(),
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-4',
@@ -120,6 +129,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-5',
@@ -145,6 +157,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-6',
@@ -170,6 +185,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-7',
@@ -195,6 +213,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-8',
@@ -220,6 +241,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-9',
@@ -245,6 +269,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-10',
@@ -270,6 +297,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-11',
@@ -295,6 +325,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-12',
@@ -320,6 +353,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-13',
@@ -345,6 +381,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-14',
@@ -370,6 +409,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-15',
@@ -395,6 +437,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-16',
@@ -420,6 +465,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-17',
@@ -445,6 +493,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-18',
@@ -470,6 +521,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-19',
@@ -495,6 +549,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'demo-20',
@@ -520,6 +577,9 @@ const DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 ];
 
@@ -606,6 +666,9 @@ export const useDemoDataStore = create<DemoDataStore>()(
           inDen: false,
           encryptedContent: null,
           scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
         };
 
         set((state) => ({
