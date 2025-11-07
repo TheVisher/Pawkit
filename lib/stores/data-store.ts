@@ -427,6 +427,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
       inDen: cardData.inDen || false,
       encryptedContent: null,
       scheduledDate: cardData.scheduledDate || null,
+      lastOpenedAt: null,
+      openCount: 0,
+      lastAccessType: null,
     };
 
     try {
