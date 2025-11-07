@@ -167,6 +167,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-2',
@@ -192,6 +195,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-3',
@@ -217,6 +223,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 
   // Frontend Development
@@ -244,6 +253,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-5',
@@ -269,6 +281,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-6',
@@ -294,6 +309,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 
   // Backend & APIs
@@ -321,6 +339,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-8',
@@ -346,6 +367,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-9',
@@ -371,6 +395,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 
   // Dev Tools
@@ -398,6 +425,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-11',
@@ -423,6 +453,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 
   // Design & UI/UX
@@ -450,6 +483,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-13',
@@ -475,6 +511,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-14',
@@ -500,6 +539,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 
   // Color Palettes
@@ -527,6 +569,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-16',
@@ -552,6 +597,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 
   // Reading List - Articles with reader mode
@@ -604,6 +652,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 
   // Learning & Courses
@@ -631,6 +682,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-20',
@@ -656,6 +710,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 
   // Uncategorized items (showcasing flexibility)
@@ -683,6 +740,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 
   // Notes (showcasing different note types)
@@ -710,6 +770,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'note-2',
@@ -735,6 +798,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 
   // Den items (encrypted/private) - these showcase The Den feature
@@ -762,6 +828,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: true,
     encryptedContent: 'encrypted_demo_content_123',
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'den-2',
@@ -787,6 +856,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: true,
     encryptedContent: 'encrypted_demo_content_456',
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'den-note-1',
@@ -812,6 +884,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: true,
     encryptedContent: 'encrypted_demo_content_789',
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 
   // Additional diverse content to reach 50+
@@ -839,6 +914,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-23',
@@ -864,6 +942,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-24',
@@ -889,6 +970,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-25',
@@ -914,6 +998,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-26',
@@ -939,6 +1026,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-27',
@@ -964,6 +1054,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-28',
@@ -989,6 +1082,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-29',
@@ -1014,6 +1110,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-30',
@@ -1039,6 +1138,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   // Continue with more cards...
   {
@@ -1065,6 +1167,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-32',
@@ -1090,6 +1195,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-33',
@@ -1115,6 +1223,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-34',
@@ -1140,6 +1251,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-35',
@@ -1165,6 +1279,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-36',
@@ -1190,6 +1307,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-37',
@@ -1215,6 +1335,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-38',
@@ -1240,6 +1363,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-39',
@@ -1265,6 +1391,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-40',
@@ -1290,6 +1419,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-41',
@@ -1315,6 +1447,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-42',
@@ -1340,6 +1475,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-43',
@@ -1365,6 +1503,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-44',
@@ -1390,6 +1531,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-45',
@@ -1415,6 +1559,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-46',
@@ -1440,6 +1587,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-47',
@@ -1465,6 +1615,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-48',
@@ -1490,6 +1643,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-49',
@@ -1515,6 +1671,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-50',
@@ -1540,5 +1699,8 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: null,
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
 ];
