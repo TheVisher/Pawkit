@@ -376,6 +376,10 @@ class SyncService {
    * CRITICAL: Local deletions ALWAYS take precedence
    */
   private async mergeCards(serverCards: CardDTO[], localCards: CardDTO[]): Promise<number> {
+    console.log('[DEBUG] ========== mergeCards called ==========');
+    console.log('[DEBUG] Server cards count:', serverCards.length);
+    console.log('[DEBUG] Local cards count:', localCards.length);
+
     let conflicts = 0;
 
     // Get device metadata - if this device is active, prefer local changes
@@ -393,30 +397,58 @@ class SyncService {
     for (const serverCard of serverCards) {
       const localCard = localMap.get(serverCard.id);
 
+      console.log('[DEBUG] Processing card:', {
+        id: serverCard.id,
+        title: serverCard.title || localCard?.title,
+        existsLocally: !!localCard
+      });
+
       if (!localCard) {
         // New card from server - save it (including deleted cards for proper sync state)
         // We need to know about deleted cards so the UI doesn't show stale data
+        console.log('[DEBUG] New card from server, saving:', serverCard.title);
         await localDb.saveCard(serverCard, { fromServer: true });
       } else {
         // Card exists locally and on server - check for conflicts
         const serverTime = new Date(serverCard.updatedAt).getTime();
         const localTime = new Date(localCard.updatedAt).getTime();
 
+        console.log('[DEBUG] Card exists in both places:', {
+          title: localCard.title,
+          localDeleted: localCard.deleted,
+          serverDeleted: serverCard.deleted,
+          localTime: new Date(localTime).toISOString(),
+          serverTime: new Date(serverTime).toISOString()
+        });
+
         // PRIORITY 1: Deletion ALWAYS wins (check first to avoid blocking!)
         // This prevents active device check from blocking incoming deletions
         if (localCard.deleted || serverCard.deleted) {
+          console.log('[DEBUG] 🔴 DELETION CHECK TRIGGERED for card:', {
+            title: localCard.title || serverCard.title,
+            localDeleted: localCard.deleted,
+            serverDeleted: serverCard.deleted,
+            localUpdatedAt: localCard.updatedAt,
+            serverUpdatedAt: serverCard.updatedAt
+          });
+
           // Either version is deleted - keep the deleted state
           const deletedVersion = localCard.deleted ? localCard : serverCard;
 
+          console.log('[DEBUG] Using deletedVersion from:', localCard.deleted ? 'LOCAL' : 'SERVER');
+
           // Ensure deleted flag is set (may not be on the other version)
           if (!deletedVersion.deleted) {
+            console.log('[DEBUG] Forcing deleted flag to true');
             deletedVersion.deleted = true;
             deletedVersion.deletedAt = deletedVersion.deletedAt || new Date().toISOString();
             deletedVersion.updatedAt = new Date().toISOString();
           }
 
           // Save the deleted version and continue
+          console.log('[DEBUG] Saving deleted card to IndexedDB');
           await localDb.saveCard(deletedVersion, { fromServer: true });
+          console.log('[DEBUG] ✅ Card deletion processed, continuing to next card');
           continue;
         }
 
@@ -424,10 +456,17 @@ class SyncService {
         const localDeviceMeta = getDeviceMetadata();
         const serverIsStale = isTimestampStale(serverCard.updatedAt);
 
+        console.log('[DEBUG] Active device check for card:', {
+          title: localCard.title,
+          isActive: localDeviceMeta.isActive,
+          serverIsStale: serverIsStale,
+          serverUpdatedAt: serverCard.updatedAt
+        });
+
         if (localDeviceMeta.isActive && serverIsStale) {
           // This device is active (used within 1 hour), server data is stale (>24 hours old)
           // Keep local version regardless of timestamp
-          console.log(`[Sync] Active device wins: keeping local version of card "${localCard.title}"`);
+          console.log(`[DEBUG] ⚠️ Active device wins: keeping local version of card "${localCard.title}"`);
           conflicts++;
           continue;
         }
@@ -524,6 +563,10 @@ class SyncService {
    * CRITICAL: Local deletions ALWAYS take precedence
    */
   private async mergeCollections(serverCollections: CollectionNode[], localCollections: CollectionNode[]): Promise<number> {
+    console.log('[DEBUG] ========== mergeCollections called ==========');
+    console.log('[DEBUG] Server collections count:', serverCollections.length);
+    console.log('[DEBUG] Local collections count:', localCollections.length);
+
     let conflicts = 0;
 
     // Get device metadata - if this device is active, prefer local changes
@@ -532,6 +575,7 @@ class SyncService {
 
     // Flatten the tree structure to include all nested pawkits
     const flatServerCollections = this.flattenCollections(serverCollections);
+    console.log('[DEBUG] Flattened server collections count:', flatServerCollections.length);
 
     const localMap = new Map(localCollections.map(c => [c.id, c]));
     const serverMap = new Map(flatServerCollections.map(c => [c.id, c]));
@@ -539,28 +583,56 @@ class SyncService {
     for (const serverCollection of flatServerCollections) {
       const localCollection = localMap.get(serverCollection.id);
 
+      console.log('[DEBUG] Processing collection:', {
+        id: serverCollection.id,
+        name: serverCollection.name || localCollection?.name,
+        existsLocally: !!localCollection
+      });
+
       if (!localCollection) {
         // New collection from server - save it (including deleted for proper sync state)
+        console.log('[DEBUG] New collection from server, saving:', serverCollection.name);
         await localDb.saveCollection(serverCollection, { fromServer: true });
       } else {
         // Collection exists locally and on server - check for conflicts
         const serverTime = new Date(serverCollection.updatedAt).getTime();
         const localTime = new Date(localCollection.updatedAt).getTime();
 
+        console.log('[DEBUG] Collection exists in both places:', {
+          name: localCollection.name,
+          localDeleted: localCollection.deleted,
+          serverDeleted: serverCollection.deleted,
+          localTime: new Date(localTime).toISOString(),
+          serverTime: new Date(serverTime).toISOString()
+        });
+
         // PRIORITY 1: Deletion ALWAYS wins (check first to avoid blocking!)
         // This prevents active device check from blocking incoming deletions
         if (localCollection.deleted || serverCollection.deleted) {
+          console.log('[DEBUG] 🔴 DELETION CHECK TRIGGERED for:', {
+            name: localCollection.name || serverCollection.name,
+            localDeleted: localCollection.deleted,
+            serverDeleted: serverCollection.deleted,
+            localUpdatedAt: localCollection.updatedAt,
+            serverUpdatedAt: serverCollection.updatedAt
+          });
+
           // Either version is deleted - keep the deleted state
           const deletedVersion = localCollection.deleted ? localCollection : serverCollection;
 
+          console.log('[DEBUG] Using deletedVersion from:', localCollection.deleted ? 'LOCAL' : 'SERVER');
+
           // Ensure deleted flag is set (may not be on the other version)
           if (!deletedVersion.deleted) {
+            console.log('[DEBUG] Forcing deleted flag to true');
             deletedVersion.deleted = true;
             deletedVersion.updatedAt = new Date().toISOString();
           }
 
           // Save the deleted version and continue
+          console.log('[DEBUG] Saving deleted collection to IndexedDB');
           await localDb.saveCollection(deletedVersion, { fromServer: true });
+          console.log('[DEBUG] ✅ Deletion processed, continuing to next collection');
           continue;
         }
 
@@ -568,20 +640,37 @@ class SyncService {
         const localDeviceMeta = getDeviceMetadata();
         const serverIsStale = isTimestampStale(serverCollection.updatedAt);
 
+        console.log('[DEBUG] Active device check:', {
+          name: localCollection.name,
+          isActive: localDeviceMeta.isActive,
+          serverIsStale: serverIsStale,
+          serverUpdatedAt: serverCollection.updatedAt
+        });
+
         if (localDeviceMeta.isActive && serverIsStale) {
           // This device is active (used within 1 hour), server data is stale (>24 hours old)
           // Keep local version regardless of timestamp
-          console.log(`[Sync] Active device wins: keeping local version of collection "${localCollection.name}"`);
+          console.log(`[DEBUG] ⚠️ Active device wins: keeping local version of collection "${localCollection.name}"`);
           conflicts++;
           continue;
         }
 
         // PRIORITY 3: Timestamp comparison (both devices recently active)
+        console.log('[DEBUG] Timestamp comparison:', {
+          name: localCollection.name,
+          serverNewer: serverTime > localTime,
+          localNewer: localTime > serverTime,
+          equal: serverTime === localTime
+        });
+
         if (serverTime > localTime) {
+          console.log('[DEBUG] Server is newer, using server version');
           await localDb.saveCollection(serverCollection, { fromServer: true });
         } else if (localTime > serverTime) {
+          console.log('[DEBUG] Local is newer, keeping local version');
           conflicts++;
         } else {
+          console.log('[DEBUG] Timestamps equal, using server version');
           await localDb.saveCollection(serverCollection, { fromServer: true });
         }
       }
