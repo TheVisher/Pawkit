@@ -2592,6 +2592,233 @@ See `.claude/skills/pawkit-sync-patterns/SKILL.md` - "KNOWN ARCHITECTURAL FLAWS 
 
 ---
 
+### 21. Deletion Sync Not Propagating Between Devices
+
+**Issue**: Collections deleted on one device not appearing as deleted on other devices. Server has correct deletion (`deleted: true`) but other devices keep showing deleted items with `deleted: false`.
+
+**What Failed**:
+```tsx
+// ❌ WRONG: API filtering out deleted collections before sync
+// lib/server/collections.ts
+export const listCollections = unstable_cache(
+  async (userId: string) => {
+    const items = await prisma.collection.findMany({
+      where: { userId, deleted: false, inDen: false },  // ❌ Filters out deletions!
+      orderBy: { name: "asc" }
+    });
+
+    // Build tree from items...
+    return { tree: roots, flat: Array.from(nodes.values()) };
+  },
+  ['collections'],
+  { revalidate: 5, tags: ['collections'] }
+);
+
+// app/api/pawkits/route.ts
+export async function GET() {
+  const user = await getCurrentUser();
+  const result = await listCollections(user.id);  // ❌ No deleted items
+  return success(result);
+}
+
+// lib/services/sync-service.ts
+private async pullFromServer() {
+  // Fetch collections from server
+  const collectionsRes = await this.fetchWithTimeout('/api/pawkits');
+  const serverCollections = collectionsData.tree || [];
+
+  // ❌ serverCollections NEVER includes deleted items!
+  // ❌ Sync service can't process deletions it doesn't receive
+  const collectionConflicts = await this.mergeCollections(serverCollections, localCollections);
+}
+
+// Result:
+// - Device A deletes collection → server gets deleted: true ✅
+// - Device B syncs → API returns 0 deleted collections ❌
+// - Sync service never sees deletion ❌
+// - Collection stays visible on Device B ❌
+```
+
+**Debug Output Showing the Bug**:
+```typescript
+// Console logs with comprehensive debugging:
+🔵 [SYNC] pullFromServer() STARTED
+🔵 [SYNC] Fetching collections from /api/pawkits...
+🔵 [SYNC] Fetched from server: { rawCount: 15 }
+🔵 [SYNC] Test collection NOT found in server data  // ❌ Filtered out!
+🔵 [SYNC] mergeCollections() CALLED
+🔵 [SYNC] Starting to process 15 server collections...
+// ❌ Test collection with deleted: true never appears
+// ❌ Sync merge logic never runs for deleted items
+```
+
+**The Fix**:
+```tsx
+// ✅ CORRECT: Add includeDeleted parameter to sync endpoint
+
+// lib/server/collections.ts - Accept includeDeleted parameter
+export const listCollections = unstable_cache(
+  async (userId: string, includeDeleted = false) => {
+    const items = await prisma.collection.findMany({
+      where: {
+        userId,
+        ...(includeDeleted ? {} : { deleted: false }),  // ✅ Conditional filter
+        inDen: false
+      },
+      orderBy: { name: "asc" }
+    });
+
+    return { tree: roots, flat: Array.from(nodes.values()) };
+  },
+  ['collections'],
+  { revalidate: 5, tags: ['collections'] }
+);
+
+// app/api/pawkits/route.ts - Read query parameter
+export async function GET(request: NextRequest) {
+  const user = await getCurrentUser();
+
+  // ✅ Allow sync service to request deleted collections
+  const searchParams = request.nextUrl.searchParams;
+  const includeDeleted = searchParams.get('includeDeleted') === 'true';
+
+  const result = await listCollections(user.id, includeDeleted);
+  return success(result);
+}
+
+// lib/services/sync-service.ts - Pass includeDeleted parameter
+private async pullFromServer() {
+  // ✅ CRITICAL: Include deleted collections for proper sync
+  const collectionsRes = await this.fetchWithTimeout('/api/pawkits?includeDeleted=true');
+
+  const serverCollections = collectionsData.tree || [];
+  // ✅ Now includes collections with deleted: true
+  // ✅ Sync service can process deletions properly
+
+  const collectionConflicts = await this.mergeCollections(serverCollections, localCollections);
+}
+
+// mergeCollections() already has correct deletion handling:
+if (localCollection.deleted || serverCollection.deleted) {
+  // Deletion always wins - keep deleted state
+  const deletedVersion = localCollection.deleted ? localCollection : serverCollection;
+  if (!deletedVersion.deleted) {
+    deletedVersion.deleted = true;
+    deletedVersion.updatedAt = new Date().toISOString();
+  }
+  await localDb.saveCollection(deletedVersion, { fromServer: true });
+  continue;  // ✅ Exits early - deletion processed
+}
+```
+
+**Root Cause**:
+- `/api/pawkits` endpoint filtered out deleted collections with `deleted: false` WHERE clause
+- Sync service called `/api/pawkits` expecting to receive ALL collections including deleted
+- Server returned only non-deleted collections → sync service never saw deletions
+- Without deleted items in server response, merge logic couldn't process deletions
+- Result: Deleted collections remained visible on other devices indefinitely
+
+**The Flow (Before Fix)**:
+```typescript
+// Device A:
+User clicks "Delete Pawkit"
+  → localDb.saveCollection({...collection, deleted: true})
+  → Sync pushes to server
+  → Server saves: deleted: true, deletedAt: timestamp ✅
+
+// Device B:
+User triggers sync (minimize/restore browser)
+  → syncService.pullFromServer()
+  → fetch('/api/pawkits')
+  → Server query: WHERE deleted: false
+  → Server response: [] (empty - deleted item filtered out) ❌
+  → mergeCollections([], localCollections)
+  → No deleted item in server data to merge ❌
+  → Local collection stays with deleted: false ❌
+```
+
+**The Flow (After Fix)**:
+```typescript
+// Device A:
+User clicks "Delete Pawkit"
+  → localDb.saveCollection({...collection, deleted: true})
+  → Sync pushes to server
+  → Server saves: deleted: true, deletedAt: timestamp ✅
+
+// Device B:
+User triggers sync (minimize/restore browser)
+  → syncService.pullFromServer()
+  → fetch('/api/pawkits?includeDeleted=true')  // ✅ New parameter
+  → Server query: WHERE (no deleted filter)
+  → Server response: [{...collection, deleted: true}] ✅
+  → mergeCollections([{deleted: true}], localCollections)
+  → Deletion check: serverCollection.deleted === true ✅
+  → localDb.saveCollection({...collection, deleted: true}) ✅
+  → Collection disappears from UI (existing filter logic works) ✅
+```
+
+**How to Avoid**:
+- **ALWAYS** include deleted items in sync API responses
+- Use query parameter (`?includeDeleted=true`) to opt-in for sync endpoints
+- Keep default behavior (filtered) for UI-facing endpoints
+- Test deletion propagation across multiple devices
+- Add debug logging to verify deleted items in server responses
+- Document which endpoints include deleted items vs filter them
+
+**Where to Check**:
+- Sync endpoints: Should accept `includeDeleted` parameter
+- UI endpoints: Should filter `deleted: false` by default
+- List endpoints: `/api/cards`, `/api/pawkits`, `/api/collections`
+- Sync service: Always pass `includeDeleted=true` when syncing
+
+**Debugging Tips**:
+```typescript
+// Add logging to verify deleted items in response
+console.log('[API] Returning collections:', {
+  total: result.tree.length,
+  includeDeleted,
+  deletedCount: result.flat.filter(c => c.deleted).length
+});
+
+// In sync service, verify deleted items received
+console.log('[Sync] Server collections:', {
+  total: serverCollections.length,
+  deleted: serverCollections.filter(c => c.deleted).length
+});
+```
+
+**Testing Checklist**:
+- [ ] Device A deletes collection → syncs to server (deleted: true)
+- [ ] Device B syncs → receives deleted collection in API response
+- [ ] Device B merge logic processes deletion
+- [ ] Collection disappears from Device B UI
+- [ ] Server shows deleted: true, deletedAt timestamp
+- [ ] Both devices show same state (deleted)
+
+**Impact**: Fixed January 12, 2025 - Deletions now sync correctly between all devices
+
+**Commits**:
+- `9dd5849` - Added includeDeleted parameter to API
+- `aea9073` - Cleaned up debug logging after fix verified
+
+**Files Modified**:
+- `lib/server/collections.ts` - Added includeDeleted parameter
+- `app/api/pawkits/route.ts` - Read includeDeleted query param
+- `lib/services/sync-service.ts` - Pass includeDeleted=true when syncing
+
+**Prevention**:
+- Document sync endpoints must include deleted items
+- Add tests for cross-device deletion propagation
+- Monitor for "deletion not syncing" reports
+- Review all list endpoints for proper deleted handling
+
+**See Also**:
+- `.claude/skills/pawkit-sync-patterns/SKILL.md` - Deletion sync patterns
+- `.claude/skills/pawkit-api-patterns/SKILL.md` - Query parameter conventions
+- `.claude/skills/pawkit-conventions/SKILL.md` - Soft delete patterns
+
+---
+
 ## Debugging Strategies
 
 ### When API Returns 500 Error
