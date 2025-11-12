@@ -55,7 +55,8 @@ const nextConfig = {
   }),
 
   // Production optimizations
-  ...(process.env.NODE_ENV === 'production' && {
+  // Only remove console logs in TRUE production, not in preview deployments
+  ...(process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV !== 'preview' && {
     compiler: {
       // Remove console logs in production (except errors and warnings)
       removeConsole: {
