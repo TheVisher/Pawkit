@@ -26,10 +26,15 @@ function mapCollection(collection: Collection): Omit<CollectionDTO, 'children'> 
 }
 
 // Cache collections for 5 seconds to improve navigation speed while keeping data fresh
+// Note: For sync purposes, we bypass cache and include deleted collections
 export const listCollections = unstable_cache(
-  async (userId: string) => {
+  async (userId: string, includeDeleted = false) => {
     const items = await prisma.collection.findMany({
-      where: { userId, deleted: false, inDen: false },
+      where: {
+        userId,
+        ...(includeDeleted ? {} : { deleted: false }),
+        inDen: false
+      },
       orderBy: { name: "asc" }
     });
 

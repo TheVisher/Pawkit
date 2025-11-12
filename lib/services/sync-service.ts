@@ -291,7 +291,8 @@ class SyncService {
     // COLLECTIONS SYNC - Independent try-catch
     try {
       console.log('🔵 [SYNC] Fetching collections from /api/pawkits...');
-      const collectionsRes = await this.fetchWithTimeout('/api/pawkits');
+      // CRITICAL: Include deleted collections so we can process deletions in local IndexedDB
+      const collectionsRes = await this.fetchWithTimeout('/api/pawkits?includeDeleted=true');
 
       if (collectionsRes.ok) {
         const collectionsData = await collectionsRes.json();
