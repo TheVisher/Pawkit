@@ -20,6 +20,7 @@ import {
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
 import { type CollectionNode, type CardType, type CardModel } from "@/lib/types";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
+import { ConfirmDeleteModal } from "@/components/modals/confirm-delete-modal";
 import {
   DndContext,
   closestCenter,
@@ -89,6 +90,10 @@ export function LeftNavigationPanel({
   const [renameCollectionName, setRenameCollectionName] = useState("");
   const [renameValue, setRenameValue] = useState("");
   const [renamingCollection, setRenamingCollection] = useState(false);
+
+  // Delete confirmation modal state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [collectionToDelete, setCollectionToDelete] = useState<CollectionNode | null>(null);
 
   // Detect if we're in demo mode
   const isDemo = pathname?.startsWith('/demo');
@@ -458,6 +463,24 @@ export function LeftNavigationPanel({
     }
   };
 
+  const handleConfirmDelete = async () => {
+    if (!collectionToDelete) return;
+    try {
+      await deleteCollection(collectionToDelete.id);
+
+      // Show toast
+      setToastMessage("Pawkit Deleted");
+      setShowToast(true);
+
+      // Hide toast after 2 seconds
+      setTimeout(() => {
+        setShowToast(false);
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to delete collection:', error);
+    }
+  };
+
   if (!open) return null;
 
   // Sortable Pinned Note component
@@ -635,14 +658,9 @@ export function LeftNavigationPanel({
       {
         label: "Delete",
         icon: Trash2,
-        onClick: async () => {
-          const confirmed = window.confirm(`Delete collection "${collection.name}"?`);
-          if (!confirmed) return;
-          try {
-            await deleteCollection(collection.id);
-          } catch (err) {
-            console.error("Failed to delete collection:", err);
-          }
+        onClick: () => {
+          setCollectionToDelete(collection);
+          setShowDeleteConfirm(true);
         },
         destructive: true,
       },
@@ -1332,6 +1350,19 @@ export function LeftNavigationPanel({
         onClose={() => setShowCreateNoteModal(false)}
         onConfirm={handleCreateNote}
         dailyNoteExists={dailyNoteExists}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        open={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setCollectionToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Pawkit?"
+        message="Are you sure you want to delete this pawkit?"
+        itemName={collectionToDelete?.name}
       />
 
       {/* Toast Notification */}
