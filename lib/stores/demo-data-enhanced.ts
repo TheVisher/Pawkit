@@ -627,6 +627,9 @@ export const ENHANCED_DEMO_CARDS: CardDTO[] = [
     inDen: false,
     encryptedContent: null,
     scheduledDate: daysAgo(-7), // Scheduled for 7 days from now
+    lastOpenedAt: null,
+    openCount: 0,
+    lastAccessType: null,
   },
   {
     id: 'card-18',
