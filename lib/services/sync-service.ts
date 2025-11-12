@@ -402,19 +402,8 @@ class SyncService {
         const serverTime = new Date(serverCard.updatedAt).getTime();
         const localTime = new Date(localCard.updatedAt).getTime();
 
-        // PRIORITY 1: Active device wins over stale device
-        const localDeviceMeta = getDeviceMetadata();
-        const serverIsStale = isTimestampStale(serverCard.updatedAt);
-
-        if (localDeviceMeta.isActive && serverIsStale) {
-          // This device is active (used within 1 hour), server data is stale (>24 hours old)
-          // Keep local version regardless of timestamp
-          console.log(`[Sync] Active device wins: keeping local version of card "${localCard.title}"`);
-          conflicts++;
-          continue;
-        }
-
-        // PRIORITY 2: Deletion always wins (prevents resurrection)
+        // PRIORITY 1: Deletion ALWAYS wins (check first to avoid blocking!)
+        // This prevents active device check from blocking incoming deletions
         if (localCard.deleted || serverCard.deleted) {
           // Either version is deleted - keep the deleted state
           const deletedVersion = localCard.deleted ? localCard : serverCard;
@@ -428,6 +417,18 @@ class SyncService {
 
           // Save the deleted version and continue
           await localDb.saveCard(deletedVersion, { fromServer: true });
+          continue;
+        }
+
+        // PRIORITY 2: Active device wins over stale device (for non-deleted items)
+        const localDeviceMeta = getDeviceMetadata();
+        const serverIsStale = isTimestampStale(serverCard.updatedAt);
+
+        if (localDeviceMeta.isActive && serverIsStale) {
+          // This device is active (used within 1 hour), server data is stale (>24 hours old)
+          // Keep local version regardless of timestamp
+          console.log(`[Sync] Active device wins: keeping local version of card "${localCard.title}"`);
+          conflicts++;
           continue;
         }
 
@@ -546,19 +547,8 @@ class SyncService {
         const serverTime = new Date(serverCollection.updatedAt).getTime();
         const localTime = new Date(localCollection.updatedAt).getTime();
 
-        // PRIORITY 1: Active device wins over stale device
-        const localDeviceMeta = getDeviceMetadata();
-        const serverIsStale = isTimestampStale(serverCollection.updatedAt);
-
-        if (localDeviceMeta.isActive && serverIsStale) {
-          // This device is active (used within 1 hour), server data is stale (>24 hours old)
-          // Keep local version regardless of timestamp
-          console.log(`[Sync] Active device wins: keeping local version of collection "${localCollection.name}"`);
-          conflicts++;
-          continue;
-        }
-
-        // PRIORITY 2: Deletion always wins (prevents resurrection)
+        // PRIORITY 1: Deletion ALWAYS wins (check first to avoid blocking!)
+        // This prevents active device check from blocking incoming deletions
         if (localCollection.deleted || serverCollection.deleted) {
           // Either version is deleted - keep the deleted state
           const deletedVersion = localCollection.deleted ? localCollection : serverCollection;
@@ -571,6 +561,18 @@ class SyncService {
 
           // Save the deleted version and continue
           await localDb.saveCollection(deletedVersion, { fromServer: true });
+          continue;
+        }
+
+        // PRIORITY 2: Active device wins over stale device (for non-deleted items)
+        const localDeviceMeta = getDeviceMetadata();
+        const serverIsStale = isTimestampStale(serverCollection.updatedAt);
+
+        if (localDeviceMeta.isActive && serverIsStale) {
+          // This device is active (used within 1 hour), server data is stale (>24 hours old)
+          // Keep local version regardless of timestamp
+          console.log(`[Sync] Active device wins: keeping local version of collection "${localCollection.name}"`);
+          conflicts++;
           continue;
         }
 
