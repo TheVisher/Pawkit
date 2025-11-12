@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
-import { prisma } from '@/lib/server/supabase';
+import { prisma } from '@/lib/server/prisma';
 
 /**
  * Lightweight sync check endpoint
