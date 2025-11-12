@@ -370,28 +370,21 @@ class SyncService {
         const serverTime = new Date(serverCard.updatedAt).getTime();
         const localTime = new Date(localCard.updatedAt).getTime();
 
-        // CRITICAL: Handle deletion conflicts with timestamp checks
-        if (localCard.deleted) {
-          // Local card is deleted - but check if server has newer non-deleted version
-          if (!serverCard.deleted && serverTime > localTime) {
-            // Server resurrected the card after local deletion with newer timestamp
-            await localDb.saveCard(serverCard, { fromServer: true });
-            continue;
+        // CRITICAL: Handle deletion conflicts - DELETION ALWAYS WINS
+        // Once deleted on any device, stay deleted (prevents resurrection from stale devices)
+        if (localCard.deleted || serverCard.deleted) {
+          // Either version is deleted - keep the deleted state
+          const deletedVersion = localCard.deleted ? localCard : serverCard;
+
+          // Ensure deleted flag is set (may not be on the other version)
+          if (!deletedVersion.deleted) {
+            deletedVersion.deleted = true;
+            deletedVersion.deletedAt = deletedVersion.deletedAt || new Date().toISOString();
+            deletedVersion.updatedAt = new Date().toISOString();
           }
 
-          // Local deletion is newer or equal - preserve it
-          // Keep local deleted version, will be synced to server in push phase
-          continue;
-        }
-
-        // If server version is deleted, check timestamps
-        if (serverCard.deleted) {
-          // Only accept server deletion if it's newer than local version
-          if (serverTime >= localTime) {
-            await localDb.saveCard(serverCard, { fromServer: true });
-          } else {
-            conflicts++;
-          }
+          // Save the deleted version and continue
+          await localDb.saveCard(deletedVersion, { fromServer: true });
           continue;
         }
 
@@ -525,28 +518,21 @@ class SyncService {
         const serverTime = new Date(serverCollection.updatedAt).getTime();
         const localTime = new Date(localCollection.updatedAt).getTime();
 
-        // CRITICAL: Handle deletion conflicts with timestamp checks
-        if (localCollection.deleted) {
-          // Local collection is deleted - but check if server has newer non-deleted version
-          if (!serverCollection.deleted && serverTime > localTime) {
-            // Server resurrected the collection after local deletion with newer timestamp
-            await localDb.saveCollection(serverCollection, { fromServer: true });
-            continue;
+        // CRITICAL: Handle deletion conflicts - DELETION ALWAYS WINS
+        // Once deleted on any device, stay deleted (prevents resurrection from stale devices)
+        if (localCollection.deleted || serverCollection.deleted) {
+          // Either version is deleted - keep the deleted state
+          const deletedVersion = localCollection.deleted ? localCollection : serverCollection;
+
+          // Ensure deleted flag is set (may not be on the other version)
+          if (!deletedVersion.deleted) {
+            deletedVersion.deleted = true;
+            deletedVersion.deletedAt = deletedVersion.deletedAt || new Date().toISOString();
+            deletedVersion.updatedAt = new Date().toISOString();
           }
 
-          // Local deletion is newer or equal - preserve it
-          // Keep local deleted version, will be synced to server in push phase
-          continue;
-        }
-
-        // If server version is deleted, check timestamps
-        if (serverCollection.deleted) {
-          // Only accept server deletion if it's newer than local version
-          if (serverTime >= localTime) {
-            await localDb.saveCollection(serverCollection, { fromServer: true });
-          } else {
-            conflicts++;
-          }
+          // Save the deleted version and continue
+          await localDb.saveCollection(deletedVersion, { fromServer: true });
           continue;
         }
 
