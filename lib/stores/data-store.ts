@@ -855,7 +855,23 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const now = new Date().toISOString();
 
       // STEP 1: Delete from local storage FIRST (local-first!)
-      const collections = await localDb.getAllCollections();
+      // IMPORTANT: Get collections as FLAT list, not tree structure
+      // We need to work with parentId relationships, which only work on flat lists
+      const collectionTree = await localDb.getAllCollections(true);
+
+      // Flatten tree to work with parentId relationships
+      const flattenTree = (nodes: CollectionNode[]): CollectionNode[] => {
+        const result: CollectionNode[] = [];
+        for (const node of nodes) {
+          result.push(node);
+          if (node.children && node.children.length > 0) {
+            result.push(...flattenTree(node.children));
+          }
+        }
+        return result;
+      };
+
+      const collections = flattenTree(collectionTree);
       const collection = collections.find(c => c.id === id);
 
       if (collection) {

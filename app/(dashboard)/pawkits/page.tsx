@@ -60,9 +60,12 @@ export default function CollectionsPage() {
 
   // Create grid items and allPawkits from Zustand store
   const { gridItems, allPawkits } = useMemo(() => {
-    // Flatten all pawkits
+    // Flatten all pawkits (excluding deleted ones)
     const flattenPawkits = (nodes: typeof collections, result: any[] = []): any[] => {
       for (const node of nodes) {
+        // Skip deleted collections
+        if (node.deleted === true) continue;
+
         result.push({ id: node.id, name: node.name, slug: node.slug });
         if (node.children?.length) {
           flattenPawkits(node.children, result);
@@ -73,8 +76,8 @@ export default function CollectionsPage() {
 
     const allPawkits = flattenPawkits(collections);
 
-    // Create grid items with preview cards
-    const gridItems = collections.map(root => {
+    // Create grid items with preview cards (excluding deleted collections)
+    const gridItems = collections.filter(root => root.deleted !== true).map(root => {
       const pawkitCards = cards.filter(card => 
         card.collections.includes(root.slug) && card.deleted !== true
       );
