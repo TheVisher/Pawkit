@@ -11,6 +11,7 @@ import { AnimatedBackground } from "@/components/rediscover/animated-background"
 import { RediscoverMode, RediscoverAction } from "@/components/rediscover/rediscover-mode";
 import { useRediscoverStore, RediscoverFilter } from "@/lib/hooks/rediscover-store";
 import { CardModel } from "@/lib/types";
+import { trackCardOpen } from "@/lib/hooks/use-recent-history";
 
 function LibraryPageContent() {
   const searchParams = useSearchParams();
@@ -255,6 +256,20 @@ function LibraryPageContent() {
 
     // Handle action
     if (action === "keep") {
+      // Track that the card was opened/accessed via Rediscover
+      try {
+        await trackCardOpen(cardId, 'rediscover');
+
+        // Update the local card in the data store to reflect the tracking
+        const dataStore = useDataStore.getState();
+        await dataStore.updateCard(cardId, {
+          lastOpenedAt: new Date().toISOString(),
+          openCount: (card.openCount || 0) + 1,
+          lastAccessType: 'rediscover'
+        });
+      } catch (error) {
+        console.error('[Rediscover] Failed to track card open:', error);
+      }
       rediscoverStore.addKeptCard(card);
     } else if (action === "delete") {
       // Delete the card
@@ -263,6 +278,19 @@ function LibraryPageContent() {
 
     // Move to next card
     rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
+
+    // Force refresh the queue to remove tracked/deleted cards from never-opened filter
+    if (rediscoverStore.filter === 'never-opened') {
+      // Small delay to allow data store to update
+      setTimeout(() => {
+        const filtered = getFilteredCards(rediscoverStore.filter);
+        // Rebuild the entire queue from the current position forward
+        const newQueue = filtered.filter(c =>
+          !rediscoverStore.queue.slice(0, rediscoverStore.currentIndex + 1).some(qc => qc.id === c.id)
+        );
+        rediscoverStore.setQueue([...rediscoverStore.queue.slice(0, rediscoverStore.currentIndex + 1), ...newQueue]);
+      }, 100);
+    }
   };
 
   const handleExitRediscover = () => {
