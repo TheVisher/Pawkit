@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2 } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles } from "lucide-react";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
@@ -46,6 +46,7 @@ type NavItem = {
 const navigationItems: NavItem[] = [
   { id: "library", label: "Library", icon: Library, path: "/library" },
   { id: "calendar", label: "Calendar", icon: Calendar, path: "/calendar" },
+  { id: "rediscover", label: "Rediscover", icon: Sparkles, path: "/library?mode=rediscover" },
 ];
 
 export type LeftPanelMode = "floating" | "anchored";
@@ -136,6 +137,17 @@ export function LeftNavigationPanel({
   const dailyNoteExists = useMemo(() => {
     const today = new Date();
     return findDailyNoteForDate(cards, today) !== null;
+  }, [cards]);
+
+  // Calculate never-opened count for Rediscover badge
+  const neverOpenedCount = useMemo(() => {
+    return cards.filter(
+      card =>
+        card.type === "url" &&
+        (!card.lastOpenedAt || card.openCount === 0) &&
+        !card.deleted &&
+        !card.collections?.includes('the-den')
+    ).length;
   }, [cards]);
 
   // Get pinned notes
@@ -985,6 +997,7 @@ export function LeftNavigationPanel({
                 const Icon = item.icon;
                 const fullPath = pathPrefix + item.path;
                 const isActive = pathname === fullPath;
+                const showBadge = item.id === "rediscover" && neverOpenedCount > 0;
                 return (
                   <button
                     key={item.id}
@@ -999,6 +1012,11 @@ export function LeftNavigationPanel({
                   >
                     <Icon size={16} className="flex-shrink-0" />
                     <span className="flex-1 text-left">{item.label}</span>
+                    {showBadge && (
+                      <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-accent text-white flex-shrink-0">
+                        {neverOpenedCount}
+                      </span>
+                    )}
                     {isActive && (
                       <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
                     )}

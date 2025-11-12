@@ -6,8 +6,7 @@ import Link from "next/link";
 import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
 import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
-import { DailyDigWidget } from "@/components/home/daily-dig-widget";
-import { QuickActionsCard } from "@/components/home/quick-actions-card";
+import { DailyDigCard } from "@/components/home/daily-dig-card";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
@@ -94,7 +93,7 @@ export default function HomePage() {
         return !isInPrivateCollection;
       })
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 15); // Increased from 5 to 15
+      .slice(0, 9); // Show 9 recent items to make room for Daily Dig card
   }, [cards, privateCollectionIds]);
 
   const quickAccess = useMemo(() => {
@@ -246,12 +245,6 @@ export default function HomePage() {
           </h1>
         </section>
 
-        {/* Daily Dig Widget and Quick Actions */}
-        <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <DailyDigWidget cards={cards} />
-          <QuickActionsCard />
-        </section>
-
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-xl font-semibold text-gray-100">Recent Items</h2>
@@ -261,6 +254,10 @@ export default function HomePage() {
           </div>
           {recent.length > 0 ? (
             <HorizontalScrollContainer>
+              {/* Daily Dig Card - First position */}
+              <DailyDigCard cards={cards} />
+
+              {/* Recent Items */}
               {recent.map((card) => (
                 <div key={card.id} className="flex-shrink-0 w-[322px]">
                 <RecentCard
