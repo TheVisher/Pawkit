@@ -163,7 +163,7 @@ function CollectionsSidebarContent({
           >
             All cards
           </button>
-          {nodes.map((node) => (
+          {nodes.filter(node => node.deleted !== true).map((node) => (
             <CollectionItem
               key={node.id}
               node={node}
@@ -297,7 +297,7 @@ function CollectionItem({
       </div>
       {hasChildren && isExpanded && (
         <div className="mt-1 space-y-1">
-          {node.children.map((child) => (
+          {node.children.filter(child => child.deleted !== true).map((child) => (
             <CollectionItem
               key={child.id}
               node={child}
