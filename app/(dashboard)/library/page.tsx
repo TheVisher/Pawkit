@@ -278,19 +278,19 @@ function LibraryPageContent() {
       await useDataStore.getState().deleteCard(cardId);
     }
 
-    // Move to next card immediately (no waiting for API)
-    rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
-
-    // Refresh queue to remove tracked/deleted cards
+    // Refresh queue SYNCHRONOUSLY (no setTimeout)
+    // After dataStore.updateCard, Zustand state is already updated
+    // So we can immediately recalculate the filtered cards
     if (rediscoverStore.filter === 'never-opened') {
-      // Small delay to allow Zustand state propagation
-      setTimeout(() => {
-        const filtered = getFilteredCards(rediscoverStore.filter);
-        const newQueue = filtered.filter(c =>
-          !rediscoverStore.queue.slice(0, rediscoverStore.currentIndex + 1).some(qc => qc.id === c.id)
-        );
-        rediscoverStore.setQueue([...rediscoverStore.queue.slice(0, rediscoverStore.currentIndex + 1), ...newQueue]);
-      }, 50); // Reduced from 100ms to 50ms for even faster updates
+      const filtered = getFilteredCards(rediscoverStore.filter);
+      // Remove the card we just processed from the new queue
+      const newQueue = filtered.filter(c => c.id !== cardId);
+      rediscoverStore.setQueue(newQueue);
+      // Reset to first card in the new queue
+      rediscoverStore.setCurrentIndex(0);
+    } else {
+      // For other filters, just move to next card
+      rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
     }
   };
 
