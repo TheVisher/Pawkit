@@ -1,5 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Exclude React Native mobile app from Next.js build
+  webpack: (config, { isServer }) => {
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: ['**/node_modules', '**/mobile/**'],
+    };
+    return config;
+  },
+
   images: {
     remotePatterns: [
       {

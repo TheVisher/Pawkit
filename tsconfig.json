@@ -47,6 +47,7 @@
     "node_modules",
     "packages",
     "scripts/archived",
-    "docs/archived"
+    "docs/archived",
+    "mobile"
   ]
 }

@@ -1,0 +1,2 @@
+# Exclude React Native mobile app from Vercel builds
+mobile/
