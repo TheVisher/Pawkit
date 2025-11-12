@@ -11,7 +11,6 @@ import { AnimatedBackground } from "@/components/rediscover/animated-background"
 import { RediscoverMode, RediscoverAction } from "@/components/rediscover/rediscover-mode";
 import { useRediscoverStore, RediscoverFilter } from "@/lib/hooks/rediscover-store";
 import { CardModel } from "@/lib/types";
-import { trackCardOpen } from "@/lib/hooks/use-recent-history";
 
 function LibraryPageContent() {
   const searchParams = useSearchParams();
@@ -256,40 +255,42 @@ function LibraryPageContent() {
 
     // Handle action
     if (action === "keep") {
-      // Track that the card was opened/accessed via Rediscover
+      // LOCAL-FIRST: Update IndexedDB immediately (10-50ms)
+      // dataStore.updateCard handles:
+      //   1. Save to IndexedDB (instant, ~10-50ms)
+      //   2. Update Zustand state (instant UI update)
+      //   3. Sync to Supabase in background (fire-and-forget)
+      const dataStore = useDataStore.getState();
       try {
-        await trackCardOpen(cardId, 'rediscover');
-
-        // Update the local card in the data store to reflect the tracking
-        const dataStore = useDataStore.getState();
         await dataStore.updateCard(cardId, {
           lastOpenedAt: new Date().toISOString(),
           openCount: (card.openCount || 0) + 1,
           lastAccessType: 'rediscover'
         });
+        // UI updates instantly from IndexedDB ✨
       } catch (error) {
-        console.error('[Rediscover] Failed to track card open:', error);
+        console.error('[Rediscover] Failed to update card tracking:', error);
       }
+
       rediscoverStore.addKeptCard(card);
     } else if (action === "delete") {
-      // Delete the card
+      // Delete the card (also local-first)
       await useDataStore.getState().deleteCard(cardId);
     }
 
-    // Move to next card
+    // Move to next card immediately (no waiting for API)
     rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
 
-    // Force refresh the queue to remove tracked/deleted cards from never-opened filter
+    // Refresh queue to remove tracked/deleted cards
     if (rediscoverStore.filter === 'never-opened') {
-      // Small delay to allow data store to update
+      // Small delay to allow Zustand state propagation
       setTimeout(() => {
         const filtered = getFilteredCards(rediscoverStore.filter);
-        // Rebuild the entire queue from the current position forward
         const newQueue = filtered.filter(c =>
           !rediscoverStore.queue.slice(0, rediscoverStore.currentIndex + 1).some(qc => qc.id === c.id)
         );
         rediscoverStore.setQueue([...rediscoverStore.queue.slice(0, rediscoverStore.currentIndex + 1), ...newQueue]);
-      }, 100);
+      }, 50); // Reduced from 100ms to 50ms for even faster updates
     }
   };
 

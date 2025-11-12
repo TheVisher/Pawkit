@@ -76,7 +76,12 @@ export function useRecentHistory() {
 
 /**
  * Hook to track when a card is viewed
- * This tracks both recent history (localStorage) and card open tracking (database)
+ *
+ * LOCAL-FIRST IMPLEMENTATION:
+ * 1. Tracks in recent history (localStorage)
+ * 2. Updates IndexedDB immediately (10-50ms)
+ * 3. UI updates instantly from Zustand state
+ * 4. Syncs to Supabase in background (handled by data store)
  */
 export function useTrackCardView(card: CardModel | null, accessType: 'modal' | 'external' | 'rediscover' = 'modal') {
   const { addToHistory } = useRecentHistory();
@@ -95,28 +100,32 @@ export function useTrackCardView(card: CardModel | null, accessType: 'modal' | '
       image: card.image || undefined,
     });
 
-    // Track card open in database (async, don't await)
-    trackCardOpen(card.id, accessType).catch(err => {
-      console.error('[useTrackCardView] Failed to track card open:', err);
-    });
+    // LOCAL-FIRST: Update IndexedDB immediately
+    // Fire-and-forget pattern - don't await to keep UI responsive
+    const updateTracking = async () => {
+      try {
+        // Dynamically import to avoid circular dependencies
+        const { useDataStore } = await import('@/lib/stores/data-store');
+        const dataStore = useDataStore.getState();
+
+        // Update card tracking in IndexedDB (instant, ~10-50ms)
+        // dataStore.updateCard automatically handles:
+        //   1. Save to IndexedDB (synchronous, instant)
+        //   2. Update Zustand state (instant UI update)
+        //   3. Background sync to Supabase (non-blocking)
+        await dataStore.updateCard(card.id, {
+          lastOpenedAt: new Date().toISOString(),
+          openCount: (card.openCount || 0) + 1,
+          lastAccessType: accessType
+        });
+      } catch (err) {
+        console.error('[useTrackCardView] Failed to track card view:', err);
+      }
+    };
+
+    // Fire and forget - don't block UI
+    updateTracking();
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [card?.id]); // Only track when card ID changes
-}
-
-/**
- * Track when a card is opened in the database
- */
-export async function trackCardOpen(cardId: string, accessType: 'modal' | 'external' | 'rediscover' = 'modal'): Promise<void> {
-  try {
-    await fetch(`/api/cards/${cardId}/track-open`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ accessType }),
-    });
-  } catch (error) {
-    console.error('[trackCardOpen] Failed to track card open:', error);
-    throw error;
-  }
 }
