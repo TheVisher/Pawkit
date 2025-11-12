@@ -527,7 +527,6 @@ class SyncService {
           // Ensure deleted flag is set (may not be on the other version)
           if (!deletedVersion.deleted) {
             deletedVersion.deleted = true;
-            deletedVersion.deletedAt = deletedVersion.deletedAt || new Date().toISOString();
             deletedVersion.updatedAt = new Date().toISOString();
           }
 
