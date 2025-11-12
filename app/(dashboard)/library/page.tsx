@@ -249,10 +249,6 @@ function LibraryPageContent() {
     const card = rediscoverStore.queue[rediscoverStore.currentIndex];
     if (!card || card.id !== cardId) return;
 
-    // Update session stats - map action to stat key
-    const statKey = action === "keep" ? "kept" : "deleted";
-    rediscoverStore.updateStats(statKey);
-
     // Handle action
     if (action === "keep") {
       // LOCAL-FIRST: Update IndexedDB immediately (10-50ms)
@@ -272,25 +268,15 @@ function LibraryPageContent() {
         console.error('[Rediscover] Failed to update card tracking:', error);
       }
 
-      rediscoverStore.addKeptCard(card);
+      // ATOMIC: Update queue, kept cards, index, and stats in ONE operation
+      // This prevents ghost cards by ensuring no intermediate renders with stale state
+      rediscoverStore.handleKeep(card);
     } else if (action === "delete") {
       // Delete the card (also local-first)
       await useDataStore.getState().deleteCard(cardId);
-    }
 
-    // Refresh queue SYNCHRONOUSLY (no setTimeout)
-    // After dataStore.updateCard, Zustand state is already updated
-    // So we can immediately recalculate the filtered cards
-    if (rediscoverStore.filter === 'never-opened') {
-      const filtered = getFilteredCards(rediscoverStore.filter);
-      // Remove the card we just processed from the new queue
-      const newQueue = filtered.filter(c => c.id !== cardId);
-      rediscoverStore.setQueue(newQueue);
-      // Reset to first card in the new queue
-      rediscoverStore.setCurrentIndex(0);
-    } else {
-      // For other filters, just move to next card
-      rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
+      // ATOMIC: Update queue, index, and stats in ONE operation
+      rediscoverStore.handleDelete(cardId);
     }
   };
 

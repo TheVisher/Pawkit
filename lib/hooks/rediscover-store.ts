@@ -29,6 +29,10 @@ type RediscoverState = {
   setFilter: (filter: RediscoverFilter) => void;
   updateStats: (stat: keyof SessionStats) => void;
   reset: () => void;
+
+  // Atomic actions (prevent queue desync)
+  handleKeep: (card: CardModel) => void;
+  handleDelete: (cardId: string) => void;
 };
 
 const initialStats: SessionStats = {
@@ -81,4 +85,40 @@ export const useRediscoverStore = create<RediscoverState>()((set) => ({
     filter: "uncategorized",
     stats: initialStats,
   }),
+
+  // ATOMIC ACTIONS: All state updates happen synchronously in one operation
+  // This prevents queue desync and ghost card issues
+
+  handleKeep: (card) => set((state) => {
+    // Check if card already exists in kept pile (prevent duplicates)
+    const cardExists = state.keptCards.some(keptCard => keptCard.id === card.id);
+    if (cardExists) {
+      // Card already kept, just remove from queue
+      return {
+        queue: state.queue.filter(c => c.id !== card.id),
+        currentIndex: 0,
+      };
+    }
+
+    // Add to kept pile, remove from queue, reset index, update stats
+    return {
+      queue: state.queue.filter(c => c.id !== card.id),
+      keptCards: [...state.keptCards, card],
+      currentIndex: 0,
+      stats: {
+        ...state.stats,
+        kept: state.stats.kept + 1,
+      },
+    };
+  }),
+
+  handleDelete: (cardId) => set((state) => ({
+    // Remove from queue, reset index, update stats
+    queue: state.queue.filter(c => c.id !== cardId),
+    currentIndex: 0,
+    stats: {
+      ...state.stats,
+      deleted: state.stats.deleted + 1,
+    },
+  })),
 }));
