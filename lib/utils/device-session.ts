@@ -7,7 +7,8 @@
 
 const DEVICE_ID_KEY = 'pawkit-device-id';
 const LAST_ACTIVE_KEY = 'pawkit-last-active';
-const ACTIVITY_THRESHOLD = 5 * 60 * 1000; // 5 minutes
+const ACTIVITY_THRESHOLD = 60 * 60 * 1000; // 1 hour - device is "active" if used within 1 hour
+const STALE_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours - device is "stale" if not synced in 24 hours
 
 // Session ID - unique per tab/window (stored in memory, not localStorage)
 let sessionId: string | null = null;
@@ -67,13 +68,25 @@ export function getLastActiveTime(): number {
 }
 
 /**
- * Check if this device was recently active (within threshold)
+ * Check if this device was recently active (within 1 hour)
  * If true, this device should be considered the "source of truth"
  */
 export function isDeviceRecentlyActive(): boolean {
   const lastActive = getLastActiveTime();
   const now = Date.now();
   return (now - lastActive) < ACTIVITY_THRESHOLD;
+}
+
+/**
+ * Check if a timestamp indicates stale data (older than 24 hours)
+ * Used to determine if data from another device is stale
+ */
+export function isTimestampStale(timestamp: string | number): boolean {
+  const timestampMs = typeof timestamp === 'string'
+    ? new Date(timestamp).getTime()
+    : timestamp;
+  const now = Date.now();
+  return (now - timestampMs) > STALE_THRESHOLD;
 }
 
 /**

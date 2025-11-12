@@ -7,6 +7,7 @@ import { Folder, Lock, FolderPlus, Edit3, ArrowUpDown, Trash2 } from "lucide-rea
 import { CollectionNode } from "@/lib/types";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { GenericContextMenu, ContextMenuItemConfig } from "@/components/ui/generic-context-menu";
+import { ConfirmDeleteModal } from "@/components/modals/confirm-delete-modal";
 
 export type CollectionsSidebarProps = {
   tree: CollectionNode[];
@@ -29,6 +30,8 @@ function CollectionsSidebarContent({
 }: CollectionsSidebarProps) {
   const [nodes, setNodes] = useState(tree);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [collectionToDelete, setCollectionToDelete] = useState<CollectionNode | null>(null);
 
   // Initialize from localStorage or default to false
   const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(() => {
@@ -107,12 +110,16 @@ function CollectionsSidebarContent({
     }
   };
 
-  const deleteCollection = async (node: CollectionNode) => {
+  const deleteCollection = (node: CollectionNode) => {
     if (!showManagementControls) return;
-    const confirmed = window.confirm(`Delete collection "${node.name}"?`);
-    if (!confirmed) return;
+    setCollectionToDelete(node);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!collectionToDelete) return;
     try {
-      await deleteCollectionFromStore(node.id);
+      await deleteCollectionFromStore(collectionToDelete.id);
       setError(null);
     } catch (err) {
       setError("Unable to delete collection");
@@ -163,7 +170,7 @@ function CollectionsSidebarContent({
           >
             All cards
           </button>
-          {nodes.map((node) => (
+          {nodes.filter(node => node.deleted !== true).map((node) => (
             <CollectionItem
               key={node.id}
               node={node}
@@ -181,6 +188,19 @@ function CollectionsSidebarContent({
         ))}
         </nav>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDeleteModal
+        open={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setCollectionToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Pawkit?"
+        message="Are you sure you want to delete this pawkit?"
+        itemName={collectionToDelete?.name}
+      />
     </div>
   );
 }
@@ -297,7 +317,7 @@ function CollectionItem({
       </div>
       {hasChildren && isExpanded && (
         <div className="mt-1 space-y-1">
-          {node.children.map((child) => (
+          {node.children.filter(child => child.deleted !== true).map((child) => (
             <CollectionItem
               key={child.id}
               node={child}
