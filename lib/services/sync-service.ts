@@ -233,6 +233,10 @@ class SyncService {
     conflicts: { cards: number; collections: number };
     errors: string[];
   }> {
+    console.log('🔵 [SYNC] ========================================');
+    console.log('🔵 [SYNC] pullFromServer() STARTED');
+    console.log('🔵 [SYNC] ========================================');
+
     const result = {
       pulled: { cards: 0, collections: 0 },
       conflicts: { cards: 0, collections: 0 },
@@ -286,17 +290,57 @@ class SyncService {
 
     // COLLECTIONS SYNC - Independent try-catch
     try {
+      console.log('🔵 [SYNC] Fetching collections from /api/pawkits...');
       const collectionsRes = await this.fetchWithTimeout('/api/pawkits');
 
       if (collectionsRes.ok) {
         const collectionsData = await collectionsRes.json();
         const serverCollections: CollectionNode[] = collectionsData.tree || [];
 
+        console.log('🔵 [SYNC] Fetched from server:', {
+          rawCount: serverCollections.length,
+          firstThree: serverCollections.slice(0, 3).map(c => ({
+            name: c.name,
+            deleted: c.deleted,
+            id: c.id
+          }))
+        });
+
+        // Check specifically for test collection
+        const findTestCollection = (collections: CollectionNode[]): CollectionNode | null => {
+          for (const c of collections) {
+            if (c.name && c.name.toLowerCase().includes('test') && c.name.toLowerCase().includes('deletion')) {
+              return c;
+            }
+            if (c.children && c.children.length > 0) {
+              const found = findTestCollection(c.children);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+
+        const testCollection = findTestCollection(serverCollections);
+        if (testCollection) {
+          console.log('🔵 [SYNC] ⚠️ FOUND TEST COLLECTION IN SERVER DATA:', {
+            name: testCollection.name,
+            deleted: testCollection.deleted,
+            id: testCollection.id,
+            updatedAt: testCollection.updatedAt
+          });
+        } else {
+          console.log('🔵 [SYNC] Test collection NOT found in server data');
+        }
+
         // Flatten collections tree to get accurate count
         const flatServerCollections = this.flattenCollections(serverCollections);
 
+        console.log('🔵 [SYNC] After flattening:', {
+          flatCount: flatServerCollections.length
+        });
 
         const localCollections = await localDb.getAllCollections();
+        console.log('🔵 [SYNC] Local collections count:', localCollections.length);
 
         // Merge collections - wrap in try-catch to detect critical merge failures
         try {
@@ -563,9 +607,9 @@ class SyncService {
    * CRITICAL: Local deletions ALWAYS take precedence
    */
   private async mergeCollections(serverCollections: CollectionNode[], localCollections: CollectionNode[]): Promise<number> {
-    console.log('[DEBUG] ========== mergeCollections called ==========');
-    console.log('[DEBUG] Server collections count:', serverCollections.length);
-    console.log('[DEBUG] Local collections count:', localCollections.length);
+    console.log('🔵 [SYNC] ========== mergeCollections() CALLED ==========');
+    console.log('🔵 [SYNC] Server collections count:', serverCollections.length);
+    console.log('🔵 [SYNC] Local collections count:', localCollections.length);
 
     let conflicts = 0;
 
@@ -573,43 +617,89 @@ class SyncService {
     const deviceMeta = getDeviceMetadata();
     const preferLocal = deviceMeta.isActive;
 
+    console.log('🔵 [SYNC] Device metadata:', {
+      isActive: deviceMeta.isActive,
+      deviceId: deviceMeta.deviceId
+    });
+
     // Flatten the tree structure to include all nested pawkits
     const flatServerCollections = this.flattenCollections(serverCollections);
-    console.log('[DEBUG] Flattened server collections count:', flatServerCollections.length);
+    console.log('🔵 [SYNC] Flattened server collections count:', flatServerCollections.length);
+
+    // Check for test collection in flattened list
+    const testInFlat = flatServerCollections.find(c =>
+      c.name && c.name.toLowerCase().includes('test') && c.name.toLowerCase().includes('deletion')
+    );
+    if (testInFlat) {
+      console.log('🔵 [SYNC] ⚠️ Test collection found in FLATTENED server data:', {
+        name: testInFlat.name,
+        deleted: testInFlat.deleted,
+        id: testInFlat.id
+      });
+    }
 
     const localMap = new Map(localCollections.map(c => [c.id, c]));
     const serverMap = new Map(flatServerCollections.map(c => [c.id, c]));
 
+    console.log('🔵 [SYNC] Starting to process', flatServerCollections.length, 'server collections...');
+
     for (const serverCollection of flatServerCollections) {
       const localCollection = localMap.get(serverCollection.id);
 
-      console.log('[DEBUG] Processing collection:', {
-        id: serverCollection.id,
-        name: serverCollection.name || localCollection?.name,
-        existsLocally: !!localCollection
-      });
+      // Check if this is the test collection
+      const isTestCollection = serverCollection.name &&
+        serverCollection.name.toLowerCase().includes('test') &&
+        serverCollection.name.toLowerCase().includes('deletion');
+
+      if (isTestCollection) {
+        console.log('🔵 [SYNC] 🎯 PROCESSING TEST COLLECTION:', {
+          id: serverCollection.id,
+          name: serverCollection.name,
+          serverDeleted: serverCollection.deleted,
+          existsLocally: !!localCollection,
+          localDeleted: localCollection?.deleted
+        });
+      }
 
       if (!localCollection) {
         // New collection from server - save it (including deleted for proper sync state)
-        console.log('[DEBUG] New collection from server, saving:', serverCollection.name);
+        if (isTestCollection) {
+          console.log('🔵 [SYNC] Test collection is NEW from server, saving...');
+        }
         await localDb.saveCollection(serverCollection, { fromServer: true });
       } else {
         // Collection exists locally and on server - check for conflicts
         const serverTime = new Date(serverCollection.updatedAt).getTime();
         const localTime = new Date(localCollection.updatedAt).getTime();
 
-        console.log('[DEBUG] Collection exists in both places:', {
-          name: localCollection.name,
-          localDeleted: localCollection.deleted,
-          serverDeleted: serverCollection.deleted,
-          localTime: new Date(localTime).toISOString(),
-          serverTime: new Date(serverTime).toISOString()
-        });
+        if (isTestCollection) {
+          console.log('🔵 [SYNC] 🎯 Test collection exists in BOTH places:', {
+            name: localCollection.name,
+            localDeleted: localCollection.deleted,
+            serverDeleted: serverCollection.deleted,
+            localTime: new Date(localTime).toISOString(),
+            serverTime: new Date(serverTime).toISOString()
+          });
+        }
 
         // PRIORITY 1: Deletion ALWAYS wins (check first to avoid blocking!)
         // This prevents active device check from blocking incoming deletions
+
+        // Log BEFORE checking deletion
+        if (isTestCollection) {
+          console.log('🔵 [SYNC] 🎯 About to check DELETION logic for test collection:', {
+            localDeleted: localCollection.deleted,
+            serverDeleted: serverCollection.deleted,
+            willEnterDeletionCheck: !!(localCollection.deleted || serverCollection.deleted)
+          });
+        }
+
         if (localCollection.deleted || serverCollection.deleted) {
-          console.log('[DEBUG] 🔴 DELETION CHECK TRIGGERED for:', {
+          if (isTestCollection) {
+            console.log('🔵 [SYNC] 🔴🎯 TEST COLLECTION ENTERED DELETION CHECK BLOCK!');
+          }
+
+          console.log('🔵 [SYNC] 🔴 DELETION CHECK TRIGGERED for:', {
             name: localCollection.name || serverCollection.name,
             localDeleted: localCollection.deleted,
             serverDeleted: serverCollection.deleted,
@@ -620,19 +710,37 @@ class SyncService {
           // Either version is deleted - keep the deleted state
           const deletedVersion = localCollection.deleted ? localCollection : serverCollection;
 
-          console.log('[DEBUG] Using deletedVersion from:', localCollection.deleted ? 'LOCAL' : 'SERVER');
+          console.log('🔵 [SYNC] Using deletedVersion from:', localCollection.deleted ? 'LOCAL' : 'SERVER');
+
+          if (isTestCollection) {
+            console.log('🔵 [SYNC] 🎯 Test collection - chosen version:', {
+              name: deletedVersion.name,
+              deleted: deletedVersion.deleted,
+              id: deletedVersion.id
+            });
+          }
 
           // Ensure deleted flag is set (may not be on the other version)
           if (!deletedVersion.deleted) {
-            console.log('[DEBUG] Forcing deleted flag to true');
+            console.log('🔵 [SYNC] ⚠️ Forcing deleted flag to true');
             deletedVersion.deleted = true;
             deletedVersion.updatedAt = new Date().toISOString();
           }
 
           // Save the deleted version and continue
-          console.log('[DEBUG] Saving deleted collection to IndexedDB');
+          console.log('🔵 [SYNC] 💾 Saving deleted collection to IndexedDB:', deletedVersion.name);
+
+          if (isTestCollection) {
+            console.log('🔵 [SYNC] 🎯💾 About to save TEST collection to IndexedDB with deleted=true');
+          }
+
           await localDb.saveCollection(deletedVersion, { fromServer: true });
-          console.log('[DEBUG] ✅ Deletion processed, continuing to next collection');
+
+          if (isTestCollection) {
+            console.log('🔵 [SYNC] 🎯✅ TEST collection saved to IndexedDB!');
+          }
+
+          console.log('🔵 [SYNC] ✅ Deletion processed, continuing to next collection');
           continue;
         }
 
@@ -640,17 +748,23 @@ class SyncService {
         const localDeviceMeta = getDeviceMetadata();
         const serverIsStale = isTimestampStale(serverCollection.updatedAt);
 
-        console.log('[DEBUG] Active device check:', {
-          name: localCollection.name,
-          isActive: localDeviceMeta.isActive,
-          serverIsStale: serverIsStale,
-          serverUpdatedAt: serverCollection.updatedAt
-        });
+        if (isTestCollection) {
+          console.log('🔵 [SYNC] 🎯 Test collection - Active device check:', {
+            name: localCollection.name,
+            isActive: localDeviceMeta.isActive,
+            serverIsStale: serverIsStale,
+            serverUpdatedAt: serverCollection.updatedAt,
+            willSkip: localDeviceMeta.isActive && serverIsStale
+          });
+        }
 
         if (localDeviceMeta.isActive && serverIsStale) {
           // This device is active (used within 1 hour), server data is stale (>24 hours old)
           // Keep local version regardless of timestamp
-          console.log(`[DEBUG] ⚠️ Active device wins: keeping local version of collection "${localCollection.name}"`);
+          if (isTestCollection) {
+            console.log('🔵 [SYNC] 🎯⚠️ TEST COLLECTION: Active device wins - keeping local version!');
+          }
+          console.log(`🔵 [SYNC] ⚠️ Active device wins: keeping local version of collection "${localCollection.name}"`);
           conflicts++;
           continue;
         }
