@@ -531,9 +531,9 @@ export function LeftNavigationPanel({
         const hasChildren = col.children && col.children.length > 0;
 
         if (hasChildren) {
-          // Filter out current collection from children
+          // Filter out current collection and deleted children
           const filteredChildren = col.children.filter(
-            (child) => child.id !== currentCollectionId
+            (child) => child.id !== currentCollectionId && child.deleted !== true
           );
 
           if (filteredChildren.length > 0) {
