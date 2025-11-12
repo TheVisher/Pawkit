@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { syncService } from "@/lib/services/sync-service";
 
 /**
  * Network sync hook that automatically retries failed operations when connection is restored
@@ -70,6 +71,28 @@ export function useNetworkSync() {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
+    // Handle visibility change for lightweight sync check
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        console.log('[NetworkSync] Browser visible, checking for changes...');
+
+        try {
+          const hasChanges = await syncService.checkForChanges();
+
+          if (hasChanges) {
+            console.log('[NetworkSync] Changes detected, running full sync');
+            await drainQueue(); // drainQueue calls sync internally
+          } else {
+            console.log('[NetworkSync] No server changes, skipping sync');
+          }
+        } catch (error) {
+          console.error('[NetworkSync] Failed to check for changes:', error);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     // Periodic fallback drain (in case online event is missed)
     // This is ONLY for draining the sync queue (pending writes), NOT for fetching new data
     const intervalId = setInterval(() => {
@@ -87,6 +110,7 @@ export function useNetworkSync() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(intervalId);
     };
   }, [drainQueue, serverSync, autoSyncOnReconnect]);
