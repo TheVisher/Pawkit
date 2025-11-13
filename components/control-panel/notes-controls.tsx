@@ -194,7 +194,7 @@ export function NotesControls() {
       <PanelSection id="notes-sort" title="Sort" icon={<SortAsc className="h-4 w-4 text-accent" />}>
         {/* Sort Direction Toggle */}
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-muted-foreground">Direction</span>
+          <span className="text-xs text-accent">Direction</span>
           <button
             onClick={handleToggleSortOrder}
             className="flex items-center gap-1.5 px-2 py-1 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"

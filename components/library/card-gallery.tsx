@@ -366,8 +366,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                             ) : (
                               <Bookmark size={16} className="text-muted-foreground flex-shrink-0" />
                             )}
-                            <span className="text-sm text-foreground truncate">{displayTitle}</span>
-                            {isPinned && <Pin size={12} className="text-purple-400 flex-shrink-0" />}
+                            <span className="text-sm text-foreground font-medium truncate">{displayTitle}</span>
+                            {isPinned && <Pin size={14} className="text-purple-400 flex-shrink-0" />}
                           </div>
                         </td>
                         <td className="py-3 px-4">

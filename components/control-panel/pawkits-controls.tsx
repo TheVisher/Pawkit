@@ -70,7 +70,7 @@ export function PawkitsControls() {
         <div>
           {/* Sort Direction Toggle */}
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs text-muted-foreground">Direction</span>
+            <span className="text-xs text-accent">Direction</span>
             <button
               onClick={handleToggleSortOrder}
               className="flex items-center gap-1 text-xs text-accent hover:text-accent/80 transition-colors"
@@ -142,9 +142,14 @@ export function PawkitsControls() {
             type="range"
             min="1"
             max="100"
+            step="1"
             value={cardSizeValue}
             onChange={(e) => handleCardSizeChange(Number(e.target.value))}
-            className="w-full accent-accent"
+            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer
+              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+              [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent
+              [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4
+              [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-accent [&::-moz-range-thumb]:border-0"
           />
         </div>
       </PanelSection>
