@@ -4,10 +4,16 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
 import { unauthorized, success } from "@/lib/utils/api-responses";
 
+interface RouteParams {
+  params: Promise<{
+    id: string;
+  }>;
+}
+
 // PATCH /api/todos/[id] - Update todo
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  segmentData: RouteParams
 ) {
   let user;
   let body;
@@ -17,6 +23,7 @@ export async function PATCH(
       return unauthorized();
     }
 
+    const params = await segmentData.params;
     body = await request.json();
 
     // Check todo exists and belongs to user
@@ -53,7 +60,7 @@ export async function PATCH(
 // DELETE /api/todos/[id] - Delete todo
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  segmentData: RouteParams
 ) {
   let user;
   try {
@@ -61,6 +68,8 @@ export async function DELETE(
     if (!user) {
       return unauthorized();
     }
+
+    const params = await segmentData.params;
 
     // Check todo exists and belongs to user
     const existingTodo = await prisma.todo.findFirst({
