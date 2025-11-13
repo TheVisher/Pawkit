@@ -2948,6 +2948,151 @@ Result: Updates EXISTING entity → No duplicate!
 
 ---
 
+### 23. Note Double-Creation from Sync Queue
+
+**Date**: January 13, 2025
+**Severity**: 🔴 Critical
+**Category**: Sync, Data Duplication
+**Status**: ✅ Fixed
+
+**What Failed**:
+When creating a note, TWO notes were created on the server within 5 seconds:
+1. First note: Created immediately with content (12:23:44)
+2. Second note: Created 5 seconds later as blank duplicate (12:23:49)
+
+**Evidence from Supabase**:
+```
+cmhxehhju... | "Testing for duplication" | "Testing to see..." | 2025-11-13 12:23:44
+cmhxehlwz... | "Testing for duplication" | NULL                | 2025-11-13 12:23:49
+```
+
+**User Flow**:
+1. User clicks "Create Note" → Modal opens
+2. Note created with temp ID, queued for sync
+3. Immediate sync fires → Note created on server (✅ First note)
+4. User starts typing → Auto-save fires
+5. 5 seconds later → Sync queue drains → Creates SAME note AGAIN (❌ Duplicate)
+
+**Root Cause**:
+In `lib/stores/data-store.ts:446` (addCard function), the code was:
+```typescript
+// STEP 3: Sync to server in background (if enabled)
+if (serverSync) {
+  // Queue for sync
+  await syncQueue.enqueue({
+    type: 'CREATE_CARD',
+    payload: cardData,
+    tempId: newCard.id,
+  });
+
+  // Try immediate sync
+  const response = await fetch('/api/cards', { method: 'POST', ... });
+
+  if (response.ok) {
+    const serverCard = await response.json();
+    // ❌ BUG: Queued item NOT removed after immediate sync success!
+    // Queue still has the create operation
+    // When queue drains later → Creates duplicate
+    ...
+  }
+}
+```
+
+**Why the 5-Second Gap**:
+The sync queue drains every 5 seconds (network-sync.ts interval). When immediate sync succeeded, the card was already created on the server, but the queued operation remained. When the queue drained 5 seconds later, it posted the same card data AGAIN, creating a duplicate with blank/NULL content.
+
+**The Fix**:
+Added `removeByTempId()` method to sync-queue.ts and called it after successful immediate sync:
+
+```typescript
+if (response.ok) {
+  const serverCard = await response.json();
+
+  // ✅ CRITICAL: Remove from sync queue since immediate sync succeeded
+  // This prevents duplicate creation when queue drains
+  await syncQueue.removeByTempId(tempId);
+
+  // ... rest of logic
+}
+```
+
+**Implementation Details**:
+
+1. **Added `removeByTempId()` method** (sync-queue.ts:246-258):
+```typescript
+async removeByTempId(tempId: string): Promise<void> {
+  if (!this.db) {
+    throw new Error('[SyncQueue] Database not initialized');
+  }
+
+  const operations = await this.db.getAll('operations');
+  const toRemove = operations.filter(op => op.tempId === tempId);
+
+  for (const op of toRemove) {
+    await this.db.delete('operations', op.id);
+  }
+}
+```
+
+2. **Call after immediate sync success** (data-store.ts:516):
+```typescript
+await syncQueue.removeByTempId(tempId);
+```
+
+**Testing Checklist**:
+- [x] Create new note
+- [x] Immediately start typing
+- [x] Wait 5+ seconds for queue drain
+- [x] Check Supabase - verify only ONE note created
+- [x] Verify sync queue is empty after creation
+- [x] Check no blank duplicates appear
+- [x] Test with cards, bookmarks (all card types)
+
+**Before/After Flow**:
+
+**BEFORE (Bug)**:
+```
+User creates note → addCard() runs
+├─ Queue card for sync (pending in IndexedDB sync-queue)
+├─ Immediate sync fires → POST /api/cards → 201 Created ✅
+│  └─ Card created on server (id: cmhxehhju, content: "Testing to see...")
+├─ [BUG] Queued operation NOT removed
+└─ 5 seconds later → Queue drains
+   └─ POST /api/cards with SAME data → 201 Created
+      └─ Duplicate created (id: cmhxehlwz, content: NULL) ❌
+```
+
+**AFTER (Fixed)**:
+```
+User creates note → addCard() runs
+├─ Queue card for sync (pending in IndexedDB sync-queue)
+├─ Immediate sync fires → POST /api/cards → 201 Created ✅
+│  └─ Card created on server (id: cmhxehhju, content: "Testing to see...")
+├─ removeByTempId(tempId) called → Removes queued operation ✅
+└─ 5 seconds later → Queue drains
+   └─ No pending operations → Nothing posted → No duplicate! ✅
+```
+
+**Commits**:
+- `ec5a34c` - Added removeByTempId and fixed addCard to dequeue after immediate sync
+
+**Files Modified**:
+- `lib/services/sync-queue.ts:246-258` - Added removeByTempId() method
+- `lib/stores/data-store.ts:516` - Call removeByTempId after immediate sync success
+
+**Prevention**:
+- **Always dequeue after immediate sync success** - Don't leave operations in queue
+- **Test create operations** - Verify no duplicates after queue drain
+- **Monitor duplicate creation** - Alert if same title/URL created twice within seconds
+- **Review all immediate sync paths** - Apply same pattern to collections, updates
+- **Check sync queue after operations** - Ensure proper cleanup
+
+**See Also**:
+- `.claude/skills/pawkit-sync-patterns/SKILL.md` - Queue management patterns
+- Issue #22 - Related sync duplication issues
+
+---
+
 ## Debugging Strategies
 
 ### When API Returns 500 Error
@@ -3319,7 +3464,7 @@ After adding a new issue:
 
 ---
 
-**Last Updated**: January 13, 2025 (Added Issue #22: Sync duplication bug)
+**Last Updated**: January 13, 2025 (Added Issue #23: Note double-creation from sync queue)
 **Next Review**: April 2026 (Quarterly)
 
 **This is a living document. Keep it current!**

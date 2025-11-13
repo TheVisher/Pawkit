@@ -20,7 +20,65 @@ description: Track development progress, major milestones, and session history a
 
 ## Session History
 
-### Date: January 13, 2025 - Critical Sync Duplication Bug Fix
+### Date: January 13, 2025 - Note Double-Creation from Sync Queue (Issue #23)
+
+**Status**: ✅ FIXED & DEPLOYED
+**Priority**: 🔴 CRITICAL - Data Duplication
+**Branch**: `main`
+**Commits**: ec5a34c
+
+**Problem**:
+When creating a note, TWO notes were created on the server within 5 seconds:
+1. First note: Created immediately with content (12:23:44)
+2. Second note: Created 5 seconds later as blank duplicate (12:23:49)
+
+**User Flow**:
+- User clicks "Create Note" → Note created with temp ID
+- Immediate sync fires → Note created on server ✅
+- User starts typing → Auto-save fires
+- 5 seconds later → Sync queue drains → Creates SAME note AGAIN ❌
+
+**Root Cause**:
+In `lib/stores/data-store.ts:446` (addCard function):
+1. Operation queued for sync (line 497-501)
+2. Immediate sync attempted (line 505-509) → succeeded
+3. **BUG**: Queued item NOT removed from sync queue
+4. Queue drains 5 seconds later → Posts same data again → Duplicate
+
+**The Fix**:
+Added `removeByTempId()` method to sync-queue.ts and called it after successful immediate sync:
+```typescript
+if (response.ok) {
+  const serverCard = await response.json();
+
+  // CRITICAL: Remove from sync queue since immediate sync succeeded
+  await syncQueue.removeByTempId(tempId);
+
+  // ... rest of logic
+}
+```
+
+**Files Modified**:
+- `lib/services/sync-queue.ts:246-258` - Added removeByTempId() method
+- `lib/stores/data-store.ts:516` - Call removeByTempId after immediate sync success
+
+**Documentation Updated**:
+- `.claude/skills/pawkit-troubleshooting/SKILL.md` - Added Issue #23
+- `.claude/skills/pawkit-sync-patterns/SKILL.md` - Added Strategy 6: Dequeue After Immediate Sync Success
+
+**Validation**:
+- [x] Create note and immediately type
+- [x] Wait 5+ seconds for queue drain
+- [x] Verify only ONE note created on server
+- [x] Verify sync queue empty after creation
+- [x] No blank duplicates appear
+
+**Prevention Pattern**:
+**Critical Rule**: Always dequeue operations from sync queue after immediate sync success to prevent duplicate execution when queue drains.
+
+---
+
+### Date: January 13, 2025 - Critical Sync Duplication Bug Fix (Issue #22)
 
 **Status**: ✅ FIXED & DEPLOYED
 **Priority**: 🔴 CRITICAL - Data Corruption
@@ -1550,4 +1608,4 @@ Location: `/app/(dashboard)/test/pre-merge-suite/page.tsx`
 
 **Last Updated**: 2025-01-13
 **Updated By**: Claude Code
-**Reason**: Fixed critical sync duplication bug (Issue #22), added auto-cleanup, documented in troubleshooting and sync patterns skills
+**Reason**: Fixed note double-creation bug (Issue #23), added removeByTempId to sync queue, documented in troubleshooting and sync patterns skills
