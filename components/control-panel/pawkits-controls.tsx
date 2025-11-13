@@ -206,9 +206,7 @@ export function PawkitsControls() {
       {/* Scrollable Content */}
       <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
         {/* Todos Section - Always at top */}
-        <div className="-mx-6">
-          <TodosSection />
-        </div>
+        <TodosSection />
 
         {/* Tags Section - Only show if there are tags */}
         {allTags.length > 0 && (
