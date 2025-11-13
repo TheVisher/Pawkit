@@ -1859,8 +1859,450 @@ Before marking UI work complete, verify:
 
 ---
 
-**Last Updated**: October 31, 2025 (Added Context Menu System)
-**Design System**: Selective Glow v1.0
+### 10. RIGHT SIDEBAR PATTERNS
+
+**Purpose**: Control panels for view-specific settings (sorting, filtering, display options)
+
+**Implementation**: Uses `PanelSection` component with consistent structure across all views
+
+**Created**: January 13, 2025 (Sidebar Visual Consistency Update)
+
+#### PanelSection Component Pattern
+
+**Anatomy**:
+```tsx
+<PanelSection
+  id="section-id"           // Unique identifier for collapse state
+  title="Section Title"     // Display name
+  icon={<Icon className="h-4 w-4 text-accent" />}  // Section icon
+  action={<Badge>5</Badge>} // Optional: Badge or action button
+>
+  <div className="space-y-2">
+    {/* Section content */}
+  </div>
+</PanelSection>
+```
+
+**Properties**:
+- `id`: Used for managing collapse state persistence
+- `title`: Always title case (e.g., "Sort", "View", "Display")
+- `icon`: Lucide icon, always `h-4 w-4 text-accent`
+- `action`: Optional badge/button shown in header (e.g., todo count)
+
+#### Controls Component Structure
+
+**✅ Correct Pattern**:
+```tsx
+export function HomeControls() {
+  return (
+    <>
+      {/* Todos Section - Always first */}
+      <TodosSection />
+
+      {/* View-specific sections */}
+      <PanelSection id="stats" title="Stats" icon={<BarChart className="h-4 w-4 text-accent" />}>
+        {/* Stats content */}
+      </PanelSection>
+
+      <PanelSection id="activity" title="Activity" icon={<Activity className="h-4 w-4 text-accent" />}>
+        {/* Activity content */}
+      </PanelSection>
+    </>
+  );
+}
+```
+
+**❌ Wrong Pattern**:
+```tsx
+// Don't wrap in custom container
+export function WrongControls() {
+  return (
+    <div className="flex h-full flex-col">
+      <div className="border-b px-6 py-4">
+        <h2>Custom Header</h2>
+      </div>
+      {/* This breaks the consistent spacing */}
+    </div>
+  );
+}
+```
+
+#### TodosSection Integration
+
+**Rule**: TodosSection MUST always be the first section in any controls component.
+
+**Example**:
+```tsx
+import { TodosSection } from "./todos-section";
+
+export function LibraryControls() {
+  return (
+    <>
+      <TodosSection />  {/* Always first */}
+      <PanelSection id="filters" ...>
+        {/* Other sections follow */}
+      </PanelSection>
+    </>
+  );
+}
+```
+
+#### Common PanelSection Configurations
+
+**Sort Section**:
+```tsx
+<PanelSection id="view-sort" title="Sort" icon={<SortAsc className="h-4 w-4 text-accent" />}>
+  <div>
+    {/* Sort Direction Toggle */}
+    <div className="flex items-center justify-between mb-2">
+      <span className="text-xs text-muted-foreground">Direction</span>
+      <button onClick={handleToggleSortOrder} className="flex items-center gap-1 text-xs text-accent">
+        <ArrowUpDown size={12} />
+        {sortOrder === "asc" ? "Ascending" : "Descending"}
+      </button>
+    </div>
+    {/* Sort Options */}
+    <div className="flex flex-col gap-2">
+      <PanelButton active={sortBy === "title"} onClick={() => handleSortChange("title")}>
+        Title
+      </PanelButton>
+      {/* More sort options */}
+    </div>
+  </div>
+</PanelSection>
+```
+
+**View Section**:
+```tsx
+<PanelSection id="view-layout" title="View" icon={<Eye className="h-4 w-4 text-accent" />}>
+  <div className="flex flex-col gap-2">
+    <PanelButton active={layout === "grid"} onClick={() => setLayout("grid")} icon={<Grid size={16} />}>
+      Grid
+    </PanelButton>
+    <PanelButton active={layout === "list"} onClick={() => setLayout("list")} icon={<List size={16} />}>
+      List
+    </PanelButton>
+    <PanelButton active={layout === "compact"} onClick={() => setLayout("compact")} icon={<Columns size={16} />}>
+      Compact
+    </PanelButton>
+  </div>
+</PanelSection>
+```
+
+**Display Section**:
+```tsx
+<PanelSection id="view-display" title="Display" icon={<Maximize2 className="h-4 w-4 text-accent" />}>
+  <div className="space-y-2">
+    <div className="flex items-center justify-between text-xs text-muted-foreground">
+      <span>Card Size</span>
+      <span>{Math.round(cardSizeValue)}%</span>
+    </div>
+    <input
+      type="range"
+      min="1"
+      max="100"
+      value={cardSizeValue}
+      onChange={(e) => handleCardSizeChange(Number(e.target.value))}
+      className="w-full accent-accent"
+    />
+  </div>
+</PanelSection>
+```
+
+---
+
+### 11. VIEW PATTERNS
+
+**Purpose**: Three distinct layout modes for browsing different types of content
+
+**Implementation**: Grid, List, and Compact views serving specific use cases
+
+**Created**: January 13, 2025 (Pawkits View Redesign)
+
+#### Three-View System
+
+**Grid View**:
+- **Use Case**: Visual browsing with rich previews
+- **Best For**: Cards with images, Pawkits with previews
+- **Layout**: Responsive grid with card previews
+- **Features**: Image thumbnails, preview stacks, hover effects
+
+**List View**:
+- **Use Case**: Data table for scanning metadata
+- **Best For**: Reviewing dates, counts, hierarchies
+- **Layout**: Full-width table with sortable columns
+- **Features**: Multiple columns, inline metadata, table headers
+
+**Compact View**:
+- **Use Case**: Dense grid for maximum item visibility
+- **Best For**: Quick scanning, space efficiency
+- **Layout**: 2-6 column responsive grid (no previews)
+- **Features**: Icon + title only, minimal footprint
+
+#### Grid View Pattern
+
+**Structure**:
+```tsx
+<div
+  className="grid gap-6"
+  style={{
+    gridTemplateColumns: `repeat(auto-fill, minmax(${minWidth}px, 1fr))`
+  }}
+>
+  {items.map((item) => (
+    <div key={item.id} className="card-hover group relative flex h-56 cursor-pointer flex-col rounded-2xl border-2 p-5">
+      {/* Card header */}
+      <div className="flex items-center justify-between pb-4">
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          <Icon size={16} />
+          {item.name}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {item.count} items
+        </span>
+      </div>
+
+      {/* Preview area */}
+      <div className="relative h-full w-full overflow-hidden">
+        {/* Preview tiles positioned absolutely */}
+      </div>
+    </div>
+  ))}
+</div>
+```
+
+**Key Features**:
+- Responsive `auto-fill` grid
+- Fixed height cards (h-56)
+- Preview area with absolutely positioned thumbnails
+- Hover effects with `card-hover` class
+
+#### List View Pattern
+
+**Structure**:
+```tsx
+<div className="w-full overflow-x-auto">
+  <table className="w-full border-collapse">
+    <thead>
+      <tr className="border-b border-subtle text-xs text-muted-foreground">
+        <th className="text-left py-3 px-4 font-medium">Name</th>
+        <th className="text-left py-3 px-4 font-medium">Items</th>
+        <th className="text-left py-3 px-4 font-medium">Sub-Pawkits</th>
+        <th className="text-left py-3 px-4 font-medium">Date Created</th>
+        <th className="text-left py-3 px-4 font-medium">Last Activity</th>
+        <th className="text-left py-3 px-4 font-medium w-16"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {items.map((item) => (
+        <tr
+          key={item.id}
+          onClick={() => handleClick(item)}
+          className="border-b border-subtle hover:bg-white/5 cursor-pointer transition-colors"
+        >
+          <td className="py-3 px-4">
+            <div className="flex items-center gap-3">
+              <Icon size={16} />
+              <span className="text-sm text-foreground font-medium">{item.name}</span>
+              {item.isPinned && <Pin size={14} className="text-purple-400" />}
+            </div>
+          </td>
+          <td className="py-3 px-4">
+            <span className="text-sm text-muted-foreground">{item.count} items</span>
+          </td>
+          <td className="py-3 px-4">
+            <span className="text-sm text-muted-foreground">
+              {item.hasChildren ? "Yes" : "-"}
+            </span>
+          </td>
+          <td className="py-3 px-4">
+            <span className="text-sm text-muted-foreground">{formattedCreatedAt}</span>
+          </td>
+          <td className="py-3 px-4">
+            <span className="text-sm text-muted-foreground">{formattedUpdatedAt}</span>
+          </td>
+          <td className="py-3 px-4">
+            {/* Actions menu */}
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+```
+
+**Key Features**:
+- Full-width table with `overflow-x-auto` for horizontal scroll
+- Semantic HTML table structure
+- Hover state on rows (`hover:bg-white/5`)
+- Text alignment: left for all columns
+- Consistent padding: `py-3 px-4`
+- Last column: fixed width for actions (`w-16`)
+
+#### Compact View Pattern
+
+**Structure**:
+```tsx
+<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+  {items.map((item) => (
+    <div
+      key={item.id}
+      onClick={() => handleClick(item)}
+      className="group relative flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all hover:scale-105 border-purple-500/30 bg-surface/80"
+    >
+      {/* Icon */}
+      <span className="flex items-center justify-center h-12 w-12 rounded-lg bg-accent/20 text-accent">
+        {item.isPrivate ? '🔒' : '📁'}
+      </span>
+
+      {/* Name */}
+      <div className="text-center w-full">
+        <div className="text-sm font-semibold text-foreground truncate">
+          {item.name}
+        </div>
+        <div className="text-xs text-muted-foreground mt-1">
+          {item.count} {item.count === 1 ? "item" : "items"}
+        </div>
+      </div>
+
+      {/* Actions menu - show on hover */}
+      <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <ActionsMenu />
+      </div>
+    </div>
+  ))}
+</div>
+```
+
+**Key Features**:
+- Responsive grid: 2 cols on mobile, up to 6 on xl screens
+- Icon-centric design (no previews)
+- Hover scale effect (`hover:scale-105`)
+- Actions menu appears on hover
+- Minimal footprint for maximum density
+
+#### View Switching Implementation
+
+**Using View Settings Store**:
+```tsx
+const viewSettings = useViewSettingsStore((state) => state.getSettings("viewKey"));
+const layout = viewSettings.layout;
+
+if (layout === "list") {
+  return <ListView items={items} />;
+}
+
+if (layout === "compact") {
+  return <CompactView items={items} />;
+}
+
+// Default: grid view
+return <GridView items={items} />;
+```
+
+---
+
+### 12. ICON PATTERNS
+
+**Purpose**: Consistent icon usage across the application
+
+**Implementation**: Lucide React icons with standardized sizing and colors
+
+**Created**: January 13, 2025 (Icon Standardization)
+
+#### Pin Icon Standard
+
+**Usage**: Indicating pinned items (Pawkits, cards, etc.)
+
+**Pattern**:
+```tsx
+import { Pin } from "lucide-react";
+
+{item.isPinned && <Pin size={14} className="text-purple-400" />}
+```
+
+**Rules**:
+- **Size**: Always `14` (pixels)
+- **Color**: Always `text-purple-400`
+- **Placement**: After item name in Grid/List views
+- **Conditional**: Only show when `isPinned` is true
+
+**✅ DO**:
+```tsx
+<div className="flex items-center gap-3">
+  <span>Pawkit Name</span>
+  {isPinned && <Pin size={14} className="text-purple-400" />}
+</div>
+```
+
+**❌ DON'T**:
+```tsx
+// Don't use emoji
+{isPinned && <span>⭐</span>}
+
+// Don't use different size
+<Pin size={16} className="text-purple-400" />
+
+// Don't use different color
+<Pin size={14} className="text-accent" />
+```
+
+#### Date Formatting Standards
+
+**Purpose**: Consistent date display across all views
+
+**Absolute Dates** (for "Date Created" columns):
+```tsx
+const formattedCreatedAt = dateString
+  ? new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+  : "-";
+
+// Output: "Nov 10, 2025"
+```
+
+**Relative Dates** (for "Last Activity" columns):
+```tsx
+import { formatDistanceToNow } from 'date-fns';
+
+const formattedUpdatedAt = dateString
+  ? formatDistanceToNow(new Date(dateString), { addSuffix: true })
+  : "-";
+
+// Output: "2 hours ago", "3 days ago"
+```
+
+**Rules**:
+- Use absolute dates for creation timestamps
+- Use relative dates for recent activity
+- Always provide fallback "-" for missing dates
+- Use `date-fns` library for relative formatting
+
+#### System Pawkit Icons
+
+**All Pawkits Pawkit**:
+```tsx
+import { Inbox } from "lucide-react";
+
+<span className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/30 text-purple-300">
+  <Inbox size={16} />
+</span>
+```
+
+**Rules**:
+- Use `Inbox` icon for system Pawkits
+- Background: `bg-purple-500/30`
+- Text color: `text-purple-300`
+- Size: `16` pixels
+- Container: `h-8 w-8 rounded-lg`
+
+---
+
+**Last Updated**: January 13, 2025 (Added Sidebar Patterns, View Patterns, Icon Patterns)
+**Design System**: Selective Glow v1.1
 **Status**: Official Pawkit UI Language
 
 **Key Principle**: Glass is foundation. Purple glow reveals interaction. Hierarchy over chaos.
