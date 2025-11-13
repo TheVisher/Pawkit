@@ -55,7 +55,7 @@ export function TodosSection() {
       >
         <div className="flex items-center gap-2">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
-            Today's Tasks
+            Today&apos;s Tasks
           </h3>
           {incompleteTodos.length > 0 && (
             <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">
