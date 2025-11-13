@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag, FolderOpen, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -1619,7 +1619,8 @@ function PawkitTreeItem({ node, depth, currentCollections, onSelect }: PawkitTre
         style={{ paddingLeft: `${paddingLeft + 16}px` }}
       >
         <span className="flex items-center gap-2">
-          📁 {node.name}
+          <Folder className="h-4 w-4 text-purple-400" />
+          {node.name}
         </span>
         {isActive && <span className="text-lg">✓</span>}
       </Button>
@@ -1891,8 +1892,9 @@ function MetadataSection({ card }: { card: CardModel }) {
           <h5 className="text-xs text-gray-500 mb-1">Pawkits</h5>
           <div className="flex flex-wrap gap-2">
             {card.collections.map((collection) => (
-              <Badge key={collection} variant="secondary">
-                📁 {collection}
+              <Badge key={collection} variant="secondary" className="flex items-center gap-1.5">
+                <Folder className="h-3 w-3 text-purple-400" />
+                {collection}
               </Badge>
             ))}
           </div>

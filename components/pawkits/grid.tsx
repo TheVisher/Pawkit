@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { PawkitActions } from "./pawkit-actions";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { useMemo } from "react";
-import { Inbox, Pin } from "lucide-react";
+import { Inbox, Pin, Folder } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 type CollectionPreviewCard = {
@@ -113,7 +113,7 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
                           ? 'bg-purple-500/30 text-purple-300'
                           : 'bg-accent/20 text-accent'
                       }`}>
-                        {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : '📁'}
+                        {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : <Folder size={16} className="text-purple-400" />}
                       </span>
                       <span className="text-sm text-foreground font-medium">{collection.name}</span>
                       {collection.isPinned && <Pin size={14} className="text-purple-400" />}
@@ -183,7 +183,7 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
                 ? 'bg-purple-500/30 text-purple-300'
                 : 'bg-accent/20 text-accent'
             }`}>
-              {collection.isSystem ? <Inbox size={24} /> : collection.isPrivate ? '🔒' : '📁'}
+              {collection.isSystem ? <Inbox size={24} /> : collection.isPrivate ? '🔒' : <Folder size={24} className="text-purple-400" />}
             </span>
 
             {/* Name */}
@@ -259,7 +259,7 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
                   ? 'bg-purple-500/30 text-purple-300'
                   : 'bg-accent/20 text-accent'
               }`}>
-                {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : '📁'}
+                {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : <Folder size={16} className="text-purple-400" />}
               </span>
               <span className={collection.useCoverAsBackground && collection.coverImage ? 'text-white font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]' : ''}>
                 {collection.name}
