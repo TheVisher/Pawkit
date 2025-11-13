@@ -1,9 +1,8 @@
 "use client";
 
 import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Grid, List, LayoutGrid, Columns, Tag, SortAsc, Eye, Maximize2, ArrowUpDown } from "lucide-react";
+import { Grid, List, Columns, Tag, SortAsc, Eye, Maximize2, ArrowUpDown } from "lucide-react";
 import { useViewSettingsStore, type SortBy } from "@/lib/hooks/view-settings-store";
-import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useRouter, usePathname } from "next/navigation";
@@ -55,15 +54,10 @@ export function NotesControls() {
   const setCardSpacing = useViewSettingsStore((state) => state.setCardSpacing);
   const setCardPadding = useViewSettingsStore((state) => state.setCardPadding);
   const setShowLabels = useViewSettingsStore((state) => state.setShowLabels);
-  const setShowMetadata = useViewSettingsStore((state) => state.setShowMetadata);
   const setShowPreview = useViewSettingsStore((state) => state.setShowPreview);
   const setSortBy = useViewSettingsStore((state) => state.setSortBy);
   const setSortOrder = useViewSettingsStore((state) => state.setSortOrder);
   const setViewSpecific = useViewSettingsStore((state) => state.setViewSpecific);
-
-  // Get global settings
-  const showThumbnails = useSettingsStore((state) => state.showThumbnails);
-  const setShowThumbnails = useSettingsStore((state) => state.setShowThumbnails);
 
   // Extract current values
   const layout = viewSettings.layout;
@@ -71,7 +65,6 @@ export function NotesControls() {
   const cardSpacingValue = viewSettings.cardSpacing;
   const cardPaddingValue = viewSettings.cardPadding;
   const showLabelsValue = viewSettings.showLabels;
-  const showMetadataValue = viewSettings.showMetadata;
   const showPreviewValue = viewSettings.showPreview;
   const sortBy = mapSortByToControl(viewSettings.sortBy);
   const sortOrder = viewSettings.sortOrder;
@@ -137,16 +130,8 @@ export function NotesControls() {
     setCardPadding("notes", padding);
   };
 
-  const handleShowThumbnailsChange = (show: boolean) => {
-    setShowThumbnails(show);
-  };
-
   const handleShowLabelsChange = (show: boolean) => {
     setShowLabels("notes", show);
-  };
-
-  const handleShowMetadataChange = (show: boolean) => {
-    setShowMetadata("notes", show);
   };
 
   const handleShowPreviewChange = (show: boolean) => {
@@ -220,22 +205,22 @@ export function NotesControls() {
         </div>
 
         <PanelButton
-          active={sortBy === "modified"}
-          onClick={() => handleSortChange("modified")}
+          active={sortBy === "title"}
+          onClick={() => handleSortChange("title")}
         >
-          Recently Modified
+          Name
         </PanelButton>
         <PanelButton
           active={sortBy === "date"}
           onClick={() => handleSortChange("date")}
         >
-          Date Added
+          Date Created
         </PanelButton>
         <PanelButton
-          active={sortBy === "title"}
-          onClick={() => handleSortChange("title")}
+          active={sortBy === "modified"}
+          onClick={() => handleSortChange("modified")}
         >
-          Title A-Z
+          Date Modified
         </PanelButton>
       </PanelSection>
 
@@ -247,13 +232,6 @@ export function NotesControls() {
           icon={<Grid size={16} />}
         >
           Grid
-        </PanelButton>
-        <PanelButton
-          active={layout === "masonry"}
-          onClick={() => handleLayoutChange("masonry")}
-          icon={<LayoutGrid size={16} />}
-        >
-          Masonry
         </PanelButton>
         <PanelButton
           active={layout === "list"}
@@ -338,19 +316,9 @@ export function NotesControls() {
 
         {/* Display Toggles */}
         <PanelToggle
-          label="Show Thumbnails"
-          checked={showThumbnails}
-          onChange={handleShowThumbnailsChange}
-        />
-        <PanelToggle
           label="Show Labels"
           checked={showLabelsValue}
           onChange={handleShowLabelsChange}
-        />
-        <PanelToggle
-          label="Show Metadata"
-          checked={showMetadataValue}
-          onChange={handleShowMetadataChange}
         />
         <PanelToggle
           label="Show Preview"

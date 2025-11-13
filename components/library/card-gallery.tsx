@@ -353,7 +353,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                         }`}
                         onClick={(e) => handleCardClick(e, card)}
                       >
-                        <td className="py-2 px-4">
+                        <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
                             {isNote ? (
                               <FileText size={16} className="text-purple-400 flex-shrink-0" />
@@ -370,7 +370,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                             {isPinned && <Pin size={12} className="text-purple-400 flex-shrink-0" />}
                           </div>
                         </td>
-                        <td className="py-2 px-4">
+                        <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1">
                             {card.collections && card.collections.length > 0 ? (
                               card.collections.slice(0, 2).map((collection) => (
@@ -383,18 +383,18 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                             )}
                           </div>
                         </td>
-                        <td className="py-2 px-4">
+                        <td className="py-3 px-4">
                           <span className="text-xs text-muted-foreground">
                             {card.notes ? card.notes.substring(0, 50) + (card.notes.length > 50 ? "..." : "") : "-"}
                           </span>
                         </td>
-                        <td className="py-2 px-4">
+                        <td className="py-3 px-4">
                           <span className="text-xs text-muted-foreground">{formattedDate}</span>
                         </td>
-                        <td className="py-2 px-4">
+                        <td className="py-3 px-4">
                           <span className="text-xs text-muted-foreground">{kind}</span>
                         </td>
-                        <td className="py-2 px-4">
+                        <td className="py-3 px-4">
                           <span className="text-xs text-muted-foreground">-</span>
                         </td>
                       </tr>
