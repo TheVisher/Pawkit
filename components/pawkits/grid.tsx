@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { PawkitActions } from "./pawkit-actions";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { useMemo } from "react";
-import { Inbox } from "lucide-react";
+import { Inbox, Pin } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 type CollectionPreviewCard = {
   id: string;
@@ -18,6 +19,8 @@ type CollectionPreviewCard = {
   hidePreview?: boolean;
   useCoverAsBackground?: boolean;
   coverImage?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
   cards: Array<{
     id: string;
     title?: string | null;
@@ -70,68 +73,84 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
               <th className="text-left py-3 px-4 font-medium">Name</th>
               <th className="text-left py-3 px-4 font-medium">Items</th>
               <th className="text-left py-3 px-4 font-medium">Sub-Pawkits</th>
-              <th className="text-left py-3 px-4 font-medium">Type</th>
+              <th className="text-left py-3 px-4 font-medium">Date Created</th>
+              <th className="text-left py-3 px-4 font-medium">Last Activity</th>
               <th className="text-left py-3 px-4 font-medium w-16"></th>
             </tr>
           </thead>
           <tbody>
-            {collections.map((collection) => (
-              <tr
-                key={collection.id}
-                onClick={() => {
-                  if (collection.slug) {
-                    router.push(`/pawkits/${collection.slug}`);
-                  } else {
-                    router.push(`/library`);
-                  }
-                }}
-                className={`border-b border-subtle hover:bg-white/5 cursor-pointer transition-colors ${
-                  collection.isSystem ? 'bg-purple-950/10' : ''
-                }`}
-              >
-                <td className="py-3 px-4">
-                  <div className="flex items-center gap-3">
-                    <span className={`flex items-center justify-center h-8 w-8 rounded-lg backdrop-blur-sm ${
-                      collection.isSystem
-                        ? 'bg-purple-500/30 text-purple-300'
-                        : 'bg-accent/20 text-accent'
-                    }`}>
-                      {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : '📁'}
-                    </span>
-                    <span className="text-sm text-foreground font-medium">{collection.name}</span>
-                    {collection.isPinned && <span className="text-xs text-purple-400">⭐</span>}
-                  </div>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="text-sm text-muted-foreground">
-                    {collection.count} item{collection.count === 1 ? "" : "s"}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="text-sm text-muted-foreground">
-                    {collection.hasChildren ? "Yes" : "-"}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  <span className="text-xs text-muted-foreground">
-                    {collection.isSystem ? "System" : collection.isPrivate ? "Private" : "Pawkit"}
-                  </span>
-                </td>
-                <td className="py-3 px-4">
-                  {collection.slug && !collection.isSystem && (
-                    <div onClick={(e) => e.stopPropagation()} className="relative z-50">
-                      <PawkitActions
-                        pawkitId={collection.id}
-                        pawkitName={collection.name}
-                        isPinned={collection.isPinned}
-                        isPrivate={collection.isPrivate}
-                        allPawkits={allPawkits}
-                      />
+            {collections.map((collection) => {
+              const formattedCreatedAt = collection.createdAt
+                ? new Date(collection.createdAt).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })
+                : "-";
+
+              const formattedUpdatedAt = collection.updatedAt
+                ? formatDistanceToNow(new Date(collection.updatedAt), { addSuffix: true })
+                : "-";
+
+              return (
+                <tr
+                  key={collection.id}
+                  onClick={() => {
+                    if (collection.slug) {
+                      router.push(`/pawkits/${collection.slug}`);
+                    } else {
+                      router.push(`/library`);
+                    }
+                  }}
+                  className={`border-b border-subtle hover:bg-white/5 cursor-pointer transition-colors ${
+                    collection.isSystem ? 'bg-purple-950/10' : ''
+                  }`}
+                >
+                  <td className="py-3 px-4">
+                    <div className="flex items-center gap-3">
+                      <span className={`flex items-center justify-center h-8 w-8 rounded-lg backdrop-blur-sm ${
+                        collection.isSystem
+                          ? 'bg-purple-500/30 text-purple-300'
+                          : 'bg-accent/20 text-accent'
+                      }`}>
+                        {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : '📁'}
+                      </span>
+                      <span className="text-sm text-foreground font-medium">{collection.name}</span>
+                      {collection.isPinned && <Pin size={14} className="text-purple-400" />}
                     </div>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="text-sm text-muted-foreground">
+                      {collection.count} item{collection.count === 1 ? "" : "s"}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="text-sm text-muted-foreground">
+                      {collection.hasChildren ? "Yes" : "-"}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="text-sm text-muted-foreground">{formattedCreatedAt}</span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <span className="text-sm text-muted-foreground">{formattedUpdatedAt}</span>
+                  </td>
+                  <td className="py-3 px-4">
+                    {collection.slug && !collection.isSystem && (
+                      <div onClick={(e) => e.stopPropagation()} className="relative z-50">
+                        <PawkitActions
+                          pawkitId={collection.id}
+                          pawkitName={collection.name}
+                          isPinned={collection.isPinned}
+                          isPrivate={collection.isPrivate}
+                          allPawkits={allPawkits}
+                        />
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
