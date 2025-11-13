@@ -5,6 +5,7 @@ import { CollectionsGrid } from "@/components/pawkits/grid";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { FolderOpen, Plus } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 
@@ -16,6 +17,12 @@ export default function CollectionsPage() {
   const [pawkitName, setPawkitName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Get view settings for sorting and layout
+  const viewSettings = useViewSettingsStore((state) => state.getSettings("pawkits"));
+  const sortBy = viewSettings.sortBy;
+  const sortOrder = viewSettings.sortOrder;
+  const layout = viewSettings.layout;
 
   // Set the create action for the top bar
   useEffect(() => {
@@ -109,6 +116,31 @@ export default function CollectionsPage() {
     return { gridItems, allPawkits };
   }, [collections, cards]);
 
+  // Apply sorting based on view settings
+  const sortedGridItems = useMemo(() => {
+    const items = [...gridItems];
+
+    // Sort based on sortBy setting
+    items.sort((a, b) => {
+      let comparison = 0;
+
+      if (sortBy === "title") {
+        comparison = a.name.localeCompare(b.name);
+      } else if (sortBy === "createdAt") {
+        // Sort by name as proxy for creation date (we don't have createdAt on collections)
+        comparison = a.name.localeCompare(b.name);
+      } else if (sortBy === "updatedAt") {
+        // Sort by name as proxy for update date (we don't have updatedAt on collections)
+        comparison = a.name.localeCompare(b.name);
+      }
+
+      // Apply sort order
+      return sortOrder === "desc" ? -comparison : comparison;
+    });
+
+    return items;
+  }, [gridItems, sortBy, sortOrder]);
+
   return (
     <>
       {/* Create Pawkit Button - Fixed to top-right */}
@@ -137,7 +169,7 @@ export default function CollectionsPage() {
           </div>
         </div>
 
-        <CollectionsGrid collections={gridItems} allPawkits={allPawkits} />
+        <CollectionsGrid collections={sortedGridItems} allPawkits={allPawkits} layout={layout} />
         <section className="rounded-lg border border-gray-800 bg-gray-900/40 p-6">
           <h2 className="text-lg font-semibold text-gray-100 mb-2">Manage Pawkits</h2>
           <p className="text-sm text-gray-400">
