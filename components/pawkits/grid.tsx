@@ -74,7 +74,7 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
               <th className="text-left py-3 px-4 font-medium">Items</th>
               <th className="text-left py-3 px-4 font-medium">Sub-Pawkits</th>
               <th className="text-left py-3 px-4 font-medium">Date Created</th>
-              <th className="text-left py-3 px-4 font-medium">Last Activity</th>
+              <th className="text-left py-3 px-4 font-medium">Date Modified</th>
               <th className="text-left py-3 px-4 font-medium w-16"></th>
             </tr>
           </thead>

@@ -11,12 +11,131 @@ import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
-import { FileText, Bookmark, Pin } from "lucide-react";
+import { FileText, Bookmark, Pin, MoreVertical, Trash2, FolderPlus, Eye, PinOff } from "lucide-react";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { UnpinNotesModal } from "@/components/modals/unpin-notes-modal";
+import { createPortal } from "react-dom";
+import { useRef } from "react";
+
+// Simple 3-dot menu component for list view
+function CardActionsMenu({
+  card,
+  onDelete,
+  onAddToPawkit,
+  isPinned,
+  onPinToggle,
+  onOpenDetails
+}: {
+  card: CardModel;
+  onDelete: () => void;
+  onAddToPawkit: (slug: string) => void;
+  isPinned: boolean;
+  onPinToggle: () => void;
+  onOpenDetails: () => void;
+}) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const isNote = card.type === "md-note" || card.type === "text-note";
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        menuRef.current && !menuRef.current.contains(target)
+      ) {
+        setShowMenu(false);
+      }
+    };
+
+    if (showMenu) {
+      document.addEventListener("mousedown", handleClickOutside as any);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside as any);
+    };
+  }, [showMenu]);
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <button
+        ref={buttonRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!showMenu && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            setMenuPosition({
+              top: rect.bottom + 8,
+              left: rect.right - 224
+            });
+          }
+          setShowMenu(!showMenu);
+        }}
+        className="flex items-center justify-center h-9 w-9 rounded text-gray-400 hover:bg-gray-900 hover:text-gray-100 transition-colors"
+      >
+        <MoreVertical className="h-5 w-5" />
+      </button>
+
+      {showMenu && mounted && createPortal(
+        <div
+          ref={menuRef}
+          className="fixed w-56 rounded-lg bg-gray-900 border border-gray-800 shadow-lg py-1 z-[9999]"
+          style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenDetails();
+              setShowMenu(false);
+            }}
+            className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors flex items-center gap-2"
+          >
+            <Eye className="h-4 w-4" />
+            Open
+          </button>
+          {isNote && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onPinToggle();
+                setShowMenu(false);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 hover:text-gray-100 transition-colors flex items-center gap-2"
+            >
+              {isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+              {isPinned ? "Unpin from Sidebar" : "Pin to Sidebar"}
+            </button>
+          )}
+          <div className="border-t border-gray-800 my-1" />
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+              setShowMenu(false);
+            }}
+            className="w-full px-4 py-2 text-left text-sm text-rose-400 hover:bg-gray-800 hover:text-rose-300 transition-colors flex items-center gap-2"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </button>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
 
 export type CardGalleryProps = {
   cards: CardModel[];
@@ -296,11 +415,11 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               <thead>
                 <tr className="border-b border-subtle text-xs text-muted-foreground">
                   <th className="text-left py-3 px-4 font-medium">Name</th>
+                  <th className="text-left py-3 px-4 font-medium">Type</th>
                   <th className="text-left py-3 px-4 font-medium">Tags</th>
-                  <th className="text-left py-3 px-4 font-medium">Comments</th>
-                  <th className="text-left py-3 px-4 font-medium">Date modified</th>
-                  <th className="text-left py-3 px-4 font-medium">Kind</th>
-                  <th className="text-left py-3 px-4 font-medium">Size</th>
+                  <th className="text-left py-3 px-4 font-medium">Date Created</th>
+                  <th className="text-left py-3 px-4 font-medium">Date Modified</th>
+                  <th className="text-left py-3 px-4 font-medium w-16"></th>
                 </tr>
               </thead>
               <tbody>
@@ -309,7 +428,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                   const isNote = card.type === "md-note" || card.type === "text-note";
                   const isPinned = pinnedNoteIds.includes(card.id);
                   const displayTitle = card.title || card.url || "Untitled";
-                  const formattedDate = card.updatedAt ? new Date(card.updatedAt).toLocaleDateString() : "-";
+                  const formattedCreatedDate = card.createdAt ? new Date(card.createdAt).toLocaleDateString() : "-";
+                  const formattedModifiedDate = card.updatedAt ? new Date(card.updatedAt).toLocaleDateString() : "-";
                   const kind = isNote ? "Note" : "Bookmark";
 
                   return (
@@ -373,6 +493,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                           </div>
                         </td>
                         <td className="py-3 px-4">
+                          <span className="text-sm text-muted-foreground">{kind}</span>
+                        </td>
+                        <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1">
                             {card.collections && card.collections.length > 0 ? (
                               card.collections.slice(0, 2).map((collection) => (
@@ -386,18 +509,39 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-sm text-muted-foreground">
-                            {card.notes ? card.notes.substring(0, 50) + (card.notes.length > 50 ? "..." : "") : "-"}
-                          </span>
+                          <span className="text-sm text-muted-foreground">{formattedCreatedDate}</span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-sm text-muted-foreground">{formattedDate}</span>
+                          <span className="text-sm text-muted-foreground">{formattedModifiedDate}</span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-sm text-muted-foreground">{kind}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-sm text-muted-foreground">-</span>
+                          <div onClick={(e) => e.stopPropagation()} className="relative z-50 flex justify-center">
+                            <CardActionsMenu
+                              card={card}
+                              onDelete={async () => {
+                                await deleteCardFromStore(card.id);
+                                setCards((prev) => prev.filter((c) => c.id !== card.id));
+                              }}
+                              onAddToPawkit={(slug) => {
+                                const collections = Array.from(new Set([slug, ...(card.collections || [])]));
+                                updateCardInStore(card.id, { collections });
+                                setCards((prev) =>
+                                  prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
+                                );
+                              }}
+                              isPinned={isPinned}
+                              onPinToggle={() => {
+                                if (isPinned) {
+                                  handleUnpinFromSidebar(card.id);
+                                } else {
+                                  handlePinToSidebar(card.id);
+                                }
+                              }}
+                              onOpenDetails={() => {
+                                openCardDetails(card.id);
+                              }}
+                            />
+                          </div>
                         </td>
                       </tr>
                     </CardContextMenuWrapper>
