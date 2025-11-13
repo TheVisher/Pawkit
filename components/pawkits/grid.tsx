@@ -30,6 +30,7 @@ type CollectionPreviewCard = {
 type CollectionsGridProps = {
   collections: CollectionPreviewCard[];
   allPawkits?: Array<{ id: string; name: string; slug: string }>;
+  layout?: "grid" | "list" | "compact";
 };
 
 const previewPositions = [
@@ -38,7 +39,7 @@ const previewPositions = [
   "bottom-1 left-1/2 -translate-x-1/2 rotate-2"
 ];
 
-export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGridProps) {
+export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" }: CollectionsGridProps) {
   const router = useRouter();
 
   // Get pawkit size from view settings
@@ -59,6 +60,63 @@ export function CollectionsGrid({ collections, allPawkits = [] }: CollectionsGri
     );
   }
 
+  // List and Compact views
+  if (layout === "list" || layout === "compact") {
+    return (
+      <div className="space-y-2">
+        {collections.map((collection) => (
+          <div
+            key={collection.id}
+            onClick={() => {
+              if (collection.slug) {
+                router.push(`/pawkits/${collection.slug}`);
+              } else {
+                router.push(`/library`);
+              }
+            }}
+            className={`group flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
+              layout === "compact" ? "py-3" : ""
+            } ${
+              collection.isSystem
+                ? 'border-purple-500/50 bg-purple-950/20 hover:bg-purple-950/30'
+                : 'border-purple-500/30 bg-surface/80 hover:bg-surface'
+            }`}
+          >
+            <span className={`flex items-center justify-center rounded-lg backdrop-blur-sm ${
+              layout === "compact" ? "h-8 w-8" : "h-10 w-10"
+            } ${
+              collection.isSystem
+                ? 'bg-purple-500/30 text-purple-300'
+                : 'bg-accent/20 text-accent'
+            }`}>
+              {collection.isSystem ? <Inbox size={layout === "compact" ? 16 : 20} /> : collection.isPrivate ? '🔒' : '📁'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className={`font-semibold text-foreground truncate ${layout === "compact" ? "text-sm" : ""}`}>
+                {collection.name}
+              </div>
+              <div className={`text-muted-foreground ${layout === "compact" ? "text-xs" : "text-sm"}`}>
+                {collection.count} item{collection.count === 1 ? "" : "s"}
+              </div>
+            </div>
+            {collection.slug && !collection.isSystem && (
+              <div onClick={(e) => e.stopPropagation()} className="relative z-50">
+                <PawkitActions
+                  pawkitId={collection.id}
+                  pawkitName={collection.name}
+                  isPinned={collection.isPinned}
+                  isPrivate={collection.isPrivate}
+                  allPawkits={allPawkits}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Grid view (default)
   return (
     <div
       className="grid gap-6"
