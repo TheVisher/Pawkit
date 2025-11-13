@@ -360,56 +360,60 @@ export const useSettingsStore = create<SettingsState>()(
             const data = await response.json();
             console.log('[Settings] API response data:', data);
 
-            if (data.success && data.data) {
-              const settings = data.data;
-              console.log('[Settings] Parsed settings:', {
-                pinnedNoteIds: settings.pinnedNoteIds,
-                recentHistory: settings.recentHistory,
-                theme: settings.theme
-              });
+            // Handle both wrapped ({ success: true, data: {...} }) and raw ({ id, userId, ... }) responses
+            const settings = data.success && data.data ? data.data : data;
 
-              // Merge recent history: combine local + server, dedupe by timestamp
-              const localHistory = get().recentHistory;
-              const serverHistory = settings.recentHistory || [];
-
-              const mergedHistory = [...localHistory, ...serverHistory]
-                .reduce((acc, item) => {
-                  const existing = acc.find((i: RecentItem) => i.id === item.id);
-                  if (!existing || item.timestamp > existing.timestamp) {
-                    return [...acc.filter((i: RecentItem) => i.id !== item.id), item];
-                  }
-                  return acc;
-                }, [] as RecentItem[])
-                .sort((a: RecentItem, b: RecentItem) => b.timestamp - a.timestamp)
-                .slice(0, 10);
-
-              console.log('[Settings] Merging settings with pinned notes:', settings.pinnedNoteIds);
-
-              set({
-                autoFetchMetadata: settings.autoFetchMetadata,
-                showThumbnails: settings.showThumbnails,
-                previewServiceUrl: settings.previewServiceUrl,
-                theme: settings.theme,
-                accentColor: settings.accentColor,
-                notifications: settings.notifications,
-                autoSave: settings.autoSave,
-                compactMode: settings.compactMode,
-                showPreviews: settings.showPreviews,
-                autoSyncOnReconnect: settings.autoSyncOnReconnect,
-                cardSize: settings.cardSize,
-                displaySettings: settings.displaySettings,
-                pinnedNoteIds: settings.pinnedNoteIds,
-                recentHistory: mergedHistory,
-                showSyncStatusInSidebar: settings.showSyncStatusInSidebar ?? true,
-                showKeyboardShortcutsInSidebar: settings.showKeyboardShortcutsInSidebar ?? true,
-                defaultView: settings.defaultView ?? "masonry",
-                defaultSort: settings.defaultSort ?? "dateAdded"
-              });
-
-              console.log('[Settings] Settings loaded successfully. Pinned notes count:', settings.pinnedNoteIds?.length || 0);
-            } else {
-              console.warn('[Settings] API response missing success or data:', data);
+            // Validate we have settings data
+            if (!settings || !settings.userId) {
+              console.warn('[Settings] Invalid settings response:', data);
+              return;
             }
+
+            console.log('[Settings] Parsed settings:', {
+              pinnedNoteIds: settings.pinnedNoteIds,
+              recentHistory: settings.recentHistory,
+              theme: settings.theme
+            });
+
+            // Merge recent history: combine local + server, dedupe by timestamp
+            const localHistory = get().recentHistory;
+            const serverHistory = settings.recentHistory || [];
+
+            const mergedHistory = [...localHistory, ...serverHistory]
+              .reduce((acc, item) => {
+                const existing = acc.find((i: RecentItem) => i.id === item.id);
+                if (!existing || item.timestamp > existing.timestamp) {
+                  return [...acc.filter((i: RecentItem) => i.id !== item.id), item];
+                }
+                return acc;
+              }, [] as RecentItem[])
+              .sort((a: RecentItem, b: RecentItem) => b.timestamp - a.timestamp)
+              .slice(0, 10);
+
+            console.log('[Settings] Merging settings with pinned notes:', settings.pinnedNoteIds);
+
+            set({
+              autoFetchMetadata: settings.autoFetchMetadata,
+              showThumbnails: settings.showThumbnails,
+              previewServiceUrl: settings.previewServiceUrl,
+              theme: settings.theme,
+              accentColor: settings.accentColor,
+              notifications: settings.notifications,
+              autoSave: settings.autoSave,
+              compactMode: settings.compactMode,
+              showPreviews: settings.showPreviews,
+              autoSyncOnReconnect: settings.autoSyncOnReconnect,
+              cardSize: settings.cardSize,
+              displaySettings: settings.displaySettings,
+              pinnedNoteIds: settings.pinnedNoteIds,
+              recentHistory: mergedHistory,
+              showSyncStatusInSidebar: settings.showSyncStatusInSidebar ?? true,
+              showKeyboardShortcutsInSidebar: settings.showKeyboardShortcutsInSidebar ?? true,
+              defaultView: settings.defaultView ?? "masonry",
+              defaultSort: settings.defaultSort ?? "dateAdded"
+            });
+
+            console.log('[Settings] Settings loaded successfully. Pinned notes count:', settings.pinnedNoteIds?.length || 0);
           } else {
             console.error('[Settings] API response not OK:', response.status, response.statusText);
           }
