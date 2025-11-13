@@ -2819,6 +2819,135 @@ console.log('[Sync] Server collections:', {
 
 ---
 
+### 22. Sync Creating Duplicate Collections Instead of Marking as Deleted
+
+**Date**: January 13, 2025
+**Severity**: 🔴 Critical
+**Category**: Sync, Data Corruption
+**Status**: ✅ Fixed
+
+**What Failed**:
+When sync received `deleted: true` from server, it created DUPLICATE collections/cards instead of marking existing local entities as deleted. This caused:
+- 76 collections in IndexedDB (48 marked deleted, 28 active with duplicates)
+- "Zombie apocalypse" - deleted collections appearing in UI across devices
+- Data duplication on every deletion sync
+- User confusion with duplicate collection names in sidebar
+
+**Evidence**:
+```
+IndexedDB state after bug:
+- Total collections: 76
+- Marked deleted: 48
+- Active (many duplicates): 28
+- Example: "Secret Projects" had 4 duplicates with different IDs
+```
+
+**Root Cause**:
+In `lib/services/sync-service.ts`, the deletion merge logic was selecting between local and server versions:
+```typescript
+// ❌ BAD: Created duplicates
+if (localCollection.deleted || serverCollection.deleted) {
+  const deletedVersion = localCollection.deleted ? localCollection : serverCollection;
+  await localDb.saveCollection(deletedVersion, { fromServer: true });
+  // When serverCollection selected, this CREATED NEW entity with server ID!
+}
+```
+
+When server had `deleted: true`, it selected `serverCollection` and saved it as a NEW entity instead of updating the existing local one.
+
+**The Fix**:
+Modified both `mergeCollections()` and `mergeCards()` to ALWAYS update the LOCAL entity:
+```typescript
+// ✅ GOOD: Updates existing entity
+if (localCollection.deleted || serverCollection.deleted) {
+  // Mark LOCAL version as deleted (don't create duplicate from server)
+  localCollection.deleted = true;
+  localCollection.deletedAt = serverCollection.deletedAt || localCollection.deletedAt || new Date().toISOString();
+  localCollection.updatedAt = new Date().toISOString();
+
+  // Save the updated LOCAL version (prevents duplicates)
+  await localDb.saveCollection(localCollection, { fromServer: true });
+  continue;
+}
+```
+
+**Additional Fix - Auto Cleanup**:
+Added one-time cleanup function in `lib/stores/data-store.ts` that runs on app initialization:
+```typescript
+const CORRUPTED_COLLECTION_IDS = [
+  'cmhwwy77y0007kt04z7v9tgl7', // Personal sub person test (duplicate)
+  'cmhwwxzoe0003kt04ic855omr', // Personal test (duplicate)
+  // ... 16 total duplicate collection IDs
+];
+
+async function cleanupCorruptedCollections() {
+  for (const id of CORRUPTED_COLLECTION_IDS) {
+    await localDb.permanentlyDeleteCollection(id);
+  }
+}
+
+// Called in initialize() BEFORE loading data
+```
+
+**Testing Checklist**:
+- [x] Delete collection on Device A
+- [x] Sync on Device B
+- [x] Verify collection marked deleted (not duplicated) on Device B
+- [x] Check IndexedDB - no new duplicate IDs created
+- [x] Verify sidebar shows clean list after sync
+- [x] Test with cards (same fix applied to mergeCards)
+- [x] Run cleanup SQL on Supabase to remove server duplicates
+- [x] Verify cleanup runs on app startup across all devices
+
+**Before/After Flow**:
+
+**BEFORE (Bug)**:
+```
+Device A: Delete "Test Collection" (id: abc123)
+Server: Collection abc123 marked deleted: true
+Device B sync receives: { id: abc123, deleted: true, ... }
+Device B already has: { id: abc123, deleted: false, ... }
+Merge logic: Selects serverCollection as deletedVersion
+Result: Saves serverCollection as NEW entity → DUPLICATE!
+```
+
+**AFTER (Fixed)**:
+```
+Device A: Delete "Test Collection" (id: abc123)
+Server: Collection abc123 marked deleted: true
+Device B sync receives: { id: abc123, deleted: true, ... }
+Device B already has: { id: abc123, deleted: false, ... }
+Merge logic: Updates localCollection.deleted = true
+Result: Updates EXISTING entity → No duplicate!
+```
+
+**Commits**:
+- `b1f077a` - Fixed merge logic to update local entity instead of creating duplicate
+- `bc006be` - Added missing `deletedAt` field to CollectionNode TypeScript type
+- `fb30ffc` - Added auto-cleanup function for existing corrupted collections
+
+**Files Modified**:
+- `lib/services/sync-service.ts:551-560` - Fixed mergeCollections() deletion logic
+- `lib/services/sync-service.ts:407-416` - Fixed mergeCards() deletion logic
+- `lib/types.ts:120` - Added `deletedAt?: string | null` to CollectionNode type
+- `lib/stores/data-store.ts:247-267` - Added cleanupCorruptedCollections() function
+- `lib/stores/data-store.ts:288` - Call cleanup in initialize() before data load
+- `cleanup-corrupted-collections.sql` - SQL script to clean Supabase duplicates
+
+**Prevention**:
+- **Never save server entity directly** - Always update local entity to preserve identity
+- **Use local entity as merge target** - Server data should update local, not replace
+- **Test deletion sync** - Ensure no duplicates created in IndexedDB after sync
+- **Monitor collection count** - Alert if IndexedDB collection count spikes
+- **Review all merge logic** - Apply same pattern for other sync operations
+
+**See Also**:
+- `.claude/skills/pawkit-sync-patterns/SKILL.md` - Proper merge patterns
+- `.claude/skills/pawkit-conventions/SKILL.md` - Entity identity preservation
+- Issue #21 - Related deletion sync issues
+
+---
+
 ## Debugging Strategies
 
 ### When API Returns 500 Error
@@ -3190,7 +3319,7 @@ After adding a new issue:
 
 ---
 
-**Last Updated**: October 31, 2025 (Added context menu issues)
-**Next Review**: January 2026 (Quarterly)
+**Last Updated**: January 13, 2025 (Added Issue #22: Sync duplication bug)
+**Next Review**: April 2026 (Quarterly)
 
 **This is a living document. Keep it current!**
