@@ -139,6 +139,7 @@ model UserSettings {
   // JSON fields for complex data structures
   displaySettings     String  @default("{}") // JSON: Record<Area, DisplaySettings>
   pinnedNoteIds       String  @default("[]") // JSON: string[]
+  recentHistory       String  @default("[]") // JSON: RecentItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt

@@ -13,6 +13,16 @@ export type Theme = "dark" | "light" | "auto";
 export type AccentColor = "purple" | "blue" | "green" | "red" | "orange";
 export type Area = "library" | "home" | "den" | "pawkit" | "notes";
 
+// Recently viewed item type
+export interface RecentItem {
+  id: string;
+  title: string;
+  type: "card" | "note";
+  url?: string;
+  image?: string;
+  timestamp: number;
+}
+
 export type DisplaySettings = {
   showCardTitles: boolean;
   showCardUrls: boolean;
@@ -45,6 +55,7 @@ async function syncSettingsToServer(state: SettingsState) {
         cardSize: state.cardSize,
         displaySettings: state.displaySettings,
         pinnedNoteIds: state.pinnedNoteIds,
+        recentHistory: state.recentHistory,
         showSyncStatusInSidebar: state.showSyncStatusInSidebar,
         showKeyboardShortcutsInSidebar: state.showKeyboardShortcutsInSidebar,
         defaultView: state.defaultView,
@@ -84,6 +95,8 @@ export type SettingsState = {
   displaySettings: Record<Area, DisplaySettings>;
   // Pinned notes (max 3)
   pinnedNoteIds: string[];
+  // Recently viewed items (max 10)
+  recentHistory: RecentItem[];
   // Sidebar panel visibility
   showSyncStatusInSidebar: boolean;
   showKeyboardShortcutsInSidebar: boolean;
@@ -112,6 +125,9 @@ export type SettingsState = {
   pinNote: (noteId: string) => boolean; // Returns false if already at max (3)
   unpinNote: (noteId: string) => void;
   reorderPinnedNotes: (noteIds: string[]) => void;
+  // Recent history management
+  addToHistory: (item: Omit<RecentItem, "timestamp">) => void;
+  clearHistory: () => void;
   // Sidebar panel visibility setters
   setShowSyncStatusInSidebar: (value: boolean) => void;
   setShowKeyboardShortcutsInSidebar: (value: boolean) => void;
@@ -155,6 +171,8 @@ export const useSettingsStore = create<SettingsState>()(
       },
       // Initialize pinned notes as empty array
       pinnedNoteIds: [],
+      // Initialize recent history as empty array
+      recentHistory: [],
       // Initialize sidebar panel visibility
       showSyncStatusInSidebar: true,
       showKeyboardShortcutsInSidebar: true,
@@ -290,6 +308,29 @@ export const useSettingsStore = create<SettingsState>()(
         set({ pinnedNoteIds: validIds });
         debouncedSync(get());
       },
+      // Recent history management
+      addToHistory: (item) => {
+        const currentHistory = get().recentHistory;
+
+        // Create new item with timestamp
+        const newItem: RecentItem = {
+          ...item,
+          timestamp: Date.now(),
+        };
+
+        // Remove if already exists (to move to front)
+        const filtered = currentHistory.filter((i) => i.id !== item.id);
+
+        // Add to front and limit to 10 items
+        const updated = [newItem, ...filtered].slice(0, 10);
+
+        set({ recentHistory: updated });
+        debouncedSync(get());
+      },
+      clearHistory: () => {
+        set({ recentHistory: [] });
+        debouncedSync(get());
+      },
       // Sidebar panel visibility setters
       setShowSyncStatusInSidebar: (value) => {
         set({ showSyncStatusInSidebar: value });
@@ -310,12 +351,40 @@ export const useSettingsStore = create<SettingsState>()(
       },
       // Load settings from server
       loadFromServer: async () => {
+        console.log('[Settings] Loading settings from server...');
         try {
           const response = await fetch('/api/user/settings');
+          console.log('[Settings] API response status:', response.status);
+
           if (response.ok) {
             const data = await response.json();
+            console.log('[Settings] API response data:', data);
+
             if (data.success && data.data) {
               const settings = data.data;
+              console.log('[Settings] Parsed settings:', {
+                pinnedNoteIds: settings.pinnedNoteIds,
+                recentHistory: settings.recentHistory,
+                theme: settings.theme
+              });
+
+              // Merge recent history: combine local + server, dedupe by timestamp
+              const localHistory = get().recentHistory;
+              const serverHistory = settings.recentHistory || [];
+
+              const mergedHistory = [...localHistory, ...serverHistory]
+                .reduce((acc, item) => {
+                  const existing = acc.find((i: RecentItem) => i.id === item.id);
+                  if (!existing || item.timestamp > existing.timestamp) {
+                    return [...acc.filter((i: RecentItem) => i.id !== item.id), item];
+                  }
+                  return acc;
+                }, [] as RecentItem[])
+                .sort((a: RecentItem, b: RecentItem) => b.timestamp - a.timestamp)
+                .slice(0, 10);
+
+              console.log('[Settings] Merging settings with pinned notes:', settings.pinnedNoteIds);
+
               set({
                 autoFetchMetadata: settings.autoFetchMetadata,
                 showThumbnails: settings.showThumbnails,
@@ -330,12 +399,19 @@ export const useSettingsStore = create<SettingsState>()(
                 cardSize: settings.cardSize,
                 displaySettings: settings.displaySettings,
                 pinnedNoteIds: settings.pinnedNoteIds,
+                recentHistory: mergedHistory,
                 showSyncStatusInSidebar: settings.showSyncStatusInSidebar ?? true,
                 showKeyboardShortcutsInSidebar: settings.showKeyboardShortcutsInSidebar ?? true,
                 defaultView: settings.defaultView ?? "masonry",
                 defaultSort: settings.defaultSort ?? "dateAdded"
               });
+
+              console.log('[Settings] Settings loaded successfully. Pinned notes count:', settings.pinnedNoteIds?.length || 0);
+            } else {
+              console.warn('[Settings] API response missing success or data:', data);
             }
+          } else {
+            console.error('[Settings] API response not OK:', response.status, response.statusText);
           }
         } catch (error) {
           console.error('[Settings] Failed to load from server:', error);
@@ -369,6 +445,7 @@ export const useSettingsStore = create<SettingsState>()(
             notes: { ...defaultDisplaySettings },
           },
           pinnedNoteIds: [],
+          recentHistory: [],
           showSyncStatusInSidebar: true,
           showKeyboardShortcutsInSidebar: true,
           defaultView: "masonry",

@@ -9,7 +9,10 @@ export async function GET() {
   let user;
   try {
     user = await getCurrentUser();
+    console.log('[API GET /api/user/settings] User:', user?.id);
+
     if (!user) {
+      console.log('[API GET /api/user/settings] Unauthorized - no user');
       return unauthorized();
     }
 
@@ -18,8 +21,15 @@ export async function GET() {
       where: { userId: user.id }
     });
 
+    console.log('[API GET /api/user/settings] Settings from DB:', {
+      exists: !!settings,
+      pinnedNoteIds: settings?.pinnedNoteIds,
+      recentHistory: settings?.recentHistory
+    });
+
     // If no settings exist, create default settings
     if (!settings) {
+      console.log('[API GET /api/user/settings] Creating default settings for user:', user.id);
       settings = await prisma.userSettings.create({
         data: {
           userId: user.id
@@ -30,13 +40,22 @@ export async function GET() {
     // Parse JSON fields
     const displaySettings = JSON.parse(settings.displaySettings);
     const pinnedNoteIds = JSON.parse(settings.pinnedNoteIds);
+    const recentHistory = JSON.parse(settings.recentHistory);
+
+    console.log('[API GET /api/user/settings] Parsed data:', {
+      pinnedNoteIds,
+      pinnedNotesCount: pinnedNoteIds.length,
+      recentHistoryCount: recentHistory.length
+    });
 
     return success({
       ...settings,
       displaySettings,
-      pinnedNoteIds
+      pinnedNoteIds,
+      recentHistory
     });
   } catch (error) {
+    console.error('[API GET /api/user/settings] Error:', error);
     return handleApiError(error, { route: '/api/user/settings', userId: user?.id });
   }
 }
@@ -86,7 +105,14 @@ export async function PATCH(request: Request) {
       updateData.displaySettings = JSON.stringify(body.displaySettings);
     }
     if (body.pinnedNoteIds !== undefined) {
-      updateData.pinnedNoteIds = JSON.stringify(body.pinnedNoteIds);
+      // Validate and limit to max 3 items
+      const notes = Array.isArray(body.pinnedNoteIds) ? body.pinnedNoteIds.slice(0, 3) : [];
+      updateData.pinnedNoteIds = JSON.stringify(notes);
+    }
+    if (body.recentHistory !== undefined) {
+      // Validate and limit to max 20 items
+      const history = Array.isArray(body.recentHistory) ? body.recentHistory.slice(0, 20) : [];
+      updateData.recentHistory = JSON.stringify(history);
     }
 
     // Upsert settings (create if doesn't exist, update if it does)
@@ -102,11 +128,13 @@ export async function PATCH(request: Request) {
     // Parse JSON fields for response
     const displaySettings = JSON.parse(settings.displaySettings);
     const pinnedNoteIds = JSON.parse(settings.pinnedNoteIds);
+    const recentHistory = JSON.parse(settings.recentHistory);
 
     return success({
       ...settings,
       displaySettings,
-      pinnedNoteIds
+      pinnedNoteIds,
+      recentHistory
     });
   } catch (error) {
     return handleApiError(error, { route: '/api/user/settings', userId: user?.id });
