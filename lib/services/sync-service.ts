@@ -405,18 +405,13 @@ class SyncService {
         // PRIORITY 1: Deletion ALWAYS wins (check first to avoid blocking!)
         // This prevents active device check from blocking incoming deletions
         if (localCard.deleted || serverCard.deleted) {
-          // Either version is deleted - keep the deleted state
-          const deletedVersion = localCard.deleted ? localCard : serverCard;
+          // Mark LOCAL version as deleted (don't create duplicate from server)
+          localCard.deleted = true;
+          localCard.deletedAt = serverCard.deletedAt || localCard.deletedAt || new Date().toISOString();
+          localCard.updatedAt = new Date().toISOString();
 
-          // Ensure deleted flag is set (may not be on the other version)
-          if (!deletedVersion.deleted) {
-            deletedVersion.deleted = true;
-            deletedVersion.deletedAt = deletedVersion.deletedAt || new Date().toISOString();
-            deletedVersion.updatedAt = new Date().toISOString();
-          }
-
-          // Save the deleted version and continue
-          await localDb.saveCard(deletedVersion, { fromServer: true });
+          // Save the updated LOCAL version (prevents duplicates)
+          await localDb.saveCard(localCard, { fromServer: true });
           continue;
         }
 
@@ -549,17 +544,13 @@ class SyncService {
         // PRIORITY 1: Deletion ALWAYS wins (check first to avoid blocking!)
         // This prevents active device check from blocking incoming deletions
         if (localCollection.deleted || serverCollection.deleted) {
-          // Either version is deleted - keep the deleted state
-          const deletedVersion = localCollection.deleted ? localCollection : serverCollection;
+          // Mark LOCAL version as deleted (don't create duplicate from server)
+          localCollection.deleted = true;
+          localCollection.deletedAt = serverCollection.deletedAt || localCollection.deletedAt || new Date().toISOString();
+          localCollection.updatedAt = new Date().toISOString();
 
-          // Ensure deleted flag is set (may not be on the other version)
-          if (!deletedVersion.deleted) {
-            deletedVersion.deleted = true;
-            deletedVersion.updatedAt = new Date().toISOString();
-          }
-
-          // Save the deleted version and continue
-          await localDb.saveCollection(deletedVersion, { fromServer: true });
+          // Save the updated LOCAL version (prevents duplicates)
+          await localDb.saveCollection(localCollection, { fromServer: true });
           continue;
         }
 
