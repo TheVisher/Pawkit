@@ -20,6 +20,174 @@ description: Track development progress, major milestones, and session history a
 
 ## Session History
 
+### Date: January 13, 2025 - Universal Todo List & Pawkits View Polish
+
+**Status**: ✅ COMPLETED & DOCUMENTED
+**Priority**: ⚡ FEATURE RELEASE + UX POLISH
+**Branch**: `main`
+**Impact**: Cross-device todo management, improved Pawkits view consistency and usability
+
+**Summary**: Major development session implementing a universal cross-device todo list feature and comprehensive polish of the Pawkits view, including right sidebar customization and new List/Compact view modes.
+
+#### 1. Universal Todo List Feature
+
+**Implementation**:
+- **Database Schema**: Added `Todo` model to Prisma schema with userId foreign key, title, completed status, createdAt/updatedAt timestamps
+- **API Endpoints**:
+  - `GET /api/todos` - Fetch all user's todos
+  - `POST /api/todos` - Create new todo
+  - `PATCH /api/todos/[id]` - Update todo (title/completed)
+  - `DELETE /api/todos/[id]` - Delete todo
+  - All endpoints include user ownership validation via Clerk auth
+- **State Management**: Zustand store at `lib/hooks/use-todos.ts` with:
+  - Optimistic updates for instant UI feedback
+  - Automatic rollback on API errors
+  - Persist middleware for cross-page state
+- **UI Component**: `TodosSection` at `components/control-panel/todos-section.tsx`
+  - Appears in ALL view right sidebars (Home, Library, Notes, Calendar, Pawkits)
+  - Uses `PanelSection` pattern for visual consistency
+  - Shows active todo count badge in header
+  - Inline create, edit, delete, and toggle completion
+- **Sync**: Backed by Supabase, syncs across all user devices
+
+**Files Modified**:
+- `prisma/schema.prisma`
+- `app/api/todos/route.ts` (new)
+- `app/api/todos/[id]/route.ts` (new)
+- `lib/hooks/use-todos.ts` (new)
+- `components/control-panel/todos-section.tsx` (new)
+- `components/control-panel/home-controls.tsx`
+- `components/control-panel/library-controls.tsx`
+- `components/control-panel/notes-controls.tsx`
+- `components/control-panel/calendar-controls.tsx`
+- `components/control-panel/pawkits-controls.tsx`
+
+**Testing Results**:
+- ✅ Todos persist across page navigation
+- ✅ Todos sync across devices in real-time
+- ✅ Optimistic updates work correctly
+- ✅ Ownership validation prevents unauthorized access
+- ✅ TodosSection appears consistently in all view sidebars
+
+#### 2. Right Sidebar Visual Consistency
+
+**Problem**: Right sidebar controls had inconsistent padding, indentation, and section styling across different views.
+
+**Solution**: Standardized on `PanelSection` component pattern across all control panels:
+- Removed custom wrapper divs that were adding extra indentation
+- Ensured all control components return fragment (`<>...</>`) with `TodosSection` first
+- Pixel-perfect alignment of all sections using PanelSection's built-in styles
+- Consistent spacing, borders, and collapse behavior
+
+**Pattern Established**:
+```tsx
+export function ViewControls() {
+  return (
+    <>
+      <TodosSection />  {/* Always first */}
+      <PanelSection id="..." title="..." icon={<Icon />}>
+        {/* Section content */}
+      </PanelSection>
+    </>
+  );
+}
+```
+
+**Files Modified**:
+- All control panel components updated to follow pattern
+- Documented in `pawkit-ui-ux/SKILL.md` under "RIGHT SIDEBAR PATTERNS"
+
+#### 3. Home View Control Panel
+
+**Problem**: Home view had no right sidebar controls when selected.
+
+**Solution**:
+- Created `components/control-panel/home-controls.tsx` with TodosSection
+- Added `openHomeControls()` method to panel store
+- Updated Home page to call `openHomeControls()` on mount
+- Updated `app/(dashboard)/layout.tsx` to register HomeControls component
+- Right sidebar now properly switches to home controls when navigating to Home
+
+**Files Modified**:
+- `components/control-panel/home-controls.tsx` (new)
+- `lib/hooks/use-panel-store.ts`
+- `app/(dashboard)/page.tsx`
+- `app/(dashboard)/layout.tsx`
+
+#### 4. Pawkits Right Sidebar Customization
+
+**Changes**:
+- **Removed**: Tags section, Content Type section (not applicable to Pawkits)
+- **Updated Sort Options**: Name, Date Created, Date Modified (removed "Added to Library")
+- **Updated View Options**: Grid, List, Compact only (removed Masonry - not applicable)
+- **Simplified Display**: Pawkit Size slider only (removed Card Size)
+- **Added**: Sort direction toggle (Ascending/Descending)
+
+**Files Modified**:
+- `components/control-panel/pawkits-controls.tsx`
+
+**Impact**:
+- Cleaner, more focused controls for Pawkits management
+- Removed irrelevant options that confused users
+- Better alignment with Pawkits-specific functionality
+
+#### 5. Pawkits List & Compact Views Redesign
+
+**List View Redesign**:
+- Converted from grid cards to full-width data table
+- Columns: Name, Items, Sub-Pawkits, Date Created, Last Activity
+- Hover effect on rows (`hover:bg-white/5`)
+- Purple Pin icon replacing star emoji
+- Date formatting:
+  - Date Created: Absolute format (`Nov 10, 2025`)
+  - Last Activity: Relative format (`2 hours ago`)
+- System Pawkits highlighted with purple background
+- Actions menu in last column
+
+**Compact View Redesign**:
+- Dense grid: 2-6 columns (responsive)
+- Icon + title + count only (no previews)
+- Hover scale effect
+- Actions menu appears on hover
+- Maximum density for quick scanning
+
+**Files Modified**:
+- `components/pawkits/grid.tsx`
+  - Added imports: `Pin` from lucide-react, `formatDistanceToNow` from date-fns
+  - Added `createdAt` and `updatedAt` to type definitions
+  - Completely rewrote List view section (lines 67-158)
+  - Completely rewrote Compact view section (lines 161-220)
+- `app/(dashboard)/pawkits/page.tsx`
+  - Added `createdAt` and `updatedAt` to gridItems mapping
+
+**Testing Results**:
+- ✅ List view displays all metadata correctly
+- ✅ Compact view shows maximum items per screen
+- ✅ Date formatting works (absolute and relative)
+- ✅ Pin icon appears for pinned Pawkits
+- ✅ System Pawkits visually distinguished
+- ✅ All three views (Grid/List/Compact) switch correctly
+- ✅ Responsive behavior works across screen sizes
+
+#### Technical Patterns Established
+
+**PanelSection Pattern**: Standardized right sidebar component structure documented in `pawkit-ui-ux/SKILL.md`
+
+**Controls Component Structure**: Always return fragment with TodosSection first, followed by PanelSection components
+
+**Three-View System**:
+- Grid: Visual browsing with previews
+- List: Data table for metadata scanning
+- Compact: Dense grid for maximum density
+
+**Date Formatting Standards**:
+- Creation dates: Absolute (`toLocaleDateString()`)
+- Activity dates: Relative (`formatDistanceToNow()`)
+
+**Pin Icon Usage**: `<Pin size={14} className="text-purple-400" />` replaces star emoji everywhere
+
+---
+
 ### Date: January 13, 2025 - Note Double-Creation from Sync Queue (Issue #23)
 
 **Status**: ✅ FIXED & DEPLOYED
