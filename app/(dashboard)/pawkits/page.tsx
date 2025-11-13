@@ -103,7 +103,9 @@ export default function CollectionsPage() {
         hidePreview: root.hidePreview,
         useCoverAsBackground: root.useCoverAsBackground,
         coverImage: root.coverImage,
-        hasChildren: root.children && root.children.length > 0
+        hasChildren: root.children && root.children.length > 0,
+        createdAt: root.createdAt,
+        updatedAt: root.updatedAt
       };
     })
     // Sort: System Pawkits first, then pinned, then by name

@@ -47,7 +47,8 @@
       "Skill(pawkit-project-context)",
       "Bash(git pull:*)",
       "Bash(git ls-tree:*)",
-      "Bash(git log:*)"
+      "Bash(git log:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []
