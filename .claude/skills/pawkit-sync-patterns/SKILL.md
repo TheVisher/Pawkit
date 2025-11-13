@@ -438,6 +438,109 @@ async function resolveConflict_Manual(
 
 ---
 
+### Strategy 5: Deletion Handling (Entity Identity Preservation)
+
+**When to use**: Syncing deletions between devices
+
+**Critical Pattern**: When receiving a deleted entity from server, ALWAYS update the existing local entity instead of saving the server entity. This preserves entity identity and prevents duplicates.
+
+**❌ WRONG - Creates Duplicates**:
+```tsx
+async function mergeDeletion_WRONG(localEntity: Entity, serverEntity: Entity) {
+  if (localEntity.deleted || serverEntity.deleted) {
+    // Selects between local and server
+    const deletedVersion = localEntity.deleted ? localEntity : serverEntity;
+
+    // ❌ BUG: When serverEntity selected, this CREATES a new entity
+    await localDb.saveEntity(deletedVersion);
+
+    // Result: Local entity (id: abc123) still exists as deleted: false
+    //         Server entity (id: abc123) saved as NEW duplicate with deleted: true
+    //         IndexedDB now has DUPLICATE entities with same ID!
+  }
+}
+```
+
+**✅ CORRECT - Updates Existing**:
+```tsx
+async function mergeDeletion_CORRECT(localEntity: Entity, serverEntity: Entity) {
+  if (localEntity.deleted || serverEntity.deleted) {
+    // ALWAYS update the LOCAL entity (preserves identity)
+    localEntity.deleted = true;
+    localEntity.deletedAt = serverEntity.deletedAt || localEntity.deletedAt || new Date().toISOString();
+    localEntity.updatedAt = new Date().toISOString();
+
+    // ✅ GOOD: Updates the EXISTING local entity
+    await localDb.saveEntity(localEntity);
+
+    // Result: Local entity (id: abc123) updated with deleted: true
+    //         No duplicates created
+    //         IndexedDB has single entity marked as deleted
+  }
+}
+```
+
+**Why This Matters**:
+- **Entity Identity**: Local entity ID is the source of truth for IndexedDB
+- **No Duplicates**: Updating local entity prevents creating duplicate with server ID
+- **UI Consistency**: Prevents "zombie" entities appearing in UI after sync
+- **Data Integrity**: Maintains referential integrity across the database
+
+**Real-World Impact** (Issue #22, Jan 2025):
+- Bug caused 76 collections in IndexedDB (48 deleted, 28 active duplicates)
+- "Zombie apocalypse" with deleted collections appearing in sidebar
+- Every deletion sync created a new duplicate instead of marking existing as deleted
+
+**Implementation** (lib/services/sync-service.ts):
+```tsx
+// ✅ Applied to both mergeCollections() and mergeCards()
+private async mergeCollections(serverCollections: CollectionDTO[], localCollections: CollectionDTO[]): Promise<number> {
+  for (const serverCollection of serverCollections) {
+    const localCollection = localMap.get(serverCollection.id);
+
+    if (!localCollection) {
+      // New from server - save it (including deleted for proper sync state)
+      await localDb.saveCollection(serverCollection, { fromServer: true });
+    } else {
+      // PRIORITY 1: Deletion ALWAYS wins
+      if (localCollection.deleted || serverCollection.deleted) {
+        // Mark LOCAL version as deleted (don't create duplicate from server)
+        localCollection.deleted = true;
+        localCollection.deletedAt = serverCollection.deletedAt || localCollection.deletedAt || new Date().toISOString();
+        localCollection.updatedAt = new Date().toISOString();
+
+        // Save the updated LOCAL version (prevents duplicates)
+        await localDb.saveCollection(localCollection, { fromServer: true });
+        continue;
+      }
+
+      // ... other conflict resolution logic
+    }
+  }
+}
+```
+
+**Testing Checklist**:
+- [ ] Delete entity on Device A
+- [ ] Sync on Device B
+- [ ] Check IndexedDB on Device B - entity should be marked deleted, NOT duplicated
+- [ ] Verify no new entity IDs created
+- [ ] Check UI doesn't show deleted entity
+- [ ] Repeat test with offline Device B - verify correct merge on reconnect
+
+**Prevention Rules**:
+1. **Never save server entity directly when handling deletions**
+2. **Always use local entity as merge target**
+3. **Test deletion sync in both directions**
+4. **Monitor IndexedDB for duplicate IDs**
+5. **Review all merge logic for entity identity preservation**
+
+**See Also**:
+- Issue #22 in pawkit-troubleshooting - Full analysis and fix
+- Issue #21 in pawkit-troubleshooting - Related deletion sync issues
+
+---
+
 ### Retry Failed Operations
 
 **Pattern**: Retry failed syncs with exponential backoff

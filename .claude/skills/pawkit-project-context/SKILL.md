@@ -20,6 +20,70 @@ description: Track development progress, major milestones, and session history a
 
 ## Session History
 
+### Date: January 13, 2025 - Critical Sync Duplication Bug Fix
+
+**Status**: ✅ FIXED & DEPLOYED
+**Priority**: 🔴 CRITICAL - Data Corruption
+**Branch**: `main`
+**Commits**: b1f077a, bc006be, fb30ffc
+
+**Problem**:
+Sync service was creating DUPLICATE collections and cards instead of marking existing ones as deleted when receiving `deleted: true` from server.
+
+**Impact**:
+- 76 collections in IndexedDB (48 marked deleted, 28 active with duplicates)
+- "Zombie apocalypse" - deleted collections appearing in sidebar across devices
+- Data duplication on every deletion sync
+- User confusion with duplicate collection names
+
+**Root Cause**:
+In `lib/services/sync-service.ts`, the deletion merge logic was selecting between local and server versions:
+```typescript
+// ❌ BUG: Created duplicates
+const deletedVersion = localCollection.deleted ? localCollection : serverCollection;
+await localDb.saveCollection(deletedVersion);
+// When serverCollection selected, this CREATED NEW entity instead of updating existing
+```
+
+**Fix Implemented**:
+Modified both `mergeCollections()` and `mergeCards()` to ALWAYS update the LOCAL entity:
+```typescript
+// ✅ FIXED: Updates existing entity
+localCollection.deleted = true;
+localCollection.deletedAt = serverCollection.deletedAt || localCollection.deletedAt || new Date().toISOString();
+localCollection.updatedAt = new Date().toISOString();
+await localDb.saveCollection(localCollection); // Updates existing, no duplicates
+```
+
+**Additional Fixes**:
+1. Added missing `deletedAt` field to `CollectionNode` TypeScript type (bc006be)
+2. Created auto-cleanup function in data-store.ts to remove 16 known corrupted collection IDs on app startup (fb30ffc)
+3. Generated SQL script to clean server database (cleanup-corrupted-collections.sql)
+
+**Files Modified**:
+- `lib/services/sync-service.ts:551-560` - mergeCollections() deletion logic
+- `lib/services/sync-service.ts:407-416` - mergeCards() deletion logic
+- `lib/types.ts:120` - Added deletedAt field
+- `lib/stores/data-store.ts:247-267` - Auto-cleanup function
+- `lib/stores/data-store.ts:288` - Call cleanup in initialize()
+
+**Documentation Updated**:
+- `.claude/skills/pawkit-troubleshooting/SKILL.md` - Added Issue #22
+- `.claude/skills/pawkit-sync-patterns/SKILL.md` - Added Strategy 5: Deletion Handling
+
+**Validation**:
+- [x] Type errors fixed - build successful
+- [x] Auto-cleanup implemented and tested
+- [x] Server database cleaned via SQL script
+- [x] All devices auto-clean on next app load
+- [x] No more duplicates created on deletion sync
+- [x] Sidebar shows clean collection list
+
+**Prevention Pattern**:
+**Critical Rule**: Never save server entity directly when handling deletions. Always update LOCAL entity to preserve identity and prevent duplicates.
+
+---
+
 ### Date: January 4, 2025 - Comprehensive Sync System Deep-Dive Analysis
 
 **Status**: ✅ ANALYSIS COMPLETE - Issues documented, fixes deferred
@@ -1484,6 +1548,6 @@ Location: `/app/(dashboard)/test/pre-merge-suite/page.tsx`
 
 ---
 
-**Last Updated**: 2025-10-30
+**Last Updated**: 2025-01-13
 **Updated By**: Claude Code
-**Reason**: Production deployment complete, multi-session detection merged to main, database and CSP issues resolved
+**Reason**: Fixed critical sync duplication bug (Issue #22), added auto-cleanup, documented in troubleshooting and sync patterns skills
