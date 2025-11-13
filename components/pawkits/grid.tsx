@@ -60,10 +60,88 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
     );
   }
 
-  // List and Compact views
-  if (layout === "list" || layout === "compact") {
+  // List View - Data Table
+  if (layout === "list") {
     return (
-      <div className="space-y-2">
+      <div className="w-full overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-subtle text-xs text-muted-foreground">
+              <th className="text-left py-3 px-4 font-medium">Name</th>
+              <th className="text-left py-3 px-4 font-medium">Items</th>
+              <th className="text-left py-3 px-4 font-medium">Sub-Pawkits</th>
+              <th className="text-left py-3 px-4 font-medium">Type</th>
+              <th className="text-left py-3 px-4 font-medium w-16"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {collections.map((collection) => (
+              <tr
+                key={collection.id}
+                onClick={() => {
+                  if (collection.slug) {
+                    router.push(`/pawkits/${collection.slug}`);
+                  } else {
+                    router.push(`/library`);
+                  }
+                }}
+                className={`border-b border-subtle hover:bg-white/5 cursor-pointer transition-colors ${
+                  collection.isSystem ? 'bg-purple-950/10' : ''
+                }`}
+              >
+                <td className="py-3 px-4">
+                  <div className="flex items-center gap-3">
+                    <span className={`flex items-center justify-center h-8 w-8 rounded-lg backdrop-blur-sm ${
+                      collection.isSystem
+                        ? 'bg-purple-500/30 text-purple-300'
+                        : 'bg-accent/20 text-accent'
+                    }`}>
+                      {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : '📁'}
+                    </span>
+                    <span className="text-sm text-foreground font-medium">{collection.name}</span>
+                    {collection.isPinned && <span className="text-xs text-purple-400">⭐</span>}
+                  </div>
+                </td>
+                <td className="py-3 px-4">
+                  <span className="text-sm text-muted-foreground">
+                    {collection.count} item{collection.count === 1 ? "" : "s"}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  <span className="text-sm text-muted-foreground">
+                    {collection.hasChildren ? "Yes" : "-"}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  <span className="text-xs text-muted-foreground">
+                    {collection.isSystem ? "System" : collection.isPrivate ? "Private" : "Pawkit"}
+                  </span>
+                </td>
+                <td className="py-3 px-4">
+                  {collection.slug && !collection.isSystem && (
+                    <div onClick={(e) => e.stopPropagation()} className="relative z-50">
+                      <PawkitActions
+                        pawkitId={collection.id}
+                        pawkitName={collection.name}
+                        isPinned={collection.isPinned}
+                        isPrivate={collection.isPrivate}
+                        allPawkits={allPawkits}
+                      />
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  // Compact View - Dense Grid (No Previews)
+  if (layout === "compact") {
+    return (
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
         {collections.map((collection) => (
           <div
             key={collection.id}
@@ -74,33 +152,39 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
                 router.push(`/library`);
               }
             }}
-            className={`group flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-all ${
-              layout === "compact" ? "py-3" : ""
-            } ${
+            className={`group relative flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all hover:scale-105 ${
               collection.isSystem
                 ? 'border-purple-500/50 bg-purple-950/20 hover:bg-purple-950/30'
                 : 'border-purple-500/30 bg-surface/80 hover:bg-surface'
             }`}
           >
-            <span className={`flex items-center justify-center rounded-lg backdrop-blur-sm ${
-              layout === "compact" ? "h-8 w-8" : "h-10 w-10"
-            } ${
+            {/* Icon */}
+            <span className={`flex items-center justify-center h-12 w-12 rounded-lg backdrop-blur-sm ${
               collection.isSystem
                 ? 'bg-purple-500/30 text-purple-300'
                 : 'bg-accent/20 text-accent'
             }`}>
-              {collection.isSystem ? <Inbox size={layout === "compact" ? 16 : 20} /> : collection.isPrivate ? '🔒' : '📁'}
+              {collection.isSystem ? <Inbox size={24} /> : collection.isPrivate ? '🔒' : '📁'}
             </span>
-            <div className="flex-1 min-w-0">
-              <div className={`font-semibold text-foreground truncate ${layout === "compact" ? "text-sm" : ""}`}>
+
+            {/* Name */}
+            <div className="text-center w-full">
+              <div className="text-sm font-semibold text-foreground truncate">
                 {collection.name}
               </div>
-              <div className={`text-muted-foreground ${layout === "compact" ? "text-xs" : "text-sm"}`}>
-                {collection.count} item{collection.count === 1 ? "" : "s"}
+
+              {/* Item count badge */}
+              <div className="text-xs text-muted-foreground mt-1">
+                {collection.count} {collection.count === 1 ? "item" : "items"}
               </div>
             </div>
+
+            {/* Actions menu - show on hover */}
             {collection.slug && !collection.isSystem && (
-              <div onClick={(e) => e.stopPropagation()} className="relative z-50">
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-50"
+              >
                 <PawkitActions
                   pawkitId={collection.id}
                   pawkitName={collection.name}
