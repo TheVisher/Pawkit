@@ -473,8 +473,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                         }`}
                         onClick={(e) => handleCardClick(e, card)}
                       >
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
+                        <td className="py-3 px-4 max-w-xs">
+                          <div className="flex items-center gap-3 min-w-0">
                             <span className="flex items-center justify-center h-8 w-8 rounded-lg backdrop-blur-sm bg-accent/20 text-accent flex-shrink-0">
                               {isNote ? (
                                 <FileText size={16} className="text-purple-400" />
@@ -488,8 +488,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                                 <Bookmark size={16} className="text-muted-foreground" />
                               )}
                             </span>
-                            <span className="text-sm text-foreground font-medium truncate">{displayTitle}</span>
-                            {isPinned && <Pin size={14} className="text-purple-400" />}
+                            <span className="text-sm text-foreground font-medium truncate min-w-0 flex-1">{displayTitle}</span>
+                            {isPinned && <Pin size={14} className="text-purple-400 flex-shrink-0" />}
                           </div>
                         </td>
                         <td className="py-3 px-4">

@@ -106,17 +106,17 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
                     collection.isSystem ? 'bg-purple-950/10' : ''
                   }`}
                 >
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-3">
-                      <span className={`flex items-center justify-center h-8 w-8 rounded-lg backdrop-blur-sm ${
+                  <td className="py-3 px-4 max-w-xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className={`flex items-center justify-center h-8 w-8 rounded-lg backdrop-blur-sm flex-shrink-0 ${
                         collection.isSystem
                           ? 'bg-purple-500/30 text-purple-300'
                           : 'bg-accent/20 text-accent'
                       }`}>
                         {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : <Folder size={16} className="text-purple-400" />}
                       </span>
-                      <span className="text-sm text-foreground font-medium">{collection.name}</span>
-                      {collection.isPinned && <Pin size={14} className="text-purple-400" />}
+                      <span className="text-sm text-foreground font-medium truncate min-w-0 flex-1">{collection.name}</span>
+                      {collection.isPinned && <Pin size={14} className="text-purple-400 flex-shrink-0" />}
                     </div>
                   </td>
                   <td className="py-3 px-4">
