@@ -355,19 +355,21 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                       >
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            {isNote ? (
-                              <FileText size={16} className="text-purple-400 flex-shrink-0" />
-                            ) : card.image ? (
-                              <img
-                                src={card.image}
-                                alt=""
-                                className="w-5 h-5 rounded object-cover flex-shrink-0"
-                              />
-                            ) : (
-                              <Bookmark size={16} className="text-muted-foreground flex-shrink-0" />
-                            )}
+                            <span className="flex items-center justify-center h-8 w-8 rounded-lg backdrop-blur-sm bg-accent/20 text-accent flex-shrink-0">
+                              {isNote ? (
+                                <FileText size={16} className="text-purple-400" />
+                              ) : card.image ? (
+                                <img
+                                  src={card.image}
+                                  alt=""
+                                  className="w-5 h-5 rounded object-cover"
+                                />
+                              ) : (
+                                <Bookmark size={16} className="text-muted-foreground" />
+                              )}
+                            </span>
                             <span className="text-sm text-foreground font-medium truncate">{displayTitle}</span>
-                            {isPinned && <Pin size={14} className="text-purple-400 flex-shrink-0" />}
+                            {isPinned && <Pin size={14} className="text-purple-400" />}
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -379,23 +381,23 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                                 </span>
                               ))
                             ) : (
-                              <span className="text-xs text-muted-foreground">-</span>
+                              <span className="text-sm text-muted-foreground">-</span>
                             )}
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-sm text-muted-foreground">
                             {card.notes ? card.notes.substring(0, 50) + (card.notes.length > 50 ? "..." : "") : "-"}
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-xs text-muted-foreground">{formattedDate}</span>
+                          <span className="text-sm text-muted-foreground">{formattedDate}</span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-xs text-muted-foreground">{kind}</span>
+                          <span className="text-sm text-muted-foreground">{kind}</span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-xs text-muted-foreground">-</span>
+                          <span className="text-sm text-muted-foreground">-</span>
                         </td>
                       </tr>
                     </CardContextMenuWrapper>
