@@ -217,6 +217,55 @@ type DataStore = {
   importData: (file: File) => Promise<void>;
 };
 
+/**
+ * List of known corrupted collection IDs to auto-delete
+ * These are duplicates created by the sync bug before fix (commits b1f077a, bc006be)
+ */
+const CORRUPTED_COLLECTION_IDS = [
+  'cmhwwy77y0007kt04z7v9tgl7', // Personal sub person test (duplicate)
+  'cmhwwxzoe0003kt04ic855omr', // Personal test (duplicate)
+  'cmhwwxxrh0002kt046cds47og', // Private Test Collection (duplicate)
+  'cmhwwv64o0004js04jsjdz6pk', // Secret Projects (duplicate)
+  'cmhwwv0pv0002js047hfija03', // Secret Projects (duplicate)
+  'cmhwwv34w0003js04eh90xj1t', // Secret Projects (duplicate)
+  'cmhwwv9mj0005js0444ell0i4', // Secret Projects (duplicate)
+  'cmhwwy1il0004kt04560zk8uk', // Sub personal test (duplicate)
+  'cmhwwy3dp0005kt043hxsfqtj', // Sub sub person (duplicate)
+  'cmhwwy93j0008kt04dfbdw2dy', // sub sub sub person (duplicate)
+  'cmhwwuywv0001js04ss47cw8q', // Test (duplicate)
+  'cmhwwux1r0000js046ca2i7ly', // Test Private (duplicate)
+  'cmhwwxvvm0001kt04i7lc795s', // Test Private (duplicate)
+  'cmhwwy5ay0006kt04qhce1lfp', // Test sub sub again (duplicate)
+  'cmhwwxteo0000kt042tkti6e1', // Testing this out (duplicate)
+  'cmhwwyl1h0009kt04q6s4nif5', // The Den (duplicate)
+];
+
+/**
+ * Auto-cleanup corrupted collections on startup
+ * Removes known duplicate collections created by sync bug
+ */
+async function cleanupCorruptedCollections() {
+  console.log('[Cleanup] Checking for corrupted collections...');
+
+  let cleaned = 0;
+
+  for (const id of CORRUPTED_COLLECTION_IDS) {
+    try {
+      await localDb.permanentlyDeleteCollection(id);
+      cleaned++;
+      console.log(`[Cleanup] Deleted corrupted collection: ${id}`);
+    } catch (e) {
+      // Collection doesn't exist or already deleted - that's fine
+    }
+  }
+
+  if (cleaned > 0) {
+    console.log(`[Cleanup] ✅ Cleaned ${cleaned} corrupted collections`);
+  } else {
+    console.log('[Cleanup] ✅ No corrupted collections found');
+  }
+}
+
 export const useDataStore = create<DataStore>((set, get) => ({
   cards: [],
   collections: [],
@@ -235,6 +284,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
     set({ isLoading: true });
 
     try {
+      // Auto-cleanup corrupted collections BEFORE loading data
+      await cleanupCorruptedCollections();
+
       // ALWAYS load from local IndexedDB first
       const [allCards, allCollections] = await Promise.all([
         localDb.getAllCards(),
