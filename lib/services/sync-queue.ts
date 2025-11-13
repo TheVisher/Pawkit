@@ -243,6 +243,20 @@ class SyncQueue {
     }
   }
 
+  // Remove operation by tempId (for CREATE operations that succeeded immediately)
+  async removeByTempId(tempId: string): Promise<void> {
+    if (!this.db) {
+      throw new Error('[SyncQueue] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const operations = await this.db.getAll('operations');
+    const toRemove = operations.filter(op => op.tempId === tempId);
+
+    for (const op of toRemove) {
+      await this.db.delete('operations', op.id);
+    }
+  }
+
   // Mark operation as failed
   async markFailed(id: string): Promise<void> {
     if (!this.db) {
