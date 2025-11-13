@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { HelpCircle, Keyboard } from "lucide-react";
 import { ControlPanel } from "@/components/control-panel/control-panel";
+import { HomeControls } from "@/components/control-panel/home-controls";
 import { LibraryControls } from "@/components/control-panel/library-controls";
 import { NotesControls } from "@/components/control-panel/notes-controls";
 import { PawkitsControls } from "@/components/control-panel/pawkits-controls";
@@ -591,6 +592,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 isTransitioning ? "translate-y-full opacity-0" : "translate-y-0 opacity-100"
               }`}
             >
+              {animatingContentType === "home-controls" && <HomeControls />}
               {animatingContentType === "library-controls" && <LibraryControls />}
               {animatingContentType === "notes-controls" && <NotesControls />}
               {animatingContentType === "pawkits-controls" && <PawkitsControls />}
