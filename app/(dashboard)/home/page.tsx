@@ -27,6 +27,7 @@ const GREETINGS = [
 
 export default function HomePage() {
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const openHomeControls = usePanelStore((state) => state.openHomeControls);
   const activeCardId = usePanelStore((state) => state.activeCardId);
 
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -45,6 +46,11 @@ export default function HomePage() {
 
   // Read from global store - instant, no API calls
   const { cards, collections, updateCard, deleteCard, addCard } = useDataStore();
+
+  // Open Home control panel when this page loads
+  useEffect(() => {
+    openHomeControls();
+  }, [openHomeControls]);
 
   // Fetch user profile
   useEffect(() => {

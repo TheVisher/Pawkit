@@ -5,6 +5,7 @@ import { persist } from "zustand/middleware";
 import { ControlPanelMode } from "@/components/control-panel/control-panel";
 
 export type PanelContentType =
+  | "home-controls"
   | "library-controls"
   | "card-details"
   | "notes-controls"
@@ -52,6 +53,7 @@ export type PanelState = {
   setLeftMode: (mode: ControlPanelMode) => void;
 
   // Open specific content types
+  openHomeControls: () => void;
   openLibraryControls: () => void;
   openCardDetails: (cardId: string) => void;
   openNotesControls: () => void;
@@ -147,6 +149,10 @@ export const usePanelStore = create<PanelState>()(
 
       setLeftMode: (leftMode) => {
         set({ leftMode });
+      },
+
+      openHomeControls: () => {
+        set({ isOpen: true, contentType: "home-controls", activeCardId: null, wasAutoOpened: false });
       },
 
       openLibraryControls: () => {
