@@ -117,6 +117,7 @@ export type CollectionNode = {
   coverImagePosition?: number | null; // Vertical position percentage (0-100)
   pinned: boolean;
   deleted: boolean;
+  deletedAt?: string | null;
   inDen?: boolean;
   isPrivate?: boolean;
   isSystem?: boolean;
