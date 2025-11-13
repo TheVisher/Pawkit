@@ -1166,7 +1166,7 @@ export function LeftNavigationPanel({
                 {recentItems.slice(0, 5).map((item) => (
                   <button
                     key={item.id}
-                    onClick={() => handleNavigate(item.type === "note" ? `/notes#${item.id}` : `/library?q=${encodeURIComponent(item.title)}`)}
+                    onClick={() => openCardDetails(item.id)}
                     className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-white/5"
                   >
                     <Clock size={16} className="flex-shrink-0" />
