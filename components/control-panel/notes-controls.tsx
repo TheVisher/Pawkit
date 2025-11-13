@@ -8,6 +8,7 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useRouter, usePathname } from "next/navigation";
 import { useMemo } from "react";
+import { TodosSection } from "./todos-section";
 
 // Map view settings sortBy to control panel sort options
 const mapSortByToControl = (sortBy: SortBy): "date" | "modified" | "title" => {
@@ -158,6 +159,9 @@ export function NotesControls() {
 
   return (
     <>
+      {/* Todos Section - Always at top */}
+      <TodosSection />
+
       {/* Tags Filter Section */}
       {allTags.length > 0 && (
         <PanelSection

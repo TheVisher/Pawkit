@@ -26,6 +26,7 @@ model User {
   viewSettings   UserViewSettings[]
   settings       UserSettings?
   deviceSessions DeviceSession[]
+  todos          Todo[]
 }
 
 model Card {
@@ -162,5 +163,18 @@ model DeviceSession {
   @@unique([userId, deviceId])
   @@index([userId])
   @@index([userId, lastActive])
+}
+
+model Todo {
+  id        String   @id @default(cuid())
+  userId    String
+  text      String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, completed])
 }
 

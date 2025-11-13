@@ -7,6 +7,7 @@ import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useRouter, usePathname } from "next/navigation";
 import { useMemo } from "react";
+import { TodosSection } from "./todos-section";
 
 // Map view settings sortBy to control panel sort options
 const mapSortByToControl = (sortBy: SortBy): "date" | "modified" | "title" | "domain" => {
@@ -204,6 +205,11 @@ export function PawkitsControls() {
 
       {/* Scrollable Content */}
       <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
+        {/* Todos Section - Always at top */}
+        <div className="-mx-6">
+          <TodosSection />
+        </div>
+
         {/* Tags Section - Only show if there are tags */}
         {allTags.length > 0 && (
           <PanelSection

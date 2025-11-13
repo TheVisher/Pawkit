@@ -7,6 +7,7 @@ import { format, setMonth, isAfter, startOfToday, startOfWeek, endOfWeek } from 
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { TodosSection } from "./todos-section";
 
 // Month names for the 3x4 grid
 const MONTHS = [
@@ -98,6 +99,9 @@ export function CalendarControls() {
 
   return (
     <>
+      {/* Todos Section - Always at top */}
+      <TodosSection />
+
       {/* Month Grid Selector */}
       <PanelSection
         id="calendar-month-selector"

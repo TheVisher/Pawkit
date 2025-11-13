@@ -10,6 +10,7 @@ import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
 import { useRouter, usePathname } from "next/navigation";
 import { useMemo } from "react";
+import { TodosSection } from "./todos-section";
 
 // Map view settings sortBy to control panel sort options
 const mapSortByToControl = (sortBy: SortBy): "date" | "modified" | "title" | "domain" => {
@@ -325,6 +326,9 @@ export function LibraryControls() {
       ) : (
         // Normal Library Controls
         <>
+          {/* Todos Section - Always at top */}
+          <TodosSection />
+
           {/* Tags Filter Section */}
           {allTags.length > 0 && (
         <PanelSection
