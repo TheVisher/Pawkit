@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { Folder } from "lucide-react";
 import type { CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
 
@@ -78,7 +79,9 @@ export function QuickAccessPawkitCard({ pawkit }: QuickAccessPawkitCardProps) {
 
       <div className="relative z-10 flex items-center justify-between pb-4 text-sm text-muted-foreground">
         <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent">📁</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent">
+            <Folder className="h-5 w-5 text-purple-400" />
+          </span>
           {pawkit.name}
         </span>
         <span className="text-xs text-muted-foreground">{cardCount} item{cardCount === 1 ? "" : "s"}</span>

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import type { CardModel, CollectionNode } from "@/lib/types";
 import { useRouter, usePathname } from "next/navigation";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown, Check, Folder } from "lucide-react";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { GlowButton } from "@/components/ui/glow-button";
 
@@ -375,9 +375,10 @@ export function DigUpView({
                   {currentCard.collections.map((collection) => (
                     <span
                       key={collection}
-                      className="inline-block rounded bg-gray-800 px-3 py-1 text-xs text-gray-300"
+                      className="inline-flex items-center gap-1.5 rounded bg-gray-800 px-3 py-1 text-xs text-gray-300"
                     >
-                      📁 {collection}
+                      <Folder className="h-3 w-3 text-purple-400" />
+                      {collection}
                     </span>
                   ))}
                 </div>
@@ -551,9 +552,10 @@ function PawkitTreeItem({ node, depth, onSelect, loading }: PawkitTreeItemProps)
         style={{ paddingLeft: `${paddingLeft}px` }}
         variant="primary"
         size="sm"
-        className="w-full text-left rounded-full pr-4 py-2.5 text-sm disabled:opacity-50 justify-start"
+        className="w-full text-left rounded-full pr-4 py-2.5 text-sm disabled:opacity-50 justify-start flex items-center gap-2"
       >
-        📁 {node.name}
+        <Folder className="h-4 w-4 text-purple-400" />
+        {node.name}
       </GlowButton>
       {hasChildren && node.children.map((child) => (
         <PawkitTreeItem
