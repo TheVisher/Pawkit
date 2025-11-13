@@ -22,7 +22,9 @@ export default function CollectionsPage() {
   const viewSettings = useViewSettingsStore((state) => state.getSettings("pawkits"));
   const sortBy = viewSettings.sortBy;
   const sortOrder = viewSettings.sortOrder;
-  const layout = viewSettings.layout;
+  const rawLayout = viewSettings.layout;
+  // Map layout, defaulting masonry to grid for Pawkits view
+  const layout: "grid" | "list" | "compact" = rawLayout === "masonry" ? "grid" : rawLayout;
 
   // Set the create action for the top bar
   useEffect(() => {
