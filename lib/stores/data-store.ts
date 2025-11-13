@@ -511,6 +511,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
           if (response.ok) {
             const serverCard = await response.json();
 
+            // CRITICAL: Remove from sync queue since immediate sync succeeded
+            // This prevents duplicate creation when queue drains
+            await syncQueue.removeByTempId(tempId);
+
             // Update link references if this was a temp card
             if (tempId.startsWith('temp_')) {
               await localDb.updateLinkReferences(tempId, serverCard.id);
