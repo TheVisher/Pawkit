@@ -1,18 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronDown, Plus, Trash2, CheckSquare, Square } from "lucide-react";
+import { Plus, Trash2, CheckSquare, Square, ListTodo } from "lucide-react";
 import { useTodoStore } from "@/lib/hooks/use-todos";
-import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { PanelSection } from "./control-panel";
 
 export function TodosSection() {
   const { todos, fetchTodos, addTodo, toggleTodo, deleteTodo } = useTodoStore();
-  const { collapsedSections, toggleSection } = usePanelStore();
   const [newTodoText, setNewTodoText] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-
-  const sectionId = "todos-section";
-  const isCollapsed = collapsedSections[sectionId] || false;
 
   // Fetch todos on mount
   useEffect(() => {
@@ -47,32 +43,20 @@ export function TodosSection() {
   const incompleteTodos = todos.filter(t => !t.completed);
 
   return (
-    <div className="border-b border-white/5">
-      {/* Section Header */}
-      <button
-        onClick={() => toggleSection(sectionId)}
-        className="w-full flex items-center justify-between px-6 py-3 hover:bg-white/5 transition-colors group"
-      >
-        <div className="flex items-center gap-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
-            Today&apos;s Tasks
-          </h3>
-          {incompleteTodos.length > 0 && (
+    <div className="border-b border-white/5 px-6">
+      <PanelSection
+        id="todos-section"
+        title="Today's Tasks"
+        icon={<ListTodo className="h-4 w-4 text-accent" />}
+        action={
+          incompleteTodos.length > 0 ? (
             <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">
               {incompleteTodos.length}
             </span>
-          )}
-        </div>
-        <ChevronDown
-          className={`h-4 w-4 text-muted-foreground transition-transform group-hover:text-foreground ${
-            isCollapsed ? "-rotate-90" : ""
-          }`}
-        />
-      </button>
-
-      {/* Section Content */}
-      {!isCollapsed && (
-        <div className="px-6 pb-4 space-y-3">
+          ) : undefined
+        }
+      >
+        <div className="space-y-3">
           {/* Add Todo Form */}
           <form onSubmit={handleAddTodo} className="flex gap-2">
             <input
