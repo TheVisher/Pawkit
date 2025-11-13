@@ -43,19 +43,18 @@ export function TodosSection() {
   const incompleteTodos = todos.filter(t => !t.completed);
 
   return (
-    <div className="border-b border-white/5 px-6">
-      <PanelSection
-        id="todos-section"
-        title="Today's Tasks"
-        icon={<ListTodo className="h-4 w-4 text-accent" />}
-        action={
-          incompleteTodos.length > 0 ? (
-            <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">
-              {incompleteTodos.length}
-            </span>
-          ) : undefined
-        }
-      >
+    <PanelSection
+      id="todos-section"
+      title="Today's Tasks"
+      icon={<ListTodo className="h-4 w-4 text-accent" />}
+      action={
+        incompleteTodos.length > 0 ? (
+          <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">
+            {incompleteTodos.length}
+          </span>
+        ) : undefined
+      }
+    >
         <div className="space-y-3">
           {/* Add Todo Form */}
           <form onSubmit={handleAddTodo} className="flex gap-2">
@@ -147,6 +146,5 @@ export function TodosSection() {
           )}
         </div>
       </PanelSection>
-    </div>
   );
 }
