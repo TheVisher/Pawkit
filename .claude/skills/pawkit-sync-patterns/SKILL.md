@@ -541,6 +541,170 @@ private async mergeCollections(serverCollections: CollectionDTO[], localCollecti
 
 ---
 
+### Strategy 6: Dequeue After Immediate Sync Success
+
+**When to use**: Preventing duplicate creation when using both immediate sync and sync queue
+
+**Critical Pattern**: When an operation succeeds via immediate sync, ALWAYS remove it from the sync queue to prevent duplicate execution when the queue drains.
+
+**❌ WRONG - Leaves Item in Queue**:
+```tsx
+async function addCard_WRONG(cardData: CardData) {
+  const tempId = `temp_${Date.now()}`;
+
+  // Queue for sync (fallback)
+  await syncQueue.enqueue({
+    type: 'CREATE_CARD',
+    payload: cardData,
+    tempId: tempId,
+  });
+
+  // Try immediate sync
+  const response = await fetch('/api/cards', {
+    method: 'POST',
+    body: JSON.stringify(cardData),
+  });
+
+  if (response.ok) {
+    const serverCard = await response.json();
+
+    // ❌ BUG: Queued operation NOT removed
+    // When queue drains later, it will POST again → DUPLICATE!
+
+    await localDb.permanentlyDeleteCard(tempId);
+    await localDb.saveCard(serverCard);
+  }
+  // If immediate sync fails, queued item will retry later
+}
+```
+
+**✅ CORRECT - Dequeues After Success**:
+```tsx
+async function addCard_CORRECT(cardData: CardData) {
+  const tempId = `temp_${Date.now()}`;
+
+  // Queue for sync (fallback)
+  await syncQueue.enqueue({
+    type: 'CREATE_CARD',
+    payload: cardData,
+    tempId: tempId,
+  });
+
+  // Try immediate sync
+  const response = await fetch('/api/cards', {
+    method: 'POST',
+    body: JSON.stringify(cardData),
+  });
+
+  if (response.ok) {
+    const serverCard = await response.json();
+
+    // ✅ CRITICAL: Remove from queue since immediate sync succeeded
+    await syncQueue.removeByTempId(tempId);
+
+    await localDb.permanentlyDeleteCard(tempId);
+    await localDb.saveCard(serverCard);
+  }
+  // If immediate sync fails, queued item remains for retry
+}
+```
+
+**Why This Matters**:
+- **Prevents Duplicate Creation**: Queue drain would create the same entity again
+- **Maintains Data Integrity**: Server doesn't get duplicate POST requests
+- **Proper Fallback**: Queue only processes operations that actually failed
+- **Clean Queue**: Completed operations don't pollute the retry queue
+
+**Real-World Impact** (Issue #23, Jan 2025):
+- Bug caused duplicate notes to be created 5 seconds apart
+- First note had content (immediate sync)
+- Second note was blank (queue drain of same operation)
+- Every create operation resulted in duplicates on server
+
+**Implementation** (lib/stores/data-store.ts:516):
+```tsx
+if (response.ok) {
+  const serverCard = await response.json();
+
+  // CRITICAL: Remove from sync queue since immediate sync succeeded
+  // This prevents duplicate creation when queue drains
+  await syncQueue.removeByTempId(tempId);
+
+  // Update link references if this was a temp card
+  if (tempId.startsWith('temp_')) {
+    await localDb.updateLinkReferences(tempId, serverCard.id);
+  }
+
+  // Replace temp card with server card
+  await localDb.permanentlyDeleteCard(tempId);
+  await localDb.saveCard(serverCard, { fromServer: true });
+}
+```
+
+**SyncQueue Method** (lib/services/sync-queue.ts:246-258):
+```tsx
+async removeByTempId(tempId: string): Promise<void> {
+  if (!this.db) {
+    throw new Error('[SyncQueue] Database not initialized');
+  }
+
+  const operations = await this.db.getAll('operations');
+  const toRemove = operations.filter(op => op.tempId === tempId);
+
+  for (const op of toRemove) {
+    await this.db.delete('operations', op.id);
+  }
+}
+```
+
+**Testing Checklist**:
+- [ ] Create entity (card/collection)
+- [ ] Verify immediate sync succeeds
+- [ ] Check sync queue is empty after creation
+- [ ] Wait for queue drain interval (5 seconds)
+- [ ] Verify no duplicate created on server
+- [ ] Test with offline mode - verify queue retries work
+- [ ] Test with network failure - verify queue fallback works
+
+**Before/After Flow**:
+
+**BEFORE (Bug)**:
+```
+1. User creates note
+2. Queue operation (CREATE_CARD, tempId: temp_123)
+3. Immediate sync → POST /api/cards → 201 Created ✅
+4. [BUG] Queue still has operation
+5. Queue drains (5s later) → POST /api/cards AGAIN → Duplicate ❌
+```
+
+**AFTER (Fixed)**:
+```
+1. User creates note
+2. Queue operation (CREATE_CARD, tempId: temp_123)
+3. Immediate sync → POST /api/cards → 201 Created ✅
+4. removeByTempId(temp_123) → Queue cleared ✅
+5. Queue drains (5s later) → No pending operations → No duplicate ✅
+```
+
+**Prevention Rules**:
+1. **Always dequeue after immediate sync success**
+2. **Never assume queue will deduplicate automatically**
+3. **Test both immediate and queued paths**
+4. **Monitor for duplicate server IDs**
+5. **Review all create/update operations for proper dequeue**
+
+**Common Mistakes**:
+- Forgetting to dequeue after immediate sync
+- Dequeuing before confirming server success (use if (response.ok))
+- Not implementing removeByTempId method
+- Assuming duplicate detection will catch it
+
+**See Also**:
+- Issue #23 in pawkit-troubleshooting - Full analysis and fix
+- Queue implementation in sync-queue.ts
+
+---
+
 ### Retry Failed Operations
 
 **Pattern**: Retry failed syncs with exponential backoff
