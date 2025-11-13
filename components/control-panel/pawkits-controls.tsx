@@ -190,65 +190,51 @@ export function PawkitsControls() {
   };
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="border-b border-gray-800 px-6 py-4">
-        <h2 className="text-sm font-semibold text-gray-100">
-          {isOverview ? "Pawkits Overview" : "Pawkit View"}
-        </h2>
-        <p className="mt-1 text-xs text-gray-400">
-          {isOverview
-            ? "Customize pawkit card size"
-            : "Customize how cards are displayed"}
-        </p>
-      </div>
+    <>
+      {/* Todos Section - Always at top */}
+      <TodosSection />
 
-      {/* Scrollable Content */}
-      <div className="flex-1 space-y-4 overflow-y-auto px-6 py-4">
-        {/* Todos Section - Always at top */}
-        <TodosSection />
-
-        {/* Tags Section - Only show if there are tags */}
-        {allTags.length > 0 && (
-          <PanelSection
-            id="pawkits-tags"
-            title="Tags"
-            icon={<Tag className="h-4 w-4 text-accent" />}
-          >
-            <div className={`space-y-2 ${isOverview ? "opacity-50 pointer-events-none" : ""}`}>
-              <div className="flex flex-wrap gap-2">
-                {allTags.map(({ name, count }) => (
-                  <button
-                    key={name}
-                    onClick={() => handleTagToggle(name)}
-                    className={`rounded-full px-3 py-1 text-xs transition-colors ${
-                      selectedTags.includes(name)
-                        ? "bg-accent text-accent-foreground"
-                        : "bg-surface-soft text-muted-foreground hover:bg-surface-soft/80"
-                    }`}
-                  >
-                    {name} ({count})
-                  </button>
-                ))}
-              </div>
-              {selectedTags.length > 0 && (
-                <button
-                  onClick={handleClearTags}
-                  className="text-xs text-accent hover:text-accent/80 transition-colors"
-                >
-                  Clear all
-                </button>
-              )}
-            </div>
-          </PanelSection>
-        )}
-
-        {/* Content Type Filter Section */}
+      {/* Tags Section - Only show if there are tags */}
+      {allTags.length > 0 && (
         <PanelSection
-          id="pawkits-content"
-          title="Content Type"
-          icon={<File className="h-4 w-4 text-accent" />}
+          id="pawkits-tags"
+          title="Tags"
+          icon={<Tag className="h-4 w-4 text-accent" />}
         >
+          <div className={`space-y-2 ${isOverview ? "opacity-50 pointer-events-none" : ""}`}>
+            <div className="flex flex-wrap gap-2">
+              {allTags.map(({ name, count }) => (
+                <button
+                  key={name}
+                  onClick={() => handleTagToggle(name)}
+                  className={`rounded-full px-3 py-1 text-xs transition-colors ${
+                    selectedTags.includes(name)
+                      ? "bg-accent text-accent-foreground"
+                      : "bg-surface-soft text-muted-foreground hover:bg-surface-soft/80"
+                  }`}
+                >
+                  {name} ({count})
+                </button>
+              ))}
+            </div>
+            {selectedTags.length > 0 && (
+              <button
+                onClick={handleClearTags}
+                className="text-xs text-accent hover:text-accent/80 transition-colors"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+        </PanelSection>
+      )}
+
+      {/* Content Type Filter Section */}
+      <PanelSection
+        id="pawkits-content"
+        title="Content Type"
+        icon={<File className="h-4 w-4 text-accent" />}
+      >
           <div className={`flex flex-col gap-2 ${isOverview ? "opacity-50 pointer-events-none" : ""}`}>
             <PanelButton
               active={contentTypeFilter.length === 0}
@@ -269,10 +255,10 @@ export function PawkitsControls() {
               Notes Only
             </PanelButton>
           </div>
-        </PanelSection>
+      </PanelSection>
 
-        {/* Sort Section */}
-        <PanelSection id="pawkits-sort" title="Sort" icon={<SortAsc className="h-4 w-4 text-accent" />}>
+      {/* Sort Section */}
+      <PanelSection id="pawkits-sort" title="Sort" icon={<SortAsc className="h-4 w-4 text-accent" />}>
           <div className={isOverview ? "opacity-50 pointer-events-none" : ""}>
             {/* Sort Direction Toggle */}
             <div className="flex items-center justify-between mb-2">
@@ -313,10 +299,10 @@ export function PawkitsControls() {
               </PanelButton>
             </div>
           </div>
-        </PanelSection>
+      </PanelSection>
 
-        {/* View Section */}
-        <PanelSection id="pawkits-view" title="View" icon={<Eye className="h-4 w-4 text-accent" />}>
+      {/* View Section */}
+      <PanelSection id="pawkits-view" title="View" icon={<Eye className="h-4 w-4 text-accent" />}>
           <div className={`flex flex-col gap-2 ${isOverview ? "opacity-50 pointer-events-none" : ""}`}>
             <PanelButton
               active={layout === "grid"}
@@ -347,10 +333,10 @@ export function PawkitsControls() {
               Compact
             </PanelButton>
           </div>
-        </PanelSection>
+      </PanelSection>
 
-        {/* Display Options Section */}
-        <PanelSection id="pawkits-display" title="Display" icon={<Maximize2 className="h-4 w-4 text-accent" />}>
+      {/* Display Options Section */}
+      <PanelSection id="pawkits-display" title="Display" icon={<Maximize2 className="h-4 w-4 text-accent" />}>
           <div className="space-y-4">
             {/* Pawkit/Card Size Slider */}
             <div className="space-y-2">
@@ -424,8 +410,7 @@ export function PawkitsControls() {
               />
             </div>
           </div>
-        </PanelSection>
-      </div>
-    </div>
+      </PanelSection>
+    </>
   );
 }
