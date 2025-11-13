@@ -146,7 +146,7 @@ export function TodosSection() {
             </div>
           )}
         </div>
-      )}
+      </PanelSection>
     </div>
   );
 }
