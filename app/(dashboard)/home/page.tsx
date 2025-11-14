@@ -16,6 +16,7 @@ import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/da
 import { Plus, FileText, CalendarIcon } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import { HorizontalScrollContainer } from "@/components/ui/horizontal-scroll-container";
+import { addCollectionWithHierarchy, removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
 
 const GREETINGS = [
   "Welcome back",
@@ -266,15 +267,15 @@ export default function HomePage() {
                   card={card}
                   onClick={() => openCardDetails(card.id)}
                   onAddToPawkit={async (slug) => {
-                    const collections = Array.from(new Set([slug, ...(card.collections || [])]));
-                    await updateCard(card.id, { collections });
+                    const newCollections = addCollectionWithHierarchy(card.collections || [], slug, collections);
+                    await updateCard(card.id, { collections: newCollections });
                   }}
                   onDeleteCard={async () => {
                     await deleteCard(card.id);
                   }}
                   onRemoveFromPawkit={async (slug) => {
-                    const collections = (card.collections || []).filter(s => s !== slug);
-                    await updateCard(card.id, { collections });
+                    const newCollections = removeCollectionWithHierarchy(card.collections || [], slug, collections, true);
+                    await updateCard(card.id, { collections: newCollections });
                   }}
                   onRemoveFromAllPawkits={async () => {
                     await updateCard(card.id, { collections: [] });
