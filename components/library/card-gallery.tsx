@@ -2,7 +2,7 @@
 "use client";
 
 import type { MouseEvent } from "react";
-import { Dispatch, SetStateAction, useEffect, useMemo, useState, Suspense, memo } from "react";
+import { Dispatch, SetStateAction, useEffect, useMemo, useState, Suspense, memo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -395,6 +395,51 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   // Compute layout config for card grid
   const layoutConfig = getLayoutConfig(layout, cardSize, cardSpacing);
 
+  // Stable callback handlers to prevent re-renders
+  const handleAddToPawkit = useCallback((cardId: string, slug: string) => {
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+    const collections = addCollectionWithHierarchy(card.collections || [], slug, allCollections);
+    updateCardInStore(cardId, { collections });
+    setCards((prev) =>
+      prev.map((c) => (c.id === cardId ? { ...c, collections } : c))
+    );
+  }, [cards, allCollections, updateCardInStore, setCards]);
+
+  const handleDeleteCard = useCallback(async (cardId: string) => {
+    await deleteCardFromStore(cardId);
+    setCards((prev) => prev.filter((c) => c.id !== cardId));
+  }, [deleteCardFromStore, setCards]);
+
+  const handleRemoveFromPawkit = useCallback((cardId: string, slug: string) => {
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+    const collections = removeCollectionWithHierarchy(card.collections || [], slug, allCollections, true);
+    updateCardInStore(cardId, { collections });
+    setCards((prev) =>
+      prev.map((c) => (c.id === cardId ? { ...c, collections } : c))
+    );
+  }, [cards, allCollections, updateCardInStore, setCards]);
+
+  const handleRemoveFromAllPawkits = useCallback((cardId: string) => {
+    updateCardInStore(cardId, { collections: [] });
+    setCards((prev) =>
+      prev.map((c) => (c.id === cardId ? { ...c, collections: [] } : c))
+    );
+  }, [updateCardInStore, setCards]);
+
+  const handleOpenDetails = useCallback((cardId: string) => {
+    openCardDetails(cardId);
+  }, [openCardDetails]);
+
+  const handlePinToggle = useCallback((cardId: string, isPinned: boolean) => {
+    if (isPinned) {
+      handleUnpinFromSidebar(cardId);
+    } else {
+      handlePinToSidebar(cardId);
+    }
+  }, [handlePinToSidebar, handleUnpinFromSidebar]);
+
   return (
     <div className="space-y-4">
       {!hideControls && (
@@ -435,31 +480,11 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                   return (
                     <CardContextMenuWrapper
                       key={card.id}
-                      onAddToPawkit={(slug) => {
-                        const collections = addCollectionWithHierarchy(card.collections || [], slug, allCollections);
-                        updateCardInStore(card.id, { collections });
-                        setCards((prev) =>
-                          prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
-                        );
-                      }}
-                      onDelete={async () => {
-                        await deleteCardFromStore(card.id);
-                        setCards((prev) => prev.filter((c) => c.id !== card.id));
-                      }}
+                      onAddToPawkit={(slug) => handleAddToPawkit(card.id, slug)}
+                      onDelete={() => handleDeleteCard(card.id)}
                       cardCollections={card.collections || []}
-                      onRemoveFromPawkit={(slug) => {
-                        const collections = removeCollectionWithHierarchy(card.collections || [], slug, allCollections, true);
-                        updateCardInStore(card.id, { collections });
-                        setCards((prev) =>
-                          prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
-                        );
-                      }}
-                      onRemoveFromAllPawkits={() => {
-                        updateCardInStore(card.id, { collections: [] });
-                        setCards((prev) =>
-                          prev.map((c) => (c.id === card.id ? { ...c, collections: [] } : c))
-                        );
-                      }}
+                      onRemoveFromPawkit={(slug) => handleRemoveFromPawkit(card.id, slug)}
+                      onRemoveFromAllPawkits={() => handleRemoveFromAllPawkits(card.id)}
                       onFetchMetadata={() => handleFetchMetadata(card.id)}
                       cardId={card.id}
                       cardType={card.type}
@@ -526,28 +551,11 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                           <div onClick={(e) => e.stopPropagation()} className="relative z-50 flex justify-center">
                             <CardActionsMenu
                               card={card}
-                              onDelete={async () => {
-                                await deleteCardFromStore(card.id);
-                                setCards((prev) => prev.filter((c) => c.id !== card.id));
-                              }}
-                              onAddToPawkit={(slug) => {
-                                const collections = addCollectionWithHierarchy(card.collections || [], slug, allCollections);
-                                updateCardInStore(card.id, { collections });
-                                setCards((prev) =>
-                                  prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
-                                );
-                              }}
+                              onDelete={() => handleDeleteCard(card.id)}
+                              onAddToPawkit={(slug) => handleAddToPawkit(card.id, slug)}
                               isPinned={isPinned}
-                              onPinToggle={() => {
-                                if (isPinned) {
-                                  handleUnpinFromSidebar(card.id);
-                                } else {
-                                  handlePinToSidebar(card.id);
-                                }
-                              }}
-                              onOpenDetails={() => {
-                                openCardDetails(card.id);
-                              }}
+                              onPinToggle={() => handlePinToggle(card.id, isPinned)}
+                              onOpenDetails={() => handleOpenDetails(card.id)}
                             />
                           </div>
                         </td>
@@ -570,36 +578,16 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 area={area}
                 onClick={handleCardClick}
                 onImageLoad={handleImageLoad}
-                onAddToPawkit={(slug) => {
-                const collections = addCollectionWithHierarchy(card.collections || [], slug, allCollections);
-                updateCardInStore(card.id, { collections });
-                setCards((prev) =>
-                  prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
-                );
-              }}
-              onDeleteCard={async () => {
-                await deleteCardFromStore(card.id);
-                setCards((prev) => prev.filter((c) => c.id !== card.id));
-              }}
-              onRemoveFromPawkit={(slug) => {
-                const collections = removeCollectionWithHierarchy(card.collections || [], slug, allCollections, true);
-                updateCardInStore(card.id, { collections });
-                setCards((prev) =>
-                  prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
-                );
-              }}
-              onRemoveFromAllPawkits={() => {
-                updateCardInStore(card.id, { collections: [] });
-                setCards((prev) =>
-                  prev.map((c) => (c.id === card.id ? { ...c, collections: [] } : c))
-                );
-              }}
-              onFetchMetadata={handleFetchMetadata}
-              isPinned={pinnedNoteIds.includes(card.id)}
-              onPinToSidebar={() => handlePinToSidebar(card.id)}
-              onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
-            />
-          ))}
+                onAddToPawkit={(slug) => handleAddToPawkit(card.id, slug)}
+                onDeleteCard={() => handleDeleteCard(card.id)}
+                onRemoveFromPawkit={(slug) => handleRemoveFromPawkit(card.id, slug)}
+                onRemoveFromAllPawkits={() => handleRemoveFromAllPawkits(card.id)}
+                onFetchMetadata={handleFetchMetadata}
+                isPinned={pinnedNoteIds.includes(card.id)}
+                onPinToSidebar={() => handlePinToSidebar(card.id)}
+                onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
+              />
+            ))}
           </div>
         )}
       {nextCursor && (
