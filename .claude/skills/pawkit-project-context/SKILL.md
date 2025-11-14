@@ -20,6 +20,68 @@ description: Track development progress, major milestones, and session history a
 
 ## Session History
 
+### Date: January 13, 2025 - Bug Fixes: Daily Notes & Tags Display
+
+**Status**: ✅ COMPLETED
+**Priority**: 🐛 BUG FIXES
+**Branch**: `main`
+**Impact**: Fixed duplicate daily note creation and tags column display issues
+
+**Summary**: Quick bug fix session addressing two user-reported issues in Notes view and Library list view.
+
+#### 1. Duplicate Daily Note Creation Fix
+
+**Problem**: "Daily Note" button in Notes view created multiple daily notes for the same date when clicked rapidly.
+
+**Root Cause**: Check for existing note was at render time (stale value), not click time (current state).
+
+**Solution**:
+- Check for existing note INSIDE click handler using `findDailyNoteForDate(dataStore.cards, today)`
+- Replicated working sidebar pattern from left-navigation-panel.tsx
+- Query current store state at action time, not render time
+
+**Files Modified**:
+- `components/notes/notes-view.tsx` - Rewrote createDailyNote function
+
+**Commit**: `c3e6683`
+
+#### 2. Tags Column Display Fix
+
+**Problem**: Tags column showed "-" for notes even though they had tags (like "daily"), while bookmarks showed their collections instead of tags.
+
+**Root Cause**: Column was rendering `card.collections` (pawkits) instead of `card.tags`.
+
+**Solution**:
+- First attempt: Show only tags → broke bookmarks (they have collections, not tags)
+- Correct solution: Merge both `card.tags` AND `card.collections` for display
+- Shows first 2 items from combined array
+
+**Files Modified**:
+- `components/library/card-gallery.tsx` - Tags column rendering logic
+
+**Commits**:
+- `04b407f` - First attempt (fixed notes, broke bookmarks)
+- `0abb2f9` - Correct fix (show both tags and collections)
+
+#### Documentation Updates
+
+**Updated Skills**:
+- `.claude/skills/pawkit-troubleshooting/SKILL.md` - Added Issues #24 and #25
+
+**Impact**:
+- ✅ No more duplicate daily notes from rapid clicks
+- ✅ Tags column shows both tags and collections correctly
+- ✅ Notes display their tags (daily, etc.)
+- ✅ Bookmarks continue showing collections (restaurants, seattle, etc.)
+
+**Lessons Learned**:
+1. **Check state at action time** - Don't rely on render-time derived values in handlers
+2. **Test all card types** - Bookmarks, notes, cards with both tags and collections
+3. **Reference working code** - Sidebar had correct pattern for daily notes
+4. **Understand data model** - Tags (flat labels) vs Collections (hierarchical folders)
+
+---
+
 ### Date: January 13, 2025 - List View Standardization & Hierarchical Tags
 
 **Status**: ✅ COMPLETED & DOCUMENTED
