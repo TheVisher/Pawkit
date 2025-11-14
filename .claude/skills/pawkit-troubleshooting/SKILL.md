@@ -38,6 +38,7 @@ description: Living document of issues encountered, their fixes, and prevention 
    - Tags Column Displaying Collections Instead of Tags
    - Dead Code - Unused AppSidebar Component
    - Performance - Excessive Re-renders from Store Subscriptions
+   - Duplicate URL Detection - Deleted Cards Not Excluded
 3. [Debugging Strategies](#debugging-strategies)
 4. [How to Add New Issues](#how-to-add-new-issues)
 5. [Maintenance](#maintenance)
@@ -3590,6 +3591,118 @@ const { field1, field2 } = useStore(
 
 ---
 
+### 28. Duplicate URL Detection - Deleted Cards Not Excluded
+
+**Date**: January 14, 2025
+**Severity**: 🟡 Medium
+**Category**: Database, Duplicate Detection, User Experience
+**Status**: ✅ Fixed
+
+**Issue**: Users could not re-add URLs that were previously deleted because the unique constraint was checking ALL cards (including deleted ones), even though the application code correctly excluded deleted cards.
+
+**Symptom**:
+```
+1. User adds https://example.com (card ID: abc123)
+2. User deletes the card (soft delete → deleted=true)
+3. User tries to add https://example.com again
+4. Gets 409 "This URL is already bookmarked" error
+5. User confused - card isn't visible in their library
+```
+
+**What Failed**:
+The database unique constraint didn't match the application logic:
+
+```sql
+-- ❌ WRONG: Database constraint checking ALL cards
+CREATE UNIQUE INDEX "Card_userId_url_key"
+ON "Card"("userId", "url")
+WHERE "type" = 'url';
+-- Missing: AND "deleted" = false
+```
+
+Meanwhile, the application code correctly excluded deleted cards:
+```typescript
+// ✅ Application code was CORRECT
+const existingCard = await prisma.card.findFirst({
+  where: {
+    userId,
+    url: parsed.url,
+    type: "url",
+    deleted: false  // ← Application checked this
+  }
+});
+```
+
+**Root Cause**:
+- **Application layer**: Pre-flight check excluded `deleted=true` cards ✅
+- **Database layer**: Unique constraint applied to ALL cards (including deleted) ❌
+- When Prisma tried to INSERT, database threw P2002 unique violation
+- User got duplicate error even though no active card with that URL existed
+
+**The Fix**:
+Migration `20250114000000_exclude_deleted_from_url_constraint`:
+
+```sql
+-- ✅ CORRECT: Exclude deleted cards from constraint
+DROP INDEX IF EXISTS "Card_userId_url_key";
+
+CREATE UNIQUE INDEX "Card_userId_url_key"
+ON "Card"("userId", "url")
+WHERE "type" = 'url' AND "deleted" = false;
+```
+
+**Why This Matters**:
+1. **User Workflow**: Common to delete and re-add URLs during link management
+2. **Data Integrity**: Deleted cards shouldn't block new creations
+3. **Consistency**: Database constraint should match application logic
+4. **Trust**: Users expect deleted items to be truly "gone"
+
+**Files Changed**:
+- `prisma/migrations/20250114000000_exclude_deleted_from_url_constraint/migration.sql`
+- `prisma/schema.prisma` (updated comment)
+- `lib/server/cards.ts` (already had correct logic)
+
+**Testing**:
+```typescript
+// Verify deleted cards don't block re-creation:
+1. Add card: https://test-deletion.com
+2. Delete the card (deleted=true)
+3. Verify: Card gone from library view
+4. Add same URL again: https://test-deletion.com
+5. Expected: Creates new card successfully ✅
+6. Verify: New card appears in library
+```
+
+**How to Avoid**:
+- **Align constraints with code**: Database constraints should match application logic
+- **Document partial indexes**: Add comments in schema explaining WHERE clauses
+- **Test edge cases**: Always test with deleted data, not just active data
+- **Migration reviews**: Verify partial indexes include all necessary conditions
+
+**Prevention Checklist**:
+- [ ] Partial unique indexes include `deleted = false` for soft-delete models
+- [ ] Schema comments document all WHERE clause conditions
+- [ ] Test scenarios include re-adding deleted items
+- [ ] Migration SQL matches application query logic
+- [ ] Both pre-flight checks AND database constraints aligned
+
+**Impact**:
+- ✅ Users can now re-add previously deleted URLs
+- ✅ Database constraint matches application logic
+- ✅ Duplicate detection only applies to active (non-deleted) cards
+- ✅ Better user experience for link management workflows
+
+**Related Issues**:
+- Issue #15: Duplicate Card Issue - Deleted Cards Returned
+- Issue #12: Deleted Cards Appearing in Library View
+
+**See Also**:
+- `.claude/skills/pawkit-api-patterns/SKILL.md` - 409 Conflict error handling
+- `.claude/skills/pawkit-migrations/SKILL.md` - Safe migration patterns
+- Prisma docs: Partial unique indexes
+
+---
+
 ## Debugging Strategies
 
 ### When API Returns 500 Error
@@ -3961,7 +4074,7 @@ After adding a new issue:
 
 ---
 
-**Last Updated**: January 13, 2025 (Added Issue #23: Note double-creation from sync queue)
-**Next Review**: April 2026 (Quarterly)
+**Last Updated**: January 14, 2025 (Added Issue #28: Duplicate URL detection with deleted cards)
+**Next Review**: April 2025 (Quarterly)
 
 **This is a living document. Keep it current!**

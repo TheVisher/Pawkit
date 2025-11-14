@@ -160,19 +160,87 @@ return NextResponse.json(
 ```
 
 **409 Conflict** - Resource already exists (duplicate)
+
+**When to use**: Duplicate resource creation (e.g., URL already bookmarked)
+
+**Real-world example** - Duplicate URL detection in `/api/cards`:
 ```tsx
-return NextResponse.json(
-  {
-    success: false,
-    error: {
-      code: 'CONFLICT',
-      message: 'Card with this URL already exists'
-    },
-    card: existingCard // Include existing resource
-  },
-  { status: 409, headers: getCorsHeaders(request) }
-);
+// In lib/server/cards.ts - Pre-flight duplicate check
+export async function createCard(userId: string, payload: CardInput) {
+  const cardType = payload.type || "url";
+
+  // Check for duplicates BEFORE attempting to create
+  if (cardType === "url" && payload.url) {
+    const existingCard = await prisma.card.findFirst({
+      where: {
+        userId,
+        url: payload.url,
+        type: "url",
+        deleted: false  // Only check active cards
+      }
+    });
+
+    if (existingCard) {
+      // Throw specific error with existing card ID
+      throw new Error(`DUPLICATE_URL:${existingCard.id}`);
+    }
+  }
+
+  // Proceed with creation...
+  const created = await prisma.card.create({ data });
+  return mapCard(created);
+}
+
+// In app/api/cards/route.ts - API error handling
+try {
+  const card = await createCard(user.id, body);
+  return created(card);
+} catch (error) {
+  // Handle duplicate URL detection
+  if (error instanceof Error && error.message?.startsWith('DUPLICATE_URL:')) {
+    const cardId = error.message.split(':')[1];
+    return withCorsHeaders(
+      NextResponse.json(
+        {
+          error: 'Duplicate URL',
+          code: 'DUPLICATE_URL',
+          existingCardId: cardId !== 'unknown' ? cardId : undefined
+        },
+        { status: 409 }
+      ),
+      corsHeaders
+    );
+  }
+
+  return handleApiError(error, { route: '/api/cards', userId: user?.id });
+}
 ```
+
+**Client-side handling**:
+```tsx
+try {
+  await addCard(payload);
+  onClose();
+} catch (error) {
+  // Handle 409 duplicate error
+  if (error instanceof Error && error.message.startsWith('DUPLICATE_URL:')) {
+    setError('This URL is already bookmarked');
+    setToastMessage('This URL is already bookmarked');
+    setShowToast(true);
+    return;
+  }
+  // Handle other errors...
+}
+```
+
+**Key points**:
+- Pre-flight check prevents duplicate creation
+- Returns existing resource ID in error response
+- Client shows user-friendly toast notification
+- Only checks active (non-deleted) resources
+- Database constraint aligned with application logic
+
+**See**: `.claude/skills/pawkit-troubleshooting/SKILL.md` Issue #28 for duplicate detection patterns
 
 **422 Unprocessable Entity** - Validation failed
 ```tsx
