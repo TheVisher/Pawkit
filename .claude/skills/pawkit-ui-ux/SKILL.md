@@ -2301,8 +2301,742 @@ import { Inbox } from "lucide-react";
 
 ---
 
-**Last Updated**: January 13, 2025 (Added Sidebar Patterns, View Patterns, Icon Patterns)
-**Design System**: Selective Glow v1.1
+### 13. LIST VIEW STANDARDIZATION
+
+**Purpose**: Unified data table patterns across all views (Pawkits, Notes, Library)
+
+**Implementation**: Pixel-perfect consistency in row height, padding, font sizes, and column structure
+
+**Created**: January 13, 2025 (List View Consistency Update)
+
+#### Canonical List View Pattern
+
+**✅ REQUIRED STRUCTURE**: All list views MUST follow this exact pattern.
+
+```tsx
+<div className="w-full overflow-x-auto">
+  <table className="w-full border-collapse">
+    <thead>
+      <tr className="border-b border-subtle text-xs text-muted-foreground">
+        <th className="text-left py-3 px-4 font-medium">Name</th>
+        <th className="text-left py-3 px-4 font-medium">Type</th>
+        <th className="text-left py-3 px-4 font-medium">Tags</th>
+        <th className="text-left py-3 px-4 font-medium">Date Created</th>
+        <th className="text-left py-3 px-4 font-medium">Date Modified</th>
+        <th className="text-left py-3 px-4 font-medium w-16"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {items.map((item) => (
+        <tr
+          key={item.id}
+          onClick={() => handleClick(item)}
+          className="border-b border-subtle hover:bg-white/5 cursor-pointer transition-colors"
+        >
+          <td className="py-3 px-4 max-w-xs">
+            <div className="flex items-center gap-3 min-w-0">
+              {/* Icon container - REQUIRED */}
+              <span className="flex items-center justify-center h-8 w-8 rounded-lg backdrop-blur-sm bg-accent/20 text-accent flex-shrink-0">
+                <Icon size={16} className="text-purple-400" />
+              </span>
+              {/* Title with truncation support */}
+              <span className="text-sm text-foreground font-medium truncate min-w-0 flex-1">
+                {item.title}
+              </span>
+              {/* Pin indicator */}
+              {item.isPinned && <Pin size={14} className="text-purple-400 flex-shrink-0" />}
+            </div>
+          </td>
+          <td className="py-3 px-4">
+            <span className="text-sm text-muted-foreground">{item.type}</span>
+          </td>
+          <td className="py-3 px-4">
+            <span className="text-sm text-muted-foreground">{item.tags}</span>
+          </td>
+          <td className="py-3 px-4">
+            <span className="text-sm text-muted-foreground">{formattedCreatedAt}</span>
+          </td>
+          <td className="py-3 px-4">
+            <span className="text-sm text-muted-foreground">{formattedUpdatedAt}</span>
+          </td>
+          <td className="py-3 px-4">
+            <ActionsMenu item={item} />
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+```
+
+#### Critical Dimensions
+
+**Row Structure**:
+- **Row padding**: `py-3 px-4` (ALWAYS - no exceptions)
+- **Row hover**: `hover:bg-white/5 cursor-pointer transition-colors`
+- **Row border**: `border-b border-subtle`
+
+**Name Column (First Column)**:
+- **Max width**: `max-w-xs` on `<td>` for truncation
+- **Flex container**: `flex items-center gap-3 min-w-0`
+- **Icon container**: `h-8 w-8 rounded-lg backdrop-blur-sm flex-shrink-0`
+- **Title span**: `text-sm font-medium truncate min-w-0 flex-1`
+- **Pin icon**: `size={14} flex-shrink-0` (if pinned)
+
+**Data Columns**:
+- **All text**: `text-sm text-muted-foreground` (NOT text-xs!)
+- **Padding**: `py-3 px-4` (matches row padding)
+
+**Actions Column (Last Column)**:
+- **Width**: `w-16` (fixed width for consistent alignment)
+- **Content**: 3-dot menu or action button
+
+#### Icon Container Pattern
+
+**Purpose**: Consistent visual weight and alignment for all list items.
+
+**REQUIRED for all list views**:
+```tsx
+<span className="flex items-center justify-center h-8 w-8 rounded-lg backdrop-blur-sm bg-accent/20 text-accent flex-shrink-0">
+  {isNote ? (
+    <FileText size={16} className="text-purple-400" />
+  ) : card.image ? (
+    <img src={card.image} alt="" className="w-5 h-5 rounded object-cover" />
+  ) : (
+    <Bookmark size={16} className="text-muted-foreground" />
+  )}
+</span>
+```
+
+**Rules**:
+- Always `h-8 w-8` (8x8 units = 32px)
+- Always `backdrop-blur-sm` for glass effect
+- Always `flex-shrink-0` to prevent squishing
+- Icon size: `16` pixels for Lucide icons
+- Image size: `w-5 h-5` (20px) for thumbnails
+
+#### URL/Title Truncation Pattern
+
+**Problem**: Long URLs push columns off-screen without proper constraints.
+
+**Solution**: Multi-layer truncation setup using flex constraints.
+
+```tsx
+<td className="py-3 px-4 max-w-xs">
+  {/* Level 1: max-w-xs limits td width */}
+  <div className="flex items-center gap-3 min-w-0">
+    {/* Level 2: min-w-0 allows flex child to shrink */}
+    <span className="flex items-center justify-center h-8 w-8 flex-shrink-0">
+      {/* Icon - never shrinks */}
+    </span>
+    <span className="text-sm truncate min-w-0 flex-1">
+      {/* Level 3: flex-1 + min-w-0 + truncate for ellipsis */}
+      {displayTitle}
+    </span>
+    {isPinned && <Pin size={14} className="flex-shrink-0" />}
+    {/* Pin - never shrinks */}
+  </div>
+</td>
+```
+
+**Why each class is required**:
+1. `max-w-xs` on `<td>`: Limits overall column width
+2. `min-w-0` on flex container: Allows children to shrink below content size
+3. `flex-1` on text span: Takes all available space
+4. `min-w-0` on text span: Allows text to shrink for truncation
+5. `truncate` on text span: Adds ellipsis when overflowing
+6. `flex-shrink-0` on icons: Prevents icon squishing
+
+**❌ WRONG** (truncate doesn't work):
+```tsx
+<td className="py-3 px-4">
+  <div className="flex items-center gap-3">
+    <Icon />
+    <span className="truncate">{title}</span>  {/* No flex-1, no min-w-0! */}
+  </div>
+</td>
+```
+
+**✅ CORRECT**:
+```tsx
+<td className="py-3 px-4 max-w-xs">
+  <div className="flex items-center gap-3 min-w-0">
+    <span className="flex-shrink-0"><Icon /></span>
+    <span className="text-sm truncate min-w-0 flex-1">{title}</span>
+  </div>
+</td>
+```
+
+#### Standard Column Headers
+
+**Pawkits View**:
+- Name | Items | Sub-Pawkits | Date Created | Date Modified | [menu]
+
+**Library/Notes View**:
+- Name | Type | Tags | Date Created | Date Modified | [menu]
+
+**Rules**:
+- All headers: `text-xs text-muted-foreground font-medium`
+- All headers: `text-left py-3 px-4`
+- Last column: `w-16` (fixed width for actions)
+
+#### 3-Dot Actions Menu
+
+**Pattern**: Portal-based dropdown menu for row actions.
+
+**Implementation**:
+```tsx
+function CardActionsMenu({ card, onDelete, onAddToPawkit, isPinned, onPinToggle, onOpenDetails }: Props) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleOpenDetails = () => {
+    onOpenDetails(card.id);
+    setShowMenu(false);
+  };
+
+  const handlePinToggle = async () => {
+    await onPinToggle();
+    setShowMenu(false);
+  };
+
+  const handleDelete = async () => {
+    if (confirm("Are you sure you want to delete this card?")) {
+      await onDelete();
+      setShowMenu(false);
+    }
+  };
+
+  const menuContent = showMenu && mounted && buttonRef.current ? (
+    <div className="fixed z-[9999]" style={{
+      top: `${buttonRef.current.getBoundingClientRect().bottom + 4}px`,
+      left: `${buttonRef.current.getBoundingClientRect().left}px`,
+    }}>
+      <div className="backdrop-blur-lg bg-gray-950/95 border border-white/10 rounded-lg shadow-lg p-1 min-w-[160px]">
+        <button onClick={handleOpenDetails} className="w-full text-left px-3 py-2 text-sm rounded hover:bg-white/10 transition-colors flex items-center gap-2">
+          <ExternalLink size={14} />
+          Open
+        </button>
+        <button onClick={handlePinToggle} className="w-full text-left px-3 py-2 text-sm rounded hover:bg-white/10 transition-colors flex items-center gap-2">
+          <Pin size={14} />
+          {isPinned ? "Unpin" : "Pin"}
+        </button>
+        <button onClick={handleDelete} className="w-full text-left px-3 py-2 text-sm rounded hover:bg-white/10 transition-colors flex items-center gap-2 text-rose-400">
+          <Trash2 size={14} />
+          Delete
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowMenu(!showMenu);
+        }}
+        className="p-1 rounded hover:bg-white/10 transition-colors"
+      >
+        <MoreVertical size={16} className="text-muted-foreground" />
+      </button>
+      {mounted && createPortal(menuContent, document.body)}
+    </>
+  );
+}
+```
+
+**Key Features**:
+- Portal rendering at `document.body` for proper z-index
+- Position calculation using `getBoundingClientRect()`
+- `z-[9999]` to appear above all other UI
+- Click outside to close (via useEffect with document listener)
+- `e.stopPropagation()` to prevent row click
+
+#### Font Size Standards
+
+**❌ WRONG** (Old pattern - too small):
+```tsx
+<td className="py-2 px-4">
+  <span className="text-xs text-muted-foreground">Content</span>
+</td>
+```
+
+**✅ CORRECT** (New standard):
+```tsx
+<td className="py-3 px-4">
+  <span className="text-sm text-muted-foreground">Content</span>
+</td>
+```
+
+**Rules**:
+- Headers: `text-xs` (small, de-emphasized)
+- Data cells: `text-sm` (readable, scannable)
+- Row padding: `py-3` (NOT py-2!)
+
+#### View-Specific Adaptations
+
+**Pawkits List View**:
+```tsx
+<th className="text-left py-3 px-4 font-medium">Items</th>
+
+// Data cell
+<td className="py-3 px-4">
+  <span className="text-sm text-muted-foreground">
+    {collection.count} item{collection.count === 1 ? "" : "s"}
+  </span>
+</td>
+```
+
+**Library/Notes List View**:
+```tsx
+<th className="text-left py-3 px-4 font-medium">Type</th>
+
+// Data cell
+<td className="py-3 px-4">
+  <span className="text-sm text-muted-foreground">
+    {isNote ? "Note" : "URL"}
+  </span>
+</td>
+```
+
+#### ✅ DO
+
+- Use exact row padding: `py-3 px-4` (no variation!)
+- Include icon container with `h-8 w-8 backdrop-blur-sm`
+- Use `text-sm` for all data cells (not text-xs)
+- Add `font-medium` to title/name text
+- Use `max-w-xs min-w-0 flex-1` pattern for truncation
+- Use `flex-shrink-0` on icons and badges
+- Use Pin size 14 (not 12 or 16)
+- Test with extremely long URLs to verify truncation
+
+#### ❌ DON'T
+
+- Use `py-2` for row padding (old pattern - too cramped)
+- Use `text-xs` for data cells (old pattern - too small)
+- Skip the icon container (causes alignment issues)
+- Forget `min-w-0` on flex containers (breaks truncation)
+- Use `truncate` without `flex-1 min-w-0` (doesn't work!)
+- Vary padding or font sizes between views
+- Add custom table headers without matching other views
+
+#### Migration Checklist
+
+When updating a list view to this standard:
+
+1. ✅ Update row padding from `py-2` to `py-3`
+2. ✅ Update data cell text from `text-xs` to `text-sm`
+3. ✅ Add icon container with `h-8 w-8` dimensions
+4. ✅ Add `backdrop-blur-sm` to icon container
+5. ✅ Update pin icon size from `12` to `14`
+6. ✅ Add `font-medium` to title text
+7. ✅ Apply truncation pattern (max-w-xs, min-w-0, flex-1)
+8. ✅ Add `flex-shrink-0` to all icons and badges
+9. ✅ Test with long URLs to verify truncation works
+10. ✅ Verify row height matches other list views
+
+#### Files Implementing This Pattern
+
+- `components/library/card-gallery.tsx` (Library/Notes list view)
+- `components/pawkits/grid.tsx` (Pawkits list view)
+- Future: All list views MUST follow this pattern
+
+---
+
+### 14. FOLDER ICON STANDARDIZATION
+
+**Purpose**: Consistent folder representation using Lucide Folder icon
+
+**Implementation**: Replace all emoji folder icons with Lucide React component
+
+**Created**: January 13, 2025 (Icon Consistency Update)
+
+#### Standard Folder Icon Pattern
+
+**✅ CORRECT**:
+```tsx
+import { Folder } from "lucide-react";
+
+<Folder size={16} className="text-purple-400" />
+```
+
+**❌ WRONG**:
+```tsx
+// NO emojis!
+📁
+```
+
+#### Size Guidelines by Context
+
+**Small** (List items, inline badges):
+```tsx
+<Folder size={14} className="text-purple-400" />  // 14px for badges
+<Folder size={16} className="text-purple-400" />  // 16px for list icons
+```
+
+**Medium** (Icon containers, buttons):
+```tsx
+<Folder size={16} className="text-purple-400" />  // Standard icon container
+<Folder size={20} className="text-purple-400" />  // Larger containers
+```
+
+**Large** (Headers, feature areas):
+```tsx
+<Folder size={24} className="text-purple-400" />  // Section headers
+```
+
+#### Usage in Collection Tree Picker
+
+**Modal/Dialog Tree Picker**:
+```tsx
+<button className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-white/5">
+  <Folder className="h-4 w-4 text-purple-400" />
+  <span>{collection.name}</span>
+</button>
+```
+
+#### Usage in Collection Badges
+
+**Inline Collection Badges**:
+```tsx
+<Badge variant="secondary" className="flex items-center gap-1.5">
+  <Folder className="h-3 w-3 text-purple-400" />
+  {collectionName}
+</Badge>
+```
+
+#### Usage in List Views
+
+**Icon Container Pattern**:
+```tsx
+<span className="flex items-center justify-center h-8 w-8 rounded-lg backdrop-blur-sm bg-accent/20 text-accent">
+  <Folder size={16} className="text-purple-400" />
+</span>
+```
+
+#### Usage in Grid/Compact Views
+
+**Pawkit Card Icon**:
+```tsx
+<span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent">
+  <Folder size={16} className="text-purple-400" />
+</span>
+```
+
+#### Color Standard
+
+**ALWAYS use `text-purple-400`** for folder icons (consistency with purple theme).
+
+**Exception**: System pawkits use Inbox icon with `text-purple-300`:
+```tsx
+{collection.isSystem ? (
+  <Inbox size={16} className="text-purple-300" />
+) : (
+  <Folder size={16} className="text-purple-400" />
+)}
+```
+
+#### Files Updated
+
+- `components/pawkits/grid.tsx`
+- `components/library/card-gallery.tsx`
+- `components/modals/card-detail-modal.tsx`
+- `components/dig-up/dig-up-view.tsx`
+- `components/home/quick-access-pawkit-card.tsx`
+
+---
+
+### 15. HIERARCHICAL TAG INHERITANCE
+
+**Purpose**: Automatic parent tag inheritance for nested collections
+
+**Implementation**: Utility functions for managing hierarchical collection tags
+
+**Created**: January 13, 2025 (Collection Hierarchy System)
+
+#### Problem Statement
+
+When adding a card to a sub-collection (e.g., "Restaurants > Everett"), the card was only getting the direct collection tag ("everett"), not the parent tag ("restaurants"). This broke filtering at the parent level.
+
+**Before**:
+```tsx
+// Adding card to "Everett" sub-collection
+card.collections = ["everett"]  // Missing "restaurants"!
+
+// Viewing "Restaurants" collection
+// Card doesn't show up because it's only tagged with "everett"
+```
+
+**After**:
+```tsx
+// Adding card to "Everett" sub-collection
+card.collections = ["everett", "restaurants"]  // ✅ Includes parent!
+
+// Viewing "Restaurants" collection
+// Card shows up because it has "restaurants" tag
+```
+
+#### Core Utility Functions
+
+**File**: `lib/utils/collection-hierarchy.ts`
+
+**getCollectionHierarchy**:
+```tsx
+/**
+ * Gets the complete hierarchy of collection slugs for a given collection,
+ * walking up the parent chain to include all ancestor collections.
+ */
+export function getCollectionHierarchy(
+  targetSlug: string,
+  collections: CollectionNode[]
+): string[] {
+  const collectionMap = new Map<string, CollectionNode>();
+
+  // Flatten nested collections into map
+  const flattenCollections = (nodes: CollectionNode[]) => {
+    for (const node of nodes) {
+      collectionMap.set(node.slug, node);
+      if (node.children && node.children.length > 0) {
+        flattenCollections(node.children);
+      }
+    }
+  };
+
+  flattenCollections(collections);
+
+  // Walk up hierarchy
+  const hierarchy: string[] = [];
+  let current = collectionMap.get(targetSlug);
+
+  while (current) {
+    hierarchy.push(current.slug);
+
+    if (current.parentId) {
+      current = Array.from(collectionMap.values()).find(c => c.id === current!.parentId);
+      if (!current) break;
+    } else {
+      break;
+    }
+  }
+
+  return hierarchy;  // ["child", "parent", "grandparent"]
+}
+```
+
+**addCollectionWithHierarchy**:
+```tsx
+/**
+ * Adds a collection and all its parent collections to a card's collection array.
+ * Ensures no duplicates and maintains existing collections.
+ */
+export function addCollectionWithHierarchy(
+  currentCollections: string[],
+  newCollectionSlug: string,
+  allCollections: CollectionNode[]
+): string[] {
+  const hierarchy = getCollectionHierarchy(newCollectionSlug, allCollections);
+  const combined = [...currentCollections, ...hierarchy];
+  return Array.from(new Set(combined));  // Remove duplicates
+}
+```
+
+**removeCollectionWithHierarchy**:
+```tsx
+/**
+ * Removes a collection and optionally its child collections from a card.
+ * When removing a parent, can choose to keep or remove orphaned children.
+ */
+export function removeCollectionWithHierarchy(
+  currentCollections: string[],
+  collectionToRemove: string,
+  allCollections: CollectionNode[],
+  removeChildrenToo: boolean = false
+): string[] {
+  // Build collection map
+  const collectionMap = new Map<string, CollectionNode>();
+  const flattenCollections = (nodes: CollectionNode[]) => {
+    for (const node of nodes) {
+      collectionMap.set(node.slug, node);
+      if (node.children && node.children.length > 0) {
+        flattenCollections(node.children);
+      }
+    }
+  };
+  flattenCollections(allCollections);
+
+  let toRemove = new Set([collectionToRemove]);
+
+  // Optionally collect descendants
+  if (removeChildrenToo) {
+    const collectDescendants = (slug: string) => {
+      const collection = collectionMap.get(slug);
+      if (collection && collection.children) {
+        for (const child of collection.children) {
+          toRemove.add(child.slug);
+          collectDescendants(child.slug);
+        }
+      }
+    };
+    collectDescendants(collectionToRemove);
+  }
+
+  return currentCollections.filter(slug => !toRemove.has(slug));
+}
+```
+
+**isCardInCollectionHierarchy** (for future use):
+```tsx
+/**
+ * Checks if a card should be visible in a collection view, considering hierarchy.
+ * A card is visible if it has the collection slug OR any of its descendants.
+ */
+export function isCardInCollectionHierarchy(
+  cardCollections: string[],
+  viewCollectionSlug: string,
+  allCollections: CollectionNode[]
+): boolean {
+  // Direct match
+  if (cardCollections.includes(viewCollectionSlug)) {
+    return true;
+  }
+
+  // Check descendants
+  const collectionMap = new Map<string, CollectionNode>();
+  const flattenCollections = (nodes: CollectionNode[]) => {
+    for (const node of nodes) {
+      collectionMap.set(node.slug, node);
+      if (node.children && node.children.length > 0) {
+        flattenCollections(node.children);
+      }
+    }
+  };
+  flattenCollections(allCollections);
+
+  const getDescendantSlugs = (slug: string): Set<string> => {
+    const descendants = new Set<string>();
+    const collection = collectionMap.get(slug);
+
+    if (collection && collection.children) {
+      for (const child of collection.children) {
+        descendants.add(child.slug);
+        const childDescendants = getDescendantSlugs(child.slug);
+        childDescendants.forEach(d => descendants.add(d));
+      }
+    }
+
+    return descendants;
+  };
+
+  const descendants = getDescendantSlugs(viewCollectionSlug);
+  return cardCollections.some(slug => descendants.has(slug));
+}
+```
+
+#### Usage in Components
+
+**Adding Card to Collection**:
+```tsx
+import { addCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
+
+const { collections: allCollections } = useDemoAwareStore();
+
+const handleAddToPawkit = (slug: string) => {
+  const newCollections = addCollectionWithHierarchy(
+    card.collections || [],
+    slug,
+    allCollections
+  );
+
+  updateCard(card.id, { collections: newCollections });
+};
+```
+
+**Removing Card from Collection**:
+```tsx
+import { removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
+
+const handleRemoveFromPawkit = (slug: string) => {
+  const newCollections = removeCollectionWithHierarchy(
+    card.collections || [],
+    slug,
+    allCollections,
+    true  // Remove children too
+  );
+
+  updateCard(card.id, { collections: newCollections });
+};
+```
+
+#### Data Migration
+
+**Problem**: Existing cards only have child tags, missing parent tags.
+
+**Solution**: API endpoint to backfill missing parent tags.
+
+**Endpoint**: `POST /api/admin/migrate-collection-hierarchy`
+
+**Implementation**: See `app/api/admin/migrate-collection-hierarchy/route.ts`
+
+**Features**:
+- Fetches all collections and cards for authenticated user
+- Builds hierarchy map
+- Identifies cards missing parent tags
+- Batch updates cards with complete hierarchy
+- Idempotent (safe to run multiple times)
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Migration complete. Updated 42 cards.",
+  "stats": {
+    "totalCards": 150,
+    "updatedCards": 42,
+    "totalCollections": 12
+  }
+}
+```
+
+#### Implementation Files
+
+- `lib/utils/collection-hierarchy.ts` - Core utilities
+- `components/library/card-gallery.tsx` - Library/Notes view integration
+- `app/(dashboard)/home/page.tsx` - Home view integration
+- `app/api/admin/migrate-collection-hierarchy/route.ts` - Migration endpoint
+
+#### ✅ DO
+
+- ALWAYS use `addCollectionWithHierarchy()` when adding collections
+- ALWAYS use `removeCollectionWithHierarchy()` when removing collections
+- Pass `allCollections` from store (includes hierarchy structure)
+- Set `removeChildrenToo: true` when removing from sub-collection
+- Run migration endpoint after deploying hierarchy updates
+
+#### ❌ DON'T
+
+- Manually push collection slugs to array (skips parent inheritance!)
+- Use direct array manipulation for collection updates
+- Forget to pass hierarchical collection tree to utility functions
+- Remove parent tags when user removes child tag
+
+#### Future Enhancement
+
+The `isCardInCollectionHierarchy()` function is prepared for future filtering logic:
+- Show cards in parent collection if they're in ANY descendant
+- Enable "include sub-collections" toggle in UI
+- Support hierarchical search/filtering
+
+---
+
+**Last Updated**: January 13, 2025 (Added List View Standardization, Folder Icon Standardization, Hierarchical Tag Inheritance)
+**Design System**: Selective Glow v1.2
 **Status**: Official Pawkit UI Language
 
 **Key Principle**: Glass is foundation. Purple glow reveals interaction. Hierarchy over chaos.

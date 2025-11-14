@@ -20,6 +20,252 @@ description: Track development progress, major milestones, and session history a
 
 ## Session History
 
+### Date: January 13, 2025 - List View Standardization & Hierarchical Tags
+
+**Status**: ✅ COMPLETED & DOCUMENTED
+**Priority**: ⚡ UX CONSISTENCY + FEATURE ENHANCEMENT
+**Branch**: `main`
+**Impact**: Pixel-perfect UI consistency across all list views, automatic parent tag inheritance for sub-collections
+
+**Summary**: Comprehensive UI standardization session achieving pixel-perfect consistency across all list views (Pawkits, Notes, Library), implementing hierarchical tag inheritance for nested collections, and establishing canonical patterns for icons and table structures.
+
+#### 1. Security Update - Next.js 15.5
+
+**Implementation**:
+- Upgraded Next.js from 15.1.6 to 15.5.4 for critical CVE fix
+- Updated React from 19.0.0 to 19.2.0
+- Fixed package manager confusion (npm vs pnpm)
+- Successfully installed and committed updates
+
+**Files Modified**:
+- `package.json`
+- `pnpm-lock.yaml`
+
+**Issue**: Initially tried `npm install` which failed due to pnpm lockfile. Fixed by using `pnpm install`.
+
+#### 2. Folder Icon Standardization
+
+**Problem**: Emoji folder icons (📁) used inconsistently across codebase.
+
+**Solution**: Replaced ALL emoji icons with Lucide Folder component using standardized purple color.
+
+**Pattern Established**:
+```tsx
+import { Folder } from "lucide-react";
+
+<Folder size={16} className="text-purple-400" />
+```
+
+**Files Modified**:
+- `components/pawkits/grid.tsx`
+- `components/library/card-gallery.tsx`
+- `components/modals/card-detail-modal.tsx`
+- `components/dig-up/dig-up-view.tsx`
+- `components/home/quick-access-pawkit-card.tsx`
+
+**Impact**: Visual consistency across all collection/folder representations, professional icon usage.
+
+#### 3. Sidebar Configuration Standardization
+
+**Problem**: Inconsistent sorting terminology and unnecessary toggles between Pawkits and Notes views.
+
+**Changes**:
+- **Standardized sorting options**: "Name", "Date Created", "Date Modified" across ALL views
+- **Removed from Notes**: Masonry view, Show Thumbnails, Show Metadata (non-functional)
+- **Updated slider styling**: Pawkits now matches Notes (darker track: `bg-white/10`)
+- **Fixed Direction label**: Changed from `text-muted-foreground` to `text-accent` (purple)
+
+**Files Modified**:
+- `components/control-panel/notes-controls.tsx`
+- `components/control-panel/pawkits-controls.tsx`
+
+**Impact**: Unified user experience, removed confusing non-functional options.
+
+#### 4. List View Standardization (MAJOR UPDATE)
+
+**Problem**: List view rows had inconsistent heights, font sizes, and padding across Pawkits, Notes, and Library views.
+
+**Solution**: Established canonical list view pattern with pixel-perfect consistency.
+
+**Critical Dimensions Standardized**:
+- **Row padding**: `py-3 px-4` (changed from `py-2`)
+- **Data cell text**: `text-sm` (changed from `text-xs`)
+- **Icon container**: `h-8 w-8 rounded-lg backdrop-blur-sm` (NEW - added to all views)
+- **Pin icon size**: `14` pixels (changed from `12`)
+- **Title text**: Added `font-medium`
+
+**Column Structure Standardized**:
+- **Pawkits**: Name | Items | Sub-Pawkits | Date Created | Date Modified | [menu]
+- **Library/Notes**: Name | Type | Tags | Date Created | Date Modified | [menu]
+
+**URL Truncation Fix** (CRITICAL):
+
+**Problem**: Extremely long URLs pushed columns off-screen without proper constraints.
+
+**Solution**: Multi-layer truncation pattern using flex constraints:
+```tsx
+<td className="py-3 px-4 max-w-xs">
+  <div className="flex items-center gap-3 min-w-0">
+    <span className="flex-shrink-0"><Icon /></span>
+    <span className="text-sm truncate min-w-0 flex-1">{title}</span>
+    {isPinned && <Pin size={14} className="flex-shrink-0" />}
+  </div>
+</td>
+```
+
+**Why each class matters**:
+1. `max-w-xs` on `<td>`: Limits column width
+2. `min-w-0` on flex container: Allows children to shrink
+3. `flex-1` on text: Takes available space
+4. `min-w-0` on text: Enables truncation
+5. `truncate` on text: Adds ellipsis
+6. `flex-shrink-0` on icons: Prevents squishing
+
+**3-Dot Actions Menu Component**:
+
+Created `CardActionsMenu` inline component with portal rendering:
+- Portal to `document.body` for proper z-index
+- Position calculation using `getBoundingClientRect()`
+- `z-[9999]` to appear above all UI
+- Actions: Open, Pin/Unpin, Delete
+
+**Files Modified**:
+- `components/library/card-gallery.tsx` - Complete list view rewrite
+- `components/pawkits/grid.tsx` - Updated list view to match pattern
+
+**Testing**: Verified with extremely long URLs - truncation works correctly.
+
+**Impact**: All three views (Pawkits, Notes, Library) now have IDENTICAL list view dimensions and behavior.
+
+#### 5. Hierarchical Tag Inheritance (NEW FEATURE)
+
+**Problem**: Cards added to sub-collections (e.g., "Restaurants > Everett") only got direct tag ("everett"), missing parent tag ("restaurants"). This broke filtering at parent level.
+
+**Before**:
+```tsx
+card.collections = ["everett"]  // Missing "restaurants"!
+// Card doesn't appear when viewing "Restaurants" collection
+```
+
+**After**:
+```tsx
+card.collections = ["everett", "restaurants"]  // ✅ Includes parent
+// Card appears in both "Everett" AND "Restaurants" views
+```
+
+**Implementation**:
+
+Created `lib/utils/collection-hierarchy.ts` with 4 utility functions:
+
+1. **getCollectionHierarchy()**: Walks up parent chain to get all ancestor slugs
+2. **addCollectionWithHierarchy()**: Adds collection + all parents to card
+3. **removeCollectionWithHierarchy()**: Removes collection (optionally with children)
+4. **isCardInCollectionHierarchy()**: Checks if card should appear in collection view (for future)
+
+**Usage Pattern**:
+```tsx
+import { addCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
+
+const handleAddToPawkit = (slug: string) => {
+  const newCollections = addCollectionWithHierarchy(
+    card.collections || [],
+    slug,
+    allCollections  // Hierarchical collection tree from store
+  );
+  updateCard(card.id, { collections: newCollections });
+};
+```
+
+**Data Migration**:
+
+Created `/api/admin/migrate-collection-hierarchy` endpoint:
+- Fetches all collections and cards for authenticated user
+- Builds hierarchy map
+- Identifies cards missing parent tags
+- Batch updates cards with complete hierarchy
+- Idempotent (safe to run multiple times)
+
+**Response**:
+```json
+{
+  "success": true,
+  "message": "Migration complete. Updated 42 cards.",
+  "stats": {
+    "totalCards": 150,
+    "updatedCards": 42,
+    "totalCollections": 12
+  }
+}
+```
+
+**Files Created**:
+- `lib/utils/collection-hierarchy.ts` - Core utilities
+- `app/api/admin/migrate-collection-hierarchy/route.ts` - Migration endpoint
+
+**Files Modified**:
+- `components/library/card-gallery.tsx` - Updated all add/remove handlers
+- `app/(dashboard)/home/page.tsx` - Updated handlers with hierarchy
+- Variable rename: `collections` → `allCollections` to avoid shadowing
+
+**TypeScript Fixes**:
+- Fixed `createServerClient` → `createClient` import error
+- Added type annotations to avoid implicit `any` errors
+
+**Impact**: Filtering now works correctly at all hierarchy levels. Cards in sub-collections appear in parent collection views.
+
+#### Documentation Updates
+
+**Updated Skills**:
+1. **pawkit-ui-ux/SKILL.md**:
+   - Added Section 13: LIST VIEW STANDARDIZATION
+   - Added Section 14: FOLDER ICON STANDARDIZATION
+   - Added Section 15: HIERARCHICAL TAG INHERITANCE
+   - Updated design system version to v1.2
+
+2. **pawkit-project-context/SKILL.md** (this document):
+   - Added this comprehensive session summary
+
+3. **pawkit-roadmap/SKILL.md** (pending):
+   - Mark list view standardization as complete
+   - Mark hierarchical tags as complete
+
+4. **pawkit-conventions/SKILL.md** (pending):
+   - Add hierarchy utility usage patterns
+
+**Technical Patterns Established**:
+
+1. **List View Dimensions**: `py-3 px-4`, `text-sm`, `h-8 w-8` icon containers
+2. **URL Truncation**: `max-w-xs` + `min-w-0` + `flex-1` + `truncate` pattern
+3. **Icon Container**: `h-8 w-8 rounded-lg backdrop-blur-sm bg-accent/20`
+4. **Pin Icon**: `<Pin size={14} className="text-purple-400" />`
+5. **Folder Icon**: `<Folder size={16} className="text-purple-400" />`
+6. **Hierarchical Tags**: ALWAYS use `addCollectionWithHierarchy()`, never manual array push
+
+**Testing Results**:
+- ✅ All list views have identical row heights
+- ✅ Long URLs truncate correctly without breaking layout
+- ✅ Pin icons display consistently at size 14
+- ✅ Folder icons use Lucide component with purple-400
+- ✅ Cards in sub-collections appear in parent collections
+- ✅ Migration endpoint successfully backfills parent tags
+
+**Commits**:
+- Security: Next.js 15.5 upgrade
+- Icons: Folder emoji → Lucide Folder replacements
+- Sidebar: Standardized controls and terminology
+- List Views: Canonical pattern implementation
+- Truncation: URL overflow fix
+- Hierarchy: Tag inheritance system
+- Migration: Collection hierarchy backfill endpoint
+
+**Impact**:
+- **UI Consistency**: Pixel-perfect alignment across all views
+- **Data Model**: Hierarchical filtering now works correctly
+- **Developer Experience**: Clear patterns documented for future list views
+- **User Experience**: Intuitive parent/child collection behavior
+
+---
+
 ### Date: January 13, 2025 - Universal Todo List & Pawkits View Polish
 
 **Status**: ✅ COMPLETED & DOCUMENTED
