@@ -152,6 +152,22 @@ export async function POST(request: NextRequest) {
 
     return withCorsHeaders(created(card), { ...corsHeaders, ...rateLimitHeaders });
   } catch (error) {
+    // Handle duplicate URL detection
+    if (error instanceof Error && error.message?.startsWith('DUPLICATE_URL:')) {
+      const cardId = error.message.split(':')[1];
+      return withCorsHeaders(
+        NextResponse.json(
+          {
+            error: 'Duplicate URL',
+            code: 'DUPLICATE_URL',
+            existingCardId: cardId !== 'unknown' ? cardId : undefined
+          },
+          { status: 409 }
+        ),
+        corsHeaders
+      );
+    }
+
     return handleApiError(error, { route: '/api/cards', userId: user?.id });
   }
 }

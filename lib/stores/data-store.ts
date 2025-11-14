@@ -496,6 +496,21 @@ export const useDataStore = create<DataStore>((set, get) => ({
             body: JSON.stringify(cardData),
           });
 
+          // Handle duplicate URL detection
+          if (response.status === 409) {
+            const errorData = await response.json();
+
+            // Remove temp card from local storage and state
+            await localDb.permanentlyDeleteCard(tempId);
+            await syncQueue.removeByTempId(tempId);
+            set((state) => ({
+              cards: state.cards.filter(c => c.id !== tempId),
+            }));
+
+            // Throw error with existing card ID for UI handling
+            throw new Error(`DUPLICATE_URL:${errorData.existingCardId || 'unknown'}`);
+          }
+
           if (response.ok) {
             const serverCard = await response.json();
 
