@@ -1,6 +1,6 @@
 "use client";
 
-import { useToastStore } from "@/lib/stores/toast-store";
+import { useToastStore, type Toast } from "@/lib/stores/toast-store";
 import { ToastContainer } from "@/components/ui/toast";
 
 /**
@@ -23,8 +23,8 @@ import { ToastContainer } from "@/components/ui/toast";
  * ```
  */
 export function GlobalToastProvider() {
-  const toasts = useToastStore((state) => state.toasts);
-  const dismissToast = useToastStore((state) => state.dismissToast);
+  const toasts = useToastStore((state: { toasts: Toast[] }) => state.toasts);
+  const dismissToast = useToastStore((state: { dismissToast: (id: string) => void }) => state.dismissToast);
 
   return <ToastContainer toasts={toasts} onDismiss={dismissToast} />;
 }
