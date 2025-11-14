@@ -339,7 +339,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
   // Bottom tab view mode: 'preview' | 'reader' | 'metadata'
   const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'metadata'>('preview');
-  const [denPawkitSlugs, setDenPawkitSlugs] = useState<Set<string>>(new Set());
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isModalExpanded, setIsModalExpanded] = useState(false);
@@ -362,24 +361,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     const tagCount = tagMatches.length;
     return { words, characters, linkCount, tagCount };
   }, [content, isNote]);
-
-  // Fetch Den Pawkit slugs to differentiate from regular Pawkits
-  useEffect(() => {
-    const fetchDenPawkits = async () => {
-      try {
-        const response = await fetch("/api/den/pawkits");
-        if (response.ok) {
-          const data = await response.json();
-          const slugs = new Set<string>(
-            (data.collections || []).map((c: any) => c.slug as string)
-          );
-          setDenPawkitSlugs(slugs);
-        }
-      } catch (error) {
-      }
-    };
-    fetchDenPawkits();
-  }, []);
 
   // Update initial values when card changes
   useEffect(() => {
