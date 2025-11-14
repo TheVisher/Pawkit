@@ -27,7 +27,8 @@ const ACCENT_COLORS: { name: AccentColor; value: string }[] = [
   { name: "orange", value: "bg-orange-500" },
 ];
 
-export function ProfileModal({ open, onClose, username, email = "", avatarUrl }: ProfileModalProps) {
+// Inner component that only renders when modal is open
+function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }: ProfileModalProps) {
   // Debug: Log when modal renders
   console.log('[ProfileModal] Component rendering, open:', open);
 
@@ -98,8 +99,6 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   const setShowKeyboardShortcutsInSidebar = useSettingsStore((state) => state.setShowKeyboardShortcutsInSidebar);
   const setDefaultView = useSettingsStore((state) => state.setDefaultView);
   const setDefaultSort = useSettingsStore((state) => state.setDefaultSort);
-
-  if (!open || typeof document === 'undefined') return null;
 
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -756,4 +755,12 @@ export function ProfileModal({ open, onClose, username, email = "", avatarUrl }:
   );
 
   return createPortal(modalContent, document.body);
+}
+
+// Wrapper component that prevents re-renders when closed
+export function ProfileModal(props: ProfileModalProps) {
+  // Early return prevents all store subscriptions when modal is closed
+  if (!props.open || typeof document === 'undefined') return null;
+
+  return <ProfileModalContent {...props} />;
 }
