@@ -15,6 +15,7 @@ import { useSelection } from "@/lib/hooks/selection-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { GlowButton } from "@/components/ui/glow-button";
 import type { ViewType } from "@/lib/hooks/view-settings-store";
+import { useToastStore } from "@/lib/stores/toast-store";
 
 type PawkitActions = {
   onCreateSubPawkit?: () => void;
@@ -39,6 +40,7 @@ export function ActionsMenu({ view, onRefresh, pawkitActions, onCreatePawkit }: 
   const selectedCardIds = useSelection((state) => state.selectedIds);
   const clearSelection = useSelection((state) => state.clear);
   const hasSelection = selectedCardIds.length > 0;
+  const toast = useToastStore();
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -81,7 +83,7 @@ export function ActionsMenu({ view, onRefresh, pawkitActions, onCreatePawkit }: 
       clearSelection();
       setShowDeleteConfirm(false);
     } catch (error) {
-      alert('Failed to delete some cards. Please try again.');
+      toast.error('Failed to delete some cards. Please try again.');
     }
   };
 

@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { useToastStore } from "@/lib/stores/toast-store";
 
 type PawkitActionsProps = {
   pawkitId: string;
@@ -38,6 +39,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
   const buttonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
   const { deleteCollection, updateCollection } = useDemoAwareStore();
+  const toast = useToastStore();
 
   useEffect(() => {
     setMounted(true);
@@ -51,7 +53,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
       router.push("/pawkits");
       onDeleteSuccess?.();
     } catch (err) {
-      alert("Failed to delete Pawkit");
+      toast.error("Failed to delete Pawkit");
       setLoading(false);
     }
   };
@@ -65,7 +67,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
       setShowRenameModal(false);
       setLoading(false);
     } catch (err) {
-      alert("Failed to rename Pawkit");
+      toast.error("Failed to rename Pawkit");
       setLoading(false);
     }
   };
@@ -78,7 +80,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
       setSelectedMoveTarget(null);
       setLoading(false);
     } catch (err) {
-      alert("Failed to move Pawkit");
+      toast.error("Failed to move Pawkit");
       setLoading(false);
     }
   };
@@ -89,7 +91,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
       setShowMenu(false);
       await updateCollection(pawkitId, { pinned: !pinned });
     } catch (err) {
-      alert("Failed to toggle pin");
+      toast.error("Failed to toggle pin");
       setPinned(pinned); // Revert on error
     }
   };
@@ -100,7 +102,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
       setShowMenu(false);
       await updateCollection(pawkitId, { isPrivate: !isPrivateState });
     } catch (err) {
-      alert("Failed to toggle privacy");
+      toast.error("Failed to toggle privacy");
       setIsPrivateState(isPrivateState); // Revert on error
     }
   };
