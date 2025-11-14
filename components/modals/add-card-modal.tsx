@@ -6,6 +6,8 @@ import { CardModel } from "@/lib/types";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { GlowButton } from "@/components/ui/glow-button";
+import { useToast } from "@/lib/hooks/use-toast";
+import { ToastContainer } from "@/components/ui/toast";
 
 export type AddCardModalProps = {
   open: boolean;
@@ -16,6 +18,7 @@ export type AddCardModalProps = {
 
 export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardModalProps) {
   const { addCard: addCardToStore } = useDemoAwareStore();
+  const { toasts, dismissToast, error: showErrorToast } = useToast();
   const [url, setUrl] = useState(initialUrl ?? "");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -67,53 +70,69 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
         : undefined
     };
 
-    // Create card optimistically - shows instantly!
-    addCardToStore(payload);
+    try {
+      // Create card - will throw error if duplicate URL detected
+      await addCardToStore(payload);
 
-    // Call onCreated callback (with temporary card data)
-    onCreated?.({
-      id: 'temp',
-      url,
-      title: title || null,
-      notes: notes || null,
-      content: null,
-      type: 'url',
-      status: 'PENDING',
-      collections: payload.collections || [],
-      tags: payload.tags || [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      deleted: false,
-      deletedAt: null,
-      pinned: false,
-      domain: null,
-      image: null,
-      description: null,
-      articleContent: null,
-      metadata: undefined,
-      inDen: false,
-      encryptedContent: null,
-      scheduledDate: null
-    });
+      // Call onCreated callback (with temporary card data)
+      onCreated?.({
+        id: 'temp',
+        url,
+        title: title || null,
+        notes: notes || null,
+        content: null,
+        type: 'url',
+        status: 'PENDING',
+        collections: payload.collections || [],
+        tags: payload.tags || [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        deleted: false,
+        deletedAt: null,
+        pinned: false,
+        domain: null,
+        image: null,
+        description: null,
+        articleContent: null,
+        metadata: undefined,
+        inDen: false,
+        encryptedContent: null,
+        scheduledDate: null
+      });
 
-    setLoading(false);
-    onClose();
+      setLoading(false);
+      onClose();
+    } catch (error) {
+      setLoading(false);
+
+      // Handle duplicate URL error
+      if (error instanceof Error && error.message.startsWith('DUPLICATE_URL:')) {
+        showErrorToast('This URL is already bookmarked');
+        setError('This URL is already bookmarked');
+        return;
+      }
+
+      // Handle other errors
+      showErrorToast('Failed to add card. Please try again.');
+      setError('Failed to add card. Please try again.');
+    }
 
     // Note: The store handles server sync and metadata fetch in background
   };
 
   const modalContent = (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-6"
-      role="dialog"
-      aria-modal="true"
-      onClick={onClose}
-    >
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-md space-y-4 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-lg p-6"
-        onClick={(event) => event.stopPropagation()}
+    <>
+      <div
+        className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-6"
+        role="dialog"
+        aria-modal="true"
+        onClick={onClose}
       >
+        <form
+          onSubmit={handleSubmit}
+          className="w-full max-w-md space-y-4 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-lg p-6"
+          onClick={(event) => event.stopPropagation()}
+        >
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">Add Card</h2>
           <GlowButton type="button" variant="primary" size="sm" onClick={onClose}>
@@ -183,8 +202,10 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
         <GlowButton type="submit" variant="primary" size="lg" className="w-full" disabled={loading}>
           {loading ? "Saving…" : "Save"}
         </GlowButton>
-      </form>
-    </div>
+        </form>
+      </div>
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+    </>
   );
 
   return createPortal(modalContent, document.body);

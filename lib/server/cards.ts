@@ -65,6 +65,23 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
     inDen = privateCollections.length > 0;
   }
 
+  // Pre-flight duplicate check for URL cards
+  if (cardType === "url" && parsed.url) {
+    const existingCard = await prisma.card.findFirst({
+      where: {
+        userId,
+        url: parsed.url,
+        type: "url",
+        deleted: false
+      }
+    });
+
+    if (existingCard) {
+      // Throw specific error with card ID for proper 409 handling
+      throw new Error(`DUPLICATE_URL:${existingCard.id}`);
+    }
+  }
+
   // Create card with different logic based on type
   const data = {
     type: cardType,
@@ -88,28 +105,11 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
     // Return immediately - metadata will be fetched in background for URL cards
     return mapCard(created);
   } catch (error) {
-    // Handle unique constraint violation (P2002) - duplicate userId + url
-    // Note: This should only happen for URL-type cards due to partial unique index
+    // Fallback: Handle unique constraint violation (P2002) in case pre-flight check was bypassed
+    // This should rarely happen now that we have pre-flight duplicate detection
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-
-      // Find and return the existing non-deleted card
-      // Look for cards of the same type to handle edge cases
-      const existingCard = await prisma.card.findFirst({
-        where: {
-          userId,
-          url: parsed.url || "",
-          type: cardType, // Look for cards of the same type
-          deleted: false // Exclude deleted cards
-        }
-      });
-
-      if (existingCard) {
-        return mapCard(existingCard);
-      }
-
-      // If no non-deleted card found, this might be a deleted duplicate
-      // In this case, we should allow creation by re-throwing the error
-      // so the caller can handle it appropriately
+      // Re-throw as DUPLICATE_URL error for consistent handling
+      throw new Error(`DUPLICATE_URL:unknown`);
     }
 
     // Re-throw other errors
