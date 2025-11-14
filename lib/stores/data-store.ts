@@ -7,6 +7,7 @@ import { syncQueue } from '@/lib/services/sync-queue';
 import { useConflictStore } from '@/lib/stores/conflict-store';
 import { useSettingsStore } from '@/lib/hooks/settings-store';
 import { markDeviceActive, getSessionId } from '@/lib/utils/device-session';
+import { useToastStore } from '@/lib/stores/toast-store';
 
 /**
  * Write guard: Ensures only the active tab/session can modify data
@@ -25,7 +26,8 @@ function ensureActiveDevice(): boolean {
       activeSession: activeSessionId,
       stack: new Error().stack
     });
-    alert('Another tab is active. Please refresh and click "Use This Tab" to continue.');
+    // Use warning toast for this critical multi-tab conflict message
+    useToastStore.getState().warning('Another tab is active. Please refresh and click "Use This Tab" to continue.', 5000);
     return false;
   }
 

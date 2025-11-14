@@ -12,6 +12,7 @@ import { useSyncSettings } from "@/lib/hooks/use-sync-settings";
 import { useSyncTriggers } from "@/lib/hooks/use-sync-triggers";
 import { useLoadSettings } from "@/lib/hooks/use-load-settings";
 import { ConflictNotifications } from "@/components/conflict-notifications";
+import { GlobalToastProvider } from "@/components/providers/global-toast-provider";
 import { ViewControls } from "@/components/layout/view-controls";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { PawkitActionsProvider } from "@/lib/contexts/pawkit-actions-context";
@@ -442,6 +443,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </main>
           </SidebarInset>
           <ConflictNotifications />
+          <GlobalToastProvider />
 
           {/* Multi-Session Warning Banner */}
           <SessionWarningBanner />

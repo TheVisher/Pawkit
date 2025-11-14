@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, Info, AlertTriangle } from "lucide-react";
+import { CheckCircle, XCircle, Info, AlertTriangle, Loader2 } from "lucide-react";
 
-export type ToastType = "success" | "error" | "info" | "warning";
+export type ToastType = "success" | "error" | "info" | "warning" | "loading";
 
 export type ToastProps = {
   message: string;
@@ -12,17 +12,23 @@ export type ToastProps = {
   onClose: () => void;
 };
 
-export function Toast({ message, type = "info", duration = 3000, onClose }: ToastProps) {
+export function Toast({ message, type = "info", duration, onClose }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsVisible(false);
-      setTimeout(onClose, 300); // Wait for fade out animation
-    }, duration);
+    // Don't auto-dismiss loading toasts unless duration is explicitly set
+    const shouldAutoDismiss = type === "loading" ? duration !== undefined : true;
+    const dismissDuration = duration ?? 3000;
 
-    return () => clearTimeout(timer);
-  }, [duration, onClose]);
+    if (shouldAutoDismiss) {
+      const timer = setTimeout(() => {
+        setIsVisible(false);
+        setTimeout(onClose, 300); // Wait for fade out animation
+      }, dismissDuration);
+
+      return () => clearTimeout(timer);
+    }
+  }, [duration, onClose, type]);
 
   const getToastStyles = () => {
     switch (type) {
@@ -32,6 +38,8 @@ export function Toast({ message, type = "info", duration = 3000, onClose }: Toas
         return "bg-red-900/90 border-red-600";
       case "warning":
         return "bg-yellow-900/90 border-yellow-600";
+      case "loading":
+        return "bg-purple-900/90 border-purple-600";
       case "info":
       default:
         return "bg-blue-900/90 border-blue-600";
@@ -46,6 +54,8 @@ export function Toast({ message, type = "info", duration = 3000, onClose }: Toas
         return <XCircle className="h-5 w-5 text-red-400" />;
       case "warning":
         return <AlertTriangle className="h-5 w-5 text-yellow-400" />;
+      case "loading":
+        return <Loader2 className="h-5 w-5 text-purple-400 animate-spin" />;
       case "info":
       default:
         return <Info className="h-5 w-5 text-blue-400" />;
@@ -65,7 +75,7 @@ export function Toast({ message, type = "info", duration = 3000, onClose }: Toas
 }
 
 type ToastContainerProps = {
-  toasts: Array<{ id: string; message: string; type?: ToastType }>;
+  toasts: Array<{ id: string; message: string; type?: ToastType; duration?: number }>;
   onDismiss: (id: string) => void;
 };
 
@@ -77,6 +87,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
           key={toast.id}
           message={toast.message}
           type={toast.type}
+          duration={toast.duration}
           onClose={() => onDismiss(toast.id)}
         />
       ))}
