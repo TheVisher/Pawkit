@@ -24,7 +24,7 @@ interface ToastStore {
   loading: (message: string, duration?: number) => string;
 }
 
-export const useToastStore = create<ToastStore>((set) => ({
+export const useToastStore = create<ToastStore>((set, get) => ({
   toasts: [],
 
   showToast: (message: string, type: ToastType = "info", duration?: number) => {
@@ -57,22 +57,22 @@ export const useToastStore = create<ToastStore>((set) => ({
   },
 
   success: (message: string, duration?: number) => {
-    return useToastStore.getState().showToast(message, "success", duration);
+    return get().showToast(message, "success", duration);
   },
 
   error: (message: string, duration?: number) => {
-    return useToastStore.getState().showToast(message, "error", duration);
+    return get().showToast(message, "error", duration);
   },
 
   info: (message: string, duration?: number) => {
-    return useToastStore.getState().showToast(message, "info", duration);
+    return get().showToast(message, "info", duration);
   },
 
   warning: (message: string, duration?: number) => {
-    return useToastStore.getState().showToast(message, "warning", duration);
+    return get().showToast(message, "warning", duration);
   },
 
   loading: (message: string, duration?: number) => {
-    return useToastStore.getState().showToast(message, "loading", duration);
+    return get().showToast(message, "loading", duration);
   },
 }));
