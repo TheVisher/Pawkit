@@ -48,7 +48,6 @@ export default function BookmarkDetailScreen() {
       const data = await cardsApi.get(cardId);
       setCard(data);
     } catch (error) {
-      console.error('Failed to load card:', error);
       Alert.alert('Error', 'Failed to load bookmark details');
       navigation.goBack();
     } finally {
@@ -75,7 +74,6 @@ export default function BookmarkDetailScreen() {
       const updated = await cardsApi.togglePin(card.id, !card.pinned);
       setCard(updated);
     } catch (error) {
-      console.error('Failed to toggle pin:', error);
       Alert.alert('Error', 'Failed to update bookmark');
     } finally {
       setPinning(false);
@@ -98,7 +96,6 @@ export default function BookmarkDetailScreen() {
               await cardsApi.delete(card.id);
               navigation.goBack();
             } catch (error) {
-              console.error('Failed to delete card:', error);
               Alert.alert('Error', 'Failed to delete bookmark');
             }
           },

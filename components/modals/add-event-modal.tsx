@@ -47,7 +47,6 @@ export function AddEventModal({ open, onClose, scheduledDate }: AddEventModalPro
 
       onClose();
     } catch (error) {
-      console.error('Failed to create event:', error);
     } finally {
       setIsLoading(false);
     }

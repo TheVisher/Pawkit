@@ -45,7 +45,6 @@ export async function migrateToUserSpecificStorage(
     errors: []
   };
 
-  console.log('[Migration] Starting migration for user:', userId, 'workspace:', workspaceId);
 
   try {
     // Check if old database exists
@@ -53,7 +52,6 @@ export async function migrateToUserSpecificStorage(
     const hasOldDb = databases.some(db => db.name === OLD_LOCAL_STORAGE_DB);
 
     if (!hasOldDb) {
-      console.log('[Migration] No old database found, skipping migration');
       result.success = true;
       return result;
     }
@@ -63,25 +61,21 @@ export async function migrateToUserSpecificStorage(
     const hasNewDb = databases.some(db => db.name === newDbName);
 
     if (hasNewDb) {
-      console.log('[Migration] User-specific database already exists, skipping migration');
       result.success = true;
       return result;
     }
 
-    console.log('[Migration] Opening old database:', OLD_LOCAL_STORAGE_DB);
 
     // Open old database
     let oldDb;
     try {
       oldDb = await openDB(OLD_LOCAL_STORAGE_DB, DB_VERSION);
     } catch (error) {
-      console.error('[Migration] Failed to open old database:', error);
       result.errors.push(`Failed to open old database: ${error}`);
       return result;
     }
 
     // Get all data from old database
-    console.log('[Migration] Reading data from old database...');
 
     let cards: any[] = [];
     let collections: any[] = [];
@@ -98,7 +92,6 @@ export async function migrateToUserSpecificStorage(
         metadata: metadata.length
       });
     } catch (error) {
-      console.error('[Migration] Error reading from old database:', error);
       result.errors.push(`Error reading data: ${error}`);
       oldDb.close();
       return result;
@@ -124,12 +117,10 @@ export async function migrateToUserSpecificStorage(
     oldDb.close();
 
     // Initialize new user-specific database
-    console.log('[Migration] Initializing new user-specific database:', newDbName);
     await localDb.init(userId, workspaceId);
     await syncQueue.init(userId, workspaceId);
 
     // Migrate cards
-    console.log('[Migration] Migrating cards...');
     for (const card of userCards) {
       try {
         // Clean up internal flags before saving
@@ -141,13 +132,11 @@ export async function migrateToUserSpecificStorage(
 
         result.cardsMigrated++;
       } catch (error) {
-        console.error('[Migration] Error migrating card:', card.id, error);
         result.errors.push(`Card ${card.id}: ${error}`);
       }
     }
 
     // Migrate collections
-    console.log('[Migration] Migrating collections...');
     for (const collection of userCollections) {
       try {
         // Clean up internal flags
@@ -159,19 +148,16 @@ export async function migrateToUserSpecificStorage(
 
         result.collectionsMigrated++;
       } catch (error) {
-        console.error('[Migration] Error migrating collection:', collection.id, error);
         result.errors.push(`Collection ${collection.id}: ${error}`);
       }
     }
 
     // Migrate metadata
-    console.log('[Migration] Migrating metadata...');
     for (const meta of metadata) {
       try {
         await localDb.setMetadata(meta.key, meta.value);
         result.metadataMigrated++;
       } catch (error) {
-        console.error('[Migration] Error migrating metadata:', meta.key, error);
         result.errors.push(`Metadata ${meta.key}: ${error}`);
       }
     }
@@ -187,23 +173,18 @@ export async function migrateToUserSpecificStorage(
 
     // Delete old database ONLY if migration was successful and user has data
     if (result.success && (result.cardsMigrated > 0 || result.collectionsMigrated > 0)) {
-      console.log('[Migration] Deleting old database:', OLD_LOCAL_STORAGE_DB);
       try {
         await indexedDB.deleteDatabase(OLD_LOCAL_STORAGE_DB);
         await indexedDB.deleteDatabase(OLD_SYNC_QUEUE_DB);
-        console.log('[Migration] Old databases deleted successfully');
       } catch (error) {
-        console.error('[Migration] Error deleting old database:', error);
         result.errors.push(`Error deleting old database: ${error}`);
         // Non-critical - migration already succeeded
       }
     } else if (result.success) {
-      console.log('[Migration] No user data found in old database, leaving it for other users');
     }
 
     return result;
   } catch (error) {
-    console.error('[Migration] Unexpected migration error:', error);
     result.errors.push(`Unexpected error: ${error}`);
     result.success = false;
     return result;
@@ -233,7 +214,6 @@ export async function needsMigration(userId: string, workspaceId: string = DEFAU
 
     return hasOldDb; // Needs migration if old DB exists
   } catch (error) {
-    console.error('[Migration] Error checking migration status:', error);
     return false;
   }
 }

@@ -52,7 +52,6 @@ export default function BookmarksListScreen() {
       const response = await cardsApi.list(params);
       setCards(response.items.filter((card) => !card.deleted));
     } catch (error) {
-      console.error('Failed to load cards:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

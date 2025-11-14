@@ -9,7 +9,6 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('Starting migration: Converting collection IDs to slugs...');
 
   // Get all collections to build ID -> slug map
   const collections = await prisma.collection.findMany({
@@ -21,14 +20,12 @@ async function main() {
     idToSlugMap.set(c.id, c.slug);
   });
 
-  console.log(`Found ${collections.length} collections`);
 
   // Get all cards
   const cards = await prisma.card.findMany({
     select: { id: true, collections: true }
   });
 
-  console.log(`Found ${cards.length} cards to check`);
 
   let updatedCount = 0;
   let skippedCount = 0;
@@ -72,14 +69,11 @@ async function main() {
     }
   }
 
-  console.log('\nMigration complete!');
-  console.log(`Updated: ${updatedCount} cards`);
   console.log(`Skipped: ${skippedCount} cards (already using slugs or no collections)`);
 }
 
 main()
   .catch((e) => {
-    console.error('Migration failed:', e);
     process.exit(1);
   })
   .finally(async () => {

@@ -369,7 +369,6 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
         }
       }
     } catch (error) {
-      console.error("Failed to refresh metadata:", error);
     }
   };
 

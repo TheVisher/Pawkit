@@ -177,7 +177,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           setUserData(data);
         }
       } catch (error) {
-        console.error('Failed to fetch user data:', error);
       }
     };
     fetchUser();
@@ -186,7 +185,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Initialize data store ONLY after user storage is ready (security fix)
   useEffect(() => {
     if (isReady && !isInitialized) {
-      console.log('[Dashboard] User storage ready, initializing data store');
       initialize();
     }
   }, [isReady, isInitialized, initialize]);

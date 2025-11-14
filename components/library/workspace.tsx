@@ -128,7 +128,6 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
 
       clearSelection();
     } catch (error) {
-      console.error("Failed to update cards:", error);
       // Revert optimistic update on error
       setCards(cards);
     }

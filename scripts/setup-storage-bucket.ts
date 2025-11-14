@@ -8,20 +8,17 @@ import { supabase } from '../lib/server/supabase';
 async function setupStorageBucket() {
   const BUCKET_NAME = 'card-images';
 
-  console.log('Setting up Supabase Storage bucket:', BUCKET_NAME);
 
   // Check if bucket exists
   const { data: buckets, error: listError } = await supabase.storage.listBuckets();
 
   if (listError) {
-    console.error('Error listing buckets:', listError);
     return;
   }
 
   const bucketExists = buckets?.some(b => b.name === BUCKET_NAME);
 
   if (bucketExists) {
-    console.log('✅ Bucket already exists:', BUCKET_NAME);
     return;
   }
 
@@ -33,14 +30,9 @@ async function setupStorageBucket() {
   });
 
   if (error) {
-    console.error('❌ Error creating bucket:', error);
     return;
   }
 
-  console.log('✅ Bucket created successfully:', data);
-  console.log('\nNext steps:');
-  console.log('1. Go to Supabase Dashboard > Storage > card-images');
-  console.log('2. Verify the bucket is public and accessible');
 }
 
 setupStorageBucket().catch(console.error);

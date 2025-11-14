@@ -81,7 +81,6 @@ export function ActionsMenu({ view, onRefresh, pawkitActions, onCreatePawkit }: 
       clearSelection();
       setShowDeleteConfirm(false);
     } catch (error) {
-      console.error('Failed to delete cards:', error);
       alert('Failed to delete some cards. Please try again.');
     }
   };

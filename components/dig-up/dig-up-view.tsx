@@ -97,7 +97,6 @@ export function DigUpView({
       setNextCursor(data.nextCursor);
       setHasMore(data.hasMore);
     } catch (error) {
-      console.error("Failed to load more cards:", error);
     } finally {
       setLoadingMore(false);
     }
@@ -168,7 +167,6 @@ export function DigUpView({
       setShowPawkitSelector(false);
       moveToNext();
     } catch (error) {
-      console.error("Add to Pawkit error:", error);
       alert("Failed to add to Pawkit");
     } finally {
       setLoading(false);

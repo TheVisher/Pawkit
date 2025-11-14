@@ -49,7 +49,6 @@ export default function AddBookmarkScreen() {
         },
       ]);
     } catch (error: any) {
-      console.error('Failed to create bookmark:', error);
       Alert.alert('Error', error.message || 'Failed to add bookmark');
     } finally {
       setSaving(false);

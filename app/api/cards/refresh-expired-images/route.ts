@@ -39,13 +39,11 @@ export async function POST() {
       return isExpiringImageUrl(card.image) && !isStoredImageUrl(card.image);
     });
 
-    console.log(`[RefreshExpiredImages] Found ${cardsToRefresh.length} cards with expiring URLs`);
 
     // Refresh metadata for each card (this will download and store the images)
     const results = await Promise.allSettled(
       cardsToRefresh.map(async (card: PrismaCard) => {
         if (!card.url) return null;
-        console.log(`[RefreshExpiredImages] Refreshing card ${card.id}: ${card.title}`);
         return fetchAndUpdateCardMetadata(card.id, card.url);
       })
     );

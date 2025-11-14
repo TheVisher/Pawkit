@@ -436,7 +436,6 @@ export function LeftNavigationPanel({
       setShowCreatePawkitModal(false);
       setParentPawkitId(null);
     } catch (error) {
-      console.error('Failed to create pawkit:', error);
     } finally {
       setCreatingPawkit(false);
     }
@@ -473,7 +472,6 @@ export function LeftNavigationPanel({
       setRenameCollectionId(null);
       setRenameCollectionName("");
     } catch (error) {
-      console.error('Failed to rename collection:', error);
     } finally {
       setRenamingCollection(false);
     }
@@ -493,7 +491,6 @@ export function LeftNavigationPanel({
         setShowToast(false);
       }, 2000);
     } catch (error) {
-      console.error('Failed to delete collection:', error);
     }
   };
 
@@ -586,7 +583,6 @@ export function LeftNavigationPanel({
                     try {
                       await updateCollection(currentCollectionId, { parentId: col.id });
                     } catch (err) {
-                      console.error("Failed to move collection:", err);
                     }
                   },
                 },
@@ -602,7 +598,6 @@ export function LeftNavigationPanel({
                 try {
                   await updateCollection(currentCollectionId, { parentId: col.id });
                 } catch (err) {
-                  console.error("Failed to move collection:", err);
                 }
               },
             });
@@ -614,7 +609,6 @@ export function LeftNavigationPanel({
               try {
                 await updateCollection(currentCollectionId, { parentId: col.id });
               } catch (err) {
-                console.error("Failed to move collection:", err);
               }
             },
           });
@@ -663,7 +657,6 @@ export function LeftNavigationPanel({
               try {
                 await updateCollection(collection.id, { parentId: null });
               } catch (err) {
-                console.error("Failed to move collection:", err);
               }
             },
           },

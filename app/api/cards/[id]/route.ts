@@ -61,7 +61,6 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
         );
       }
     } catch (error) {
-      console.error('[API] Failed to check serverSync setting:', error);
       // On error, allow the operation to proceed (fail open for availability)
     }
 
@@ -132,7 +131,6 @@ export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
         );
       }
     } catch (error) {
-      console.error('[DELETE] Failed to check serverSync setting:', error);
       // On error, allow the operation to proceed (fail open for availability)
     }
 
@@ -143,7 +141,6 @@ export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
 
     return success({ ok: true, cardId: params.id, deleted: result.deleted });
   } catch (error) {
-    console.error('[DELETE] Error during soft delete:', error);
     return handleApiError(error, { route: '/api/cards/[id]', userId: user?.id });
   }
 }

@@ -41,7 +41,6 @@ export function QuickAccessPawkitCard({ pawkit }: QuickAccessPawkitCardProps) {
       setIsPinned(!isPinned);
       // No router.refresh() needed - data store handles UI updates
     } catch (error) {
-      console.error("Failed to toggle pin:", error);
     } finally {
       setIsLoading(false);
     }

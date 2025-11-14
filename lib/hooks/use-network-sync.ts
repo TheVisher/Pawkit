@@ -53,7 +53,6 @@ export function useNetworkSync() {
       try {
         await drainQueue();
       } catch (error) {
-        console.error('[NetworkSync] Failed to drain queue:', error);
       } finally {
         isDrainingRef.current = false;
       }
@@ -74,19 +73,15 @@ export function useNetworkSync() {
     // Handle visibility change for lightweight sync check
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        console.log('[NetworkSync] Browser visible, checking for changes...');
 
         try {
           const hasChanges = await syncService.checkForChanges();
 
           if (hasChanges) {
-            console.log('[NetworkSync] Changes detected, running full sync');
             await drainQueue(); // drainQueue calls sync internally
           } else {
-            console.log('[NetworkSync] No server changes, skipping sync');
           }
         } catch (error) {
-          console.error('[NetworkSync] Failed to check for changes:', error);
         }
       }
     };

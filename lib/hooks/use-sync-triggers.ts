@@ -32,7 +32,6 @@ export function useSyncTriggers() {
         try {
           await syncQueue.process();
         } catch (error) {
-          console.error('[SyncTriggers] Periodic sync failed:', error);
         }
       }
     }, 60000); // 60 seconds
@@ -42,7 +41,6 @@ export function useSyncTriggers() {
       try {
         await syncQueue.process();
       } catch (error) {
-        console.error('[SyncTriggers] Reconnection sync failed:', error);
       }
     };
 
@@ -52,7 +50,6 @@ export function useSyncTriggers() {
         // This is best-effort - browser may kill the request
         await syncQueue.process();
       } catch (error) {
-        console.error('[SyncTriggers] Unload sync failed:', error);
       }
     };
 
@@ -64,7 +61,6 @@ export function useSyncTriggers() {
           try {
             await syncQueue.process();
           } catch (error) {
-            console.error('[SyncTriggers] Visibility sync failed:', error);
           }
         }
       }

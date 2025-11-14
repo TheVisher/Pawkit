@@ -63,7 +63,6 @@ export default function HomePage() {
           setDisplayName(data.displayName);
         }
       } catch (error) {
-        console.error('Failed to fetch user profile:', error);
       }
     };
     fetchProfile();
@@ -215,7 +214,6 @@ export default function HomePage() {
         setSelectedDate(null);
       }
     } catch (error) {
-      console.error('Failed to create daily note:', error);
     }
   };
 
@@ -522,7 +520,6 @@ export default function HomePage() {
         try {
           return createPortal(modalContent, document.body);
         } catch (error) {
-          console.error('[HomePage] Failed to create portal:', error);
           return null;
         }
       })()}

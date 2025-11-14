@@ -44,7 +44,6 @@ export function CardDetailsPanel() {
     try {
       await updateCard(card.id, { notes });
     } catch (error) {
-      console.error("Failed to save notes:", error);
     } finally {
       setIsSavingNotes(false);
     }
@@ -59,7 +58,6 @@ export function CardDetailsPanel() {
     try {
       await updateCard(card.id, { scheduledDate: isoDate });
     } catch (error) {
-      console.error("Failed to save schedule:", error);
     }
   };
 
@@ -69,7 +67,6 @@ export function CardDetailsPanel() {
     try {
       await updateCard(card.id, { scheduledDate: null });
     } catch (error) {
-      console.error("Failed to clear schedule:", error);
     }
   };
 

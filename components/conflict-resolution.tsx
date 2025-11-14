@@ -27,7 +27,6 @@ export function ConflictResolution({ onResolve, className = "" }: ConflictResolu
       }
       removeConflict(cardId);
     } catch (error) {
-      console.error('Failed to resolve conflict:', error);
     } finally {
       setResolving(null);
     }

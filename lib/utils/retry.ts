@@ -161,7 +161,6 @@ export class RateLimiter {
       const waitTime = this.windowMs - (now - oldestRequest);
       
       if (waitTime > 0) {
-        console.log(`[RateLimiter] Waiting ${waitTime}ms for rate limit reset`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
         return this.waitForSlot();
       }

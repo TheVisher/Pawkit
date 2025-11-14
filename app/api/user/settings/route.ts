@@ -9,10 +9,8 @@ export async function GET() {
   let user;
   try {
     user = await getCurrentUser();
-    console.log('[API GET /api/user/settings] User:', user?.id);
 
     if (!user) {
-      console.log('[API GET /api/user/settings] Unauthorized - no user');
       return unauthorized();
     }
 
@@ -29,7 +27,6 @@ export async function GET() {
 
     // If no settings exist, create default settings
     if (!settings) {
-      console.log('[API GET /api/user/settings] Creating default settings for user:', user.id);
       settings = await prisma.userSettings.create({
         data: {
           userId: user.id
@@ -45,14 +42,12 @@ export async function GET() {
     try {
       displaySettings = settings.displaySettings ? JSON.parse(settings.displaySettings) : {};
     } catch (e) {
-      console.error('[API GET /api/user/settings] Error parsing displaySettings:', e);
       displaySettings = {};
     }
 
     try {
       pinnedNoteIds = settings.pinnedNoteIds ? JSON.parse(settings.pinnedNoteIds) : [];
     } catch (e) {
-      console.error('[API GET /api/user/settings] Error parsing pinnedNoteIds:', e);
       pinnedNoteIds = [];
     }
 
@@ -60,7 +55,6 @@ export async function GET() {
       // Safe parsing for recentHistory - field might not exist if migration not run
       recentHistory = (settings as any).recentHistory ? JSON.parse((settings as any).recentHistory) : [];
     } catch (e) {
-      console.error('[API GET /api/user/settings] Error parsing recentHistory:', e);
       recentHistory = [];
     }
 
@@ -77,7 +71,6 @@ export async function GET() {
       recentHistory
     });
   } catch (error) {
-    console.error('[API GET /api/user/settings] Error:', error);
     return handleApiError(error, { route: '/api/user/settings', userId: user?.id });
   }
 }
@@ -155,21 +148,18 @@ export async function PATCH(request: Request) {
     try {
       displaySettings = settings.displaySettings ? JSON.parse(settings.displaySettings) : {};
     } catch (e) {
-      console.error('[API PATCH /api/user/settings] Error parsing displaySettings:', e);
       displaySettings = {};
     }
 
     try {
       pinnedNoteIds = settings.pinnedNoteIds ? JSON.parse(settings.pinnedNoteIds) : [];
     } catch (e) {
-      console.error('[API PATCH /api/user/settings] Error parsing pinnedNoteIds:', e);
       pinnedNoteIds = [];
     }
 
     try {
       recentHistory = (settings as any).recentHistory ? JSON.parse((settings as any).recentHistory) : [];
     } catch (e) {
-      console.error('[API PATCH /api/user/settings] Error parsing recentHistory:', e);
       recentHistory = [];
     }
 

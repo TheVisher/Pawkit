@@ -147,7 +147,6 @@ export async function POST(request: NextRequest) {
     if (body.source === 'webext' && card.type === 'url' && card.url) {
       // Trigger metadata fetch in background (don't await to avoid blocking response)
       fetchAndUpdateCardMetadata(card.id, card.url).catch(err => {
-        console.error('Background metadata fetch failed:', err);
       });
     }
 

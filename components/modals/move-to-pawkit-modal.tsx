@@ -71,7 +71,6 @@ export function MoveToPawkitModal({ open, onClose, onConfirm }: MoveToPawkitModa
         setPawkits(flattened);
       }
     } catch (error) {
-      console.error("Failed to load pawkits:", error);
     } finally {
       setLoading(false);
     }

@@ -55,7 +55,6 @@ export async function GET(request: Request) {
       serverTime: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[API /sync/check] Error checking for changes:', error);
     // On error, assume changes exist (safe fallback)
     return NextResponse.json({
       hasChanges: true,

@@ -67,7 +67,6 @@ export function DayDetailsPanel() {
         openCardDetails(newCard.id);
       }
     } catch (error) {
-      console.error('Failed to create daily note:', error);
     }
   };
 

@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
       .eq("deleted", false);
 
     if (collectionsError) {
-      console.error("Error fetching collections:", collectionsError);
       return NextResponse.json(
         { error: "Failed to fetch collections" },
         { status: 500 }
@@ -71,7 +70,6 @@ export async function POST(request: NextRequest) {
       .eq("deleted", false);
 
     if (cardsError) {
-      console.error("Error fetching cards:", cardsError);
       return NextResponse.json(
         { error: "Failed to fetch cards" },
         { status: 500 }
@@ -122,7 +120,6 @@ export async function POST(request: NextRequest) {
           .eq("id", update.id);
 
         if (updateError) {
-          console.error(`Error updating card ${update.id}:`, updateError);
         }
       }
     }
@@ -138,7 +135,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Migration error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

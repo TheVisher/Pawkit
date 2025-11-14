@@ -236,7 +236,6 @@ export const usePanelStore = create<PanelState>()(
 
       // USER SWITCHING: Reset panel state for new user/workspace
       _switchUser: async (userId: string, workspaceId: string) => {
-        console.log('[PanelStore] Switching user context', { userId, workspaceId });
 
         // Reset to defaults (UI state, doesn't need server sync)
         set({
@@ -267,11 +266,9 @@ export const usePanelStore = create<PanelState>()(
                 leftMode: parsed.state.leftMode ?? "floating",
                 isLeftOpen: parsed.state.isLeftOpen ?? true,
               });
-              console.log('[PanelStore] Loaded from localStorage:', key);
             }
           }
         } catch (error) {
-          console.error('[PanelStore] Error loading from localStorage:', error);
         }
       },
     }),

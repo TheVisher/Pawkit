@@ -169,7 +169,6 @@ class LocalStorage {
       },
     });
 
-    console.log(`[LocalStorage] Initialized for user: ${userId}, workspace: ${workspaceId}`);
   }
 
   /**
@@ -177,7 +176,6 @@ class LocalStorage {
    * This deletes all workspace databases for the user
    */
   async clearUserData(userId: string): Promise<void> {
-    console.log(`[LocalStorage] Clearing all data for user: ${userId}`);
 
     // Get all databases and find ones matching this user
     const databases = await indexedDB.databases();
@@ -185,13 +183,11 @@ class LocalStorage {
       db.name?.startsWith(`pawkit-${userId}-`) && db.name?.endsWith('-local-storage')
     );
 
-    console.log(`[LocalStorage] Found ${userDatabases.length} workspace databases to delete for user ${userId}`);
 
     // Delete all workspace databases for this user
     for (const db of userDatabases) {
       if (db.name) {
         await indexedDB.deleteDatabase(db.name);
-        console.log(`[LocalStorage] Deleted database: ${db.name}`);
       }
     }
   }
@@ -201,7 +197,6 @@ class LocalStorage {
    */
   async clearWorkspaceData(userId: string, workspaceId: string): Promise<void> {
     const dbName = `pawkit-${userId}-${workspaceId}-local-storage`;
-    console.log(`[LocalStorage] Clearing workspace data: ${dbName}`);
     await indexedDB.deleteDatabase(dbName);
   }
 
@@ -210,7 +205,6 @@ class LocalStorage {
    */
   async close(): Promise<void> {
     if (this.db) {
-      console.log('[LocalStorage] Closing database connection');
       this.db.close();
       this.db = null;
       this.userId = null;
@@ -288,9 +282,6 @@ class LocalStorage {
       await this.db.put('cards', cardToSave);
       // console.log('[LocalStorage] Saved card:', card.id, options);
     } catch (error) {
-      console.error('[LocalStorage] Failed to save card to IndexedDB:', error);
-      console.error('[LocalStorage] Card content length:', card.content?.length);
-      console.error('[LocalStorage] Problematic card:', { id: card.id, title: card.title });
       throw error;
     }
   }

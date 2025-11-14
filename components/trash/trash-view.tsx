@@ -75,7 +75,6 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
       const deletedCollections = flatCollections.filter(c => c.deleted === true);
       setLocalPawkits(deletedCollections);
     } catch (error) {
-      console.error('[TrashView] Failed to load local trash:', error);
     }
   }, []);
 
