@@ -4,9 +4,11 @@ import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2 } from "lucide-react";
+import { shallow } from "zustand/shallow";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { useDataStore } from "@/lib/stores/data-store";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
@@ -99,15 +101,33 @@ export function LeftNavigationPanel({
   const isDemo = pathname?.startsWith('/demo');
   const pathPrefix = isDemo ? '/demo' : '';
 
-  // Get cards and data (demo-aware)
-  const { cards, addCard, updateCard, addCollection, updateCollection, deleteCollection } = useDemoAwareStore();
-  const { recentItems } = useRecentHistory();
-
-  // Get active card from panel store
+  // Get pinned note IDs and active card first (needed for selective subscription)
+  const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
+  const reorderPinnedNotes = useSettingsStore((state) => state.reorderPinnedNotes);
   const activeCardId = usePanelStore((state) => state.activeCardId);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const collapsedSections = usePanelStore((state) => state.collapsedSections);
   const toggleSection = usePanelStore((state) => state.toggleSection);
+
+  // PERFORMANCE: Selective subscription - only get cards we actually need for the sidebar
+  // This prevents re-renders when unrelated cards change
+  const store = useDemoAwareStore();
+  const cards = useDataStore((state) => {
+    return state.cards.filter((card) => {
+      // Include daily notes (for streak, navigation)
+      if (card.tags?.includes('daily')) return true;
+      // Include pinned notes
+      if (pinnedNoteIds.includes(card.id)) return true;
+      // Include active card (for pawkit actions)
+      if (card.id === activeCardId) return true;
+      return false;
+    });
+  }, shallow);
+
+  // Get action methods (these don't cause re-renders)
+  const { addCard, updateCard, addCollection, updateCollection, deleteCollection } = store;
+  const { recentItems } = useRecentHistory();
+
   const activeCard = useMemo(() => {
     return cards.find((card) => card.id === activeCardId) ?? null;
   }, [cards, activeCardId]);
@@ -142,10 +162,6 @@ export function LeftNavigationPanel({
     const today = new Date();
     return findDailyNoteForDate(cards, today) !== null;
   }, [cards]);
-
-  // Get pinned notes
-  const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
-  const reorderPinnedNotes = useSettingsStore((state) => state.reorderPinnedNotes);
 
   // Get sidebar visibility settings
   const showKeyboardShortcutsInSidebar = useSettingsStore((state) => state.showKeyboardShortcutsInSidebar);
