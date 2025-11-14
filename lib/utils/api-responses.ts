@@ -13,7 +13,7 @@ interface ApiErrorResponse {
   error: string;
   message: string;
   code: string;
-  details?: any;
+  details?: unknown;
 }
 
 export function unauthorized(message = 'Unauthorized'): NextResponse {
@@ -24,7 +24,7 @@ export function unauthorized(message = 'Unauthorized'): NextResponse {
   }, { status: 401 });
 }
 
-export function notFound(resource = 'Resource', details?: any): NextResponse {
+export function notFound(resource = 'Resource', details?: unknown): NextResponse {
   return NextResponse.json<ApiErrorResponse>({
     error: 'Not Found',
     message: `${resource} not found`,
@@ -33,7 +33,7 @@ export function notFound(resource = 'Resource', details?: any): NextResponse {
   }, { status: 404 });
 }
 
-export function validationError(message: string, details?: any): NextResponse {
+export function validationError(message: string, details?: unknown): NextResponse {
   return NextResponse.json<ApiErrorResponse>({
     error: 'Validation Error',
     message,
@@ -42,7 +42,7 @@ export function validationError(message: string, details?: any): NextResponse {
   }, { status: 400 });
 }
 
-export function conflict(message: string, details?: any): NextResponse {
+export function conflict(message: string, details?: unknown): NextResponse {
   return NextResponse.json<ApiErrorResponse>({
     error: 'Conflict',
     message,

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
@@ -48,7 +48,7 @@ type RichMDEditorProps = {
   placeholder?: string;
   onNavigate?: (noteId: string) => void;
   onToggleFullscreen?: () => void;
-  customComponents?: any; // Custom ReactMarkdown components for wiki-links
+  customComponents?: Partial<Components>; // Custom ReactMarkdown components for wiki-links
   mode?: "edit" | "preview"; // External mode control
   onModeChange?: (mode: "edit" | "preview") => void; // External mode change handler
   hideControls?: boolean; // Hide the mode toggle bar
@@ -406,8 +406,8 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
   }, [content]);
 
   // Custom renderer for wiki-links and code
-  const components = {
-    code: ({ node, inline, className, children, ...props }: any) => {
+  const components: Partial<Components> = {
+    code: ({ inline, className, children, ...props }) => {
       // In ReactMarkdown v10, we need to check multiple ways:
       // 1. Check if inline prop exists and is true
       // 2. Check if className contains "language-" (block code marker)
@@ -437,7 +437,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
         </code>
       );
     },
-    a: ({ node, href, children, ...props }: any) => {
+    a: ({ href, children, ...props }) => {
       // Check if this is a wiki-link (starts with #/wiki/)
       if (href?.startsWith('#/wiki/')) {
         const linkText = href.replace('#/wiki/', '').replace(/-/g, ' ');

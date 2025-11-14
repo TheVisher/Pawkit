@@ -11,6 +11,15 @@ export type SortOrder = "asc" | "desc";
 
 export type ContentType = "url" | "md-note" | "text-note" | "image" | "document" | "audio" | "video" | "email" | "bookmark" | "highlight" | "folder" | "other";
 
+// View-specific settings type for known properties
+export type ViewSpecificSettings = {
+  selectedTags?: string[]; // Used by library, notes, tags views for tag filtering
+  showTitles?: boolean; // Used by home view for quick access cards
+  showUrls?: boolean; // Used by home view for quick access cards
+  // Allow for future extensibility with unknown properties
+  [key: string]: unknown;
+};
+
 export type ViewSettings = {
   // Layout settings
   layout: LayoutMode;
@@ -31,8 +40,8 @@ export type ViewSettings = {
   sortBy: SortBy;
   sortOrder: SortOrder;
 
-  // View-specific settings (flexible JSON)
-  viewSpecific?: Record<string, any>;
+  // View-specific settings (flexible but typed)
+  viewSpecific?: ViewSpecificSettings;
 };
 
 export type ViewSettingsState = {
@@ -57,7 +66,7 @@ export type ViewSettingsState = {
   setContentTypeFilter: (view: ViewType, contentTypes: ContentType[]) => Promise<void>;
   setSortBy: (view: ViewType, sortBy: SortBy) => Promise<void>;
   setSortOrder: (view: ViewType, sortOrder: SortOrder) => Promise<void>;
-  setViewSpecific: (view: ViewType, data: Record<string, any>) => Promise<void>;
+  setViewSpecific: (view: ViewType, data: ViewSpecificSettings) => Promise<void>;
   
   // Sync with server
   syncToServer: (view: ViewType) => Promise<void>;

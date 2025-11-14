@@ -72,7 +72,7 @@ export default function HomePage() {
   // Build private collection IDs helper
   const privateCollectionIds = useMemo(() => {
     const ids = new Set<string>();
-    const getAllCollectionIds = (nodes: any[]): void => {
+    const getAllCollectionIds = (nodes: CollectionNode[]): void => {
       for (const node of nodes) {
         if (node.isPrivate) {
           ids.add(node.id);
@@ -542,8 +542,8 @@ type CardProps = {
 function RecentCard({ card, onClick, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits }: CardProps) {
   // Get display settings for home view
   const viewSettings = useViewSettingsStore((state) => state.getSettings('home'));
-  const showTitles = (viewSettings as any)?.showTitles ?? true;
-  const showUrls = (viewSettings as any)?.showUrls ?? true;
+  const showTitles = viewSettings.viewSpecific?.showTitles ?? true;
+  const showUrls = viewSettings.viewSpecific?.showUrls ?? true;
 
   const isNote = card.type === 'md-note' || card.type === 'text-note';
 

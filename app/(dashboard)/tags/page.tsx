@@ -32,7 +32,7 @@ export default function TagsPage() {
   useEffect(() => {
     // Build a set of private collection SLUGS for fast lookup (cards store slugs, not IDs)
     const privateCollectionSlugs = new Set<string>();
-    const getAllPrivateSlugs = (nodes: any[]): void => {
+    const getAllPrivateSlugs = (nodes: CollectionNode[]): void => {
       for (const node of nodes) {
         if (node.isPrivate) {
           privateCollectionSlugs.add(node.slug);

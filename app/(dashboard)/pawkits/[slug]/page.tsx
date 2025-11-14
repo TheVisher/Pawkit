@@ -109,7 +109,7 @@ function CollectionPageContent() {
 
   // Find current collection
   const currentCollection = useMemo(() => {
-    const findCollection = (nodes: any[], targetSlug: string): any => {
+    const findCollection = (nodes: CollectionNode[], targetSlug: string): CollectionNode | null => {
       for (const node of nodes) {
         if (node.slug === targetSlug) return node;
         if (node.children) {
@@ -126,9 +126,10 @@ function CollectionPageContent() {
   const breadcrumbs = useMemo(() => {
     if (!currentCollection) return [];
 
-    const trail: Array<{ id: string; name: string; slug: string }> = [];
+    type BreadcrumbItem = { id: string; name: string; slug: string };
+    const trail: BreadcrumbItem[] = [];
 
-    const buildTrail = (nodes: any[], targetSlug: string, path: any[] = []): boolean => {
+    const buildTrail = (nodes: CollectionNode[], targetSlug: string, path: BreadcrumbItem[] = []): boolean => {
       for (const node of nodes) {
         const currentPath = [...path, { id: node.id, name: node.name, slug: node.slug }];
 

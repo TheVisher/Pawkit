@@ -69,8 +69,10 @@ export default function CollectionsPage() {
 
   // Create grid items and allPawkits from Zustand store
   const { gridItems, allPawkits } = useMemo(() => {
+    type FlatPawkit = { id: string; name: string; slug: string };
+
     // Flatten all pawkits (excluding deleted ones)
-    const flattenPawkits = (nodes: typeof collections, result: any[] = []): any[] => {
+    const flattenPawkits = (nodes: typeof collections, result: FlatPawkit[] = []): FlatPawkit[] => {
       for (const node of nodes) {
         // Skip deleted collections
         if (node.deleted === true) continue;

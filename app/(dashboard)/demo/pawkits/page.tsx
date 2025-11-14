@@ -382,8 +382,10 @@ export default function DemoPawkitsPage() {
 
   // Create grid items from fake collections
   const { gridItems, allPawkits } = useMemo(() => {
+    type FlatPawkit = { id: string; name: string; slug: string };
+
     // Flatten all pawkits
-    const flattenPawkits = (nodes: typeof collections, result: any[] = []): any[] => {
+    const flattenPawkits = (nodes: typeof collections, result: FlatPawkit[] = []): FlatPawkit[] => {
       for (const node of nodes) {
         result.push({ id: node.id, name: node.name, slug: node.slug });
         if (node.children?.length) {
