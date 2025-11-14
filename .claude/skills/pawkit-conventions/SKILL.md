@@ -92,6 +92,294 @@ const isInPrivate = card.collections?.some(id =>
 
 ---
 
+## Hierarchical Collection Management
+
+### CRITICAL RULE: Always Use Hierarchy Utilities
+
+**NEVER manually manipulate card.collections arrays when adding/removing collections.**
+
+**ALWAYS use the hierarchy utilities from `lib/utils/collection-hierarchy.ts`.**
+
+### Why Hierarchy Utilities?
+
+When adding a card to a sub-collection (e.g., "Restaurants > Everett"), the card must get BOTH the child slug ("everett") AND all parent slugs ("restaurants"). Otherwise, filtering breaks at parent levels.
+
+```typescript
+// ❌ WRONG: Manual array manipulation
+card.collections = [...card.collections, "everett"];
+// Result: card.collections = ["everett"]
+// Problem: Card won't appear when viewing "Restaurants" collection!
+
+// ✅ CORRECT: Use hierarchy utility
+import { addCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
+
+const newCollections = addCollectionWithHierarchy(
+  card.collections || [],
+  "everett",
+  allCollections  // Hierarchical tree from store
+);
+// Result: card.collections = ["everett", "restaurants"]
+// Success: Card appears in both "Everett" AND "Restaurants" views!
+```
+
+### Core Utility Functions
+
+#### 1. getCollectionHierarchy()
+
+Gets complete hierarchy of slugs for a collection, walking up the parent chain.
+
+```typescript
+/**
+ * @param targetSlug - The slug of the collection to get hierarchy for
+ * @param collections - The hierarchical array of all collections
+ * @returns Array of slugs including target and all parents, ordered child to root
+ */
+getCollectionHierarchy(
+  targetSlug: string,
+  collections: CollectionNode[]
+): string[]
+
+// Example:
+// Collection structure: Restaurants > Seattle > Downtown
+getCollectionHierarchy("downtown", collections)
+// Returns: ["downtown", "seattle", "restaurants"]
+```
+
+#### 2. addCollectionWithHierarchy()
+
+Adds collection and all parent collections to card's collection array.
+
+```typescript
+/**
+ * @param currentCollections - Current collection slugs on the card
+ * @param newCollectionSlug - The new collection slug to add
+ * @param allCollections - All available collections for hierarchy lookup
+ * @returns Updated collection slugs array with hierarchy
+ */
+addCollectionWithHierarchy(
+  currentCollections: string[],
+  newCollectionSlug: string,
+  allCollections: CollectionNode[]
+): string[]
+
+// Example:
+const card = { collections: ["personal"] };
+const updated = addCollectionWithHierarchy(
+  card.collections,
+  "seattle",  // Adding to "Restaurants > Seattle"
+  allCollections
+);
+// Returns: ["personal", "seattle", "restaurants"]
+// (preserves existing + adds new + adds parents)
+```
+
+#### 3. removeCollectionWithHierarchy()
+
+Removes collection and optionally its child collections from card.
+
+```typescript
+/**
+ * @param currentCollections - Current collection slugs on the card
+ * @param collectionToRemove - The collection slug to remove
+ * @param allCollections - All available collections for hierarchy lookup
+ * @param removeChildrenToo - If true, removes all children of the collection as well
+ * @returns Updated collection slugs array
+ */
+removeCollectionWithHierarchy(
+  currentCollections: string[],
+  collectionToRemove: string,
+  allCollections: CollectionNode[],
+  removeChildrenToo: boolean = false
+): string[]
+
+// Example:
+const card = { collections: ["downtown", "seattle", "restaurants"] };
+
+// Remove just "seattle" (keeps "downtown", removes "seattle" only)
+removeCollectionWithHierarchy(card.collections, "seattle", allCollections, false);
+// Returns: ["downtown", "restaurants"]
+
+// Remove "seattle" AND its children (removes both "downtown" and "seattle")
+removeCollectionWithHierarchy(card.collections, "seattle", allCollections, true);
+// Returns: ["restaurants"]
+```
+
+#### 4. isCardInCollectionHierarchy()
+
+Checks if card should be visible in collection view (considering hierarchy).
+
+```typescript
+/**
+ * @param cardCollections - Collection slugs on the card
+ * @param viewCollectionSlug - The collection being viewed
+ * @param allCollections - All available collections
+ * @returns True if card should be visible in this collection view
+ */
+isCardInCollectionHierarchy(
+  cardCollections: string[],
+  viewCollectionSlug: string,
+  allCollections: CollectionNode[]
+): boolean
+
+// Example:
+const card = { collections: ["downtown", "seattle", "restaurants"] };
+
+isCardInCollectionHierarchy(card.collections, "restaurants", allCollections);
+// Returns: true (card is in "downtown" which is descendant of "restaurants")
+
+isCardInCollectionHierarchy(card.collections, "work", allCollections);
+// Returns: false (card has no connection to "work" hierarchy)
+```
+
+### Usage Pattern in Components
+
+**Getting Collections from Store:**
+
+```typescript
+import { useDemoAwareStore } from "@/lib/stores/demo-aware-store";
+
+const { collections: allCollections } = useDemoAwareStore();
+```
+
+**Adding Card to Collection:**
+
+```typescript
+import { addCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
+
+const handleAddToPawkit = async (slug: string) => {
+  const newCollections = addCollectionWithHierarchy(
+    card.collections || [],
+    slug,
+    allCollections
+  );
+
+  await updateCard(card.id, { collections: newCollections });
+};
+```
+
+**Removing Card from Collection:**
+
+```typescript
+import { removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
+
+const handleRemoveFromPawkit = async (slug: string) => {
+  const newCollections = removeCollectionWithHierarchy(
+    card.collections || [],
+    slug,
+    allCollections,
+    true  // Remove children too when removing from sub-collection
+  );
+
+  await updateCard(card.id, { collections: newCollections });
+};
+```
+
+### Files Using Hierarchy Utilities
+
+- `components/library/card-gallery.tsx` - Library/Notes view add/remove handlers
+- `app/(dashboard)/home/page.tsx` - Home view add/remove handlers
+- Future: Any component that adds/removes cards from collections
+
+### Variable Naming Convention
+
+**Always rename `collections` from store to avoid shadowing:**
+
+```typescript
+// ✅ CORRECT: Rename to avoid variable shadowing
+const {
+  updateCard: updateCardInStore,
+  deleteCard: deleteCardFromStore,
+  collections: allCollections  // Renamed from 'collections'
+} = useDemoAwareStore();
+
+// Then use card.collections (local) and allCollections (store)
+const updated = addCollectionWithHierarchy(card.collections, slug, allCollections);
+
+// ❌ WRONG: Variable shadowing
+const {
+  collections  // Name conflicts with card.collections!
+} = useDemoAwareStore();
+```
+
+### Common Mistakes to Avoid
+
+1. **Direct array manipulation**:
+   ```typescript
+   // ❌ WRONG
+   card.collections.push(newSlug);
+
+   // ✅ CORRECT
+   const newCollections = addCollectionWithHierarchy(card.collections, newSlug, allCollections);
+   ```
+
+2. **Forgetting to pass allCollections**:
+   ```typescript
+   // ❌ WRONG - Missing hierarchy context
+   const newCollections = [...card.collections, newSlug];
+
+   // ✅ CORRECT - Pass allCollections for hierarchy lookup
+   const newCollections = addCollectionWithHierarchy(card.collections, newSlug, allCollections);
+   ```
+
+3. **Not using removeChildrenToo when appropriate**:
+   ```typescript
+   // When removing from sub-collection, should remove all descendants
+   const newCollections = removeCollectionWithHierarchy(
+     card.collections,
+     slug,
+     allCollections,
+     true  // ← IMPORTANT: Remove children too
+   );
+   ```
+
+4. **Variable shadowing (collections)**:
+   ```typescript
+   // ❌ WRONG
+   const { collections } = useDemoAwareStore();
+   // Now 'collections' conflicts with card.collections
+
+   // ✅ CORRECT
+   const { collections: allCollections } = useDemoAwareStore();
+   ```
+
+### Data Migration
+
+**Endpoint:** `POST /api/admin/migrate-collection-hierarchy`
+
+**Purpose:** Backfill parent tags for cards that only have child tags.
+
+**When to run:**
+- After deploying hierarchical tag inheritance
+- After fixing cards that were added before hierarchy was implemented
+- Can be run multiple times safely (idempotent)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Migration complete. Updated 42 cards.",
+  "stats": {
+    "totalCards": 150,
+    "updatedCards": 42,
+    "totalCollections": 12
+  }
+}
+```
+
+### Testing Checklist
+
+Before committing code that adds/removes collections:
+
+- [ ] Are you using `addCollectionWithHierarchy()` when adding?
+- [ ] Are you using `removeCollectionWithHierarchy()` when removing?
+- [ ] Did you pass `allCollections` from store to utilities?
+- [ ] Did you rename `collections` to `allCollections` to avoid shadowing?
+- [ ] Did you test with nested collections (3+ levels)?
+- [ ] Did you verify parent collections appear correctly?
+- [ ] Did you test removing sub-collections (with `removeChildrenToo`)?
+
+---
+
 ## Architecture - Local-First
 
 ### Data Flow Priority

@@ -135,6 +135,120 @@ description: Living, interactive roadmap serving as single source of truth for p
 
 **Reference for what's done - do not modify this section**
 
+### January 13, 2025 - List View Standardization & Hierarchical Tags
+
+- ✅ **Next.js 15.5 Security Update** (30 min)
+  Upgraded Next.js 15.1.6 → 15.5.4 for critical CVE fix
+  React 19.0.0 → 19.2.0
+  **Impact:** Security vulnerability patched, latest stability improvements
+
+- ✅ **Folder Icon Standardization** (1 hour)
+  Replaced all emoji folder icons (📁) with Lucide Folder component
+  **Pattern:** `<Folder size={16} className="text-purple-400" />`
+  **Files:** grid.tsx, card-gallery.tsx, card-detail-modal.tsx, dig-up-view.tsx, quick-access-pawkit-card.tsx
+  **Impact:** Professional icon usage, visual consistency across all folder representations
+
+- ✅ **Sidebar Configuration Standardization** (45 min)
+  Unified sorting terminology across ALL views
+  **Changes:**
+  - Standardized to: "Name", "Date Created", "Date Modified"
+  - Removed non-functional toggles from Notes (Masonry, Show Thumbnails, Show Metadata)
+  - Updated Direction label to purple (text-accent)
+  - Matched Pawkits slider styling to Notes (darker track)
+  **Impact:** Eliminated UI inconsistencies between Pawkits and Notes views
+
+- ✅ **List View Pixel-Perfect Standardization** (3 hours) - MAJOR UPDATE
+  Achieved identical list view dimensions across Pawkits, Notes, and Library
+  **Critical Dimensions:**
+  - Row padding: `py-3 px-4` (changed from `py-2`)
+  - Data cell text: `text-sm` (changed from `text-xs`)
+  - Icon container: `h-8 w-8 rounded-lg backdrop-blur-sm` (NEW)
+  - Pin icon: size `14` (changed from `12`)
+  - Title text: Added `font-medium`
+
+  **Column Structure:**
+  - Pawkits: Name | Items | Sub-Pawkits | Date Created | Date Modified | [menu]
+  - Library/Notes: Name | Type | Tags | Date Created | Date Modified | [menu]
+
+  **Files:** card-gallery.tsx (Library/Notes), grid.tsx (Pawkits)
+  **Impact:** Pixel-perfect consistency, professional data table appearance
+
+- ✅ **URL Truncation Fix** (1 hour) - CRITICAL
+  Fixed extremely long URLs pushing columns off-screen
+  **Problem:** Long URLs broke table layout without proper constraints
+  **Solution:** Multi-layer truncation pattern:
+  ```tsx
+  <td className="max-w-xs">
+    <div className="flex items-center gap-3 min-w-0">
+      <span className="flex-shrink-0"><Icon /></span>
+      <span className="truncate min-w-0 flex-1">{title}</span>
+    </div>
+  </td>
+  ```
+  **Impact:** Table layout remains stable with any URL length
+
+- ✅ **3-Dot Actions Menu Component** (1.5 hours)
+  Created CardActionsMenu inline component with portal rendering
+  **Features:**
+  - Portal to document.body for proper z-index
+  - Position calculation using getBoundingClientRect()
+  - z-[9999] to appear above all UI
+  - Actions: Open, Pin/Unpin, Delete
+  **Impact:** Consistent actions menu across all list views
+
+- ✅ **Hierarchical Tag Inheritance System** (4 hours) - NEW FEATURE
+  Implemented automatic parent tag inheritance for nested collections
+  **Problem:** Cards in "Restaurants > Everett" only got ["everett"], not ["restaurants"]
+  **Solution:** Created lib/utils/collection-hierarchy.ts with utility functions:
+  - `getCollectionHierarchy()`: Walks up parent chain
+  - `addCollectionWithHierarchy()`: Adds collection + all parents
+  - `removeCollectionWithHierarchy()`: Removes with optional children
+  - `isCardInCollectionHierarchy()`: For future filtering
+
+  **Usage Pattern:**
+  ```tsx
+  const newCollections = addCollectionWithHierarchy(
+    card.collections || [],
+    slug,
+    allCollections  // Hierarchical tree from store
+  );
+  ```
+
+  **Files Modified:** card-gallery.tsx, home/page.tsx
+  **TypeScript Fixes:** createServerClient → createClient, added type annotations
+  **Impact:** Filtering now works correctly at all hierarchy levels
+
+- ✅ **Collection Hierarchy Data Migration** (2 hours)
+  Created `/api/admin/migrate-collection-hierarchy` endpoint
+  **Features:**
+  - Fetches all collections and cards for authenticated user
+  - Builds hierarchy map
+  - Identifies cards missing parent tags
+  - Batch updates cards with complete hierarchy
+  - Idempotent (safe to run multiple times)
+  **Response:** Returns success status + stats (totalCards, updatedCards, totalCollections)
+  **Impact:** Backfills parent tags for all existing cards
+
+- ✅ **Documentation Updates** (2 hours)
+  Updated skills with all new patterns and implementations
+  **pawkit-ui-ux:**
+  - Section 13: LIST VIEW STANDARDIZATION (canonical pattern)
+  - Section 14: FOLDER ICON STANDARDIZATION
+  - Section 15: HIERARCHICAL TAG INHERITANCE
+  - Updated design system to v1.2
+  **pawkit-project-context:**
+  - Comprehensive session summary with all 5 major updates
+  **pawkit-roadmap:**
+  - This completion entry
+
+**Total Time:** ~14.75 hours
+**Files Created:** 2 (collection-hierarchy.ts, migrate-collection-hierarchy route)
+**Files Modified:** 12 (UI components, control panels, skills)
+**Commits:** 8 major commits
+**Impact:** Pixel-perfect UI consistency, hierarchical filtering feature, professional polish
+
+---
+
 ### January 3, 2025
 
 - ✅ **CRITICAL FIX: User Isolation & Sign Out Restoration** (Full day debug session)
