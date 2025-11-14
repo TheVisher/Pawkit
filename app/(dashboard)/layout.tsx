@@ -3,7 +3,6 @@
 import { ReactNode, useEffect, useState, useMemo } from "react";
 // Removed useSWR - using local-first data store instead
 import { OmniBar } from "@/components/omni-bar";
-import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { SelectionStoreProvider, useSelection } from "@/lib/hooks/selection-store";
 import { useDataStore } from "@/lib/stores/data-store";
@@ -399,8 +398,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <SelectionStoreProvider>
       <PawkitActionsProvider>
         <SidebarProvider>
-          {/* Hide old sidebar for now - replaced by left panel */}
-          {false && <AppSidebar username={username} displayName={displayName} collections={collections} />}
           <SidebarInset className="bg-transparent">
             {/* Mobile-only OmniBar - Shows on screens smaller than lg (1024px) */}
             <div className="sticky top-0 z-30 lg:hidden border-b border-white/10 bg-surface-80/95 backdrop-blur-xl">
