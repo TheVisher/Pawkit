@@ -135,6 +135,31 @@ description: Living, interactive roadmap serving as single source of truth for p
 
 **Reference for what's done - do not modify this section**
 
+### January 13, 2025 - Bug Fixes: Daily Notes & Tags Display
+
+- ✅ **Duplicate Daily Note Creation Fix** (30 min)
+  Fixed "Daily Note" button creating multiple daily notes when clicked rapidly
+  **Root Cause**: Check for existing note at render time (stale), not click time (current)
+  **Solution**: Query dataStore.cards inside click handler using findDailyNoteForDate()
+  **Files**: components/notes/notes-view.tsx
+  **Commit**: c3e6683
+  **Impact**: No more duplicate daily notes from rapid clicks
+
+- ✅ **Tags Column Display Fix** (45 min)
+  Fixed Tags column showing "-" for notes with tags, wrong data for bookmarks
+  **Root Cause**: Column rendered card.collections (pawkits) instead of card.tags
+  **Solution**: Merge both card.tags AND card.collections for display
+  **Files**: components/library/card-gallery.tsx
+  **Commits**: 04b407f (first attempt), 0abb2f9 (correct fix)
+  **Impact**: Tags column now shows both tags and collections correctly
+
+**Total Time**: ~1.25 hours
+**Files Modified**: 2 (notes-view.tsx, card-gallery.tsx)
+**Commits**: 3 bug fixes
+**Skills Updated**: pawkit-troubleshooting (Issues #24, #25), pawkit-project-context
+
+---
+
 ### January 13, 2025 - List View Standardization & Hierarchical Tags
 
 - ✅ **Next.js 15.5 Security Update** (30 min)

@@ -34,6 +34,8 @@ description: Living document of issues encountered, their fixes, and prevention 
    - Duplicate Card Issue - Deleted Cards Returned
    - Deleted Cards Appearing in Library View
    - Sync System Architectural Issues (January 2025 Analysis)
+   - Duplicate Daily Note Creation in Notes View
+   - Tags Column Displaying Collections Instead of Tags
 3. [Debugging Strategies](#debugging-strategies)
 4. [How to Add New Issues](#how-to-add-new-issues)
 5. [Maintenance](#maintenance)
@@ -3090,6 +3092,225 @@ User creates note → addCard() runs
 **See Also**:
 - `.claude/skills/pawkit-sync-patterns/SKILL.md` - Queue management patterns
 - Issue #22 - Related sync duplication issues
+
+---
+
+### 24. Duplicate Daily Note Creation in Notes View
+
+**Date**: January 13, 2025
+**Severity**: 🟡 Medium
+**Category**: UI Logic, Daily Notes
+**Status**: ✅ Fixed
+
+**What Failed**:
+The "Daily Note" button in the Notes view created multiple daily notes for the same date when clicked rapidly, instead of checking if one already existed and opening it.
+
+**Evidence**:
+User reported seeing three "2025-11-13 - Thursday" entries in their notes list after clicking the Daily Note button multiple times.
+
+**Root Cause**:
+The check for an existing daily note was happening at **render time** (line 111), not **click time**:
+
+```typescript
+// ❌ BUG: Calculated at render time
+const today = new Date();
+const todayDateStr = today.toISOString().split('T')[0];
+const todaysNote = dailyNotes.find(note => note.date === todayDateStr);
+const hasTodaysNote = !!todaysNote;
+
+// In createDailyNote function
+const createDailyNote = async () => {
+  // ❌ Uses stale render-time value
+  if (hasTodaysNote) {
+    // Open existing note
+    return;
+  }
+  // Create new note
+};
+```
+
+**Why It Failed**:
+1. First click: `hasTodaysNote` = false → creates note
+2. Component hasn't re-rendered yet
+3. Second click: `hasTodaysNote` = **still false** → creates duplicate!
+4. Third click: `hasTodaysNote` = **still false** → creates another duplicate!
+
+The component only re-renders after the async `addCard` completes, so rapid clicks all see the same stale value.
+
+**The Fix**:
+Replicate the working sidebar pattern - check for existing note **inside** the click handler using current store state:
+
+```typescript
+// ✅ CORRECT: Check at click time
+const createDailyNote = async () => {
+  const today = new Date();
+
+  // Check current store state, not stale render value
+  const existingNote = findDailyNoteForDate(dataStore.cards, today);
+
+  if (existingNote) {
+    openCardDetails(existingNote.id);  // Open existing
+    return;
+  }
+
+  // Only create if doesn't exist
+  await dataStore.addCard({ type: 'md-note', title, content, tags: ['daily'] });
+
+  // Find newly created note and open it
+  setTimeout(() => {
+    const newNote = findDailyNoteForDate(dataStore.cards, today);
+    if (newNote) {
+      openCardDetails(newNote.id);
+    }
+  }, 100);
+};
+```
+
+**Implementation Details**:
+
+1. **Import findDailyNoteForDate** - Utility that checks current store state
+2. **Check inside function** - Query dataStore.cards at click time, not render time
+3. **Use setTimeout** - Small delay to find newly created note (matches sidebar pattern)
+
+**Working Reference**:
+The sidebar "Today's Note" button (components/navigation/left-navigation-panel.tsx:263-289) had the correct pattern all along - it checks for the existing note inside the goToTodaysNote function.
+
+**Files Modified**:
+- `components/notes/notes-view.tsx:13` - Import findDailyNoteForDate
+- `components/notes/notes-view.tsx:114-152` - Rewrote createDailyNote function
+
+**Testing Checklist**:
+- [x] Click "Daily Note" button once → Creates note
+- [x] Click "Daily Note" button again → Opens existing note (no duplicate)
+- [x] Click rapidly multiple times → All clicks open the same note
+- [x] Check Notes list → Only ONE daily note per date
+- [x] Verify works across different dates
+
+**Commits**:
+- `c3e6683` - Fix duplicate daily note creation in Notes view
+
+**Prevention**:
+- **Check state at action time, not render time** - Use current store state inside handlers
+- **Test rapid clicks** - Verify no race conditions from stale render values
+- **Reference working implementations** - Sidebar had correct pattern, should have been template
+- **Use store queries in handlers** - Don't rely on useMemo/useState derived values
+
+**See Also**:
+- `lib/utils/daily-notes.ts` - findDailyNoteForDate utility
+- Sidebar implementation - Correct pattern reference
+
+---
+
+### 25. Tags Column Displaying Collections Instead of Tags
+
+**Date**: January 13, 2025
+**Severity**: 🟡 Medium
+**Category**: UI Display, Data Model Confusion
+**Status**: ✅ Fixed
+
+**What Failed**:
+The "Tags" column in Library list view was showing:
+- **Bookmarks**: Displayed collections (pawkits like "restaurants", "seattle")
+- **Notes**: Displayed "-" even though they had tags (like "daily")
+
+**Root Cause**:
+The Tags column header said "Tags" but the code was rendering `card.collections` instead of `card.tags`:
+
+```typescript
+// ❌ WRONG: Showing collections, not tags
+<th className="text-left py-3 px-4 font-medium">Tags</th>
+
+<td className="py-3 px-4">
+  <div className="flex flex-wrap gap-1">
+    {card.collections && card.collections.length > 0 ? (  // ❌ Wrong property!
+      card.collections.slice(0, 2).map((collection) => (
+        <span>{collection}</span>
+      ))
+    ) : (
+      <span>-</span>
+    )}
+  </div>
+</td>
+```
+
+**Data Model Confusion**:
+- **Collections** = Hierarchical pawkits/folders (e.g., "restaurants", "seattle")
+- **Tags** = Flat metadata labels (e.g., "daily", "important", "work")
+
+Cards can have **both** collections AND tags, but the column was only showing collections.
+
+**Why It Was Partially Working**:
+- **Bookmarks** typically have collections but no tags → Showed collections (incorrect but visible)
+- **Notes** typically have tags but no collections → Showed "-" (completely broken)
+
+**First Attempted Fix** (Broke bookmarks):
+```typescript
+// ❌ This fixed notes but broke bookmarks
+{card.tags && card.tags.length > 0 ? (
+  card.tags.map((tag) => <span>{tag}</span>)
+) : (
+  <span>-</span>
+)}
+// Now bookmarks show "-" because they have no tags!
+```
+
+**The Correct Fix**:
+Show **both** tags AND collections in the Tags column:
+
+```typescript
+// ✅ CORRECT: Merge tags and collections
+<td className="py-3 px-4">
+  <div className="flex flex-wrap gap-1">
+    {(() => {
+      // Combine both tags and collections for display
+      const allTags = [
+        ...(card.tags || []),
+        ...(card.collections || [])
+      ];
+
+      if (allTags.length > 0) {
+        return allTags.slice(0, 2).map((tag) => (
+          <span key={tag} className="text-xs text-muted-foreground bg-surface-soft px-2 py-0.5 rounded">
+            {tag}
+          </span>
+        ));
+      }
+
+      return <span className="text-sm text-muted-foreground">-</span>;
+    })()}
+  </div>
+</td>
+```
+
+**Why This Solution Works**:
+- **Bookmarks with collections**: Shows collections (restaurants, products, seattle)
+- **Notes with tags**: Shows tags (daily)
+- **Cards with both**: Shows tags + collections (first 2 total)
+- **Cards with neither**: Shows "-"
+
+**Files Modified**:
+- `components/library/card-gallery.tsx:499-519` - Tags column rendering logic
+
+**Testing Checklist**:
+- [x] Bookmarks display their collections (restaurants, products, seattle)
+- [x] Daily notes display "daily" tag
+- [x] Notes with tags display correctly
+- [x] Cards without tags or collections show "-"
+- [x] Shows maximum 2 items (doesn't overflow)
+
+**Commits**:
+- `04b407f` - First attempt (fixed notes, broke bookmarks)
+- `0abb2f9` - Correct fix (show both tags and collections)
+
+**Prevention**:
+- **Understand data model** - Tags and collections are different concepts
+- **Test all card types** - Bookmarks, notes, cards with both, cards with neither
+- **Consider all use cases** - Don't fix one case by breaking another
+- **Use descriptive column names** - Consider renaming to "Tags & Pawkits" for clarity
+
+**See Also**:
+- `.claude/skills/pawkit-conventions/SKILL.md` - Data model documentation
+- `lib/types.ts` - CardModel type definition (tags vs collections)
 
 ---
 
