@@ -64,6 +64,7 @@ export function TodosSection() {
               value={newTodoText}
               onChange={(e) => setNewTodoText(e.target.value)}
               placeholder="Add a task..."
+              maxLength={500}
               className="flex-1 px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg
                        text-foreground placeholder:text-muted-foreground
                        focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50
