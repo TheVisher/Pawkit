@@ -60,7 +60,8 @@ model Card {
   @@index([userId, inDen])
   @@index([userId, scheduledDate])
   // Note: Unique constraint on (userId, url) is applied via custom migration
-  // with WHERE type = 'url' to exclude notes from the constraint
+  // with WHERE type = 'url' AND deleted = false
+  // This allows: (1) notes to have duplicate URLs, (2) re-adding previously deleted URLs
 }
 
 model Collection {
