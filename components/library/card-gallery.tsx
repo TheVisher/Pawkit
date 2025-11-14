@@ -498,15 +498,23 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1">
-                            {card.tags && card.tags.length > 0 ? (
-                              card.tags.slice(0, 2).map((tag) => (
-                                <span key={tag} className="text-xs text-muted-foreground bg-surface-soft px-2 py-0.5 rounded">
-                                  {tag}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-sm text-muted-foreground">-</span>
-                            )}
+                            {(() => {
+                              // Combine both tags and collections for display
+                              const allTags = [
+                                ...(card.tags || []),
+                                ...(card.collections || [])
+                              ];
+
+                              if (allTags.length > 0) {
+                                return allTags.slice(0, 2).map((tag) => (
+                                  <span key={tag} className="text-xs text-muted-foreground bg-surface-soft px-2 py-0.5 rounded">
+                                    {tag}
+                                  </span>
+                                ));
+                              }
+
+                              return <span className="text-sm text-muted-foreground">-</span>;
+                            })()}
                           </div>
                         </td>
                         <td className="py-3 px-4">
