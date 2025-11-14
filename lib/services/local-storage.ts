@@ -33,6 +33,7 @@ interface LocalStorageDB extends DBSchema {
       'by-created': string;
       'by-updated': string;
       'by-collection': string;
+      'by-deleted': string;
     };
   };
   collections: {
@@ -44,6 +45,7 @@ interface LocalStorageDB extends DBSchema {
     };
     indexes: {
       'by-name': string;
+      'by-deleted': string;
     };
   };
   metadata: {
@@ -89,7 +91,7 @@ class LocalStorage {
   private db: IDBPDatabase<LocalStorageDB> | null = null;
   private userId: string | null = null;
   private workspaceId: string | null = null;
-  private readonly DB_VERSION = 4; // Version 4: note card links support
+  private readonly DB_VERSION = 5; // Version 5: added 'deleted' indexes for performance
 
   /**
    * Get user-specific database name with workspace support
@@ -136,12 +138,26 @@ class LocalStorage {
           cardStore.createIndex('by-created', 'createdAt');
           cardStore.createIndex('by-updated', 'updatedAt');
           cardStore.createIndex('by-collection', 'collections', { multiEntry: true });
+          cardStore.createIndex('by-deleted', 'deleted');
+        } else {
+          // Add new index to existing cards store (version 5)
+          const cardStore = transaction.objectStore('cards');
+          if (!cardStore.indexNames.contains('by-deleted')) {
+            cardStore.createIndex('by-deleted', 'deleted');
+          }
         }
 
         // Create collections store
         if (!db.objectStoreNames.contains('collections')) {
           const collectionStore = db.createObjectStore('collections', { keyPath: 'id' });
           collectionStore.createIndex('by-name', 'name');
+          collectionStore.createIndex('by-deleted', 'deleted');
+        } else {
+          // Add new index to existing collections store (version 5)
+          const collectionStore = transaction.objectStore('collections');
+          if (!collectionStore.indexNames.contains('by-deleted')) {
+            collectionStore.createIndex('by-deleted', 'deleted');
+          }
         }
 
         // Create metadata store
@@ -162,10 +178,6 @@ class LocalStorage {
           noteCardLinksStore.createIndex('by-source', 'sourceNoteId');
           noteCardLinksStore.createIndex('by-target', 'targetCardId');
         }
-
-        // NOTE: Skipping by-deleted index for now - IndexedDB boolean indexes
-        // have cross-browser compatibility issues. Will implement in future with
-        // string-based deleted status or compound indexes.
       },
     });
 
