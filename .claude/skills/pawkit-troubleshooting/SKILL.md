@@ -36,6 +36,8 @@ description: Living document of issues encountered, their fixes, and prevention 
    - Sync System Architectural Issues (January 2025 Analysis)
    - Duplicate Daily Note Creation in Notes View
    - Tags Column Displaying Collections Instead of Tags
+   - Dead Code - Unused AppSidebar Component
+   - Performance - Excessive Re-renders from Store Subscriptions
 3. [Debugging Strategies](#debugging-strategies)
 4. [How to Add New Issues](#how-to-add-new-issues)
 5. [Maintenance](#maintenance)
@@ -3311,6 +3313,280 @@ Show **both** tags AND collections in the Tags column:
 **See Also**:
 - `.claude/skills/pawkit-conventions/SKILL.md` - Data model documentation
 - `lib/types.ts` - CardModel type definition (tags vs collections)
+
+---
+
+### 26. Dead Code - Unused AppSidebar Component
+
+**Date**: January 14, 2025
+**Severity**: 🟡 Medium
+**Category**: Code Cleanup, Performance
+**Status**: ✅ Fixed
+
+**What Failed**:
+The `AppSidebar` component existed in the codebase (417 lines) but was completely disabled in the layout. It was replaced by `LeftNavigationPanel` but never removed, creating confusion and wasting bundle size.
+
+**Evidence**:
+```tsx
+// app/(dashboard)/layout.tsx:403
+{false && <AppSidebar username={username} displayName={displayName} collections={collections} />}
+// ❌ Component never renders - disabled with false &&
+```
+
+**Root Cause**:
+- During UI overhaul (October 2025), sidebar was replaced with new panel system
+- `LeftNavigationPanel` became the actual sidebar
+- `AppSidebar` was disabled but never deleted
+- Initial performance fix was applied to wrong component (the disabled one)
+
+**The Fix**:
+```bash
+# Removed entire file and all imports
+rm components/sidebar/app-sidebar.tsx
+
+# Cleaned up layout imports
+# app/(dashboard)/layout.tsx
+- import { AppSidebar } from "@/components/sidebar/app-sidebar";
+
+# Removed disabled component reference
+- {false && <AppSidebar username={username} displayName={displayName} collections={collections} />}
+```
+
+**Impact**:
+- **-417 lines** of dead code removed
+- **Cleaner bundle** - Removed unused component from build
+- **Less confusion** - No ambiguity about which sidebar is in use
+- **Better documentation** - Code matches actual architecture
+
+**How It Was Found**:
+1. Applied performance fix to `AppSidebar` (selective Zustand subscription)
+2. Tested in preview build - console.log never appeared
+3. Investigated: Found component disabled in layout with `false &&`
+4. Realized performance fix was applied to wrong component
+5. Removed dead code and fixed actual sidebar (`LeftNavigationPanel`)
+
+**How to Avoid**:
+- **Remove disabled components** - Don't leave `{false && ...}` code in production
+- **Clean up after migrations** - When replacing components, delete old ones
+- **Search before fixing** - Verify component is actually rendering before debugging
+- **Code review** - Flag commented-out or disabled code for removal
+- **Regular audits** - Scan for `{false &&`, `if (false)`, commented blocks
+
+**Prevention Checklist**:
+- [ ] Search codebase for `{false &&` patterns
+- [ ] Search for `if (false)` or `const DISABLED = true`
+- [ ] Review large commented-out blocks
+- [ ] Check imports for unused components
+- [ ] Verify component actually renders before debugging
+
+**Commits**:
+- `98d0640` - Initial fix applied to wrong component (AppSidebar)
+- `c8271bc` - Removed AppSidebar and fixed actual component
+
+**Files Removed**:
+- `components/sidebar/app-sidebar.tsx` - 417 lines deleted
+
+**Files Modified**:
+- `app/(dashboard)/layout.tsx` - Removed import and disabled component
+
+**See Also**:
+- Issue #27 - The actual performance fix for LeftNavigationPanel
+- `.claude/skills/pawkit-ui-ux/SKILL.md` - Panel architecture documentation
+
+---
+
+### 27. Performance - Excessive Re-renders from Store Subscriptions
+
+**Date**: January 14, 2025
+**Severity**: 🔴 Critical
+**Category**: Performance, Store Subscriptions
+**Status**: ✅ Fixed
+
+**What Failed**:
+Two critical performance issues causing excessive re-renders across the entire app:
+
+1. **ProfileModal** - Re-rendered on EVERY settings change even when closed
+2. **LeftNavigationPanel** - Re-rendered on EVERY card change across entire app
+
+**Evidence - ProfileModal**:
+```typescript
+// Console logs showed dozens of re-renders:
+[ProfileModal] Component rendering, open: false
+[ProfileModal] Component rendering, open: false
+[ProfileModal] Component rendering, open: false
+// ... repeated 50+ times during normal usage
+```
+
+**Evidence - LeftNavigationPanel**:
+```typescript
+// Sidebar subscribed to ALL cards:
+const { cards, addCard, updateCard, ... } = useDemoAwareStore();
+
+// Result: Re-rendered on EVERY card modification:
+// - User edits bookmark in Library → Sidebar re-renders ❌
+// - User creates note → Sidebar re-renders ❌
+// - Metadata fetch updates card → Sidebar re-renders ❌
+```
+
+**Root Cause #1 - ProfileModal**:
+```tsx
+// ❌ WRONG: Store subscriptions BEFORE early return
+export function ProfileModal({ open, onClose, username }: Props) {
+  // 15+ store subscriptions here
+  const theme = useSettingsStore((state) => state.theme);
+  const accentColor = useSettingsStore((state) => state.accentColor);
+  const notifications = useSettingsStore((state) => state.notifications);
+  // ... 12 more subscriptions
+
+  if (!open) return null;  // ❌ Early return AFTER subscriptions!
+  // Even when closed, component subscribed to 15+ settings
+  // Every settings change triggers re-render
+}
+```
+
+**Root Cause #2 - LeftNavigationPanel**:
+```tsx
+// ❌ WRONG: Subscribed to entire cards array
+const { cards, addCard, updateCard } = useDemoAwareStore();
+
+// All of these triggered sidebar re-render:
+// - Edit bookmark title
+// - Update card metadata
+// - Create new card
+// - Delete card
+// - ANY change to ANY card
+
+// But sidebar only needs:
+// - Daily notes (for streak counter)
+// - Pinned notes (for pinned list)
+// - Active card (for pawkit actions)
+```
+
+**The Fix #1 - ProfileModal**:
+```tsx
+// ✅ CORRECT: Wrapper component with early return BEFORE subscriptions
+export function ProfileModal(props: ProfileModalProps) {
+  // Early return prevents all store subscriptions when closed
+  if (!props.open || typeof document === 'undefined') return null;
+
+  return <ProfileModalContent {...props} />;
+}
+
+// Inner component only renders when open
+function ProfileModalContent({ open, onClose, username }: Props) {
+  // Now these subscriptions only happen when modal is OPEN
+  const theme = useSettingsStore((state) => state.theme);
+  const accentColor = useSettingsStore((state) => state.accentColor);
+  // ...
+}
+```
+
+**The Fix #2 - LeftNavigationPanel**:
+```tsx
+// ✅ CORRECT: Selective subscription with shallow comparison
+import { shallow } from "zustand/shallow";
+
+const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
+const activeCardId = usePanelStore((state) => state.activeCardId);
+
+// Only subscribe to relevant cards
+const cards = useDataStore((state) => {
+  return state.cards.filter((card) => {
+    // Include daily notes (for streak, navigation)
+    if (card.tags?.includes('daily')) return true;
+    // Include pinned notes
+    if (pinnedNoteIds.includes(card.id)) return true;
+    // Include active card (for pawkit actions)
+    if (card.id === activeCardId) return true;
+    return false;
+  });
+}, shallow);  // ✅ Shallow comparison prevents unnecessary re-renders
+```
+
+**Impact**:
+- **ProfileModal**: **100% reduction** in re-renders when closed (verified in logs)
+- **LeftNavigationPanel**: **40-60% expected reduction** in re-renders
+  - Before: Re-renders on ALL card changes (100% of events)
+  - After: Re-renders only when daily/pinned/active cards change (~40-60% of events)
+
+**Testing Results**:
+```
+Before:
+- Opened Library view
+- Modified 10 bookmarks
+- Console: 50+ ProfileModal renders, sidebar re-rendered 10 times
+
+After:
+- Opened Library view
+- Modified 10 bookmarks
+- Console: 0 ProfileModal renders, sidebar re-rendered 0 times ✅
+```
+
+**Performance Gains**:
+- **Faster UI updates** - Less work on every state change
+- **Reduced CPU usage** - Components don't compute when unnecessary
+- **Better battery life** - Especially on laptops/mobile
+- **Smoother animations** - Less render blocking
+- **Cleaner console logs** - Only see relevant renders
+
+**How to Avoid**:
+- **Modal pattern**: ALWAYS early return BEFORE store subscriptions
+- **Selective subscriptions**: Only subscribe to data components actually need
+- **Shallow comparison**: Use `shallow` from zustand for filtered arrays
+- **Test re-renders**: Add console.log to verify component render count
+- **Profile performance**: Use React DevTools Profiler to catch excessive renders
+
+**Prevention Checklist**:
+- [ ] Modals use wrapper with early return before subscriptions
+- [ ] Components subscribe only to needed data (not entire arrays)
+- [ ] Array subscriptions use `shallow` comparison
+- [ ] Added console.log during development to verify render count
+- [ ] Tested with React DevTools Profiler
+
+**Store Subscription Patterns**:
+```tsx
+// ❌ BAD: Full array subscription
+const cards = useDataStore((state) => state.cards);
+// Re-renders on ANY card change
+
+// ✅ GOOD: Selective with shallow
+const relevantCards = useDataStore(
+  (state) => state.cards.filter(c => isRelevant(c)),
+  shallow
+);
+// Re-renders only when relevant cards change
+
+// ❌ BAD: Multiple individual subscriptions
+const field1 = useStore((state) => state.field1);
+const field2 = useStore((state) => state.field2);
+// Two separate subscriptions
+
+// ✅ GOOD: Single object subscription with shallow
+const { field1, field2 } = useStore(
+  (state) => ({ field1: state.field1, field2: state.field2 }),
+  shallow
+);
+// One subscription, shallow comparison
+```
+
+**Commits**:
+- `fbbdd1a` - Fixed ProfileModal re-rendering when closed
+- `c8271bc` - Optimized LeftNavigationPanel with selective subscription
+
+**Files Modified**:
+- `components/modals/profile-modal.tsx` - Added wrapper component pattern
+- `components/navigation/left-navigation-panel.tsx` - Selective card subscription
+- `components/sidebar/app-sidebar.tsx` - Deleted (dead code)
+
+**Bundle Impact**:
+- **-437 lines** deleted (dead code removal)
+- **+35 lines** added (optimizations)
+- **Net: -402 lines**
+
+**See Also**:
+- `.claude/skills/pawkit-performance/SKILL.md` - Performance optimization patterns
+- `.claude/skills/pawkit-conventions/SKILL.md` - Zustand subscription best practices
+- Zustand docs: Selecting state slices and shallow comparison
 
 ---
 

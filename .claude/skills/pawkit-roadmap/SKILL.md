@@ -135,6 +135,77 @@ description: Living, interactive roadmap serving as single source of truth for p
 
 **Reference for what's done - do not modify this section**
 
+### January 14, 2025 - Performance Optimization: Excessive Re-renders
+
+- ✅ **ProfileModal Excessive Re-renders Fix** (2 hours) - CRITICAL PERFORMANCE
+  Fixed ProfileModal re-rendering dozens of times when closed, causing significant performance degradation
+  **Root Cause**: Modal subscribed to 15+ settings store values, ALL active regardless of open/closed state
+  **Solution**: Wrapper component pattern with early return BEFORE subscriptions
+  ```typescript
+  export function ProfileModal(props: ProfileModalProps) {
+    if (!props.open || typeof document === 'undefined') return null;
+    return <ProfileModalContent {...props} />;
+  }
+  ```
+  **Impact**: 100% reduction in ProfileModal re-renders when closed (previously dozens per session)
+  **Files**: components/modals/profile-modal.tsx
+  **Branch**: fix/performance-critical-issues
+
+- ✅ **Dead Code Removal - Unused AppSidebar** (1 hour)
+  Removed 417 lines of dead code after discovering AppSidebar was disabled
+  **Discovery**: Initial performance fix applied to wrong component
+  **Investigation**: Component completely disabled in layout.tsx:403 with `{false && <AppSidebar.../>}`
+  **Decision**: Remove dead code entirely instead of optimizing
+  **Impact**: Cleaner codebase, eliminated confusion about which sidebar is actually used
+  **Files Deleted**: components/sidebar/app-sidebar.tsx (417 lines)
+  **Files Modified**: app/(dashboard)/layout.tsx
+
+- ✅ **LeftNavigationPanel Selective Subscriptions** (1.5 hours)
+  Optimized the ACTUAL sidebar with selective Zustand subscriptions
+  **Root Cause**: LeftNavigationPanel subscribed to ALL cards from data store
+  **Solution**: Selective subscription with shallow comparison
+  ```typescript
+  import { shallow } from "zustand/shallow";
+
+  const cards = useDataStore((state) => {
+    return state.cards.filter((card) => {
+      if (card.tags?.includes('daily')) return true;
+      if (pinnedNoteIds.includes(card.id)) return true;
+      if (card.id === activeCardId) return true;
+      return false;
+    });
+  }, shallow);
+  ```
+  **Impact**: Expected 40-60% reduction in sidebar re-renders during normal usage
+  **Files**: components/navigation/left-navigation-panel.tsx
+  **Branch**: fix/performance-critical-issues
+
+- ✅ **Documentation Updates** (30 min)
+  Updated troubleshooting and project context skills with performance fixes
+  **Skills Updated**:
+  - pawkit-troubleshooting: Issues #26 (Dead Code - AppSidebar) and #27 (Performance - Re-renders)
+  - pawkit-project-context: Comprehensive session summary
+  **Technical Patterns Documented**:
+  1. Wrapper Pattern for Conditional Modals
+  2. Selective Zustand Subscription Pattern with shallow
+  3. Dead Code Detection (search for `{false &&` patterns)
+
+**Total Time**: ~5 hours
+**Files Modified**: 3 (profile-modal.tsx, left-navigation-panel.tsx, layout.tsx)
+**Files Deleted**: 1 (app-sidebar.tsx - 417 lines)
+**Commits**: 3 on fix/performance-critical-issues branch
+**User Testing**: Confirmed working with zero ProfileModal re-renders when closed
+**Skills Updated**: pawkit-troubleshooting (Issues #26, #27), pawkit-project-context
+**Status**: Ready to merge to main
+
+**Impact**:
+- **Performance**: Major improvement - eliminated dozens of unnecessary re-renders
+- **Code Quality**: 417 lines of dead code removed
+- **User Experience**: Noticeable performance improvement during user testing
+- **Maintainability**: Clearer codebase with only active components
+
+---
+
 ### January 13, 2025 - Bug Fixes: Daily Notes & Tags Display
 
 - ✅ **Duplicate Daily Note Creation Fix** (30 min)
