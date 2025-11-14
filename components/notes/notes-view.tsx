@@ -10,7 +10,7 @@ import { SmartSearch } from "@/components/notes/smart-search";
 import { KnowledgeGraph } from "@/components/notes/knowledge-graph";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
-import { generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
+import { generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes, findDailyNoteForDate } from "@/lib/utils/daily-notes";
 import { GlowButton } from "@/components/ui/glow-button";
 import { CardSurface } from "@/components/ui/card-surface";
 
@@ -112,19 +112,22 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
 
   // Create daily note for today
   const createDailyNote = async () => {
-    const title = generateDailyNoteTitle(today);
-    const content = generateDailyNoteContent(today);
-    
-    // Check if daily note already exists for today
-    if (hasTodaysNote) {
+    const today = new Date();
+
+    // CRITICAL: Check for existing note at click time, not render time
+    // This prevents duplicate creation when clicking rapidly
+    const existingNote = findDailyNoteForDate(dataStore.cards, today);
+
+    if (existingNote) {
       // Open existing note
-      const todaysCard = cards.find(c => c.id === todaysNote!.id);
-      if (todaysCard) {
-        openCardDetails(todaysCard.id);
-      }
+      openCardDetails(existingNote.id);
       return;
     }
-    
+
+    // Create new daily note
+    const title = generateDailyNoteTitle(today);
+    const content = generateDailyNoteContent(today);
+
     try {
       await dataStore.addCard({
         type: 'md-note',
@@ -133,16 +136,16 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
         tags: ['daily'],
         collections: []
       });
-      
-      // The card is automatically added to the store, so we need to refresh our local state
-      // and find the newly created card
-      const updatedCards = dataStore.cards;
-      const newCard = updatedCards.find(c => c.title === title);
-      
-      if (newCard) {
-        setCards(updatedCards);
-        openCardDetails(newCard.id);
-      }
+
+      // Find the newly created card and open it
+      // Use a small delay to ensure the card is in the store
+      setTimeout(() => {
+        const newNote = findDailyNoteForDate(dataStore.cards, today);
+        if (newNote) {
+          setCards(dataStore.cards);
+          openCardDetails(newNote.id);
+        }
+      }, 100);
     } catch (error) {
       console.error('Failed to create daily note:', error);
     }
