@@ -498,10 +498,10 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex flex-wrap gap-1">
-                            {card.collections && card.collections.length > 0 ? (
-                              card.collections.slice(0, 2).map((collection) => (
-                                <span key={collection} className="text-xs text-muted-foreground bg-surface-soft px-2 py-0.5 rounded">
-                                  {collection}
+                            {card.tags && card.tags.length > 0 ? (
+                              card.tags.slice(0, 2).map((tag) => (
+                                <span key={tag} className="text-xs text-muted-foreground bg-surface-soft px-2 py-0.5 rounded">
+                                  {tag}
                                 </span>
                               ))
                             ) : (
