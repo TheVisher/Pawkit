@@ -8,6 +8,7 @@ import { ChevronRight, Home, Library, FolderOpen, FileText, Star, User, Layers, 
 import { type CollectionNode } from "@/lib/types";
 import { ProfileModal } from "@/components/modals/profile-modal";
 import { useDataStore } from "@/lib/stores/data-store";
+import { shallow } from "zustand/shallow";
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
@@ -50,6 +51,8 @@ const navigationItems = [
 // Removed bottomItems array as it's no longer used
 
 export function AppSidebar({ username, displayName, collections }: AppSidebarProps) {
+  console.log('Sidebar rendered');
+
   const pathname = usePathname();
   const router = useRouter();
   const isDemo = pathname?.startsWith('/demo');
@@ -57,8 +60,11 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
   const [expandedCollections, setExpandedCollections] = React.useState<Set<string>>(new Set());
   const [showProfileModal, setShowProfileModal] = React.useState(false);
 
-  // Get cards from data store for daily notes
-  const cards = useDataStore((state) => state.cards);
+  // Get only daily notes from data store to prevent unnecessary re-renders
+  const dailyNoteCards = useDataStore(
+    (state) => state.cards.filter((c) => c.tags?.includes('daily')),
+    shallow
+  );
   const addCard = useDataStore((state) => state.addCard);
 
   // Recent history
@@ -125,7 +131,7 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
 
   // Calculate daily note streak
   const dailyNoteStreak = React.useMemo(() => {
-    const dailyNotes = getDailyNotes(cards);
+    const dailyNotes = getDailyNotes(dailyNoteCards);
     if (dailyNotes.length === 0) return 0;
 
     let streak = 0;
@@ -147,12 +153,12 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
     }
 
     return streak;
-  }, [cards]);
+  }, [dailyNoteCards]);
 
   // Navigate to today's note (create if doesn't exist)
   const goToTodaysNote = React.useCallback(async () => {
     const today = new Date();
-    const existingNote = findDailyNoteForDate(cards, today);
+    const existingNote = findDailyNoteForDate(dailyNoteCards, today);
 
     if (existingNote) {
       router.push(`/notes#${existingNote.id}`);
@@ -177,13 +183,13 @@ export function AppSidebar({ username, displayName, collections }: AppSidebarPro
         }
       }, 100);
     }
-  }, [cards, addCard, router]);
+  }, [dailyNoteCards, addCard, router]);
 
   // Navigate to yesterday's note
   const goToYesterdaysNote = () => {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
-    const existingNote = findDailyNoteForDate(cards, yesterday);
+    const existingNote = findDailyNoteForDate(dailyNoteCards, yesterday);
 
     if (existingNote) {
       router.push(`/notes#${existingNote.id}`);
