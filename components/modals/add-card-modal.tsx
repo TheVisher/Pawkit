@@ -6,8 +6,6 @@ import { CardModel } from "@/lib/types";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { GlowButton } from "@/components/ui/glow-button";
-import { useToast } from "@/lib/hooks/use-toast";
-import { ToastContainer } from "@/components/ui/toast";
 
 export type AddCardModalProps = {
   open: boolean;
@@ -18,7 +16,6 @@ export type AddCardModalProps = {
 
 export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardModalProps) {
   const { addCard: addCardToStore } = useDemoAwareStore();
-  const { toasts, dismissToast, error: showErrorToast } = useToast();
   const [url, setUrl] = useState(initialUrl ?? "");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -26,6 +23,8 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
   const [collections, setCollections] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
   const autoFetchMetadata = useSettingsStore((state) => state.autoFetchMetadata);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
 
@@ -37,6 +36,8 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
       setTags("");
       setCollections("");
       setError(null);
+      setShowToast(false);
+      setToastMessage("");
     }
   }, [open, initialUrl]);
 
@@ -107,14 +108,22 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
 
       // Handle duplicate URL error
       if (error instanceof Error && error.message.startsWith('DUPLICATE_URL:')) {
-        showErrorToast('This URL is already bookmarked');
         setError('This URL is already bookmarked');
+        setToastMessage('This URL is already bookmarked');
+        setShowToast(true);
+
+        // Auto-hide toast after 4 seconds
+        setTimeout(() => setShowToast(false), 4000);
         return;
       }
 
       // Handle other errors
-      showErrorToast('Failed to add card. Please try again.');
       setError('Failed to add card. Please try again.');
+      setToastMessage('Failed to add card. Please try again.');
+      setShowToast(true);
+
+      // Auto-hide toast after 4 seconds
+      setTimeout(() => setShowToast(false), 4000);
     }
 
     // Note: The store handles server sync and metadata fetch in background
@@ -204,7 +213,15 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
         </GlowButton>
         </form>
       </div>
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* Toast Notification */}
+      {showToast && (
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] animate-fade-in">
+          <div className="px-6 py-3 rounded-xl bg-red-900/90 backdrop-blur-lg border border-red-600 shadow-glow-accent">
+            <p className="text-sm font-medium text-white">{toastMessage}</p>
+          </div>
+        </div>
+      )}
     </>
   );
 
