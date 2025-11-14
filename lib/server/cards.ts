@@ -81,19 +81,16 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
   };
 
   try {
-    console.log('[createCard] Attempting to create card:', { userId, type: cardType, url: parsed.url, title: data.title });
     const created = await prisma.card.create({
       data
     });
 
-    console.log('[createCard] Card created successfully:', created.id);
     // Return immediately - metadata will be fetched in background for URL cards
     return mapCard(created);
   } catch (error) {
     // Handle unique constraint violation (P2002) - duplicate userId + url
     // Note: This should only happen for URL-type cards due to partial unique index
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      console.log('[createCard] P2002 ERROR - Duplicate detected for type:', cardType, 'URL:', parsed.url, 'Target:', error.meta?.target);
 
       // Find and return the existing non-deleted card
       // Look for cards of the same type to handle edge cases
@@ -107,14 +104,12 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
       });
 
       if (existingCard) {
-        console.log('[createCard] Returning existing card:', existingCard.id);
         return mapCard(existingCard);
       }
 
       // If no non-deleted card found, this might be a deleted duplicate
       // In this case, we should allow creation by re-throwing the error
       // so the caller can handle it appropriately
-      console.error('[createCard] No existing non-deleted card found, but P2002 occurred. This should not happen!');
     }
 
     // Re-throw other errors
@@ -124,9 +119,7 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
 
 export async function fetchAndUpdateCardMetadata(cardId: string, url: string, previewServiceUrl?: string): Promise<CardDTO> {
   try {
-    console.log('[fetchAndUpdateCardMetadata] Starting for card:', cardId, 'URL:', url);
     const preview = await fetchPreviewMetadata(url, previewServiceUrl ?? DEFAULT_PREVIEW_TEMPLATE);
-    console.log('[fetchAndUpdateCardMetadata] Preview result:', preview ? 'SUCCESS' : 'FAILED');
     
     if (preview) {
       console.log('[fetchAndUpdateCardMetadata] Preview details:', {
@@ -156,13 +149,10 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
       if (image) {
         // Check if this is an expiring URL (like TikTok) that needs to be downloaded and stored
         if (isExpiringImageUrl(image) && !isStoredImageUrl(image)) {
-          console.log('[fetchAndUpdateCardMetadata] Detected expiring URL, downloading and storing...');
           const storedImageUrl = await downloadAndStoreImage(image, cardId);
           if (storedImageUrl) {
             image = storedImageUrl;
-            console.log('[fetchAndUpdateCardMetadata] Image stored permanently:', storedImageUrl);
           } else {
-            console.warn('[fetchAndUpdateCardMetadata] Failed to store image, using original URL');
           }
         }
         updateData.image = image;
@@ -191,9 +181,6 @@ export async function listCards(userId: string, query: CardListQuery) {
   const parsed = cardListQuerySchema.parse(query);
   const limit = parsed.limit ?? 50;
 
-  console.log('[listCards] Input query:', query);
-  console.log('[listCards] Parsed query:', parsed);
-  console.log('[listCards] includeDeleted:', parsed.includeDeleted);
 
   // For sync operations, includeDeleted=true allows fetching deleted cards
   // For regular queries, default to deleted=false to hide deleted cards
@@ -203,7 +190,6 @@ export async function listCards(userId: string, query: CardListQuery) {
     inDen: false
   };
 
-  console.log('[listCards] WHERE clause:', where);
 
   if (parsed.q) {
     const term = parsed.q;
@@ -276,7 +262,6 @@ export async function updateCard(userId: string, id: string, payload: CardUpdate
     parsed = cardUpdateSchema.parse(payload);
   } catch (error) {
     console.error('[updateCard] Validation failed for payload:', JSON.stringify(payload, null, 2));
-    console.error('[updateCard] Validation error:', error);
     throw error;
   }
 
@@ -456,7 +441,6 @@ export async function getTimelineCards(userId: string, days = 30): Promise<Timel
 }
 
 export async function softDeleteCard(userId: string, id: string) {
-  console.log('[softDeleteCard] Starting delete:', { userId, cardId: id });
 
   // Check if card exists before attempting update
   const existingCard = await prisma.card.findFirst({
@@ -464,10 +448,8 @@ export async function softDeleteCard(userId: string, id: string) {
     select: { id: true, deleted: true, title: true }
   });
 
-  console.log('[softDeleteCard] Existing card:', existingCard);
 
   if (!existingCard) {
-    console.error('[softDeleteCard] Card not found:', { userId, cardId: id });
     throw new Error(`Card ${id} not found for user ${userId}`);
   }
 
@@ -492,7 +474,6 @@ export async function softDeleteCard(userId: string, id: string) {
     select: { id: true, deleted: true, deletedAt: true }
   });
 
-  console.log('[softDeleteCard] Verification after update:', verifyCard);
 
   return result;
 }

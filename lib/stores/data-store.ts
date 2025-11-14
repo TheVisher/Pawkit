@@ -109,7 +109,6 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
     }
     // Skip duplicate IDs
     if (seenCardIds.has(card.id)) {
-      console.warn('[deduplicateCards] Removing duplicate card ID:', card.id, card.title);
       return false;
     }
     seenCardIds.add(card.id);
@@ -245,7 +244,6 @@ const CORRUPTED_COLLECTION_IDS = [
  * Removes known duplicate collections created by sync bug
  */
 async function cleanupCorruptedCollections() {
-  console.log('[Cleanup] Checking for corrupted collections...');
 
   let cleaned = 0;
 
@@ -253,16 +251,13 @@ async function cleanupCorruptedCollections() {
     try {
       await localDb.permanentlyDeleteCollection(id);
       cleaned++;
-      console.log(`[Cleanup] Deleted corrupted collection: ${id}`);
     } catch (e) {
       // Collection doesn't exist or already deleted - that's fine
     }
   }
 
   if (cleaned > 0) {
-    console.log(`[Cleanup] ✅ Cleaned ${cleaned} corrupted collections`);
   } else {
-    console.log('[Cleanup] ✅ No corrupted collections found');
   }
 }
 
@@ -304,7 +299,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const seenCollectionIds = new Set<string>();
       const collections = filteredCollections.filter(collection => {
         if (seenCollectionIds.has(collection.id)) {
-          console.warn('[DataStore V2] Removing duplicate collection during init:', collection.id);
           return false;
         }
         seenCollectionIds.add(collection.id);
@@ -332,7 +326,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
       // - Manual "Sync Now" button
       // This prevents race conditions and improves performance
     } catch (error) {
-      console.error('[DataStore V2] Failed to initialize:', error);
       set({ isLoading: false });
     }
   },
@@ -373,7 +366,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
         const seenCollectionIds = new Set<string>();
         const collections = filteredCollections.filter(collection => {
           if (seenCollectionIds.has(collection.id)) {
-            console.warn('[DataStore V2] Removing duplicate collection:', collection.id);
             return false;
           }
           seenCollectionIds.add(collection.id);
@@ -388,10 +380,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
         set({ cards, collections });
       } else {
-        console.error('[DataStore V2] Sync failed:', result.errors);
       }
     } catch (error) {
-      console.error('[DataStore V2] Sync error:', error);
     } finally {
       set({ isSyncing: false });
     }
@@ -420,7 +410,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const seenCollectionIds = new Set<string>();
       const collections = filteredCollections.filter(collection => {
         if (seenCollectionIds.has(collection.id)) {
-          console.warn('[DataStore V2] Removing duplicate collection during refresh:', collection.id);
           return false;
         }
         seenCollectionIds.add(collection.id);
@@ -435,7 +424,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
       set({ cards, collections, isLoading: false });
     } catch (error) {
-      console.error('[DataStore V2] Refresh failed:', error);
       set({ isLoading: false });
     }
   },
@@ -564,12 +552,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
             }
           }
         } catch (error) {
-          console.error('[DataStore V2] Failed to sync card to server:', error);
           // Card is safe in local storage - will sync later
         }
       }
     } catch (error) {
-      console.error('[DataStore V2] Failed to add card:', error);
       throw error;
     }
   },
@@ -626,7 +612,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
             // Conflict - server has newer version
             // 409: Conflict (from our API)
             // 412: Precondition Failed (from Vercel or other middleware)
-            console.warn('[DataStore V2] Conflict detected - server has newer version:', id);
 
             // Fetch the latest version from server
             try {
@@ -685,11 +670,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
                     }));
                   }
                 } else {
-                  console.warn('[DataStore V2] Card update retry failed, keeping local version:', id);
                 }
               }
             } catch (retryError) {
-              console.error('[DataStore V2] Failed to resolve conflict:', retryError);
               useConflictStore.getState().addConflict(
                 id,
                 'This card was modified on another device. Your changes were saved locally.'
@@ -711,12 +694,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
             }
           }
         } catch (error) {
-          console.error('[DataStore V2] Failed to sync card update:', error);
           // Card is safe in local storage - will sync later
         }
       }
     } catch (error) {
-      console.error('[DataStore V2] Failed to update card:', error);
       throw error;
     }
   },
@@ -765,15 +746,12 @@ export const useDataStore = create<DataStore>((set, get) => ({
             // Remove from queue on success
             await syncQueue.removeByTarget('DELETE_CARD', id);
           } else {
-            console.warn('[DataStore V2] Failed to delete card from server, queued for retry:', id);
           }
         } catch (error) {
-          console.error('[DataStore V2] Failed to sync card deletion, queued for retry:', error);
           // Sync queue will retry later
         }
       }
     } catch (error) {
-      console.error('[DataStore V2] Failed to delete card:', error);
       throw error;
     }
   },
@@ -837,11 +815,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
             set({ collections });
           }
         } catch (error) {
-          console.error('[DataStore V2] Failed to sync collection:', error);
         }
       }
     } catch (error) {
-      console.error('[DataStore V2] Failed to add collection:', error);
       throw error;
     }
   },
@@ -889,11 +865,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
             // Success - collection synced
           }
         } catch (error) {
-          console.error('[DataStore V2] Failed to sync collection to server:', error);
         }
       }
     } catch (error) {
-      console.error('[DataStore V2] Failed to update collection:', error);
       throw error;
     }
   },
@@ -1001,11 +975,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
             // Success - collection deleted
           }
         } catch (error) {
-          console.error('[DataStore V2] Failed to sync deletion to server:', error);
         }
       }
     } catch (error) {
-      console.error('[DataStore V2] Failed to delete collection:', error);
       throw error;
     }
   },
@@ -1038,7 +1010,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('[DataStore V2] Failed to export data:', error);
       throw error;
     }
   },
@@ -1056,7 +1027,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
       // Refresh UI from local storage
       await get().refresh();
     } catch (error) {
-      console.error('[DataStore V2] Failed to import data:', error);
       throw error;
     }
   },

@@ -29,7 +29,6 @@ async function main() {
     }
   });
 
-  console.log(`   Found ${denCollections.length} Den Pawkits`);
 
   for (const collection of denCollections) {
     await prisma.collection.update({
@@ -39,10 +38,8 @@ async function main() {
         inDen: false  // Remove from Den, now it's a regular private pawkit
       }
     });
-    console.log(`   ✓ Converted "${collection.name}" to private pawkit`);
   }
 
-  console.log(`   ✅ Converted ${denCollections.length} Den Pawkits to Private Pawkits\n`);
 
   // STEP 2: Handle orphaned Den cards
   console.log('🔍 Step 2: Finding orphaned Den cards...');
@@ -59,7 +56,6 @@ async function main() {
     }
   });
 
-  console.log(`   Found ${orphanedCards.length} orphaned Den cards`);
 
   if (orphanedCards.length > 0) {
     // Group orphaned cards by userId
@@ -71,7 +67,6 @@ async function main() {
       cardsByUser.get(card.userId)!.push(card);
     });
 
-    console.log(`   Found cards from ${cardsByUser.size} users\n`);
 
     // Create a "Private Items" pawkit for each user with orphaned cards
     for (const [userId, userCards] of cardsByUser.entries()) {
@@ -106,14 +101,12 @@ async function main() {
             inDen: false
           }
         });
-        console.log(`      ✓ Created pawkit with slug "${slug}"`);
       } else {
         // Update existing one to be private
         await prisma.collection.update({
           where: { id: privateItemsPawkit.id },
           data: { isPrivate: true, inDen: false }
         });
-        console.log(`      ✓ Using existing pawkit "${privateItemsPawkit.slug}"`);
       }
 
       // Add all orphaned cards to this pawkit
@@ -125,12 +118,9 @@ async function main() {
           }
         });
       }
-      console.log(`      ✓ Added ${userCards.length} cards to "${privateItemsPawkit.name}"`);
     }
 
-    console.log(`   ✅ Migrated ${orphanedCards.length} orphaned cards\n`);
   } else {
-    console.log(`   ✅ No orphaned cards found\n`);
   }
 
   // STEP 3: Verify all cards in private pawkits have inDen=true
@@ -143,7 +133,6 @@ async function main() {
     }
   });
 
-  console.log(`   Found ${allPrivatePawkits.length} private pawkits`);
 
   let cardsUpdated = 0;
   for (const pawkit of allPrivatePawkits) {
@@ -166,31 +155,19 @@ async function main() {
         }
       });
       cardsUpdated += cardsInPawkit.length;
-      console.log(`   ✓ Updated ${cardsInPawkit.length} cards in "${pawkit.name}"`);
     }
   }
 
-  console.log(`   ✅ Updated ${cardsUpdated} cards to inDen=true\n`);
 
   // Summary
-  console.log('═══════════════════════════════════════════════════');
-  console.log('✅ Migration Complete!');
-  console.log('═══════════════════════════════════════════════════');
   console.log(`📁 Den Pawkits converted: ${denCollections.length}`);
   console.log(`📦 Orphaned cards migrated: ${orphanedCards.length}`);
   console.log(`🔒 Cards marked as private: ${cardsUpdated}`);
-  console.log('═══════════════════════════════════════════════════\n');
 
-  console.log('Next steps:');
-  console.log('1. Test the migration on your local database');
-  console.log('2. Update your application code to use isPrivate instead of inDen for collections');
-  console.log('3. Deploy the changes to production');
-  console.log('4. Run this migration script on production database');
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Migration failed:', e);
     process.exit(1);
   })
   .finally(async () => {

@@ -198,7 +198,6 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
           setCollections(data.tree);
         }
       } catch (error) {
-        console.error("Failed to fetch collections:", error);
       }
     };
     fetchCollections();
@@ -247,7 +246,6 @@ export function TimelineView({ initialGroups }: TimelineViewProps) {
         setGroups(data.groups);
       }
     } catch (error) {
-      console.error("Failed to load timeline:", error);
     } finally {
       setLoading(false);
     }

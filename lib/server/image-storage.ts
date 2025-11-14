@@ -19,7 +19,6 @@ export async function downloadAndStoreImage(imageUrl: string, cardId: string): P
     });
 
     if (!response.ok) {
-      console.error('[ImageStorage] Failed to download image:', response.status, response.statusText);
       return null;
     }
 
@@ -35,7 +34,6 @@ export async function downloadAndStoreImage(imageUrl: string, cardId: string): P
     const hash = crypto.createHash('md5').update(buffer).digest('hex').substring(0, 8);
     const filename = `${cardId}-${hash}.${ext}`;
 
-    console.log('[ImageStorage] Uploading to Supabase:', filename);
 
     // Upload to Supabase Storage
     const { data, error } = await supabase.storage
@@ -47,7 +45,6 @@ export async function downloadAndStoreImage(imageUrl: string, cardId: string): P
       });
 
     if (error) {
-      console.error('[ImageStorage] Upload error:', error);
       return null;
     }
 
@@ -56,10 +53,8 @@ export async function downloadAndStoreImage(imageUrl: string, cardId: string): P
       .from(BUCKET_NAME)
       .getPublicUrl(filename);
 
-    console.log('[ImageStorage] Image stored successfully:', publicUrl);
     return publicUrl;
   } catch (error) {
-    console.error('[ImageStorage] Error storing image:', error);
     return null;
   }
 }

@@ -12,7 +12,6 @@ export default async function TrashPage() {
     user = await requireUser();
   } catch (error) {
     // If auth fails, redirect to login
-    console.error('[TrashPage] Authentication error:', error);
     redirect('/login');
   }
 
@@ -20,7 +19,6 @@ export default async function TrashPage() {
   try {
     await purgeOldTrashItems(user.id);
   } catch (purgeError) {
-    console.error('[TrashPage] Failed to purge old trash items:', purgeError);
     // Continue even if purge fails
   }
 
@@ -32,7 +30,6 @@ export default async function TrashPage() {
 
     return <TrashView cards={cards} pawkits={pawkits} />;
   } catch (error) {
-    console.error('[TrashPage] Error loading trash data:', error);
     // Return empty state on error instead of crashing
     return <TrashView cards={[]} pawkits={[]} />;
   }

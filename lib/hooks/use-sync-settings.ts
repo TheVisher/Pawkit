@@ -32,7 +32,6 @@ export function useSyncSettings() {
           await setServerSync(serverSync);
         }
       } catch (error) {
-        console.error('[SyncSettings] Failed to sync settings:', error);
       }
     };
 

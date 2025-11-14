@@ -137,14 +137,12 @@ export function KnowledgeGraph({ onSelectCard, className = "" }: KnowledgeGraphP
               }
             }
           } catch (error) {
-            console.error('Error loading links for note:', note.id, error);
           }
         }
 
         setNodes(graphNodes);
         setLinks(graphLinks);
       } catch (error) {
-        console.error('Error loading graph data:', error);
       } finally {
         setLoading(false);
       }

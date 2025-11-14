@@ -119,7 +119,6 @@ export function useMultiSessionDetector() {
         isCheckingMultipleSessions: false,
       });
     } catch (error) {
-      console.error('[MultiSession] Takeover failed:', error);
     }
   };
 

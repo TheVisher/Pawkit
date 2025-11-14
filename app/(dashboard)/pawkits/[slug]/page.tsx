@@ -255,7 +255,6 @@ function CollectionPageContent() {
       setShowCreateModal(false);
       setLoading(false);
     } catch (err) {
-      console.error('[CREATE] Error:', err);
       setError("Failed to create Sub-Pawkit");
       setLoading(false);
     }
@@ -308,7 +307,6 @@ function CollectionPageContent() {
       // Navigate after successful delete
       router.push("/pawkits");
     } catch (err) {
-      console.error("Delete error:", err);
       alert("Failed to delete Pawkit");
       setLoading(false);
     }
@@ -330,7 +328,6 @@ function CollectionPageContent() {
       setShowCoverImageModal(false);
       setCoverImageUrl("");
     } catch (err) {
-      console.error("Cover image update error:", err);
       alert("Failed to update cover image");
     } finally {
       setLoading(false);
@@ -441,7 +438,6 @@ function CollectionPageContent() {
                         });
                         setIsRepositioning(false);
                       } catch (err) {
-                        console.error("Position update error:", err);
                         alert("Failed to update position");
                       } finally {
                         setLoading(false);

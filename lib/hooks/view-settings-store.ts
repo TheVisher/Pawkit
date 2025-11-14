@@ -296,7 +296,6 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
 
       // USER SWITCHING: Reset and reload view settings for new user/workspace
       _switchUser: async (userId: string, workspaceId: string) => {
-        console.log('[ViewSettings] Switching user context', { userId, workspaceId });
 
         // Reset to defaults
         set({
@@ -312,11 +311,9 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
             const parsed = JSON.parse(stored);
             if (parsed.state && parsed.state.settings) {
               set({ settings: parsed.state.settings });
-              console.log('[ViewSettings] Loaded from localStorage:', key);
             }
           }
         } catch (error) {
-          console.error('[ViewSettings] Error loading from localStorage:', error);
         }
 
         // Load from server

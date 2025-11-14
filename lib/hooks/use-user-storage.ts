@@ -28,7 +28,6 @@ export function useUserStorage(workspaceId: string = DEFAULT_WORKSPACE_ID) {
 
     async function initializeUserStorage() {
       try {
-        console.log('[useUserStorage] Initializing user storage...');
         setIsLoading(true);
         setError(null);
 
@@ -37,14 +36,12 @@ export function useUserStorage(workspaceId: string = DEFAULT_WORKSPACE_ID) {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (authError) {
-          console.error('[useUserStorage] Auth error:', authError);
           setError('Authentication error');
           setIsLoading(false);
           return;
         }
 
         if (!user) {
-          console.warn('[useUserStorage] No authenticated user found');
           setError('Not authenticated');
           setIsLoading(false);
           return;
@@ -53,15 +50,11 @@ export function useUserStorage(workspaceId: string = DEFAULT_WORKSPACE_ID) {
         if (!mounted) return;
 
         const currentUserId = user.id;
-        console.log('[useUserStorage] Current user:', currentUserId);
 
         // Check if this is a different user than last time
         const previousUserId = localStorage.getItem('pawkit_last_user_id');
 
         if (previousUserId && previousUserId !== currentUserId) {
-          console.warn('[useUserStorage] USER SWITCH DETECTED!');
-          console.log('[useUserStorage] Previous user:', previousUserId);
-          console.log('[useUserStorage] Current user:', currentUserId);
 
           // CRITICAL: Clean up previous user's data
           await cleanupPreviousUser(previousUserId);
@@ -71,12 +64,9 @@ export function useUserStorage(workspaceId: string = DEFAULT_WORKSPACE_ID) {
         const needsMigration = await checkIfMigrationNeeded(currentUserId, workspaceId);
 
         if (needsMigration) {
-          console.log('[useUserStorage] Migration needed for user:', currentUserId);
           try {
             await migrateToUserSpecificStorage(currentUserId, workspaceId);
-            console.log('[useUserStorage] Migration completed successfully');
           } catch (migrationError) {
-            console.error('[useUserStorage] Migration failed:', migrationError);
             // Continue anyway - user might not have old data
           }
         }
@@ -84,7 +74,6 @@ export function useUserStorage(workspaceId: string = DEFAULT_WORKSPACE_ID) {
         if (!mounted) return;
 
         // Initialize storage for current user
-        console.log('[useUserStorage] Initializing databases for user:', currentUserId);
         await localDb.init(currentUserId, workspaceId);
         await syncQueue.init(currentUserId, workspaceId);
 
@@ -106,7 +95,6 @@ export function useUserStorage(workspaceId: string = DEFAULT_WORKSPACE_ID) {
             await (viewSettingsState as any)._switchUser(currentUserId, workspaceId);
           }
         } catch (storeError) {
-          console.error('[useUserStorage] Error updating stores:', storeError);
           // Non-critical - continue anyway
         }
 
@@ -127,7 +115,6 @@ export function useUserStorage(workspaceId: string = DEFAULT_WORKSPACE_ID) {
           syncQueueContext: syncQueue.getContext()
         });
       } catch (err) {
-        console.error('[useUserStorage] Initialization error:', err);
         if (mounted) {
           setError(err instanceof Error ? err.message : 'Unknown error');
           setIsLoading(false);
@@ -173,7 +160,6 @@ async function checkIfMigrationNeeded(userId: string, workspaceId: string): Prom
     // Migration needed if old database exists but user database doesn't
     return hasOldDb;
   } catch (error) {
-    console.error('[useUserStorage] Error checking migration status:', error);
     return false;
   }
 }
@@ -183,7 +169,6 @@ async function checkIfMigrationNeeded(userId: string, workspaceId: string): Prom
  */
 async function cleanupPreviousUser(previousUserId: string): Promise<void> {
   try {
-    console.log('[useUserStorage] Cleaning up previous user data:', previousUserId);
 
     // Clear IndexedDB databases
     await localDb.clearUserData(previousUserId);
@@ -200,16 +185,13 @@ async function cleanupPreviousUser(previousUserId: string): Promise<void> {
 
     keysToRemove.forEach(key => {
       localStorage.removeItem(key);
-      console.log('[useUserStorage] Removed localStorage key:', key);
     });
 
     // Close any open connections
     await localDb.close();
     await syncQueue.close();
 
-    console.log('[useUserStorage] Previous user cleanup complete');
   } catch (error) {
-    console.error('[useUserStorage] Error cleaning up previous user:', error);
     // Non-critical - continue anyway
   }
 }

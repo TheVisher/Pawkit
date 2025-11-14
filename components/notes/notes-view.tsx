@@ -147,7 +147,6 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
         }
       }, 100);
     } catch (error) {
-      console.error('Failed to create daily note:', error);
     }
   };
 

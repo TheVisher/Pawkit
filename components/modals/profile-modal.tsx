@@ -30,7 +30,6 @@ const ACCENT_COLORS: { name: AccentColor; value: string }[] = [
 // Inner component that only renders when modal is open
 function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }: ProfileModalProps) {
   // Debug: Log when modal renders
-  console.log('[ProfileModal] Component rendering, open:', open);
 
   const [userEmail, setUserEmail] = useState(email);
   const [avatar, setAvatar] = useState(avatarUrl || "");
@@ -45,7 +44,6 @@ function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }:
   const { signOut } = useAuth();
 
   // Debug: Log signOut function
-  console.log('[ProfileModal] signOut function available:', typeof signOut);
 
   // Sign Out handler - now actually calling signOut
   const handleSignOutClick = async () => {
@@ -144,7 +142,6 @@ function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }:
         setSaving(false);
       }, 300);
     } catch (error) {
-      console.error('Error saving profile:', error);
       alert(`Failed to save profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setSaving(false);
     }

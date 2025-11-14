@@ -63,7 +63,6 @@ async function syncSettingsToServer(state: SettingsState) {
       })
     });
   } catch (error) {
-    console.error('[Settings] Failed to sync to server:', error);
   }
 }
 
@@ -230,7 +229,6 @@ export const useSettingsStore = create<SettingsState>()(
             body: JSON.stringify({ serverSync: value }),
           });
         } catch (error) {
-          console.error('[Settings] Failed to sync serverSync to database:', error);
         }
       },
       setAutoSyncOnReconnect: (value) => {
@@ -351,21 +349,17 @@ export const useSettingsStore = create<SettingsState>()(
       },
       // Load settings from server
       loadFromServer: async () => {
-        console.log('[Settings] Loading settings from server...');
         try {
           const response = await fetch('/api/user/settings');
-          console.log('[Settings] API response status:', response.status);
 
           if (response.ok) {
             const data = await response.json();
-            console.log('[Settings] API response data:', data);
 
             // Handle both wrapped ({ success: true, data: {...} }) and raw ({ id, userId, ... }) responses
             const settings = data.success && data.data ? data.data : data;
 
             // Validate we have settings data
             if (!settings || !settings.userId) {
-              console.warn('[Settings] Invalid settings response:', data);
               return;
             }
 
@@ -390,7 +384,6 @@ export const useSettingsStore = create<SettingsState>()(
               .sort((a: RecentItem, b: RecentItem) => b.timestamp - a.timestamp)
               .slice(0, 10);
 
-            console.log('[Settings] Merging settings with pinned notes:', settings.pinnedNoteIds);
 
             set({
               autoFetchMetadata: settings.autoFetchMetadata,
@@ -413,18 +406,14 @@ export const useSettingsStore = create<SettingsState>()(
               defaultSort: settings.defaultSort ?? "dateAdded"
             });
 
-            console.log('[Settings] Settings loaded successfully. Pinned notes count:', settings.pinnedNoteIds?.length || 0);
           } else {
-            console.error('[Settings] API response not OK:', response.status, response.statusText);
           }
         } catch (error) {
-          console.error('[Settings] Failed to load from server:', error);
         }
       },
 
       // USER SWITCHING: Reset and reload settings for new user/workspace
       _switchUser: async (userId: string, workspaceId: string) => {
-        console.log('[Settings] Switching user context', { userId, workspaceId });
 
         // Reset to defaults
         set({
@@ -464,11 +453,9 @@ export const useSettingsStore = create<SettingsState>()(
             const parsed = JSON.parse(stored);
             if (parsed.state) {
               set(parsed.state);
-              console.log('[Settings] Loaded from localStorage:', key);
             }
           }
         } catch (error) {
-          console.error('[Settings] Error loading from localStorage:', error);
         }
 
         // Load from server

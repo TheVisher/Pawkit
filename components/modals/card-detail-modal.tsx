@@ -376,7 +376,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           setDenPawkitSlugs(slugs);
         }
       } catch (error) {
-        console.error("Failed to fetch Den Pawkits:", error);
       }
     };
     fetchDenPawkits();
@@ -428,7 +427,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         await updateCardInStore(card.id, { notes });
         lastSavedNotesRef.current = notes;
       } catch (error) {
-        console.error('[CardDetail] Failed to save notes on close:', error);
       }
     }
 
@@ -437,7 +435,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         await updateCardInStore(card.id, { content });
         lastSavedContentRef.current = content;
       } catch (error) {
-        console.error('[CardDetail] Failed to save content on close:', error);
         alert('Failed to save content on close: ' + (error instanceof Error ? error.message : 'Unknown error'));
       }
     }
@@ -470,7 +467,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         await updateCardInStore(card.id, { notes });
         lastSavedNotesRef.current = notes;
       } catch (error) {
-        console.error('Failed to save notes locally:', error);
       }
     }, 2000); // 2 second debounce to prevent constant saves
 
@@ -488,7 +484,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         // Call extraction function directly to ensure it runs even if content hasn't changed
         await extractAndSaveLinks(card.id, content, allCards);
       } catch (error) {
-        console.error('Failed to extract links on open:', error);
       }
     };
 
@@ -511,7 +506,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         await updateCardInStore(card.id, { content });
         lastSavedContentRef.current = content;
       } catch (error) {
-        console.error('[CardDetail] Failed to save content:', error);
         alert('Failed to save note content: ' + (error instanceof Error ? error.message : 'Unknown error'));
       }
     }, 2000); // 2 second debounce to prevent constant saves
@@ -527,7 +521,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       onUpdate({ ...card, notes });
       setToast("Notes saved");
     } catch (error) {
-      console.error("Failed to save notes:", error);
       setToast("Failed to save notes");
     } finally {
       setSaving(false);
@@ -566,7 +559,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       setIsEditingTitle(false);
       setToast("Title updated");
     } catch (error) {
-      console.error("Failed to update title:", error);
       setToast("Failed to update title");
     }
   };
@@ -647,7 +639,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         setToast(error.message || "Failed to extract article");
       }
     } catch (error) {
-      console.error("Failed to extract article:", error);
       setToast("Failed to extract article");
     } finally {
       setExtracting(false);
@@ -688,7 +679,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         setToast("Failed to refresh metadata");
       }
     } catch (error) {
-      console.error("Failed to refresh metadata:", error);
       setToast("Failed to refresh metadata");
     }
   };
@@ -699,7 +689,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       await deleteCardFromStore(card.id);
       onDelete();
     } catch (error) {
-      console.error("Failed to delete card:", error);
       setToast("Failed to delete card");
     }
   };
@@ -738,7 +727,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         setTimeout(() => handleClose(), 500);
       }
     } catch (error) {
-      console.error("Failed to move card:", error);
       setToast("Failed to update card");
     }
   };
@@ -754,7 +742,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
       setToast(date ? `Scheduled for ${new Date(date).toLocaleDateString()}` : "Schedule cleared");
     } catch (error) {
-      console.error("Failed to save scheduled date:", error);
       setToast("Failed to save date");
     }
   };
@@ -1830,7 +1817,6 @@ function MetadataSection({ card }: { card: CardModel }) {
       await updateCardInStore(card.id, { title: editedTitle.trim() });
       setIsEditingTitle(false);
     } catch (error) {
-      console.error("Failed to update title:", error);
     }
   };
 

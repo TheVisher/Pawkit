@@ -57,18 +57,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    console.log('[Auth] Sign out initiated');
 
     try {
       // CRITICAL: Clear user session markers BEFORE signing out
       // This allows useUserStorage to detect user switches on next login
-      console.log('[Auth] Clearing session markers');
       localStorage.removeItem('pawkit_last_user_id');
       localStorage.removeItem('pawkit_active_device');
 
       // Sign out from Supabase
       await supabase.auth.signOut();
-      console.log('[Auth] Supabase sign out successful');
 
       // Close any open database connections
       // This allows fresh connections for next user
@@ -77,16 +74,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { syncQueue } = await import('@/lib/services/sync-queue');
         await localDb.close();
         await syncQueue.close();
-        console.log('[Auth] Database connections closed');
       } catch (dbError) {
-        console.error('[Auth] Error closing databases:', dbError);
         // Non-critical - continue anyway
       }
 
       router.push('/login');
-      console.log('[Auth] Redirecting to login');
     } catch (error) {
-      console.error('[Auth] Sign out failed:', error);
       // Try to redirect anyway
       router.push('/login');
     }

@@ -32,14 +32,12 @@ const TITLE_META_KEYS = ["og:title", "twitter:title", "itemprop:name", "title"];
 const DESCRIPTION_META_KEYS = ["og:description", "description", "twitter:description", "itemprop:description"];
 
 export async function fetchPreviewMetadata(url: string, previewServiceUrl?: string): Promise<SitePreview | undefined> {
-  console.log('[Metadata] Starting metadata fetch for:', url);
   
   // Validate URL for SSRF protection
   try {
     validateUrlForFetch(url);
   } catch (error) {
     if (error instanceof UrlValidationError) {
-      console.error('[Metadata] URL validation failed:', error.message);
       return undefined;
     }
     throw error;
@@ -53,16 +51,12 @@ export async function fetchPreviewMetadata(url: string, previewServiceUrl?: stri
 
   // Special handling for Reddit - extract post images
   if (isRedditUrl(url)) {
-    console.log('[Metadata] Detected Reddit URL, fetching with Reddit API');
     const redditMeta = await fetchRedditMetadata(url).catch((err) => {
-      console.error('[Metadata] Reddit fetch failed:', err);
       return undefined;
     });
     if (redditMeta) {
-      console.log('[Metadata] Reddit metadata success:', redditMeta.title);
       return redditMeta;
     }
-    console.log('[Metadata] Reddit metadata failed, falling back to scraping');
   }
 
   // Special handling for TikTok - use their oEmbed API
@@ -92,33 +86,25 @@ export async function fetchPreviewMetadata(url: string, previewServiceUrl?: stri
   const results: SitePreview[] = [];
 
   if (previewServiceUrl) {
-    console.log('[Metadata] Trying remote preview service...');
     const remote = await fetchRemotePreview(url, previewServiceUrl).catch((err) => {
-      console.log('[Metadata] Remote preview failed:', err.message);
       return undefined;
     });
     if (remote) {
-      console.log('[Metadata] Remote preview success');
       results.push(remote);
     }
   }
 
-  console.log('[Metadata] Trying general scraping...');
   const scraped = await scrapeSiteMetadata(url).catch((err) => {
-    console.log('[Metadata] General scraping failed:', err.message);
     return undefined;
   });
   if (scraped) {
-    console.log('[Metadata] General scraping success');
     results.push(scraped);
   }
 
   if (!results.length) {
-    console.log('[Metadata] No results from any method');
     return undefined;
   }
 
-  console.log('[Metadata] Merging results from', results.length, 'sources');
   return mergeMetadata(results, url);
 }
 
@@ -148,7 +134,6 @@ async function fetchRemotePreview(url: string, template: string): Promise<SitePr
 }
 
 async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined> {
-  console.log('[Metadata] Starting general scraping for:', url);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
@@ -162,16 +147,13 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
     });
     clearTimeout(timeoutId);
 
-    console.log('[Metadata] Response status:', response.status, response.statusText);
     if (!response.ok) {
       throw new Error(`metadata request failed with ${response.status}`);
     }
     const html = await response.text();
-    console.log('[Metadata] HTML length:', html.length);
     const root = parse(html);
 
     const metaTags = root.querySelectorAll("meta");
-    console.log('[Metadata] Found meta tags:', metaTags.length);
     const metaMap: Record<string, string> = {};
     for (const tag of metaTags) {
       const property = tag.getAttribute("property") || tag.getAttribute("name") || tag.getAttribute("itemprop");
@@ -236,10 +218,8 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
         });
         
         if (!imageResponse.ok || !contentType?.startsWith('image/')) {
-          console.log('[Metadata] Image URL returned non-image response, falling back to screenshot');
           image = screenshot;
         } else {
-          console.log('[Metadata] Image URL validation passed');
         }
       } catch (error) {
         console.log('[Metadata] Image URL validation failed, falling back to screenshot:', error instanceof Error ? error.message : String(error));
@@ -473,7 +453,6 @@ async function fetchTikTokMetadata(url: string): Promise<SitePreview> {
       };
     }
   } catch (error) {
-    console.error('TikTok oEmbed failed:', error);
   }
 
   // Fallback to scraping (for photo posts and when oEmbed fails)
@@ -483,7 +462,6 @@ async function fetchTikTokMetadata(url: string): Promise<SitePreview> {
       return scraped;
     }
   } catch (error) {
-    console.error('TikTok scraping failed:', error);
   }
 
   return {
@@ -665,7 +643,6 @@ async function fetchAmazonMetadata(url: string): Promise<SitePreview> {
     };
   } catch (error) {
     clearTimeout(timeoutId);
-    console.error('Amazon scraping failed:', error);
     throw error;
   }
 }
@@ -823,7 +800,6 @@ async function fetchEcommerceMetadata(url: string): Promise<SitePreview> {
     };
   } catch (error) {
     clearTimeout(timeoutId);
-    console.error('E-commerce scraping failed:', error);
     throw error;
   }
 }
@@ -935,7 +911,6 @@ async function fetchYouTubeMetadata(url: string, videoId: string): Promise<SiteP
       const oEmbedData = await oEmbedResponse.json();
       title = oEmbedData.title;
       description = oEmbedData.author_name ? `by ${oEmbedData.author_name}` : undefined;
-      console.log('[YouTube] oEmbed success:', { title, description });
     }
   } catch (error) {
     console.log('[YouTube] oEmbed failed, falling back to scraping:', error instanceof Error ? error.message : String(error));
@@ -948,10 +923,8 @@ async function fetchYouTubeMetadata(url: string, videoId: string): Promise<SiteP
       if (scraped) {
         title = scraped.title;
         description = scraped.description;
-        console.log('[YouTube] Scraping fallback success:', { title, description });
       }
     } catch {
-      console.log('[YouTube] Scraping fallback failed');
     }
   }
 
@@ -992,11 +965,9 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
       signal: AbortSignal.timeout(10000)
     });
 
-    console.log('[Reddit] oEmbed response status:', oembedResponse.status);
 
     if (oembedResponse.ok) {
       const oembedData = await oembedResponse.json();
-      console.log('[Reddit] oEmbed success, has thumbnail:', !!oembedData.thumbnail_url);
 
       // Only use oEmbed if it has a thumbnail, otherwise fall through
       if (oembedData.thumbnail_url) {
@@ -1012,11 +983,9 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
           }
         };
       } else {
-        console.log('[Reddit] oEmbed has no thumbnail, will try other methods');
       }
     }
   } catch (error) {
-    console.log('[Reddit] oEmbed failed, trying JSON API:', error);
   }
 
   // Fallback to JSON API (often blocked on Vercel)
@@ -1035,29 +1004,19 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
     });
     clearTimeout(timeoutId);
 
-    console.log('[Reddit] JSON API response status:', response.status, response.statusText);
 
     if (response.ok) {
       const data = await response.json();
-      console.log('[Reddit] API response received, checking structure...');
 
       // Reddit API returns an array with post data
       const post = data?.[0]?.data?.children?.[0]?.data;
 
       if (!post) {
-        console.error('[Reddit] No post data found in response structure');
         console.error('[Reddit] Response structure:', JSON.stringify(data).substring(0, 500));
       }
 
       if (post) {
         // Debug logging
-        console.log('[Reddit] Post found! Title:', post.title);
-        console.log('[Reddit] Post type:', post.post_hint);
-        console.log('[Reddit] Is gallery:', post.is_gallery);
-        console.log('[Reddit] Has preview:', !!post.preview);
-        console.log('[Reddit] URL:', post.url);
-        console.log('[Reddit] Thumbnail:', post.thumbnail);
-        console.log('[Reddit] Has media_metadata:', !!post.media_metadata);
 
         // Extract image from various Reddit post types
         let image: string | undefined;
@@ -1092,7 +1051,6 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
           image = post.thumbnail;
         }
 
-        console.log('[Reddit] Selected image:', image);
 
         return {
           title: post.title || 'Reddit Post',
@@ -1108,15 +1066,12 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
       }
     }
   } catch (error) {
-    console.error('Reddit JSON API failed:', error);
   }
 
   // Last resort: scrape the HTML page for images
-  console.log('[Reddit] Falling back to HTML scraping');
   try {
     const scraped = await scrapeSiteMetadata(url);
     if (scraped) {
-      console.log('[Reddit] HTML scrape found image:', !!scraped.image);
       return {
         ...scraped,
         raw: {
@@ -1126,11 +1081,9 @@ async function fetchRedditMetadata(url: string): Promise<SitePreview> {
       };
     }
   } catch (error) {
-    console.error('[Reddit] HTML scraping failed:', error);
   }
 
   // Ultimate fallback - Reddit blocks all server-side access methods
-  console.log('[Reddit] All methods failed, using logo fallback');
   return {
     title: 'Reddit Post',
     description: 'View on Reddit',

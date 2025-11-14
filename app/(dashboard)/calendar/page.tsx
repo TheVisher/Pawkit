@@ -55,7 +55,6 @@ export default function CalendarPage() {
         setSelectedDay(null);
       }
     } catch (error) {
-      console.error('Failed to create daily note:', error);
     }
   };
 

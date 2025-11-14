@@ -82,7 +82,6 @@ class SyncQueue {
       },
     });
 
-    console.log(`[SyncQueue] Initialized for user: ${userId}, workspace: ${workspaceId}`);
   }
 
   /**
@@ -90,7 +89,6 @@ class SyncQueue {
    * This deletes all workspace sync queues for the user
    */
   async clearUserData(userId: string): Promise<void> {
-    console.log(`[SyncQueue] Clearing all data for user: ${userId}`);
 
     // Get all databases and find ones matching this user
     const databases = await indexedDB.databases();
@@ -98,13 +96,11 @@ class SyncQueue {
       db.name?.startsWith(`pawkit-${userId}-`) && db.name?.endsWith('-sync-queue')
     );
 
-    console.log(`[SyncQueue] Found ${userDatabases.length} workspace databases to delete for user ${userId}`);
 
     // Delete all workspace databases for this user
     for (const db of userDatabases) {
       if (db.name) {
         await indexedDB.deleteDatabase(db.name);
-        console.log(`[SyncQueue] Deleted database: ${db.name}`);
       }
     }
   }
@@ -114,7 +110,6 @@ class SyncQueue {
    */
   async clearWorkspaceData(userId: string, workspaceId: string): Promise<void> {
     const dbName = `pawkit-${userId}-${workspaceId}-sync-queue`;
-    console.log(`[SyncQueue] Clearing workspace data: ${dbName}`);
     await indexedDB.deleteDatabase(dbName);
   }
 
@@ -123,7 +118,6 @@ class SyncQueue {
    */
   async close(): Promise<void> {
     if (this.db) {
-      console.log('[SyncQueue] Closing database connection');
       this.db.close();
       this.db = null;
       this.userId = null;
@@ -269,7 +263,6 @@ class SyncQueue {
       operation.status = 'failed';
       operation.retries += 1;
       await tx.store.put(operation);
-      console.error('[SyncQueue] Operation failed:', id, 'retries:', operation.retries);
     }
     await tx.done;
   }
@@ -379,13 +372,11 @@ class SyncQueue {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
       } catch (error) {
-        console.error('[SyncQueue] Operation failed:', operation.id, error);
         await this.markFailed(operation.id);
         failed++;
 
         // Stop processing if too many failures (likely offline)
         if (failed >= 3) {
-          console.error('[SyncQueue] Too many failures, stopping');
           break;
         }
       }

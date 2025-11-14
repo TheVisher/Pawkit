@@ -47,7 +47,6 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
 
       set({ todos: parsedTodos, isLoading: false });
     } catch (error) {
-      console.error('[Todos] Failed to fetch:', error);
       set({ error: (error as Error).message, isLoading: false });
     }
   },
@@ -78,7 +77,6 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         todos: [parsedTodo, ...state.todos]
       }));
     } catch (error) {
-      console.error('[Todos] Failed to add:', error);
       set({ error: (error as Error).message });
     }
   },
@@ -119,7 +117,6 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         )
       }));
     } catch (error) {
-      console.error('[Todos] Failed to toggle:', error);
       // Revert optimistic update
       set((state) => ({
         todos: state.todos.map((t) =>
@@ -144,7 +141,6 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
 
       if (!response.ok) throw new Error('Failed to delete todo');
     } catch (error) {
-      console.error('[Todos] Failed to delete:', error);
       // Revert optimistic delete
       set({ todos: previousTodos, error: (error as Error).message });
     }
@@ -184,7 +180,6 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
         )
       }));
     } catch (error) {
-      console.error('[Todos] Failed to update:', error);
       // Revert optimistic update
       set({ todos: previousTodos, error: (error as Error).message });
     }

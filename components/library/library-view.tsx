@@ -154,7 +154,6 @@ export function LibraryView({
             setTimelineGroups(data.groups);
           }
         } catch (error) {
-          console.error("Failed to load timeline:", error);
         } finally {
           setLoading(false);
         }

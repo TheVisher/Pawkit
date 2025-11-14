@@ -88,15 +88,12 @@ class SyncService {
 
       if (!response.ok) {
         // If check fails, assume changes exist (safe fallback)
-        console.warn('[Sync] Change check failed, assuming changes exist');
         return true;
       }
 
       const { hasChanges } = await response.json();
-      console.log(`[Sync] Change check: ${hasChanges ? 'changes detected' : 'no changes'}`);
       return hasChanges;
     } catch (error) {
-      console.error('[Sync] Change check failed:', error);
       // On error, assume changes exist (safe fallback)
       return true;
     }
@@ -175,7 +172,6 @@ class SyncService {
       // Update last sync time
       await localDb.setLastSyncTime(Date.now());
     } catch (error) {
-      console.error('[SyncService] Sync failed:', error);
       result.success = false;
       result.errors.push(error instanceof Error ? error.message : 'Unknown error');
     }
@@ -220,7 +216,6 @@ class SyncService {
       await Promise.all(restorePromises);
 
     } catch (error) {
-      console.error('[SyncService] ❌ Failed to restore snapshot:', error);
       throw new Error('Rollback failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   }
@@ -246,7 +241,6 @@ class SyncService {
     try {
       snapshot = await this.createSnapshot();
     } catch (error) {
-      console.error('[SyncService] Failed to create snapshot, proceeding without rollback protection:', error);
       // Continue without snapshot - risky but better than failing entirely
     }
 
@@ -280,7 +274,6 @@ class SyncService {
       }
     } catch (error) {
       // Network/timeout errors are not critical
-      console.error('[SyncService] Cards pull failed:', error);
       result.errors.push(`Cards sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
@@ -314,7 +307,6 @@ class SyncService {
       }
     } catch (error) {
       // Network/timeout errors are not critical
-      console.error('[SyncService] Collections pull failed:', error);
       result.errors.push(`Collections sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
 
@@ -668,7 +660,6 @@ class SyncService {
             }
           }
         } catch (error) {
-          console.error('[SyncService] Failed to push card:', card.id, error);
           // Add to retry queue on network/unexpected errors
           await syncQueue.enqueue({
             type: card.id.startsWith('temp_') ? 'CREATE_CARD' : 'UPDATE_CARD',
@@ -767,7 +758,6 @@ class SyncService {
             }
           }
         } catch (error) {
-          console.error('[SyncService] Failed to push collection:', collection.id, error);
           // Add to retry queue on network/unexpected errors
           await syncQueue.enqueue({
             type: collection.id.startsWith('temp_') ? 'CREATE_COLLECTION' : 'UPDATE_COLLECTION',
@@ -782,7 +772,6 @@ class SyncService {
         }
       }
     } catch (error) {
-      console.error('[SyncService] Push failed:', error);
       result.errors.push(error instanceof Error ? error.message : 'Push failed');
     }
 

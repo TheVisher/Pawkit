@@ -58,7 +58,6 @@ export default function PawkitsScreen() {
       // Filter out deleted collections
       setCollections(flatCollections.filter((c) => !c.deleted));
     } catch (error) {
-      console.error('Failed to load collections:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
