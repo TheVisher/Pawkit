@@ -1,0 +1,187 @@
+================================================================================
+                    PAWKIT ERROR MESSAGE AUDIT SUMMARY
+================================================================================
+
+AUDIT DATE: 2025-11-14
+SCOPE: All user-facing error messages (console.error, toast, alert, inline)
+COVERAGE: 80+ error messages found across 40+ files
+
+================================================================================
+KEY FINDINGS
+================================================================================
+
+OVERALL QUALITY SCORE: 56/100 (Needs Improvement)
+- User-Friendly Messages: 19% (15 messages)
+- Messages Needing Improvement: 44% (35 messages)  
+- Critical Issues: 37% (30 messages)
+
+================================================================================
+CRITICAL ISSUES (Fix ASAP)
+================================================================================
+
+1. RAW ERROR EXPOSURE (15+ instances) - HIGH RISK
+   Shows technical backend errors directly to users
+   Files: profile-modal.tsx, card-detail-modal.tsx, login.tsx, signup.tsx
+   Example: "Failed to save: ValidationError: field is required"
+   Should be: "Couldn't save. Please try again."
+   
+2. STORAGE INITIALIZATION ERROR (CRITICAL) - HIGH RISK
+   /app/(dashboard)/layout.tsx:386 shows raw IndexedDB errors to users
+   Example: "InvalidStateError: A mutation operation was attempted on a database..."
+   Impact: User sees incomprehensible technical jargon on critical error
+   
+3. SILENT FAILURES (10+ instances) - MEDIUM RISK
+   Operations fail without user notification
+   Files: data-store.ts, use-todos.ts
+   Example: Card save fails but user sees no error message
+   
+4. INTRUSIVE ALERTS (8+ instances) - LOW RISK (UX/consistency issue)
+   Using alert() instead of toast notifications
+   Files: profile-modal.tsx, card-detail-modal.tsx, pawkits-header.tsx
+
+================================================================================
+SPECIFIC PROBLEM AREAS
+================================================================================
+
+HIGHEST PRIORITY FILES TO FIX:
+1. /app/(dashboard)/layout.tsx         (1 critical issue)
+2. /components/modals/profile-modal.tsx (3 issues: raw errors, alerts)
+3. /components/modals/card-detail-modal.tsx (3 issues: raw errors, alerts)
+4. /components/pawkits/pawkits-header.tsx (4 generic messages + alerts)
+5. /components/trash/trash-view.tsx    (1 generic, 1 alert)
+
+BEST EXAMPLES (Reference for improvements):
+- /components/sync/sync-status.tsx - Good status messages with context
+- /components/error-boundary.tsx - User-friendly error screen
+- /components/trash/trash-view.tsx (lines 147-155) - Contextual recovery info
+- /app/(auth)/signup/page.tsx - Good validation messages
+
+================================================================================
+ISSUES BY TYPE
+================================================================================
+
+RAW ERROR MESSAGE EXPOSURE (showing error.message directly):
+  - profile-modal.tsx:149 - "Failed to save profile: {raw error}"
+  - card-detail-modal.tsx:441, 515 - Save errors with raw messages
+  - login.tsx:24 - Auth error: "Invalid login credentials" (from Supabase)
+  - signup.tsx:37 - Auth error: raw Supabase message
+  - profile-modal.tsx:59 - "Sign out error: {raw error}"
+  - sync-status.tsx:76 - Sync error: raw backend message
+
+GENERIC MESSAGES WITHOUT CONTEXT:
+  - trash-view.tsx:162 - "Failed to restore {type}" (why?)
+  - pawkits-header.tsx:57 - "Failed to create Pawkit" (why?)
+  - pawkits-header.tsx:80 - "Failed to delete Pawkit" (why?)
+  - pawkits-header.tsx:95 - "Failed to rename Pawkit" (why?)
+  - pawkits-header.tsx:111 - "Failed to move Pawkit" (why?)
+  - actions-menu.tsx:85 - "Failed to delete some cards" (which ones?)
+
+ALERT() USAGE (should be toast()):
+  - trash-view.tsx:198 - "Failed to permanently delete {type}"
+  - pawkits-header.tsx:80, 95, 111 - Various operations
+  - profile-modal.tsx:59, 149 - Profile operations
+  - card-detail-modal.tsx:441, 515 - Content save errors
+
+SILENT FAILURES (no user feedback):
+  - data-store.ts - Multiple card/collection operations fail silently
+  - use-todos.ts - Todo operations fail silently
+  - use-network-sync.ts - Queue operations fail silently
+
+NO RECOVERY GUIDANCE:
+  - 25+ messages tell user something failed but not what to do
+
+================================================================================
+GOOD MESSAGES TO EMULATE
+================================================================================
+
+Validation Messages:
+  "Title is required" - Clear, actionable
+  "Password must be at least 6 characters" - Specific requirement
+  "Passwords do not match" - Clear feedback
+  
+Context-Aware Messages:
+  "Card restored to Library (Pawkit no longer exists)" - Explains context
+  "Sync failed - Retry sync" - Provides recovery action
+  "Will sync when connection restored" - Sets expectations
+
+Error Boundary:
+  "Something went wrong. This might be due to your browser's security settings."
+  Includes recovery options: "Reload Page" / "Clear Data & Reload"
+
+================================================================================
+RECOMMENDATIONS BY PRIORITY
+================================================================================
+
+PRIORITY 1 (Fix immediately):
+  - Hide raw error messages from users (wrap in user-friendly text)
+  - Fix storage initialization error screen
+  - Replace alert() with toast() for consistency
+
+PRIORITY 2 (Fix this sprint):
+  - Add context to generic error messages
+  - Add recovery suggestions (what user should do next)
+  - Add missing user feedback for silent failures
+
+PRIORITY 3 (Polish):
+  - Standardize error message tone and style
+  - Add error recovery buttons where appropriate
+  - Improve error message accessibility
+
+PRIORITY 4 (Enhancement):
+  - Add icons/colors for error severity
+  - Create error type classification system
+  - Add help links for common errors
+
+================================================================================
+ESTIMATED EFFORT
+================================================================================
+
+Priority 1 fixes: 3-4 hours
+  - Wrap raw errors: 2-3 hours
+  - Replace alert() with toast(): 1 hour
+  - Fix storage error screen: 0.5 hours
+
+Priority 2 fixes: 2-3 hours
+  - Add context to messages: 1-1.5 hours
+  - Add recovery suggestions: 0.5-1 hour
+  - Add missing feedback: 0.5-1 hour
+
+Priority 3-4: 2-3 hours (polish/enhancement)
+
+Total: 7-10 hours
+
+================================================================================
+IMPACT ASSESSMENT
+================================================================================
+
+Current User Experience: POOR
+- Users see technical jargon they don't understand
+- No guidance on how to recover from errors
+- Inconsistent error handling (alerts vs toasts)
+- Some operations fail silently
+- Blocking UI popups for non-critical errors
+
+After Priority 1 fixes: FAIR
+- Users see friendly messages
+- Still missing recovery context
+- Consistent toast notifications
+
+After Priority 2 fixes: GOOD
+- Users understand what went wrong
+- Know how to recover
+- Operations have feedback
+- Consistent experience
+
+After Priority 3-4: EXCELLENT
+- Professional error experience
+- Helpful visual design
+- Accessible to all users
+
+================================================================================
+FILES FOR DETAILED AUDIT REPORT
+================================================================================
+
+Main Report: /home/user/Pawkit/ERROR_MESSAGE_AUDIT.md
+Quick Fixes: /home/user/Pawkit/ERROR_FIXES_QUICK_GUIDE.md
+
+================================================================================
