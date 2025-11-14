@@ -19,6 +19,7 @@ import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { UnpinNotesModal } from "@/components/modals/unpin-notes-modal";
 import { createPortal } from "react-dom";
 import { useRef } from "react";
+import { addCollectionWithHierarchy, removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
 
 // Simple 3-dot menu component for list view
 function CardActionsMenu({
@@ -150,7 +151,7 @@ export type CardGalleryProps = {
 };
 
 function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false, area, currentPawkitSlug }: CardGalleryProps) {
-  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore, collections } = useDemoAwareStore();
+  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore, collections: allCollections } = useDemoAwareStore();
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const openBulkOperations = usePanelStore((state) => state.openBulkOperations);
   const restorePreviousContent = usePanelStore((state) => state.restorePreviousContent);
@@ -436,7 +437,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                     <CardContextMenuWrapper
                       key={card.id}
                       onAddToPawkit={(slug) => {
-                        const collections = Array.from(new Set([slug, ...(card.collections || [])]));
+                        const collections = addCollectionWithHierarchy(card.collections || [], slug, allCollections);
                         updateCardInStore(card.id, { collections });
                         setCards((prev) =>
                           prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
@@ -448,7 +449,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                       }}
                       cardCollections={card.collections || []}
                       onRemoveFromPawkit={(slug) => {
-                        const collections = (card.collections || []).filter(s => s !== slug);
+                        const collections = removeCollectionWithHierarchy(card.collections || [], slug, allCollections, true);
                         updateCardInStore(card.id, { collections });
                         setCards((prev) =>
                           prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
@@ -523,7 +524,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                                 setCards((prev) => prev.filter((c) => c.id !== card.id));
                               }}
                               onAddToPawkit={(slug) => {
-                                const collections = Array.from(new Set([slug, ...(card.collections || [])]));
+                                const collections = addCollectionWithHierarchy(card.collections || [], slug, allCollections);
                                 updateCardInStore(card.id, { collections });
                                 setCards((prev) =>
                                   prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
@@ -563,7 +564,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 onClick={handleCardClick}
                 onImageLoad={handleImageLoad}
                 onAddToPawkit={(slug) => {
-                const collections = Array.from(new Set([slug, ...(card.collections || [])]));
+                const collections = addCollectionWithHierarchy(card.collections || [], slug, allCollections);
                 updateCardInStore(card.id, { collections });
                 setCards((prev) =>
                   prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
@@ -574,7 +575,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 setCards((prev) => prev.filter((c) => c.id !== card.id));
               }}
               onRemoveFromPawkit={(slug) => {
-                const collections = (card.collections || []).filter(s => s !== slug);
+                const collections = removeCollectionWithHierarchy(card.collections || [], slug, allCollections, true);
                 updateCardInStore(card.id, { collections });
                 setCards((prev) =>
                   prev.map((c) => (c.id === card.id ? { ...c, collections } : c))
