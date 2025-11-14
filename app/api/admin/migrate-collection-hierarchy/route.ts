@@ -24,6 +24,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // SECURITY: Admin-only endpoint - verify user has admin role
+    // For now, disable this endpoint in production until admin roles are implemented
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { error: "This endpoint is disabled in production. Please run migrations via CLI." },
+        { status: 403 }
+      );
+    }
+
     // Get all collections for this user
     const { data: collections, error: collectionsError } = await supabase
       .from("collections")

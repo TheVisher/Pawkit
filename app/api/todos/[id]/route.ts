@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
-import { unauthorized, success } from "@/lib/utils/api-responses";
+import { unauthorized, success, rateLimited } from "@/lib/utils/api-responses";
+import { rateLimit } from "@/lib/utils/rate-limit";
 
 interface RouteParams {
   params: Promise<{
@@ -21,6 +22,17 @@ export async function PATCH(
     user = await getCurrentUser();
     if (!user) {
       return unauthorized();
+    }
+
+    // Rate limit: 100 requests per minute per user
+    const limitResult = rateLimit({
+      identifier: user.id,
+      limit: 100,
+      windowMs: 60000,
+    });
+
+    if (!limitResult.allowed) {
+      return rateLimited();
     }
 
     const params = await segmentData.params;
@@ -43,7 +55,17 @@ export async function PATCH(
 
     // Update todo
     const updateData: any = {};
-    if (body.text !== undefined) updateData.text = body.text.trim();
+    if (body.text !== undefined) {
+      const trimmedText = body.text.trim();
+      // Validate length (max 500 characters)
+      if (trimmedText.length > 500) {
+        return NextResponse.json(
+          { error: 'Text must be 500 characters or less' },
+          { status: 400 }
+        );
+      }
+      updateData.text = trimmedText;
+    }
     if (body.completed !== undefined) updateData.completed = body.completed;
 
     const todo = await prisma.todo.update({
@@ -67,6 +89,17 @@ export async function DELETE(
     user = await getCurrentUser();
     if (!user) {
       return unauthorized();
+    }
+
+    // Rate limit: 100 requests per minute per user
+    const limitResult = rateLimit({
+      identifier: user.id,
+      limit: 100,
+      windowMs: 60000,
+    });
+
+    if (!limitResult.allowed) {
+      return rateLimited();
     }
 
     const params = await segmentData.params;
