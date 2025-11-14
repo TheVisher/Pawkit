@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
-import { unauthorized, success } from "@/lib/utils/api-responses";
+import { unauthorized, success, rateLimited } from "@/lib/utils/api-responses";
+import { rateLimit } from "@/lib/utils/rate-limit";
 
 // GET /api/user/settings - Get user settings
 export async function GET() {
@@ -12,6 +13,17 @@ export async function GET() {
 
     if (!user) {
       return unauthorized();
+    }
+
+    // Rate limit: 100 requests per minute per user
+    const limitResult = rateLimit({
+      identifier: user.id,
+      limit: 100,
+      windowMs: 60000,
+    });
+
+    if (!limitResult.allowed) {
+      return rateLimited();
     }
 
     // Get user settings from database
@@ -85,6 +97,17 @@ export async function PATCH(request: Request) {
       return unauthorized();
     }
 
+    // Rate limit: 30 requests per minute per user (stricter for writes)
+    const limitResult = rateLimit({
+      identifier: user.id,
+      limit: 30,
+      windowMs: 60000,
+    });
+
+    if (!limitResult.allowed) {
+      return rateLimited();
+    }
+
     body = await request.json();
 
     // Check if server sync is enabled
@@ -105,7 +128,32 @@ export async function PATCH(request: Request) {
     // Simple boolean/string/number fields
     if (body.autoFetchMetadata !== undefined) updateData.autoFetchMetadata = body.autoFetchMetadata;
     if (body.showThumbnails !== undefined) updateData.showThumbnails = body.showThumbnails;
-    if (body.previewServiceUrl !== undefined) updateData.previewServiceUrl = body.previewServiceUrl;
+
+    // Validate preview service URL if provided
+    if (body.previewServiceUrl !== undefined) {
+      if (body.previewServiceUrl !== null && body.previewServiceUrl !== '') {
+        try {
+          const url = new URL(body.previewServiceUrl);
+          // Only allow https in production
+          if (process.env.NODE_ENV === 'production' && url.protocol !== 'https:') {
+            return NextResponse.json(
+              { error: 'Preview service URL must use HTTPS in production' },
+              { status: 400 }
+            );
+          }
+          updateData.previewServiceUrl = body.previewServiceUrl;
+        } catch (e) {
+          return NextResponse.json(
+            { error: 'Invalid preview service URL format' },
+            { status: 400 }
+          );
+        }
+      } else {
+        // Allow clearing the URL
+        updateData.previewServiceUrl = body.previewServiceUrl;
+      }
+    }
+
     if (body.theme !== undefined) updateData.theme = body.theme;
     if (body.accentColor !== undefined) updateData.accentColor = body.accentColor;
     if (body.notifications !== undefined) updateData.notifications = body.notifications;
