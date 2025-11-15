@@ -569,10 +569,18 @@ export const useDataStore = create<DataStore>((set, get) => ({
             }
           }
         } catch (error) {
-          // Card is safe in local storage - will sync later
+          console.log('🔴 DATA STORE - Inner catch block hit:', error);
+          // Re-throw DUPLICATE_URL errors so the UI can show toast
+          if (error instanceof Error && error.message === 'DUPLICATE_URL') {
+            console.log('🔴 DATA STORE - Re-throwing DUPLICATE_URL error');
+            throw error;
+          }
+          // Other errors: Card is safe in local storage - will sync later
+          console.log('🔴 DATA STORE - Silently ignoring non-duplicate error');
         }
       }
     } catch (error) {
+      console.log('🔴 DATA STORE - Outer catch block hit:', error);
       throw error;
     }
   },
