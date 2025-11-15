@@ -55,6 +55,7 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
+    console.log('🔴 MODAL - handleSubmit called');
     setLoading(true);
     setError(null);
 
@@ -70,8 +71,11 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
     };
 
     try {
+      console.log('🔴 MODAL - About to call addCardToStore');
+      console.log('🔴 MODAL - addCardToStore type:', typeof addCardToStore);
       // Wait for card creation to complete (including duplicate check)
-      await addCardToStore(payload);
+      const result = await addCardToStore(payload);
+      console.log('🔴 MODAL - addCardToStore completed, result:', result);
 
       // Call onCreated callback (with temporary card data)
       onCreated?.({
@@ -119,8 +123,27 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
         setError('Failed to save bookmark. Please try again.');
       }
       console.log('🔴 Catch block complete');
+    } finally {
+      console.log('🔴 MODAL - Finally block executed');
     }
   };
+
+  // Add global error handler for unhandled promise rejections
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.log('🔴 MODAL - Unhandled promise rejection detected:', event.reason);
+      if (event.reason instanceof Error && event.reason.message === 'DUPLICATE_URL') {
+        console.log('🔴 MODAL - DUPLICATE_URL in unhandled rejection!');
+        event.preventDefault(); // Prevent the default error
+        toast.error('This URL is already bookmarked');
+        setError('This URL is already in your library');
+        setLoading(false);
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+  }, [toast]);
 
   const modalContent = (
     <div
