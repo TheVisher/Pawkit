@@ -76,6 +76,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
     setLoading(true);
     try {
       await updateCollection(pawkitId, { parentId: selectedMoveTarget });
+      toast.success("Pawkit moved");
       setShowMoveModal(false);
       setSelectedMoveTarget(null);
       setLoading(false);

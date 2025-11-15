@@ -64,7 +64,7 @@ export function Toast({ message, type = "info", duration, onClose }: ToastProps)
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 rounded-lg border px-4 py-3 shadow-xl backdrop-blur-sm transition-all duration-300 ${getToastStyles()} ${
+      className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 rounded-lg border px-4 py-3 shadow-xl backdrop-blur-sm transition-all duration-300 ${getToastStyles()} ${
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
       }`}
     >
@@ -81,7 +81,7 @@ type ToastContainerProps = {
 
 export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
   return (
-    <div className="fixed bottom-6 right-6 z-[100] space-y-2">
+    <div className="fixed bottom-6 right-6 z-[9999] space-y-2">
       {toasts.map((toast) => (
         <Toast
           key={toast.id}

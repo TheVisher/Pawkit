@@ -498,6 +498,20 @@ export const useDataStore = create<DataStore>((set, get) => ({
             body: JSON.stringify(cardData),
           });
 
+          // Check for duplicate URL (409 Conflict)
+          if (response.status === 409) {
+            const toast = useToastStore.getState();
+            toast.error('This URL is already bookmarked');
+
+            // Remove the temp card from local storage and state
+            await localDb.permanentlyDeleteCard(tempId);
+            await syncQueue.removeByTempId(tempId);
+            set((state) => ({
+              cards: state.cards.filter(c => c.id !== tempId),
+            }));
+            return;
+          }
+
           if (response.ok) {
             const serverCard = await response.json();
 
