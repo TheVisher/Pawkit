@@ -80,41 +80,12 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
     user: { connect: { id: userId } }
   };
 
-  try {
-    const created = await prisma.card.create({
-      data
-    });
+  const created = await prisma.card.create({
+    data
+  });
 
-    // Return immediately - metadata will be fetched in background for URL cards
-    return mapCard(created);
-  } catch (error) {
-    // Handle unique constraint violation (P2002) - duplicate userId + url
-    // Note: This should only happen for URL-type cards due to partial unique index
-    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-
-      // Find and return the existing non-deleted card
-      // Look for cards of the same type to handle edge cases
-      const existingCard = await prisma.card.findFirst({
-        where: {
-          userId,
-          url: parsed.url || "",
-          type: cardType, // Look for cards of the same type
-          deleted: false // Exclude deleted cards
-        }
-      });
-
-      if (existingCard) {
-        return mapCard(existingCard);
-      }
-
-      // If no non-deleted card found, this might be a deleted duplicate
-      // In this case, we should allow creation by re-throwing the error
-      // so the caller can handle it appropriately
-    }
-
-    // Re-throw other errors
-    throw error;
-  }
+  // Return immediately - metadata will be fetched in background for URL cards
+  return mapCard(created);
 }
 
 export async function fetchAndUpdateCardMetadata(cardId: string, url: string, previewServiceUrl?: string): Promise<CardDTO> {
