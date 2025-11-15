@@ -15,13 +15,18 @@ export type ToastProps = {
 export function Toast({ message, type = "info", duration, onClose }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
 
+  console.log('🔴 TOAST COMPONENT - Rendering:', { message, type, duration });
+
   useEffect(() => {
+    console.log('🔴 TOAST COMPONENT - useEffect triggered');
     // Don't auto-dismiss loading toasts unless duration is explicitly set
     const shouldAutoDismiss = type === "loading" ? duration !== undefined : true;
     const dismissDuration = duration ?? 3000;
 
     if (shouldAutoDismiss) {
+      console.log('🔴 TOAST COMPONENT - Setting auto-dismiss timer for', dismissDuration, 'ms');
       const timer = setTimeout(() => {
+        console.log('🔴 TOAST COMPONENT - Fading out');
         setIsVisible(false);
         setTimeout(onClose, 300); // Wait for fade out animation
       }, dismissDuration);
@@ -83,17 +88,23 @@ type ToastContainerProps = {
 };
 
 export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
+  console.log('🔴 TOAST CONTAINER - Rendering. Toasts count:', toasts.length);
+  console.log('🔴 TOAST CONTAINER - Toasts:', toasts);
+
   return (
     <div className="fixed bottom-6 right-6 z-[9999] space-y-2">
-      {toasts.map((toast) => (
-        <Toast
-          key={toast.id}
-          message={toast.message}
-          type={toast.type}
-          duration={toast.duration}
-          onClose={() => onDismiss(toast.id)}
-        />
-      ))}
+      {toasts.map((toast) => {
+        console.log('🔴 TOAST CONTAINER - Rendering toast:', toast.id, toast.message);
+        return (
+          <Toast
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            duration={toast.duration}
+            onClose={() => onDismiss(toast.id)}
+          />
+        );
+      })}
     </div>
   );
 }

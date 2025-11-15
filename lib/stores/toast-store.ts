@@ -31,16 +31,23 @@ export const useToastStore = create<ToastStore>((set, get) => ({
     const id = `toast-${++toastCounter}-${Date.now()}`;
     const newToast: Toast = { id, message, type, duration };
 
-    set((state) => ({
-      toasts: [...state.toasts, newToast],
-    }));
+    console.log('🔴 TOAST STORE - showToast() called:', { message, type, id });
+
+    set((state) => {
+      console.log('🔴 TOAST STORE - Adding toast to state. Current toasts:', state.toasts.length);
+      return {
+        toasts: [...state.toasts, newToast],
+      };
+    });
 
     // Auto-dismiss after specified duration (default 3 seconds)
     // Loading toasts don't auto-dismiss unless duration is specified
     const dismissDuration = duration ?? (type === "loading" ? undefined : 3000);
 
     if (dismissDuration !== undefined) {
+      console.log('🔴 TOAST STORE - Setting auto-dismiss timer for', dismissDuration, 'ms');
       setTimeout(() => {
+        console.log('🔴 TOAST STORE - Auto-dismissing toast:', id);
         set((state) => ({
           toasts: state.toasts.filter((t) => t.id !== id),
         }));
@@ -51,16 +58,19 @@ export const useToastStore = create<ToastStore>((set, get) => ({
   },
 
   dismissToast: (id: string) => {
+    console.log('🔴 TOAST STORE - dismissToast() called:', id);
     set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     }));
   },
 
   success: (message: string, duration?: number) => {
+    console.log('🔴 TOAST STORE - success() called:', message);
     return get().showToast(message, "success", duration);
   },
 
   error: (message: string, duration?: number) => {
+    console.log('🔴 TOAST STORE - error() called:', message);
     return get().showToast(message, "error", duration);
   },
 

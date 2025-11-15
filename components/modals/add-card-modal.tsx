@@ -104,16 +104,21 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
       setLoading(false);
       onClose();
     } catch (error) {
+      console.log('🔴 CATCH BLOCK - Error caught:', error);
       setLoading(false);
 
       // Handle duplicate URL error
       if (error instanceof Error && error.message === 'DUPLICATE_URL') {
+        console.log('🔴 DUPLICATE_URL detected - calling toast.error()');
         toast.error('This URL is already bookmarked');
+        console.log('🔴 toast.error() called');
         setError('This URL is already in your library');
       } else {
+        console.log('🔴 Other error - calling toast.error()');
         toast.error('Failed to save bookmark');
         setError('Failed to save bookmark. Please try again.');
       }
+      console.log('🔴 Catch block complete');
     }
   };
 
