@@ -362,15 +362,8 @@ export function LeftNavigationPanel({
         collections: newCollections
       });
 
-
       // Show toast
-      setToastMessage(`Added to ${collectionName}`);
-      setShowToast(true);
-
-      // Hide toast after 2 seconds
-      setTimeout(() => {
-        setShowToast(false);
-      }, 2000);
+      useToastStore.getState().success(`Added to ${collectionName}`);
     } else {
     }
 
@@ -391,13 +384,7 @@ export function LeftNavigationPanel({
       });
 
       // Show toast
-      setToastMessage(`Removed from ${collectionName}`);
-      setShowToast(true);
-
-      // Hide toast after 2 seconds
-      setTimeout(() => {
-        setShowToast(false);
-      }, 2000);
+      useToastStore.getState().success(`Removed from ${collectionName}`);
     }
   };
 
@@ -451,13 +438,7 @@ export function LeftNavigationPanel({
       await updateCollection(renameCollectionId, { name: trimmedName });
 
       // Show toast
-      setToastMessage("Pawkit Renamed");
-      setShowToast(true);
-
-      // Hide toast after 2 seconds
-      setTimeout(() => {
-        setShowToast(false);
-      }, 2000);
+      useToastStore.getState().success("Pawkit renamed");
 
       // Reset and close modal
       setShowRenameModal(false);
