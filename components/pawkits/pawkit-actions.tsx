@@ -49,6 +49,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
     setLoading(true);
     try {
       await deleteCollection(pawkitId, deleteCards, deleteSubPawkits);
+      toast.success("Pawkit deleted");
       setShowDeleteConfirm(false);
       router.push("/pawkits");
       onDeleteSuccess?.();
@@ -64,6 +65,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
     setLoading(true);
     try {
       await updateCollection(pawkitId, { name: renameValue.trim() });
+      toast.success("Pawkit renamed");
       setShowRenameModal(false);
       setLoading(false);
     } catch (err) {

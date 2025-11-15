@@ -141,6 +141,7 @@ export function DigUpView({
       seenCards[currentCard.id] = Date.now();
       localStorage.setItem('digup-seen-cards', JSON.stringify(seenCards));
 
+      toast.success("Card deleted");
       moveToNext();
     } catch (error) {
       toast.error("Failed to delete card");
@@ -166,6 +167,7 @@ export function DigUpView({
       seenCards[currentCard.id] = Date.now();
       localStorage.setItem('digup-seen-cards', JSON.stringify(seenCards));
 
+      toast.success("Added to Pawkit");
       setShowPawkitSelector(false);
       moveToNext();
     } catch (error) {

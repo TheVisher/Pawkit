@@ -224,6 +224,10 @@ export function ActionsMenu({ view, onRefresh, pawkitActions, onCreatePawkit }: 
               )
             );
             await refresh();
+
+            const count = selectedCardIds.length;
+            toast.success(`${count} card${count !== 1 ? 's' : ''} moved to Pawkit`);
+
             setShowMoveToPawkitModal(false);
             clearSelection();
           }}

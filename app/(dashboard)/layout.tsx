@@ -310,13 +310,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Handle create note from command palette
   const handleCreateNote = async (data: { type: string; title: string; content?: string; tags?: string[] }) => {
     setShowCreateNoteModal(false);
-    await addCard({
-      type: data.type as 'md-note' | 'text-note',
-      title: data.title,
-      content: data.content || "",
-      url: "",
-      tags: data.tags,
-    });
+    try {
+      await addCard({
+        type: data.type as 'md-note' | 'text-note',
+        title: data.title,
+        content: data.content || "",
+        url: "",
+        tags: data.tags,
+      });
+      const { useToastStore } = await import("@/lib/stores/toast-store");
+      useToastStore.getState().success(data.tags?.includes("daily") ? "Daily note created" : "Note created");
+    } catch (error) {
+      const { useToastStore } = await import("@/lib/stores/toast-store");
+      useToastStore.getState().error("Failed to create note");
+    }
   };
 
   // Global card modal state
