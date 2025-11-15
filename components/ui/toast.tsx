@@ -31,18 +31,21 @@ export function Toast({ message, type = "info", duration, onClose }: ToastProps)
   }, [duration, onClose, type]);
 
   const getToastStyles = () => {
+    // All toasts use glass morphism base with colored accents
+    const glassBase = "backdrop-blur-lg bg-gray-900/90 border";
+
     switch (type) {
       case "success":
-        return "bg-green-900/90 border-green-600";
+        return `${glassBase} border-green-500/30`;
       case "error":
-        return "bg-red-900/90 border-red-600";
+        return `${glassBase} border-red-500/30`;
       case "warning":
-        return "bg-yellow-900/90 border-yellow-600";
+        return `${glassBase} border-yellow-500/30`;
       case "loading":
-        return "bg-purple-900/90 border-purple-600";
+        return `${glassBase} border-purple-500/30`;
       case "info":
       default:
-        return "bg-blue-900/90 border-blue-600";
+        return `${glassBase} border-white/10`;
     }
   };
 
