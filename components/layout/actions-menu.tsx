@@ -73,12 +73,16 @@ export function ActionsMenu({ view, onRefresh, pawkitActions, onCreatePawkit }: 
       const deletePromises = selectedCardIds.map((cardId: string) =>
         fetch(`/api/cards/${cardId}`, { method: 'DELETE' })
       );
-      
+
       await Promise.all(deletePromises);
-      
+
       // Refresh the view
       await refresh();
-      
+
+      // Show success toast
+      const count = selectedCardIds.length;
+      toast.success(`${count} card${count !== 1 ? 's' : ''} deleted`);
+
       // Clear selection
       clearSelection();
       setShowDeleteConfirm(false);
