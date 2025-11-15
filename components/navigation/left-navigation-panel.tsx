@@ -9,6 +9,7 @@ import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useToastStore } from "@/lib/stores/toast-store";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
@@ -77,8 +78,6 @@ export function LeftNavigationPanel({
   const [expandedCollections, setExpandedCollections] = useState<Set<string>>(new Set());
   const [hoveredPawkit, setHoveredPawkit] = useState<string | null>(null);
   const [animatingPawkit, setAnimatingPawkit] = useState<string | null>(null);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
   const [showCreatePawkitModal, setShowCreatePawkitModal] = useState(false);
   const [newPawkitName, setNewPawkitName] = useState("");
   const [creatingPawkit, setCreatingPawkit] = useState(false);
@@ -423,13 +422,7 @@ export function LeftNavigationPanel({
       await addCollection(payload);
 
       // Show toast
-      setToastMessage(parentPawkitId ? "Sub-Pawkit Created" : "Pawkit Created");
-      setShowToast(true);
-
-      // Hide toast after 2 seconds
-      setTimeout(() => {
-        setShowToast(false);
-      }, 2000);
+      useToastStore.getState().success(parentPawkitId ? "Sub-Pawkit created" : "Pawkit created");
 
       // Reset and close modal
       setNewPawkitName("");
@@ -483,13 +476,7 @@ export function LeftNavigationPanel({
       await deleteCollection(collectionToDelete.id);
 
       // Show toast
-      setToastMessage("Pawkit Deleted");
-      setShowToast(true);
-
-      // Hide toast after 2 seconds
-      setTimeout(() => {
-        setShowToast(false);
-      }, 2000);
+      useToastStore.getState().success("Pawkit deleted");
     } catch (error) {
     }
   };
@@ -1373,15 +1360,6 @@ export function LeftNavigationPanel({
         message="Are you sure you want to delete this pawkit?"
         itemName={collectionToDelete?.name}
       />
-
-      {/* Toast Notification */}
-      {showToast && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[150] animate-fade-in">
-          <div className="px-6 py-3 rounded-xl bg-white/5 backdrop-blur-lg border border-white/10 shadow-glow-accent">
-            <p className="text-sm font-medium text-foreground">{toastMessage}</p>
-          </div>
-        </div>
-      )}
     </>
   );
 }

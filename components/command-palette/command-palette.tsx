@@ -212,7 +212,23 @@ export function CommandPalette({
         description: "Save this URL to your library",
         icon: Zap,
         action: async () => {
-          await addCard({ url: query.trim(), type: 'url' });
+          console.log('🔴 COMMAND PALETTE - Quick add URL:', query.trim());
+          try {
+            await addCard({ url: query.trim(), type: 'url' });
+            console.log('🔴 COMMAND PALETTE - Card created, calling toast');
+            const { useToastStore } = await import("@/lib/stores/toast-store");
+            useToastStore.getState().success("Bookmark saved");
+            console.log('🔴 COMMAND PALETTE - Toast called');
+          } catch (error) {
+            console.log('🔴 COMMAND PALETTE - Error:', error);
+            if (error instanceof Error && error.message === 'DUPLICATE_URL') {
+              const { useToastStore } = await import("@/lib/stores/toast-store");
+              useToastStore.getState().error('This URL is already bookmarked');
+            } else if (error instanceof Error && error.message === 'DUPLICATE_URL_IN_TRASH') {
+              const { useToastStore } = await import("@/lib/stores/toast-store");
+              useToastStore.getState().error('This URL is in your trash. Empty trash to add it again.');
+            }
+          }
           setQuery("");
           const libraryPath = `${pathPrefix}/library`;
           if (pathname !== libraryPath) {
