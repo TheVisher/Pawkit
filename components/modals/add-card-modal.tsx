@@ -51,6 +51,23 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
+  // Add global error handler for unhandled promise rejections
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.log('🔴 MODAL - Unhandled promise rejection detected:', event.reason);
+      if (event.reason instanceof Error && event.reason.message === 'DUPLICATE_URL') {
+        console.log('🔴 MODAL - DUPLICATE_URL in unhandled rejection!');
+        event.preventDefault(); // Prevent the default error
+        toast.error('This URL is already bookmarked');
+        setError('This URL is already in your library');
+        setLoading(false);
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+  }, [toast]);
+
   if (!open || typeof document === 'undefined') return null;
 
   const handleSubmit = async (event: FormEvent) => {
@@ -127,23 +144,6 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
       console.log('🔴 MODAL - Finally block executed');
     }
   };
-
-  // Add global error handler for unhandled promise rejections
-  useEffect(() => {
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.log('🔴 MODAL - Unhandled promise rejection detected:', event.reason);
-      if (event.reason instanceof Error && event.reason.message === 'DUPLICATE_URL') {
-        console.log('🔴 MODAL - DUPLICATE_URL in unhandled rejection!');
-        event.preventDefault(); // Prevent the default error
-        toast.error('This URL is already bookmarked');
-        setError('This URL is already in your library');
-        setLoading(false);
-      }
-    };
-
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-  }, [toast]);
 
   const modalContent = (
     <div
