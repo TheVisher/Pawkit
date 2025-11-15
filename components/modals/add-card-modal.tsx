@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { CardModel } from "@/lib/types";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { useToastStore } from "@/lib/stores/toast-store";
 import { GlowButton } from "@/components/ui/glow-button";
 
 export type AddCardModalProps = {
@@ -16,6 +17,7 @@ export type AddCardModalProps = {
 
 export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardModalProps) {
   const { addCard: addCardToStore } = useDemoAwareStore();
+  const toast = useToastStore();
   const [url, setUrl] = useState(initialUrl ?? "");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -67,39 +69,52 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
         : undefined
     };
 
-    // Create card optimistically - shows instantly!
-    addCardToStore(payload);
+    try {
+      // Wait for card creation to complete (including duplicate check)
+      await addCardToStore(payload);
 
-    // Call onCreated callback (with temporary card data)
-    onCreated?.({
-      id: 'temp',
-      url,
-      title: title || null,
-      notes: notes || null,
-      content: null,
-      type: 'url',
-      status: 'PENDING',
-      collections: payload.collections || [],
-      tags: payload.tags || [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      deleted: false,
-      deletedAt: null,
-      pinned: false,
-      domain: null,
-      image: null,
-      description: null,
-      articleContent: null,
-      metadata: undefined,
-      inDen: false,
-      encryptedContent: null,
-      scheduledDate: null
-    });
+      // Call onCreated callback (with temporary card data)
+      onCreated?.({
+        id: 'temp',
+        url,
+        title: title || null,
+        notes: notes || null,
+        content: null,
+        type: 'url',
+        status: 'PENDING',
+        collections: payload.collections || [],
+        tags: payload.tags || [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        deleted: false,
+        deletedAt: null,
+        pinned: false,
+        domain: null,
+        image: null,
+        description: null,
+        articleContent: null,
+        metadata: undefined,
+        inDen: false,
+        encryptedContent: null,
+        scheduledDate: null
+      });
 
-    setLoading(false);
-    onClose();
+      // Success - close modal
+      toast.success("Bookmark saved");
+      setLoading(false);
+      onClose();
+    } catch (error) {
+      setLoading(false);
 
-    // Note: The store handles server sync and metadata fetch in background
+      // Handle duplicate URL error
+      if (error instanceof Error && error.message === 'DUPLICATE_URL') {
+        toast.error('This URL is already bookmarked');
+        setError('This URL is already in your library');
+      } else {
+        toast.error('Failed to save bookmark');
+        setError('Failed to save bookmark. Please try again.');
+      }
+    }
   };
 
   const modalContent = (
