@@ -72,7 +72,7 @@ export function Toast({ message, type = "info", duration, onClose }: ToastProps)
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 rounded-lg border px-4 py-3 shadow-xl backdrop-blur-sm transition-all duration-300 ${getToastStyles()} ${
+      className={`relative flex items-center gap-3 rounded-lg border px-4 py-3 shadow-xl pointer-events-auto transition-all duration-300 ${getToastStyles()} ${
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
       }`}
     >
@@ -92,7 +92,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
   console.log('🔴 TOAST CONTAINER - Toasts:', toasts);
 
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] space-y-2">
+    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] space-y-2 pointer-events-none">
       {toasts.map((toast) => {
         console.log('🔴 TOAST CONTAINER - Rendering toast:', toast.id, toast.message);
         return (
