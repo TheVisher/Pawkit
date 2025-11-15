@@ -26,5 +26,8 @@ export function GlobalToastProvider() {
   const toasts = useToastStore((state: { toasts: Toast[] }) => state.toasts);
   const dismissToast = useToastStore((state: { dismissToast: (id: string) => void }) => state.dismissToast);
 
+  console.log('🔴 GLOBAL TOAST PROVIDER - Rendering. Toasts count:', toasts.length);
+  console.log('🔴 GLOBAL TOAST PROVIDER - Toasts:', toasts);
+
   return <ToastContainer toasts={toasts} onDismiss={dismissToast} />;
 }

@@ -500,6 +500,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
           // Check for duplicate URL (409 Conflict)
           if (response.status === 409) {
+            console.log('🔴 409 DETECTED - Starting cleanup');
             // Remove the temp card from local storage and state
             await localDb.permanentlyDeleteCard(tempId);
             await syncQueue.removeByTempId(tempId);
@@ -507,6 +508,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
               cards: state.cards.filter(c => c.id !== tempId),
             }));
 
+            console.log('🔴 Cleanup complete - Throwing DUPLICATE_URL error');
             // Throw error so the UI can catch and show toast
             throw new Error('DUPLICATE_URL');
           }
