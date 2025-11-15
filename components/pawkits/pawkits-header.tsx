@@ -52,6 +52,7 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
 
       await addCollection(payload);
 
+      toast.success(`Pawkit "${trimmedName}" created`);
       setPawkitName("");
       setShowModal(false);
       setLoading(false);
@@ -77,6 +78,7 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
       if (parentId) {
         await deleteCollection(parentId);
       }
+      toast.success("Pawkit deleted");
       router.push("/pawkits");
     } catch (err) {
       toast.error("Failed to delete Pawkit");
@@ -90,6 +92,7 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
     setLoading(true);
     try {
       await updateCollection(parentId, { name: renameValue.trim() });
+      toast.success("Pawkit renamed");
       setShowRenameModal(false);
       setRenameValue("");
       setLoading(false);
