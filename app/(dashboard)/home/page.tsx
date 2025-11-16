@@ -205,6 +205,8 @@ export default function HomePage() {
         tags: ['daily'],
         collections: []
       });
+      const { useToastStore } = await import("@/lib/stores/toast-store");
+      useToastStore.getState().success("Daily note created");
 
       // Find the newly created card from the updated store
       const dataStore = useDataStore.getState();

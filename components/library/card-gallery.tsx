@@ -17,6 +17,7 @@ import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { UnpinNotesModal } from "@/components/modals/unpin-notes-modal";
+import { useToastStore } from "@/lib/stores/toast-store";
 import { createPortal } from "react-dom";
 import { useRef } from "react";
 import { addCollectionWithHierarchy, removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
@@ -327,6 +328,10 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     // Delete all cards from store (optimistic)
     await Promise.all(selectedIds.map((id) => deleteCardFromStore(id)));
 
+    // Show toast
+    const count = selectedIds.length;
+    useToastStore.getState().success(`${count} card${count !== 1 ? 's' : ''} deleted`);
+
     // Update local state
     setCards((prev) => prev.filter((card) => !selectedIds.includes(card.id)));
     clearSelection();
@@ -408,6 +413,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
 
   const handleDeleteCard = useCallback(async (cardId: string) => {
     await deleteCardFromStore(cardId);
+    useToastStore.getState().success("Card deleted");
     setCards((prev) => prev.filter((c) => c.id !== cardId));
   }, [deleteCardFromStore, setCards]);
 

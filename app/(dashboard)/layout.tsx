@@ -12,6 +12,7 @@ import { useSyncSettings } from "@/lib/hooks/use-sync-settings";
 import { useSyncTriggers } from "@/lib/hooks/use-sync-triggers";
 import { useLoadSettings } from "@/lib/hooks/use-load-settings";
 import { ConflictNotifications } from "@/components/conflict-notifications";
+import { GlobalToastProvider } from "@/components/providers/global-toast-provider";
 import { ViewControls } from "@/components/layout/view-controls";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { PawkitActionsProvider } from "@/lib/contexts/pawkit-actions-context";
@@ -309,13 +310,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Handle create note from command palette
   const handleCreateNote = async (data: { type: string; title: string; content?: string; tags?: string[] }) => {
     setShowCreateNoteModal(false);
-    await addCard({
-      type: data.type as 'md-note' | 'text-note',
-      title: data.title,
-      content: data.content || "",
-      url: "",
-      tags: data.tags,
-    });
+    try {
+      await addCard({
+        type: data.type as 'md-note' | 'text-note',
+        title: data.title,
+        content: data.content || "",
+        url: "",
+        tags: data.tags,
+      });
+      const { useToastStore } = await import("@/lib/stores/toast-store");
+      const isDailyNote = data.tags?.includes("daily");
+      useToastStore.getState().success(isDailyNote ? "Daily note created" : "Note created");
+    } catch (error) {
+      const { useToastStore } = await import("@/lib/stores/toast-store");
+      useToastStore.getState().error("Failed to create note");
+    }
   };
 
   // Global card modal state
@@ -442,6 +451,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </main>
           </SidebarInset>
           <ConflictNotifications />
+          <GlobalToastProvider />
 
           {/* Multi-Session Warning Banner */}
           <SessionWarningBanner />

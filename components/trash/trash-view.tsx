@@ -7,9 +7,9 @@ import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { localDb } from "@/lib/services/local-storage";
 import { FileText, Folder } from "lucide-react";
-import { ToastContainer, ToastType } from "@/components/ui/toast";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useToastStore } from "@/lib/stores/toast-store";
 
 type CardTrashItem = CardDTO & { itemType: "card" };
 type PawkitTrashItem = CollectionDTO & { itemType: "pawkit" };
@@ -25,12 +25,12 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
   const [loading, setLoading] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; itemType: "card" | "pawkit"; name: string } | null>(null);
   const [showEmptyConfirm, setShowEmptyConfirm] = useState(false);
-  const [toasts, setToasts] = useState<Array<{ id: string; message: string; type?: ToastType }>>([]);
   const [localCards, setLocalCards] = useState<CardDTO[]>([]);
   const [localPawkits, setLocalPawkits] = useState<CollectionDTO[]>([]);
   const router = useRouter();
   const serverSync = useSettingsStore((state) => state.serverSync);
   const refreshDataStore = useDataStore((state) => state.refresh);
+  const toast = useToastStore();
 
   // Load deleted items from local storage
   const loadLocalTrash = useCallback(async () => {
@@ -107,15 +107,6 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
   const cards = serverSync ? mergedCards : localCards;
   const pawkits = serverSync ? mergedPawkits : localPawkits;
 
-  const showToast = (message: string, type: ToastType = "success") => {
-    const id = Date.now().toString();
-    setToasts(prev => [...prev, { id, message, type }]);
-  };
-
-  const dismissToast = (id: string) => {
-    setToasts(prev => prev.filter(t => t.id !== id));
-  };
-
   const allItems: TrashItem[] = [
     ...cards.map((card): CardTrashItem => ({ ...card, itemType: "card" as const })),
     ...pawkits.map((pawkit): PawkitTrashItem => ({ ...pawkit, itemType: "pawkit" as const }))
@@ -144,13 +135,13 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
 
       // Show appropriate toast based on restore context
       if (type === "pawkit" && data.restoredToRoot) {
-        showToast("Pawkit restored to root level (parent no longer exists)", "info");
+        toast.info("Pawkit restored to root level (parent no longer exists)");
       } else if (type === "pawkit") {
-        showToast("Pawkit restored successfully", "success");
+        toast.success("Pawkit restored successfully");
       } else if (type === "card" && data.restoredToLibrary) {
-        showToast("Card restored to Library (Pawkit no longer exists)", "info");
+        toast.info("Card restored to Library (Pawkit no longer exists)");
       } else if (type === "card") {
-        showToast("Card restored successfully", "success");
+        toast.success("Card restored successfully");
       }
 
       // Reload local trash and refresh data-store after restore
@@ -158,7 +149,7 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
       await refreshDataStore(); // Update data-store with restored item
       router.refresh();
     } catch (error) {
-      showToast(`Failed to restore ${type}`, "error");
+      toast.error(`Failed to restore ${type}`);
     } finally {
       setLoading(null);
     }
@@ -194,7 +185,7 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
       await loadLocalTrash();
       router.refresh();
     } catch (error) {
-      alert(`Failed to permanently delete ${deleteConfirm.itemType}`);
+      toast.error(`Failed to permanently delete ${deleteConfirm.itemType}`);
     } finally {
       setLoading(null);
       setDeleteConfirm(null);
@@ -222,7 +213,7 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
       await loadLocalTrash();
       router.refresh();
     } catch (error) {
-      alert("Failed to empty trash");
+      toast.error("Failed to empty trash");
     } finally {
       setLoading(null);
       setShowEmptyConfirm(false);
@@ -427,8 +418,6 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
         </div>
       )}
 
-      {/* Toast Container - only render on client */}
-      {toasts.length > 0 && <ToastContainer toasts={toasts} onDismiss={dismissToast} />}
     </div>
   );
 }

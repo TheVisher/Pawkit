@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useToastStore } from "@/lib/stores/toast-store";
 
 type PawkitsHeaderProps = {
   parentSlug?: string | null;
@@ -24,6 +25,7 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { addCollection, updateCollection, deleteCollection } = useDataStore();
+  const toast = useToastStore();
 
   const isSubPawkit = !!parentSlug;
 
@@ -50,6 +52,7 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
 
       await addCollection(payload);
 
+      toast.success(`Pawkit "${trimmedName}" created`);
       setPawkitName("");
       setShowModal(false);
       setLoading(false);
@@ -75,9 +78,10 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
       if (parentId) {
         await deleteCollection(parentId);
       }
+      toast.success("Pawkit deleted");
       router.push("/pawkits");
     } catch (err) {
-      alert("Failed to delete Pawkit");
+      toast.error("Failed to delete Pawkit");
       setLoading(false);
     }
   };
@@ -88,11 +92,12 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
     setLoading(true);
     try {
       await updateCollection(parentId, { name: renameValue.trim() });
+      toast.success("Pawkit renamed");
       setShowRenameModal(false);
       setRenameValue("");
       setLoading(false);
     } catch (err) {
-      alert("Failed to rename Pawkit");
+      toast.error("Failed to rename Pawkit");
       setLoading(false);
     }
   };
@@ -108,7 +113,7 @@ export function PawkitsHeader({ parentSlug = null, parentId = null, allPawkits =
       setLoading(false);
       router.push("/pawkits");
     } catch (err) {
-      alert("Failed to move Pawkit");
+      toast.error("Failed to move Pawkit");
       setLoading(false);
     }
   };

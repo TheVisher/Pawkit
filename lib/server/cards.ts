@@ -105,14 +105,26 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
     // Return immediately - metadata will be fetched in background for URL cards
     return mapCard(created);
   } catch (error) {
-    // Fallback: Handle unique constraint violation (P2002) in case pre-flight check was bypassed
-    // This should rarely happen now that we have pre-flight duplicate detection
+    // Check if this is a P2002 duplicate URL error
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      // Re-throw as DUPLICATE_URL error for consistent handling
-      throw new Error(`DUPLICATE_URL:unknown`);
-    }
+      // Check if the existing card with this URL is in trash
+      if (parsed.url) {
+        const existing = await prisma.card.findFirst({
+          where: {
+            userId,
+            url: parsed.url,
+            type: 'url'
+          }
+        });
 
-    // Re-throw other errors
+        if (existing && existing.deletedAt) {
+          // Card is in trash - throw special error
+          throw new Error('DUPLICATE_URL_IN_TRASH');
+        }
+      }
+      // Card is active - let P2002 bubble up normally to handleApiError
+    }
+    // Re-throw all errors
     throw error;
   }
 }

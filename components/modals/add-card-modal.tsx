@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { CardModel } from "@/lib/types";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { useToastStore } from "@/lib/stores/toast-store";
 import { GlowButton } from "@/components/ui/glow-button";
 
 export type AddCardModalProps = {
@@ -16,6 +17,7 @@ export type AddCardModalProps = {
 
 export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardModalProps) {
   const { addCard: addCardToStore } = useDemoAwareStore();
+  const toast = useToastStore();
   const [url, setUrl] = useState(initialUrl ?? "");
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
@@ -53,6 +55,26 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
+  // Add global error handler for unhandled promise rejections
+  useEffect(() => {
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (event.reason instanceof Error && event.reason.message === 'DUPLICATE_URL') {
+        event.preventDefault();
+        toast.error('This URL is already bookmarked');
+        setError('This URL is already in your library');
+        setLoading(false);
+      } else if (event.reason instanceof Error && event.reason.message === 'DUPLICATE_URL_IN_TRASH') {
+        event.preventDefault();
+        toast.error('This URL is in your trash. Empty trash to add it again.');
+        setError('This URL is in your trash. Go to Trash and empty it to add this URL again.');
+        setLoading(false);
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+  }, [toast]);
+
   if (!open || typeof document === 'undefined') return null;
 
   const handleSubmit = async (event: FormEvent) => {
@@ -72,8 +94,8 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
     };
 
     try {
-      // Create card - will throw error if duplicate URL detected
-      await addCardToStore(payload);
+      // Wait for card creation to complete (including duplicate check)
+      const result = await addCardToStore(payload);
 
       // Call onCreated callback (with temporary card data)
       onCreated?.({
@@ -101,32 +123,25 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
         scheduledDate: null
       });
 
+      // Success - close modal
+      toast.success("Bookmark saved");
       setLoading(false);
       onClose();
     } catch (error) {
       setLoading(false);
 
-      // Handle duplicate URL error
-      if (error instanceof Error && error.message.startsWith('DUPLICATE_URL:')) {
-        setError('This URL is already bookmarked');
-        setToastMessage('This URL is already bookmarked');
-        setShowToast(true);
-
-        // Auto-hide toast after 4 seconds
-        setTimeout(() => setShowToast(false), 4000);
-        return;
+      // Handle duplicate URL errors
+      if (error instanceof Error && error.message === 'DUPLICATE_URL') {
+        toast.error('This URL is already bookmarked');
+        setError('This URL is already in your library');
+      } else if (error instanceof Error && error.message === 'DUPLICATE_URL_IN_TRASH') {
+        toast.error('This URL is in your trash. Empty trash to add it again.');
+        setError('This URL is in your trash. Go to Trash and empty it to add this URL again.');
+      } else {
+        toast.error('Failed to save bookmark');
+        setError('Failed to save bookmark. Please try again.');
       }
-
-      // Handle other errors
-      setError('Failed to add card. Please try again.');
-      setToastMessage('Failed to add card. Please try again.');
-      setShowToast(true);
-
-      // Auto-hide toast after 4 seconds
-      setTimeout(() => setShowToast(false), 4000);
     }
-
-    // Note: The store handles server sync and metadata fetch in background
   };
 
   const modalContent = (

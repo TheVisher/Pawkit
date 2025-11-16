@@ -194,6 +194,8 @@ export function CommandPalette({
         tags: ["daily"],
         collections: [],
       });
+      const { useToastStore } = await import("@/lib/stores/toast-store");
+      useToastStore.getState().success("Daily note created");
 
       router.push(`${pathPrefix}/notes`);
     }
@@ -212,7 +214,19 @@ export function CommandPalette({
         description: "Save this URL to your library",
         icon: Zap,
         action: async () => {
-          await addCard({ url: query.trim(), type: 'url' });
+          try {
+            await addCard({ url: query.trim(), type: 'url' });
+            const { useToastStore } = await import("@/lib/stores/toast-store");
+            useToastStore.getState().success("Bookmark saved");
+          } catch (error) {
+            if (error instanceof Error && error.message === 'DUPLICATE_URL') {
+              const { useToastStore } = await import("@/lib/stores/toast-store");
+              useToastStore.getState().error('This URL is already bookmarked');
+            } else if (error instanceof Error && error.message === 'DUPLICATE_URL_IN_TRASH') {
+              const { useToastStore } = await import("@/lib/stores/toast-store");
+              useToastStore.getState().error('This URL is in your trash. Empty trash to add it again.');
+            }
+          }
           setQuery("");
           const libraryPath = `${pathPrefix}/library`;
           if (pathname !== libraryPath) {
