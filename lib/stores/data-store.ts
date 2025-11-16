@@ -504,7 +504,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
             // Parse response to check if it's a trashed duplicate
             const errorData = await response.json();
-            const isInTrash = errorData.code === 'DUPLICATE_URL_IN_TRASH';
+            console.log('🔴 Error data:', errorData);
+            const isInTrash = errorData.details?.code === 'DUPLICATE_URL_IN_TRASH';
+            console.log('🔴 Is in trash:', isInTrash);
 
             // Remove the temp card from local storage and state
             await localDb.permanentlyDeleteCard(tempId);
