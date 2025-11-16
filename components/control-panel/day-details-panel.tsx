@@ -52,6 +52,7 @@ export function DayDetailsPanel() {
     const content = generateDailyNoteContent(selectedDay);
 
     try {
+      console.log('🔴 DAY DETAILS - Creating daily note');
       await addCard({
         type: 'md-note',
         title,
@@ -59,6 +60,10 @@ export function DayDetailsPanel() {
         tags: ['daily'],
         collections: []
       });
+      console.log('🔴 DAY DETAILS - Daily note created, showing toast');
+      const { useToastStore } = await import("@/lib/stores/toast-store");
+      useToastStore.getState().success("Daily note created");
+      console.log('🔴 DAY DETAILS - Toast called');
 
       // Find and open the newly created card
       const dataStore = useDataStore.getState();
