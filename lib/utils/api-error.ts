@@ -47,8 +47,14 @@ export function handleApiError(error: unknown, context?: { route?: string; userI
     }
   }
 
-  // Custom validation errors
+  // Custom duplicate URL errors
   if (error instanceof Error) {
+    if (error.message === 'DUPLICATE_URL_IN_TRASH') {
+      return conflict('This URL is in your trash. Empty trash to add it again.', {
+        code: 'DUPLICATE_URL_IN_TRASH'
+      });
+    }
+    // Custom validation errors
     if (error.message.includes("required") || error.message.includes("invalid")) {
       return validationError(error.message);
     }

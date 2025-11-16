@@ -10,7 +10,7 @@ import remarkBreaks from "remark-breaks";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { useDataStore, extractAndSaveLinks } from "@/lib/stores/data-store";
 import { localDb } from "@/lib/services/local-storage";
-import { Toast } from "@/components/ui/toast";
+import { useToastStore } from "@/lib/stores/toast-store";
 import { ReaderView } from "@/components/reader/reader-view";
 import { RichMDEditor } from "@/components/notes/md-editor";
 import { BacklinksPanel } from "@/components/notes/backlinks-panel";
@@ -330,7 +330,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     },
   }), [cardTitleMap, allCards, onNavigateToCard]);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const toast = useToastStore();
   const [isPinned, setIsPinned] = useState(card.pinned ?? false);
   const [isInDen, setIsInDen] = useState(card.collections?.includes('the-den') ?? false);
   const [isReaderExpanded, setIsReaderExpanded] = useState(false);
@@ -500,9 +500,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       // ✅ Use data store to update IndexedDB first
       await updateCardInStore(card.id, { notes });
       onUpdate({ ...card, notes });
-      setToast("Notes saved");
+      toast.success("Notes saved");
     } catch (error) {
-      setToast("Failed to save notes");
+      toast.error("Failed to save notes");
     } finally {
       setSaving(false);
     }
@@ -518,7 +518,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     // Update parent component state
     onUpdate({ ...card, pinned: newPinned });
 
-    setToast(newPinned ? "Pinned to home" : "Unpinned from home");
+    toast.success(newPinned ? "Pinned to home" : "Unpinned from home");
   };
 
   const handleSaveTitle = async () => {
@@ -538,9 +538,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       onUpdate({ ...card, title: trimmedTitle });
 
       setIsEditingTitle(false);
-      setToast("Title updated");
+      toast.success("Title updated");
     } catch (error) {
-      setToast("Failed to update title");
+      toast.error("Failed to update title");
     }
   };
 
@@ -592,13 +592,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     const wasInDen = card.collections?.includes('the-den');
     const nowInDen = nextCollections.includes('the-den');
     if (wasInDen && !nowInDen) {
-      setToast("Moved out of The Den");
+      toast.success("Moved out of The Den");
       // Close modal after a brief delay to show the toast
       setTimeout(() => handleClose(), 500);
       return;
     }
 
-    setToast(isAlreadyIn ? "Removed from Pawkit" : "Added to Pawkit");
+    toast.success(isAlreadyIn ? "Removed from Pawkit" : "Added to Pawkit");
   };
 
   const handleExtractArticle = async () => {
@@ -614,20 +614,20 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         // ✅ Save to IndexedDB via data store
         await updateCardInStore(card.id, { articleContent: data.articleContent });
         onUpdate({ ...card, articleContent: data.articleContent });
-        setToast("Article extracted successfully");
+        toast.success("Article extracted successfully");
       } else {
         const error = await response.json();
-        setToast(error.message || "Failed to extract article");
+        toast.error(error.message || "Failed to extract article");
       }
     } catch (error) {
-      setToast("Failed to extract article");
+      toast.error("Failed to extract article");
     } finally {
       setExtracting(false);
     }
   };
 
   const handleRefreshMetadata = async () => {
-    setToast("Refreshing metadata...");
+    toast.info("Refreshing metadata...");
     try {
       const response = await fetch(`/api/cards/${card.id}/fetch-metadata`, {
         method: "POST",
@@ -652,15 +652,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
           // Update parent component
           onUpdate(updatedCard);
-          setToast("Metadata refreshed successfully");
+          toast.success("Metadata refreshed successfully");
         } else {
-          setToast("Failed to fetch updated metadata");
+          toast.error("Failed to fetch updated metadata");
         }
       } else {
-        setToast("Failed to refresh metadata");
+        toast.error("Failed to refresh metadata");
       }
     } catch (error) {
-      setToast("Failed to refresh metadata");
+      toast.error("Failed to refresh metadata");
     }
   };
 
@@ -668,9 +668,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     try {
       // ✅ Use data store for soft delete
       await deleteCardFromStore(card.id);
+      toast.success("Card deleted");
       onDelete();
     } catch (error) {
-      setToast("Failed to delete card");
+      toast.error("Failed to delete card");
     }
   };
 
@@ -701,14 +702,14 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         await useDataStore.getState().refresh();
       }
 
-      setToast(newInDen ? "Moved to The Den" : "Removed from The Den");
+      toast.success(newInDen ? "Moved to The Den" : "Removed from The Den");
 
       // Close modal after moving to Den
       if (newInDen) {
         setTimeout(() => handleClose(), 500);
       }
     } catch (error) {
-      setToast("Failed to update card");
+      toast.error("Failed to update card");
     }
   };
 
@@ -721,9 +722,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       const updated = { ...card, scheduledDate: date };
       onUpdate(updated);
 
-      setToast(date ? `Scheduled for ${new Date(date).toLocaleDateString()}` : "Schedule cleared");
+      toast.success(date ? `Scheduled for ${new Date(date).toLocaleDateString()}` : "Schedule cleared");
     } catch (error) {
-      setToast("Failed to save date");
+      toast.error("Failed to save date");
     }
   };
 
@@ -741,7 +742,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             onClose={onClose}
           />
         </div>
-        {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       </>
     );
   }
@@ -778,7 +778,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             </div>
           </div>
         </div>
-        {toast && <Toast message={toast} onClose={() => setToast(null)} />}
       </>
     );
   }
@@ -888,7 +887,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
                 {/* Search Button */}
                 <button
-                  onClick={() => setToast("Search coming soon")}
+                  onClick={() => toast.info("Search coming soon")}
                   className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                   title="Search within content"
                 >
@@ -897,7 +896,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
                 {/* Tag Button */}
                 <button
-                  onClick={() => setToast("Tags coming soon")}
+                  onClick={() => toast.info("Tags coming soon")}
                   className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                   title="Manage tags"
                 >
@@ -936,7 +935,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                           onClick={() => {
                             setIsMenuOpen(false);
                             navigator.clipboard.writeText(card.url);
-                            setToast("Link copied to clipboard");
+                            toast.success("Link copied to clipboard");
                           }}
                           className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center gap-2 transition-colors"
                         >
@@ -1492,8 +1491,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           </div>
         </Tabs>
       </div>)}
-
-      {toast && <Toast message={toast} onClose={() => setToast(null)} />}
     </>
   );
 

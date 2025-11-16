@@ -7,8 +7,7 @@ import { Tag, Edit2, Trash2, Merge, Search } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/lib/hooks/use-toast";
-import { ToastContainer } from "@/components/ui/toast";
+import { useToastStore } from "@/lib/stores/toast-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 
 interface TagInfo {
@@ -27,7 +26,7 @@ export default function TagsPage() {
   const [newTagName, setNewTagName] = useState("");
   const [deleteConfirmTag, setDeleteConfirmTag] = useState<TagInfo | null>(null);
   const router = useRouter();
-  const { toasts, dismissToast, success, error } = useToast();
+  const toast = useToastStore();
 
   useEffect(() => {
     // Build a set of private collection SLUGS for fast lookup (cards store slugs, not IDs)
@@ -105,9 +104,9 @@ export default function TagsPage() {
 
       setEditingTag(null);
       setNewTagName("");
-      success(`Renamed "${oldName}" to "${newName}" across ${tag.cards.length} cards`);
+      toast.success(`Renamed "${oldName}" to "${newName}" across ${tag.cards.length} cards`);
     } catch (err) {
-      error("Failed to rename tag");
+      toast.error("Failed to rename tag");
     }
   };
 
@@ -150,9 +149,9 @@ export default function TagsPage() {
 
       setSelectedTag(null);
       setDeleteConfirmTag(null);
-      success(`Deleted tag "${tagToDelete}" from ${deleteConfirmTag.cards.length} cards`);
+      toast.success(`Deleted tag "${tagToDelete}" from ${deleteConfirmTag.cards.length} cards`);
     } catch (err) {
-      error("Failed to delete tag");
+      toast.error("Failed to delete tag");
       setDeleteConfirmTag(null);
     }
   };
@@ -283,9 +282,6 @@ export default function TagsPage() {
           <li>• Delete a tag to remove it from all cards</li>
         </ul>
       </div>
-
-      {/* Toast Container */}
-      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmTag && (

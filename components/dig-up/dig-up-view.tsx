@@ -7,6 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ChevronDown, Check, Folder } from "lucide-react";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { GlowButton } from "@/components/ui/glow-button";
+import { useToastStore } from "@/lib/stores/toast-store";
 
 type DigUpViewProps = {
   initialCards: CardModel[];
@@ -69,6 +70,7 @@ export function DigUpView({
   const [totalCount, setTotalCount] = useState(initialTotalCount);
   const router = useRouter();
   const pathname = usePathname();
+  const toast = useToastStore();
 
   // Detect if we're in demo mode and use appropriate path prefix
   const isDemo = pathname?.startsWith('/demo');
@@ -139,9 +141,10 @@ export function DigUpView({
       seenCards[currentCard.id] = Date.now();
       localStorage.setItem('digup-seen-cards', JSON.stringify(seenCards));
 
+      toast.success("Card deleted");
       moveToNext();
     } catch (error) {
-      alert("Failed to delete card");
+      toast.error("Failed to delete card");
     } finally {
       setLoading(false);
     }
@@ -164,10 +167,11 @@ export function DigUpView({
       seenCards[currentCard.id] = Date.now();
       localStorage.setItem('digup-seen-cards', JSON.stringify(seenCards));
 
+      toast.success("Added to Pawkit");
       setShowPawkitSelector(false);
       moveToNext();
     } catch (error) {
-      alert("Failed to add to Pawkit");
+      toast.error("Failed to add to Pawkit");
     } finally {
       setLoading(false);
     }

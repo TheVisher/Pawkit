@@ -7,6 +7,7 @@ import { syncQueue } from '@/lib/services/sync-queue';
 import { useConflictStore } from '@/lib/stores/conflict-store';
 import { useSettingsStore } from '@/lib/hooks/settings-store';
 import { markDeviceActive, getSessionId } from '@/lib/utils/device-session';
+import { useToastStore } from '@/lib/stores/toast-store';
 
 /**
  * Write guard: Ensures only the active tab/session can modify data
@@ -25,7 +26,8 @@ function ensureActiveDevice(): boolean {
       activeSession: activeSessionId,
       stack: new Error().stack
     });
-    alert('Another tab is active. Please refresh and click "Use This Tab" to continue.');
+    // Use warning toast for this critical multi-tab conflict message
+    useToastStore.getState().warning('Another tab is active. Please refresh and click "Use This Tab" to continue.', 5000);
     return false;
   }
 
@@ -496,19 +498,21 @@ export const useDataStore = create<DataStore>((set, get) => ({
             body: JSON.stringify(cardData),
           });
 
-          // Handle duplicate URL detection
+          // Check for duplicate URL (409 Conflict)
           if (response.status === 409) {
+            // Parse response to check if it's a trashed duplicate
             const errorData = await response.json();
+            const isInTrash = errorData.details?.code === 'DUPLICATE_URL_IN_TRASH';
 
-            // Remove temp card from local storage and state
+            // Remove the temp card from local storage and state
             await localDb.permanentlyDeleteCard(tempId);
             await syncQueue.removeByTempId(tempId);
             set((state) => ({
               cards: state.cards.filter(c => c.id !== tempId),
             }));
 
-            // Throw error with existing card ID for UI handling
-            throw new Error(`DUPLICATE_URL:${errorData.existingCardId || 'unknown'}`);
+            // Throw appropriate error so the UI can catch and show toast
+            throw new Error(isInTrash ? 'DUPLICATE_URL_IN_TRASH' : 'DUPLICATE_URL');
           }
 
           if (response.ok) {
@@ -567,7 +571,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
             }
           }
         } catch (error) {
-          // Card is safe in local storage - will sync later
+          // Re-throw duplicate URL errors so the UI can show toast
+          if (error instanceof Error && (error.message === 'DUPLICATE_URL' || error.message === 'DUPLICATE_URL_IN_TRASH')) {
+            throw error;
+          }
+          // Other errors: Card is safe in local storage - will sync later
         }
       }
     } catch (error) {

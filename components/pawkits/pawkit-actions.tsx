@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { useToastStore } from "@/lib/stores/toast-store";
 
 type PawkitActionsProps = {
   pawkitId: string;
@@ -38,6 +39,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
   const buttonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
   const { deleteCollection, updateCollection } = useDemoAwareStore();
+  const toast = useToastStore();
 
   useEffect(() => {
     setMounted(true);
@@ -47,11 +49,12 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
     setLoading(true);
     try {
       await deleteCollection(pawkitId, deleteCards, deleteSubPawkits);
+      toast.success("Pawkit deleted");
       setShowDeleteConfirm(false);
       router.push("/pawkits");
       onDeleteSuccess?.();
     } catch (err) {
-      alert("Failed to delete Pawkit");
+      toast.error("Failed to delete Pawkit");
       setLoading(false);
     }
   };
@@ -62,10 +65,11 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
     setLoading(true);
     try {
       await updateCollection(pawkitId, { name: renameValue.trim() });
+      toast.success("Pawkit renamed");
       setShowRenameModal(false);
       setLoading(false);
     } catch (err) {
-      alert("Failed to rename Pawkit");
+      toast.error("Failed to rename Pawkit");
       setLoading(false);
     }
   };
@@ -74,11 +78,12 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
     setLoading(true);
     try {
       await updateCollection(pawkitId, { parentId: selectedMoveTarget });
+      toast.success("Pawkit moved");
       setShowMoveModal(false);
       setSelectedMoveTarget(null);
       setLoading(false);
     } catch (err) {
-      alert("Failed to move Pawkit");
+      toast.error("Failed to move Pawkit");
       setLoading(false);
     }
   };
@@ -89,7 +94,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
       setShowMenu(false);
       await updateCollection(pawkitId, { pinned: !pinned });
     } catch (err) {
-      alert("Failed to toggle pin");
+      toast.error("Failed to toggle pin");
       setPinned(pinned); // Revert on error
     }
   };
@@ -100,7 +105,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
       setShowMenu(false);
       await updateCollection(pawkitId, { isPrivate: !isPrivateState });
     } catch (err) {
-      alert("Failed to toggle privacy");
+      toast.error("Failed to toggle privacy");
       setIsPrivateState(isPrivateState); // Revert on error
     }
   };
