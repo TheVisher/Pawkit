@@ -187,6 +187,7 @@ export function CommandPalette({
       const title = generateDailyNoteTitle(today);
       const content = generateDailyNoteContent(today);
 
+      console.log('🔴 COMMAND PALETTE - Creating daily note');
       await addCard({
         type: "md-note",
         title,
@@ -194,6 +195,10 @@ export function CommandPalette({
         tags: ["daily"],
         collections: [],
       });
+      console.log('🔴 COMMAND PALETTE - Daily note created, showing toast');
+      const { useToastStore } = await import("@/lib/stores/toast-store");
+      useToastStore.getState().success("Daily note created");
+      console.log('🔴 COMMAND PALETTE - Toast called');
 
       router.push(`${pathPrefix}/notes`);
     }

@@ -198,6 +198,7 @@ export default function HomePage() {
 
 #daily #${year} #${date.toLocaleDateString('en-US', { month: 'long' }).toLowerCase()}`;
 
+      console.log('🔴 HOME PAGE - Creating daily note');
       await addCard({
         type: 'md-note',
         title,
@@ -205,6 +206,10 @@ export default function HomePage() {
         tags: ['daily'],
         collections: []
       });
+      console.log('🔴 HOME PAGE - Daily note created, showing toast');
+      const { useToastStore } = await import("@/lib/stores/toast-store");
+      useToastStore.getState().success("Daily note created");
+      console.log('🔴 HOME PAGE - Toast called');
 
       // Find the newly created card from the updated store
       const dataStore = useDataStore.getState();
