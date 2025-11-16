@@ -187,7 +187,6 @@ export function CommandPalette({
       const title = generateDailyNoteTitle(today);
       const content = generateDailyNoteContent(today);
 
-      console.log('🔴 COMMAND PALETTE - Creating daily note');
       await addCard({
         type: "md-note",
         title,
@@ -195,10 +194,8 @@ export function CommandPalette({
         tags: ["daily"],
         collections: [],
       });
-      console.log('🔴 COMMAND PALETTE - Daily note created, showing toast');
       const { useToastStore } = await import("@/lib/stores/toast-store");
       useToastStore.getState().success("Daily note created");
-      console.log('🔴 COMMAND PALETTE - Toast called');
 
       router.push(`${pathPrefix}/notes`);
     }
@@ -217,15 +214,11 @@ export function CommandPalette({
         description: "Save this URL to your library",
         icon: Zap,
         action: async () => {
-          console.log('🔴 COMMAND PALETTE - Quick add URL:', query.trim());
           try {
             await addCard({ url: query.trim(), type: 'url' });
-            console.log('🔴 COMMAND PALETTE - Card created, calling toast');
             const { useToastStore } = await import("@/lib/stores/toast-store");
             useToastStore.getState().success("Bookmark saved");
-            console.log('🔴 COMMAND PALETTE - Toast called');
           } catch (error) {
-            console.log('🔴 COMMAND PALETTE - Error:', error);
             if (error instanceof Error && error.message === 'DUPLICATE_URL') {
               const { useToastStore } = await import("@/lib/stores/toast-store");
               useToastStore.getState().error('This URL is already bookmarked');

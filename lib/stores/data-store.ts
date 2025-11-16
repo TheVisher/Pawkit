@@ -500,13 +500,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
           // Check for duplicate URL (409 Conflict)
           if (response.status === 409) {
-            console.log('🔴 409 DETECTED - Starting cleanup');
-
             // Parse response to check if it's a trashed duplicate
             const errorData = await response.json();
-            console.log('🔴 Error data:', errorData);
             const isInTrash = errorData.details?.code === 'DUPLICATE_URL_IN_TRASH';
-            console.log('🔴 Is in trash:', isInTrash);
 
             // Remove the temp card from local storage and state
             await localDb.permanentlyDeleteCard(tempId);
@@ -515,7 +511,6 @@ export const useDataStore = create<DataStore>((set, get) => ({
               cards: state.cards.filter(c => c.id !== tempId),
             }));
 
-            console.log('🔴 Cleanup complete - Throwing duplicate error');
             // Throw appropriate error so the UI can catch and show toast
             throw new Error(isInTrash ? 'DUPLICATE_URL_IN_TRASH' : 'DUPLICATE_URL');
           }
@@ -576,18 +571,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
             }
           }
         } catch (error) {
-          console.log('🔴 DATA STORE - Inner catch block hit:', error);
           // Re-throw duplicate URL errors so the UI can show toast
           if (error instanceof Error && (error.message === 'DUPLICATE_URL' || error.message === 'DUPLICATE_URL_IN_TRASH')) {
-            console.log('🔴 DATA STORE - Re-throwing duplicate error:', error.message);
             throw error;
           }
           // Other errors: Card is safe in local storage - will sync later
-          console.log('🔴 DATA STORE - Silently ignoring non-duplicate error');
         }
       }
     } catch (error) {
-      console.log('🔴 DATA STORE - Outer catch block hit:', error);
       throw error;
     }
   },

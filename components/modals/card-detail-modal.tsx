@@ -665,16 +665,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   };
 
   const handleDelete = async () => {
-    console.log('🔴 CARD DETAIL - Deleting card:', card.id);
     try {
       // ✅ Use data store for soft delete
       await deleteCardFromStore(card.id);
-      console.log('🔴 CARD DETAIL - Card deleted, calling toast');
       toast.success("Card deleted");
-      console.log('🔴 CARD DETAIL - Toast called');
       onDelete();
     } catch (error) {
-      console.log('🔴 CARD DETAIL - Error deleting:', error);
       toast.error("Failed to delete card");
     }
   };

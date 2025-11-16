@@ -309,7 +309,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   // Handle create note from command palette
   const handleCreateNote = async (data: { type: string; title: string; content?: string; tags?: string[] }) => {
-    console.log('🔴 LAYOUT - handleCreateNote called, tags:', data.tags);
     setShowCreateNoteModal(false);
     try {
       await addCard({
@@ -319,14 +318,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         url: "",
         tags: data.tags,
       });
-      console.log('🔴 LAYOUT - Note created, calling toast');
       const { useToastStore } = await import("@/lib/stores/toast-store");
       const isDailyNote = data.tags?.includes("daily");
-      console.log('🔴 LAYOUT - Is daily note:', isDailyNote);
       useToastStore.getState().success(isDailyNote ? "Daily note created" : "Note created");
-      console.log('🔴 LAYOUT - Toast called');
     } catch (error) {
-      console.log('🔴 LAYOUT - Error creating note:', error);
       const { useToastStore } = await import("@/lib/stores/toast-store");
       useToastStore.getState().error("Failed to create note");
     }

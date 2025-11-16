@@ -285,7 +285,6 @@ export function LeftNavigationPanel({
       const title = generateDailyNoteTitle(today);
       const content = generateDailyNoteContent(today);
 
-      console.log('🔴 LEFT NAV - Creating daily note');
       const newCard = await addCard({
         type: 'md-note',
         title,
@@ -293,9 +292,7 @@ export function LeftNavigationPanel({
         tags: ['daily'],
         inDen: false,
       });
-      console.log('🔴 LEFT NAV - Daily note created, showing toast');
       useToastStore.getState().success("Daily note created");
-      console.log('🔴 LEFT NAV - Toast called');
 
       // Navigate to the newly created note
       // The card should now be in the cards array after addCard completes
