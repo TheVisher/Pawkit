@@ -107,18 +107,13 @@ function OmniBarContent() {
     const url = value.trim();
     setValue("");
 
-    console.log('🔴 OMNI BAR - Quick add started for URL:', url);
-
     try {
       // Create card optimistically - shows instantly!
       await addCardToStore({ url, type: 'url' });
 
-      console.log('🔴 OMNI BAR - Card created, calling toast');
       const { useToastStore } = await import("@/lib/stores/toast-store");
       useToastStore.getState().success("Bookmark saved");
-      console.log('🔴 OMNI BAR - Toast called');
     } catch (error) {
-      console.log('🔴 OMNI BAR - Error creating card:', error);
       if (error instanceof Error && error.message === 'DUPLICATE_URL') {
         const { useToastStore } = await import("@/lib/stores/toast-store");
         useToastStore.getState().error('This URL is already bookmarked');
@@ -160,8 +155,6 @@ function OmniBarContent() {
   const handleCreateNote = async (data: { type: string; title: string; content?: string; tags?: string[] }) => {
     setShowNoteModal(false);
 
-    console.log('🔴 OMNI BAR - Creating note:', data.title);
-
     try {
       // Create note optimistically - shows instantly!
       await addCardToStore({
@@ -172,13 +165,10 @@ function OmniBarContent() {
         tags: data.tags,
       });
 
-      console.log('🔴 OMNI BAR - Note created, calling toast');
       const { useToastStore } = await import("@/lib/stores/toast-store");
       const isDailyNote = data.tags?.includes("daily");
       useToastStore.getState().success(isDailyNote ? "Daily note created" : "Note created");
-      console.log('🔴 OMNI BAR - Toast called');
     } catch (error) {
-      console.log('🔴 OMNI BAR - Error creating note:', error);
       const { useToastStore } = await import("@/lib/stores/toast-store");
       useToastStore.getState().error("Failed to create note");
     }

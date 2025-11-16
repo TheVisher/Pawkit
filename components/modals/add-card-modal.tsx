@@ -54,16 +54,13 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
   // Add global error handler for unhandled promise rejections
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.log('🔴 MODAL - Unhandled promise rejection detected:', event.reason);
       if (event.reason instanceof Error && event.reason.message === 'DUPLICATE_URL') {
-        console.log('🔴 MODAL - DUPLICATE_URL in unhandled rejection!');
-        event.preventDefault(); // Prevent the default error
+        event.preventDefault();
         toast.error('This URL is already bookmarked');
         setError('This URL is already in your library');
         setLoading(false);
       } else if (event.reason instanceof Error && event.reason.message === 'DUPLICATE_URL_IN_TRASH') {
-        console.log('🔴 MODAL - DUPLICATE_URL_IN_TRASH in unhandled rejection!');
-        event.preventDefault(); // Prevent the default error
+        event.preventDefault();
         toast.error('This URL is in your trash. Empty trash to add it again.');
         setError('This URL is in your trash. Go to Trash and empty it to add this URL again.');
         setLoading(false);
@@ -78,7 +75,6 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    console.log('🔴 MODAL - handleSubmit called');
     setLoading(true);
     setError(null);
 
@@ -94,11 +90,8 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
     };
 
     try {
-      console.log('🔴 MODAL - About to call addCardToStore');
-      console.log('🔴 MODAL - addCardToStore type:', typeof addCardToStore);
       // Wait for card creation to complete (including duplicate check)
       const result = await addCardToStore(payload);
-      console.log('🔴 MODAL - addCardToStore completed, result:', result);
 
       // Call onCreated callback (with temporary card data)
       onCreated?.({
@@ -131,28 +124,19 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
       setLoading(false);
       onClose();
     } catch (error) {
-      console.log('🔴 CATCH BLOCK - Error caught:', error);
       setLoading(false);
 
       // Handle duplicate URL errors
       if (error instanceof Error && error.message === 'DUPLICATE_URL') {
-        console.log('🔴 DUPLICATE_URL detected - calling toast.error()');
         toast.error('This URL is already bookmarked');
-        console.log('🔴 toast.error() called');
         setError('This URL is already in your library');
       } else if (error instanceof Error && error.message === 'DUPLICATE_URL_IN_TRASH') {
-        console.log('🔴 DUPLICATE_URL_IN_TRASH detected - calling toast.error()');
         toast.error('This URL is in your trash. Empty trash to add it again.');
-        console.log('🔴 toast.error() called');
         setError('This URL is in your trash. Go to Trash and empty it to add this URL again.');
       } else {
-        console.log('🔴 Other error - calling toast.error()');
         toast.error('Failed to save bookmark');
         setError('Failed to save bookmark. Please try again.');
       }
-      console.log('🔴 Catch block complete');
-    } finally {
-      console.log('🔴 MODAL - Finally block executed');
     }
   };
 
