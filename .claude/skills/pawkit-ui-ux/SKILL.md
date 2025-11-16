@@ -3035,7 +3035,143 @@ The `isCardInCollectionHierarchy()` function is prepared for future filtering lo
 
 ---
 
-**Last Updated**: January 13, 2025 (Added List View Standardization, Folder Icon Standardization, Hierarchical Tag Inheritance)
+## Toast Notifications
+
+### System Architecture
+
+Pawkit uses a **centralized toast system** with a single global provider for consistency:
+
+**Core Components:**
+- `lib/stores/toast-store.ts` - Zustand store for toast state management
+- `components/ui/toast.tsx` - Toast UI component with glass morphism styling
+- `components/providers/global-toast-provider.tsx` - Single rendering point via React Portal
+
+**Key Properties:**
+- **Position**: `fixed top-20 left-1/2 -translate-x-1/2` (top-center of viewport)
+- **Z-Index**: `z-[9999]` (above all UI including sidebar at z-[102])
+- **Styling**: Glass morphism with backdrop blur (`backdrop-blur-lg bg-gray-900/90`)
+- **Colors**: Success (green border), Error (red border), Info (white border)
+
+### Usage Patterns
+
+#### Basic Toast Call
+
+```typescript
+import { useToastStore } from "@/lib/stores/toast-store";
+
+// Success toast
+useToastStore.getState().success("Bookmark saved");
+
+// Error toast
+useToastStore.getState().error("Failed to save bookmark");
+
+// Info toast
+useToastStore.getState().info("Tags coming soon");
+```
+
+#### In React Components
+
+```typescript
+const toast = useToastStore();
+
+// Later in function
+toast.success("Card deleted");
+```
+
+#### With Dynamic Import (to avoid circular dependencies)
+
+```typescript
+const { useToastStore } = await import("@/lib/stores/toast-store");
+useToastStore.getState().success("Note created");
+```
+
+### Common Toast Messages
+
+**Card Operations:**
+- Create: `"Bookmark saved"`
+- Delete: `"Card deleted"` or `"X card(s) deleted"` (with count)
+- Move: `"X card(s) moved to Pawkit"`
+
+**Note Operations:**
+- Create regular note: `"Note created"`
+- Create daily note: `"Daily note created"`
+- Delete note: `"Card deleted"` (same as bookmark)
+
+**Pawkit Operations:**
+- Create: `"Pawkit created"` or `"Sub-Pawkit created"`
+- Delete: `"Pawkit deleted"`
+- Rename: `"Pawkit renamed"`
+- Move: `"Pawkit moved"`
+- Add card to pawkit: `"Added to ${pawkitName}"`
+- Remove from pawkit: `"Removed from ${pawkitName}"`
+
+**Duplicate Detection:**
+- Active duplicate: `"This URL is already bookmarked"`
+- Trashed duplicate: `"This URL is in your trash. Empty trash to add it again."`
+
+### ✅ DO
+
+- **Always use global toast store** - Never create local toast state
+- **Use top-center positioning** - Consistent with GlobalToastProvider
+- **Use glass morphism styling** - Matches overall design system
+- **Show toasts for user actions** - Any create/update/delete operation
+- **Include counts in bulk operations** - "5 cards deleted" not just "Cards deleted"
+- **Handle duplicate URLs properly** - Different messages for active vs trashed
+
+#### ❌ DON'T
+
+- **Never render toasts locally** - No `<Toast message={...} />` in components
+- **Never use bottom positioning** - `fixed bottom-6` breaks ultra-wide monitor visibility
+- **Never use hardcoded blue styling** - Use glass morphism variants
+- **Never skip toasts on success** - Users need feedback for all operations
+- **Never use console.log for user feedback** - Always use toasts instead
+
+### Migration Guide
+
+**Old Pattern (DON'T USE):**
+```typescript
+// ❌ Local toast state
+const [showToast, setShowToast] = useState(false);
+const [toastMessage, setToastMessage] = useState("");
+
+setToastMessage("Pawkit created");
+setShowToast(true);
+setTimeout(() => setShowToast(false), 2000);
+
+// Local rendering
+{showToast && <div className="fixed bottom-8...">...</div>}
+```
+
+**New Pattern (USE THIS):**
+```typescript
+// ✅ Global toast store
+import { useToastStore } from "@/lib/stores/toast-store";
+
+useToastStore.getState().success("Pawkit created");
+// Toast automatically appears at top-center and auto-dismisses
+```
+
+### Troubleshooting
+
+**Toast doesn't appear:**
+1. Check if operation code path is actually executed (add temporary console.log)
+2. Verify toast call syntax: `useToastStore.getState().success("message")`
+3. Check for errors in browser console
+4. Ensure GlobalToastProvider is mounted in app root
+
+**Toast appears at wrong position:**
+1. Search for `fixed bottom-` in codebase (should find nothing)
+2. Verify no local toast rendering (`<Toast`, `toast-container`)
+3. Check z-index is `z-[9999]` in toast.tsx
+
+**Toast has wrong styling:**
+1. Verify using `useToastStore` not old `useToast` hook
+2. Check toast type (success/error/info) matches intent
+3. Ensure glass morphism base: `backdrop-blur-lg bg-gray-900/90`
+
+---
+
+**Last Updated**: January 15, 2025 (Added Toast Notifications System Documentation)
 **Design System**: Selective Glow v1.2
 **Status**: Official Pawkit UI Language
 
