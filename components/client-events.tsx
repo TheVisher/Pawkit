@@ -1,7 +1,7 @@
 "use client";
 import { useEffect } from "react";
 
-export function ClientEvents() {
+export function ClientEvents(): null {
   useEffect(() => {
     const onCspViolation = (e: SecurityPolicyViolationEvent) => {
       console.error("[CSP Violation]", {

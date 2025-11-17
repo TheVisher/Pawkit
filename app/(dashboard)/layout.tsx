@@ -197,18 +197,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
   }, [isReady, loadFromServer]);
 
-  // DISABLED: This was causing excessive syncing and card duplication
-  // Sync is now handled by useNetworkSync hook with proper debouncing
-  // useEffect(() => {
-  //   const handleFocus = () => {
-  //     if (isInitialized && document.visibilityState === 'visible') {
-  //       useDataStore.getState().drainQueue();
-  //     }
-  //   };
-  //   window.addEventListener('visibilitychange', handleFocus);
-  //   return () => window.removeEventListener('visibilitychange', handleFocus);
-  // }, [isInitialized]);
-
   // Network sync hook handles queue draining on reconnection + periodic retries
   useNetworkSync();
 

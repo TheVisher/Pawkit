@@ -435,10 +435,12 @@ export async function getTimelineCards(userId: string, days = 30): Promise<Timel
 
   for (const card of cards) {
     const dateKey = card.createdAt.toISOString().split('T')[0];
-    if (!groupedByDate.has(dateKey)) {
-      groupedByDate.set(dateKey, []);
+    let dateGroup = groupedByDate.get(dateKey);
+    if (!dateGroup) {
+      dateGroup = [];
+      groupedByDate.set(dateKey, dateGroup);
     }
-    groupedByDate.get(dateKey)!.push(card);
+    dateGroup.push(card);
   }
 
   // Convert to array and sort by date descending

@@ -312,4 +312,8 @@ function Options() {
 }
 
 // Render the Options component
-ReactDOM.createRoot(document.getElementById('root')!).render(<Options />)
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error('Root element with id="root" not found in DOM');
+}
+ReactDOM.createRoot(rootElement).render(<Options />);
