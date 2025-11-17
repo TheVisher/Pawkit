@@ -31,11 +31,7 @@ export async function GET() {
       where: { userId: user.id }
     });
 
-    console.log('[API GET /api/user/settings] Settings from DB:', {
-      exists: !!settings,
-      pinnedNoteIds: settings?.pinnedNoteIds,
-      recentHistory: settings?.recentHistory
-    });
+    // Settings retrieved from DB
 
     // If no settings exist, create default settings
     if (!settings) {
@@ -70,11 +66,7 @@ export async function GET() {
       recentHistory = [];
     }
 
-    console.log('[API GET /api/user/settings] Parsed data:', {
-      pinnedNoteIds,
-      pinnedNotesCount: pinnedNoteIds.length,
-      recentHistoryCount: recentHistory.length
-    });
+    // Settings parsed successfully
 
     return success({
       ...settings,

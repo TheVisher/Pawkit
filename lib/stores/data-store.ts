@@ -21,11 +21,7 @@ function ensureActiveDevice(): boolean {
   const activeSessionId = localStorage.getItem('pawkit_active_device');
 
   if (activeSessionId && activeSessionId !== currentSessionId) {
-    console.error('[WriteGuard] ❌ Write blocked - another tab is active:', {
-      currentSession: currentSessionId,
-      activeSession: activeSessionId,
-      stack: new Error().stack
-    });
+    // Write blocked - another tab is active
     // Use warning toast for this critical multi-tab conflict message
     useToastStore.getState().warning('Another tab is active. Please refresh and click "Use This Tab" to continue.', 5000);
     return false;
@@ -52,15 +48,7 @@ async function deduplicateCards(cards: CardDTO[]): Promise<[CardDTO[], string[]]
       const isTempExisting = existingId?.startsWith('temp_');
       const isTempDuplicate = card.id.startsWith('temp_');
 
-      console.warn('[DataStore V2] ⚠️ DUPLICATE DETECTED - Same content, different IDs:', {
-        existing: existingId,
-        duplicate: card.id,
-        key,
-        isTempExisting,
-        isTempDuplicate,
-        existingCreatedAt: existingCard?.createdAt,
-        duplicateCreatedAt: card.createdAt,
-      });
+      // Duplicate detected - will be handled by deduplication logic
 
       // Priority 1: If the duplicate is a temp card and the existing is real, delete the temp
       if (isTempDuplicate && !isTempExisting) {
@@ -307,11 +295,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
         return true;
       });
 
-      // DEBUG: Log deleted cards before setting state
-      const deletedInFiltered = cards.filter(c => c.deleted === true);
-      if (deletedInFiltered.length > 0) {
-        console.error('[DataStore V2] ❌ BUG: Deleted cards after filtering in initialize():', deletedInFiltered.map(c => ({ id: c.id, title: c.title, deleted: c.deleted })));
-      }
+      // Verify no deleted cards leak through filtering
 
       set({
         cards,
@@ -374,11 +358,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
           return true;
         });
 
-        // DEBUG: Log deleted cards before setting state
-        const deletedInFiltered = cards.filter(c => c.deleted === true);
-        if (deletedInFiltered.length > 0) {
-          console.error('[DataStore V2] ❌ BUG: Deleted cards after filtering in sync():', deletedInFiltered.map(c => ({ id: c.id, title: c.title, deleted: c.deleted })));
-        }
+        // Verify no deleted cards leak through filtering
 
         set({ cards, collections });
       } else {
@@ -418,11 +398,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
         return true;
       });
 
-      // DEBUG: Log deleted cards before setting state
-      const deletedInFiltered = cards.filter(c => c.deleted === true);
-      if (deletedInFiltered.length > 0) {
-        console.error('[DataStore V2] ❌ BUG: Deleted cards after filtering in refresh():', deletedInFiltered.map(c => ({ id: c.id, title: c.title, deleted: c.deleted })));
-      }
+      // Verify no deleted cards leak through filtering
 
       set({ cards, collections, isLoading: false });
     } catch (error) {

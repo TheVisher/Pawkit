@@ -107,13 +107,6 @@ export function useUserStorage(workspaceId: string = DEFAULT_WORKSPACE_ID) {
         setUserId(currentUserId);
         setIsReady(true);
         setIsLoading(false);
-
-        console.log('[useUserStorage] Initialization complete', {
-          userId: currentUserId,
-          workspaceId,
-          localDbContext: localDb.getContext(),
-          syncQueueContext: syncQueue.getContext()
-        });
       } catch (err) {
         if (mounted) {
           setError(err instanceof Error ? err.message : 'Unknown error');

@@ -133,15 +133,7 @@ export async function fetchAndUpdateCardMetadata(cardId: string, url: string, pr
   try {
     const preview = await fetchPreviewMetadata(url, previewServiceUrl ?? DEFAULT_PREVIEW_TEMPLATE);
     
-    if (preview) {
-      console.log('[fetchAndUpdateCardMetadata] Preview details:', {
-        title: preview.title,
-        hasImage: !!preview.image,
-        imageUrl: preview.image?.substring(0, 100),
-        hasLogo: !!preview.logo,
-        hasScreenshot: !!preview.screenshot
-      });
-    }
+    // Preview metadata fetched successfully
 
     const updateData: Record<string, any> = {
       status: "READY"

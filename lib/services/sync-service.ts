@@ -264,7 +264,7 @@ class SyncService {
           result.pulled.cards = serverCards.length;
           result.conflicts.cards = cardConflicts;
         } catch (mergeError) {
-          console.error('[SyncService] 🔴 CRITICAL: Card merge operation failed:', mergeError);
+          // CRITICAL: Card merge operation failed
           criticalErrorOccurred = true;
           result.errors.push(`CRITICAL: Card merge failed: ${mergeError instanceof Error ? mergeError.message : 'Unknown error'}`);
         }
@@ -297,7 +297,7 @@ class SyncService {
           result.pulled.collections = flatServerCollections.length;
           result.conflicts.collections = collectionConflicts;
         } catch (mergeError) {
-          console.error('[SyncService] 🔴 CRITICAL: Collection merge operation failed:', mergeError);
+          // CRITICAL: Collection merge operation failed
           criticalErrorOccurred = true;
           result.errors.push(`CRITICAL: Collection merge failed: ${mergeError instanceof Error ? mergeError.message : 'Unknown error'}`);
         }
@@ -312,12 +312,12 @@ class SyncService {
 
     // ROLLBACK MECHANISM: If critical error occurred during merge, restore from snapshot
     if (criticalErrorOccurred && snapshot) {
-      console.error('[SyncService] 🔴 Critical error detected during pull - ROLLING BACK to snapshot');
+      // Critical error detected during pull - rolling back to snapshot
       try {
         await this.restoreSnapshot(snapshot);
         result.errors.push('ROLLBACK: Critical merge failure - local data restored from snapshot');
       } catch (rollbackError) {
-        console.error('[SyncService] 💀 ROLLBACK FAILED:', rollbackError);
+        // ROLLBACK FAILED - data may be in inconsistent state
         result.errors.push(`FATAL: Rollback failed after critical error: ${rollbackError instanceof Error ? rollbackError.message : 'Unknown error'}`);
       }
     }

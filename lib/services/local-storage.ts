@@ -119,10 +119,6 @@ class LocalStorage {
 
     // Switching users or workspaces - close old database
     if (this.db && (this.userId !== userId || this.workspaceId !== workspaceId)) {
-      console.log('[LocalStorage] Switching context, closing old database', {
-        from: { userId: this.userId, workspaceId: this.workspaceId },
-        to: { userId, workspaceId }
-      });
       this.db.close();
       this.db = null;
     }
