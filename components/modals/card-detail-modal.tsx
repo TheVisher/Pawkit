@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
+import { extractTikTokId, getTikTokEmbedUrl, isTikTokUrl } from "@/lib/utils/tiktok";
 import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
@@ -817,9 +818,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               ? "w-full h-full"
               : isYouTubeUrl(card.url)
                 ? "w-full max-w-6xl max-h-[85vh]"
-                : isNote
-                  ? "w-full max-w-3xl h-[80vh]"
-                  : "w-full max-w-4xl max-h-[90vh]"
+                : isTikTokUrl(card.url)
+                  ? "w-full max-w-2xl h-[85vh]"
+                  : isNote
+                    ? "w-full max-w-3xl h-[80vh]"
+                    : "w-full max-w-4xl max-h-[90vh]"
           }`}
           onClick={(e) => e.stopPropagation()}
         >
@@ -1124,6 +1127,22 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   </div>
                 </div>
               </div>
+            ) : isTikTokUrl(card.url) ? (
+              // TikTok video embed in main content area (vertical format)
+              <div className="h-full flex items-center justify-center p-[5px]">
+                <div className="w-full max-w-[400px] h-full flex items-center justify-center">
+                  <div className="w-full bg-black rounded-2xl overflow-hidden" style={{ height: '80vh', maxHeight: '600px' }}>
+                    <iframe
+                      src={getTikTokEmbedUrl(extractTikTokId(card.url)!)}
+                      title={card.title || "TikTok video"}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      className="w-full h-full border-0"
+                      loading="lazy"
+                    />
+                  </div>
+                </div>
+              </div>
             ) : (
               // URL card content with tabs - all tabs positioned absolutely to maintain size
               <div className={`relative ${isModalExpanded ? 'h-full' : ''}`}>
@@ -1270,7 +1289,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               ) : isYouTubeUrl(card.url) ? (
                 // YouTube-specific info
                 <div className="text-sm text-gray-400">
-                  Video Player
+                  YouTube Video Player
+                </div>
+              ) : isTikTokUrl(card.url) ? (
+                // TikTok-specific info
+                <div className="text-sm text-gray-400">
+                  TikTok Video Player
                 </div>
               ) : (
                 // URL cards with tabs
@@ -1357,7 +1381,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             >
               <Clock className="h-5 w-5" />
             </TabsTrigger>
-            {!isNote && !isYouTubeUrl(card.url) && (
+            {!isNote && !isYouTubeUrl(card.url) && !isTikTokUrl(card.url) && (
               <>
                 <TabsTrigger
                   value="reader"
@@ -1434,7 +1458,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   <TagsTab content={content} />
                 </TabsContent>
               )}
-              {!isYouTubeUrl(card.url) && (
+              {!isYouTubeUrl(card.url) && !isTikTokUrl(card.url) && (
                 <>
                   <TabsContent value="reader" className="p-4 mt-0 h-full">
                     <ReaderTab
