@@ -427,8 +427,13 @@ class LocalStorage {
 
     // Build parent-child relationships
     nodes.forEach((node) => {
-      if (node.parentId && nodes.has(node.parentId)) {
-        nodes.get(node.parentId)!.children.push(node);
+      if (node.parentId) {
+        const parent = nodes.get(node.parentId);
+        if (parent) {
+          parent.children.push(node);
+        } else {
+          roots.push(node);
+        }
       } else {
         roots.push(node);
       }

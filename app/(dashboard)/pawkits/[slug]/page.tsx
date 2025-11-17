@@ -10,6 +10,7 @@ import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { Folder, ChevronRight, ChevronDown, Image as ImageIcon } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import { CollectionsGrid } from "@/components/pawkits/grid";
+import type { CollectionNode } from "@/lib/types";
 
 function CollectionPageContent() {
   const params = useParams();
@@ -109,7 +110,7 @@ function CollectionPageContent() {
 
   // Find current collection
   const currentCollection = useMemo(() => {
-    const findCollection = (nodes: any[], targetSlug: string): any => {
+    const findCollection = (nodes: CollectionNode[], targetSlug: string): CollectionNode | null => {
       for (const node of nodes) {
         if (node.slug === targetSlug) return node;
         if (node.children) {
@@ -128,7 +129,7 @@ function CollectionPageContent() {
 
     const trail: Array<{ id: string; name: string; slug: string }> = [];
 
-    const buildTrail = (nodes: any[], targetSlug: string, path: any[] = []): boolean => {
+    const buildTrail = (nodes: CollectionNode[], targetSlug: string, path: Array<{ id: string; name: string; slug: string }> = []): boolean => {
       for (const node of nodes) {
         const currentPath = [...path, { id: node.id, name: node.name, slug: node.slug }];
 

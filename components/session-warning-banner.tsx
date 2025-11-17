@@ -11,7 +11,7 @@ import { useState } from "react";
  * Uses localStorage for cross-tab communication (no server polling).
  * Follows Pawkit glass morphism + purple glow design language.
  */
-export function SessionWarningBanner() {
+export function SessionWarningBanner(): JSX.Element | null {
   const { takeoverSession, hasOtherSessions, otherDevices } = useMultiSessionDetector();
   const [dismissed, setDismissed] = useState(false);
 

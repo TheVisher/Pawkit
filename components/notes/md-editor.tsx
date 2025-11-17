@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
@@ -48,7 +48,7 @@ type RichMDEditorProps = {
   placeholder?: string;
   onNavigate?: (noteId: string) => void;
   onToggleFullscreen?: () => void;
-  customComponents?: any; // Custom ReactMarkdown components for wiki-links
+  customComponents?: Partial<Components>; // Custom ReactMarkdown components for wiki-links
   mode?: "edit" | "preview"; // External mode control
   onModeChange?: (mode: "edit" | "preview") => void; // External mode change handler
   hideControls?: boolean; // Hide the mode toggle bar

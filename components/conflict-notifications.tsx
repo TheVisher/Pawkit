@@ -3,7 +3,7 @@
 import { useConflictStore } from "@/lib/stores/conflict-store";
 import { X, AlertTriangle } from "lucide-react";
 
-export function ConflictNotifications() {
+export function ConflictNotifications(): JSX.Element | null {
   const conflicts = useConflictStore((state) => state.conflicts);
   const removeConflict = useConflictStore((state) => state.removeConflict);
 
