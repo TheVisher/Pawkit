@@ -7,8 +7,18 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { handleApiError } from '@/lib/utils/api-error';
 import { success } from '@/lib/utils/api-responses';
+import { getCurrentUser } from '@/lib/auth/get-user';
 
 export async function POST() {
+  // Add authentication check
+  const user = await getCurrentUser();
+  if (!user) {
+    return NextResponse.json(
+      { error: 'Unauthorized' },
+      { status: 401 }
+    );
+  }
+
   try {
     // Use service role key if available for admin operations
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
