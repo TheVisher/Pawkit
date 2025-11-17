@@ -48,10 +48,12 @@ export async function GET() {
     for (const card of allCardsRaw) {
       const collections = parseJsonArray(card.collections);
       for (const collectionSlug of collections) {
-        if (!cardsByCollection.has(collectionSlug)) {
-          cardsByCollection.set(collectionSlug, []);
+        let collectionCards = cardsByCollection.get(collectionSlug);
+        if (!collectionCards) {
+          collectionCards = [];
+          cardsByCollection.set(collectionSlug, collectionCards);
         }
-        cardsByCollection.get(collectionSlug)!.push(card);
+        collectionCards.push(card);
       }
     }
 

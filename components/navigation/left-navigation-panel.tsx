@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2 } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, type LucideIcon } from "lucide-react";
 import { shallow } from "zustand/shallow";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -13,7 +13,7 @@ import { useToastStore } from "@/lib/stores/toast-store";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
-import { GenericContextMenu } from "@/components/ui/generic-context-menu";
+import { GenericContextMenu, type ContextMenuItemConfig } from "@/components/ui/generic-context-menu";
 import {
   Tooltip,
   TooltipContent,
@@ -43,7 +43,7 @@ import { CSS } from "@dnd-kit/utilities";
 type NavItem = {
   id: string;
   label: string;
-  icon: any;
+  icon: LucideIcon;
   path: string; // Relative path without prefix
 };
 
@@ -526,8 +526,8 @@ export function LeftNavigationPanel({
     const buildMoveMenuItems = (
       collections: CollectionNode[],
       currentCollectionId: string
-    ): any[] => {
-      const items: any[] = [];
+    ): ContextMenuItemConfig[] => {
+      const items: ContextMenuItemConfig[] = [];
 
       for (const col of collections) {
         // Skip the current collection, its descendants, and deleted collections

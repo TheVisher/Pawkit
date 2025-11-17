@@ -90,26 +90,3 @@ export function findBestFuzzyMatch<T extends { title: string | null; id: string 
   return bestMatch;
 }
 
-/**
- * Check if two titles are similar enough to be considered the same
- * @param title1 First title
- * @param title2 Second title
- * @param threshold Minimum similarity score (0-1)
- * @returns True if titles are similar enough
- */
-export function areTitlesSimilar(title1: string, title2: string, threshold: number = 0.8): boolean {
-  if (!title1 || !title2) return false;
-  
-  const normalized1 = title1.toLowerCase().trim();
-  const normalized2 = title2.toLowerCase().trim();
-  
-  // Exact match
-  if (normalized1 === normalized2) return true;
-  
-  // Contains match
-  if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) return true;
-  
-  // Fuzzy match
-  const similarity = calculateSimilarity(normalized1, normalized2);
-  return similarity >= threshold;
-}

@@ -62,10 +62,12 @@ export default function TagsPage() {
 
       if (card.tags && card.tags.length > 0) {
         card.tags.forEach((tag) => {
-          if (!tagMap.has(tag)) {
-            tagMap.set(tag, []);
+          let tagCards = tagMap.get(tag);
+          if (!tagCards) {
+            tagCards = [];
+            tagMap.set(tag, tagCards);
           }
-          tagMap.get(tag)!.push(card);
+          tagCards.push(card);
         });
       }
     });

@@ -8,6 +8,7 @@ import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { FolderOpen, Plus } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
+import type { CollectionNode } from "@/lib/types";
 
 export default function CollectionsPage() {
   const { collections, cards, addCollection } = useDataStore();
@@ -70,7 +71,7 @@ export default function CollectionsPage() {
   // Create grid items and allPawkits from Zustand store
   const { gridItems, allPawkits } = useMemo(() => {
     // Flatten all pawkits (excluding deleted ones)
-    const flattenPawkits = (nodes: typeof collections, result: any[] = []): any[] => {
+    const flattenPawkits = (nodes: CollectionNode[], result: Array<{ id: string; name: string; slug: string }> = []): Array<{ id: string; name: string; slug: string }> => {
       for (const node of nodes) {
         // Skip deleted collections
         if (node.deleted === true) continue;
