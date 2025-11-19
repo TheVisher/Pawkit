@@ -32,3 +32,8 @@ backups/
 # scripts/pre-migration-check.js
 # scripts/auto-backup.sh
 # SAFETY.md
+
+## AI Assistant Coordination Files
+# .ai-context.json - Tracks AI assistant coordination state across development sessions
+# .ai-instructions.md - Instructions for AI assistants working on this project
+# Both files are tracked in git to maintain context when switching between development machines
