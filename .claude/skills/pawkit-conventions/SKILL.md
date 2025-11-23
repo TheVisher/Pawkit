@@ -750,3 +750,153 @@ Before committing code that touches cards:
 
 **Last Updated**: 2025-10-29
 **Reason**: Added critical data integrity rules for notes vs bookmarks distinction
+
+---
+
+## Mobile Utility Functions (React Native)
+
+### Date Added: January 23, 2025
+### File: `mobile/src/lib/utils.ts`
+
+**Context**: Mobile app utility functions for URL detection and domain extraction, matching web app logic.
+
+---
+
+### URL Detection - isProbablyUrl()
+
+**Purpose**: Detect if user input is a URL (bookmark) or search query
+
+**Pattern**: Matches web app logic exactly (from web's `lib/utils/index.ts`)
+
+```typescript
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0']);
+
+export function isProbablyUrl(input: string): boolean {
+  const trimmed = input.trim();
+  if (!trimmed) return false;
+  if (/\s/.test(trimmed)) return false; // No whitespace allowed
+
+  const candidate = trimmed.startsWith("http://") || trimmed.startsWith("https://")
+    ? trimmed
+    : `https://${trimmed}`;
+
+  try {
+    const url = new URL(candidate);
+    const host = url.hostname.toLowerCase();
+    if (!host) return false;
+    if (LOCAL_HOSTS.has(host)) return true;
+    return host.includes("."); // Must have a dot (domain.tld)
+  } catch {
+    return false;
+  }
+}
+```
+
+**Usage**:
+```typescript
+// Omnibar component
+import { isProbablyUrl } from '../lib/utils';
+
+const isUrl = isProbablyUrl(value);
+
+// Show link icon if URL, search icon otherwise
+<MaterialCommunityIcons
+  name={isUrl ? "link-variant" : "magnify"}
+  size={20}
+/>
+
+// Only show "plus" button for URLs
+{isUrl && <TouchableOpacity onPress={handleSubmit}>...</TouchableOpacity>}
+```
+
+**Behavior**:
+- `isProbablyUrl("example.com")` → `true`
+- `isProbablyUrl("https://example.com")` → `true`
+- `isProbablyUrl("localhost")` → `true`
+- `isProbablyUrl("search query")` → `false` (has whitespace)
+- `isProbablyUrl("example")` → `false` (no dot)
+- `isProbablyUrl("")` → `false` (empty)
+
+---
+
+### Domain Extraction - safeHost()
+
+**Purpose**: Safely extract hostname from URL for card domain field
+
+**Pattern**: Handles malformed URLs gracefully, returns undefined on error
+
+```typescript
+export function safeHost(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value.startsWith("http") ? value : `https://${value}`);
+    return url.hostname;
+  } catch (error) {
+    return undefined;
+  }
+}
+```
+
+**Usage in API Client**:
+```typescript
+// mobile/src/api/client.ts
+import { safeHost } from '../lib/utils';
+
+export const cardsApi = {
+  async create(cardData: CardInput) {
+    const response = await api.post('/cards', {
+      ...cardData,
+      domain: safeHost(cardData.url) || null, // Extract domain
+    });
+    return response.data;
+  },
+};
+```
+
+**Behavior**:
+- `safeHost("https://www.example.com/path")` → `"www.example.com"`
+- `safeHost("example.com")` → `"example.com"` (adds https://)
+- `safeHost("https://tiktok.com/@user/video/123")` → `"tiktok.com"`
+- `safeHost("malformed url")` → `undefined` (graceful failure)
+- `safeHost(null)` → `undefined`
+- `safeHost(undefined)` → `undefined`
+
+**Why This Matters**:
+- Mobile-created cards now show domain pills (e.g., "www.tiktok.com")
+- Matches web app behavior exactly
+- Prevents crashes from malformed URLs
+- Gracefully handles edge cases
+
+---
+
+### Critical Rules
+
+1. **Consistency with Web App**: Mobile and web MUST use identical URL detection logic
+2. **Safe Defaults**: Always handle null/undefined gracefully (return undefined, not throw)
+3. **No Crashes**: URL parsing errors should be caught and return safe fallback
+4. **Whitespace Check**: URLs cannot contain spaces (distinguishes from search queries)
+5. **Localhost Support**: Development URLs like "localhost:8081" should be detected as URLs
+
+---
+
+### Testing Checklist
+
+Before committing URL-related code:
+
+- [ ] Test with normal URLs (`https://example.com`)
+- [ ] Test with URLs missing protocol (`example.com`)
+- [ ] Test with localhost (`localhost:3000`)
+- [ ] Test with IP addresses (`127.0.0.1:8080`)
+- [ ] Test with malformed URLs (should not crash)
+- [ ] Test with null/undefined (should not crash)
+- [ ] Test with search queries (should return false for isProbablyUrl)
+- [ ] Test with whitespace-containing input (should return false)
+- [ ] Verify domain extraction matches web app
+
+---
+
+**Last Updated**: January 23, 2025
+**Platform**: React Native (mobile)
+**File**: `mobile/src/lib/utils.ts`
+**Web Equivalent**: `lib/utils/index.ts`
+
