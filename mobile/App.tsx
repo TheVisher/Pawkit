@@ -1,17 +1,20 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { PaperProvider, MD3LightTheme } from 'react-native-paper';
+import { PaperProvider, MD3DarkTheme } from 'react-native-paper';
 import { AuthProvider } from './src/contexts/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
+import { GlassTheme } from './src/theme/glass';
 
-// Custom theme (you can customize this)
+// Custom dark theme matching glass morphism design
 const theme = {
-  ...MD3LightTheme,
+  ...MD3DarkTheme,
   colors: {
-    ...MD3LightTheme.colors,
-    primary: '#7c3aed', // Purple - matching Pawkit web app
-    secondary: '#a855f7',
+    ...MD3DarkTheme.colors,
+    primary: GlassTheme.colors.purple[500],
+    secondary: GlassTheme.colors.purple[400],
+    background: GlassTheme.colors.background,
+    surface: GlassTheme.colors.glass.base,
   },
 };
 
@@ -21,7 +24,7 @@ export default function App() {
       <PaperProvider theme={theme}>
         <AuthProvider>
           <AppNavigator />
-          <StatusBar style="auto" />
+          <StatusBar style="light" />
         </AuthProvider>
       </PaperProvider>
     </SafeAreaProvider>
