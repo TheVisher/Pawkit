@@ -3176,3 +3176,304 @@ useToastStore.getState().success("Pawkit created");
 **Status**: Official Pawkit UI Language
 
 **Key Principle**: Glass is foundation. Purple glow reveals interaction. Hierarchy over chaos.
+
+---
+
+## MOBILE GLASS MORPHISM PATTERNS (React Native / Expo)
+
+### Date Added: January 23, 2025
+### Platform: React Native (Expo SDK 54) / iOS & Android
+
+**Context**: Mobile app implementation of Pawkit glass morphism design using React Native.
+
+---
+
+### Core Theme Definition
+
+**File**: `mobile/src/theme/glass.ts`
+
+```typescript
+export const GlassTheme = {
+  colors: {
+    // Glass morphism
+    glass: {
+      base: 'rgba(255, 255, 255, 0.05)',
+      medium: 'rgba(255, 255, 255, 0.08)',
+      strong: 'rgba(17, 24, 39, 0.9)',
+    },
+    
+    // Purple accent (interaction color)
+    purple: {
+      '400': 'rgb(192, 132, 252)',
+      '500': 'rgb(168, 85, 247)',
+      subtle: 'rgba(168, 85, 247, 0.2)',
+    },
+    
+    // Borders
+    border: {
+      subtle: 'rgba(255, 255, 255, 0.1)',
+      medium: 'rgba(255, 255, 255, 0.2)',
+    },
+    
+    // Text
+    text: {
+      primary: 'rgba(255, 255, 255, 0.95)',
+      secondary: 'rgba(255, 255, 255, 0.8)',
+      muted: 'rgba(255, 255, 255, 0.5)',
+    },
+  },
+  
+  shadows: {
+    purpleGlow: {
+      shadowColor: 'rgb(168, 85, 247)',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.4,
+      shadowRadius: 10,
+      elevation: 5, // Android
+    },
+  },
+  
+  borderRadius: {
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 20,
+  },
+  
+  spacing: {
+    xs: 4,
+    sm: 8,
+    md: 12,
+    lg: 16,
+    xl: 24,
+  },
+};
+```
+
+---
+
+### Pattern 1: Swipeable Drawers (Side Panels)
+
+**File**: `mobile/src/components/SwipeableDrawer.tsx`
+
+**Use Case**: Collections panel (left), Settings panel (right)
+
+**Key Features**:
+- Glass morphism background (iOS: BlurView, Android: translucent overlay)
+- Swipe from screen edges to open (25px edge detection zones)
+- Purple glow border on focus
+- Backdrop with pointer events control
+- Smooth 300ms animations
+
+**Dimensions**:
+- Width: 70% of screen
+- Height: 82% of screen
+- Vertically centered
+- Rounded corners: 16px (all 4 corners)
+
+**Implementation**:
+```tsx
+// Drawer container with glass background
+{Platform.OS === 'ios' ? (
+  <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, styles.glassOverlay]} />
+  </BlurView>
+) : (
+  <View style={[StyleSheet.absoluteFill, styles.glassBackground]} />
+)}
+
+// Border with purple glow when open
+<View style={[
+  styles.border,
+  isOpen && styles.borderFocused
+]} />
+```
+
+**Styles**:
+```typescript
+glassOverlay: {
+  backgroundColor: GlassTheme.colors.glass.base,
+},
+glassBackground: {
+  backgroundColor: GlassTheme.colors.glass.strong,
+},
+border: {
+  position: 'absolute',
+  top: 0, left: 0, right: 0, bottom: 0,
+  borderRadius: GlassTheme.borderRadius.xl,
+  borderWidth: 1,
+  borderColor: GlassTheme.colors.border.subtle,
+  pointerEvents: 'none',
+},
+borderFocused: {
+  borderColor: GlassTheme.colors.purple.subtle,
+  borderWidth: 2,
+  ...GlassTheme.shadows.purpleGlow,
+},
+```
+
+---
+
+### Pattern 2: Omnibar (Search/Create Input)
+
+**File**: `mobile/src/components/Omnibar.tsx`
+
+**Use Case**: Bottom-fixed smart input for URL saving and search
+
+**Key Features**:
+- Glass background with blur
+- Purple glow on focus
+- Dynamic icon (search 🔍 vs link 🔗 based on URL detection)
+- Clear button (X) when text present
+- Plus button when valid URL detected
+- Keyboard-avoiding behavior
+
+**URL Detection**:
+```typescript
+import { isProbablyUrl } from '../lib/utils';
+
+const isUrl = isProbablyUrl(value);
+
+// Show link icon if URL, search icon otherwise
+<MaterialCommunityIcons
+  name={isUrl ? "link-variant" : "magnify"}
+  size={20}
+  color={GlassTheme.colors.text.muted}
+/>
+
+// Plus button only appears for URLs
+{isUrl && (
+  <TouchableOpacity onPress={handleSubmit}>
+    <MaterialCommunityIcons
+      name="plus"
+      size={24}
+      color={GlassTheme.colors.purple[400]}
+    />
+  </TouchableOpacity>
+)}
+```
+
+**Positioning**:
+```tsx
+// Fixed at bottom with keyboard avoidance
+<KeyboardAvoidingView
+  behavior={Platform.OS === 'ios' ? 'position' : 'height'}
+  keyboardVerticalOffset={110}
+>
+  <View style={styles.omnibar}>
+    {/* Glass input */}
+  </View>
+</KeyboardAvoidingView>
+```
+
+---
+
+### Pattern 3: Edge Indicators (Swipe Hints)
+
+**File**: `mobile/src/components/EdgeIndicators.tsx`
+
+**Use Case**: Subtle swipe hints at screen edges
+
+**Specifications**:
+- Width: 1-2px
+- Height: 150px
+- Position: 5px from edge
+- Opacity: 0.2-0.3
+- Purple gradient
+
+**Implementation**:
+```tsx
+import { LinearGradient } from 'expo-linear-gradient';
+
+<LinearGradient
+  colors={[
+    'rgba(168, 85, 247, 0)',
+    'rgba(168, 85, 247, 0.3)',
+    'rgba(168, 85, 247, 0)',
+  ]}
+  style={{
+    position: 'absolute',
+    left: 5,  // or right: 5 for right edge
+    top: '50%',
+    transform: [{ translateY: -75 }],
+    width: 2,
+    height: 150,
+  }}
+/>
+```
+
+---
+
+### Pattern 4: Glass Cards (Mobile)
+
+**File**: `mobile/src/components/GlassCard.tsx`
+
+**Use Case**: Bookmark/note cards in masonry grid
+
+**Key Features**:
+- Glass background with blur
+- Rounded corners (12px)
+- Subtle border
+- Tap interactions
+
+**Implementation**:
+```tsx
+<View style={styles.card}>
+  {Platform.OS === 'ios' ? (
+    <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill}>
+      <View style={styles.glassOverlay} />
+    </BlurView>
+  ) : (
+    <View style={[StyleSheet.absoluteFill, styles.glassBackground]} />
+  )}
+  
+  <View style={styles.border} />
+  
+  {/* Card content */}
+</View>
+```
+
+---
+
+### Mobile-Specific Considerations
+
+**1. Platform Differences**:
+- **iOS**: Use `BlurView` from expo-blur for true glass effect
+- **Android**: Use translucent backgrounds (BlurView less performant)
+
+**2. Performance**:
+- Limit BlurView usage (expensive on older devices)
+- Use `shouldRasterizeIOS={true}` for static blur areas
+- Prefer `rgba()` backgrounds on Android
+
+**3. Touch Targets**:
+- Minimum 44x44 points for buttons (iOS HIG)
+- Minimum 48x48 dp for buttons (Android Material)
+
+**4. Safe Areas**:
+- Use `SafeAreaView` or `useSafeAreaInsets` hook
+- Account for notches, home indicators
+- Don't position critical UI at screen edges
+
+**5. Keyboard Handling**:
+- Use `KeyboardAvoidingView` for inputs
+- Set appropriate `keyboardVerticalOffset` (typically 110px for bottom-fixed inputs)
+- Dismiss keyboard on backdrop tap
+
+---
+
+### Critical Rules for Mobile Glass
+
+1. **Always provide fallback for Android** - BlurView not as performant
+2. **Test on real devices** - Simulators don't accurately represent blur performance
+3. **Minimize blur areas** - Use selectively for best performance
+4. **Respect platform conventions** - iOS vs Android have different interaction patterns
+5. **Consider dark backgrounds** - Glass morphism works best on dark/gradient backgrounds
+
+---
+
+**Last Updated**: January 23, 2025
+**Platform**: React Native / Expo SDK 54
+**Tested**: iOS Simulator, Real iPhone devices
+**Status**: Production-ready mobile glass morphism system
+

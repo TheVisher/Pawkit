@@ -2317,3 +2317,392 @@ Before implementing sync for new feature, verify:
 **Architecture**: Local-first with background sync and conflict resolution
 
 **Key Principle**: IndexedDB is source of truth. Never lose user data. Sync is background process.
+
+---
+
+## MOBILE SYNC ARCHITECTURE (React Native / AsyncStorage)
+
+### Date Added: January 23, 2025
+### Platform: React Native (Expo SDK 54) with AsyncStorage
+
+**Context**: Mobile app local-first sync implementation using AsyncStorage instead of IndexedDB.
+
+---
+
+### Why AsyncStorage Instead of MMKV?
+
+**Initial Attempt**: Tried react-native-mmkv for performance
+**Blocker**: MMKV requires NitroModules which are not supported in Expo Go
+**Solution**: Use @react-native-async-storage/async-storage (Expo compatible)
+
+**Trade-offs**:
+- ✅ Works in Expo Go (no custom native code required)
+- ✅ Cross-platform (iOS & Android)
+- ✅ Async API (better for React Native)
+- ❌ Slightly slower than MMKV (acceptable for mobile use case)
+
+---
+
+### Local Storage Service
+
+**File**: `mobile/src/lib/local-storage.ts`
+
+**Architecture**:
+- AsyncStorage is PRIMARY source of truth (like IndexedDB on web)
+- Server is only for syncing/backup
+- User data never lost even if server is wiped
+
+**Key Patterns**:
+
+#### 1. User-Scoped Keys
+
+```typescript
+let currentUserId: string | null = null;
+
+export function initStorage(userId: string): void {
+  currentUserId = userId;
+}
+
+function getKey(key: string): string {
+  if (!currentUserId) {
+    throw new Error('Storage not initialized. Call initStorage(userId) first.');
+  }
+  return `pawkit_${currentUserId}_${key}`;
+}
+```
+
+**Why**: Supports multi-user on same device, prevents data leakage between users.
+
+#### 2. Async-First Design
+
+```typescript
+// ✅ CORRECT: All storage operations are async
+export async function getAllCards(): Promise<CardModel[]> {
+  try {
+    const cardsJson = await AsyncStorage.getItem(getKey(CARDS_KEY));
+    if (!cardsJson) return [];
+    
+    const cards = JSON.parse(cardsJson) as CardModel[];
+    return cards.filter(c => !c.deleted); // Filter soft-deleted
+  } catch (error) {
+    console.error('[LocalStorage] Error getting cards:', error);
+    return [];
+  }
+}
+
+// ❌ WRONG: No synchronous API like MMKV
+// const cards = storage.getString('cards'); // Not available!
+```
+
+**Why**: AsyncStorage is async-only, no synchronous API.
+
+#### 3. Soft Deletion Pattern
+
+```typescript
+export async function deleteCard(id: string): Promise<void> {
+  try {
+    const card = await getCard(id);
+    if (card) {
+      card.deleted = true;
+      await saveCard(card); // Marks as deleted, doesn't remove
+    }
+  } catch (error) {
+    console.error('[LocalStorage] Error deleting card:', error);
+  }
+}
+
+export async function permanentlyDeleteCard(id: string): Promise<void> {
+  try {
+    const cards = await getAllCards();
+    const filtered = cards.filter(c => c.id !== id);
+    await AsyncStorage.setItem(getKey(CARDS_KEY), JSON.stringify(filtered));
+  } catch (error) {
+    console.error('[LocalStorage] Error permanently deleting card:', error);
+  }
+}
+```
+
+**Why**: Soft delete for sync, permanent delete for cleanup.
+
+---
+
+### Sync Service
+
+**File**: `mobile/src/lib/sync-service.ts`
+
+**Sync Strategy**:
+1. Local AsyncStorage is always source of truth
+2. Server is backup/sync layer between devices
+3. On sync: MERGE server + local (never replace)
+4. Conflicts: Simple last-write-wins by updatedAt timestamp
+
+**Rate Limiting**:
+```typescript
+let isSyncing = false;
+let lastSyncAttempt = 0;
+const MIN_SYNC_INTERVAL = 30000; // 30 seconds minimum between syncs
+
+export async function sync(): Promise<SyncResult> {
+  // Prevent concurrent syncs
+  if (isSyncing) {
+    console.log('[Sync] Already syncing, skipping...');
+    return result;
+  }
+
+  // Rate limit syncs
+  const now = Date.now();
+  if (now - lastSyncAttempt < MIN_SYNC_INTERVAL) {
+    console.log('[Sync] Too soon since last sync, skipping...');
+    return result;
+  }
+
+  isSyncing = true;
+  lastSyncAttempt = now;
+  
+  // ... sync logic
+}
+```
+
+**Last-Write-Wins Conflict Resolution**:
+```typescript
+async function pullCards(): Promise<{ added: number; updated: number }> {
+  const serverCards = response.items;
+  const localCards = await LocalStorage.getAllCards();
+  const localCardMap = new Map(localCards.map(c => [c.id, c]));
+
+  for (const serverCard of serverCards) {
+    const localCard = localCardMap.get(serverCard.id);
+
+    if (!localCard) {
+      // New card from server
+      await LocalStorage.saveCard(serverCard);
+      added++;
+    } else {
+      // Card exists locally - check which is newer
+      const serverTime = new Date(serverCard.updatedAt).getTime();
+      const localTime = new Date(localCard.updatedAt).getTime();
+
+      if (serverTime > localTime) {
+        // Server is newer - update local
+        await LocalStorage.saveCard(serverCard);
+        updated++;
+      }
+      // If local is newer, keep local (don't push in this simple implementation)
+    }
+  }
+}
+```
+
+---
+
+### App Initialization Flow
+
+**File**: `mobile/src/screens/BookmarksListScreen_New.tsx`
+
+**Load Order**:
+1. Initialize storage for user
+2. Load from local storage FIRST (instant UI)
+3. Background sync after display
+
+```typescript
+const initializeAndLoadLocal = async () => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // 1. Initialize storage
+    LocalStorage.initStorage(user.id);
+
+    // 2. Load from local storage FIRST (instant)
+    const localCards = await LocalStorage.getAllCards();
+    const localCollections = await LocalStorage.getAllCollections();
+
+    setCards(cardsWithDimensions);
+    setCollections(localCollections);
+    setLoading(false); // UI displays immediately
+
+    // 3. Then sync in background
+    backgroundSync();
+  } catch (error) {
+    console.error('Error loading local data:', error);
+    setLoading(false);
+  }
+};
+
+const backgroundSync = async () => {
+  try {
+    const result = await SyncService.sync();
+    if (result.success) {
+      // Refresh UI with synced data
+      const cards = await LocalStorage.getAllCards();
+      const collections = await LocalStorage.getAllCollections();
+      setCards(cards);
+      setCollections(collections);
+    }
+  } catch (error) {
+    console.error('Background sync failed:', error);
+  }
+};
+```
+
+**Why This Flow**:
+- User sees data instantly (from local cache)
+- App works offline
+- Background sync updates data without blocking UI
+- No loading spinners for cached data
+
+---
+
+### URL Detection and Domain Extraction
+
+**File**: `mobile/src/lib/utils.ts`
+
+**Pattern 1: URL Detection** (matches web app logic)
+```typescript
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0']);
+
+export function isProbablyUrl(input: string): boolean {
+  const trimmed = input.trim();
+  if (!trimmed) return false;
+  if (/\s/.test(trimmed)) return false; // No whitespace allowed
+
+  const candidate = trimmed.startsWith("http://") || trimmed.startsWith("https://")
+    ? trimmed
+    : `https://${trimmed}`;
+
+  try {
+    const url = new URL(candidate);
+    const host = url.hostname.toLowerCase();
+    if (!host) return false;
+    if (LOCAL_HOSTS.has(host)) return true;
+    return host.includes("."); // Must have a dot (domain.tld)
+  } catch {
+    return false;
+  }
+}
+```
+
+**Pattern 2: Safe Domain Extraction**
+```typescript
+export function safeHost(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value.startsWith("http") ? value : `https://${value}`);
+    return url.hostname;
+  } catch (error) {
+    return undefined;
+  }
+}
+```
+
+**Usage in API Client**:
+```typescript
+// mobile/src/api/client.ts
+import { safeHost } from '../lib/utils';
+
+export const cardsApi = {
+  async create(cardData: CardInput) {
+    const response = await api.post('/cards', {
+      ...cardData,
+      domain: safeHost(cardData.url) || null, // Extract domain from URL
+    });
+    return response.data;
+  },
+};
+```
+
+**Why**: Mobile-created cards now have domain pills (like "www.tiktok.com") matching web app behavior.
+
+---
+
+### Mobile-Specific Search Implementation
+
+**Real-Time Card Filtering**:
+```typescript
+const [searchQuery, setSearchQuery] = useState('');
+
+const filteredCards = React.useMemo(() => {
+  if (!searchQuery.trim()) {
+    return cards;
+  }
+
+  const queryLower = searchQuery.toLowerCase();
+  return cards.filter(card => {
+    const searchableText = [
+      card.title,
+      card.url,
+      card.description,
+      card.domain,
+      card.notes,
+      ...(card.tags || []),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+
+    return searchableText.includes(queryLower);
+  });
+}, [cards, searchQuery]);
+```
+
+**Omnibar Integration**:
+```tsx
+<Omnibar
+  value={searchQuery}
+  onChangeText={setSearchQuery}
+  onSubmit={handleAddCard}
+  placeholder="Paste a URL to save or type to search..."
+/>
+```
+
+**Behavior**:
+- Detects URL vs search query automatically
+- Shows link icon (🔗) for URLs, search icon (🔍) for search
+- Real-time filtering as user types
+- Plus button (+) appears only for valid URLs
+
+---
+
+### Differences from Web Implementation
+
+| Feature | Web (IndexedDB) | Mobile (AsyncStorage) |
+|---------|-----------------|----------------------|
+| **API** | Synchronous | Async only |
+| **Storage Location** | Browser IndexedDB | Device local storage |
+| **Performance** | Very fast (indexed) | Fast (key-value) |
+| **Size Limit** | ~50MB-1GB | ~6MB (iOS), ~unlimited (Android) |
+| **Transactions** | Yes (ACID) | No (atomic per-key) |
+| **Complex Queries** | Yes (indexes) | No (filter in-memory) |
+| **Multi-Tab Sync** | BroadcastChannel | N/A (single app instance) |
+
+---
+
+### Critical Mobile Sync Rules
+
+1. **Always initialize storage** - Call `initStorage(userId)` before any storage operations
+2. **All operations are async** - Use `await` for every storage call
+3. **Filter deleted items** - `getAllCards()` automatically filters `deleted: true`
+4. **Rate limit syncs** - Minimum 30 seconds between sync attempts
+5. **Local-first** - Always save to AsyncStorage before syncing to server
+6. **Graceful offline** - App must work when offline, sync when back online
+
+---
+
+### Testing Checklist
+
+- [ ] App loads instantly with cached data
+- [ ] App works offline (no network errors)
+- [ ] Syncs in background after initial load
+- [ ] URL detection matches web app behavior
+- [ ] Domain extraction works for mobile-created cards
+- [ ] Search filters across all card fields
+- [ ] No concurrent sync attempts
+- [ ] Soft-deleted cards don't appear in UI
+
+---
+
+**Last Updated**: January 23, 2025
+**Platform**: React Native / Expo SDK 54
+**Storage**: @react-native-async-storage/async-storage v2.0.0
+**Status**: Production-ready mobile sync system
+
