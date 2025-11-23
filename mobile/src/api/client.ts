@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase';
-import { API_BASE_URL } from '../config/api';
 import type { CardModel, CollectionNode } from '../types';
+import * as Crypto from 'expo-crypto';
+import { safeHost } from '../lib/utils';
 
 // API Error class
 export class ApiError extends Error {
@@ -10,49 +11,23 @@ export class ApiError extends Error {
   }
 }
 
-// Helper to get auth headers
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const { data: { session } } = await supabase.auth.getSession();
+// Helper to parse comma-separated strings to arrays
+function parseCommaSeparated(value: string | null): string[] {
+  if (!value) return [];
+  return value.split(',').map(s => s.trim()).filter(Boolean);
+}
 
-  if (!session) {
-    throw new ApiError(401, 'Not authenticated');
-  }
-
+// Helper to convert database card to CardModel
+function mapCardFromDb(dbCard: any): CardModel {
   return {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${session.access_token}`,
+    ...dbCard,
+    tags: parseCommaSeparated(dbCard.tags),
+    collections: parseCommaSeparated(dbCard.collections),
+    metadata: dbCard.metadata ? JSON.parse(dbCard.metadata) : undefined,
   };
 }
 
-// Generic fetch wrapper with auth
-async function authenticatedFetch<T>(
-  endpoint: string,
-  options?: RequestInit
-): Promise<T> {
-  const headers = await getAuthHeaders();
-  const url = `${API_BASE_URL}${endpoint}`;
-
-  const response = await fetch(url, {
-    ...options,
-    headers: {
-      ...headers,
-      ...options?.headers,
-    },
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new ApiError(
-      response.status,
-      errorData.message || `HTTP ${response.status}: ${response.statusText}`,
-      errorData
-    );
-  }
-
-  return response.json();
-}
-
-// Cards API
+// Cards API - Direct Supabase queries
 export const cardsApi = {
   /**
    * List cards with optional filters
@@ -62,33 +37,83 @@ export const cardsApi = {
     collection?: string;
     status?: 'PENDING' | 'READY' | 'ERROR';
     limit?: number;
-    cursor?: string;
-  }): Promise<{ items: CardModel[]; nextCursor?: string }> {
-    const searchParams = new URLSearchParams();
+  }): Promise<{ items: CardModel[] }> {
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (params?.q) searchParams.append('q', params.q);
-    if (params?.collection) searchParams.append('collection', params.collection);
-    if (params?.status) searchParams.append('status', params.status);
-    if (params?.limit) searchParams.append('limit', params.limit.toString());
-    if (params?.cursor) searchParams.append('cursor', params.cursor);
+    if (!user) {
+      throw new ApiError(401, 'Not authenticated');
+    }
 
-    const query = searchParams.toString();
-    const endpoint = `/api/cards${query ? `?${query}` : ''}`;
+    let query = supabase
+      .from('Card')
+      .select('*')
+      .eq('userId', user.id)
+      .eq('deleted', false)
+      .order('createdAt', { ascending: false });
 
-    return authenticatedFetch<{ items: CardModel[]; nextCursor?: string }>(endpoint);
+    // Apply filters
+    if (params?.status) {
+      query = query.eq('status', params.status);
+    }
+
+    if (params?.collection) {
+      query = query.like('collections', `%${params.collection}%`);
+    }
+
+    if (params?.limit) {
+      query = query.limit(params.limit);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw new ApiError(500, error.message, error);
+    }
+
+    // Filter by search query if provided (client-side for now)
+    let items = data?.map(mapCardFromDb) || [];
+
+    if (params?.q) {
+      const searchLower = params.q.toLowerCase();
+      items = items.filter(card =>
+        card.title?.toLowerCase().includes(searchLower) ||
+        card.url?.toLowerCase().includes(searchLower) ||
+        card.notes?.toLowerCase().includes(searchLower) ||
+        card.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+      );
+    }
+
+    return { items };
   },
 
   /**
    * Get a single card by ID
    */
   async get(id: string): Promise<CardModel> {
-    return authenticatedFetch<CardModel>(`/api/cards/${id}`);
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new ApiError(401, 'Not authenticated');
+    }
+
+    const { data, error } = await supabase
+      .from('Card')
+      .select('*')
+      .eq('id', id)
+      .eq('userId', user.id)
+      .single();
+
+    if (error) {
+      throw new ApiError(error.code === 'PGRST116' ? 404 : 500, error.message, error);
+    }
+
+    return mapCardFromDb(data);
   },
 
   /**
    * Create a new card
    */
-  async create(data: {
+  async create(cardData: {
     type?: 'url' | 'md-note' | 'text-note';
     url: string;
     title?: string;
@@ -96,10 +121,46 @@ export const cardsApi = {
     tags?: string[];
     collections?: string[];
   }): Promise<CardModel> {
-    return authenticatedFetch<CardModel>('/api/cards', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new ApiError(401, 'Not authenticated');
+    }
+
+    // Generate UUID client-side (matching web app pattern)
+    const now = new Date().toISOString();
+    const newCard = {
+      id: Crypto.randomUUID(), // CLIENT-SIDE UUID GENERATION using expo-crypto
+      userId: user.id,
+      type: cardData.type || 'url',
+      url: cardData.url,
+      title: cardData.title || null,
+      description: null,
+      notes: cardData.notes || null,
+      image: null,
+      domain: safeHost(cardData.url) || null, // Extract domain from URL
+      tags: cardData.tags?.join(',') || null,
+      collections: cardData.collections?.join(',') || null,
+      metadata: null,
+      status: 'PENDING',
+      deleted: false,
+      pinned: false,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    };
+
+    const { data, error } = await supabase
+      .from('Card')
+      .insert(newCard)
+      .select()
+      .single();
+
+    if (error) {
+      throw new ApiError(500, error.message, error);
+    }
+
+    return mapCardFromDb(data);
   },
 
   /**
@@ -107,30 +168,65 @@ export const cardsApi = {
    */
   async update(
     id: string,
-    data: Partial<CardModel>,
-    lastUpdated?: string
+    updates: Partial<CardModel>
   ): Promise<CardModel> {
-    const headers: HeadersInit = {};
+    const { data: { user } } = await supabase.auth.getUser();
 
-    if (lastUpdated) {
-      headers['If-Unmodified-Since'] = lastUpdated;
+    if (!user) {
+      throw new ApiError(401, 'Not authenticated');
     }
 
-    return authenticatedFetch<CardModel>(`/api/cards/${id}`, {
-      method: 'PATCH',
-      headers,
-      body: JSON.stringify(data),
-    });
+    // Convert arrays to comma-separated strings
+    const dbUpdates: any = { ...updates };
+    if (updates.tags) {
+      dbUpdates.tags = updates.tags.join(',');
+    }
+    if (updates.collections) {
+      dbUpdates.collections = updates.collections.join(',');
+    }
+    if (updates.metadata) {
+      dbUpdates.metadata = JSON.stringify(updates.metadata);
+    }
+
+    const { data, error } = await supabase
+      .from('Card')
+      .update(dbUpdates)
+      .eq('id', id)
+      .eq('userId', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new ApiError(500, error.message, error);
+    }
+
+    return mapCardFromDb(data);
   },
 
   /**
    * Delete a card (soft delete)
    */
   async delete(id: string): Promise<{ ok: boolean; cardId: string; deleted: boolean }> {
-    return authenticatedFetch<{ ok: boolean; cardId: string; deleted: boolean }>(
-      `/api/cards/${id}`,
-      { method: 'DELETE' }
-    );
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new ApiError(401, 'Not authenticated');
+    }
+
+    const { error } = await supabase
+      .from('Card')
+      .update({
+        deleted: true,
+        deletedAt: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('userId', user.id);
+
+    if (error) {
+      throw new ApiError(500, error.message, error);
+    }
+
+    return { ok: true, cardId: id, deleted: true };
   },
 
   /**
@@ -141,46 +237,158 @@ export const cardsApi = {
   },
 };
 
-// Collections (Pawkits) API
+// Collections (Pawkits) API - Direct Supabase queries
 export const pawkitsApi = {
   /**
    * List all collections (returns tree structure)
    */
   async list(): Promise<{ tree: CollectionNode[] }> {
-    return authenticatedFetch<{ tree: CollectionNode[] }>('/api/pawkits');
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new ApiError(401, 'Not authenticated');
+    }
+
+    const { data, error } = await supabase
+      .from('Collection')
+      .select('*')
+      .eq('userId', user.id)
+      .eq('deleted', false)
+      .order('name', { ascending: true });
+
+    if (error) {
+      throw new ApiError(500, error.message, error);
+    }
+
+    // Build tree structure
+    const collections = data || [];
+    const collectionMap = new Map<string, CollectionNode>();
+    const rootCollections: CollectionNode[] = [];
+
+    // First pass: create nodes
+    collections.forEach(col => {
+      collectionMap.set(col.id, {
+        ...col,
+        children: [],
+      });
+    });
+
+    // Second pass: build tree
+    collections.forEach(col => {
+      const node = collectionMap.get(col.id)!;
+      if (col.parentId) {
+        const parent = collectionMap.get(col.parentId);
+        if (parent) {
+          parent.children = parent.children || [];
+          parent.children.push(node);
+        } else {
+          // Parent not found, treat as root
+          rootCollections.push(node);
+        }
+      } else {
+        rootCollections.push(node);
+      }
+    });
+
+    return { tree: rootCollections };
   },
 
   /**
    * Create a new collection
    */
-  async create(data: {
+  async create(collectionData: {
     name: string;
     parentId?: string;
     coverImage?: string;
   }): Promise<CollectionNode> {
-    return authenticatedFetch<CollectionNode>('/api/pawkits', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new ApiError(401, 'Not authenticated');
+    }
+
+    // Generate slug from name
+    const slug = collectionData.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
+    // Generate UUID client-side (matching web app pattern)
+    const now = new Date().toISOString();
+    const newCollection = {
+      id: Crypto.randomUUID(), // CLIENT-SIDE UUID GENERATION using expo-crypto
+      userId: user.id,
+      name: collectionData.name,
+      slug: slug,
+      parentId: collectionData.parentId || null,
+      coverImage: collectionData.coverImage || null,
+      deleted: false,
+      createdAt: now,
+      updatedAt: now,
+      deletedAt: null,
+    };
+
+    const { data, error } = await supabase
+      .from('Collection')
+      .insert(newCollection)
+      .select()
+      .single();
+
+    if (error) {
+      throw new ApiError(500, error.message, error);
+    }
+
+    return { ...data, children: [] };
   },
 
   /**
    * Update a collection
    */
-  async update(id: string, data: Partial<CollectionNode>): Promise<CollectionNode> {
-    return authenticatedFetch<CollectionNode>(`/api/pawkits/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
+  async update(id: string, updates: Partial<CollectionNode>): Promise<CollectionNode> {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new ApiError(401, 'Not authenticated');
+    }
+
+    const { data, error } = await supabase
+      .from('Collection')
+      .update(updates)
+      .eq('id', id)
+      .eq('userId', user.id)
+      .select()
+      .single();
+
+    if (error) {
+      throw new ApiError(500, error.message, error);
+    }
+
+    return { ...data, children: [] };
   },
 
   /**
    * Delete a collection (soft delete)
    */
   async delete(id: string): Promise<{ ok: boolean; collectionId: string }> {
-    return authenticatedFetch<{ ok: boolean; collectionId: string }>(
-      `/api/pawkits/${id}`,
-      { method: 'DELETE' }
-    );
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new ApiError(401, 'Not authenticated');
+    }
+
+    const { error } = await supabase
+      .from('Collection')
+      .update({
+        deleted: true,
+        deletedAt: new Date().toISOString()
+      })
+      .eq('id', id)
+      .eq('userId', user.id);
+
+    if (error) {
+      throw new ApiError(500, error.message, error);
+    }
+
+    return { ok: true, collectionId: id };
   },
 };
