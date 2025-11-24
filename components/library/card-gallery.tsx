@@ -1041,8 +1041,26 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         </div>
       )}
 
+      {/* Minimal fallback when both thumbnails and metadata are hidden for bookmarks */}
+      {!isNote && !showThumbnail && !showMetadata && (
+        <div className="flex items-center justify-center py-6 min-h-[80px]">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Bookmark size={20} />
+            <span className="text-xs truncate max-w-[150px]">
+              {(() => {
+                try {
+                  return new URL(card.url).hostname;
+                } catch {
+                  return card.domain || "Link";
+                }
+              })()}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Show text section for non-notes */}
-      {!isNote && (showMetadata || isPending || isError || (!card.image && showThumbnail)) && (
+      {!isNote && (showMetadata || isPending || isError) && (
         <div className="space-y-1 text-sm">
           {showMetadata && (
             <div className="flex items-center gap-2">
@@ -1054,28 +1072,6 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           )}
           {displaySubtext && showMetadata && (
             <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
-          )}
-          {/* Fallback for cards without images when metadata is hidden (but not loading) */}
-          {!showMetadata && !card.image && !isNote && !isPending && (
-            <div className="flex flex-col items-center justify-center py-4 bg-surface-soft/50 rounded-lg">
-              <div className="text-center space-y-1">
-                <div className="text-gray-500">
-                  <Bookmark size={32} />
-                </div>
-                <div className="text-xs font-medium text-foreground">
-                  {(() => {
-                    try {
-                      return new URL(card.url).hostname;
-                    } catch {
-                      return card.domain || "Link";
-                    }
-                  })()}
-                </div>
-                <div className="text-xs text-muted-foreground max-w-[200px] truncate px-4">
-                  {card.url}
-                </div>
-              </div>
-            </div>
           )}
           {showCardTags && card.collections && card.collections.length > 0 && layout !== "compact" && (
             <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
