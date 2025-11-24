@@ -141,6 +141,81 @@ function extractTitle(html: string): string | undefined {
   return titleMatch ? titleMatch[1].trim() : undefined;
 }
 
+// Extract image from JSON-LD structured data (Schema.org Product, Article, etc.)
+function extractJsonLdImage(html: string, baseUrl: string): string | undefined {
+  const jsonLdRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+
+  while ((match = jsonLdRegex.exec(html)) !== null) {
+    try {
+      const jsonLd = JSON.parse(match[1]);
+      const items = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
+
+      for (const item of items) {
+        const image = extractImageFromJsonLdItem(item, baseUrl);
+        if (image) return image;
+
+        // Check @graph structure (used by some sites like Yoast SEO)
+        if (item['@graph'] && Array.isArray(item['@graph'])) {
+          for (const graphItem of item['@graph']) {
+            const graphImage = extractImageFromJsonLdItem(graphItem, baseUrl);
+            if (graphImage) return graphImage;
+          }
+        }
+      }
+    } catch {
+      // Invalid JSON, skip this script tag
+    }
+  }
+  return undefined;
+}
+
+// Helper to extract image from a single JSON-LD item
+function extractImageFromJsonLdItem(item: any, baseUrl: string): string | undefined {
+  if (!item || typeof item !== 'object') return undefined;
+
+  const resolveUrl = (url: string): string | undefined => {
+    if (!url) return undefined;
+    try {
+      return new URL(url, baseUrl).toString();
+    } catch {
+      return undefined;
+    }
+  };
+
+  // Check direct image property
+  if (item.image) {
+    if (typeof item.image === 'string') {
+      return resolveUrl(item.image);
+    }
+    if (Array.isArray(item.image)) {
+      const first = item.image[0];
+      if (typeof first === 'string') return resolveUrl(first);
+      if (first?.url) return resolveUrl(first.url);
+      if (first?.contentUrl) return resolveUrl(first.contentUrl);
+    }
+    if (item.image.url) return resolveUrl(item.image.url);
+    if (item.image.contentUrl) return resolveUrl(item.image.contentUrl);
+  }
+
+  // Check thumbnailUrl (common in VideoObject, Product)
+  if (item.thumbnailUrl) {
+    if (typeof item.thumbnailUrl === 'string') {
+      return resolveUrl(item.thumbnailUrl);
+    }
+    if (Array.isArray(item.thumbnailUrl) && item.thumbnailUrl[0]) {
+      return resolveUrl(item.thumbnailUrl[0]);
+    }
+  }
+
+  // Check primaryImageOfPage (WebPage schema)
+  if (item.primaryImageOfPage?.url) {
+    return resolveUrl(item.primaryImageOfPage.url);
+  }
+
+  return undefined;
+}
+
 async function scrapeGenericMetadata(url: string): Promise<SiteMetadata | null> {
   try {
     const controller = new AbortController();
@@ -179,6 +254,15 @@ async function scrapeGenericMetadata(url: string): Promise<SiteMetadata | null> 
       'twitter:image',
       'twitter:image:src',
     ]);
+
+    // Fallback: Try JSON-LD structured data
+    if (!image) {
+      const baseUrlObj = new URL(url);
+      image = extractJsonLdImage(html, baseUrlObj.origin);
+      if (image) {
+        console.log('[Metadata] Found image from JSON-LD:', image.substring(0, 100));
+      }
+    }
 
     // Convert relative URLs to absolute
     if (image && !image.startsWith('http')) {

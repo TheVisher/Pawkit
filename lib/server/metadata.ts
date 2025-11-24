@@ -172,7 +172,7 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
 
     const baseUrl = response.url || url;
 
-    const heroImages = collectHeroImages(metaMap, baseUrl);
+    const heroImages = collectHeroImages(metaMap, baseUrl, html);
     const logoImages = collectLogos(root, baseUrl);
 
     const title = pickFirst(metaMap, TITLE_META_KEYS) || root.querySelector("title")?.textContent?.trim();
@@ -255,7 +255,7 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
   }
 }
 
-function collectHeroImages(metaMap: Record<string, string>, baseUrl: string) {
+function collectHeroImages(metaMap: Record<string, string>, baseUrl: string, html?: string) {
   const set = new Set<string>();
   for (const key of HERO_META_KEYS) {
     const value = metaMap[key];
@@ -266,7 +266,84 @@ function collectHeroImages(metaMap: Record<string, string>, baseUrl: string) {
       set.add(httpsUrl);
     }
   }
+
+  // Fallback: Try JSON-LD structured data if no og:image found
+  if (set.size === 0 && html) {
+    const jsonLdImage = extractJsonLdImage(html, baseUrl);
+    if (jsonLdImage) {
+      const httpsUrl = jsonLdImage.startsWith('http://') ? jsonLdImage.replace('http://', 'https://') : jsonLdImage;
+      set.add(httpsUrl);
+      console.log('[Metadata] Found image from JSON-LD:', httpsUrl.substring(0, 100));
+    }
+  }
+
   return Array.from(set);
+}
+
+// Extract image from JSON-LD structured data (Schema.org Product, Article, etc.)
+function extractJsonLdImage(html: string, baseUrl: string): string | undefined {
+  const jsonLdRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+
+  while ((match = jsonLdRegex.exec(html)) !== null) {
+    try {
+      const jsonLd = JSON.parse(match[1]);
+      const items = Array.isArray(jsonLd) ? jsonLd : [jsonLd];
+
+      for (const item of items) {
+        const image = extractImageFromJsonLdItem(item, baseUrl);
+        if (image) return image;
+
+        // Check @graph structure (used by some sites like Yoast SEO)
+        if (item['@graph'] && Array.isArray(item['@graph'])) {
+          for (const graphItem of item['@graph']) {
+            const graphImage = extractImageFromJsonLdItem(graphItem, baseUrl);
+            if (graphImage) return graphImage;
+          }
+        }
+      }
+    } catch {
+      // Invalid JSON, skip this script tag
+    }
+  }
+  return undefined;
+}
+
+// Helper to extract image from a single JSON-LD item
+function extractImageFromJsonLdItem(item: any, baseUrl: string): string | undefined {
+  if (!item || typeof item !== 'object') return undefined;
+
+  // Check direct image property
+  if (item.image) {
+    if (typeof item.image === 'string') {
+      return resolveUrl(baseUrl, item.image);
+    }
+    if (Array.isArray(item.image)) {
+      const first = item.image[0];
+      if (typeof first === 'string') return resolveUrl(baseUrl, first);
+      if (first?.url) return resolveUrl(baseUrl, first.url);
+      if (first?.contentUrl) return resolveUrl(baseUrl, first.contentUrl);
+    }
+    if (item.image.url) return resolveUrl(baseUrl, item.image.url);
+    if (item.image.contentUrl) return resolveUrl(baseUrl, item.image.contentUrl);
+  }
+
+  // Check thumbnailUrl (common in VideoObject, Product)
+  if (item.thumbnailUrl) {
+    if (typeof item.thumbnailUrl === 'string') {
+      return resolveUrl(baseUrl, item.thumbnailUrl);
+    }
+    if (Array.isArray(item.thumbnailUrl) && item.thumbnailUrl[0]) {
+      return resolveUrl(baseUrl, item.thumbnailUrl[0]);
+    }
+  }
+
+  // Check primaryImageOfPage (WebPage schema)
+  if (item.primaryImageOfPage?.url) {
+    return resolveUrl(baseUrl, item.primaryImageOfPage.url);
+  }
+
+  return undefined;
 }
 
 function collectLogos(root: ReturnType<typeof parse>, baseUrl: string) {
