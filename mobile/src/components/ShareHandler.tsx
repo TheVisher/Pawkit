@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useShareIntent } from 'expo-share-intent';
 import { Snackbar } from 'react-native-paper';
 import { cardsApi } from '../api/client';
@@ -19,22 +19,18 @@ export function ShareHandler() {
   const [snackbarMessage, setSnackbarMessage] = useState('');
   const [snackbarType, setSnackbarType] = useState<'success' | 'error'>('success');
 
-  useEffect(() => {
-    // Only process if we have a share intent with a URL
-    if (!hasShareIntent || !shareIntent?.webUrl) {
-      return;
-    }
+  const showNotification = useCallback((message: string, type: 'success' | 'error') => {
+    setSnackbarMessage(message);
+    setSnackbarType(type);
+    setSnackbarVisible(true);
+  }, []);
 
-    // Handle the share intent
-    handleShareIntent();
-  }, [hasShareIntent, shareIntent]);
-
-  const handleShareIntent = async () => {
+  const handleShareIntent = useCallback(async () => {
     try {
       console.log('[ShareHandler] Processing share intent:', shareIntent);
 
       // Extract URL from share intent
-      const url = shareIntent.webUrl;
+      const url = shareIntent?.webUrl;
 
       if (!url) {
         throw new Error('No URL found in share intent');
@@ -61,13 +57,17 @@ export function ShareHandler() {
       // Always reset the share intent so it doesn't process again
       resetShareIntent();
     }
-  };
+  }, [shareIntent, resetShareIntent, showNotification]);
 
-  const showNotification = (message: string, type: 'success' | 'error') => {
-    setSnackbarMessage(message);
-    setSnackbarType(type);
-    setSnackbarVisible(true);
-  };
+  useEffect(() => {
+    // Only process if we have a share intent with a URL
+    if (!hasShareIntent || !shareIntent?.webUrl) {
+      return;
+    }
+
+    // Handle the share intent
+    handleShareIntent();
+  }, [hasShareIntent, shareIntent, handleShareIntent]);
 
   const hideNotification = () => {
     setSnackbarVisible(false);

@@ -3,7 +3,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-const DEFAULT_PREVIEW_URL = process.env.NEXT_PUBLIC_PREVIEW_SERVICE_URL ?? "http://localhost:8787/preview?url={{url}}";
+// Default to empty string in production (localhost URL only works in dev)
+const DEFAULT_PREVIEW_URL = process.env.NODE_ENV === 'production'
+  ? ''
+  : (process.env.NEXT_PUBLIC_PREVIEW_SERVICE_URL ?? "http://localhost:8787/preview?url={{url}}");
 
 // Debounce helper
 let syncTimeout: NodeJS.Timeout | null = null;
