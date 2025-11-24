@@ -11,7 +11,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { FolderPlus, Trash2, FolderMinus, RefreshCw, Pin, PinOff } from "lucide-react";
+import { FolderPlus, Trash2, FolderMinus, RefreshCw, Pin, PinOff, ImageIcon } from "lucide-react";
 import { CollectionNode, CardType } from "@/lib/types";
 
 type CardContextMenuWrapperProps = {
@@ -28,6 +28,8 @@ type CardContextMenuWrapperProps = {
   isPinned?: boolean;
   onPinToSidebar?: () => void;
   onUnpinFromSidebar?: () => void;
+  // Set thumbnail (non-notes only)
+  onSetThumbnail?: () => void;
 };
 
 export function CardContextMenuWrapper({
@@ -43,6 +45,7 @@ export function CardContextMenuWrapper({
   isPinned = false,
   onPinToSidebar,
   onUnpinFromSidebar,
+  onSetThumbnail,
 }: CardContextMenuWrapperProps) {
   const [collections, setCollections] = useState<CollectionNode[]>([]);
   const [loading, setLoading] = useState(false);
@@ -199,6 +202,14 @@ export function CardContextMenuWrapper({
               </ContextMenuItem>
             )}
           </>
+        )}
+
+        {/* Set Thumbnail - only for non-notes */}
+        {cardType !== 'md-note' && cardType !== 'text-note' && onSetThumbnail && (
+          <ContextMenuItem onClick={onSetThumbnail}>
+            <ImageIcon className="mr-2 h-4 w-4" />
+            Set Thumbnail
+          </ContextMenuItem>
         )}
 
         <ContextMenuSeparator />
