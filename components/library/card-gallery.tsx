@@ -801,7 +801,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       >
       {showThumbnail && layout !== "compact" && !isNote && (
         <div
-          className={`relative ${hasTextSection ? "mb-3" : ""} w-full overflow-hidden rounded-xl bg-surface-soft ${layout === "masonry" ? "" : "aspect-video"} group/filmstrip`}
+          className={`relative ${hasTextSection && showMetadata ? "mb-3" : ""} w-full overflow-hidden rounded-xl bg-surface-soft ${layout === "masonry" ? "" : "aspect-video"} group/filmstrip`}
           style={{
             // Chromium rendering optimization to prevent flickering during transitions
             transform: 'translateZ(0)',
@@ -1042,7 +1042,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       )}
 
       {/* Show text section for non-notes */}
-      {!isNote && (showMetadata || showCardTags || isPending || isError || (!card.image && !showThumbnail)) && (
+      {!isNote && (showMetadata || isPending || isError || (!card.image && showThumbnail)) && (
         <div className="space-y-1 text-sm">
           {showMetadata && (
             <div className="flex items-center gap-2">
@@ -1057,12 +1057,12 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           )}
           {/* Fallback for cards without images when metadata is hidden (but not loading) */}
           {!showMetadata && !card.image && !isNote && !isPending && (
-            <div className="flex flex-col items-center justify-center py-12 bg-surface-soft/50 rounded-lg">
-              <div className="text-center space-y-3">
+            <div className="flex flex-col items-center justify-center py-4 bg-surface-soft/50 rounded-lg">
+              <div className="text-center space-y-1">
                 <div className="text-gray-500">
-                  <Bookmark size={48} />
+                  <Bookmark size={32} />
                 </div>
-                <div className="text-sm font-medium text-foreground">
+                <div className="text-xs font-medium text-foreground">
                   {(() => {
                     try {
                       return new URL(card.url).hostname;
