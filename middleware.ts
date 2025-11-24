@@ -132,7 +132,13 @@ export async function middleware(request: NextRequest) {
 
   // If user is not signed in and the current path is not /login or /signup, redirect to login
   if (!user && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/signup')) {
-    return NextResponse.redirect(new URL('/login', request.url))
+    const loginUrl = new URL('/login', request.url)
+    // Pass current path as returnUrl for post-login redirect
+    const currentPath = request.nextUrl.pathname + request.nextUrl.search
+    if (currentPath !== '/home') {
+      loginUrl.searchParams.set('returnUrl', currentPath)
+    }
+    return NextResponse.redirect(loginUrl)
   }
 
   // If user is signed in and trying to access /login or /signup, redirect to home

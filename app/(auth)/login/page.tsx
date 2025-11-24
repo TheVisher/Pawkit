@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
 export default function LoginPage() {
@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const { signIn } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -24,12 +25,14 @@ export default function LoginPage() {
       setError(error.message)
       setLoading(false)
     } else {
+      // Get return URL from query params, default to /home
+      const returnUrl = searchParams.get('returnUrl') || '/home'
       // Force a full page refresh to ensure middleware picks up auth state
       router.refresh()
-      router.push('/home')
+      router.push(returnUrl)
       // Fallback: force reload if push doesn't work
       setTimeout(() => {
-        window.location.href = '/home'
+        window.location.href = returnUrl
       }, 500)
     }
   }

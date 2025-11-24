@@ -1,16 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle2, Loader2, Copy, Check } from 'lucide-react'
 
 export default function ExtensionAuthPage() {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true) // Start loading since we auto-authorize
   const [authorized, setAuthorized] = useState(false)
   const [error, setError] = useState('')
   const [token, setToken] = useState('')
   const [copied, setCopied] = useState(false)
+  const authAttempted = useRef(false)
 
   useEffect(() => {
     // Check if opened from extension
@@ -19,6 +20,14 @@ export default function ExtensionAuthPage() {
 
     if (!fromExtension) {
       setError('This page should only be accessed from the Pawkit browser extension.')
+      setLoading(false)
+      return
+    }
+
+    // Auto-authorize on page load (user is already authenticated via middleware)
+    if (!authAttempted.current) {
+      authAttempted.current = true
+      handleAuthorize()
     }
   }, [])
 
