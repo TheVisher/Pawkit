@@ -1041,8 +1041,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         </div>
       )}
 
-      {/* Minimal fallback when both thumbnails and metadata are hidden for bookmarks */}
-      {!isNote && !showThumbnail && !showMetadata && (
+      {/* Compact fallback when thumbnails are hidden - always show as thumbnail replacement */}
+      {!isNote && !showThumbnail && (
         <div className="flex items-center justify-center py-6 min-h-[80px]">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Bookmark size={20} />
