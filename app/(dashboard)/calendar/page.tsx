@@ -62,7 +62,8 @@ export default function CalendarPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center">
+      <div className="relative">
+        {/* Left-aligned header */}
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
             <CalendarIcon className="h-5 w-5 text-accent" />
@@ -76,8 +77,10 @@ export default function CalendarPage() {
             </p>
           </div>
         </div>
-        <div className="flex-1 text-center">
-          <span className="text-xl font-semibold text-foreground">
+
+        {/* Absolutely centered month/year */}
+        <div className="absolute top-0 left-0 right-0 h-full flex items-center justify-center pointer-events-none">
+          <span className="text-xl font-semibold text-foreground pointer-events-auto">
             {viewMode === "week"
               ? `Week of ${format(startOfWeek(currentMonth), 'MMM d, yyyy')}`
               : format(currentMonth, 'MMMM yyyy')}
