@@ -11,7 +11,9 @@ import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
-import { FileText, Bookmark, Pin, MoreVertical, Trash2, FolderPlus, Eye, PinOff } from "lucide-react";
+import { FileText, Bookmark, Pin, MoreVertical, Trash2, FolderPlus, Eye, PinOff, ImageIcon, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
@@ -170,6 +172,12 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [imageLoadCount, setImageLoadCount] = useState(0);
   const [showUnpinModal, setShowUnpinModal] = useState(false);
+  // Thumbnail modal state
+  const [showThumbnailModal, setShowThumbnailModal] = useState(false);
+  const [thumbnailCardId, setThumbnailCardId] = useState<string | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [thumbnailPreviewLoaded, setThumbnailPreviewLoaded] = useState(false);
+  const [thumbnailPreviewError, setThumbnailPreviewError] = useState(false);
   const searchParams = useSearchParams();
   // Use single selector to ensure re-renders when pinnedNoteIds changes
   const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
@@ -390,6 +398,30 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     unpinNote(cardId);
   };
 
+  // Thumbnail modal handlers
+  const handleOpenThumbnailModal = (cardId: string) => {
+    const card = cards.find(c => c.id === cardId);
+    setThumbnailCardId(cardId);
+    setThumbnailUrl(card?.image || "");
+    setThumbnailPreviewLoaded(!!card?.image);
+    setThumbnailPreviewError(false);
+    setShowThumbnailModal(true);
+  };
+
+  const handleSaveThumbnail = async () => {
+    if (!thumbnailCardId) return;
+    try {
+      const newImage = thumbnailUrl.trim() || null;
+      await updateCardInStore(thumbnailCardId, { image: newImage });
+      setCards((prev) =>
+        prev.map((c) => (c.id === thumbnailCardId ? { ...c, image: newImage } : c))
+      );
+      setShowThumbnailModal(false);
+      setThumbnailCardId(null);
+    } catch (error) {
+    }
+  };
+
   // Get pinned notes for unpin modal
   const pinnedNotes = useMemo(() => {
     return pinnedNoteIds
@@ -497,6 +529,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                       isPinned={isPinned}
                       onPinToSidebar={() => handlePinToSidebar(card.id)}
                       onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
+                      onSetThumbnail={() => handleOpenThumbnailModal(card.id)}
                     >
                       <tr
                         className={`border-b border-subtle hover:bg-white/5 cursor-pointer transition-colors ${
@@ -592,6 +625,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 isPinned={pinnedNoteIds.includes(card.id)}
                 onPinToSidebar={() => handlePinToSidebar(card.id)}
                 onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
+                onSetThumbnail={() => handleOpenThumbnailModal(card.id)}
               />
             ))}
           </div>
@@ -648,6 +682,122 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
         onUnpin={handleUnpinFromSidebar}
       />
 
+      {/* Thumbnail Modal */}
+      {showThumbnailModal && (
+        <>
+          {/* Modal Backdrop */}
+          <div
+            className="fixed inset-0 z-[400] bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowThumbnailModal(false)}
+          />
+          {/* Modal Content */}
+          <div className="fixed inset-0 z-[401] flex items-center justify-center p-4 pointer-events-none">
+            <div
+              className="w-full max-w-md rounded-2xl border border-white/10 bg-gray-900 shadow-2xl pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                <h3 className="text-lg font-semibold text-gray-100">Set Thumbnail</h3>
+                <button
+                  onClick={() => setShowThumbnailModal(false)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X size={20} className="text-gray-400" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Image URL
+                  </label>
+                  <Input
+                    type="url"
+                    value={thumbnailUrl}
+                    onChange={(e) => {
+                      setThumbnailUrl(e.target.value);
+                      setThumbnailPreviewError(false);
+                      setThumbnailPreviewLoaded(false);
+                    }}
+                    placeholder="https://example.com/image.jpg"
+                    className="bg-gray-800 border-gray-700"
+                  />
+                </div>
+
+                {/* Preview */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Preview
+                  </label>
+                  <div className="relative aspect-video rounded-lg bg-gray-800 border border-gray-700 overflow-hidden flex items-center justify-center">
+                    {thumbnailUrl.trim() ? (
+                      <>
+                        {thumbnailPreviewError ? (
+                          <div className="text-center text-gray-500">
+                            <ImageIcon size={32} className="mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">Failed to load image</p>
+                          </div>
+                        ) : (
+                          <img
+                            src={thumbnailUrl}
+                            alt="Thumbnail preview"
+                            className={`max-w-full max-h-full object-contain ${thumbnailPreviewLoaded ? '' : 'opacity-0'}`}
+                            onLoad={() => setThumbnailPreviewLoaded(true)}
+                            onError={() => setThumbnailPreviewError(true)}
+                          />
+                        )}
+                        {!thumbnailPreviewLoaded && !thumbnailPreviewError && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="animate-spin h-6 w-6 border-2 border-gray-500 border-t-accent rounded-full" />
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center text-gray-500">
+                        <ImageIcon size={32} className="mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Enter a URL to preview</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Remove thumbnail link */}
+                {thumbnailCardId && cards.find(c => c.id === thumbnailCardId)?.image && (
+                  <button
+                    onClick={() => {
+                      setThumbnailUrl("");
+                      setThumbnailPreviewError(false);
+                      setThumbnailPreviewLoaded(false);
+                    }}
+                    className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    Remove thumbnail
+                  </button>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowThumbnailModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveThumbnail}
+                  disabled={thumbnailUrl.trim() !== "" && !thumbnailPreviewLoaded}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Bulk operations are now handled in the right sidebar panel */}
     </div>
   );
@@ -677,9 +827,10 @@ type CardCellProps = {
   isPinned?: boolean;
   onPinToSidebar?: () => void;
   onUnpinFromSidebar?: () => void;
+  onSetThumbnail?: () => void;
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar, onSetThumbnail }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
@@ -784,6 +935,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       isPinned={isPinned}
       onPinToSidebar={onPinToSidebar}
       onUnpinFromSidebar={onUnpinFromSidebar}
+      onSetThumbnail={onSetThumbnail}
     >
       <div
         ref={setNodeRef}
