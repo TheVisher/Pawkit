@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -342,6 +342,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isModalExpanded, setIsModalExpanded] = useState(false);
+  const [isThumbnailModalOpen, setIsThumbnailModalOpen] = useState(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState(card.image || "");
+  const [thumbnailPreviewError, setThumbnailPreviewError] = useState(false);
+  const [thumbnailPreviewLoaded, setThumbnailPreviewLoaded] = useState(false);
   const [noteMode, setNoteMode] = useState<'edit' | 'preview'>('preview');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(card.title || "");
@@ -728,6 +732,31 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }
   };
 
+  const handleOpenThumbnailModal = () => {
+    setThumbnailUrl(card.image || "");
+    setThumbnailPreviewError(false);
+    setThumbnailPreviewLoaded(!!card.image);
+    setIsThumbnailModalOpen(true);
+  };
+
+  const handleSaveThumbnail = async () => {
+    try {
+      const newImage = thumbnailUrl.trim() || null;
+      await updateCardInStore(card.id, { image: newImage });
+      onUpdate({ ...card, image: newImage });
+      toast.success(newImage ? "Thumbnail updated" : "Thumbnail removed");
+      setIsThumbnailModalOpen(false);
+    } catch (error) {
+      toast.error("Failed to update thumbnail");
+    }
+  };
+
+  const handleRemoveThumbnail = async () => {
+    setThumbnailUrl("");
+    setThumbnailPreviewError(false);
+    setThumbnailPreviewLoaded(false);
+  };
+
   // When reader is expanded, render different layout
   if (isReaderExpanded && articleContent) {
     return (
@@ -952,6 +981,18 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                           <Pin size={16} />
                           {isPinned ? "Unpin from Home" : "Pin to Home"}
                         </button>
+                        {!isNote && (
+                          <button
+                            onClick={() => {
+                              setIsMenuOpen(false);
+                              handleOpenThumbnailModal();
+                            }}
+                            className="w-full px-4 py-2.5 text-left text-sm text-gray-300 hover:bg-white/10 flex items-center gap-2 transition-colors"
+                          >
+                            <ImageIcon size={16} />
+                            Set Thumbnail
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setIsMenuOpen(false);
@@ -1491,6 +1532,118 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           </div>
         </Tabs>
       </div>)}
+
+      {/* Thumbnail Modal */}
+      {isThumbnailModalOpen && (
+        <>
+          {/* Modal Backdrop */}
+          <div
+            className="fixed inset-0 z-[400] bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsThumbnailModalOpen(false)}
+          />
+          {/* Modal Content */}
+          <div className="fixed inset-0 z-[401] flex items-center justify-center p-4 pointer-events-none">
+            <div
+              className="w-full max-w-md rounded-2xl border border-white/10 bg-gray-900 shadow-2xl pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                <h3 className="text-lg font-semibold text-gray-100">Set Thumbnail</h3>
+                <button
+                  onClick={() => setIsThumbnailModalOpen(false)}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                >
+                  <X size={20} className="text-gray-400" />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Image URL
+                  </label>
+                  <Input
+                    type="url"
+                    value={thumbnailUrl}
+                    onChange={(e) => {
+                      setThumbnailUrl(e.target.value);
+                      setThumbnailPreviewError(false);
+                      setThumbnailPreviewLoaded(false);
+                    }}
+                    placeholder="https://example.com/image.jpg"
+                    className="bg-gray-800 border-gray-700"
+                  />
+                </div>
+
+                {/* Preview */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    Preview
+                  </label>
+                  <div className="relative aspect-video rounded-lg bg-gray-800 border border-gray-700 overflow-hidden flex items-center justify-center">
+                    {thumbnailUrl.trim() ? (
+                      <>
+                        {thumbnailPreviewError ? (
+                          <div className="text-center text-gray-500">
+                            <ImageIcon size={32} className="mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">Failed to load image</p>
+                          </div>
+                        ) : (
+                          <img
+                            src={thumbnailUrl}
+                            alt="Thumbnail preview"
+                            className={`max-w-full max-h-full object-contain ${thumbnailPreviewLoaded ? '' : 'opacity-0'}`}
+                            onLoad={() => setThumbnailPreviewLoaded(true)}
+                            onError={() => setThumbnailPreviewError(true)}
+                          />
+                        )}
+                        {!thumbnailPreviewLoaded && !thumbnailPreviewError && (
+                          <div className="absolute inset-0 flex items-center justify-center">
+                            <div className="animate-spin h-6 w-6 border-2 border-gray-500 border-t-accent rounded-full" />
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="text-center text-gray-500">
+                        <ImageIcon size={32} className="mx-auto mb-2 opacity-50" />
+                        <p className="text-sm">Enter a URL to preview</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Remove thumbnail link */}
+                {card.image && (
+                  <button
+                    onClick={handleRemoveThumbnail}
+                    className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                  >
+                    Remove thumbnail
+                  </button>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-white/10">
+                <Button
+                  variant="ghost"
+                  onClick={() => setIsThumbnailModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveThumbnail}
+                  disabled={thumbnailUrl.trim() !== "" && !thumbnailPreviewLoaded}
+                >
+                  Save
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 
