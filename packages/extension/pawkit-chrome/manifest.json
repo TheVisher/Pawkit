@@ -28,7 +28,8 @@
   ],
   "host_permissions": [
     "https://pawkit.vercel.app/*",
-    "https://getpawkit.com/*"
+    "https://getpawkit.com/*",
+    "https://www.getpawkit.com/*"
   ],
   "options_ui": {
     "page": "src/options/index.html",
