@@ -10,6 +10,7 @@ import {
 import { BlurView } from 'expo-blur';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { GlassTheme } from '../theme/glass';
+import { formatDateSubtitle } from '../lib/daily-notes';
 import type { CollectionNode } from '../types';
 
 interface LeftPanelProps {
@@ -17,6 +18,9 @@ interface LeftPanelProps {
   activeCollection?: string;
   cardCount: number;
   onNavigate: (collection?: string) => void;
+  onTodaysNote?: () => void;
+  notes?: Array<{ id: string; title: string; pinned: boolean }>;
+  onOpenNote?: (noteId: string) => void;
 }
 
 export function LeftPanel({
@@ -24,6 +28,9 @@ export function LeftPanel({
   activeCollection,
   cardCount,
   onNavigate,
+  onTodaysNote,
+  notes = [],
+  onOpenNote,
 }: LeftPanelProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(['pawkits'])
@@ -58,7 +65,7 @@ export function LeftPanel({
   ) => {
     const hasChildren = collection.children && collection.children.length > 0;
     const isExpanded = expandedCollections.has(collection.id);
-    const isActive = activeCollection === collection.name;
+    const isActive = activeCollection === collection.slug;
 
     return (
       <View key={collection.id}>
@@ -69,20 +76,13 @@ export function LeftPanel({
             isActive && styles.navItemActive,
           ]}
           onPress={() => {
+            console.log('[LeftPanel] Collection tapped:', collection.name, '(slug:', collection.slug + ')');
             if (hasChildren) {
               toggleCollection(collection.id);
             }
-            onNavigate(collection.name);
+            onNavigate(collection.slug);
           }}
         >
-          {hasChildren && (
-            <MaterialCommunityIcons
-              name={isExpanded ? 'chevron-down' : 'chevron-right'}
-              size={16}
-              color={GlassTheme.colors.text.secondary}
-              style={styles.chevron}
-            />
-          )}
           <MaterialCommunityIcons
             name="folder-outline"
             size={18}
@@ -96,11 +96,17 @@ export function LeftPanel({
             style={[
               styles.navText,
               isActive && styles.navTextActive,
-              !hasChildren && { marginLeft: 24 },
             ]}
           >
             {collection.name}
           </Text>
+          {hasChildren && (
+            <MaterialCommunityIcons
+              name={isExpanded ? 'chevron-down' : 'chevron-right'}
+              size={16}
+              color={GlassTheme.colors.text.secondary}
+            />
+          )}
         </TouchableOpacity>
 
         {hasChildren && isExpanded && (
@@ -164,15 +170,6 @@ export function LeftPanel({
               </View>
             )}
           </TouchableOpacity>
-
-          <TouchableOpacity style={styles.navItem}>
-            <MaterialCommunityIcons
-              name="calendar"
-              size={18}
-              color={GlassTheme.colors.text.secondary}
-            />
-            <Text style={styles.navText}>Calendar</Text>
-          </TouchableOpacity>
         </View>
 
         {/* PAWKITS Section */}
@@ -210,23 +207,48 @@ export function LeftPanel({
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>NOTES</Text>
 
-          <TouchableOpacity style={styles.navItem}>
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={onTodaysNote}
+          >
             <MaterialCommunityIcons
-              name="note-text-outline"
+              name="calendar-today"
               size={18}
               color={GlassTheme.colors.text.secondary}
             />
-            <Text style={styles.navText}>Today's Note</Text>
+            <View style={styles.navTextContainer}>
+              <Text style={styles.navText}>Today's Note</Text>
+              <Text style={styles.navSubtitle}>
+                {formatDateSubtitle(new Date())}
+              </Text>
+            </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.navItem}>
-            <MaterialCommunityIcons
-              name="note-outline"
-              size={18}
-              color={GlassTheme.colors.text.secondary}
-            />
-            <Text style={styles.navText}>Quick Notes</Text>
-          </TouchableOpacity>
+          {/* Recent & Pinned Notes */}
+          {notes.length > 0 && (
+            <View style={styles.notesContainer}>
+              {notes.map((note) => (
+                <TouchableOpacity
+                  key={note.id}
+                  style={styles.navItem}
+                  onPress={() => onOpenNote?.(note.id)}
+                >
+                  <MaterialCommunityIcons
+                    name={note.pinned ? "pin" : "note-outline"}
+                    size={18}
+                    color={
+                      note.pinned
+                        ? GlassTheme.colors.purple[400]
+                        : GlassTheme.colors.text.secondary
+                    }
+                  />
+                  <Text style={styles.navText} numberOfLines={1}>
+                    {note.title}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -282,8 +304,9 @@ const styles = StyleSheet.create({
   navItemActive: {
     backgroundColor: 'rgba(124, 58, 237, 0.15)',
   },
-  chevron: {
-    marginRight: 4,
+  navTextContainer: {
+    flex: 1,
+    marginLeft: 12,
   },
   navText: {
     fontSize: 14,
@@ -294,6 +317,11 @@ const styles = StyleSheet.create({
   navTextActive: {
     color: GlassTheme.colors.purple[400],
     fontWeight: '500',
+  },
+  navSubtitle: {
+    fontSize: 11,
+    color: GlassTheme.colors.text.muted,
+    marginTop: 2,
   },
   countBadge: {
     backgroundColor: 'rgba(124, 58, 237, 0.2)',
@@ -312,5 +340,8 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     paddingVertical: 12,
     paddingHorizontal: 12,
+  },
+  notesContainer: {
+    marginTop: 8,
   },
 });

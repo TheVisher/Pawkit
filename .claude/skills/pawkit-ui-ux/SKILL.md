@@ -3477,3 +3477,96 @@ import { LinearGradient } from 'expo-linear-gradient';
 **Tested**: iOS Simulator, Real iPhone devices
 **Status**: Production-ready mobile glass morphism system
 
+
+---
+
+## Session Update: November 23, 2025
+
+### RightPanel Cleanup (Mobile)
+
+**File**: `mobile/src/components/RightPanel.tsx`
+
+**Changes Made**:
+Simplified RightPanel for MVP by removing unimplemented and unnecessary sections:
+
+**Removed Sections**:
+1. ~~TODAY'S TASKS~~ - Not implemented in mobile app
+2. ~~TAGS~~ - Tags not implemented in mobile app  
+3. ~~CONTENT TYPE~~ - Not needed for MVP
+4. ~~DISPLAY~~ - Card size, spacing, padding controls
+5. ~~Bottom Status Section~~ - "Online" indicator, "Server Sync" toggle, "All changes saved", "Sync now" button
+
+**Remaining Sections** (MVP):
+- **Top Actions**: Avatar and action buttons (trash, help, share)
+- **SORT**: Date Added, Recently Modified, Title A-Z, Domain
+- **VIEW**: Grid, Masonry, List, Compact
+
+**Code Cleanup**:
+```typescript
+// Removed unused imports
+- Switch (from react-native)
+
+// Removed unused state
+- cardSize, cardSpacing, cardPadding
+- showThumbnails, serverSync
+
+// Updated content padding
+content: {
+  padding: 12,
+  paddingBottom: 16,  // Was 120
+}
+```
+
+**Result**: Cleaner, focused panel with only essential sorting and view controls.
+
+---
+
+### Collection Header Label Fix (Mobile)
+
+**File**: `mobile/src/components/BookmarksListScreen_New.tsx`
+
+**Issue**: Header always showed "Library" even when viewing a specific collection (pawkit)
+
+**Solution**: Added collection name lookup and conditional rendering
+
+**Implementation**:
+```typescript
+// Helper function to find collection name from slug (lines 659-677)
+const getCollectionName = (slug: string | undefined): string | null => {
+  if (!slug) return null;
+
+  const findInTree = (nodes: CollectionNode[]): string | null => {
+    for (const node of nodes) {
+      if (node.slug === slug) return node.name;
+      if (node.children) {
+        const found = findInTree(node.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  return findInTree(collections);
+};
+
+const collectionName = getCollectionName(collection);
+
+// Updated header text (lines 707 and 757)
+<Text style={styles.libraryLabel}>
+  {searchQuery.trim() ? 'Search Results' : (collectionName || 'Library')}
+</Text>
+```
+
+**Priority Order**:
+1. "Search Results" (when searching)
+2. **Collection name** (when viewing a pawkit)
+3. "Library" (default view)
+
+**Handles**:
+- Top-level collections
+- Nested collections (recursive search)
+- Null/undefined cases (fallback to "Library")
+
+---
+
+**Last Updated**: November 23, 2025

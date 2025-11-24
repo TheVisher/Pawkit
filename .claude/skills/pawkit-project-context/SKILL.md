@@ -2611,3 +2611,138 @@ const filteredCards = React.useMemo(() => {
 **Lines Changed**: +10,835, -281
 **Status**: Production-ready mobile app with glass UI and local-first sync
 
+
+---
+
+## Session: November 23, 2025 - Mobile UI Refinements
+
+### Overview
+Quick polish session focusing on fixing UI bugs and cleaning up unnecessary components in the mobile app.
+
+### Work Completed
+
+#### 1. Fixed Collection Header Label Bug
+**Problem**: Header always showed "Library" even when viewing a specific collection (pawkit).
+
+**Solution**: Added recursive collection tree search to find collection name from slug:
+```typescript
+const getCollectionName = (slug: string | undefined): string | null => {
+  if (!slug) return null;
+  
+  const findInTree = (nodes: CollectionNode[]): string | null => {
+    for (const node of nodes) {
+      if (node.slug === slug) return node.name;
+      if (node.children) {
+        const found = findInTree(node.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  
+  return findInTree(collections);
+};
+
+// Updated header with priority order:
+// 1. Search Results (when searching)
+// 2. Collection name (when in a pawkit)
+// 3. Library (default)
+{searchQuery.trim() ? 'Search Results' : (collectionName || 'Library')}
+```
+
+**Files Changed**:
+- `mobile/src/screens/BookmarksListScreen_New.tsx`
+
+**Impact**: Users can now clearly see which collection they're viewing.
+
+---
+
+#### 2. Cleaned Up RightPanel
+
+**Problem**: RightPanel contained many unimplemented and unnecessary sections for MVP.
+
+**Removed Sections**:
+- TODAY'S TASKS (not implemented)
+- TAGS (not implemented in mobile)
+- CONTENT TYPE (not needed)
+- DISPLAY section (card size, spacing, padding controls)
+- Bottom status section (Online indicator, Server Sync toggle, "All changes saved", "Sync now" button)
+
+**Kept Sections** (MVP essentials):
+- Top actions (Avatar, trash, help, share buttons)
+- SORT (Date Added, Recently Modified, Title A-Z, Domain)
+- VIEW (Grid, Masonry, List, Compact)
+
+**Code Cleanup**:
+```typescript
+// Removed unused imports
+- Switch (from react-native)
+
+// Removed unused state variables
+- cardSize, cardSpacing, cardPadding
+- showThumbnails, serverSync
+
+// Updated padding
+content: {
+  padding: 12,
+  paddingBottom: 16,  // Was 120px for bottom section
+}
+```
+
+**Files Changed**:
+- `mobile/src/components/RightPanel.tsx`
+
+**Impact**: Cleaner, more focused panel with only essential controls for MVP.
+
+---
+
+### Technical Details
+
+#### Collection Lookup Algorithm
+- **Challenge**: Collections stored as tree structure with nested children
+- **Solution**: Recursive depth-first search through tree
+- **Handles**: Top-level and deeply nested collections
+- **Edge cases**: Null slugs, missing collections (fallback to "Library")
+
+#### UI Simplification Strategy
+- **Approach**: Remove anything not functional or needed for MVP
+- **Benefit**: Less visual clutter, faster development cycles
+- **Future**: Can add back features as they're implemented
+
+---
+
+### Files Modified
+1. `mobile/src/screens/BookmarksListScreen_New.tsx` - Header label fix
+2. `mobile/src/components/RightPanel.tsx` - Removed unused sections
+
+---
+
+### Skills Updated
+1. `pawkit-ui-ux` - Documented both changes
+2. `pawkit-troubleshooting` - Added Issue #29 (Collection header label bug)
+3. `pawkit-project-context` - This session summary
+
+---
+
+### Session Metrics
+**Duration**: ~30 minutes
+**Issues Fixed**: 2
+**Files Changed**: 2
+**Lines Removed**: ~400 (cleanup)
+**Lines Added**: ~30 (bug fix)
+**Commits**: 0 (changes uncommitted)
+
+---
+
+### Status
+✅ Collection header label shows correct pawkit name
+✅ RightPanel simplified for MVP
+✅ All skills documentation updated
+📝 Changes ready for commit
+
+**Next Steps**: Commit changes when ready
+
+---
+
+**Last Updated**: November 23, 2025
+

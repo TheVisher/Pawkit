@@ -39,6 +39,7 @@ description: Living document of issues encountered, their fixes, and prevention 
    - Dead Code - Unused AppSidebar Component
    - Performance - Excessive Re-renders from Store Subscriptions
    - Duplicate URL Detection - Deleted Cards Not Excluded
+   - Collection Header Label - Not Showing Pawkit Name (Mobile)
 3. [Debugging Strategies](#debugging-strategies)
 4. [How to Add New Issues](#how-to-add-new-issues)
 5. [Maintenance](#maintenance)
@@ -3705,6 +3706,121 @@ WHERE "type" = 'url' AND "deleted" = false;
 
 ## Debugging Strategies
 
+### 29. Collection Header Label - Not Showing Pawkit Name (Mobile)
+
+**Date**: November 23, 2025
+**Severity**: 🟡 Medium
+**Category**: UI/UX, Mobile, Navigation
+**Status**: ✅ Fixed
+
+**Issue**: When navigating to a specific collection (pawkit) in the mobile app, the header label always showed "Library" instead of the collection name, making it unclear which collection the user was viewing.
+
+**Symptom**:
+```
+1. User taps on a collection named "Work Projects" in left panel
+2. Right content area loads cards from that collection correctly
+3. Header still displays "Library" instead of "Work Projects"
+4. User confused about which collection they're viewing
+```
+
+**What Failed**:
+The header text logic only checked for search query, not collection context:
+
+```typescript
+// ❌ WRONG: No check for collection name
+<Text style={styles.libraryLabel}>
+  {searchQuery.trim() ? 'Search Results' : 'Library'}
+</Text>
+```
+
+**Root Cause**:
+- Route parameter `collection` contained the collection slug
+- Collections were loaded into state as tree structure
+- Header rendering didn't look up the collection name from the slug
+- No helper function to recursively search collection tree
+
+**The Fix**:
+Added collection name lookup with recursive tree search in `BookmarksListScreen_New.tsx`:
+
+```typescript
+// ✅ CORRECT: Helper function to find collection name from slug
+const getCollectionName = (slug: string | undefined): string | null => {
+  if (!slug) return null;
+
+  const findInTree = (nodes: CollectionNode[]): string | null => {
+    for (const node of nodes) {
+      if (node.slug === slug) return node.name;
+      if (node.children) {
+        const found = findInTree(node.children);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  return findInTree(collections);
+};
+
+const collectionName = getCollectionName(collection);
+
+// Updated header with priority order
+<Text style={styles.libraryLabel}>
+  {searchQuery.trim() ? 'Search Results' : (collectionName || 'Library')}
+</Text>
+```
+
+**Priority Order**:
+1. **"Search Results"** - When actively searching
+2. **Collection name** - When viewing a specific pawkit
+3. **"Library"** - Default view (all cards)
+
+**Why This Matters**:
+1. **Navigation Context**: Users need to know where they are in the app
+2. **Multi-Collection Workflows**: Essential when managing multiple pawkits
+3. **Visual Feedback**: Confirms that tapping a collection succeeded
+4. **Nested Collections**: Works with both top-level and nested collections
+
+**Files Changed**:
+- `mobile/src/screens/BookmarksListScreen_New.tsx` (lines 659-677, 707, 757)
+
+**Testing**:
+```typescript
+// Verify collection name display:
+1. Navigate to Library view → Header shows "Library" ✅
+2. Tap a collection "Work" → Header shows "Work" ✅
+3. Tap nested collection "Work/Projects" → Header shows "Projects" ✅
+4. Enter search query "test" → Header shows "Search Results" ✅
+5. Clear search while in collection → Header shows collection name ✅
+```
+
+**How to Avoid**:
+- **Context-aware labels**: Always check navigation state before rendering labels
+- **Route parameters**: Use route params to determine current context
+- **Helper functions**: Create reusable lookup functions for nested data structures
+- **Test edge cases**: Verify nested collections, empty states, and search combinations
+
+**Prevention Checklist**:
+- [ ] All navigation labels check route parameters for context
+- [ ] Helper functions handle nested data structures (trees, hierarchies)
+- [ ] Labels update reactively when navigation changes
+- [ ] Search/filter states don't override navigation context incorrectly
+- [ ] Test all navigation paths (top-level, nested, search, default)
+
+**Impact**:
+- ✅ Users can see which collection they're viewing
+- ✅ Works with nested collections (recursive search)
+- ✅ Proper priority: Search > Collection > Default
+- ✅ Better navigation awareness and UX
+
+**Related Issues**:
+- UI/UX improvements for mobile navigation
+
+**See Also**:
+- `.claude/skills/pawkit-ui-ux/skill.md` - Collection Header Label Fix
+- React Navigation docs: Route parameters
+
+---
+
 ### When API Returns 500 Error
 
 **Step 1: Check Server Logs**
@@ -4074,7 +4190,7 @@ After adding a new issue:
 
 ---
 
-**Last Updated**: January 14, 2025 (Added Issue #28: Duplicate URL detection with deleted cards)
+**Last Updated**: November 23, 2025 (Added Issue #29: Collection header label not showing pawkit name in mobile)
 **Next Review**: April 2025 (Quarterly)
 
 **This is a living document. Keep it current!**

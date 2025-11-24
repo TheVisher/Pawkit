@@ -11,6 +11,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -26,9 +27,11 @@ import { GlassTheme } from '../theme/glass';
 import { fetchMetadata } from '../lib/metadata';
 import { LeftPanel } from '../components/LeftPanel';
 import { RightPanel } from '../components/RightPanel';
+import { NoteReaderModal } from '../components/NoteReaderModal';
 import * as LocalStorage from '../lib/local-storage';
 import * as SyncService from '../lib/sync-service';
 import { supabase } from '../config/supabase';
+import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent } from '../lib/daily-notes';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const COLUMN_SPACING = GlassTheme.spacing.md;
@@ -47,6 +50,7 @@ type RootStackParamList = {
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'BookmarksList'>;
 
 type SortOption = 'date' | 'title' | 'domain';
+type ViewType = 'masonry' | 'grid' | 'list' | 'compact';
 
 export default function BookmarksListScreen() {
   const [cards, setCards] = useState<CardWithDimensions[]>([]);
@@ -54,9 +58,12 @@ export default function BookmarksListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('date');
+  const [viewType, setViewType] = useState<ViewType>('masonry');
   const [selectedCard, setSelectedCard] = useState<CardModel | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [readerVisible, setReaderVisible] = useState(false);
+  const [readerNote, setReaderNote] = useState<CardModel | null>(null);
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute();
 
@@ -118,14 +125,56 @@ export default function BookmarksListScreen() {
       // Initialize local storage for this user
       LocalStorage.initStorage(user.id);
 
+      // Check for corrupted collections data and clear if found
+      const testCards = await LocalStorage.getAllCards();
+      if (testCards.length > 0) {
+        const firstCardWithCollections = testCards.find(c => c.collections && c.collections.length > 0);
+        if (firstCardWithCollections) {
+          const firstCollection = firstCardWithCollections.collections[0];
+          // Check if collection is corrupted (starts with [ or ")
+          if (typeof firstCollection === 'string' && (firstCollection.startsWith('[') || firstCollection.startsWith('"'))) {
+            console.log('[Storage] Detected corrupted collections data, clearing and re-syncing...');
+            await LocalStorage.clearAll();
+            // Re-initialize after clearing
+            LocalStorage.initStorage(user.id);
+          }
+        }
+      }
+
       // Load from local storage FIRST (instant)
       const localCards = await LocalStorage.getAllCards();
       const localCollections = await LocalStorage.getAllCollections();
 
-      // Apply filtering and sorting
+      // Apply filtering and sorting (collection param is now a slug, not a name)
+      console.log('[Filter] Collection slug from route:', collection);
+      console.log('[Filter] Total cards in storage:', localCards.length);
+
+      // Debug: Show what collections arrays look like
+      if (collection && localCards.length > 0) {
+        console.log('[Filter] Sample card collections arrays:');
+        localCards.slice(0, 5).forEach(card => {
+          console.log(`  - "${card.title}": collections =`, card.collections, `(type: ${typeof card.collections})`);
+        });
+      }
+
       let filteredCards = collection
-        ? localCards.filter(c => c.collections?.includes(collection))
+        ? localCards.filter(c => {
+            const hasCollection = c.collections?.includes(collection);
+            if (hasCollection) {
+              console.log('[Filter] ✓ Card matched:', { title: c.title, collections: c.collections });
+            }
+            return hasCollection;
+          })
         : localCards;
+
+      console.log('[Filter] Total cards after filtering:', filteredCards.length);
+
+      if (collection && filteredCards.length === 0 && localCards.length > 0) {
+        console.log('[Filter] ⚠️ NO MATCHES! Looking for slug:', collection);
+        console.log('[Filter] Available collection slugs in cards:',
+          [...new Set(localCards.flatMap(c => c.collections || []))].slice(0, 10)
+        );
+      }
 
       filteredCards = sortCards(filteredCards, sortBy);
 
@@ -163,7 +212,7 @@ export default function BookmarksListScreen() {
         const localCards = await LocalStorage.getAllCards();
         const localCollections = await LocalStorage.getAllCollections();
 
-        // Apply filtering and sorting
+        // Apply filtering and sorting (collection param is now a slug)
         let filteredCards = collection
           ? localCards.filter(c => c.collections?.includes(collection))
           : localCards;
@@ -234,6 +283,8 @@ export default function BookmarksListScreen() {
         // Reload from local storage with new filters
         (async () => {
           const localCards = await LocalStorage.getAllCards();
+
+          // Filter by collection slug (collection param is now a slug)
           let filteredCards = collection
             ? localCards.filter(c => c.collections?.includes(collection))
             : localCards;
@@ -339,15 +390,12 @@ export default function BookmarksListScreen() {
     }
   };
 
-  const renderCard = (item: CardWithDimensions, index: number) => {
-    const imageHeight = item.imageHeight || CARD_WIDTH; // Fallback to square
+  // Render masonry card (current layout - dynamic height)
+  const renderMasonryCard = (item: CardWithDimensions) => {
+    const imageHeight = item.imageHeight || CARD_WIDTH;
 
     return (
-      <GlassCard
-        onPress={() => handleCardPress(item)}
-        style={styles.card}
-      >
-        {/* Image thumbnail - full aspect ratio, no cropping */}
+      <GlassCard onPress={() => handleCardPress(item)} style={styles.card}>
         {item.image && (
           <Image
             source={{ uri: item.image }}
@@ -355,36 +403,21 @@ export default function BookmarksListScreen() {
             resizeMode="cover"
           />
         )}
-
-        {/* Card info */}
         <View style={styles.cardInfo}>
-          {/* Title - max 2 lines */}
           <Text style={styles.cardTitle} numberOfLines={2}>
             {item.title || item.url}
           </Text>
-
-          {/* Domain pill - centered */}
           {item.domain && (
             <View style={styles.domainPillContainer}>
               <View style={styles.domainPill}>
-                <MaterialCommunityIcons
-                  name="web"
-                  size={10}
-                  color={GlassTheme.colors.text.muted}
-                />
-                <Text style={styles.domainText} numberOfLines={1}>
-                  {item.domain}
-                </Text>
+                <MaterialCommunityIcons name="web" size={10} color={GlassTheme.colors.text.muted} />
+                <Text style={styles.domainText} numberOfLines={1}>{item.domain}</Text>
               </View>
             </View>
           )}
-
-          {/* Show first tag only in grid view */}
           {item.tags && item.tags.length > 0 && (
             <View style={styles.tag}>
-              <Text style={styles.tagText} numberOfLines={1}>
-                #{item.tags[0]}
-              </Text>
+              <Text style={styles.tagText} numberOfLines={1}>#{item.tags[0]}</Text>
             </View>
           )}
         </View>
@@ -392,20 +425,256 @@ export default function BookmarksListScreen() {
     );
   };
 
+  // Render grid card (fixed square aspect ratio)
+  const renderGridCard = (item: CardWithDimensions) => {
+    return (
+      <GlassCard onPress={() => handleCardPress(item)} style={styles.card}>
+        {item.image ? (
+          <Image
+            source={{ uri: item.image }}
+            style={[styles.cardImage, { height: CARD_WIDTH }]} // Square
+            resizeMode="cover"
+          />
+        ) : (
+          // Placeholder for cards without images (notes, URLs without thumbnails)
+          <View style={[styles.cardPlaceholder, { height: CARD_WIDTH }]}>
+            <MaterialCommunityIcons
+              name={item.type === 'md-note' ? 'note-text-outline' : 'link-variant'}
+              size={48}
+              color={GlassTheme.colors.purple[400]}
+              style={{ opacity: 0.3 }}
+            />
+          </View>
+        )}
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardTitle} numberOfLines={2}>
+            {item.title || item.url}
+          </Text>
+        </View>
+      </GlassCard>
+    );
+  };
+
+  // Render list card (horizontal layout)
+  const renderListCard = (item: CardWithDimensions) => {
+    return (
+      <GlassCard onPress={() => handleCardPress(item)} style={styles.listCard}>
+        <View style={styles.listCardContent}>
+          {item.image && (
+            <Image
+              source={{ uri: item.image }}
+              style={styles.listCardImage}
+              resizeMode="cover"
+            />
+          )}
+          <View style={styles.listCardInfo}>
+            <Text style={styles.listCardTitle} numberOfLines={2}>
+              {item.title || item.url}
+            </Text>
+            {item.domain && (
+              <Text style={styles.listCardDomain} numberOfLines={1}>
+                {item.domain}
+              </Text>
+            )}
+            {item.description && (
+              <Text style={styles.listCardDescription} numberOfLines={2}>
+                {item.description}
+              </Text>
+            )}
+          </View>
+        </View>
+      </GlassCard>
+    );
+  };
+
+  // Render compact card (minimal, no images)
+  const renderCompactCard = (item: CardWithDimensions) => {
+    return (
+      <GlassCard onPress={() => handleCardPress(item)} style={styles.compactCard}>
+        <View style={styles.compactCardContent}>
+          <Text style={styles.compactCardTitle} numberOfLines={1}>
+            {item.title || item.url}
+          </Text>
+          {item.domain && (
+            <Text style={styles.compactCardDomain} numberOfLines={1}>
+              {item.domain}
+            </Text>
+          )}
+        </View>
+      </GlassCard>
+    );
+  };
+
+  // Main renderCard function - delegates based on viewType
+  const renderCard = (item: CardWithDimensions, index: number) => {
+    switch (viewType) {
+      case 'grid':
+        return renderGridCard(item);
+      case 'list':
+        return renderListCard(item);
+      case 'compact':
+        return renderCompactCard(item);
+      case 'masonry':
+      default:
+        return renderMasonryCard(item);
+    }
+  };
+
+  // Handle Today's Note - create or open
+  const handleTodaysNote = async () => {
+    try {
+      const today = new Date();
+      const existingNote = findDailyNoteForDate(cards, today);
+
+      if (existingNote) {
+        // Open existing note
+        const noteCard = cards.find(c => c.id === existingNote.id);
+        if (noteCard) {
+          setSelectedCard(noteCard);
+          setModalVisible(true);
+        }
+      } else {
+        // Create new daily note
+        const title = generateDailyNoteTitle(today);
+        const content = generateDailyNoteContent(today);
+
+        const newNote = await cardsApi.create({
+          type: 'md-note',
+          title,
+          content,
+          url: '', // Empty URL for notes
+          tags: ['daily'],
+          collections: [],
+        });
+
+        // Save to local storage
+        await LocalStorage.saveCard(newNote);
+
+        // Add to cards list and open
+        const updatedCards = [newNote, ...cards];
+        setCards(updatedCards as CardWithDimensions[]);
+        setSelectedCard(newNote);
+        setModalVisible(true);
+
+        console.log('[TodaysNote] Created new daily note:', title);
+      }
+    } catch (error) {
+      console.error('[TodaysNote] Error:', error);
+    }
+  };
+
+  // Handle toggle pin/unpin for notes
+  const handleTogglePin = async (noteId: string) => {
+    try {
+      const card = cards.find(c => c.id === noteId);
+      if (!card) return;
+
+      const newPinnedStatus = !card.pinned;
+
+      // Update on server
+      await cardsApi.update(noteId, { pinned: newPinnedStatus });
+
+      // Update local storage
+      const updatedCard = { ...card, pinned: newPinnedStatus };
+      await LocalStorage.saveCard(updatedCard);
+
+      // Update UI
+      setCards(cards.map(c => c.id === noteId ? updatedCard as CardWithDimensions : c));
+
+      console.log(`[PinNote] ${newPinnedStatus ? 'Pinned' : 'Unpinned'} note:`, card.title);
+    } catch (error) {
+      console.error('[PinNote] Error:', error);
+    }
+  };
+
+  // Handle opening a note by ID
+  const handleOpenNote = (noteId: string) => {
+    const note = cards.find(c => c.id === noteId);
+    if (note) {
+      setSelectedCard(note);
+      setModalVisible(true);
+    }
+  };
+
+  // Handle opening reader mode
+  const handleReaderMode = (card: CardModel) => {
+    setReaderNote(card);
+    setReaderVisible(true);
+    setModalVisible(false);
+  };
+
+  // Handle edit note (placeholder for future implementation)
+  const handleEditNote = () => {
+    Alert.alert(
+      'Edit Note',
+      'Note editing coming soon! For now, you can edit notes on the web app.',
+      [{ text: 'OK' }]
+    );
+  };
+
+  // Compute sorted notes for LeftPanel (pinned first, then recent)
+  const sortedNotes = React.useMemo(() => {
+    const notes = cards.filter(c => c.type === 'md-note' && !c.deleted);
+
+    const sorted = [
+      ...notes.filter(n => n.pinned),  // Pinned first
+      ...notes.filter(n => !n.pinned).sort((a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      )  // Then recent
+    ].slice(0, 5);  // Limit to 5 notes
+
+    return sorted.map(note => ({
+      id: note.id,
+      title: note.title || 'Untitled Note',
+      pinned: note.pinned
+    }));
+  }, [cards]);
+
   const renderLeftPanel = () => (
     <LeftPanel
       collections={collections}
       activeCollection={collection}
       cardCount={cards.length}
       onNavigate={(selectedCollection) => {
-        navigation.setParams({ collection: selectedCollection });
+        console.log('[Navigation] Navigating to collection:', selectedCollection);
+        navigation.navigate('BookmarksList', {
+          collection: selectedCollection
+        });
       }}
+      onTodaysNote={handleTodaysNote}
+      notes={sortedNotes}
+      onOpenNote={handleOpenNote}
     />
   );
 
   const renderRightPanel = () => (
-    <RightPanel sortBy={sortBy} onSortChange={setSortBy} />
+    <RightPanel
+      sortBy={sortBy}
+      onSortChange={setSortBy}
+      viewType={viewType}
+      onViewChange={setViewType}
+    />
   );
+
+  // Find collection name from slug (for header label)
+  const getCollectionName = (slug: string | undefined): string | null => {
+    if (!slug) return null;
+
+    const findInTree = (nodes: CollectionNode[]): string | null => {
+      for (const node of nodes) {
+        if (node.slug === slug) return node.name;
+        if (node.children) {
+          const found = findInTree(node.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    return findInTree(collections);
+  };
+
+  const collectionName = getCollectionName(collection);
 
   if (loading && !refreshing) {
     return (
@@ -420,21 +689,22 @@ export default function BookmarksListScreen() {
   return (
     <ThreePanelLayout leftPanel={renderLeftPanel()} rightPanel={renderRightPanel()}>
       <View style={styles.container}>
-        {/* Bookmarks masonry grid - 2 columns with dynamic heights */}
-        <MasonryGrid
-          data={filteredCards}
-          numColumns={2}
-          renderItem={renderCard}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          columnSpacing={COLUMN_SPACING}
+        {/* Render different layouts based on viewType */}
+        {(viewType === 'masonry' || viewType === 'grid') ? (
+          <MasonryGrid
+            data={filteredCards}
+            numColumns={2}
+            renderItem={renderCard}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.list}
+            columnSpacing={COLUMN_SPACING}
           ListHeaderComponent={
             <View style={styles.scrollableHeader}>
               {/* Compact header with card count - scrolls with content */}
               <View style={styles.compactHeader}>
                 <View style={styles.headerLeft}>
                   <Text style={styles.libraryLabel}>
-                    {searchQuery.trim() ? 'Search Results' : 'Library'}
+                    {searchQuery.trim() ? 'Search Results' : (collectionName || 'Library')}
                   </Text>
                   <View style={styles.countBadge}>
                     <Text style={styles.countText}>
@@ -469,6 +739,57 @@ export default function BookmarksListScreen() {
             </View>
           }
         />
+        ) : (
+          <FlatList
+            data={filteredCards}
+            renderItem={({ item, index }) => renderCard(item, index)}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={[
+              styles.list,
+              viewType === 'list' && styles.listView,
+              viewType === 'compact' && styles.compactView
+            ]}
+            ListHeaderComponent={
+              <View style={styles.scrollableHeader}>
+                <View style={styles.compactHeader}>
+                  <View style={styles.headerLeft}>
+                    <Text style={styles.libraryLabel}>
+                      {searchQuery.trim() ? 'Search Results' : (collectionName || 'Library')}
+                    </Text>
+                    <View style={styles.countBadge}>
+                      <Text style={styles.countText}>
+                        {filteredCards.length}
+                        {searchQuery.trim() && cards.length !== filteredCards.length && (
+                          ` of ${cards.length}`
+                        )}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            }
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={GlassTheme.colors.purple[400]}
+              />
+            }
+            ListEmptyComponent={
+              <View style={[styles.emptyContainer, { width: SCREEN_WIDTH - GlassTheme.spacing.md * 2 }]}>
+                <MaterialCommunityIcons
+                  name="bookmark-outline"
+                  size={64}
+                  color={GlassTheme.colors.text.muted}
+                />
+                <Text style={styles.emptyText}>No bookmarks yet</Text>
+                <Text style={styles.emptySubtext}>
+                  Tap the + button to add your first bookmark
+                </Text>
+              </View>
+            }
+          />
+        )}
 
         {/* Omnibar - fixed at bottom, moves up with keyboard */}
         <KeyboardAvoidingView
@@ -490,6 +811,17 @@ export default function BookmarksListScreen() {
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         onDelete={handleDelete}
+        isPinned={selectedCard?.pinned || false}
+        onTogglePin={handleTogglePin}
+        onReaderMode={handleReaderMode}
+      />
+
+      {/* Note Reader Modal */}
+      <NoteReaderModal
+        visible={readerVisible}
+        note={readerNote}
+        onClose={() => setReaderVisible(false)}
+        onEdit={handleEditNote}
       />
     </ThreePanelLayout>
   );
@@ -564,6 +896,14 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: GlassTheme.borderRadius.xl,
     borderTopRightRadius: GlassTheme.borderRadius.xl,
     backgroundColor: GlassTheme.colors.glass.soft,
+  },
+  cardPlaceholder: {
+    width: CARD_WIDTH,
+    borderTopLeftRadius: GlassTheme.borderRadius.xl,
+    borderTopRightRadius: GlassTheme.borderRadius.xl,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cardInfo: {
     padding: 12, // Match web app's 12px padding
@@ -719,5 +1059,69 @@ const styles = StyleSheet.create({
   },
   sortTextActive: {
     color: GlassTheme.colors.purple[400],
+  },
+  // List view styles
+  listView: {
+    paddingHorizontal: GlassTheme.spacing.md,
+  },
+  listCard: {
+    marginBottom: GlassTheme.spacing.md,
+    width: '100%',
+  },
+  listCardContent: {
+    flexDirection: 'row',
+    padding: 12,
+    gap: 12,
+  },
+  listCardImage: {
+    width: 80,
+    height: 80,
+    borderRadius: GlassTheme.borderRadius.md,
+    backgroundColor: GlassTheme.colors.glass.soft,
+  },
+  listCardInfo: {
+    flex: 1,
+    gap: 4,
+  },
+  listCardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: GlassTheme.colors.text.primary,
+    lineHeight: 20,
+  },
+  listCardDomain: {
+    fontSize: 12,
+    color: GlassTheme.colors.text.muted,
+  },
+  listCardDescription: {
+    fontSize: 13,
+    color: GlassTheme.colors.text.secondary,
+    lineHeight: 18,
+  },
+  // Compact view styles
+  compactView: {
+    paddingHorizontal: GlassTheme.spacing.md,
+  },
+  compactCard: {
+    marginBottom: 6,
+    width: '100%',
+  },
+  compactCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 10,
+    gap: 12,
+  },
+  compactCardTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    color: GlassTheme.colors.text.primary,
+  },
+  compactCardDomain: {
+    fontSize: 11,
+    color: GlassTheme.colors.text.muted,
+    flexShrink: 0,
   },
 });

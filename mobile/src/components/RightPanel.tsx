@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Platform,
-  Switch,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -29,13 +28,8 @@ export function RightPanel({
   onViewChange,
 }: RightPanelProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(['sort', 'view', 'display'])
+    new Set(['sort', 'view'])
   );
-  const [cardSize, setCardSize] = useState(75);
-  const [cardSpacing, setCardSpacing] = useState(16);
-  const [cardPadding, setCardPadding] = useState(0);
-  const [showThumbnails, setShowThumbnails] = useState(true);
-  const [serverSync, setServerSync] = useState(true);
 
   const toggleSection = (section: string) => {
     const newExpanded = new Set(expandedSections);
@@ -98,88 +92,6 @@ export function RightPanel({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
-        {/* TODAY'S TASKS */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => toggleSection('tasks')}
-          >
-            <Text style={styles.sectionTitle}>TODAY'S TASKS</Text>
-            <View style={styles.headerRight}>
-              <View style={styles.countBadge}>
-                <Text style={styles.countText}>0</Text>
-              </View>
-              <MaterialCommunityIcons
-                name={
-                  expandedSections.has('tasks')
-                    ? 'chevron-down'
-                    : 'chevron-right'
-                }
-                size={16}
-                color={GlassTheme.colors.text.muted}
-              />
-            </View>
-          </TouchableOpacity>
-
-          {expandedSections.has('tasks') && (
-            <View style={styles.sectionContent}>
-              <Text style={styles.emptyText}>No tasks for today</Text>
-            </View>
-          )}
-        </View>
-
-        {/* TAGS */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => toggleSection('tags')}
-          >
-            <Text style={styles.sectionTitle}>TAGS</Text>
-            <MaterialCommunityIcons
-              name={
-                expandedSections.has('tags')
-                  ? 'chevron-down'
-                  : 'chevron-right'
-              }
-              size={16}
-              color={GlassTheme.colors.text.muted}
-            />
-          </TouchableOpacity>
-
-          {expandedSections.has('tags') && (
-            <View style={styles.sectionContent}>
-              <Text style={styles.emptyText}>No tags yet</Text>
-            </View>
-          )}
-        </View>
-
-        {/* CONTENT TYPE */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => toggleSection('content-type')}
-          >
-            <Text style={styles.sectionTitle}>CONTENT TYPE</Text>
-            <MaterialCommunityIcons
-              name={
-                expandedSections.has('content-type')
-                  ? 'chevron-down'
-                  : 'chevron-right'
-              }
-              size={16}
-              color={GlassTheme.colors.text.muted}
-            />
-          </TouchableOpacity>
-
-          {expandedSections.has('content-type') && (
-            <View style={styles.sectionContent}>
-              <TouchableOpacity style={styles.filterOption}>
-                <Text style={styles.filterText}>All Types</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
         {/* SORT */}
         <View style={styles.section}>
           <TouchableOpacity
@@ -425,111 +337,7 @@ export function RightPanel({
             </View>
           )}
         </View>
-
-        {/* DISPLAY */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={styles.sectionHeader}
-            onPress={() => toggleSection('display')}
-          >
-            <Text style={styles.sectionTitle}>DISPLAY</Text>
-            <MaterialCommunityIcons
-              name={
-                expandedSections.has('display')
-                  ? 'chevron-down'
-                  : 'chevron-right'
-              }
-              size={16}
-              color={GlassTheme.colors.text.muted}
-            />
-          </TouchableOpacity>
-
-          {expandedSections.has('display') && (
-            <View style={styles.sectionContent}>
-              {/* Card Size */}
-              <View style={styles.sliderControl}>
-                <Text style={styles.controlLabel}>Card Size</Text>
-                <Text style={styles.controlValue}>{cardSize}%</Text>
-              </View>
-
-              {/* Card Spacing */}
-              <View style={styles.sliderControl}>
-                <Text style={styles.controlLabel}>Card Spacing</Text>
-                <Text style={styles.controlValue}>{cardSpacing}px</Text>
-              </View>
-
-              {/* Card Padding */}
-              <View style={styles.sliderControl}>
-                <Text style={styles.controlLabel}>Card Padding</Text>
-                <Text style={styles.controlValue}>{cardPadding}%</Text>
-              </View>
-
-              {/* Show Thumbnails Toggle */}
-              <View style={styles.toggleControl}>
-                <Text style={styles.controlLabel}>Show Thumbnails</Text>
-                <Switch
-                  value={showThumbnails}
-                  onValueChange={setShowThumbnails}
-                  trackColor={{
-                    false: '#2a2a3a',
-                    true: GlassTheme.colors.purple[500],
-                  }}
-                  thumbColor={showThumbnails ? '#fff' : '#999'}
-                />
-              </View>
-            </View>
-          )}
-        </View>
-
-        {/* Spacer for bottom content */}
-        <View style={{ height: 120 }} />
       </ScrollView>
-
-      {/* Bottom status */}
-      <View style={styles.bottomStatus}>
-        <View style={styles.statusDivider} />
-
-        <View style={styles.statusRow}>
-          <View style={styles.onlineIndicator}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.statusText}>Online</Text>
-          </View>
-        </View>
-
-        <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>Server Sync</Text>
-          <Switch
-            value={serverSync}
-            onValueChange={setServerSync}
-            trackColor={{
-              false: '#2a2a3a',
-              true: GlassTheme.colors.purple[500],
-            }}
-            thumbColor={serverSync ? '#fff' : '#999'}
-            style={styles.syncSwitch}
-          />
-        </View>
-
-        <View style={styles.statusRow}>
-          <MaterialCommunityIcons
-            name="check-circle"
-            size={14}
-            color={GlassTheme.colors.green}
-          />
-          <Text style={[styles.statusText, { marginLeft: 6 }]}>
-            All changes saved
-          </Text>
-        </View>
-
-        <TouchableOpacity style={styles.syncButton}>
-          <MaterialCommunityIcons
-            name="sync"
-            size={16}
-            color={GlassTheme.colors.purple[400]}
-          />
-          <Text style={styles.syncButtonText}>Sync now</Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 }
@@ -582,7 +390,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 12,
-    paddingBottom: 120,
+    paddingBottom: 16,
   },
   section: {
     marginBottom: 16,
@@ -598,24 +406,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: GlassTheme.colors.text.muted,
     letterSpacing: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  countBadge: {
-    backgroundColor: 'rgba(124, 58, 237, 0.2)',
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 8,
-    minWidth: 20,
-    alignItems: 'center',
-  },
-  countText: {
-    fontSize: 11,
-    color: GlassTheme.colors.purple[400],
-    fontWeight: '600',
   },
   sectionContent: {
     gap: 4,
@@ -655,85 +445,5 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     paddingVertical: 12,
     paddingHorizontal: 12,
-  },
-  sliderControl: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  toggleControl: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  controlLabel: {
-    fontSize: 14,
-    color: GlassTheme.colors.text.secondary,
-  },
-  controlValue: {
-    fontSize: 13,
-    color: GlassTheme.colors.text.muted,
-    fontWeight: '500',
-  },
-  bottomStatus: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(10, 10, 15, 0.95)',
-    padding: 10,
-  },
-  statusDivider: {
-    height: 1,
-    backgroundColor: 'rgba(124, 58, 237, 0.1)',
-    marginBottom: 12,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  onlineIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: GlassTheme.colors.green,
-    marginRight: 8,
-  },
-  statusLabel: {
-    fontSize: 13,
-    color: GlassTheme.colors.text.secondary,
-    flex: 1,
-  },
-  statusText: {
-    fontSize: 13,
-    color: GlassTheme.colors.text.secondary,
-  },
-  syncSwitch: {
-    transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }],
-  },
-  syncButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: 'rgba(124, 58, 237, 0.1)',
-    marginTop: 8,
-  },
-  syncButtonText: {
-    fontSize: 13,
-    color: GlassTheme.colors.purple[400],
-    fontWeight: '500',
-    marginLeft: 6,
   },
 });
