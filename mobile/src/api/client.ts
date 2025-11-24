@@ -11,9 +11,23 @@ export class ApiError extends Error {
   }
 }
 
-// Helper to parse comma-separated strings to arrays
+// Helper to parse comma-separated strings OR JSON arrays to arrays
 function parseCommaSeparated(value: string | null): string[] {
   if (!value) return [];
+
+  // Try to parse as JSON array first (e.g., '["tag1","tag2"]')
+  if (value.startsWith('[') && value.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.filter(Boolean);
+      }
+    } catch (e) {
+      // Fall through to comma-separated parsing
+    }
+  }
+
+  // Parse as comma-separated values (e.g., "tag1,tag2")
   return value.split(',').map(s => s.trim()).filter(Boolean);
 }
 
@@ -117,6 +131,7 @@ export const cardsApi = {
     type?: 'url' | 'md-note' | 'text-note';
     url: string;
     title?: string;
+    content?: string;
     notes?: string;
     tags?: string[];
     collections?: string[];
@@ -136,11 +151,12 @@ export const cardsApi = {
       url: cardData.url,
       title: cardData.title || null,
       description: null,
+      content: cardData.content || null,
       notes: cardData.notes || null,
       image: null,
       domain: safeHost(cardData.url) || null, // Extract domain from URL
-      tags: cardData.tags?.join(',') || null,
-      collections: cardData.collections?.join(',') || null,
+      tags: cardData.tags && cardData.tags.length > 0 ? JSON.stringify(cardData.tags) : null,
+      collections: cardData.collections && cardData.collections.length > 0 ? JSON.stringify(cardData.collections) : null,
       metadata: null,
       status: 'PENDING',
       deleted: false,
@@ -390,5 +406,108 @@ export const pawkitsApi = {
     }
 
     return { ok: true, collectionId: id };
+  },
+};
+
+// User Settings API - Direct Supabase queries
+export const userSettingsApi = {
+  /**
+   * Get user settings (creates default if not exists)
+   */
+  async get(): Promise<{ pinnedNoteIds: string[] }> {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new ApiError(401, 'Not authenticated');
+    }
+
+    console.log('[UserSettings] Fetching settings for user:', user.id);
+
+    // Try to get existing settings
+    const { data, error } = await supabase
+      .from('UserSettings')
+      .select('*')
+      .eq('userId', user.id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('[UserSettings] SELECT error:', error.code, error.message, error);
+      throw new ApiError(500, `SELECT failed: ${error.message}`, error);
+    }
+
+    // If no settings exist, create default
+    if (!data) {
+      console.log('[UserSettings] No settings found, creating default...');
+      const now = new Date().toISOString();
+      const { data: newSettings, error: createError } = await supabase
+        .from('UserSettings')
+        .insert({
+          id: Crypto.randomUUID(),
+          userId: user.id,
+          pinnedNoteIds: '[]',
+          autoFetchMetadata: true,
+          showThumbnails: true,
+          previewServiceUrl: 'http://localhost:8787/preview?url={{url}}',
+          theme: 'dark',
+          accentColor: 'purple',
+          notifications: true,
+          autoSave: true,
+          compactMode: false,
+          showPreviews: true,
+          autoSyncOnReconnect: true,
+          cardSize: 3,
+          displaySettings: '{}',
+          recentHistory: '[]',
+          createdAt: now,
+          updatedAt: now,
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('[UserSettings] INSERT error:', createError.code, createError.message, createError);
+        throw new ApiError(500, `INSERT failed: ${createError.message}`, createError);
+      }
+
+      console.log('[UserSettings] Created new settings successfully');
+      return {
+        pinnedNoteIds: [],
+      };
+    }
+
+    // Parse pinnedNoteIds from JSON
+    let pinnedNoteIds: string[] = [];
+    try {
+      pinnedNoteIds = JSON.parse(data.pinnedNoteIds || '[]');
+    } catch (e) {
+      console.error('[UserSettings] Failed to parse pinnedNoteIds:', e);
+    }
+
+    return {
+      pinnedNoteIds,
+    };
+  },
+
+  /**
+   * Update pinned note IDs
+   */
+  async updatePinnedNotes(pinnedNoteIds: string[]): Promise<void> {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new ApiError(401, 'Not authenticated');
+    }
+
+    const { error } = await supabase
+      .from('UserSettings')
+      .update({
+        pinnedNoteIds: JSON.stringify(pinnedNoteIds),
+        updatedAt: new Date().toISOString(),
+      })
+      .eq('userId', user.id);
+
+    if (error) {
+      throw new ApiError(500, error.message, error);
+    }
   },
 };
