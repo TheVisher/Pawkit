@@ -4,8 +4,7 @@ import { useMemo, useEffect, useState } from "react";
 import { addDays, startOfWeek, format, isSameDay, isToday } from "date-fns";
 import { CardModel } from "@/lib/types";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
-import { FileText, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
+import { FileText, Plus } from "lucide-react";
 
 type WeekViewProps = {
   cards: CardModel[];
@@ -17,7 +16,6 @@ type WeekViewProps = {
 
 export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onCreateDailyNote }: WeekViewProps) {
   const [isClient, setIsClient] = useState(false);
-  const setCurrentMonth = useCalendarStore((state) => state.setCurrentMonth);
 
   // Mark as client-side after mount to prevent hydration issues
   useEffect(() => {
@@ -69,53 +67,8 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onCreat
     return map;
   }, [cards]);
 
-  const goToPreviousWeek = () => {
-    const weekStart = startOfWeek(currentMonth);
-    setCurrentMonth(addDays(weekStart, -7));
-  };
-
-  const goToNextWeek = () => {
-    const weekStart = startOfWeek(currentMonth);
-    setCurrentMonth(addDays(weekStart, 7));
-  };
-
-  const goToToday = () => {
-    setCurrentMonth(new Date());
-  };
-
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <h2 className="text-2xl font-semibold text-foreground">
-            Week of {format(weekDays[0], 'MMM d, yyyy')}
-          </h2>
-          <button
-            onClick={goToToday}
-            className="px-3 py-1.5 rounded-lg bg-surface-soft text-sm text-muted-foreground hover:text-foreground hover:bg-surface transition-colors"
-          >
-            Today
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={goToPreviousWeek}
-            className="p-2 rounded-lg bg-surface-soft text-foreground hover:bg-surface transition-colors"
-            aria-label="Previous week"
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <button
-            onClick={goToNextWeek}
-            className="p-2 rounded-lg bg-surface-soft text-foreground hover:bg-surface transition-colors"
-            aria-label="Next week"
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
-      </div>
-
       {/* Week days in horizontal columns */}
       <div className="grid grid-cols-7 gap-3">
         {weekDays.map((day, index) => {
