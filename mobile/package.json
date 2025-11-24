@@ -19,6 +19,7 @@
     "expo-blur": "~15.0.7",
     "expo-crypto": "~15.0.7",
     "expo-linear-gradient": "~15.0.7",
+    "expo-share-intent": "^5.1.0",
     "expo-status-bar": "~3.0.8",
     "invariant": "^2.2.4",
     "react": "19.1.0",

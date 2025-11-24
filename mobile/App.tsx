@@ -5,6 +5,7 @@ import { PaperProvider, MD3DarkTheme } from 'react-native-paper';
 import { AuthProvider } from './src/contexts/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { GlassTheme } from './src/theme/glass';
+import { ShareHandler } from './src/components/ShareHandler';
 
 // Custom dark theme matching glass morphism design
 const theme = {
@@ -24,6 +25,7 @@ export default function App() {
       <PaperProvider theme={theme}>
         <AuthProvider>
           <AppNavigator />
+          <ShareHandler />
           <StatusBar style="light" />
         </AuthProvider>
       </PaperProvider>
