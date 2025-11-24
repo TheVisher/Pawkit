@@ -101,8 +101,13 @@ export async function apiPost<T = any>(
  * Save a card to Pawkit
  */
 export async function saveCard(payload: CardPayload) {
+  // Transform meta.ogImage to image field for API
+  const { meta, ...rest } = payload
   return apiPost('/cards', {
-    ...payload,
-    source: 'webext'
+    ...rest,
+    source: 'webext',
+    // Pass pre-fetched metadata directly as top-level fields
+    image: meta?.ogImage,
+    description: meta?.description
   })
 }

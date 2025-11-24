@@ -31,7 +31,11 @@ export const cardCreateSchema = z.object({
   tags: tagsArray.optional(),
   collections: collectionsArray.optional(),
   autoFetchMetadata: z.boolean().optional(),
-  previewServiceUrl: z.string().url().optional()
+  previewServiceUrl: z.string().url().optional(),
+  // Allow extension to pass pre-fetched metadata
+  image: nullableString,
+  description: nullableString,
+  source: z.string().optional() // e.g., 'webext' for browser extension
 }).refine(
   (data) => {
     // URL cards must have a URL
