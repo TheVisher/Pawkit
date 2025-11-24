@@ -52,11 +52,7 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
       // Use page URL as the main URL (for context)
       const pageUrl = tab.url || ''
       const imageUrl = info.srcUrl
-      const pageTitle = tab.title || 'Untitled'
-
-      // Extract filename from image URL for title
-      const imageFilename = imageUrl.split('/').pop()?.split('?')[0] || 'Image'
-      const title = `${imageFilename} (from ${pageTitle})`
+      const title = tab.title || 'Untitled'
 
       const response = await saveCard({
         title,
