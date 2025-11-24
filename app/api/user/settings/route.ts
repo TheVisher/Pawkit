@@ -163,6 +163,9 @@ export async function PATCH(request: Request) {
     if (body.autoSyncOnReconnect !== undefined) updateData.autoSyncOnReconnect = body.autoSyncOnReconnect;
     if (body.cardSize !== undefined) updateData.cardSize = body.cardSize;
 
+    // Note: showSyncStatusInSidebar, showKeyboardShortcutsInSidebar, defaultView, defaultSort
+    // are localStorage-only fields and intentionally not synced to server
+
     // JSON fields - stringify them
     if (body.displaySettings !== undefined) {
       updateData.displaySettings = JSON.stringify(body.displaySettings);
@@ -171,6 +174,7 @@ export async function PATCH(request: Request) {
       // Validate and limit to max 3 items
       const notes = Array.isArray(body.pinnedNoteIds) ? body.pinnedNoteIds.slice(0, 3) : [];
       updateData.pinnedNoteIds = JSON.stringify(notes);
+      console.log('[API PATCH /api/user/settings] Updating pinnedNoteIds:', notes);
     }
     if (body.recentHistory !== undefined) {
       // Validate and limit to max 20 items
