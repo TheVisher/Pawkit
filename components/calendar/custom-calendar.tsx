@@ -81,13 +81,6 @@ export function CustomCalendar({
 
   return (
     <div className="space-y-6">
-      {/* Header - showing current month/year */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold text-foreground">
-          {format(currentMonth, 'MMMM yyyy')}
-        </h2>
-      </div>
-
       {/* Weekday headers */}
       <div className="grid grid-cols-7 gap-3">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (

@@ -8,6 +8,7 @@ import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/daily-notes";
 import { CalendarIcon } from "lucide-react";
+import { format, startOfWeek } from "date-fns";
 
 export default function CalendarPage() {
   const { cards, addCard } = useDataStore();
@@ -61,7 +62,7 @@ export default function CalendarPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
             <CalendarIcon className="h-5 w-5 text-accent" />
@@ -74,6 +75,13 @@ export default function CalendarPage() {
                 : "View your scheduled cards and daily notes by date"}
             </p>
           </div>
+        </div>
+        <div className="flex-1 text-center">
+          <span className="text-xl font-semibold text-foreground">
+            {viewMode === "week"
+              ? `Week of ${format(startOfWeek(currentMonth), 'MMM d, yyyy')}`
+              : format(currentMonth, 'MMMM yyyy')}
+          </span>
         </div>
       </div>
 
