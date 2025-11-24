@@ -82,6 +82,9 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
     }
   }
 
+  // Check if extension provided pre-fetched metadata (image/description)
+  const hasPreFetchedMetadata = !!(parsed.image || parsed.description);
+
   // Create card with different logic based on type
   const data = {
     type: cardType,
@@ -92,7 +95,11 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
     tags: serializeTags(normalizedTags),
     collections: serializeCollections(normalizedCollections),
     domain: parsed.url && parsed.url.length > 0 ? safeHost(parsed.url) : undefined,
-    status: cardType === "url" ? "PENDING" : "READY",
+    // If pre-fetched metadata provided, mark as READY; otherwise PENDING for URL cards
+    status: cardType === "url" ? (hasPreFetchedMetadata ? "READY" : "PENDING") : "READY",
+    // Use pre-fetched image/description if provided
+    image: parsed.image,
+    description: parsed.description,
     inDen,
     user: { connect: { id: userId } }
   };
