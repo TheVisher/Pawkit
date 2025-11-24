@@ -49,7 +49,11 @@
       "Bash(git ls-tree:*)",
       "Bash(git log:*)",
       "Bash(grep:*)",
-      "Bash(pnpm install:*)"
+      "Bash(pnpm install:*)",
+      "Skill(pawkit-conventions)",
+      "Skill(pawkit-sync-patterns)",
+      "Skill(pawkit-api-patterns)",
+      "Skill(pawkit-performance)"
     ],
     "deny": [],
     "ask": []
