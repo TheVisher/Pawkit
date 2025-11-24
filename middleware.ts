@@ -56,6 +56,24 @@ export async function middleware(request: NextRequest) {
 
   // Handle API routes - check server sync for write operations
   if (request.nextUrl.pathname.startsWith('/api/')) {
+    // Handle CORS preflight for extension requests
+    const origin = request.headers.get('origin') || '';
+    const isExtensionOrigin = origin.startsWith('chrome-extension://') || origin.startsWith('moz-extension://');
+
+    if (request.method === 'OPTIONS' && isExtensionOrigin) {
+      // Return CORS preflight response directly - don't let middleware interfere
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          'Access-Control-Allow-Origin': origin,
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Access-Control-Allow-Credentials': 'true',
+          'Access-Control-Max-Age': '86400',
+        },
+      });
+    }
+
     // Get user for API routes that need serverSync check
     const {
       data: { user },
@@ -85,6 +103,14 @@ export async function middleware(request: NextRequest) {
           // Each API route will handle its own serverSync validation
         }
       }
+    }
+
+    // Add CORS headers for extension requests
+    if (isExtensionOrigin) {
+      response.headers.set('Access-Control-Allow-Origin', origin);
+      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
     }
 
     return response
