@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, type LucideIcon } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, type LucideIcon } from "lucide-react";
 import { shallow } from "zustand/shallow";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -103,6 +103,7 @@ export function LeftNavigationPanel({
   // Get pinned note IDs and active card first (needed for selective subscription)
   const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
   const reorderPinnedNotes = useSettingsStore((state) => state.reorderPinnedNotes);
+  const unpinNote = useSettingsStore((state) => state.unpinNote);
   const activeCardId = usePanelStore((state) => state.activeCardId);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const collapsedSections = usePanelStore((state) => state.collapsedSections);
@@ -520,27 +521,37 @@ export function LeftNavigationPanel({
       opacity: isDragging ? 0.5 : 1,
     };
 
+    const pinnedNoteContextMenuItems: ContextMenuItemConfig[] = [
+      {
+        label: "Unpin from sidebar",
+        icon: PinOff,
+        onClick: () => unpinNote(note.id),
+      },
+    ];
+
     return (
-      <div
-        ref={setNodeRef}
-        style={style}
-        className="w-full flex items-center gap-2 group/pinned-note"
-      >
-        <button
-          onClick={() => openCardDetails(note.id)}
-          className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-white/5"
-        >
-          <Pin size={16} className="flex-shrink-0 text-purple-400" />
-          <span className="flex-1 text-left truncate">{note.title}</span>
-        </button>
+      <GenericContextMenu items={pinnedNoteContextMenuItems}>
         <div
-          {...attributes}
-          {...listeners}
-          className="p-1 rounded transition-colors hover:bg-white/10 text-muted-foreground opacity-0 group-hover/pinned-note:opacity-100 cursor-grab active:cursor-grabbing flex-shrink-0"
+          ref={setNodeRef}
+          style={style}
+          className="w-full flex items-center gap-2 group/pinned-note"
         >
-          <GripVertical size={16} />
+          <button
+            onClick={() => openCardDetails(note.id)}
+            className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-white/5"
+          >
+            <Pin size={16} className="flex-shrink-0 text-purple-400" />
+            <span className="flex-1 text-left truncate">{note.title}</span>
+          </button>
+          <div
+            {...attributes}
+            {...listeners}
+            className="p-1 rounded transition-colors hover:bg-white/10 text-muted-foreground opacity-0 group-hover/pinned-note:opacity-100 cursor-grab active:cursor-grabbing flex-shrink-0"
+          >
+            <GripVertical size={16} />
+          </div>
         </div>
-      </div>
+      </GenericContextMenu>
     );
   };
 

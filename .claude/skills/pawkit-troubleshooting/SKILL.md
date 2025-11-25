@@ -41,6 +41,10 @@ description: Living document of issues encountered, their fixes, and prevention 
    - Duplicate URL Detection - Deleted Cards Not Excluded
    - Collection Header Label - Not Showing Pawkit Name (Mobile)
    - Browser Extension - Collections Using Slugs Not IDs
+   - Ultrawide Monitor Card Rendering (Chrome GPU)
+   - Rediscover Queue Reset on Card Update
+   - Slow Modal Loading (API vs Local Data Store)
+   - Optimistic Updates Pattern
 3. [Debugging Strategies](#debugging-strategies)
 4. [How to Add New Issues](#how-to-add-new-issues)
 5. [Maintenance](#maintenance)
@@ -3941,6 +3945,304 @@ const targetUrl = `https://getpawkit.com${targetPath}`
 **See Also**:
 - `.claude/skills/pawkit-api-patterns/SKILL.md` - Collections API section (CRITICAL)
 - Extension source: `packages/extension/src/`
+
+---
+
+### 31. Ultrawide Monitor Card Rendering (Chrome GPU)
+
+**Date**: November 25, 2025
+**Severity**: 🟡 Medium
+**Category**: CSS, GPU Rendering, Chrome
+**Status**: ✅ Fixed
+
+**Issue**: Cards appeared empty/black on 3440x1440 ultrawide monitors when the right sidebar was anchored (embedded mode).
+
+**Symptom**:
+```
+1. User has 3440x1440 ultrawide monitor
+2. Right sidebar anchored (3-panel layout)
+3. Cards in Library view show as empty black rectangles
+4. Same page works fine when right sidebar is floating
+```
+
+**Root Cause**:
+- `backdrop-filter: blur()` on content panel caused Chrome GPU memory overflow
+- High-resolution monitors with glass-morphism effects exceeded GPU texture limits
+- Issue only manifested when embedded mode because more panels meant more blur layers
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Always applying backdrop blur
+<div className={cn(
+  "flex-1 overflow-auto h-full bg-background/50 backdrop-blur-sm",
+  // ...
+)}>
+```
+
+**Solution**:
+```tsx
+// ✅ CORRECT: Disable blur in embedded mode
+const isRightEmbedded = rightMode === "anchored";
+
+<div className={cn(
+  "flex-1 overflow-auto h-full",
+  isRightEmbedded
+    ? "bg-background/80"  // No blur, just darker background
+    : "bg-background/50 backdrop-blur-sm"  // Blur only when not embedded
+)}>
+```
+
+**Files Changed**:
+- `components/panels/content-panel.tsx`
+
+**Testing**:
+```
+1. Set display resolution to 3440x1440 (or similar ultrawide)
+2. Open Library view with right sidebar anchored
+3. Verify cards render with proper thumbnails ✅
+4. Toggle sidebar mode - cards should work in both modes ✅
+```
+
+**How to Avoid**:
+- Test on high-resolution displays before releasing glass-morphism features
+- Be cautious with stacking multiple `backdrop-filter: blur()` layers
+- Consider conditional blur based on panel configuration
+
+---
+
+### 32. Rediscover Queue Reset on Card Update
+
+**Date**: November 25, 2025
+**Severity**: 🟡 Medium
+**Category**: React, useEffect Dependencies, State Management
+**Status**: ✅ Fixed
+
+**Issue**: Rediscover queue reset to beginning whenever a card was updated (e.g., adding to a Pawkit).
+
+**Symptom**:
+```
+1. User reviews 10 cards in Rediscover, reaches card #11
+2. User clicks "Add to Pawkit" for card #11
+3. After selecting Pawkit, queue resets to card #1
+4. All progress lost
+```
+
+**Root Cause**:
+- `useEffect` for initializing queue included `items` in dependency array
+- `items` is a memoized filtered array from `cards`
+- Updating ANY card triggered cards store change → new items array → queue reset
+
+**What Failed**:
+```tsx
+// ❌ WRONG: items in dependency array
+useEffect(() => {
+  if (isRediscoverMode) {
+    const filtered = getFilteredCards(rediscoverStore.filter);
+    rediscoverStore.setQueue(filtered);
+    rediscoverStore.setCurrentIndex(0);  // RESETS TO 0!
+  }
+}, [isRediscoverMode, items]);  // ← items causes reset on every card update
+```
+
+**Solution**:
+```tsx
+// ✅ CORRECT: Only depend on mode, handle filter separately
+useEffect(() => {
+  if (isRediscoverMode) {
+    if (!rediscoverStore.isActive) {
+      const filtered = getFilteredCards(rediscoverStore.filter);
+      rediscoverStore.reset();
+      rediscoverStore.setActive(true);
+      rediscoverStore.setQueue(filtered);
+      rediscoverStore.setCurrentIndex(0);
+    }
+  } else {
+    if (rediscoverStore.isActive) {
+      rediscoverStore.reset();
+    }
+  }
+}, [isRediscoverMode]);  // ← Only mode changes trigger reset
+
+// Separate effect for filter changes
+const [lastFilter, setLastFilter] = useState(rediscoverStore.filter);
+useEffect(() => {
+  if (isRediscoverMode && rediscoverStore.isActive && rediscoverStore.filter !== lastFilter) {
+    const filtered = getFilteredCards(rediscoverStore.filter);
+    rediscoverStore.setQueue(filtered);
+    rediscoverStore.setCurrentIndex(0);
+    setLastFilter(rediscoverStore.filter);
+  }
+}, [rediscoverStore.filter]);
+```
+
+**Files Changed**:
+- `app/(dashboard)/library/page.tsx`
+
+**How to Avoid**:
+- Don't include dynamic arrays in useEffect dependencies unless you want to react to changes
+- Separate "initialization" from "update" logic into different effects
+- Use flags like `isActive` to prevent re-initialization
+
+---
+
+### 33. Slow Modal Loading (API vs Local Data Store)
+
+**Date**: November 25, 2025
+**Severity**: 🟡 Medium
+**Category**: Performance, Local-First Architecture
+**Status**: ✅ Fixed
+
+**Issue**: MoveToPawkitModal took 3-4 seconds to show Pawkits list.
+
+**Symptom**:
+```
+1. User clicks "Add to Pawkit" in Rediscover
+2. Modal opens with loading spinner
+3. 3-4 seconds pass while fetching from API
+4. Finally shows Pawkit list
+5. Poor UX - feels broken
+```
+
+**Root Cause**:
+- Modal was fetching from `/api/pawkits` endpoint every time it opened
+- Network latency + server processing caused delay
+- Data already existed in local Zustand store (synced on app load)
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Fetching from API when data is already local
+export function MoveToPawkitModal({ ... }) {
+  const [loading, setLoading] = useState(true);
+  const [collections, setCollections] = useState<Collection[]>([]);
+
+  useEffect(() => {
+    if (open) {
+      fetch('/api/pawkits')
+        .then(res => res.json())
+        .then(data => {
+          setCollections(data);
+          setLoading(false);
+        });
+    }
+  }, [open]);
+  // ... loading spinner while fetching
+}
+```
+
+**Solution**:
+```tsx
+// ✅ CORRECT: Use local data store (instant)
+export function MoveToPawkitModal({ open, onClose, onConfirm, collections: propCollections }) {
+  // Use prop collections or fall back to data store (instant, local-first)
+  const storeCollections = useDataStore((state) => state.collections);
+  const collections = propCollections ?? storeCollections;
+
+  // No loading state needed - data is already available
+  const pawkits = useMemo(() => flattenPawkits(collections), [collections]);
+  // ... render immediately
+}
+```
+
+**Files Changed**:
+- `components/modals/move-to-pawkit-modal.tsx`
+
+**Key Insight**:
+- Pawkit uses local-first architecture
+- Collections are synced to Zustand store on app load
+- Use `useDataStore((state) => state.collections)` for instant access
+- Only fetch from API for data not already in store
+
+**How to Avoid**:
+- Check if data exists in local store before fetching
+- Modals should read from store, not fetch
+- Reserve API calls for initial sync and mutations
+
+---
+
+### 34. Optimistic Updates Pattern
+
+**Date**: November 25, 2025
+**Severity**: 🟢 Low (Pattern Documentation)
+**Category**: UX, Local-First Architecture
+**Status**: ✅ Documented
+
+**Issue**: User perceived 4-5 second delay after selecting a Pawkit in modal.
+
+**Symptom**:
+```
+1. User clicks "Add to Pawkit" in Rediscover
+2. User selects a Pawkit from modal
+3. 4-5 second delay while card updates
+4. THEN next card appears
+5. Feels sluggish
+```
+
+**Root Cause**:
+- Handler was awaiting the updateCard call before advancing UI
+- updateCard syncs to server, which takes time
+- UI blocked on network operation
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Blocking on server sync
+const handlePawkitSelected = async (slug: string) => {
+  if (!pendingPawkitCard) return;
+
+  setShowPawkitModal(false);
+  setPendingPawkitCard(null);
+
+  // Wait for server sync (4-5 seconds)
+  await useDataStore.getState().updateCard(pendingPawkitCard.id, {
+    collections: [...currentCollections, slug]
+  });
+
+  // THEN advance (too late!)
+  rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
+};
+```
+
+**Solution - Optimistic Update Pattern**:
+```tsx
+// ✅ CORRECT: Advance UI first, sync in background
+const handlePawkitSelected = (slug: string) => {  // No async!
+  if (!pendingPawkitCard) return;
+
+  // 1. Close modal and advance FIRST (optimistic - instant)
+  setShowPawkitModal(false);
+  const cardToUpdate = pendingPawkitCard;  // Capture reference
+  setPendingPawkitCard(null);
+  rediscoverStore.updateStats("addedToPawkit");
+  rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
+
+  // 2. Then update card in background (local-first, syncs later)
+  const currentCollections = cardToUpdate.collections || [];
+  if (!currentCollections.includes(slug)) {
+    useDataStore.getState().updateCard(cardToUpdate.id, {
+      collections: [...currentCollections, slug]
+    });  // No await!
+  }
+};
+```
+
+**Key Pattern**:
+1. **Capture data** needed for background operation
+2. **Update UI immediately** (optimistic)
+3. **Fire-and-forget** the async operation
+4. Local-first store handles sync automatically
+
+**Files Changed**:
+- `app/(dashboard)/library/page.tsx`
+
+**When to Use Optimistic Updates**:
+- User expects immediate feedback
+- Operation will almost always succeed
+- Server sync can happen in background
+- Local store can reconcile later if needed
+
+**When NOT to Use**:
+- Operation might fail and needs user attention
+- Need to show server-generated data (like new IDs)
+- Critical operations that must be confirmed
 
 ---
 
