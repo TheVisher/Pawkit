@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import type { SetTokenMessage } from '@/shared/types'
 import '../popup/index.css'
 
-const AUTH_URL = 'https://getpawkit.com/extension/auth?source=extension'
+const AUTH_URL = 'https://www.getpawkit.com/extension/auth?source=extension'
 
 function Options() {
   const [token, setToken] = useState('')
@@ -38,10 +38,13 @@ function Options() {
 
     // Listen for auth messages from popup
     const handleMessage = (event: MessageEvent) => {
-      // Verify origin
-      if (event.origin !== 'https://getpawkit.com') {
+      // Verify origin (accept both www and non-www)
+      const allowedOrigins = ['https://getpawkit.com', 'https://www.getpawkit.com']
+      if (!allowedOrigins.includes(event.origin)) {
+        console.log('[Pawkit] Ignoring message from unknown origin:', event.origin)
         return
       }
+      console.log('[Pawkit] Received auth message from:', event.origin)
 
       if (event.data.type === 'PAWKIT_AUTH_SUCCESS' && event.data.token) {
         handleTokenReceived(event.data.token)
