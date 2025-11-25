@@ -12,13 +12,145 @@ description: Track development progress, major milestones, and session history a
 ## Current Status
 
 **Branch**: `main`
-**Status**: New user onboarding improvements - sidebar defaults and empty states
-**Last Updated**: November 24, 2025
-**Next Steps**: Continue with mobile app refinements
+**Status**: Rediscover mode polished + sidebar UX improvements
+**Last Updated**: November 25, 2025
+**Next Steps**: Continue with discoverability improvements (onboarding checklist)
 
 ---
 
 ## Session History
+
+### Date: November 25, 2025 - Rediscover Mode Enhancements + Sidebar UX
+
+**Status**: ✅ COMPLETED
+**Priority**: ⚡ UX IMPROVEMENT
+**Branch**: `main`
+**Impact**: Rediscover is now discoverable, fast, and feature-complete; pinned notes easier to manage
+
+**Summary**: Major improvements to the Rediscover feature including sidebar placement, new "Add to Pawkit" action, multiple bug fixes, and added unpin context menu for pinned notes.
+
+#### 5. Pinned Notes Unpin Context Menu
+
+**Problem**: To unpin a note from the sidebar, users had to navigate to the card in Library view and unpin from there.
+
+**Solution**: Added right-click context menu to pinned notes in sidebar with "Unpin from sidebar" option.
+
+**Implementation**:
+- Added `PinOff` icon import from lucide-react
+- Added `unpinNote` from settings store
+- Wrapped `SortablePinnedNote` component with `GenericContextMenu`
+- Single menu item: "Unpin from sidebar" with PinOff icon
+
+**Files Modified**:
+- `components/navigation/left-navigation-panel.tsx`
+
+**Impact**: Users can now quickly unpin notes directly from the sidebar via right-click.
+
+#### 1. Ultrawide Monitor Bug Fix
+
+**Problem**: Cards appeared empty/black on 3440x1440 monitors when right sidebar was anchored (Chrome GPU issue).
+
+**Root Cause**: `backdrop-filter: blur()` on content panel caused GPU memory overflow in Chrome.
+
+**Solution**: Disabled backdrop blur on content panel when `isRightEmbedded` is true:
+```typescript
+className={cn(
+  "...",
+  !isRightEmbedded && "backdrop-blur-sm"
+)}
+```
+
+**Files Modified**:
+- `components/panels/content-panel.tsx`
+
+#### 2. Rediscover Discoverability
+
+**Problem**: Users couldn't find the Rediscover feature hidden behind Library header button.
+
+**Solution**:
+- Added Rediscover nav item to left sidebar after Calendar in HOME section
+- Added Sparkles icon and uncategorized count badge
+- Count calculation excludes: deleted cards, notes, The Den, private collections, previously reviewed cards
+- Removed the less-discoverable button from Library header
+
+**Files Modified**:
+- `components/navigation/left-navigation-panel.tsx` - Added nav item with count
+- `components/library/library-view.tsx` - Removed button
+
+**Impact**: Users can now find Rediscover easily with a clear count showing cards to review.
+
+#### 3. "Add to Pawkit" Feature
+
+**Problem**: Users wanted to organize cards during Rediscover without leaving the flow.
+
+**Solution**: Added third action button with quick Pawkit picker:
+- New "Add to Pawkit" button with FolderPlus icon (center position)
+- Keyboard shortcut "A" for quick access
+- Quick Pawkit picker modal using local data store (instant)
+- New animation: slide up + scale (suggests "filing away")
+- Button order: Delete (D) | Add to Pawkit (A) | Keep (K)
+
+**Files Modified**:
+- `components/rediscover/rediscover-mode.tsx` - Added button, keyboard handler, animation
+- `app/(dashboard)/library/page.tsx` - Added modal state and handlers
+
+**Technical Pattern - Optimistic Updates**:
+```typescript
+// Close modal and advance FIRST (optimistic)
+setShowPawkitModal(false);
+setPendingPawkitCard(null);
+rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
+
+// Then update card in background (local-first, syncs later)
+useDataStore.getState().updateCard(cardToUpdate.id, {
+  collections: [...currentCollections, slug]
+});
+```
+
+#### 4. Bug Fixes
+
+**Queue Reset Bug**: Queue reset when cards were updated (Add to Pawkit action).
+- Fix: Removed `items` from useEffect dependency array
+- Added separate useEffect for filter changes only
+
+**Slow Pawkit Modal (3-4 seconds)**: Modal fetched from `/api/pawkits`.
+- Fix: Changed `MoveToPawkitModal` to use `useDataStore((state) => state.collections)` for instant local data
+
+**Card Flickering on Keep**: First card briefly appeared before next card.
+- Fix: Don't reset `cardTransition` state in handleAction, let entering effect handle it
+
+**4-5 Second Delay After Pawkit Selection**: Awaited updateCard completion.
+- Fix: Made optimistic - advance UI immediately, update card in background
+
+**Queue Not Persisting Keep Actions**: Kept cards reappeared when re-entering Rediscover.
+- Fix: Added `metadata.rediscoverReviewedAt` timestamp when clicking Keep
+- Updated getFilteredCards to exclude cards with rediscoverReviewedAt
+- Updated sidebar uncategorizedCount to also exclude reviewed cards
+
+**Long Title Overflow**: TikTok video titles pushed buttons off screen.
+- Fix: Added `line-clamp-2` to title h2 element
+
+**Files Modified**:
+- `app/(dashboard)/library/page.tsx` - Queue management, optimistic updates, review tracking
+- `components/modals/move-to-pawkit-modal.tsx` - Local data store instead of API
+- `components/rediscover/rediscover-mode.tsx` - Animation fix, title truncation
+
+**Technical Pattern - Review Tracking**:
+```typescript
+// Mark as reviewed on Keep action
+useDataStore.getState().updateCard(cardId, {
+  metadata: {
+    ...currentMetadata,
+    rediscoverReviewedAt: new Date().toISOString()
+  }
+});
+
+// Filter excludes reviewed cards
+const metadata = card.metadata as Record<string, unknown> | undefined;
+if (metadata?.rediscoverReviewedAt) return false;
+```
+
+---
 
 ### Date: November 24, 2025 - New User Onboarding Improvements
 

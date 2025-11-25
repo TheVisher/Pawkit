@@ -135,6 +135,64 @@ description: Living, interactive roadmap serving as single source of truth for p
 
 **Reference for what's done - do not modify this section**
 
+### November 25, 2025 - Rediscover Mode Enhancements
+
+- ✅ **Ultrawide Monitor Bug Fix** (30 min)
+  Fixed Chrome rendering bug on 3440x1440 monitors where cards appeared empty when right sidebar anchored
+  **Root Cause**: `backdrop-filter: blur()` on content panel caused GPU memory issues
+  **Solution**: Disabled backdrop blur on content panel when `isRightEmbedded` is true
+  **Files**: components/panels/content-panel.tsx
+  **Impact**: Cards now render properly on all ultrawide monitors
+
+- ✅ **Rediscover Discoverability** (1 hour)
+  Moved Rediscover feature to left sidebar for better discoverability
+  **Changes**:
+  - Added Rediscover nav item after Calendar in HOME section with Sparkles icon
+  - Added uncategorized count badge (muted style)
+  - Count excludes: deleted cards, notes, The Den, private collections, and previously reviewed cards
+  - Removed Rediscover button from Library header
+  **Files**: components/navigation/left-navigation-panel.tsx, components/library/library-view.tsx
+  **Impact**: Users can now find Rediscover easily with a clear count of cards to review
+
+- ✅ **Rediscover "Add to Pawkit" Feature** (2 hours)
+  Added third action button to Rediscover for quick organization
+  **New Features**:
+  - "Add to Pawkit" button with FolderPlus icon (center position)
+  - Keyboard shortcut "A" for quick access
+  - Quick Pawkit picker modal (instant, uses local data store)
+  - New animation: slide up + scale (suggests "filing away")
+  - Button order: Delete (D) | Add to Pawkit (A) | Keep (K)
+  **Files**: components/rediscover/rediscover-mode.tsx, app/(dashboard)/library/page.tsx
+  **Impact**: Users can organize cards directly during Rediscover flow
+
+- ✅ **Rediscover Bug Fixes** (2 hours)
+  Fixed multiple bugs affecting Rediscover usability:
+  1. **Queue Reset Bug**: Queue reset to beginning when cards updated (Add to Pawkit)
+     - Fix: Removed `items` from useEffect dependency, separate filter change handling
+  2. **Slow Pawkit Modal (3-4 sec)**: Modal fetched from API
+     - Fix: Changed to use local data store for instant display
+  3. **Card Flickering on Keep**: First card briefly showed before next
+     - Fix: Don't reset cardTransition state in handleAction
+  4. **4-5 Second Delay**: Waited for updateCard to complete
+     - Fix: Made optimistic - advance UI immediately, update in background
+  5. **Queue Not Persisting**: Kept cards reappeared on re-entry
+     - Fix: Added `metadata.rediscoverReviewedAt` timestamp, filter excludes reviewed cards
+  **Files**: app/(dashboard)/library/page.tsx, components/modals/move-to-pawkit-modal.tsx, components/rediscover/rediscover-mode.tsx
+  **Impact**: Smooth, fast Rediscover experience with persistent progress
+
+- ✅ **Long Title Overflow Fix** (15 min)
+  Fixed extremely long titles (TikTok videos) pushing buttons off screen
+  **Solution**: Added `line-clamp-2` to title h2 element
+  **Files**: components/rediscover/rediscover-mode.tsx
+  **Impact**: Consistent UI regardless of title length
+
+- ✅ **Pinned Notes Unpin Context Menu** (15 min)
+  Added right-click "Unpin from sidebar" option for pinned notes
+  **Problem**: Users had to navigate to Library to unpin notes from sidebar
+  **Solution**: Added context menu with PinOff icon using GenericContextMenu wrapper
+  **Files**: components/navigation/left-navigation-panel.tsx
+  **Impact**: Quick unpin directly from sidebar via right-click
+
 ### January 14, 2025 - Performance Optimization: Excessive Re-renders
 
 - ✅ **ProfileModal Excessive Re-renders Fix** (2 hours) - CRITICAL PERFORMANCE
