@@ -290,24 +290,23 @@ function LibraryPageContent() {
   };
 
   // Handler for when a Pawkit is selected from the modal
-  const handlePawkitSelected = async (slug: string) => {
+  const handlePawkitSelected = (slug: string) => {
     if (!pendingPawkitCard) return;
 
-    // Add the card to the selected Pawkit
-    const currentCollections = pendingPawkitCard.collections || [];
+    // Close modal and advance FIRST (optimistic - don't wait for sync)
+    setShowPawkitModal(false);
+    const cardToUpdate = pendingPawkitCard;
+    setPendingPawkitCard(null);
+    rediscoverStore.updateStats("addedToPawkit");
+    rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
+
+    // Then update the card in background (local-first, syncs later)
+    const currentCollections = cardToUpdate.collections || [];
     if (!currentCollections.includes(slug)) {
-      await useDataStore.getState().updateCard(pendingPawkitCard.id, {
+      useDataStore.getState().updateCard(cardToUpdate.id, {
         collections: [...currentCollections, slug]
       });
     }
-
-    // Update stats
-    rediscoverStore.updateStats("addedToPawkit");
-
-    // Close modal and advance to next card
-    setShowPawkitModal(false);
-    setPendingPawkitCard(null);
-    rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
   };
 
   // Handler for closing the Pawkit modal without selecting
