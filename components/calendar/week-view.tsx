@@ -8,6 +8,14 @@ import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/da
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { FileText, Plus, Clock } from "lucide-react";
 
+// Helper to format time in 12-hour format
+function formatTime12h(time24: string): string {
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
 type WeekViewProps = {
   cards: CardModel[];
   currentMonth: Date;
@@ -190,8 +198,8 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
                         {!event.isAllDay && event.startTime && (
                           <div className="text-[10px] text-muted-foreground flex items-center gap-1 mb-0.5">
                             <Clock size={10} />
-                            {event.startTime}
-                            {event.endTime && ` - ${event.endTime}`}
+                            {formatTime12h(event.startTime)}
+                            {event.endTime && ` - ${formatTime12h(event.endTime)}`}
                           </div>
                         )}
                         <div className="text-xs font-medium text-foreground truncate">

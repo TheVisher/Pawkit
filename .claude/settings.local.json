@@ -53,7 +53,8 @@
       "Skill(pawkit-conventions)",
       "Skill(pawkit-sync-patterns)",
       "Skill(pawkit-api-patterns)",
-      "Skill(pawkit-performance)"
+      "Skill(pawkit-performance)",
+      "Bash(mkdir:*)"
     ],
     "deny": [],
     "ask": []

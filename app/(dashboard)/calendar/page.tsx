@@ -7,8 +7,8 @@ import { WeekView } from "@/components/calendar/week-view";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/daily-notes";
-import { CalendarIcon } from "lucide-react";
-import { format, startOfWeek } from "date-fns";
+import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, startOfWeek, addMonths, subMonths, addWeeks, subWeeks } from "date-fns";
 
 export default function CalendarPage() {
   const { cards, addCard } = useDataStore();
@@ -78,13 +78,29 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Absolutely centered month/year */}
+        {/* Absolutely centered month/year with navigation arrows */}
         <div className="absolute top-0 left-0 right-0 h-full flex items-center justify-center pointer-events-none">
-          <span className="text-xl font-semibold text-foreground pointer-events-auto">
-            {viewMode === "week"
-              ? `Week of ${format(startOfWeek(currentMonth), 'MMM d, yyyy')}`
-              : format(currentMonth, 'MMMM yyyy')}
-          </span>
+          <div className="flex items-center gap-3 pointer-events-auto">
+            <button
+              onClick={() => setCurrentMonth(viewMode === "week" ? subWeeks(currentMonth, 1) : subMonths(currentMonth, 1))}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={viewMode === "week" ? "Previous week" : "Previous month"}
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <span className="text-xl font-semibold text-foreground min-w-[200px] text-center">
+              {viewMode === "week"
+                ? `Week of ${format(startOfWeek(currentMonth), 'MMM d, yyyy')}`
+                : format(currentMonth, 'MMMM yyyy')}
+            </span>
+            <button
+              onClick={() => setCurrentMonth(viewMode === "week" ? addWeeks(currentMonth, 1) : addMonths(currentMonth, 1))}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={viewMode === "week" ? "Next week" : "Next month"}
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
         </div>
       </div>
 

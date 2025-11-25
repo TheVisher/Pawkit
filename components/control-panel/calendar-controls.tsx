@@ -2,8 +2,8 @@
 
 import { useMemo, useEffect } from "react";
 import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Calendar, Filter, Plus, Film, Music, Clock, Rocket, CalendarDays, StickyNote, CalendarCheck, CalendarRange, ChevronRight, Bookmark } from "lucide-react";
-import { format, setMonth, isAfter, startOfToday, startOfWeek, endOfWeek } from "date-fns";
+import { Calendar, Filter, Plus, Film, Music, Clock, Rocket, CalendarDays, StickyNote, CalendarCheck, CalendarRange, ChevronRight, ChevronLeft, Bookmark } from "lucide-react";
+import { format, setMonth, setYear, isAfter, startOfToday, startOfWeek, endOfWeek, addYears, subYears } from "date-fns";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useEventStore } from "@/lib/hooks/use-event-store";
@@ -21,6 +21,14 @@ type UpcomingItem = {
   color?: string | null; // For events
   isAllDay?: boolean;
 };
+
+// Helper to format time in 12-hour format
+function formatTime12h(time24: string): string {
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
 
 // Month names for the 3x4 grid
 const MONTHS = [
@@ -168,9 +176,31 @@ export function CalendarControls() {
       {/* Month Grid Selector */}
       <PanelSection
         id="calendar-month-selector"
-        title="Jump to Month"
+        title="Jump to Date"
         icon={<Calendar className="h-4 w-4 text-accent" />}
       >
+        {/* Year Selector */}
+        <div className="flex items-center justify-center gap-4 mb-4">
+          <button
+            onClick={() => setCurrentMonth(subYears(currentMonth, 1))}
+            className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Previous year"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <span className="text-lg font-semibold text-foreground min-w-[60px] text-center">
+            {format(currentMonth, 'yyyy')}
+          </span>
+          <button
+            onClick={() => setCurrentMonth(addYears(currentMonth, 1))}
+            className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Next year"
+          >
+            <ChevronRight size={18} />
+          </button>
+        </div>
+
+        {/* Month Grid */}
         <div className="grid grid-cols-3 gap-2">
           {MONTHS.map((month) => (
             <button
@@ -330,7 +360,7 @@ export function CalendarControls() {
                   <div className="text-xs text-accent font-medium mb-1 flex items-center gap-1.5">
                     {format(new Date(item.date + 'T00:00:00'), 'MMM d, yyyy')}
                     {item.type === 'event' && item.time && !item.isAllDay && (
-                      <span className="text-muted-foreground">at {item.time}</span>
+                      <span className="text-muted-foreground">at {formatTime12h(item.time)}</span>
                     )}
                   </div>
                   <div className="text-sm text-foreground truncate">
