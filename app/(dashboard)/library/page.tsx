@@ -228,19 +228,17 @@ function LibraryPageContent() {
     return filtered;
   };
 
-  // Initialize Rediscover queue when entering Rediscover mode or filter changes
+  // Initialize Rediscover queue ONLY when entering mode or changing filter
+  // NOT when items change (that would reset progress when cards are updated)
   useEffect(() => {
     if (isRediscoverMode) {
-      const filtered = getFilteredCards(rediscoverStore.filter);
-      rediscoverStore.setQueue(filtered);
-      rediscoverStore.setCurrentIndex(0);
-      rediscoverStore.setActive(true);
-
-      // Only reset stats on initial entry
-      if (rediscoverStore.queue.length === 0) {
+      // Only initialize if not already active, or if filter changed
+      if (!rediscoverStore.isActive) {
+        const filtered = getFilteredCards(rediscoverStore.filter);
         rediscoverStore.reset();
         rediscoverStore.setActive(true);
         rediscoverStore.setQueue(filtered);
+        rediscoverStore.setCurrentIndex(0);
       }
     } else {
       // Exit Rediscover mode
@@ -249,7 +247,19 @@ function LibraryPageContent() {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRediscoverMode, rediscoverStore.filter, items]);
+  }, [isRediscoverMode]);
+
+  // Handle filter changes separately - only re-queue if filter actually changes
+  const [lastFilter, setLastFilter] = useState(rediscoverStore.filter);
+  useEffect(() => {
+    if (isRediscoverMode && rediscoverStore.isActive && rediscoverStore.filter !== lastFilter) {
+      const filtered = getFilteredCards(rediscoverStore.filter);
+      rediscoverStore.setQueue(filtered);
+      rediscoverStore.setCurrentIndex(0);
+      setLastFilter(rediscoverStore.filter);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rediscoverStore.filter]);
 
   // Handlers for Rediscover mode
   const handleRediscoverAction = async (action: RediscoverAction, cardId: string) => {

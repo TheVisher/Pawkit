@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import type { CollectionNode } from "@/lib/types";
+import { useDataStore } from "@/lib/stores/data-store";
 import { GlowButton } from "@/components/ui/glow-button";
 
 export type MoveToPawkitModalProps = {
   open: boolean;
   onClose: () => void;
   onConfirm: (slug: string) => void;
+  /** Optional: pass collections directly for faster rendering. Falls back to data store. */
+  collections?: CollectionNode[];
 };
 
 type FlatPawkit = {
@@ -16,19 +19,19 @@ type FlatPawkit = {
   slug: string;
 };
 
-export function MoveToPawkitModal({ open, onClose, onConfirm }: MoveToPawkitModalProps) {
-  const [pawkits, setPawkits] = useState<FlatPawkit[]>([]);
+export function MoveToPawkitModal({ open, onClose, onConfirm, collections: propCollections }: MoveToPawkitModalProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+
+  // Use prop collections or fall back to data store (instant, local-first)
+  const storeCollections = useDataStore((state) => state.collections);
+  const collections = propCollections ?? storeCollections;
 
   useEffect(() => {
     if (open) {
       setSearchTerm("");
       setSelectedSlug(null);
-      loadPawkits();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   useEffect(() => {
@@ -43,38 +46,26 @@ export function MoveToPawkitModal({ open, onClose, onConfirm }: MoveToPawkitModa
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
-  // Flatten collections tree with hierarchical names
-  const flattenPawkits = (nodes: CollectionNode[], prefix = ""): FlatPawkit[] => {
-    const result: FlatPawkit[] = [];
-    for (const node of nodes) {
-      const hierarchicalName = prefix ? `${prefix} / ${node.name}` : node.name;
-      result.push({
-        id: node.id,
-        name: hierarchicalName,
-        slug: node.slug,
-      });
-      if (node.children && node.children.length > 0) {
-        result.push(...flattenPawkits(node.children, hierarchicalName));
+  // Flatten collections tree with hierarchical names (memoized)
+  const pawkits = useMemo(() => {
+    const flattenPawkits = (nodes: CollectionNode[], prefix = ""): FlatPawkit[] => {
+      const result: FlatPawkit[] = [];
+      for (const node of nodes) {
+        if (node.deleted) continue; // Skip deleted collections
+        const hierarchicalName = prefix ? `${prefix} / ${node.name}` : node.name;
+        result.push({
+          id: node.id,
+          name: hierarchicalName,
+          slug: node.slug,
+        });
+        if (node.children && node.children.length > 0) {
+          result.push(...flattenPawkits(node.children, hierarchicalName));
+        }
       }
-    }
-    return result;
-  };
-
-  const loadPawkits = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch("/api/pawkits");
-      if (response.ok) {
-        const data = await response.json();
-        // Flatten the tree structure with hierarchical names
-        const flattened = flattenPawkits(data.tree || []);
-        setPawkits(flattened);
-      }
-    } catch (error) {
-    } finally {
-      setLoading(false);
-    }
-  };
+      return result;
+    };
+    return flattenPawkits(collections);
+  }, [collections]);
 
   if (!open) return null;
 
@@ -109,9 +100,7 @@ export function MoveToPawkitModal({ open, onClose, onConfirm }: MoveToPawkitModa
         </div>
 
         <div className="mb-4 max-h-64 space-y-1 overflow-y-auto rounded border border-gray-800 bg-gray-900/40 p-2">
-          {loading ? (
-            <div className="py-8 text-center text-sm text-gray-500">Loading Pawkits...</div>
-          ) : filteredPawkits.length === 0 ? (
+          {filteredPawkits.length === 0 ? (
             <div className="py-8 text-center text-sm text-gray-500">
               {searchTerm ? "No Pawkits found" : "No Pawkits available"}
             </div>
