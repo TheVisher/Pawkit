@@ -2,23 +2,28 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { format } from "date-fns";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
+import { useEventStore } from "@/lib/hooks/use-event-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/daily-notes";
-import { CalendarIcon, X, Plus } from "lucide-react";
+import { CalendarIcon, X, Plus, Clock, MapPin, Trash2 } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import Image from "next/image";
 import { AddEventModal } from "@/components/modals/add-event-modal";
+import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
 
 export function DayDetailsPanel() {
   const { cards, addCard } = useDataStore();
+  const { events, isInitialized, initialize, deleteEvent } = useEventStore();
   const selectedDay = useCalendarStore((state) => state.selectedDay);
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
   const openCalendarControls = usePanelStore((state) => state.openCalendarControls);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
 
   const [showAddEventModal, setShowAddEventModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   // Track if component is mounted (for portal rendering)
@@ -26,6 +31,13 @@ export function DayDetailsPanel() {
     setIsMounted(true);
     return () => setIsMounted(false);
   }, []);
+
+  // Initialize event store
+  useEffect(() => {
+    if (!isInitialized) {
+      initialize();
+    }
+  }, [isInitialized, initialize]);
 
   // Get cards scheduled for the selected date
   const scheduledCards = useMemo(() => {
@@ -44,6 +56,24 @@ export function DayDetailsPanel() {
     const title = generateDailyNoteTitle(selectedDay);
     return cards.find(c => c.title === title && !c.collections?.includes('the-den'));
   }, [selectedDay, cards]);
+
+  // Get events for the selected date
+  const dayEvents = useMemo(() => {
+    if (!selectedDay) return [];
+    const dateStr = format(selectedDay, 'yyyy-MM-dd');
+    return events
+      .filter(event => event.date === dateStr)
+      .sort((a, b) => {
+        // All-day events first
+        if (a.isAllDay && !b.isAllDay) return -1;
+        if (!a.isAllDay && b.isAllDay) return 1;
+        // Then by start time
+        if (a.startTime && b.startTime) {
+          return a.startTime.localeCompare(b.startTime);
+        }
+        return 0;
+      });
+  }, [selectedDay, events]);
 
   const handleCreateDailyNote = async () => {
     if (!selectedDay) return;
@@ -78,7 +108,28 @@ export function DayDetailsPanel() {
   };
 
   const handleAddEvent = () => {
+    setEditingEvent(null);
     setShowAddEventModal(true);
+  };
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    setEditingEvent(event);
+    setShowAddEventModal(true);
+  };
+
+  const handleDeleteEvent = async (event: CalendarEvent) => {
+    try {
+      await deleteEvent(event.id);
+      const { useToastStore } = await import("@/lib/stores/toast-store");
+      useToastStore.getState().success("Event deleted");
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setShowAddEventModal(false);
+    setEditingEvent(null);
   };
 
   if (!selectedDay) {
@@ -114,7 +165,7 @@ export function DayDetailsPanel() {
             })}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {scheduledCards.length + (dailyNote ? 1 : 0)} item(s) for this day
+            {dayEvents.length + scheduledCards.length + (dailyNote ? 1 : 0)} item(s) for this day
           </p>
         </div>
 
@@ -153,6 +204,68 @@ export function DayDetailsPanel() {
             </button>
           )}
         </div>
+
+        {/* Calendar Events Section */}
+        {dayEvents.length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+              <CalendarIcon size={16} className="text-accent" />
+              Events ({dayEvents.length})
+            </h3>
+            <div className="space-y-2">
+              {dayEvents.map((event) => (
+                <div
+                  key={event.id}
+                  className="p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10
+                    transition-colors group"
+                >
+                  <div className="flex items-start gap-3">
+                    <span
+                      className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
+                      style={{ backgroundColor: event.color || EVENT_COLORS.purple }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <button
+                        onClick={() => handleEditEvent(event)}
+                        className="text-left w-full"
+                      >
+                        <div className="font-medium text-foreground truncate">
+                          {event.title}
+                        </div>
+                        {!event.isAllDay && event.startTime && (
+                          <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            <Clock size={12} />
+                            {event.startTime}
+                            {event.endTime && ` - ${event.endTime}`}
+                          </div>
+                        )}
+                        {event.location && (
+                          <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                            <MapPin size={12} />
+                            {event.location}
+                          </div>
+                        )}
+                        {event.description && (
+                          <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                            {event.description}
+                          </div>
+                        )}
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteEvent(event)}
+                      className="p-1.5 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400
+                        opacity-0 group-hover:opacity-100 transition-all"
+                      title="Delete event"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Scheduled Cards Section */}
         <div>
@@ -218,8 +331,9 @@ export function DayDetailsPanel() {
       {isMounted && showAddEventModal && createPortal(
         <AddEventModal
           open={showAddEventModal}
-          onClose={() => setShowAddEventModal(false)}
+          onClose={handleCloseModal}
           scheduledDate={selectedDay}
+          editingEvent={editingEvent}
         />,
         document.body
       )}
