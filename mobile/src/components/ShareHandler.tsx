@@ -40,7 +40,7 @@ export function ShareHandler() {
       await cardsApi.create({
         type: 'url',
         url: url,
-        title: shareIntent.text || undefined, // Use shared text as title if available
+        title: shareIntent?.text || undefined, // Use shared text as title if available
       });
 
       // Show success notification
