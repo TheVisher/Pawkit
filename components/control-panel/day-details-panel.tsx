@@ -14,9 +14,17 @@ import Image from "next/image";
 import { AddEventModal } from "@/components/modals/add-event-modal";
 import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
 
+// Helper to format time in 12-hour format
+function formatTime12h(time24: string): string {
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
 export function DayDetailsPanel() {
   const { cards, addCard } = useDataStore();
-  const { events, isInitialized, initialize, deleteEvent } = useEventStore();
+  const { events, isInitialized, initialize, deleteEvent, generateRecurrenceInstances } = useEventStore();
   const selectedDay = useCalendarStore((state) => state.selectedDay);
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
   const openCalendarControls = usePanelStore((state) => state.openCalendarControls);
@@ -57,23 +65,34 @@ export function DayDetailsPanel() {
     return cards.find(c => c.title === title && !c.collections?.includes('the-den'));
   }, [selectedDay, cards]);
 
-  // Get events for the selected date
+  // Get events for the selected date (including recurring event instances)
   const dayEvents = useMemo(() => {
     if (!selectedDay) return [];
     const dateStr = format(selectedDay, 'yyyy-MM-dd');
-    return events
-      .filter(event => event.date === dateStr)
-      .sort((a, b) => {
-        // All-day events first
-        if (a.isAllDay && !b.isAllDay) return -1;
-        if (!a.isAllDay && b.isAllDay) return 1;
-        // Then by start time
-        if (a.startTime && b.startTime) {
-          return a.startTime.localeCompare(b.startTime);
+
+    // Collect events that occur on this day (including recurrence instances)
+    const eventsOnDay: CalendarEvent[] = [];
+
+    events.forEach((event) => {
+      // Generate recurrence instances for just this day
+      const instances = generateRecurrenceInstances(event, dateStr, dateStr);
+      instances.forEach((instance) => {
+        if (instance.instanceDate === dateStr) {
+          eventsOnDay.push(instance.event);
         }
-        return 0;
       });
-  }, [selectedDay, events]);
+    });
+
+    // Sort: all-day events first, then by start time
+    return eventsOnDay.sort((a, b) => {
+      if (a.isAllDay && !b.isAllDay) return -1;
+      if (!a.isAllDay && b.isAllDay) return 1;
+      if (a.startTime && b.startTime) {
+        return a.startTime.localeCompare(b.startTime);
+      }
+      return 0;
+    });
+  }, [selectedDay, events, generateRecurrenceInstances]);
 
   const handleCreateDailyNote = async () => {
     if (!selectedDay) return;
@@ -235,8 +254,8 @@ export function DayDetailsPanel() {
                         {!event.isAllDay && event.startTime && (
                           <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                             <Clock size={12} />
-                            {event.startTime}
-                            {event.endTime && ` - ${event.endTime}`}
+                            {formatTime12h(event.startTime)}
+                            {event.endTime && ` - ${formatTime12h(event.endTime)}`}
                           </div>
                         )}
                         {event.location && (

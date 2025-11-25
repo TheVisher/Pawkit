@@ -8,6 +8,14 @@ import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/da
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { ChevronLeft, ChevronRight, Plus, FileText, Clock } from "lucide-react";
 
+// Helper to format time in 12-hour format
+function formatTime12h(time24: string): string {
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
 type CustomCalendarProps = {
   cards: CardModel[];
   currentMonth?: Date;
@@ -189,7 +197,7 @@ export function CustomCalendar({
                     <span className="text-xs text-foreground truncate flex-1">
                       {!event.isAllDay && event.startTime && (
                         <span className="text-muted-foreground mr-1">
-                          {event.startTime}
+                          {formatTime12h(event.startTime)}
                         </span>
                       )}
                       {event.title}
