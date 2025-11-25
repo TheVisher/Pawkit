@@ -40,6 +40,7 @@ description: Living document of issues encountered, their fixes, and prevention 
    - Performance - Excessive Re-renders from Store Subscriptions
    - Duplicate URL Detection - Deleted Cards Not Excluded
    - Collection Header Label - Not Showing Pawkit Name (Mobile)
+   - Browser Extension - Collections Using Slugs Not IDs
 3. [Debugging Strategies](#debugging-strategies)
 4. [How to Add New Issues](#how-to-add-new-issues)
 5. [Maintenance](#maintenance)
@@ -3821,6 +3822,130 @@ const collectionName = getCollectionName(collection);
 
 ---
 
+### 30. Browser Extension - Collections Using Slugs Not IDs
+
+**Date**: November 24, 2025
+**Severity**: 🟡 Medium
+**Category**: API Integration, Browser Extension
+**Status**: ✅ Fixed
+
+**Issue**: Browser extension saving cards to "Library" even when a specific collection (pawkit) was selected from dropdown.
+
+**Symptom**:
+```
+1. User selects "Work Projects" collection from dropdown in extension popup
+2. User clicks "Save to Pawkit"
+3. Card saved successfully
+4. Card appears in Library, NOT in "Work Projects" collection
+5. User confused - selection seemed to have no effect
+```
+
+**What Failed**:
+```typescript
+// ❌ WRONG: Using collection ID instead of slug
+const payload = {
+  title: 'My Card',
+  url: 'https://example.com',
+  collectionId: selectedCollection?.id  // ❌ API doesn't use collectionId!
+}
+```
+
+**Root Cause**:
+- API expects `collections: string[]` (array of **slugs**)
+- Extension was passing `collectionId` which is ignored by API
+- No error returned - API just saved card without collection association
+- User saw success but card wasn't in expected collection
+
+**The Fix**:
+```typescript
+// ✅ CORRECT: Use collections array with slugs
+const [selectedCollectionSlug, setSelectedCollectionSlug] = useState<string | null>(null)
+
+// When saving
+const message: SaveCardMessage = {
+  type: 'SAVE_CARD',
+  payload: {
+    title: title.trim(),
+    url: url.trim(),
+    collections: selectedCollectionSlug ? [selectedCollectionSlug] : undefined,  // ✅ Array of slugs!
+    source: 'webext'
+  }
+}
+```
+
+**Fetching Collections Correctly**:
+```typescript
+// GET /api/pawkits returns flat array with slugs
+const response = await apiGet<{ flat: Array<Collection> }>('/pawkits')
+
+if (response.ok && response.data?.flat) {
+  const collections = response.data.flat.map(c => ({
+    id: c.id,      // For React key only
+    name: c.name,  // For display
+    emoji: c.emoji,
+    slug: c.slug   // ← THIS is what you pass to API when saving
+  }))
+}
+```
+
+**Additional Fix - View Button URL Pattern**:
+```typescript
+// ❌ WRONG: Using incorrect URL pattern
+const targetUrl = `https://getpawkit.com/p/${slug}`  // 404!
+
+// ✅ CORRECT: Use /pawkits/{slug}
+const targetPath = selectedCollectionSlug
+  ? `/pawkits/${selectedCollectionSlug}`  // ✅ Correct pattern
+  : '/library'
+const targetUrl = `https://getpawkit.com${targetPath}`
+```
+
+**Files Changed**:
+- `packages/extension/src/popup/Popup.tsx` - Use slug for collections and navigation
+- `packages/extension/src/shared/types.ts` - Added Collection interface with slug
+- `packages/extension/src/background/api.ts` - Added getCollections function
+
+**Testing**:
+```
+1. Open extension popup on any page
+2. Select a collection from dropdown ("Work Projects")
+3. Click "Save to Pawkit"
+4. Open Pawkit web app → Navigate to "Work Projects"
+5. Verify card appears in that collection ✅
+6. Click "View" after saving → Opens /pawkits/work-projects ✅
+```
+
+**How to Avoid**:
+- **Read API docs**: Collections API uses slugs, NOT IDs
+- **Log payloads**: Console.log the exact payload being sent to API
+- **Test association**: Verify card appears in correct collection, not just "saved"
+- **Check URL patterns**: Verify navigation URLs match web app routes
+
+**Key Learnings**:
+- API ignores unknown fields - no error when sending wrong field name
+- Always check database/server for actual association, not just success response
+- URL patterns: `/pawkits/{slug}` not `/p/{slug}` or `/pawkits/{id}`
+- Collections dropdown should track slug, not ID
+
+**Prevention Checklist**:
+- [ ] Use `collections: [slug]` not `collectionId` when saving cards
+- [ ] Store and pass slug from dropdown selection
+- [ ] Test actual collection membership, not just save success
+- [ ] Use correct URL pattern for navigation: `/pawkits/{slug}`
+
+**Impact**:
+- ✅ Cards now save to selected collection correctly
+- ✅ View button navigates to correct collection page
+- ✅ Collection dropdown shows correct selection
+
+**See Also**:
+- `.claude/skills/pawkit-api-patterns/SKILL.md` - Collections API section (CRITICAL)
+- Extension source: `packages/extension/src/`
+
+---
+
+## Debugging Strategies
+
 ### When API Returns 500 Error
 
 **Step 1: Check Server Logs**
@@ -4166,6 +4291,12 @@ After adding a new issue:
 - Information disclosure
 - Privacy rule violations
 
+**Browser Extension**:
+- Collections use slugs not IDs
+- URL patterns: `/pawkits/{slug}` not `/p/{slug}`
+- Tab reuse for existing Pawkit tabs
+- Content script injection patterns
+
 ---
 
 ## Related Skills
@@ -4190,7 +4321,7 @@ After adding a new issue:
 
 ---
 
-**Last Updated**: November 23, 2025 (Added Issue #29: Collection header label not showing pawkit name in mobile)
+**Last Updated**: November 24, 2025 (Added Issue #30: Browser extension collections using slugs not IDs)
 **Next Review**: April 2025 (Quarterly)
 
 **This is a living document. Keep it current!**

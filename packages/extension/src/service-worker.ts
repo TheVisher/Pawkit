@@ -4,8 +4,8 @@
  */
 
 import browser from 'webextension-polyfill'
-import { saveCard, setToken, getToken } from './background/api'
-import type { Message, SaveCardResponse, GetTokenResponse } from './shared/types'
+import { saveCard, setToken, getToken, getCollections } from './background/api'
+import type { Message, SaveCardResponse, GetTokenResponse, GetCollectionsResponse } from './shared/types'
 
 // Create context menu on install
 browser.runtime.onInstalled.addListener(() => {
@@ -92,7 +92,33 @@ function showNotification(response: any, title: string) {
 
 // Handle messages from popup/options pages
 browser.runtime.onMessage.addListener(
-  (message: Message, _sender): Promise<SaveCardResponse | GetTokenResponse> => {
+  (message: Message & { type: string }, _sender): Promise<SaveCardResponse | GetTokenResponse | GetCollectionsResponse> | undefined => {
+    // Handle REOPEN_POPUP - open the extension popup after image selection
+    if (message.type === 'REOPEN_POPUP') {
+      // Use browser.action.openPopup() if available (Firefox), otherwise show notification
+      if (browser.action?.openPopup) {
+        browser.action.openPopup().catch(() => {
+          // Some browsers don't support programmatic popup opening
+          // Show a notification instead
+          browser.notifications?.create({
+            type: 'basic',
+            iconUrl: browser.runtime.getURL('icons/icon-48.png'),
+            title: 'Thumbnail Selected',
+            message: 'Click the Pawkit icon to save with your selected thumbnail'
+          })
+        })
+      } else {
+        // Show notification for browsers that don't support openPopup
+        browser.notifications?.create({
+          type: 'basic',
+          iconUrl: browser.runtime.getURL('icons/icon-48.png'),
+          title: 'Thumbnail Selected',
+          message: 'Click the Pawkit icon to save with your selected thumbnail'
+        })
+      }
+      return undefined
+    }
+
     return new Promise(async (resolve) => {
       try {
         switch (message.type) {
@@ -114,6 +140,12 @@ browser.runtime.onMessage.addListener(
           case 'GET_TOKEN': {
             const token = await getToken()
             resolve({ ok: true, token: token || undefined })
+            break
+          }
+
+          case 'GET_COLLECTIONS': {
+            const response = await getCollections()
+            resolve(response as GetCollectionsResponse)
             break
           }
 

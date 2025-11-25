@@ -40,9 +40,11 @@
   * {
     @apply border-border;
   }
-  body {
+  html, body {
     @apply bg-background text-foreground;
-    min-width: 384px;
-    max-width: 384px;
+    width: 384px;
+    min-height: fit-content;
+    max-height: 600px;
+    overflow-y: auto;
   }
 }
