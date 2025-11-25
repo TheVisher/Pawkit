@@ -48,6 +48,8 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
   // Basic info
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
+  const [isMultiDay, setIsMultiDay] = useState(false);
+  const [endDate, setEndDate] = useState("");
   const [isAllDay, setIsAllDay] = useState(true);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
@@ -79,6 +81,8 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
         // Editing existing event
         setTitle(editingEvent.title);
         setDate(editingEvent.date);
+        setIsMultiDay(!!editingEvent.endDate && editingEvent.endDate !== editingEvent.date);
+        setEndDate(editingEvent.endDate || "");
         setIsAllDay(editingEvent.isAllDay);
         setStartTime(editingEvent.startTime || "09:00");
         setEndTime(editingEvent.endTime || "10:00");
@@ -118,6 +122,8 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
         // New event
         setTitle("");
         setDate(format(scheduledDate, 'yyyy-MM-dd'));
+        setIsMultiDay(false);
+        setEndDate("");
         setIsAllDay(true);
         setStartTime("09:00");
         setEndTime("10:00");
@@ -163,6 +169,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
       const eventData: Partial<CalendarEvent> = {
         title: title.trim(),
         date,
+        endDate: isMultiDay && endDate ? endDate : null,
         isAllDay,
         startTime: isAllDay ? null : startTime,
         endTime: isAllDay ? null : endTime,
@@ -268,13 +275,19 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
             {/* Date Input */}
             <div>
               <label htmlFor="event-date" className="block text-sm font-medium text-foreground mb-2">
-                Date *
+                {isMultiDay ? 'Start Date *' : 'Date *'}
               </label>
               <input
                 id="event-date"
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => {
+                  setDate(e.target.value);
+                  // If end date is before start date, update it
+                  if (endDate && e.target.value > endDate) {
+                    setEndDate(e.target.value);
+                  }
+                }}
                 className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
                   text-foreground
                   focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
@@ -282,6 +295,53 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                 required
               />
             </div>
+
+            {/* Multi-Day Toggle */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMultiDay(!isMultiDay);
+                  if (!isMultiDay && !endDate) {
+                    // Set default end date to start date when enabling multi-day
+                    setEndDate(date);
+                  }
+                }}
+                className={cn(
+                  "relative w-11 h-6 rounded-full transition-colors",
+                  isMultiDay ? "bg-accent" : "bg-white/10"
+                )}
+              >
+                <span
+                  className={cn(
+                    "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform",
+                    isMultiDay && "translate-x-5"
+                  )}
+                />
+              </button>
+              <label className="text-sm text-foreground">Multi-day event</label>
+            </div>
+
+            {/* End Date (shown when multi-day is enabled) */}
+            {isMultiDay && (
+              <div>
+                <label htmlFor="event-end-date" className="block text-sm font-medium text-foreground mb-2">
+                  End Date *
+                </label>
+                <input
+                  id="event-end-date"
+                  type="date"
+                  value={endDate}
+                  min={date}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
+                    text-foreground
+                    focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
+                    transition-all [color-scheme:dark]"
+                  required
+                />
+              </div>
+            )}
 
             {/* All Day Toggle */}
             <div className="flex items-center gap-3">

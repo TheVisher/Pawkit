@@ -36,7 +36,8 @@ export interface CalendarEvent {
   title: string;
 
   // Date/Time
-  date: string;                  // YYYY-MM-DD
+  date: string;                  // YYYY-MM-DD (start date)
+  endDate?: string | null;       // YYYY-MM-DD (end date for multi-day events)
   startTime?: string | null;     // HH:mm format (null = all day)
   endTime?: string | null;       // HH:mm format
   isAllDay: boolean;
@@ -50,6 +51,8 @@ export interface CalendarEvent {
   // Recurrence
   recurrence?: EventRecurrence | null;
   recurrenceParentId?: string | null;  // Links generated instances to parent
+  excludedDates?: string[];            // YYYY-MM-DD dates to skip in recurrence
+  isException?: boolean;               // True if this is a modified instance of a recurring event
 
   // Source tracking (for future bookmark date extraction)
   source?: EventSource | null;

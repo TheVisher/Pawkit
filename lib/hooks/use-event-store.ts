@@ -54,6 +54,8 @@ type EventStore = {
   addEvent: (eventData: Partial<CalendarEvent>) => Promise<CalendarEvent | null>;
   updateEvent: (id: string, updates: CalendarEventUpdate) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
+  excludeDateFromRecurrence: (id: string, dateToExclude: string) => Promise<void>;
+  createExceptionInstance: (parentEvent: CalendarEvent, instanceDate: string) => Promise<CalendarEvent | null>;
   refresh: () => Promise<void>;
 
   // Query helpers
@@ -70,6 +72,31 @@ function generateRecurrenceInstancesInternal(
   rangeStart: string,
   rangeEnd: string
 ): RecurrenceInstance[] {
+  // Handle multi-day events (events with endDate)
+  if (event.endDate && event.endDate !== event.date && !event.recurrence) {
+    const instances: RecurrenceInstance[] = [];
+    const eventStart = new Date(event.date + 'T00:00:00');
+    const eventEnd = new Date(event.endDate + 'T00:00:00');
+    const rangeStartObj = new Date(rangeStart + 'T00:00:00');
+    const rangeEndObj = new Date(rangeEnd + 'T00:00:00');
+
+    // Generate an instance for each day the event spans within the visible range
+    let currentDate = new Date(Math.max(eventStart.getTime(), rangeStartObj.getTime()));
+    const endDate = new Date(Math.min(eventEnd.getTime(), rangeEndObj.getTime()));
+
+    while (currentDate <= endDate) {
+      const dateStr = format(currentDate, 'yyyy-MM-dd');
+      instances.push({
+        event,
+        instanceDate: dateStr,
+        isOriginal: dateStr === event.date,
+      });
+      currentDate = addDays(currentDate, 1);
+    }
+
+    return instances;
+  }
+
   if (!event.recurrence) {
     // Non-recurring event - just check if it falls within range
     if (event.date >= rangeStart && event.date <= rangeEnd) {
@@ -84,6 +111,7 @@ function generateRecurrenceInstancesInternal(
 
   const instances: RecurrenceInstance[] = [];
   const { frequency, interval = 1, daysOfWeek, dayOfMonth, weekOfMonth, endDate, endCount } = event.recurrence;
+  const excludedDates = new Set(event.excludedDates || []);
 
   const startDateObj = new Date(event.date + 'T00:00:00');
   const rangeStartObj = startOfDay(new Date(rangeStart + 'T00:00:00'));
@@ -107,8 +135,12 @@ function generateRecurrenceInstancesInternal(
     const dateStr = format(currentDate, 'yyyy-MM-dd');
 
     if (!isBefore(currentDate, rangeStartObj) && !isAfter(currentDate, rangeEndObj)) {
+      // Skip excluded dates
+      if (excludedDates.has(dateStr)) {
+        // Still increment and continue, just don't add to instances
+      }
       // For weekly recurrence with specific days
-      if (frequency === 'weekly' && daysOfWeek && daysOfWeek.length > 0) {
+      else if (frequency === 'weekly' && daysOfWeek && daysOfWeek.length > 0) {
         const dayOfWeek = getDay(currentDate);
         if (daysOfWeek.includes(dayOfWeek)) {
           instances.push({
@@ -236,6 +268,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
       userId: '',
       title: eventData.title || 'Untitled Event',
       date: eventData.date || format(new Date(), 'yyyy-MM-dd'),
+      endDate: eventData.endDate ?? null,
       startTime: eventData.startTime ?? null,
       endTime: eventData.endTime ?? null,
       isAllDay: eventData.isAllDay ?? true,
@@ -245,6 +278,8 @@ export const useEventStore = create<EventStore>((set, get) => ({
       color: eventData.color ?? EVENT_COLORS.purple,
       recurrence: eventData.recurrence ?? null,
       recurrenceParentId: eventData.recurrenceParentId ?? null,
+      excludedDates: eventData.excludedDates ?? [],
+      isException: eventData.isException ?? false,
       source: eventData.source ?? { type: 'manual' },
       createdAt: now,
       updatedAt: now,
@@ -327,6 +362,109 @@ export const useEventStore = create<EventStore>((set, get) => ({
       // STEP 3: Server sync would go here (future implementation)
     } catch (error) {
       console.error('[EventStore] Failed to delete event:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Exclude a specific date from a recurring event (delete single instance)
+   */
+  excludeDateFromRecurrence: async (id: string, dateToExclude: string) => {
+    if (!ensureActiveDevice()) {
+      return;
+    }
+
+    markDeviceActive();
+
+    const event = get().events.find(e => e.id === id);
+    if (!event || !event.recurrence) return;
+
+    const updatedExcludedDates = [...(event.excludedDates || []), dateToExclude];
+
+    const updatedEvent: CalendarEvent = {
+      ...event,
+      excludedDates: updatedExcludedDates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      // STEP 1: Save to local storage FIRST
+      await localDb.saveEvent(updatedEvent, { localOnly: true });
+
+      // STEP 2: Update Zustand for instant UI
+      set((state) => ({
+        events: state.events.map(e => e.id === id ? updatedEvent : e),
+      }));
+
+      // STEP 3: Server sync would go here (future implementation)
+    } catch (error) {
+      console.error('[EventStore] Failed to exclude date from recurrence:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create an exception instance for a recurring event (edit single instance)
+   * This creates a new non-recurring event for a specific date and excludes that date from the parent
+   */
+  createExceptionInstance: async (parentEvent: CalendarEvent, instanceDate: string) => {
+    if (!ensureActiveDevice()) {
+      return null;
+    }
+
+    markDeviceActive();
+
+    if (!parentEvent.recurrence) return null;
+
+    const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const now = new Date().toISOString();
+
+    // Create exception event (copy of parent but without recurrence)
+    const exceptionEvent: CalendarEvent = {
+      id: tempId,
+      userId: parentEvent.userId,
+      title: parentEvent.title,
+      date: instanceDate,
+      startTime: parentEvent.startTime,
+      endTime: parentEvent.endTime,
+      isAllDay: parentEvent.isAllDay,
+      description: parentEvent.description,
+      location: parentEvent.location,
+      url: parentEvent.url,
+      color: parentEvent.color,
+      recurrence: null, // Exception is not recurring
+      recurrenceParentId: parentEvent.id, // Link to parent
+      isException: true,
+      source: parentEvent.source,
+      createdAt: now,
+      updatedAt: now,
+      deleted: false,
+    };
+
+    // Update parent to exclude this date
+    const updatedExcludedDates = [...(parentEvent.excludedDates || []), instanceDate];
+    const updatedParent: CalendarEvent = {
+      ...parentEvent,
+      excludedDates: updatedExcludedDates,
+      updatedAt: now,
+    };
+
+    try {
+      // STEP 1: Save both to local storage
+      await localDb.saveEvent(exceptionEvent, { localOnly: true });
+      await localDb.saveEvent(updatedParent, { localOnly: true });
+
+      // STEP 2: Update Zustand for instant UI
+      set((state) => ({
+        events: [
+          exceptionEvent,
+          ...state.events.map(e => e.id === parentEvent.id ? updatedParent : e),
+        ],
+      }));
+
+      return exceptionEvent;
+    } catch (error) {
+      console.error('[EventStore] Failed to create exception instance:', error);
       throw error;
     }
   },
