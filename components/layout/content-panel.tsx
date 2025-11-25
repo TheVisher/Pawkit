@@ -86,9 +86,8 @@ export function ContentPanel({
       className={`
         absolute
         ${verticalClasses}
-        bg-white/5 backdrop-blur-lg
+        bg-white/5
         flex flex-col
-        overflow-hidden
         z-10
         transition-all duration-300
         ${borderClasses}
@@ -100,6 +99,9 @@ export function ContentPanel({
         boxShadow: "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)",
         // Smooth transitions for panel position changes
         transition: "left 0.3s ease-out, right 0.3s ease-out",
+        // Only apply backdrop-blur when not in embedded mode to avoid Chrome rendering bug
+        backdropFilter: isRightEmbedded ? 'none' : 'blur(16px)',
+        WebkitBackdropFilter: isRightEmbedded ? 'none' : 'blur(16px)',
       }}
       data-content-panel
       data-right-embedded={isRightEmbedded}
