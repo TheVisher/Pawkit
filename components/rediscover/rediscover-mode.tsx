@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Heart, Trash2 } from "lucide-react";
+import { X, Heart, Trash2, FolderPlus } from "lucide-react";
 import { CardModel } from "@/lib/types";
 import Image from "next/image";
 
-export type RediscoverAction = "keep" | "delete";
+export type RediscoverAction = "keep" | "delete" | "add-to-pawkit";
 
 export type RediscoverModeProps = {
   currentCard: CardModel | null;
@@ -16,7 +16,7 @@ export type RediscoverModeProps = {
 
 export function RediscoverMode({ currentCard, onAction, onExit, remainingCount }: RediscoverModeProps) {
   const [isExiting, setIsExiting] = useState(false);
-  const [cardTransition, setCardTransition] = useState<"entering" | "exiting-keep" | "exiting-delete" | null>(null);
+  const [cardTransition, setCardTransition] = useState<"entering" | "exiting-keep" | "exiting-delete" | "exiting-add-to-pawkit" | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Keyboard shortcuts
@@ -40,6 +40,10 @@ export function RediscoverMode({ currentCard, onAction, onExit, remainingCount }
         case "d":
           e.preventDefault();
           handleAction("delete");
+          break;
+        case "a":
+          e.preventDefault();
+          handleAction("add-to-pawkit");
           break;
         case "escape":
           e.preventDefault();
@@ -75,6 +79,8 @@ export function RediscoverMode({ currentCard, onAction, onExit, remainingCount }
       setCardTransition("exiting-keep");
     } else if (action === "delete") {
       setCardTransition("exiting-delete");
+    } else if (action === "add-to-pawkit") {
+      setCardTransition("exiting-add-to-pawkit");
     }
 
     // Wait for animation then trigger action
@@ -145,6 +151,8 @@ export function RediscoverMode({ currentCard, onAction, onExit, remainingCount }
             ? "-translate-x-full opacity-0"
             : cardTransition === "exiting-delete"
             ? "scale-95 opacity-0"
+            : cardTransition === "exiting-add-to-pawkit"
+            ? "-translate-y-8 scale-105 opacity-0"
             : "translate-x-0 opacity-100"
         }`}
       >
@@ -189,6 +197,15 @@ export function RediscoverMode({ currentCard, onAction, onExit, remainingCount }
             shortcut="D"
             onClick={() => handleAction("delete")}
             variant="danger"
+          />
+
+          {/* Add to Pawkit Button - Center */}
+          <ActionButton
+            icon={FolderPlus}
+            label="Add to Pawkit"
+            shortcut="A"
+            onClick={() => handleAction("add-to-pawkit")}
+            variant="default"
           />
 
           {/* Keep Button - Right */}
