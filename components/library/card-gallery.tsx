@@ -972,8 +972,6 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         style={{
           ...style,
           padding: `${cardPaddingPx}px`,
-          // Fix Chrome rendering bug with CSS columns on wide viewports
-          contain: 'layout style paint',
         }}
         className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface transition-all select-none ${
           selected ? "is-selected ring-2 ring-accent border-transparent" : "border-subtle"
@@ -983,12 +981,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       >
       {showThumbnail && layout !== "compact" && !isNote && (
         <div
-          className={`relative ${hasTextSection && showMetadata ? "mb-3" : ""} w-full overflow-hidden rounded-xl bg-surface-soft ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip`}
-          style={{
-            // Fix Chrome rendering bug where images don't paint inside CSS columns on wide viewports
-            isolation: 'isolate',
-            contain: 'layout style',
-          }}
+          className={`relative ${hasTextSection && showMetadata ? "mb-3" : ""} w-full rounded-xl bg-surface-soft ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip`}
         >
           {/* Film sprocket holes for movie cards */}
           {isMovie && (
@@ -1050,7 +1043,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               <img
                 src={card.image}
                 alt={card.title ?? card.url}
-                className={layout === "masonry" ? "block w-full h-auto" : "block h-full w-full object-cover"}
+                className={layout === "masonry" ? "block w-full h-auto rounded-xl" : "block h-full w-full object-cover rounded-xl"}
                 loading="lazy"
                 onLoad={onImageLoad}
                 onError={(e) => {
