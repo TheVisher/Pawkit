@@ -3569,4 +3569,59 @@ const collectionName = getCollectionName(collection);
 
 ---
 
-**Last Updated**: November 23, 2025
+### Empty State Onboarding Pattern (Web)
+
+**Files**: `app/(dashboard)/home/page.tsx`, `components/library/card-gallery.tsx`
+
+**Purpose**: Provide helpful guidance for new users with zero cards
+
+**Design Pattern**:
+```tsx
+// Onboarding empty state for new accounts
+<div className="rounded-2xl border border-dashed border-gray-700 bg-gray-950/50 p-8 text-center">
+  {/* Icon in circular accent container */}
+  <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
+    <span className="text-3xl" aria-hidden="true">🐾</span>
+    {/* Or Lucide icon: <Bookmark size={28} className="text-accent" /> */}
+  </div>
+
+  {/* Header */}
+  <h3 className="text-lg font-semibold text-gray-200 mb-2">Welcome to Pawkit!</h3>
+
+  {/* Description */}
+  <p className="text-sm text-gray-400 mb-4 max-w-md mx-auto">
+    Start building your collection by saving links, articles, and notes.
+  </p>
+
+  {/* Action hints */}
+  <div className="flex flex-wrap justify-center gap-3 text-xs text-gray-500">
+    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
+      <span>📎</span> Paste URL above
+    </span>
+    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
+      <span>🔌</span> Use browser extension
+    </span>
+    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
+      <span>📝</span> Create a note
+    </span>
+  </div>
+</div>
+```
+
+**Usage Guidelines**:
+- Show full onboarding only when `cards.length === 0` (truly new accounts)
+- Use simpler message for filtered empty states: "No cards match your filters"
+- Icon should be contextual: 🐾 for welcome, Bookmark for library
+- Action hints should match available features on that page
+
+**Home Page**:
+- Uses `showOnboarding={cards.length === 0}` prop on EmptyState
+- Shows full welcome message with pawkit mascot icon
+
+**Library Page**:
+- Early return in CardGallery when `cards.length === 0`
+- Uses Bookmark icon for contextual relevance
+
+---
+
+**Last Updated**: November 24, 2025

@@ -238,6 +238,7 @@ export const usePanelStore = create<PanelState>()(
       _switchUser: async (userId: string, workspaceId: string) => {
 
         // Reset to defaults (UI state, doesn't need server sync)
+        // Default to anchored mode so new users see the full 3-panel layout
         set({
           mode: "anchored",
           isOpen: false,
@@ -246,7 +247,7 @@ export const usePanelStore = create<PanelState>()(
           activeCardId: null,
           collapsedSections: {},
           wasAutoOpened: false,
-          leftMode: "floating",
+          leftMode: "anchored",
           isLeftOpen: true,
         });
 
@@ -263,7 +264,7 @@ export const usePanelStore = create<PanelState>()(
                 isOpen: parsed.state.isOpen ?? false,
                 contentType: parsed.state.contentType ?? "library-controls",
                 collapsedSections: parsed.state.collapsedSections ?? {},
-                leftMode: parsed.state.leftMode ?? "floating",
+                leftMode: parsed.state.leftMode ?? "anchored",
                 isLeftOpen: parsed.state.isLeftOpen ?? true,
               });
             }

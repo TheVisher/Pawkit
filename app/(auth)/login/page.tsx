@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -9,14 +9,30 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const { signIn } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  // Check for verification success or error from email confirmation
+  useEffect(() => {
+    const verified = searchParams.get('verified')
+    const errorParam = searchParams.get('error')
+    const message = searchParams.get('message')
+
+    if (verified === 'true') {
+      setSuccess('Email verified successfully! You can now sign in.')
+    }
+    if (errorParam) {
+      setError(message || 'An error occurred. Please try again.')
+    }
+  }, [searchParams])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+    setSuccess(null)
     setLoading(true)
 
     const { error } = await signIn(email, password)
@@ -47,6 +63,11 @@ function LoginForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {success && (
+          <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/50 p-3 text-sm text-emerald-400">
+            {success}
+          </div>
+        )}
         {error && (
           <div className="rounded-lg bg-rose-500/10 border border-rose-500/50 p-3 text-sm text-rose-400">
             {error}

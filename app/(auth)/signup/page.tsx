@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function SignupPage() {
@@ -13,7 +12,6 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const { signUp } = useAuth()
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,31 +37,40 @@ export default function SignupPage() {
     } else {
       setSuccess(true)
       setLoading(false)
-      // Auto-redirect to home after signup (Supabase may auto-confirm or send email)
-      setTimeout(() => {
-        router.refresh()
-        router.push('/home')
-        // Fallback: force reload if push doesn't work
-        setTimeout(() => {
-          window.location.href = '/home'
-        }, 500)
-      }, 1000)
+      // Don't auto-redirect - user needs to verify email first
     }
   }
 
   if (success) {
     return (
       <div className="space-y-6">
-        <div className="space-y-2 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent/20">
-            <svg className="h-6 w-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        <div className="space-y-4 text-center">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-accent/20">
+            <svg className="h-8 w-8 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-100">Account created!</h1>
-          <p className="text-sm text-gray-400">
-            Redirecting you to Pawkit...
+          <h1 className="text-2xl font-bold text-gray-100">Check your email</h1>
+          <p className="text-sm text-gray-400 max-w-sm mx-auto">
+            We&apos;ve sent a verification link to <span className="text-gray-200 font-medium">{email}</span>. Click the link to verify your account.
           </p>
+          <div className="pt-4 space-y-3">
+            <p className="text-xs text-gray-500">
+              Didn&apos;t receive the email? Check your spam folder or{' '}
+              <button
+                onClick={() => setSuccess(false)}
+                className="text-accent hover:text-accent/80 font-medium"
+              >
+                try again
+              </button>
+            </p>
+            <Link
+              href="/login"
+              className="inline-block text-sm text-accent hover:text-accent/80 font-medium"
+            >
+              Back to login
+            </Link>
+          </div>
         </div>
       </div>
     )

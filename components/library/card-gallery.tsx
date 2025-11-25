@@ -478,6 +478,34 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     }
   }, [handlePinToSidebar, handleUnpinFromSidebar]);
 
+  // Empty state for new users
+  if (cards.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-dashed border-gray-700 bg-gray-950/50 p-8 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
+            <Bookmark size={28} className="text-accent" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-200 mb-2">Your library is empty</h3>
+          <p className="text-sm text-gray-400 mb-4 max-w-md mx-auto">
+            Start saving bookmarks, articles, and notes to build your personal collection. Use the search bar above to paste a URL, or install the browser extension for one-click saving.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3 text-xs text-gray-500">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
+              <span>📎</span> Paste URL above
+            </span>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
+              <span>🔌</span> Use browser extension
+            </span>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
+              <span>📝</span> Create a note
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {!hideControls && (
