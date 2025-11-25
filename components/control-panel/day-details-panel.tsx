@@ -12,7 +12,12 @@ import { CalendarIcon, X, Plus, Clock, MapPin, Trash2 } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import Image from "next/image";
 import { AddEventModal } from "@/components/modals/add-event-modal";
+import { DeleteEventModal } from "@/components/modals/delete-event-modal";
+import { EditRecurringModal } from "@/components/modals/edit-recurring-modal";
 import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
+
+import { CalendarRange } from "lucide-react";
+import { differenceInDays } from "date-fns";
 
 // Helper to format time in 12-hour format
 function formatTime12h(time24: string): string {
@@ -22,9 +27,21 @@ function formatTime12h(time24: string): string {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
+// Helper to get multi-day event info for the current date
+function getMultiDayInfo(event: CalendarEvent, currentDate: Date): { dayNumber: number; totalDays: number } | null {
+  if (!event.endDate || event.endDate === event.date) return null;
+
+  const startDate = new Date(event.date + 'T00:00:00');
+  const endDate = new Date(event.endDate + 'T00:00:00');
+  const totalDays = differenceInDays(endDate, startDate) + 1;
+  const dayNumber = differenceInDays(currentDate, startDate) + 1;
+
+  return { dayNumber, totalDays };
+}
+
 export function DayDetailsPanel() {
   const { cards, addCard } = useDataStore();
-  const { events, isInitialized, initialize, deleteEvent, generateRecurrenceInstances } = useEventStore();
+  const { events, isInitialized, initialize, deleteEvent, excludeDateFromRecurrence, createExceptionInstance, generateRecurrenceInstances } = useEventStore();
   const selectedDay = useCalendarStore((state) => state.selectedDay);
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
   const openCalendarControls = usePanelStore((state) => state.openCalendarControls);
@@ -32,6 +49,10 @@ export function DayDetailsPanel() {
 
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
+  const [showEditRecurringModal, setShowEditRecurringModal] = useState(false);
+  const [eventToEditRecurring, setEventToEditRecurring] = useState<CalendarEvent | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
   // Track if component is mounted (for portal rendering)
@@ -132,18 +153,86 @@ export function DayDetailsPanel() {
   };
 
   const handleEditEvent = (event: CalendarEvent) => {
-    setEditingEvent(event);
+    // If event is recurring, show the edit recurring modal first
+    if (event.recurrence) {
+      setEventToEditRecurring(event);
+      setShowEditRecurringModal(true);
+    } else {
+      // Non-recurring events go straight to edit modal
+      setEditingEvent(event);
+      setShowAddEventModal(true);
+    }
+  };
+
+  const handleEditThisInstance = async () => {
+    if (!eventToEditRecurring || !selectedDay) return;
+
+    const dateStr = format(selectedDay, 'yyyy-MM-dd');
+
+    try {
+      // Create an exception instance for this date
+      const exceptionEvent = await createExceptionInstance(eventToEditRecurring, dateStr);
+      if (exceptionEvent) {
+        // Close the recurring modal and open the edit modal with the exception
+        setShowEditRecurringModal(false);
+        setEventToEditRecurring(null);
+        setEditingEvent(exceptionEvent);
+        setShowAddEventModal(true);
+      }
+    } catch (error) {
+      console.error('Failed to create exception instance:', error);
+    }
+  };
+
+  const handleEditAllInstances = () => {
+    if (!eventToEditRecurring) return;
+
+    // Close the recurring modal and open the edit modal with the parent event
+    setShowEditRecurringModal(false);
+    setEditingEvent(eventToEditRecurring);
+    setEventToEditRecurring(null);
     setShowAddEventModal(true);
   };
 
-  const handleDeleteEvent = async (event: CalendarEvent) => {
+  const handleCloseEditRecurringModal = () => {
+    setShowEditRecurringModal(false);
+    setEventToEditRecurring(null);
+  };
+
+  const handleDeleteEvent = (event: CalendarEvent) => {
+    setEventToDelete(event);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteThisInstance = async () => {
+    if (!eventToDelete || !selectedDay) return;
+
+    const dateStr = format(selectedDay, 'yyyy-MM-dd');
+
     try {
-      await deleteEvent(event.id);
+      await excludeDateFromRecurrence(eventToDelete.id, dateStr);
       const { useToastStore } = await import("@/lib/stores/toast-store");
-      useToastStore.getState().success("Event deleted");
+      useToastStore.getState().success("Event instance deleted");
     } catch (error) {
-      console.error('Failed to delete event:', error);
+      console.error('Failed to delete event instance:', error);
     }
+  };
+
+  const handleDeleteAllInstances = async () => {
+    if (!eventToDelete) return;
+
+    try {
+      await deleteEvent(eventToDelete.id);
+      const { useToastStore } = await import("@/lib/stores/toast-store");
+      useToastStore.getState().success("Event series deleted");
+    } catch (error) {
+      console.error('Failed to delete event series:', error);
+    }
+  };
+
+  const handleCloseDeleteModal = () => {
+    setShowDeleteModal(false);
+    setEventToDelete(null);
   };
 
   const handleCloseModal = () => {
@@ -232,7 +321,9 @@ export function DayDetailsPanel() {
               Events ({dayEvents.length})
             </h3>
             <div className="space-y-2">
-              {dayEvents.map((event) => (
+              {dayEvents.map((event) => {
+                const multiDayInfo = selectedDay ? getMultiDayInfo(event, selectedDay) : null;
+                return (
                 <div
                   key={event.id}
                   className="p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10
@@ -251,6 +342,13 @@ export function DayDetailsPanel() {
                         <div className="font-medium text-foreground truncate">
                           {event.title}
                         </div>
+                        {/* Multi-day event indicator */}
+                        {multiDayInfo && (
+                          <div className="text-xs text-accent flex items-center gap-1 mt-1">
+                            <CalendarRange size={10} />
+                            Day {multiDayInfo.dayNumber} of {multiDayInfo.totalDays}
+                          </div>
+                        )}
                         {!event.isAllDay && event.startTime && (
                           <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
                             <Clock size={12} />
@@ -281,7 +379,8 @@ export function DayDetailsPanel() {
                     </button>
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
           </div>
         )}
@@ -353,6 +452,32 @@ export function DayDetailsPanel() {
           onClose={handleCloseModal}
           scheduledDate={selectedDay}
           editingEvent={editingEvent}
+        />,
+        document.body
+      )}
+
+      {/* Delete Event Modal - Rendered via portal */}
+      {isMounted && showDeleteModal && eventToDelete && createPortal(
+        <DeleteEventModal
+          open={showDeleteModal}
+          onClose={handleCloseDeleteModal}
+          event={eventToDelete}
+          instanceDate={selectedDay ? format(selectedDay, 'yyyy-MM-dd') : undefined}
+          onDeleteThis={handleDeleteThisInstance}
+          onDeleteAll={handleDeleteAllInstances}
+        />,
+        document.body
+      )}
+
+      {/* Edit Recurring Event Modal - Rendered via portal */}
+      {isMounted && showEditRecurringModal && eventToEditRecurring && createPortal(
+        <EditRecurringModal
+          open={showEditRecurringModal}
+          onClose={handleCloseEditRecurringModal}
+          event={eventToEditRecurring}
+          instanceDate={selectedDay ? format(selectedDay, 'yyyy-MM-dd') : undefined}
+          onEditThis={handleEditThisInstance}
+          onEditAll={handleEditAllInstances}
         />,
         document.body
       )}
