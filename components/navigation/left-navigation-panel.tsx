@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, type LucideIcon } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, type LucideIcon } from "lucide-react";
 import { shallow } from "zustand/shallow";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -167,6 +167,40 @@ export function LeftNavigationPanel({
 
   // Get Rediscover mode state
   const rediscoverStore = useRediscoverStore();
+
+  // Calculate uncategorized cards count for Rediscover badge
+  // Uses a separate subscription to avoid re-renders from unrelated card changes
+  const uncategorizedCount = useDataStore((state) => {
+    // Build a set of private collection SLUGS for fast lookup
+    const privateCollectionSlugs = new Set<string>();
+    const getAllPrivateSlugs = (nodes: CollectionNode[]): void => {
+      for (const node of nodes) {
+        if (node.isPrivate) {
+          privateCollectionSlugs.add(node.slug);
+        }
+        if (node.children && node.children.length > 0) {
+          getAllPrivateSlugs(node.children);
+        }
+      }
+    };
+    getAllPrivateSlugs(state.collections);
+
+    // Count bookmarks with no tags AND no collections (excluding deleted, den, private)
+    return state.cards.filter(card => {
+      if (card.deleted === true) return false;
+      if (card.type !== "url") return false; // Only bookmarks, not notes
+      if (card.collections?.includes('the-den')) return false;
+      const isInPrivateCollection = card.collections?.some(collectionSlug =>
+        privateCollectionSlugs.has(collectionSlug)
+      );
+      if (isInPrivateCollection) return false;
+
+      // Uncategorized = no tags AND no collections
+      const hasNoTags = !card.tags || card.tags.length === 0;
+      const hasNoCollections = !card.collections || card.collections.length === 0;
+      return hasNoTags && hasNoCollections;
+    }).length;
+  });
 
   const pinnedNotes = useMemo(() => {
     return pinnedNoteIds
@@ -1001,6 +1035,27 @@ export function LeftNavigationPanel({
                   </button>
                 );
               })}
+
+              {/* Rediscover - Navigate to Library in rediscover mode */}
+              <button
+                onClick={() => handleNavigate("/library?mode=rediscover")}
+                className={`
+                  w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all relative
+                  ${rediscoverStore.isActive
+                    ? "text-accent-foreground font-medium shadow-glow-accent-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  }
+                `}
+              >
+                <Sparkles size={16} className="flex-shrink-0" />
+                <span className="flex-1 text-left">Rediscover</span>
+                {uncategorizedCount > 0 && (
+                  <span className="text-xs text-muted-foreground">({uncategorizedCount})</span>
+                )}
+                {rediscoverStore.isActive && (
+                  <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
+                )}
+              </button>
             </div>
           </PanelSection>
 
