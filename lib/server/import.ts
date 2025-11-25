@@ -1,8 +1,12 @@
 import { parseISO } from "date-fns";
+import { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/server/prisma";
 import { exportPayloadSchema } from "@/lib/validators/import";
 import { normalizeCollections, normalizeTags, ensureUrlProtocol, safeHost } from "@/lib/utils/strings";
 import { stringifyNullable } from "@/lib/utils/json";
+
+// Transaction client type for Prisma $transaction callbacks
+type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
 export async function exportData(userId: string, includeDen = false) {
   const cardWhere = includeDen
@@ -33,7 +37,7 @@ export async function importData(userId: string, payload: unknown) {
   let createdCollections = 0;
   let updatedCollections = 0;
 
-  await prisma.$transaction(async (tx: any) => {
+  await prisma.$transaction(async (tx: TransactionClient) => {
     for (const collection of parsed.collections) {
       const id = collection.id ?? undefined;
       const existing = id

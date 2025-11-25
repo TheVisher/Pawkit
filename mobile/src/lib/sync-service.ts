@@ -38,14 +38,12 @@ export async function sync(): Promise<SyncResult> {
 
   // Prevent concurrent syncs
   if (isSyncing) {
-    console.log('[Sync] Already syncing, skipping...');
     return result;
   }
 
   // Rate limit syncs
   const now = Date.now();
   if (now - lastSyncAttempt < MIN_SYNC_INTERVAL) {
-    console.log('[Sync] Too soon since last sync, skipping...');
     return result;
   }
 
@@ -53,8 +51,6 @@ export async function sync(): Promise<SyncResult> {
   lastSyncAttempt = now;
 
   try {
-    console.log('[Sync] Starting sync...');
-
     // Pull from server
     const [serverCards, serverCollections] = await Promise.all([
       pullCards(),
@@ -69,9 +65,7 @@ export async function sync(): Promise<SyncResult> {
     LocalStorage.setLastSyncTime(Date.now());
 
     result.success = true;
-    console.log('[Sync] Sync completed:', result);
   } catch (error) {
-    console.error('[Sync] Sync failed:', error);
     result.errors.push(error instanceof Error ? error.message : 'Unknown error');
   } finally {
     isSyncing = false;
@@ -118,9 +112,7 @@ async function pullCards(): Promise<{ added: number; updated: number }> {
       }
     }
 
-    console.log('[Sync] Cards pull completed:', { added, updated });
   } catch (error) {
-    console.error('[Sync] Error pulling cards:', error);
     throw error;
   }
 
@@ -142,9 +134,7 @@ async function pullCollections(): Promise<{ updated: number }> {
     await LocalStorage.saveCollections(serverCollections);
     updated = serverCollections.length;
 
-    console.log('[Sync] Collections pull completed:', { updated });
   } catch (error) {
-    console.error('[Sync] Error pulling collections:', error);
     throw error;
   }
 

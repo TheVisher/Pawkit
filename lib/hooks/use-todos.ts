@@ -11,6 +11,16 @@ export interface Todo {
   updatedAt: Date;
 }
 
+// API response has date strings instead of Date objects
+interface TodoApiResponse {
+  id: string;
+  userId: string;
+  text: string;
+  completed: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface TodoStore {
   todos: Todo[];
   isLoading: boolean;
@@ -39,7 +49,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       const todos = data.success ? data.data : data;
 
       // Convert date strings to Date objects
-      const parsedTodos = todos.map((todo: any) => ({
+      const parsedTodos = (todos as TodoApiResponse[]).map((todo) => ({
         ...todo,
         createdAt: new Date(todo.createdAt),
         updatedAt: new Date(todo.updatedAt)

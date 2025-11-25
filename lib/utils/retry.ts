@@ -1,16 +1,23 @@
+// Retryable error shape - errors with status codes or error codes
+interface RetryableError {
+  code?: string;
+  status?: number;
+  message?: string;
+}
+
 export interface RetryOptions {
   maxAttempts?: number;
   baseDelay?: number;
   maxDelay?: number;
   backoffMultiplier?: number;
   jitter?: boolean;
-  retryCondition?: (error: any) => boolean;
+  retryCondition?: (error: unknown) => boolean;
 }
 
 export class RetryError extends Error {
   constructor(
     message: string,
-    public lastError: any,
+    public lastError: unknown,
     public attempts: number
   ) {
     super(message);
@@ -31,22 +38,23 @@ export async function withRetry<T>(
     maxDelay = 10000,
     backoffMultiplier = 2,
     jitter = true,
-    retryCondition = (error) => {
+    retryCondition = (error: unknown) => {
       // Retry on network errors, 5xx errors, and rate limiting
-      if (error?.code === 'NETWORK_ERROR' || error?.code === 'TIMEOUT') {
+      const err = error as RetryableError;
+      if (err?.code === 'NETWORK_ERROR' || err?.code === 'TIMEOUT') {
         return true;
       }
-      if (error?.status >= 500) {
+      if (err?.status !== undefined && err.status >= 500) {
         return true;
       }
-      if (error?.status === 429) {
+      if (err?.status === 429) {
         return true;
       }
       return false;
     }
   } = options;
 
-  let lastError: any;
+  let lastError: unknown;
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {

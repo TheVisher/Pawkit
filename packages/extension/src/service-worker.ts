@@ -71,8 +71,14 @@ browser.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 })
 
+// API response type for notification handling
+interface ApiResponse {
+  ok: boolean;
+  error?: string;
+}
+
 // Helper to show notifications
-function showNotification(response: any, title: string) {
+function showNotification(response: ApiResponse, title: string) {
   if (response.ok) {
     browser.notifications?.create({
       type: 'basic',

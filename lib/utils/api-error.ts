@@ -27,7 +27,7 @@ export function handleApiError(error: unknown, context?: { route?: string; userI
 
   // Prisma errors (check for code property since PrismaClientKnownRequestError may not be available)
   if (error && typeof error === 'object' && 'code' in error && typeof error.code === 'string') {
-    const prismaError = error as { code: string; meta?: any };
+    const prismaError = error as { code: string; meta?: Record<string, unknown> };
     switch (prismaError.code) {
       case "P2025": // Record not found
         return notFound('Resource', prismaError.meta);

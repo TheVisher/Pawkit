@@ -13,6 +13,11 @@ import {
   ChevronRight
 } from "lucide-react";
 
+// Only allow this page in development mode
+if (process.env.NODE_ENV === "production") {
+  throw new Error("Test page is not available in production");
+}
+
 // Test result types
 type TestStatus = "pending" | "running" | "pass" | "fail" | "warning";
 
@@ -1025,7 +1030,7 @@ export default function PreMergeTestSuite() {
         if (response.ok) {
           const pawkitsData = await response.json();
           const pawkits = Array.isArray(pawkitsData) ? pawkitsData : [];
-          const foundPawkit = pawkits.find((p: any) => p.id === privateCollection.id);
+          const foundPawkit = pawkits.find((p: { id: string; isPrivate?: boolean }) => p.id === privateCollection.id);
           const isPrivate = foundPawkit?.isPrivate === true;
 
           updateTest(sectionId, `${sectionId}-test-${testIdx}`, {

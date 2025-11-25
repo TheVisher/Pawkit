@@ -61,9 +61,9 @@ class SyncService {
       });
       clearTimeout(timeoutId);
       return response;
-    } catch (error: any) {
+    } catch (error) {
       clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         throw new Error(`Request timeout after ${timeout}ms for ${url}`);
       }
       throw error;

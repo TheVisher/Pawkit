@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDataStore } from "@/lib/stores/data-store";
-import { CardModel } from "@/lib/types";
+import { CardModel, CollectionNode } from "@/lib/types";
 import { Tag, Edit2, Trash2, Merge, Search } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,7 @@ export default function TagsPage() {
   useEffect(() => {
     // Build a set of private collection SLUGS for fast lookup (cards store slugs, not IDs)
     const privateCollectionSlugs = new Set<string>();
-    const getAllPrivateSlugs = (nodes: any[]): void => {
+    const getAllPrivateSlugs = (nodes: CollectionNode[]): void => {
       for (const node of nodes) {
         if (node.isPrivate) {
           privateCollectionSlugs.add(node.slug);

@@ -10,7 +10,7 @@ import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { AnimatedBackground } from "@/components/rediscover/animated-background";
 import { RediscoverMode, RediscoverAction } from "@/components/rediscover/rediscover-mode";
 import { useRediscoverStore, RediscoverFilter } from "@/lib/hooks/rediscover-store";
-import { CardModel } from "@/lib/types";
+import { CardModel, CollectionNode } from "@/lib/types";
 
 function LibraryPageContent() {
   const searchParams = useSearchParams();
@@ -97,7 +97,7 @@ function LibraryPageContent() {
   const items = useMemo((): CardModel[] => {
     // Build a set of private collection SLUGS for fast lookup (cards store slugs, not IDs)
     const privateCollectionSlugs = new Set<string>();
-    const getAllPrivateSlugs = (nodes: any[]): void => {
+    const getAllPrivateSlugs = (nodes: CollectionNode[]): void => {
       for (const node of nodes) {
         if (node.isPrivate) {
           privateCollectionSlugs.add(node.slug);

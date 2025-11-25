@@ -23,10 +23,11 @@ export function ClientEvents() {
         userAgent: navigator.userAgent,
       });
     };
-    document.addEventListener("securitypolicyviolation", onCspViolation as any);
+    // Cast needed: TypeScript's lib.dom.d.ts doesn't include securitypolicyviolation event on document
+    document.addEventListener("securitypolicyviolation", onCspViolation as EventListener);
     window.addEventListener("error", onError);
     return () => {
-      document.removeEventListener("securitypolicyviolation", onCspViolation as any);
+      document.removeEventListener("securitypolicyviolation", onCspViolation as EventListener);
       window.removeEventListener("error", onError);
     };
   }, []);

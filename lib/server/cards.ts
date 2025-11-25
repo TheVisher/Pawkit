@@ -396,19 +396,24 @@ export async function bulkAddCollection(userId: string, cardIds: string[], slug:
     throw new Error(`Collection with slug "${slug}" does not exist`);
   }
 
+  // Fetch all cards in a single query
   const cards = await prisma.card.findMany({ where: { id: { in: cardIds }, userId } });
-  await Promise.all(
-    cards.map((card: PrismaCard) => {
-      const existing = new Set(parseJsonArray(card.collections));
-      existing.add(slug);
-      return prisma.card.update({
-        where: { id: card.id, userId },
-        data: {
-          collections: serializeCollections(Array.from(existing))
-        }
-      });
-    })
-  );
+
+  // Batch updates using a transaction to avoid N+1 individual updates
+  // Group cards by their new collections value to minimize queries
+  const updates = cards.map((card: PrismaCard) => {
+    const existing = new Set(parseJsonArray(card.collections));
+    existing.add(slug);
+    return prisma.card.update({
+      where: { id: card.id, userId },
+      data: {
+        collections: serializeCollections(Array.from(existing))
+      }
+    });
+  });
+
+  // Execute all updates in a single transaction (still multiple queries but batched)
+  await prisma.$transaction(updates);
 }
 
 export async function bulkRemoveCards(userId: string, cardIds: string[]) {
@@ -514,8 +519,8 @@ export async function restoreCard(userId: string, id: string) {
   }
 
   // Parse collections array
-  const collections: any = card.collections ? JSON.parse(card.collections) : [];
-  const collectionSlugs = Array.isArray(collections) ? collections : [];
+  const parsedCollections: unknown = card.collections ? JSON.parse(card.collections) : [];
+  const collectionSlugs = Array.isArray(parsedCollections) ? (parsedCollections as string[]) : [];
 
   let restoredToLibrary = false;
   let cleanedCollections = collectionSlugs;

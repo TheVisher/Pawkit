@@ -5,6 +5,7 @@ import { useMemo, Suspense, useEffect } from "react";
 import { NotesView } from "@/components/notes/notes-view";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { CollectionNode } from "@/lib/types";
 
 function NotesPageContent() {
   const searchParams = useSearchParams();
@@ -23,7 +24,7 @@ function NotesPageContent() {
   const allNotes = useMemo(() => {
     // Build a set of private collection SLUGS for fast lookup (cards store slugs, not IDs)
     const privateCollectionSlugs = new Set<string>();
-    const getAllPrivateSlugs = (nodes: any[]): void => {
+    const getAllPrivateSlugs = (nodes: CollectionNode[]): void => {
       for (const node of nodes) {
         if (node.isPrivate) {
           privateCollectionSlugs.add(node.slug);

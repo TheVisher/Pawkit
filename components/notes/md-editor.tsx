@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, ReactNode, HTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -9,6 +9,19 @@ import remarkBreaks from "remark-breaks";
 import { useDataStore } from "@/lib/stores/data-store";
 import { noteTemplates, NoteTemplate } from "@/lib/templates/note-templates";
 import { Bold, Italic, Strikethrough, Link, Code, List, ListOrdered, Quote, Eye, Edit, Maximize2, FileText, Bookmark, Globe, Layout, RefreshCw, Check, Clock, Heading1, Heading2, Heading3 } from "lucide-react";
+
+// ReactMarkdown code component props
+interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
+  inline?: boolean;
+  className?: string;
+  children?: ReactNode;
+}
+
+// ReactMarkdown anchor component props
+interface AnchorComponentProps extends HTMLAttributes<HTMLAnchorElement> {
+  href?: string;
+  children?: ReactNode;
+}
 
 // Fuzzy search function for note titles
 function fuzzySearch(query: string, text: string): number {
@@ -406,8 +419,8 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
   }, [content]);
 
   // Custom renderer for wiki-links and code
-  const components = {
-    code: ({ node, inline, className, children, ...props }: any) => {
+  const components: Components = {
+    code: ({ inline, className, children, ...props }: CodeComponentProps) => {
       // In ReactMarkdown v10, we need to check multiple ways:
       // 1. Check if inline prop exists and is true
       // 2. Check if className contains "language-" (block code marker)
@@ -437,7 +450,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
         </code>
       );
     },
-    a: ({ node, href, children, ...props }: any) => {
+    a: ({ href, children, ...props }: AnchorComponentProps) => {
       // Check if this is a wiki-link (starts with #/wiki/)
       if (href?.startsWith('#/wiki/')) {
         const linkText = href.replace('#/wiki/', '').replace(/-/g, ' ');
@@ -453,7 +466,6 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
                 onClick={() => onNavigate(cardId)}
                 className="!text-blue-400 hover:!text-blue-300 !underline !decoration-blue-400/50 hover:!decoration-blue-300 cursor-pointer !font-bold transition-colors inline-flex items-center gap-1"
                 style={{ color: '#60a5fa', textDecoration: 'underline', textDecorationColor: '#60a5fa80' }}
-                {...props}
               >
                 <Bookmark size={14} />
                 {children}
@@ -494,7 +506,6 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
               onClick={() => onNavigate(noteId)}
               className="!text-purple-400 hover:!text-purple-300 !underline !decoration-purple-400/50 hover:!decoration-purple-300 cursor-pointer !font-bold transition-colors inline-flex items-center gap-1"
               style={{ color: '#a78bfa', textDecoration: 'underline', textDecorationColor: '#a78bfa80' }}
-              {...props}
             >
               <FileText size={14} />
               {children}

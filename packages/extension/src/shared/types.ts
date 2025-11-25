@@ -71,7 +71,7 @@ export interface SaveCardResponse {
     id: string
     title: string
     url: string
-    [key: string]: any
+    [key: string]: unknown
   }
   error?: string
 }

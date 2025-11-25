@@ -48,8 +48,9 @@ export default function AddBookmarkScreen() {
           onPress: () => navigation.goBack(),
         },
       ]);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to add bookmark');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add bookmark';
+      Alert.alert('Error', errorMessage);
     } finally {
       setSaving(false);
     }

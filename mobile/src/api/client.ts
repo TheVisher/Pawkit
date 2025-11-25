@@ -5,7 +5,7 @@ import { safeHost } from '../lib/utils';
 
 // API Error class
 export class ApiError extends Error {
-  constructor(public status: number, message: string, public data?: any) {
+  constructor(public status: number, message: string, public data?: Record<string, unknown>) {
     super(message);
     this.name = 'ApiError';
   }
@@ -31,10 +31,39 @@ function parseCommaSeparated(value: string | null): string[] {
   return value.split(',').map(s => s.trim()).filter(Boolean);
 }
 
+// Database card row type (before transformation)
+interface DbCard {
+  id: string;
+  type: string;
+  url: string;
+  title: string | null;
+  notes: string | null;
+  content: string | null;
+  status: string;
+  tags: string | null;
+  collections: string | null;
+  domain: string | null;
+  image: string | null;
+  description: string | null;
+  metadata: string | null;
+  articleContent: string | null;
+  pinned: boolean;
+  deleted: boolean;
+  deletedAt: string | null;
+  inDen: boolean;
+  encryptedContent: string | null;
+  scheduledDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+}
+
 // Helper to convert database card to CardModel
-function mapCardFromDb(dbCard: any): CardModel {
+function mapCardFromDb(dbCard: DbCard): CardModel {
   return {
     ...dbCard,
+    type: dbCard.type as CardModel['type'],
+    status: dbCard.status as CardModel['status'],
     tags: parseCommaSeparated(dbCard.tags),
     collections: parseCommaSeparated(dbCard.collections),
     metadata: dbCard.metadata ? JSON.parse(dbCard.metadata) : undefined,
@@ -192,8 +221,8 @@ export const cardsApi = {
       throw new ApiError(401, 'Not authenticated');
     }
 
-    // Convert arrays to comma-separated strings
-    const dbUpdates: any = { ...updates };
+    // Convert arrays to comma-separated strings for database storage
+    const dbUpdates: Record<string, unknown> = { ...updates };
     if (updates.tags) {
       dbUpdates.tags = updates.tags.join(',');
     }

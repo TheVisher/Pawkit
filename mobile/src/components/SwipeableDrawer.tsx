@@ -65,16 +65,11 @@ export function SwipeableDrawer({
         // Check if touch starts within edge area when closed
         if (!isOpen) {
           const touchX = evt.nativeEvent.pageX;
-          console.log(`[SwipeableDrawer] Touch at X: ${touchX}, Side: ${side}, EdgeWidth: ${EDGE_WIDTH}`);
 
           if (side === 'left') {
-            const shouldRespond = touchX < EDGE_WIDTH;
-            console.log(`[SwipeableDrawer] Left edge check: ${shouldRespond}`);
-            return shouldRespond;
+            return touchX < EDGE_WIDTH;
           } else {
-            const shouldRespond = touchX > SCREEN_WIDTH - EDGE_WIDTH;
-            console.log(`[SwipeableDrawer] Right edge check: ${shouldRespond} (touchX: ${touchX}, threshold: ${SCREEN_WIDTH - EDGE_WIDTH})`);
-            return shouldRespond;
+            return touchX > SCREEN_WIDTH - EDGE_WIDTH;
           }
         }
         return false;
@@ -137,19 +132,14 @@ export function SwipeableDrawer({
         translateX.flattenOffset();
 
         const currentValue = (translateX as any)._value;
-        console.log(`[SwipeableDrawer] Release - currentValue: ${currentValue}, threshold: ${SWIPE_THRESHOLD}, isOpen: ${isOpen}`);
 
         if (side === 'left') {
           const shouldOpen = currentValue > SWIPE_THRESHOLD;
-          console.log(`[SwipeableDrawer] Left panel - shouldOpen: ${shouldOpen}`);
           if (shouldOpen && !isOpen) {
-            console.log('[SwipeableDrawer] Opening left panel');
             onOpen();
           } else if (!shouldOpen && isOpen) {
-            console.log('[SwipeableDrawer] Closing left panel');
             onClose();
           } else {
-            console.log('[SwipeableDrawer] Snapping back to current state');
             // Snap back to current state
             Animated.parallel([
               Animated.timing(translateX, {
@@ -166,15 +156,11 @@ export function SwipeableDrawer({
           }
         } else {
           const shouldOpen = currentValue < -SWIPE_THRESHOLD;
-          console.log(`[SwipeableDrawer] Right panel - shouldOpen: ${shouldOpen}`);
           if (shouldOpen && !isOpen) {
-            console.log('[SwipeableDrawer] Opening right panel');
             onOpen();
           } else if (!shouldOpen && isOpen) {
-            console.log('[SwipeableDrawer] Closing right panel');
             onClose();
           } else {
-            console.log('[SwipeableDrawer] Snapping back to current state');
             // Snap back to current state
             Animated.parallel([
               Animated.timing(translateX, {
@@ -224,22 +210,12 @@ export function SwipeableDrawer({
         >
           {Platform.OS === 'ios' ? (
             <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill}>
-              <TouchableWithoutFeedback
-                onPress={() => {
-                  console.log('[SwipeableDrawer] Backdrop tapped, closing panel');
-                  onClose();
-                }}
-              >
+              <TouchableWithoutFeedback onPress={onClose}>
                 <View style={[StyleSheet.absoluteFill, styles.backdropDim]} />
               </TouchableWithoutFeedback>
             </BlurView>
           ) : (
-            <TouchableWithoutFeedback
-              onPress={() => {
-                console.log('[SwipeableDrawer] Backdrop tapped, closing panel');
-                onClose();
-              }}
-            >
+            <TouchableWithoutFeedback onPress={onClose}>
               <View style={[StyleSheet.absoluteFill, styles.backdropDimAndroid]} />
             </TouchableWithoutFeedback>
           )}

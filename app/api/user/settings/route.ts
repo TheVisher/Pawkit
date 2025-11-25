@@ -5,6 +5,22 @@ import { prisma } from "@/lib/server/prisma";
 import { unauthorized, success, rateLimited } from "@/lib/utils/api-responses";
 import { rateLimit } from "@/lib/utils/rate-limit";
 
+// Recent history item type for user settings
+interface RecentHistoryItem {
+  id: string;
+  title: string;
+  type: "card" | "note";
+  url?: string;
+  image?: string;
+  timestamp: number;
+}
+
+// Settings with optional recentHistory field (may not exist in older records)
+interface SettingsWithHistory {
+  recentHistory?: string | null;
+  [key: string]: unknown;
+}
+
 // GET /api/user/settings - Get user settings
 export async function GET() {
   let user;
@@ -47,26 +63,27 @@ export async function GET() {
     }
 
     // Parse JSON fields with safe fallbacks
-    let displaySettings = {};
+    let displaySettings: Record<string, unknown> = {};
     let pinnedNoteIds: string[] = [];
-    let recentHistory: any[] = [];
+    let recentHistory: RecentHistoryItem[] = [];
 
     try {
       displaySettings = settings.displaySettings ? JSON.parse(settings.displaySettings) : {};
-    } catch (e) {
+    } catch {
       displaySettings = {};
     }
 
     try {
       pinnedNoteIds = settings.pinnedNoteIds ? JSON.parse(settings.pinnedNoteIds) : [];
-    } catch (e) {
+    } catch {
       pinnedNoteIds = [];
     }
 
     try {
       // Safe parsing for recentHistory - field might not exist if migration not run
-      recentHistory = (settings as any).recentHistory ? JSON.parse((settings as any).recentHistory) : [];
-    } catch (e) {
+      const settingsWithHistory = settings as SettingsWithHistory;
+      recentHistory = settingsWithHistory.recentHistory ? JSON.parse(settingsWithHistory.recentHistory) : [];
+    } catch {
       recentHistory = [];
     }
 
@@ -123,7 +140,7 @@ export async function PATCH(request: Request) {
     }
 
     // Prepare data for update
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
 
     // Simple boolean/string/number fields
     if (body.autoFetchMetadata !== undefined) updateData.autoFetchMetadata = body.autoFetchMetadata;
@@ -193,25 +210,26 @@ export async function PATCH(request: Request) {
     });
 
     // Parse JSON fields for response with safe fallbacks
-    let displaySettings = {};
+    let displaySettings: Record<string, unknown> = {};
     let pinnedNoteIds: string[] = [];
-    let recentHistory: any[] = [];
+    let recentHistory: RecentHistoryItem[] = [];
 
     try {
       displaySettings = settings.displaySettings ? JSON.parse(settings.displaySettings) : {};
-    } catch (e) {
+    } catch {
       displaySettings = {};
     }
 
     try {
       pinnedNoteIds = settings.pinnedNoteIds ? JSON.parse(settings.pinnedNoteIds) : [];
-    } catch (e) {
+    } catch {
       pinnedNoteIds = [];
     }
 
     try {
-      recentHistory = (settings as any).recentHistory ? JSON.parse((settings as any).recentHistory) : [];
-    } catch (e) {
+      const settingsWithHistory = settings as SettingsWithHistory;
+      recentHistory = settingsWithHistory.recentHistory ? JSON.parse(settingsWithHistory.recentHistory) : [];
+    } catch {
       recentHistory = [];
     }
 

@@ -31,9 +31,9 @@ export async function setToken(token: string): Promise<void> {
 /**
  * Make authenticated POST request to Pawkit API
  */
-export async function apiPost<T = any>(
+export async function apiPost<T = unknown>(
   path: string,
-  body: any,
+  body: CardPayload | FormData | Record<string, unknown>,
   isForm = false
 ): Promise<{ ok: boolean; data?: T; error?: string }> {
   try {
