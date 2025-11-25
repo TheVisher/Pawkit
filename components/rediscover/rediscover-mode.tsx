@@ -84,10 +84,10 @@ export function RediscoverMode({ currentCard, onAction, onExit, remainingCount }
     }
 
     // Wait for animation then trigger action
+    // Keep transition state until new card triggers entering animation
     setTimeout(() => {
       onAction(action, currentCard.id);
-      setCardTransition(null);
-      // Processing state will be reset when new card appears
+      // Don't reset cardTransition here - let the entering effect handle it
     }, 300);
   };
 
