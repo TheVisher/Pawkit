@@ -185,7 +185,7 @@ export function LeftNavigationPanel({
     };
     getAllPrivateSlugs(state.collections);
 
-    // Count bookmarks with no tags AND no collections (excluding deleted, den, private)
+    // Count bookmarks with no tags AND no collections (excluding deleted, den, private, reviewed)
     return state.cards.filter(card => {
       if (card.deleted === true) return false;
       if (card.type !== "url") return false; // Only bookmarks, not notes
@@ -194,6 +194,10 @@ export function LeftNavigationPanel({
         privateCollectionSlugs.has(collectionSlug)
       );
       if (isInPrivateCollection) return false;
+
+      // Exclude cards already reviewed in Rediscover
+      const metadata = card.metadata as Record<string, unknown> | undefined;
+      if (metadata?.rediscoverReviewedAt) return false;
 
       // Uncategorized = no tags AND no collections
       const hasNoTags = !card.tags || card.tags.length === 0;
