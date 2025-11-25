@@ -169,7 +169,7 @@ export function RediscoverMode({ currentCard, onAction, onExit, remainingCount }
 
         {/* Card Info */}
         <div className="text-center space-y-2">
-          <h2 className="text-2xl font-semibold text-foreground">{cardTitle}</h2>
+          <h2 className="text-2xl font-semibold text-foreground line-clamp-2">{cardTitle}</h2>
           <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <span>{domain}</span>
             {cardUrl && (
