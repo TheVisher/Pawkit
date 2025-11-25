@@ -200,6 +200,12 @@ function LibraryPageContent() {
     // Start with bookmarks only (exclude notes)
     let filtered = items.filter(card => card.type === "url");
 
+    // Exclude cards that have already been reviewed in Rediscover
+    filtered = filtered.filter(card => {
+      const metadata = card.metadata as Record<string, unknown> | undefined;
+      return !metadata?.rediscoverReviewedAt;
+    });
+
     switch (filterType) {
       case "uncategorized":
         // No tags and no collections
@@ -280,6 +286,14 @@ function LibraryPageContent() {
     // Handle action
     if (action === "keep") {
       rediscoverStore.addKeptCard(card);
+      // Mark as reviewed in metadata (persists so it won't show again in queue)
+      const currentMetadata = (card.metadata || {}) as Record<string, unknown>;
+      useDataStore.getState().updateCard(cardId, {
+        metadata: {
+          ...currentMetadata,
+          rediscoverReviewedAt: new Date().toISOString()
+        }
+      });
     } else if (action === "delete") {
       // Delete the card
       await useDataStore.getState().deleteCard(cardId);
