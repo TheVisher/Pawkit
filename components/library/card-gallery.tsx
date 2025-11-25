@@ -1045,6 +1045,11 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                 alt={card.title ?? card.url}
                 className={layout === "masonry" ? "block w-full h-auto rounded-xl" : "block h-full w-full object-cover rounded-xl"}
                 loading="lazy"
+                style={{
+                  // Force Chrome to create a compositing layer for each image
+                  // This prevents the disappearing image bug on wide viewports
+                  backfaceVisibility: 'hidden',
+                }}
                 onLoad={onImageLoad}
                 onError={(e) => {
                   // Fallback to logo on image error
