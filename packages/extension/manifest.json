@@ -22,12 +22,20 @@
     "storage",
     "tabs",
     "activeTab",
-    "contextMenus"
+    "contextMenus",
+    "scripting"
   ],
   "host_permissions": [
     "https://pawkit.vercel.app/*",
     "https://getpawkit.com/*",
     "https://www.getpawkit.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content-script.js"],
+      "run_at": "document_idle"
+    }
   ],
   "options_ui": {
     "page": "src/options/index.html",

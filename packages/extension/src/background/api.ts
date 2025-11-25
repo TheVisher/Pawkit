@@ -4,7 +4,7 @@
  */
 
 import browser from 'webextension-polyfill'
-import type { CardPayload } from '@/shared/types'
+import type { CardPayload, Collection } from '@/shared/types'
 
 const API_BASE = 'https://www.getpawkit.com/api'
 
@@ -110,4 +110,72 @@ export async function saveCard(payload: CardPayload) {
     image: meta?.ogImage,
     description: meta?.description
   })
+}
+
+/**
+ * Make authenticated GET request to Pawkit API
+ */
+export async function apiGet<T = any>(
+  path: string
+): Promise<{ ok: boolean; data?: T; error?: string }> {
+  try {
+    const token = await getToken()
+
+    if (!token) {
+      return {
+        ok: false,
+        error: 'No authentication token found.'
+      }
+    }
+
+    const response = await fetch(`${API_BASE}${path}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      let errorMessage = `API error: ${response.status}`
+
+      try {
+        const errorJson = JSON.parse(errorText)
+        errorMessage = errorJson.message || errorJson.error || errorMessage
+      } catch {
+        // Use default error message
+      }
+
+      return { ok: false, error: errorMessage }
+    }
+
+    const data = await response.json()
+    return { ok: true, data }
+  } catch (error) {
+    console.error('API GET request failed:', error)
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Network request failed'
+    }
+  }
+}
+
+/**
+ * Fetch user's collections (Pawkits)
+ */
+export async function getCollections(): Promise<{ ok: boolean; data?: Collection[]; error?: string }> {
+  const result = await apiGet<{ flat: Array<Collection & { slug: string }> }>('/pawkits')
+
+  if (result.ok && result.data?.flat) {
+    // Extract id, name, emoji, slug from the flat list
+    const collections = result.data.flat.map(c => ({
+      id: c.id,
+      name: c.name,
+      emoji: c.emoji,
+      slug: c.slug
+    }))
+    return { ok: true, data: collections }
+  }
+
+  return { ok: false, error: result.error || 'Failed to fetch collections' }
 }

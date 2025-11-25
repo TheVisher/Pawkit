@@ -85,6 +85,105 @@ POST   /api/cards/:id/notes    → Add note to card
 
 ---
 
+## COLLECTIONS (PAWKITS) API - CRITICAL PATTERNS
+
+### Collections Use SLUGS, Not IDs
+
+**CRITICAL**: When saving cards to collections, the API expects **slugs**, NOT collection IDs.
+
+**❌ WRONG** - Using collection ID:
+```tsx
+// This will NOT work!
+const payload = {
+  title: 'My Card',
+  url: 'https://example.com',
+  collectionId: 'clxyz123456'  // ❌ WRONG - API doesn't use collectionId
+}
+```
+
+**✅ CORRECT** - Using collections array with slugs:
+```tsx
+// This is correct
+const payload = {
+  title: 'My Card',
+  url: 'https://example.com',
+  collections: ['my-collection-slug']  // ✅ Array of slugs
+}
+```
+
+### Fetching Collections
+
+**GET /api/pawkits** returns a `flat` array with collection details:
+
+```tsx
+// Response structure
+{
+  ok: true,
+  data: {
+    flat: [
+      {
+        id: 'clxyz123',
+        name: 'My Collection',
+        emoji: '📚',
+        slug: 'my-collection'  // ← Use this for saving cards
+      }
+    ]
+  }
+}
+
+// Extension code to fetch and use collections
+const response = await apiGet<{ flat: Array<Collection> }>('/pawkits')
+
+if (response.ok && response.data?.flat) {
+  const collections = response.data.flat.map(c => ({
+    id: c.id,      // For React key
+    name: c.name,  // For display
+    emoji: c.emoji,
+    slug: c.slug   // For saving cards to this collection
+  }))
+}
+```
+
+### Saving Cards to Collections (Browser Extension)
+
+**Extension popup pattern**:
+```tsx
+// State
+const [selectedCollectionSlug, setSelectedCollectionSlug] = useState<string | null>(null)
+
+// When saving
+const message: SaveCardMessage = {
+  type: 'SAVE_CARD',
+  payload: {
+    title: title.trim(),
+    url: url.trim(),
+    collections: selectedCollectionSlug ? [selectedCollectionSlug] : undefined,  // ✅ Array of slugs
+    source: 'webext'
+  }
+}
+```
+
+### URL Patterns for Collections
+
+**Web app routes**:
+- `/library` - Main library (all cards)
+- `/pawkits/{slug}` - Specific collection by slug
+- **NOT** `/p/{slug}` (404 error)
+- **NOT** `/pawkits/{id}` (use slug, not ID)
+
+**Example - View saved card in collection**:
+```tsx
+const openSavedCard = async () => {
+  const targetPath = selectedCollectionSlug
+    ? `/pawkits/${selectedCollectionSlug}`  // ✅ Use slug
+    : '/library'
+  const targetUrl = `https://getpawkit.com${targetPath}`
+  // Navigate to target...
+}
+```
+
+---
+
 ## HTTP STATUS CODES
 
 ### Success Codes
@@ -1341,8 +1440,10 @@ export const searchSchema = z.object({
 
 ---
 
-**Last Updated**: October 29, 2025
+**Last Updated**: November 24, 2025
 **Routes Standardized**: 30
 **Status**: ✅ All patterns implemented and tested
 
 **Key Principle**: Consistent error handling, proper status codes, CORS support, Zod validation
+
+**November 2025 Addition**: Collections API patterns - use slugs not IDs, proper URL routing
