@@ -895,7 +895,38 @@ Before committing URL-related code:
 
 ---
 
-**Last Updated**: January 23, 2025
+## Panel Store Defaults
+
+### CRITICAL RULE: New Users Get Expanded Sidebar
+
+**New users should see the full 3-panel layout by default, not collapsed icons.**
+
+**File**: `lib/hooks/use-panel-store.ts`
+
+**Key Defaults** (for `_switchUser` and localStorage fallback):
+```typescript
+// Default to anchored (expanded) for new users
+leftMode: "anchored",  // NOT "floating"
+isLeftOpen: true,
+```
+
+**Why This Matters**:
+- New users don't know icons mean sidebar exists
+- Expanded shows all labels: Library, Calendar, Notes, etc.
+- Users can collapse later if they prefer icons
+- First impression should be welcoming, not confusing
+
+**Where Defaults Are Set**:
+1. Line 77: Initial store state (`leftMode: "anchored"`)
+2. Line 250: `_switchUser` function reset (MUST be `"anchored"`)
+3. Line 267: localStorage fallback (MUST be `"anchored"`)
+
+**Common Mistake**:
+Setting `leftMode: "floating"` anywhere defaults new users to collapsed sidebar.
+
+---
+
+**Last Updated**: November 24, 2025
 **Platform**: React Native (mobile)
 **File**: `mobile/src/lib/utils.ts`
 **Web Equivalent**: `lib/utils/index.ts`

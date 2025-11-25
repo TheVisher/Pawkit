@@ -11,14 +11,64 @@ description: Track development progress, major milestones, and session history a
 
 ## Current Status
 
-**Branch**: `fix/performance-critical-issues`
-**Status**: Performance optimizations complete - ProfileModal and LeftNavigationPanel re-renders fixed
-**Last Updated**: January 14, 2025
-**Next Steps**: Update roadmap skill, merge to main
+**Branch**: `main`
+**Status**: New user onboarding improvements - sidebar defaults and empty states
+**Last Updated**: November 24, 2025
+**Next Steps**: Continue with mobile app refinements
 
 ---
 
 ## Session History
+
+### Date: November 24, 2025 - New User Onboarding Improvements
+
+**Status**: ✅ COMPLETED
+**Priority**: ⚡ UX IMPROVEMENT
+**Branch**: `main`
+**Impact**: Better first-time user experience with expanded sidebar and helpful empty states
+
+**Summary**: Fixed two issues affecting new user experience: sidebar defaulting to collapsed mode and missing empty state guidance for accounts with no cards.
+
+#### 1. Sidebar Default State Fix
+
+**Problem**: New users saw collapsed sidebar (icons only) instead of the full 3-panel layout with labels visible.
+
+**Root Cause**: In `lib/hooks/use-panel-store.ts`, the `_switchUser` function was resetting `leftMode` to `"floating"` instead of `"anchored"`.
+
+**Solution**: Changed default `leftMode` from `"floating"` to `"anchored"` in two locations:
+- Line 250: `_switchUser` default reset
+- Line 267: localStorage fallback value
+
+**Files Modified**:
+- `lib/hooks/use-panel-store.ts`
+
+**Impact**: New users now see the full expanded sidebar with labels (Library, Calendar, Notes, etc.) visible by default.
+
+#### 2. Empty State Onboarding
+
+**Problem**: New accounts with zero cards had no guidance on how to get started.
+
+**Solution**: Added helpful onboarding empty states in two locations:
+
+**Home Page** (`app/(dashboard)/home/page.tsx`):
+- Enhanced `EmptyState` component with `showOnboarding` prop
+- When `cards.length === 0`, shows welcoming onboarding card with:
+  - Pawkit icon and "Welcome to Pawkit!" header
+  - Instructions for getting started
+  - Quick action hints: "Paste URL above", "Use browser extension", "Create a note"
+
+**Library Page** (`components/library/card-gallery.tsx`):
+- Added early return with empty state when `cards.length === 0`
+- Shows "Your library is empty" with same helpful guidance
+- Bookmark icon and consistent styling
+
+**Files Modified**:
+- `app/(dashboard)/home/page.tsx` - Enhanced EmptyState component
+- `components/library/card-gallery.tsx` - Added empty state for card gallery
+
+**Impact**: New users now see clear guidance on how to add their first bookmarks and notes.
+
+---
 
 ### Date: January 14, 2025 - Performance Optimization: Excessive Re-renders
 

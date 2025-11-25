@@ -285,7 +285,10 @@ export default function HomePage() {
               ))}
             </HorizontalScrollContainer>
           ) : (
-            <EmptyState message="Add your first bookmark to see it here." />
+            <EmptyState
+              message="Add your first bookmark to see it here."
+              showOnboarding={cards.length === 0}
+            />
           )}
         </section>
 
@@ -614,9 +617,34 @@ function RecentCard({ card, onClick, onAddToPawkit, onDeleteCard, onRemoveFromPa
 
 type EmptyStateProps = {
   message: string;
+  showOnboarding?: boolean;
 };
 
-function EmptyState({ message }: EmptyStateProps) {
+function EmptyState({ message, showOnboarding = false }: EmptyStateProps) {
+  if (showOnboarding) {
+    return (
+      <div className="rounded-2xl border border-dashed border-gray-700 bg-gray-950/50 p-8 text-center">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
+          <span className="text-3xl" aria-hidden="true">🐾</span>
+        </div>
+        <h3 className="text-lg font-semibold text-gray-200 mb-2">Welcome to Pawkit!</h3>
+        <p className="text-sm text-gray-400 mb-4 max-w-md mx-auto">
+          Start building your collection by saving links, articles, and notes. Use the search bar above to paste a URL, or install the browser extension for one-click saving.
+        </p>
+        <div className="flex flex-wrap justify-center gap-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
+            <span>📎</span> Paste URL above
+          </span>
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
+            <span>🔌</span> Use browser extension
+          </span>
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
+            <span>📝</span> Create a note
+          </span>
+        </div>
+      </div>
+    );
+  }
   return <p className="rounded border border-dashed border-gray-800 bg-gray-950 p-6 text-sm text-gray-500">{message}</p>;
 }
 
