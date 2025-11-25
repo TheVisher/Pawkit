@@ -3,14 +3,17 @@
 import { useState, useMemo, useEffect } from "react";
 import { addDays, startOfWeek, startOfMonth, endOfMonth, isSameMonth, format, isSameDay, isToday } from "date-fns";
 import { CardModel } from "@/lib/types";
+import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
-import { ChevronLeft, ChevronRight, Plus, FileText } from "lucide-react";
+import { useEventStore } from "@/lib/hooks/use-event-store";
+import { ChevronLeft, ChevronRight, Plus, FileText, Clock } from "lucide-react";
 
 type CustomCalendarProps = {
   cards: CardModel[];
   currentMonth?: Date;
   onDayClick?: (date: Date) => void;
   onCardClick?: (card: CardModel) => void;
+  onEventClick?: (event: CalendarEvent) => void;
   onCreateDailyNote?: (date: Date) => void;
 };
 
@@ -19,15 +22,24 @@ export function CustomCalendar({
   currentMonth = new Date(),
   onDayClick,
   onCardClick,
+  onEventClick,
   onCreateDailyNote
 }: CustomCalendarProps) {
   const [isClient, setIsClient] = useState(false);
+  const { events, isInitialized, initialize, generateRecurrenceInstances } = useEventStore();
 
   // Mark as client-side after mount to prevent hydration issues
   // This ensures the calendar uses the OS date/time consistently
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Initialize event store
+  useEffect(() => {
+    if (!isInitialized) {
+      initialize();
+    }
+  }, [isInitialized, initialize]);
 
   // Get all days to display (including days from prev/next month to fill the grid)
   const calendarDays = useMemo(() => {
@@ -79,6 +91,32 @@ export function CustomCalendar({
     return map;
   }, [cards]);
 
+  // Group events by date (including recurrence instances)
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+
+    // Get date range for the visible calendar (first and last day)
+    if (calendarDays.length === 0) return map;
+
+    const rangeStart = format(calendarDays[0], 'yyyy-MM-dd');
+    const rangeEnd = format(calendarDays[calendarDays.length - 1], 'yyyy-MM-dd');
+
+    events.forEach((event) => {
+      // Generate recurrence instances for recurring events
+      const instances = generateRecurrenceInstances(event, rangeStart, rangeEnd);
+
+      instances.forEach((instance) => {
+        const dateStr = instance.instanceDate;
+        if (!map.has(dateStr)) {
+          map.set(dateStr, []);
+        }
+        map.get(dateStr)!.push(instance.event);
+      });
+    });
+
+    return map;
+  }, [events, calendarDays, generateRecurrenceInstances]);
+
   return (
     <div className="space-y-6">
       {/* Weekday headers */}
@@ -95,10 +133,15 @@ export function CustomCalendar({
         {calendarDays.map((day, index) => {
           const dateStr = format(day, 'yyyy-MM-dd');
           const dayCards = cardsByDate.get(dateStr) || [];
+          const dayEvents = eventsByDate.get(dateStr) || [];
           const dailyNote = dailyNotesByDate.get(dateStr);
           const isCurrentMonth = isSameMonth(day, currentMonth);
           // Only check if it's today on the client to prevent hydration mismatch
           const isCurrentDay = isClient ? isSameDay(day, new Date()) : false;
+
+          // Combined count for "more" indicator
+          const totalItems = dayCards.length + dayEvents.length;
+          const maxVisible = 2;
 
           return (
             <div
@@ -127,9 +170,35 @@ export function CustomCalendar({
                 </span>
               </div>
 
-              {/* Scheduled cards */}
+              {/* Events and Cards */}
               <div className="px-2 space-y-1 mb-12">
-                {dayCards.slice(0, 2).map((card) => (
+                {/* Calendar Events (shown first) */}
+                {dayEvents.slice(0, maxVisible).map((event) => (
+                  <button
+                    key={event.id}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEventClick?.(event);
+                    }}
+                    className="w-full text-left px-2 py-1 rounded-lg bg-surface-soft hover:bg-surface transition-colors flex items-center gap-2"
+                  >
+                    <span
+                      className="w-2 h-2 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: event.color || EVENT_COLORS.purple }}
+                    />
+                    <span className="text-xs text-foreground truncate flex-1">
+                      {!event.isAllDay && event.startTime && (
+                        <span className="text-muted-foreground mr-1">
+                          {event.startTime}
+                        </span>
+                      )}
+                      {event.title}
+                    </span>
+                  </button>
+                ))}
+
+                {/* Scheduled cards (shown after events) */}
+                {dayCards.slice(0, Math.max(0, maxVisible - dayEvents.length)).map((card) => (
                   <button
                     key={card.id}
                     onClick={(e) => {
@@ -150,9 +219,11 @@ export function CustomCalendar({
                     </span>
                   </button>
                 ))}
-                {dayCards.length > 2 && (
+
+                {/* More indicator */}
+                {totalItems > maxVisible && (
                   <div className="text-xs text-muted-foreground px-2">
-                    +{dayCards.length - 2} more
+                    +{totalItems - maxVisible} more
                   </div>
                 )}
               </div>

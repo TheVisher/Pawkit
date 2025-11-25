@@ -1,13 +1,26 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Calendar, Filter, Plus, Film, Music, Clock, Rocket, CalendarDays, StickyNote, CalendarCheck, CalendarRange, ChevronRight } from "lucide-react";
+import { Calendar, Filter, Plus, Film, Music, Clock, Rocket, CalendarDays, StickyNote, CalendarCheck, CalendarRange, ChevronRight, Bookmark } from "lucide-react";
 import { format, setMonth, isAfter, startOfToday, startOfWeek, endOfWeek } from "date-fns";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useEventStore } from "@/lib/hooks/use-event-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { TodosSection } from "./todos-section";
+import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
+
+// Type for unified upcoming item (either card or event)
+type UpcomingItem = {
+  type: 'card' | 'event';
+  id: string;
+  title: string;
+  date: string; // YYYY-MM-DD
+  time?: string | null; // HH:mm for events
+  color?: string | null; // For events
+  isAllDay?: boolean;
+};
 
 // Month names for the 3x4 grid
 const MONTHS = [
@@ -43,38 +56,88 @@ export function CalendarControls() {
   const setViewMode = useCalendarStore((state) => state.setViewMode);
   const toggleContentFilter = useCalendarStore((state) => state.toggleContentFilter);
   const clearContentFilters = useCalendarStore((state) => state.clearContentFilters);
+  const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
 
   // Get cards from data store
   const { cards } = useDataStore();
+  const { events, isInitialized, initialize } = useEventStore();
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const openDayDetails = usePanelStore((state) => state.openDayDetails);
 
   const currentMonthValue = currentMonth.getMonth();
 
-  // Get upcoming events (next 5 chronologically)
-  const upcomingEvents = useMemo(() => {
-    const today = startOfToday();
-    return cards
+  // Initialize event store
+  useEffect(() => {
+    if (!isInitialized) {
+      initialize();
+    }
+  }, [isInitialized, initialize]);
+
+  // Get upcoming items (cards + events), sorted chronologically
+  const upcomingItems = useMemo(() => {
+    const today = format(startOfToday(), 'yyyy-MM-dd');
+    const items: UpcomingItem[] = [];
+
+    // Add scheduled cards
+    cards
       .filter(card =>
         card.scheduledDate &&
         !card.collections?.includes('the-den') &&
-        isAfter(new Date(card.scheduledDate), today)
+        card.scheduledDate.split('T')[0] >= today
       )
-      .sort((a, b) => {
-        const dateA = new Date(a.scheduledDate!).getTime();
-        const dateB = new Date(b.scheduledDate!).getTime();
-        return dateA - dateB;
-      })
-      .slice(0, 5);
-  }, [cards]);
+      .forEach(card => {
+        items.push({
+          type: 'card',
+          id: card.id,
+          title: card.title || card.domain || card.url || 'Untitled',
+          date: card.scheduledDate!.split('T')[0],
+        });
+      });
 
-  const totalUpcomingEvents = useMemo(() => {
-    const today = startOfToday();
-    return cards.filter(card =>
+    // Add calendar events
+    events
+      .filter(event => event.date >= today)
+      .forEach(event => {
+        items.push({
+          type: 'event',
+          id: event.id,
+          title: event.title,
+          date: event.date,
+          time: event.startTime,
+          color: event.color,
+          isAllDay: event.isAllDay,
+        });
+      });
+
+    // Sort by date, then by time (all-day first)
+    items.sort((a, b) => {
+      if (a.date !== b.date) {
+        return a.date.localeCompare(b.date);
+      }
+      // Same date - sort by time
+      const aIsAllDay = a.type === 'card' || a.isAllDay;
+      const bIsAllDay = b.type === 'card' || b.isAllDay;
+      if (aIsAllDay && !bIsAllDay) return -1;
+      if (!aIsAllDay && bIsAllDay) return 1;
+      if (a.time && b.time) {
+        return a.time.localeCompare(b.time);
+      }
+      return 0;
+    });
+
+    return items.slice(0, 5);
+  }, [cards, events]);
+
+  const totalUpcomingItems = useMemo(() => {
+    const today = format(startOfToday(), 'yyyy-MM-dd');
+    const cardCount = cards.filter(card =>
       card.scheduledDate &&
       !card.collections?.includes('the-den') &&
-      isAfter(new Date(card.scheduledDate), today)
+      card.scheduledDate.split('T')[0] >= today
     ).length;
-  }, [cards]);
+    const eventCount = events.filter(event => event.date >= today).length;
+    return cardCount + eventCount;
+  }, [cards, events]);
 
   const handleMonthClick = (monthValue: number) => {
     const newDate = setMonth(currentMonth, monthValue);
@@ -234,33 +297,55 @@ export function CalendarControls() {
         title="Upcoming Events"
         icon={<Clock className="h-4 w-4 text-accent" />}
       >
-        {upcomingEvents.length > 0 ? (
+        {upcomingItems.length > 0 ? (
           <div className="space-y-2">
-            {upcomingEvents.map((event) => (
+            {upcomingItems.map((item) => (
               <button
-                key={event.id}
-                onClick={() => openCardDetails(event.id)}
+                key={`${item.type}-${item.id}`}
+                onClick={() => {
+                  if (item.type === 'card') {
+                    openCardDetails(item.id);
+                  } else {
+                    // For events, navigate to that day
+                    const [year, month, day] = item.date.split('-').map(Number);
+                    const eventDate = new Date(year, month - 1, day);
+                    setSelectedDay(eventDate);
+                    openDayDetails();
+                  }
+                }}
                 className="w-full text-left p-3 rounded-lg bg-white/5 hover:bg-white/10
                   transition-colors border border-white/10 hover:border-white/20
                   flex items-start gap-3"
               >
+                {/* Type indicator */}
+                {item.type === 'event' ? (
+                  <span
+                    className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5"
+                    style={{ backgroundColor: item.color || EVENT_COLORS.purple }}
+                  />
+                ) : (
+                  <Bookmark size={12} className="text-muted-foreground flex-shrink-0 mt-1.5" />
+                )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-accent font-medium mb-1">
-                    {format(new Date(event.scheduledDate!), 'MMM d, yyyy')}
+                  <div className="text-xs text-accent font-medium mb-1 flex items-center gap-1.5">
+                    {format(new Date(item.date + 'T00:00:00'), 'MMM d, yyyy')}
+                    {item.type === 'event' && item.time && !item.isAllDay && (
+                      <span className="text-muted-foreground">at {item.time}</span>
+                    )}
                   </div>
                   <div className="text-sm text-foreground truncate">
-                    {event.title || event.domain || event.url}
+                    {item.title}
                   </div>
                 </div>
                 <ChevronRight size={16} className="text-muted-foreground flex-shrink-0 mt-1" />
               </button>
             ))}
 
-            {totalUpcomingEvents > 5 && (
+            {totalUpcomingItems > 5 && (
               <button
                 className="w-full mt-2 text-xs text-accent hover:text-accent/80 transition-colors text-center py-2"
               >
-                View all ({totalUpcomingEvents} events)
+                View all ({totalUpcomingItems} items)
               </button>
             )}
           </div>

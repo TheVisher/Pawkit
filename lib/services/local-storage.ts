@@ -1,6 +1,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { CardDTO } from '@/lib/server/cards';
 import { CollectionNode } from '@/lib/types';
+import { CalendarEvent } from '@/lib/types/calendar';
 
 /**
  * LOCAL-FIRST STORAGE LAYER WITH WORKSPACE SUPPORT
@@ -85,13 +86,26 @@ interface LocalStorageDB extends DBSchema {
       'by-target': string;
     };
   };
+  events: {
+    key: string; // event.id
+    value: CalendarEvent & {
+      _locallyModified?: boolean;
+      _locallyCreated?: boolean;
+      _serverVersion?: string;
+    };
+    indexes: {
+      'by-date': string;
+      'by-deleted': string;
+      'by-recurrence-parent': string;
+    };
+  };
 }
 
 class LocalStorage {
   private db: IDBPDatabase<LocalStorageDB> | null = null;
   private userId: string | null = null;
   private workspaceId: string | null = null;
-  private readonly DB_VERSION = 5; // Version 5: added 'deleted' indexes for performance
+  private readonly DB_VERSION = 6; // Version 6: added 'events' store for calendar events
 
   /**
    * Get user-specific database name with workspace support
@@ -177,6 +191,14 @@ class LocalStorage {
           const noteCardLinksStore = db.createObjectStore('noteCardLinks', { keyPath: 'id' });
           noteCardLinksStore.createIndex('by-source', 'sourceNoteId');
           noteCardLinksStore.createIndex('by-target', 'targetCardId');
+        }
+
+        // Create events store (added in v6)
+        if (!db.objectStoreNames.contains('events')) {
+          const eventsStore = db.createObjectStore('events', { keyPath: 'id' });
+          eventsStore.createIndex('by-date', 'date');
+          eventsStore.createIndex('by-deleted', 'deleted');
+          eventsStore.createIndex('by-recurrence-parent', 'recurrenceParentId');
         }
       },
     });
@@ -818,6 +840,146 @@ class LocalStorage {
       modifiedCards: modifiedCards.length,
       lastSync,
     };
+  }
+
+  // ==================== EVENTS ====================
+
+  async getAllEvents(includeDeleted = false): Promise<CalendarEvent[]> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const events = await this.db.getAll('events');
+    return events
+      .filter(event => includeDeleted || event.deleted !== true)
+      .map(event => {
+        const { _locallyModified, _locallyCreated, _serverVersion, ...cleanEvent } = event;
+        return cleanEvent as CalendarEvent;
+      });
+  }
+
+  async getEvent(id: string): Promise<CalendarEvent | undefined> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const event = await this.db.get('events', id);
+    if (!event) return undefined;
+
+    const { _locallyModified, _locallyCreated, _serverVersion, ...cleanEvent } = event;
+    return cleanEvent as CalendarEvent;
+  }
+
+  async getEventsByDateRange(startDate: string, endDate: string, includeDeleted = false): Promise<CalendarEvent[]> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    // Get all events and filter by date range
+    // Note: For better performance with large datasets, consider using a cursor
+    const events = await this.db.getAll('events');
+    return events
+      .filter(event => {
+        if (!includeDeleted && event.deleted === true) return false;
+        return event.date >= startDate && event.date <= endDate;
+      })
+      .map(event => {
+        const { _locallyModified, _locallyCreated, _serverVersion, ...cleanEvent } = event;
+        return cleanEvent as CalendarEvent;
+      });
+  }
+
+  async getEventsByRecurrenceParent(parentId: string): Promise<CalendarEvent[]> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const events = await this.db.getAllFromIndex('events', 'by-recurrence-parent', parentId);
+    return events.map(event => {
+      const { _locallyModified, _locallyCreated, _serverVersion, ...cleanEvent } = event;
+      return cleanEvent as CalendarEvent;
+    });
+  }
+
+  async saveEvent(event: CalendarEvent, options?: { localOnly?: boolean; fromServer?: boolean }): Promise<void> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const existing = await this.db.get('events', event.id);
+
+    // Sanitize content to remove any characters that cause IndexedDB errors
+    const sanitizedEvent = {
+      ...event,
+      title: event.title ? this.sanitizeForIndexedDB(event.title) : event.title,
+      description: event.description ? this.sanitizeForIndexedDB(event.description) : event.description,
+      location: event.location ? this.sanitizeForIndexedDB(event.location) : event.location,
+    };
+
+    const eventToSave = {
+      ...sanitizedEvent,
+      _locallyModified: options?.localOnly ? true : (existing?._locallyModified || false),
+      _locallyCreated: options?.localOnly && !options?.fromServer ? true : (existing?._locallyCreated || false),
+      _serverVersion: options?.fromServer ? event.updatedAt : existing?._serverVersion,
+    };
+
+    try {
+      await this.db.put('events', eventToSave);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async deleteEvent(id: string): Promise<void> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    // Soft delete: mark as deleted instead of removing
+    const event = await this.db.get('events', id);
+    if (event) {
+      event.deleted = true;
+      event.deletedAt = new Date().toISOString();
+      await this.db.put('events', event);
+    }
+  }
+
+  async permanentlyDeleteEvent(id: string): Promise<void> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    await this.db.delete('events', id);
+  }
+
+  async getModifiedEvents(): Promise<CalendarEvent[]> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const allEvents = await this.db.getAll('events');
+    return allEvents
+      .filter(event => event._locallyModified || event._locallyCreated)
+      .map(event => {
+        const { _locallyModified, _locallyCreated, _serverVersion, ...cleanEvent } = event;
+        return cleanEvent as CalendarEvent;
+      });
+  }
+
+  async markEventSynced(id: string, serverVersion: string): Promise<void> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const event = await this.db.get('events', id);
+    if (!event) return;
+
+    await this.db.put('events', {
+      ...event,
+      _locallyModified: false,
+      _locallyCreated: false,
+      _serverVersion: serverVersion,
+    });
   }
 }
 
