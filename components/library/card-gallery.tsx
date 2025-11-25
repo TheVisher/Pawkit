@@ -982,10 +982,6 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       {showThumbnail && layout !== "compact" && !isNote && (
         <div
           className={`relative ${hasTextSection && showMetadata ? "mb-3" : ""} w-full overflow-hidden rounded-xl bg-surface-soft ${layout === "masonry" ? "" : "aspect-video"} group/filmstrip`}
-          style={{
-            // Chromium rendering optimization to prevent flickering during transitions
-            transform: 'translateZ(0)',
-          }}
         >
           {/* Film sprocket holes for movie cards */}
           {isMovie && (
@@ -1068,11 +1064,6 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
                   className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center justify-center"
-                  style={{
-                    // Chromium rendering optimization for backdrop-blur during transitions
-                    willChange: 'width',
-                    transform: 'translateZ(0)',
-                  }}
                 >
                   <span className="truncate max-w-full">
                     {(() => {
@@ -1100,11 +1091,6 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
                   className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center justify-center"
-                  style={{
-                    // Chromium rendering optimization for backdrop-blur during transitions
-                    willChange: 'width',
-                    transform: 'translateZ(0)',
-                  }}
                 >
                   <span className="truncate max-w-full">
                     {(() => {
@@ -1123,7 +1109,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       )}
       {/* Notes: Document-shaped card with portrait aspect ratio */}
       {isNote && (
-        <div className="relative w-full group/note" style={{ aspectRatio: '3 / 2', transform: 'translateZ(0)' }}>
+        <div className="relative w-full group/note" style={{ aspectRatio: '3 / 2' }}>
           {/* Document-styled container with binder hole aesthetic */}
           <div className="absolute inset-0 flex flex-col p-4 pl-8 bg-surface-soft rounded-lg border border-purple-500/20 shadow-lg shadow-purple-900/10 overflow-hidden">
 
@@ -1313,6 +1299,11 @@ function getLayoutConfig(layout: LayoutMode, cardSize: number = 50, cardSpacing:
   // Smaller range makes transitions smoother as grid recalculates columns
   const minCardWidth = 150 + ((cardSize - 1) / 99) * 350; // Ranges from 150px to 500px
 
+  // Maximum card width to prevent cards from becoming too wide on ultrawide monitors
+  // This ensures cards maintain proper aspect ratios and image rendering
+  // Using 1.5x the min width as max prevents excessive stretching
+  const maxCardWidth = Math.min(minCardWidth * 1.5, 600);
+
   // Gap in pixels - use the cardSpacing value directly for smooth scaling
   const gapPx = cardSpacing;
 
@@ -1327,9 +1318,6 @@ function getLayoutConfig(layout: LayoutMode, cardSize: number = 50, cardSpacing:
         style: {
           columns: `${columnWidth}px`,
           columnGap: `${gapPx}px`,
-          // Chromium rendering optimizations for CSS columns during transitions
-          willChange: 'columns',
-          transform: 'translateZ(0)',
         }
       };
     case "list":
@@ -1343,8 +1331,11 @@ function getLayoutConfig(layout: LayoutMode, cardSize: number = 50, cardSpacing:
       return {
         className: "grid",
         style: {
-          gridTemplateColumns: `repeat(auto-fill, minmax(${minCardWidth}px, 1fr))`,
-          gap: `${gapPx}px`
+          // Use minmax with max constraint to prevent overly wide cards on ultrawide monitors
+          gridTemplateColumns: `repeat(auto-fill, minmax(${minCardWidth}px, ${maxCardWidth}px))`,
+          gap: `${gapPx}px`,
+          // Center the grid when cards don't fill the full width
+          justifyContent: 'center',
         }
       };
     case "grid":
@@ -1352,8 +1343,11 @@ function getLayoutConfig(layout: LayoutMode, cardSize: number = 50, cardSpacing:
       return {
         className: "grid",
         style: {
-          gridTemplateColumns: `repeat(auto-fill, minmax(${minCardWidth}px, 1fr))`,
-          gap: `${gapPx}px`
+          // Use minmax with max constraint to prevent overly wide cards on ultrawide monitors
+          gridTemplateColumns: `repeat(auto-fill, minmax(${minCardWidth}px, ${maxCardWidth}px))`,
+          gap: `${gapPx}px`,
+          // Center the grid when cards don't fill the full width
+          justifyContent: 'center',
         }
       };
   }
