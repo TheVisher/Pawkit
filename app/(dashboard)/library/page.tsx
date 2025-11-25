@@ -10,6 +10,7 @@ import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { AnimatedBackground } from "@/components/rediscover/animated-background";
 import { RediscoverMode, RediscoverAction } from "@/components/rediscover/rediscover-mode";
 import { useRediscoverStore, RediscoverFilter } from "@/lib/hooks/rediscover-store";
+import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardModel, CollectionNode } from "@/lib/types";
 
 function LibraryPageContent() {
@@ -32,6 +33,10 @@ function LibraryPageContent() {
   // Rediscover mode state from store
   const rediscoverStore = useRediscoverStore();
   const isRediscoverMode = mode === "rediscover";
+
+  // State for Add to Pawkit modal in Rediscover mode
+  const [showPawkitModal, setShowPawkitModal] = useState(false);
+  const [pendingPawkitCard, setPendingPawkitCard] = useState<CardModel | null>(null);
 
   // Read from localStorage first, then URL param, then default
   const savedLayout = typeof window !== 'undefined' ? localStorage.getItem("library-layout") as LayoutMode | null : null;
@@ -251,6 +256,13 @@ function LibraryPageContent() {
     const card = rediscoverStore.queue[rediscoverStore.currentIndex];
     if (!card || card.id !== cardId) return;
 
+    // Handle add-to-pawkit action - show modal and don't advance yet
+    if (action === "add-to-pawkit") {
+      setPendingPawkitCard(card);
+      setShowPawkitModal(true);
+      return;
+    }
+
     // Update session stats - map action to stat key
     const statKey = action === "keep" ? "kept" : "deleted";
     rediscoverStore.updateStats(statKey);
@@ -265,6 +277,34 @@ function LibraryPageContent() {
 
     // Move to next card
     rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
+  };
+
+  // Handler for when a Pawkit is selected from the modal
+  const handlePawkitSelected = async (slug: string) => {
+    if (!pendingPawkitCard) return;
+
+    // Add the card to the selected Pawkit
+    const currentCollections = pendingPawkitCard.collections || [];
+    if (!currentCollections.includes(slug)) {
+      await useDataStore.getState().updateCard(pendingPawkitCard.id, {
+        collections: [...currentCollections, slug]
+      });
+    }
+
+    // Update stats
+    rediscoverStore.updateStats("addedToPawkit");
+
+    // Close modal and advance to next card
+    setShowPawkitModal(false);
+    setPendingPawkitCard(null);
+    rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
+  };
+
+  // Handler for closing the Pawkit modal without selecting
+  const handlePawkitModalClose = () => {
+    setShowPawkitModal(false);
+    setPendingPawkitCard(null);
+    // Don't advance - let user try again or choose a different action
   };
 
   const handleExitRediscover = () => {
@@ -292,6 +332,11 @@ function LibraryPageContent() {
           onAction={handleRediscoverAction}
           onExit={handleExitRediscover}
           remainingCount={remainingCount}
+        />
+        <MoveToPawkitModal
+          open={showPawkitModal}
+          onClose={handlePawkitModalClose}
+          onConfirm={handlePawkitSelected}
         />
       </>
     );
