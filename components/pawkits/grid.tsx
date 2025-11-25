@@ -55,6 +55,11 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
     return Math.round(250 + ((pawkitSize - 1) / 99) * 350);
   }, [pawkitSize]);
 
+  // Maximum pawkit width to prevent cards from becoming too wide on ultrawide monitors
+  const maxPawkitWidth = useMemo(() => {
+    return Math.min(minPawkitWidth * 1.5, 700);
+  }, [minPawkitWidth]);
+
   if (!collections.length) {
     return (
       <div className="rounded-2xl border border-subtle bg-surface/60 p-12 text-center text-sm text-muted-foreground">
@@ -224,7 +229,8 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
     <div
       className="grid gap-6"
       style={{
-        gridTemplateColumns: `repeat(auto-fill, minmax(${minPawkitWidth}px, 1fr))`
+        gridTemplateColumns: `repeat(auto-fill, minmax(${minPawkitWidth}px, ${maxPawkitWidth}px))`,
+        justifyContent: 'center',
       }}
     >
       {collections.map((collection) => (
