@@ -1,15 +1,24 @@
 /**
  * One-time admin endpoint to create the card-images storage bucket
  * Call once: POST /api/admin/setup-storage
+ *
+ * Requires authenticated user (admin operations use service role internally)
  */
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { handleApiError } from '@/lib/utils/api-error';
-import { success } from '@/lib/utils/api-responses';
+import { success, unauthorized } from '@/lib/utils/api-responses';
+import { getCurrentUser } from '@/lib/auth/get-user';
 
 export async function POST() {
+  let user;
   try {
+    // Require authentication for admin endpoints
+    user = await getCurrentUser();
+    if (!user) {
+      return unauthorized();
+    }
     // Use service role key if available for admin operations
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -55,6 +64,6 @@ export async function POST() {
     });
 
   } catch (error) {
-    return handleApiError(error, { route: '/api/admin/setup-storage' });
+    return handleApiError(error, { route: '/api/admin/setup-storage', userId: user?.id });
   }
 }

@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import type { PrismaCollection } from "@/lib/types";
 // Use PrismaCollection instead of Collection from @prisma/client when Prisma client is not generated
 type Collection = PrismaCollection;
@@ -6,6 +6,9 @@ import { prisma } from "@/lib/server/prisma";
 import { collectionCreateSchema, collectionUpdateSchema } from "@/lib/validators/collection";
 import { slugify } from "@/lib/utils/slug";
 import { unstable_cache, revalidateTag } from 'next/cache';
+
+// Transaction client type for Prisma $transaction callbacks
+type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
 const MAX_DEPTH = 10; // Allow deep nesting
 
@@ -68,13 +71,30 @@ export const listCollections = unstable_cache(
 
 async function ensureDepth(userId: string, parentId: string | undefined | null) {
   if (!parentId) return 1;
+
+  // Fetch all collections for the user in a single query to avoid N+1
+  const allCollections = await prisma.collection.findMany({
+    where: { userId },
+    select: { id: true, parentId: true }
+  });
+
+  // Build a map for O(1) parent lookups
+  const collectionMap = new Map(allCollections.map(c => [c.id, c.parentId]));
+
   let depth = 1;
   let currentId: string | undefined | null = parentId;
+  const visited = new Set<string>(); // Prevent infinite loops from circular references
+
   while (currentId) {
-    const parent: Collection | null = await prisma.collection.findFirst({ where: { id: currentId, userId } });
-    if (!parent) break;
+    if (visited.has(currentId)) {
+      throw new Error('Circular reference detected in collection hierarchy');
+    }
+    visited.add(currentId);
+
+    const parentOfCurrent = collectionMap.get(currentId);
+    if (parentOfCurrent === undefined) break; // Collection not found
     depth += 1;
-    currentId = parent.parentId;
+    currentId = parentOfCurrent;
     if (depth > MAX_DEPTH) {
       throw new Error(`Maximum depth of ${MAX_DEPTH} exceeded`);
     }
@@ -189,7 +209,7 @@ export async function updateCollection(userId: string, id: string, payload: unkn
   return updated;
 }
 
-async function getAllDescendantIds(userId: string, parentId: string, tx: any): Promise<string[]> {
+async function getAllDescendantIds(userId: string, parentId: string, tx: TransactionClient): Promise<string[]> {
   const children = await tx.collection.findMany({
     where: { parentId, userId, deleted: false },
     select: { id: true }
@@ -214,7 +234,7 @@ export async function deleteCollection(userId: string, id: string, deleteCards =
 
   const now = new Date();
 
-  await prisma.$transaction(async (tx: any) => {
+  await prisma.$transaction(async (tx: TransactionClient) => {
     let collectionIdsToDelete = [id];
 
     if (deleteSubPawkits) {
@@ -258,9 +278,9 @@ export async function deleteCollection(userId: string, id: string, deleteCards =
         });
 
         for (const card of affectedCards) {
-          const collections: any = card.collections ? JSON.parse(card.collections) : [];
-          const filtered = Array.isArray(collections)
-            ? collections.filter((c: string) => c !== coll.slug)
+          const parsedCollections: unknown = card.collections ? JSON.parse(card.collections) : [];
+          const filtered = Array.isArray(parsedCollections)
+            ? (parsedCollections as string[]).filter((c: string) => c !== coll.slug)
             : [];
 
           await tx.card.update({

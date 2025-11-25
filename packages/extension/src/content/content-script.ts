@@ -29,7 +29,6 @@ function startImagePicker() {
   if (isPickerActive) return
   isPickerActive = true
 
-  console.log('[Pawkit] Starting image picker...')
 
   // Add global styles for image highlighting
   const styleEl = document.createElement('style')
@@ -67,7 +66,6 @@ function startImagePicker() {
   // Click on overlay cancels
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {
-      console.log('[Pawkit] Overlay clicked, cancelling')
       cleanup()
     }
   })
@@ -106,7 +104,6 @@ function startImagePicker() {
 
   // Find all images and create clickable overlays for them
   const images = document.querySelectorAll('img')
-  console.log('[Pawkit] Found', images.length, 'images')
 
   let selectableCount = 0
   images.forEach((img) => {
@@ -148,8 +145,6 @@ function startImagePicker() {
       e.preventDefault()
       e.stopPropagation()
 
-      console.log('[Pawkit] Image clicked!')
-
       // Get best image URL
       let imageUrl = img.src
 
@@ -172,11 +167,8 @@ function startImagePicker() {
         imageUrl = new URL(imageUrl, window.location.href).href
       }
 
-      console.log('[Pawkit] Image selected:', imageUrl)
-
       // Store in local storage for popup to read
       await browser.storage.local.set({ selectedImage: imageUrl })
-      console.log('[Pawkit] Image saved to storage')
 
       // Cleanup the picker overlay
       cleanup()
@@ -188,12 +180,9 @@ function startImagePicker() {
     cleanupFunctions.push(() => clickOverlay.remove())
   })
 
-  console.log('[Pawkit] Made', selectableCount, 'images selectable')
-
   // Handle ESC key
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Escape') {
-      console.log('[Pawkit] ESC pressed, cancelling')
       cleanup()
     }
   }
@@ -222,4 +211,3 @@ function cleanup() {
   }
 }
 
-console.log('[Pawkit] Content script loaded')

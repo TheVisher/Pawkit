@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Build collection hierarchy map
-    const collectionMap = new Map<string, any>();
+    const collectionMap = new Map<string, typeof collections[number]>();
     for (const collection of collections) {
       collectionMap.set(collection.slug, collection);
     }
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
       if (collection && collection.parentId) {
         // Find parent by ID
-        const parent = collections.find((c: any) => c.id === collection.parentId);
+        const parent = collections.find((c) => c.id === collection.parentId);
         if (parent) {
           parents.push(parent.slug);
           // Recursively get parent's parents

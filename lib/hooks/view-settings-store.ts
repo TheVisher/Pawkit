@@ -32,8 +32,27 @@ export type ViewSettings = {
   sortOrder: SortOrder;
 
   // View-specific settings (flexible JSON)
-  viewSpecific?: Record<string, any>;
+  viewSpecific?: Record<string, unknown>;
 };
+
+// Server response shape for view settings API
+interface ServerViewSettingsItem {
+  view: string;
+  layout: string;
+  cardSize: number;
+  cardSpacing?: number;
+  showLabels?: boolean;
+  showTitles?: boolean;  // Legacy field
+  showUrls?: boolean;    // Legacy field
+  showMetadata?: boolean;
+  showTags: boolean;
+  showPreview?: boolean;
+  cardPadding: number;
+  contentTypeFilter?: ContentType[];
+  sortBy: string;
+  sortOrder: string;
+  viewSpecific?: string; // JSON string
+}
 
 export type ViewSettingsState = {
   // Settings per view
@@ -57,7 +76,7 @@ export type ViewSettingsState = {
   setContentTypeFilter: (view: ViewType, contentTypes: ContentType[]) => Promise<void>;
   setSortBy: (view: ViewType, sortBy: SortBy) => Promise<void>;
   setSortOrder: (view: ViewType, sortOrder: SortOrder) => Promise<void>;
-  setViewSpecific: (view: ViewType, data: Record<string, any>) => Promise<void>;
+  setViewSpecific: (view: ViewType, data: Record<string, unknown>) => Promise<void>;
   
   // Sync with server
   syncToServer: (view: ViewType) => Promise<void>;
@@ -260,7 +279,7 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
             const loadedSettings = createDefaultSettings();
             
             // Merge server settings with defaults
-            data.settings.forEach((item: any) => {
+            (data.settings as ServerViewSettingsItem[]).forEach((item) => {
               const view = item.view as ViewType;
               if (view in loadedSettings) {
                 // Scale server values (1-5, 0-4) to client values (1-100)

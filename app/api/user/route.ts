@@ -43,7 +43,7 @@ export async function PATCH(request: Request) {
     const validated = userUpdateSchema.parse(body);
 
     // Build update data object
-    const updateData: any = {};
+    const updateData: { displayName?: string | null; serverSync?: boolean } = {};
     if (validated.displayName !== undefined) {
       updateData.displayName = validated.displayName || null;
     }

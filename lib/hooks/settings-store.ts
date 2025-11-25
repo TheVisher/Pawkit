@@ -37,17 +37,11 @@ export type DisplaySettings = {
 async function syncSettingsToServer(state: SettingsState) {
   // Only sync if serverSync is enabled
   if (!state.serverSync) {
-    console.log('[Settings syncToServer] Skipped - serverSync disabled');
     return;
   }
 
-  console.log('[Settings syncToServer] Syncing to server:', {
-    pinnedNoteIds: state.pinnedNoteIds,
-    pinnedCount: state.pinnedNoteIds.length
-  });
-
   try {
-    const response = await fetch('/api/user/settings', {
+    await fetch('/api/user/settings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -69,14 +63,8 @@ async function syncSettingsToServer(state: SettingsState) {
         // defaultView, defaultSort are localStorage-only and not synced to server
       })
     });
-
-    if (!response.ok) {
-      console.error('[Settings syncToServer] Failed:', response.status, response.statusText);
-    } else {
-      console.log('[Settings syncToServer] Success');
-    }
   } catch (error) {
-    console.error('[Settings syncToServer] Error:', error);
+    // Silently fail - settings will sync on next attempt
   }
 }
 
@@ -295,24 +283,16 @@ export const useSettingsStore = create<SettingsState>()(
 
         // Check if already pinned
         if (currentPinned.includes(noteId)) {
-          console.log('[Settings pinNote] Note already pinned:', noteId);
           return true;
         }
 
         // Check if at max limit (3)
         if (currentPinned.length >= 3) {
-          console.log('[Settings pinNote] At max limit (3 pins)');
           return false;
         }
 
         // Add to pinned notes
         const newPinned = [...currentPinned, noteId];
-        console.log('[Settings pinNote] Pinning note:', {
-          noteId,
-          previousPinned: currentPinned,
-          newPinned,
-          serverSync: get().serverSync
-        });
         set({ pinnedNoteIds: newPinned });
         debouncedSync(get());
         return true;
@@ -372,34 +352,19 @@ export const useSettingsStore = create<SettingsState>()(
       },
       // Load settings from server
       loadFromServer: async () => {
-        console.log('[Settings loadFromServer] Starting...');
         try {
           const response = await fetch('/api/user/settings');
 
           if (response.ok) {
             const data = await response.json();
-            console.log('[Settings loadFromServer] Response received:', {
-              wrapped: !!(data.success && data.data),
-              hasPinnedNoteIds: !!(data.pinnedNoteIds || data.data?.pinnedNoteIds)
-            });
 
             // Handle both wrapped ({ success: true, data: {...} }) and raw ({ id, userId, ... }) responses
             const settings = data.success && data.data ? data.data : data;
 
             // Validate we have settings data
             if (!settings || !settings.userId) {
-              console.log('[Settings loadFromServer] Invalid settings data - no userId');
               return;
             }
-
-            console.log('[Settings loadFromServer] Parsed settings:', {
-              pinnedNoteIds: settings.pinnedNoteIds,
-              pinnedNotesType: typeof settings.pinnedNoteIds,
-              pinnedNotesIsArray: Array.isArray(settings.pinnedNoteIds),
-              pinnedCount: settings.pinnedNoteIds?.length,
-              recentHistory: settings.recentHistory,
-              theme: settings.theme
-            });
 
             // Merge recent history: combine local + server, dedupe by timestamp
             const localHistory = get().recentHistory;
@@ -415,7 +380,6 @@ export const useSettingsStore = create<SettingsState>()(
               }, [] as RecentItem[])
               .sort((a: RecentItem, b: RecentItem) => b.timestamp - a.timestamp)
               .slice(0, 10);
-
 
             set({
               autoFetchMetadata: settings.autoFetchMetadata,
@@ -437,10 +401,9 @@ export const useSettingsStore = create<SettingsState>()(
               defaultView: settings.defaultView ?? "masonry",
               defaultSort: settings.defaultSort ?? "dateAdded"
             });
-
-          } else {
           }
         } catch (error) {
+          // Silently fail - settings will load on next attempt
         }
       },
 

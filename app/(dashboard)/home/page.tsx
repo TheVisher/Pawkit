@@ -71,7 +71,7 @@ export default function HomePage() {
   // Build private collection IDs helper
   const privateCollectionIds = useMemo(() => {
     const ids = new Set<string>();
-    const getAllCollectionIds = (nodes: any[]): void => {
+    const getAllCollectionIds = (nodes: CollectionNode[]): void => {
       for (const node of nodes) {
         if (node.isPrivate) {
           ids.add(node.id);

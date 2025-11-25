@@ -54,7 +54,7 @@ export async function PATCH(
     }
 
     // Update todo
-    const updateData: any = {};
+    const updateData: { text?: string; completed?: boolean } = {};
     if (body.text !== undefined) {
       const trimmedText = body.text.trim();
       // Validate length (max 500 characters)

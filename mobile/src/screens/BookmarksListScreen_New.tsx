@@ -133,7 +133,7 @@ export default function BookmarksListScreen() {
           const firstCollection = firstCardWithCollections.collections[0];
           // Check if collection is corrupted (starts with [ or ")
           if (typeof firstCollection === 'string' && (firstCollection.startsWith('[') || firstCollection.startsWith('"'))) {
-            console.log('[Storage] Detected corrupted collections data, clearing and re-syncing...');
+            // Detected corrupted collections data - clear and re-sync
             await LocalStorage.clearAll();
             // Re-initialize after clearing
             LocalStorage.initStorage(user.id);
@@ -146,35 +146,9 @@ export default function BookmarksListScreen() {
       const localCollections = await LocalStorage.getAllCollections();
 
       // Apply filtering and sorting (collection param is now a slug, not a name)
-      console.log('[Filter] Collection slug from route:', collection);
-      console.log('[Filter] Total cards in storage:', localCards.length);
-
-      // Debug: Show what collections arrays look like
-      if (collection && localCards.length > 0) {
-        console.log('[Filter] Sample card collections arrays:');
-        localCards.slice(0, 5).forEach(card => {
-          console.log(`  - "${card.title}": collections =`, card.collections, `(type: ${typeof card.collections})`);
-        });
-      }
-
       let filteredCards = collection
-        ? localCards.filter(c => {
-            const hasCollection = c.collections?.includes(collection);
-            if (hasCollection) {
-              console.log('[Filter] ✓ Card matched:', { title: c.title, collections: c.collections });
-            }
-            return hasCollection;
-          })
+        ? localCards.filter(c => c.collections?.includes(collection))
         : localCards;
-
-      console.log('[Filter] Total cards after filtering:', filteredCards.length);
-
-      if (collection && filteredCards.length === 0 && localCards.length > 0) {
-        console.log('[Filter] ⚠️ NO MATCHES! Looking for slug:', collection);
-        console.log('[Filter] Available collection slugs in cards:',
-          [...new Set(localCards.flatMap(c => c.collections || []))].slice(0, 10)
-        );
-      }
 
       filteredCards = sortCards(filteredCards, sortBy);
 
@@ -204,7 +178,6 @@ export default function BookmarksListScreen() {
   // Background sync with server
   const backgroundSync = async () => {
     try {
-      console.log('[App] Background sync started...');
       const result = await SyncService.sync();
 
       if (result.success) {
@@ -232,11 +205,9 @@ export default function BookmarksListScreen() {
 
         setCards(cardsWithDimensions);
         setCollections(localCollections);
-
-        console.log('[App] Background sync completed:', result);
       }
     } catch (error) {
-      console.error('[App] Background sync failed:', error);
+      // Silently fail - user can manually refresh
     }
   };
 
@@ -341,16 +312,10 @@ export default function BookmarksListScreen() {
       fetchMetadata(url)
         .then(async (metadata) => {
           if (!metadata) {
-            console.log('[Bookmark] No metadata found for URL');
             // Update status to READY even without metadata
             await cardsApi.update(newCard.id, { status: 'READY' });
             return;
           }
-
-          console.log('[Bookmark] Fetched metadata:', {
-            title: metadata.title?.substring(0, 50),
-            hasImage: !!metadata.image,
-          });
 
           // 4. Update card in Supabase with metadata
           const updatedCard = await cardsApi.update(newCard.id, {
@@ -555,11 +520,9 @@ export default function BookmarksListScreen() {
         setCards(updatedCards as CardWithDimensions[]);
         setSelectedCard(newNote);
         setModalVisible(true);
-
-        console.log('[TodaysNote] Created new daily note:', title);
       }
     } catch (error) {
-      console.error('[TodaysNote] Error:', error);
+      // Silently fail - user will see no note was created
     }
   };
 
@@ -580,10 +543,8 @@ export default function BookmarksListScreen() {
 
       // Update UI
       setCards(cards.map(c => c.id === noteId ? updatedCard as CardWithDimensions : c));
-
-      console.log(`[PinNote] ${newPinnedStatus ? 'Pinned' : 'Unpinned'} note:`, card.title);
     } catch (error) {
-      console.error('[PinNote] Error:', error);
+      // Silently fail - pin state may be out of sync
     }
   };
 
@@ -636,7 +597,6 @@ export default function BookmarksListScreen() {
       activeCollection={collection}
       cardCount={cards.length}
       onNavigate={(selectedCollection) => {
-        console.log('[Navigation] Navigating to collection:', selectedCollection);
         navigation.navigate('BookmarksList', {
           collection: selectedCollection
         });

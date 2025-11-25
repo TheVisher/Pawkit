@@ -4,6 +4,26 @@ import { syncQueue } from './sync-queue';
 import { CardDTO } from '@/lib/server/cards';
 import { CollectionNode } from '@/lib/types';
 
+// Types for old database records with internal sync flags
+interface OldCardRecord extends CardDTO {
+  _locallyModified?: boolean;
+  _locallyCreated?: boolean;
+  _serverVersion?: number;
+}
+
+// Old collection records have optional children (may not be stored in flat DB)
+interface OldCollectionRecord extends Omit<CollectionNode, 'children'> {
+  _locallyModified?: boolean;
+  _locallyCreated?: boolean;
+  _serverVersion?: number;
+  children?: CollectionNode[];
+}
+
+interface MetadataRecord {
+  key: string;
+  value: unknown;
+}
+
 /**
  * STORAGE MIGRATION - Migrate from global to user-specific databases
  *
@@ -77,9 +97,9 @@ export async function migrateToUserSpecificStorage(
 
     // Get all data from old database
 
-    let cards: any[] = [];
-    let collections: any[] = [];
-    let metadata: any[] = [];
+    let cards: unknown[] = [];
+    let collections: unknown[] = [];
+    let metadata: unknown[] = [];
 
     try {
       cards = await oldDb.getAll('cards');
@@ -98,13 +118,11 @@ export async function migrateToUserSpecificStorage(
     }
 
     // Filter data by userId (in case database has mixed user data)
-    const userCards = cards.filter(card => {
-      // Cards should have userId field
+    const userCards = (cards as OldCardRecord[]).filter(card => {
       return card.userId === userId;
     });
 
-    const userCollections = collections.filter(col => {
-      // Collections should have userId field
+    const userCollections = (collections as OldCollectionRecord[]).filter(col => {
       return col.userId === userId;
     });
 
@@ -153,7 +171,7 @@ export async function migrateToUserSpecificStorage(
     }
 
     // Migrate metadata
-    for (const meta of metadata) {
+    for (const meta of metadata as MetadataRecord[]) {
       try {
         await localDb.setMetadata(meta.key, meta.value);
         result.metadataMigrated++;

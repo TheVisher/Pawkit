@@ -52,7 +52,7 @@ interface LocalStorageDB extends DBSchema {
     key: string; // metadata key
     value: {
       key: string;
-      value: any;
+      value: unknown;
       updatedAt: number;
     };
   };
@@ -515,16 +515,16 @@ class LocalStorage {
 
   // ==================== METADATA ====================
 
-  async getMetadata(key: string): Promise<any> {
+  async getMetadata<T = unknown>(key: string): Promise<T | undefined> {
     if (!this.db) {
       throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
     }
 
     const item = await this.db.get('metadata', key);
-    return item?.value;
+    return item?.value as T | undefined;
   }
 
-  async setMetadata(key: string, value: any): Promise<void> {
+  async setMetadata(key: string, value: unknown): Promise<void> {
     if (!this.db) {
       throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
     }
@@ -539,7 +539,7 @@ class LocalStorage {
   // ==================== SYNC HELPERS ====================
 
   async getLastSyncTime(): Promise<number | null> {
-    return await this.getMetadata('lastSyncTime');
+    return await this.getMetadata<number>('lastSyncTime') ?? null;
   }
 
   async setLastSyncTime(timestamp: number): Promise<void> {

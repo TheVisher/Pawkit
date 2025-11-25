@@ -47,11 +47,9 @@ export function ShareHandler() {
       showNotification('Bookmark saved!', 'success');
 
       console.log('[ShareHandler] Successfully created bookmark for:', url);
-    } catch (error: any) {
-      console.error('[ShareHandler] Failed to create bookmark:', error);
-
+    } catch (error) {
       // Show error notification
-      const errorMessage = error?.message || 'Failed to save bookmark';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save bookmark';
       showNotification(errorMessage, 'error');
     } finally {
       // Always reset the share intent so it doesn't process again

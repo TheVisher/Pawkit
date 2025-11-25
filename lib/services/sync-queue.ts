@@ -7,11 +7,27 @@ export const DEFAULT_WORKSPACE_ID = 'default';
 // Operation types that can be queued
 type OperationType = 'CREATE_CARD' | 'UPDATE_CARD' | 'DELETE_CARD' | 'CREATE_COLLECTION' | 'UPDATE_COLLECTION' | 'DELETE_COLLECTION';
 
+// Operation-specific payload types
+export type CreateCardPayload = Partial<CardDTO> & { url?: string; title?: string };
+export type UpdateCardPayload = Partial<CardDTO>;
+export type DeleteCardPayload = { id: string };
+export type CreateCollectionPayload = { name: string; parentId?: string | null };
+export type UpdateCollectionPayload = { id: string; name?: string; parentId?: string | null };
+export type DeleteCollectionPayload = { id: string };
+
+export type QueueOperationPayload =
+  | CreateCardPayload
+  | UpdateCardPayload
+  | DeleteCardPayload
+  | CreateCollectionPayload
+  | UpdateCollectionPayload
+  | DeleteCollectionPayload;
+
 // Queue operation structure
 export interface QueueOperation {
   id: string; // Unique operation ID
   type: OperationType;
-  payload: any; // Operation-specific data
+  payload: QueueOperationPayload;
   tempId?: string; // For CREATE operations, the temporary ID used optimistically
   targetId?: string; // For UPDATE/DELETE operations, the card ID
   timestamp: number;

@@ -170,9 +170,18 @@ function extractJsonLdImage(html: string, baseUrl: string): string | undefined {
   return undefined;
 }
 
+// JSON-LD item structure - can have various image formats
+interface JsonLdItem {
+  image?: string | string[] | { url?: string; contentUrl?: string } | { url?: string; contentUrl?: string }[];
+  thumbnailUrl?: string | string[];
+  primaryImageOfPage?: { url?: string };
+  [key: string]: unknown;
+}
+
 // Helper to extract image from a single JSON-LD item
-function extractImageFromJsonLdItem(item: any, baseUrl: string): string | undefined {
+function extractImageFromJsonLdItem(item: unknown, baseUrl: string): string | undefined {
   if (!item || typeof item !== 'object') return undefined;
+  const jsonLdItem = item as JsonLdItem;
 
   const resolveUrl = (url: string): string | undefined => {
     if (!url) return undefined;
@@ -184,33 +193,37 @@ function extractImageFromJsonLdItem(item: any, baseUrl: string): string | undefi
   };
 
   // Check direct image property
-  if (item.image) {
-    if (typeof item.image === 'string') {
-      return resolveUrl(item.image);
+  if (jsonLdItem.image) {
+    if (typeof jsonLdItem.image === 'string') {
+      return resolveUrl(jsonLdItem.image);
     }
-    if (Array.isArray(item.image)) {
-      const first = item.image[0];
+    if (Array.isArray(jsonLdItem.image)) {
+      const first = jsonLdItem.image[0];
       if (typeof first === 'string') return resolveUrl(first);
-      if (first?.url) return resolveUrl(first.url);
-      if (first?.contentUrl) return resolveUrl(first.contentUrl);
+      if (first && typeof first === 'object') {
+        if (first.url) return resolveUrl(first.url);
+        if (first.contentUrl) return resolveUrl(first.contentUrl);
+      }
     }
-    if (item.image.url) return resolveUrl(item.image.url);
-    if (item.image.contentUrl) return resolveUrl(item.image.contentUrl);
+    if (typeof jsonLdItem.image === 'object' && !Array.isArray(jsonLdItem.image)) {
+      if (jsonLdItem.image.url) return resolveUrl(jsonLdItem.image.url);
+      if (jsonLdItem.image.contentUrl) return resolveUrl(jsonLdItem.image.contentUrl);
+    }
   }
 
   // Check thumbnailUrl (common in VideoObject, Product)
-  if (item.thumbnailUrl) {
-    if (typeof item.thumbnailUrl === 'string') {
-      return resolveUrl(item.thumbnailUrl);
+  if (jsonLdItem.thumbnailUrl) {
+    if (typeof jsonLdItem.thumbnailUrl === 'string') {
+      return resolveUrl(jsonLdItem.thumbnailUrl);
     }
-    if (Array.isArray(item.thumbnailUrl) && item.thumbnailUrl[0]) {
-      return resolveUrl(item.thumbnailUrl[0]);
+    if (Array.isArray(jsonLdItem.thumbnailUrl) && jsonLdItem.thumbnailUrl[0]) {
+      return resolveUrl(jsonLdItem.thumbnailUrl[0]);
     }
   }
 
   // Check primaryImageOfPage (WebPage schema)
-  if (item.primaryImageOfPage?.url) {
-    return resolveUrl(item.primaryImageOfPage.url);
+  if (jsonLdItem.primaryImageOfPage?.url) {
+    return resolveUrl(jsonLdItem.primaryImageOfPage.url);
   }
 
   return undefined;

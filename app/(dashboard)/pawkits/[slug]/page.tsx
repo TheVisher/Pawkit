@@ -182,7 +182,7 @@ function CollectionPageContent() {
     }
 
     // Filter out deleted sub-pawkits
-    return currentCollection.children.filter((child: any) => child.deleted !== true).map((child: any) => {
+    return currentCollection.children.filter((child) => child.deleted !== true).map((child) => {
       const pawkitCards = cards.filter(card => 
         card.collections.includes(child.slug) && card.deleted !== true
       );
@@ -208,7 +208,7 @@ function CollectionPageContent() {
   }
 
   // Flatten all pawkits for the move modal (including sub-pawkits, excluding deleted)
-  const flattenPawkits = (nodes: any[], prefix = ""): Array<{ id: string; name: string; slug: string }> => {
+  const flattenPawkits = (nodes: CollectionNode[], prefix = ""): Array<{ id: string; name: string; slug: string }> => {
     const result: Array<{ id: string; name: string; slug: string }> = [];
     for (const node of nodes) {
       // Skip deleted collections

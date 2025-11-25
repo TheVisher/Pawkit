@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, ReactNode, HTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
@@ -23,6 +23,19 @@ import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
 import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
+
+// ReactMarkdown code component props
+interface CodeComponentProps extends HTMLAttributes<HTMLElement> {
+  inline?: boolean;
+  className?: string;
+  children?: ReactNode;
+}
+
+// ReactMarkdown anchor component props
+interface AnchorComponentProps extends HTMLAttributes<HTMLAnchorElement> {
+  href?: string;
+  children?: ReactNode;
+}
 import { GlowButton } from "@/components/ui/glow-button";
 import { useTrackCardView } from "@/lib/hooks/use-recent-history";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -170,8 +183,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   }, [allCards, cardsReady]);
 
   // Custom renderer for wiki-links
-  const wikiLinkComponents = useMemo(() => ({
-    code: ({ node, inline, className, children, ...props }: any) => {
+  const wikiLinkComponents: Components = useMemo(() => ({
+    code: ({ inline, className, children, ...props }: CodeComponentProps) => {
       // In ReactMarkdown v10, we need to check multiple ways:
       // 1. Check if inline prop exists and is true
       // 2. Check if className contains "language-" (block code marker)
@@ -201,7 +214,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         </code>
       );
     },
-    a: ({ node, href, children, ...props }: any) => {
+    a: ({ href, children, ...props }: AnchorComponentProps) => {
       // Check if this is a wiki-link (starts with #/wiki/)
       if (href?.startsWith('#/wiki/')) {
         const linkText = href.replace('#/wiki/', '').replace(/-/g, ' ');
@@ -221,7 +234,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 }}
                 className="!text-blue-400 hover:!text-blue-300 !underline !decoration-blue-400/50 hover:!decoration-blue-300 cursor-pointer !font-bold transition-colors"
                 style={{ color: '#60a5fa', textDecoration: 'underline', textDecorationColor: '#60a5fa80' }}
-                {...props}
               >
                 <Bookmark size={14} className="inline mr-1" />
                 {children}
@@ -250,7 +262,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 }}
                 className="!text-green-400 hover:!text-green-300 !underline !decoration-green-400/50 hover:!decoration-green-300 cursor-pointer !font-bold transition-colors"
                 style={{ color: '#4ade80', textDecoration: 'underline', textDecorationColor: '#4ade8080' }}
-                {...props}
               >
                 <Globe size={14} className="inline mr-1" />
                 {children}
@@ -291,7 +302,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 }}
                 className="!text-purple-400 hover:!text-purple-300 !underline !decoration-purple-400/50 hover:!decoration-purple-300 cursor-pointer !font-bold transition-colors"
                 style={{ color: '#c084fc', textDecoration: 'underline', textDecorationColor: '#c084fc80' }}
-                {...props}
               >
                 <FileText size={14} className="inline mr-1" />
                 {children}
@@ -307,7 +317,6 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 }}
                 className="!text-blue-400 hover:!text-blue-300 !underline !decoration-blue-400/50 hover:!decoration-blue-300 cursor-pointer !font-bold transition-colors"
                 style={{ color: '#60a5fa', textDecoration: 'underline', textDecorationColor: '#60a5fa80' }}
-                {...props}
               >
                 <Bookmark size={14} className="inline mr-1" />
                 {children}

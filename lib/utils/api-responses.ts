@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { ZodIssue } from 'zod';
 
 export const ErrorCodes = {
   UNAUTHORIZED: 'UNAUTHORIZED',
@@ -9,11 +10,14 @@ export const ErrorCodes = {
   INTERNAL_ERROR: 'INTERNAL_ERROR',
 } as const;
 
+// Error details can be validation errors, field info, or other structured data
+export type ApiErrorDetails = Record<string, unknown> | string[] | ZodIssue[] | undefined;
+
 interface ApiErrorResponse {
   error: string;
   message: string;
   code: string;
-  details?: any;
+  details?: ApiErrorDetails;
 }
 
 export function unauthorized(message = 'Unauthorized'): NextResponse {
@@ -24,7 +28,7 @@ export function unauthorized(message = 'Unauthorized'): NextResponse {
   }, { status: 401 });
 }
 
-export function notFound(resource = 'Resource', details?: any): NextResponse {
+export function notFound(resource = 'Resource', details?: ApiErrorDetails): NextResponse {
   return NextResponse.json<ApiErrorResponse>({
     error: 'Not Found',
     message: `${resource} not found`,
@@ -33,7 +37,7 @@ export function notFound(resource = 'Resource', details?: any): NextResponse {
   }, { status: 404 });
 }
 
-export function validationError(message: string, details?: any): NextResponse {
+export function validationError(message: string, details?: ApiErrorDetails): NextResponse {
   return NextResponse.json<ApiErrorResponse>({
     error: 'Validation Error',
     message,
@@ -42,7 +46,7 @@ export function validationError(message: string, details?: any): NextResponse {
   }, { status: 400 });
 }
 
-export function conflict(message: string, details?: any): NextResponse {
+export function conflict(message: string, details?: ApiErrorDetails): NextResponse {
   return NextResponse.json<ApiErrorResponse>({
     error: 'Conflict',
     message,

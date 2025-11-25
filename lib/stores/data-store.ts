@@ -793,7 +793,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-    const newCollection: any = {
+    const newCollection: CollectionNode = {
       id: tempId,
       name: collectionData.name,
       slug: collectionData.name.toLowerCase().replace(/\s+/g, '-'),
