@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon, Calendar } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon, Calendar, ChevronRight, Plus } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 
@@ -90,6 +90,7 @@ type CardDetailModalProps = {
 };
 
 export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete, onNavigateToCard }: CardDetailModalProps) {
+  const router = useRouter();
   const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDemoAwareStore();
   const dataStore = useDataStore();
   const allCards = dataStore.cards;
@@ -366,6 +367,81 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const lastSavedNotesRef = useRef(card.notes ?? "");
   const lastSavedContentRef = useRef(card.content ?? "");
   const editorTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const [isAddingToCalendar, setIsAddingToCalendar] = useState(false);
+
+  // Get event store for calendar integration
+  const { events, addEvent } = useEventStore();
+
+  // Check if this card already has a linked calendar event
+  const linkedCalendarEvent = useMemo(() => {
+    return events.find(e => e.source?.type === 'card' && e.source?.cardId === card.id);
+  }, [events, card.id]);
+
+  // Extract release date from metadata on-the-fly
+  const extractedReleaseDate = useMemo(() => {
+    // First check if dates were already stored on the card
+    if (card.extractedDates && card.extractedDates.length > 0) {
+      return getMostRelevantDate(card.extractedDates);
+    }
+    // Otherwise, extract from metadata
+    if (card.metadata && card.type === 'url') {
+      const extractedDates = extractDatesFromMetadata(card.metadata as Record<string, unknown>);
+      if (extractedDates.length > 0) {
+        return getMostRelevantDate(extractedDates);
+      }
+    }
+    return null;
+  }, [card.extractedDates, card.metadata, card.type, card.id]);
+
+  // Helper to get color for date type
+  const getDateTypeColor = (type: string): string => {
+    switch (type) {
+      case 'release': return '#9333ea'; // Purple for releases
+      case 'event': return '#3b82f6';   // Blue for events
+      case 'deadline': return '#ef4444'; // Red for deadlines
+      default: return '#9333ea';
+    }
+  };
+
+  // Handle adding to calendar
+  const handleAddToCalendar = async () => {
+    if (!extractedReleaseDate) return;
+    setIsAddingToCalendar(true);
+
+    try {
+      await addEvent({
+        title: card.title || card.domain || 'Saved Link',
+        date: extractedReleaseDate.date,
+        endDate: extractedReleaseDate.endDate || null,
+        isAllDay: true,
+        description: card.description || undefined,
+        url: card.url || undefined,
+        color: getDateTypeColor(extractedReleaseDate.type),
+        source: {
+          type: 'card',
+          cardId: card.id,
+        },
+      });
+
+      toast.success('Added to calendar!');
+    } catch (error) {
+      console.error('Failed to add to calendar:', error);
+      toast.error('Failed to add to calendar');
+    } finally {
+      setIsAddingToCalendar(false);
+    }
+  };
+
+  // Format date for display
+  const formatDateDisplay = (dateStr: string): string => {
+    try {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return format(date, 'MMM d, yyyy');
+    } catch {
+      return dateStr;
+    }
+  };
 
   // Calculate note metadata for display in top bar
   const noteMetadata = useMemo(() => {
@@ -1287,6 +1363,47 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                           )}
                         </div>
                       </div>
+
+                      {/* Release Date / Calendar Section */}
+                      {(linkedCalendarEvent || extractedReleaseDate) && (
+                        <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                                <Calendar size={20} className="text-purple-400" />
+                              </div>
+                              <div>
+                                <span className="text-sm text-gray-400">
+                                  {linkedCalendarEvent ? 'On Calendar' : (extractedReleaseDate?.label || 'Release Date')}
+                                </span>
+                                <div className="text-lg font-semibold text-white">
+                                  {linkedCalendarEvent
+                                    ? formatDateDisplay(linkedCalendarEvent.date)
+                                    : extractedReleaseDate ? formatDateDisplay(extractedReleaseDate.date) : ''}
+                                </div>
+                              </div>
+                            </div>
+                            {linkedCalendarEvent ? (
+                              <button
+                                onClick={() => router.push(`/calendar?date=${linkedCalendarEvent.date}`)}
+                                className="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 hover:text-purple-200 transition-colors text-sm font-medium flex items-center gap-2"
+                              >
+                                View on Calendar
+                                <ChevronRight size={16} />
+                              </button>
+                            ) : extractedReleaseDate ? (
+                              <button
+                                onClick={handleAddToCalendar}
+                                disabled={isAddingToCalendar}
+                                className="px-4 py-2 rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                              >
+                                <Plus size={16} />
+                                {isAddingToCalendar ? 'Adding...' : 'Add to Calendar'}
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -1980,19 +2097,14 @@ function MetadataSection({ card }: { card: CardModel }) {
   const relevantDate = useMemo(() => {
     // First check if dates were already extracted and stored on the card
     if (card.extractedDates && card.extractedDates.length > 0) {
-      console.log('[MetadataSection] Using stored extractedDates:', card.extractedDates);
       return getMostRelevantDate(card.extractedDates);
     }
     // Otherwise, extract from metadata on-the-fly
     if (card.metadata && card.type === 'url') {
-      console.log('[MetadataSection] Extracting dates from metadata:', JSON.stringify(card.metadata, null, 2).slice(0, 2000));
       const extractedDates = extractDatesFromMetadata(card.metadata as Record<string, unknown>);
-      console.log('[MetadataSection] Extracted dates:', extractedDates);
       if (extractedDates.length > 0) {
         return getMostRelevantDate(extractedDates);
       }
-    } else {
-      console.log('[MetadataSection] No metadata or not url type:', { hasMetadata: !!card.metadata, type: card.type });
     }
     return null;
   }, [card.extractedDates, card.metadata, card.type]);
