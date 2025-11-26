@@ -18,6 +18,7 @@ interface FileStoreState {
   // State
   files: StoredFile[];
   isLoading: boolean;
+  isLoaded: boolean; // Has loadFiles been called at least once?
   totalSize: number;
 
   // Actions
@@ -49,9 +50,13 @@ const blobUrlCache = new Map<string, string>();
 export const useFileStore = create<FileStoreState>((set, get) => ({
   files: [],
   isLoading: false,
+  isLoaded: false,
   totalSize: 0,
 
   loadFiles: async (_userId?: string) => {
+    // Prevent duplicate loads
+    if (get().isLoading) return;
+
     set({ isLoading: true });
 
     try {
@@ -62,11 +67,11 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
         files: files.filter((f) => !f.deleted),
         totalSize,
         isLoading: false,
+        isLoaded: true,
       });
     } catch (error) {
       console.error("[FileStore] Error loading files:", error);
-      set({ isLoading: false });
-      useToastStore.getState().error("Failed to load files");
+      set({ isLoading: false, isLoaded: true }); // Mark as loaded even on error
     }
   },
 

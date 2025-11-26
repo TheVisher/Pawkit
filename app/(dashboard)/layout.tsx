@@ -6,6 +6,7 @@ import { OmniBar } from "@/components/omni-bar";
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { SelectionStoreProvider, useSelection } from "@/lib/hooks/selection-store";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useFileStore } from "@/lib/stores/file-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { useNetworkSync } from "@/lib/hooks/use-network-sync";
 import { useSyncSettings } from "@/lib/hooks/use-sync-settings";
@@ -93,6 +94,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
   const { collections, initialize, isInitialized, refresh, addCard, cards, updateCard, deleteCard } = useDataStore();
+  const loadFiles = useFileStore((state) => state.loadFiles);
   const { loadFromServer } = useViewSettingsStore();
   const router = useRouter();
 
@@ -184,12 +186,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     fetchUser();
   }, [isReady]);
 
-  // Initialize data store ONLY after user storage is ready (security fix)
+  // Initialize data store and file store ONLY after user storage is ready (security fix)
   useEffect(() => {
     if (isReady && !isInitialized) {
       initialize();
+      loadFiles(); // Load files from IndexedDB for file card thumbnails
     }
-  }, [isReady, isInitialized, initialize]);
+  }, [isReady, isInitialized, initialize, loadFiles]);
 
   // Load view settings ONLY after user storage is ready
   useEffect(() => {

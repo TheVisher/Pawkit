@@ -35,28 +35,42 @@ export function CardImage({
   style,
 }: CardImageProps) {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLocalLoading, setIsLocalLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const files = useFileStore((state) => state.files);
+  const isFilesLoaded = useFileStore((state) => state.isLoaded);
+  const loadFiles = useFileStore((state) => state.loadFiles);
 
   const isFileCard = card.type === "file" || card.isFileCard;
 
+  // Ensure files are loaded from IndexedDB
   useEffect(() => {
-    setIsLoading(true);
+    if (!isFilesLoaded) {
+      loadFiles();
+    }
+  }, [isFilesLoaded, loadFiles]);
+
+  useEffect(() => {
     setHasError(false);
 
     // For regular cards, just use the stored image URL
     if (!isFileCard) {
       setImageUrl(card.image || null);
-      setIsLoading(false);
+      setIsLocalLoading(false);
       return;
     }
 
-    // For file cards, find the file in the store
+    // For file cards, wait for files to be loaded
+    if (!isFilesLoaded) {
+      setIsLocalLoading(true);
+      return;
+    }
+
+    // Find the file in the store
     const fileId = card.fileId;
     if (!fileId) {
       setImageUrl(null);
-      setIsLoading(false);
+      setIsLocalLoading(false);
       return;
     }
 
@@ -64,7 +78,7 @@ export function CardImage({
     if (!file) {
       console.warn("[CardImage] File not found in store:", fileId);
       setImageUrl(null);
-      setIsLoading(false);
+      setIsLocalLoading(false);
       return;
     }
 
@@ -74,7 +88,7 @@ export function CardImage({
     if (blob) {
       const blobUrl = URL.createObjectURL(blob);
       setImageUrl(blobUrl);
-      setIsLoading(false);
+      setIsLocalLoading(false);
 
       // Cleanup: revoke blob URL when component unmounts or card changes
       return () => {
@@ -82,9 +96,12 @@ export function CardImage({
       };
     } else {
       setImageUrl(null);
-      setIsLoading(false);
+      setIsLocalLoading(false);
     }
-  }, [card.id, card.fileId, card.type, card.isFileCard, card.image, isFileCard, files]);
+  }, [card.id, card.fileId, card.type, card.isFileCard, card.image, isFileCard, files, isFilesLoaded]);
+
+  // Compute loading state
+  const isLoading = (isFileCard && !isFilesLoaded) || isLocalLoading;
 
   const handleError = () => {
     setHasError(true);
@@ -140,37 +157,54 @@ export function useCardImageUrl(card: CardModel | null | undefined): {
   isFileCard: boolean;
 } {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLocalLoading, setIsLocalLoading] = useState(true);
   const files = useFileStore((state) => state.files);
+  const isFilesLoaded = useFileStore((state) => state.isLoaded);
+  const loadFiles = useFileStore((state) => state.loadFiles);
 
   const isFileCard = card?.type === "file" || card?.isFileCard === true;
+
+  // Ensure files are loaded from IndexedDB
+  useEffect(() => {
+    if (!isFilesLoaded) {
+      loadFiles();
+    }
+  }, [isFilesLoaded, loadFiles]);
 
   useEffect(() => {
     if (!card) {
       setImageUrl(null);
-      setIsLoading(false);
+      setIsLocalLoading(false);
       return;
     }
 
-    setIsLoading(true);
-
+    // For non-file cards, just use the stored image URL
     if (!isFileCard) {
       setImageUrl(card.image || null);
-      setIsLoading(false);
+      setIsLocalLoading(false);
       return;
     }
+
+    // For file cards, wait for files to be loaded
+    if (!isFilesLoaded) {
+      setIsLocalLoading(true);
+      return;
+    }
+
+    setIsLocalLoading(true);
 
     const fileId = card.fileId;
     if (!fileId) {
       setImageUrl(null);
-      setIsLoading(false);
+      setIsLocalLoading(false);
       return;
     }
 
     const file = files.find((f) => f.id === fileId);
     if (!file) {
+      console.warn("[useCardImageUrl] File not found in store:", fileId, "Files loaded:", files.length);
       setImageUrl(null);
-      setIsLoading(false);
+      setIsLocalLoading(false);
       return;
     }
 
@@ -178,16 +212,19 @@ export function useCardImageUrl(card: CardModel | null | undefined): {
     if (blob) {
       const blobUrl = URL.createObjectURL(blob);
       setImageUrl(blobUrl);
-      setIsLoading(false);
+      setIsLocalLoading(false);
 
       return () => {
         URL.revokeObjectURL(blobUrl);
       };
     } else {
       setImageUrl(null);
-      setIsLoading(false);
+      setIsLocalLoading(false);
     }
-  }, [card?.id, card?.fileId, card?.type, card?.isFileCard, card?.image, isFileCard, files]);
+  }, [card?.id, card?.fileId, card?.type, card?.isFileCard, card?.image, isFileCard, files, isFilesLoaded]);
+
+  // isLoading = files not loaded yet OR local state is loading
+  const isLoading = (isFileCard && !isFilesLoaded) || isLocalLoading;
 
   return { imageUrl, isLoading, isFileCard };
 }
