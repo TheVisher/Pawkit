@@ -7,7 +7,8 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
-import { CardModel, CollectionNode } from "@/lib/types";
+import { CardModel, CollectionNode, ExtractedDate } from "@/lib/types";
+import { getMostRelevantDate } from "@/lib/utils/extract-dates";
 import { useDataStore, extractAndSaveLinks } from "@/lib/stores/data-store";
 import { localDb } from "@/lib/services/local-storage";
 import { useToastStore } from "@/lib/stores/toast-store";
@@ -1945,11 +1946,85 @@ function ActionsTab({ card, onRefreshMetadata, isPinned, onTogglePin }: ActionsT
   );
 }
 
+// Helper to get color for date type
+function getColorForDateType(type: ExtractedDate['type']): string {
+  switch (type) {
+    case 'release':
+      return '#f97316'; // Orange for releases
+    case 'event':
+      return '#8b5cf6'; // Purple for events
+    case 'deadline':
+      return '#ef4444'; // Red for deadlines
+    case 'published':
+      return '#3b82f6'; // Blue for published
+    default:
+      return '#8b5cf6'; // Default purple
+  }
+}
+
 // Metadata Section
 function MetadataSection({ card }: { card: CardModel }) {
+  const router = useRouter();
   const { updateCard: updateCardInStore } = useDemoAwareStore();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(card.title || "");
+  const [isAddingToCalendar, setIsAddingToCalendar] = useState(false);
+
+  // Get event store to check for existing events and add new ones
+  const { events, addEvent } = useEventStore();
+
+  // Check if this card already has a calendar event
+  const linkedEvent = useMemo(() => {
+    return events.find(e => e.source?.type === 'card' && e.source?.cardId === card.id);
+  }, [events, card.id]);
+
+  // Get the most relevant extracted date
+  const relevantDate = useMemo(() => {
+    if (!card.extractedDates || card.extractedDates.length === 0) return null;
+    return getMostRelevantDate(card.extractedDates);
+  }, [card.extractedDates]);
+
+  const handleAddToCalendar = async () => {
+    if (!relevantDate) return;
+    setIsAddingToCalendar(true);
+
+    try {
+      await addEvent({
+        title: card.title || card.domain || 'Saved Link',
+        date: relevantDate.date,
+        endDate: relevantDate.endDate || null,
+        isAllDay: true,
+        description: card.description || undefined,
+        url: card.url || undefined,
+        color: getColorForDateType(relevantDate.type),
+        source: {
+          type: 'card',
+          cardId: card.id,
+        },
+      });
+
+      useToastStore.getState().success('Added to calendar!');
+    } catch (error) {
+      console.error('Failed to add to calendar:', error);
+      useToastStore.getState().error('Failed to add to calendar');
+    } finally {
+      setIsAddingToCalendar(false);
+    }
+  };
+
+  const handleViewOnCalendar = (dateStr: string) => {
+    router.push(`/calendar?date=${dateStr}`);
+  };
+
+  const formatDateForDisplay = (dateStr: string): string => {
+    try {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      return format(date, 'MMM d, yyyy');
+    } catch {
+      return dateStr;
+    }
+  };
 
   const handleSaveTitle = async () => {
     if (editedTitle.trim() === card.title) {
@@ -2040,6 +2115,40 @@ function MetadataSection({ card }: { card: CardModel }) {
                 #{tag}
               </Badge>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Release Date / Calendar Event Section */}
+      {(linkedEvent || relevantDate) && (
+        <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar size={14} className="text-purple-400" />
+              <span className="text-xs text-gray-400">
+                {linkedEvent ? 'On Calendar' : (relevantDate?.label || 'Release Date')}
+              </span>
+            </div>
+            {linkedEvent ? (
+              <button
+                onClick={() => handleViewOnCalendar(linkedEvent.date)}
+                className="flex items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200 transition-colors"
+              >
+                <span>{formatDateForDisplay(linkedEvent.date)}</span>
+                <span className="text-purple-400">→</span>
+              </button>
+            ) : relevantDate ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-300">{formatDateForDisplay(relevantDate.date)}</span>
+                <button
+                  onClick={handleAddToCalendar}
+                  disabled={isAddingToCalendar}
+                  className="px-2 py-0.5 text-xs font-medium rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 hover:text-purple-200 transition-colors border border-purple-500/30 disabled:opacity-50"
+                >
+                  {isAddingToCalendar ? '...' : '+ Add'}
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       )}
