@@ -164,12 +164,40 @@ function LibraryPageContent() {
         // Check if card type matches any of the selected content types
         return contentTypeFilter.some(filterType => {
           // For "url" content type, we need to check if it's a bookmark (url type but not a note)
-          if (filterType === "url") {
+          if (filterType === "url" || filterType === "bookmark") {
             return card.type === "url";
           }
           // For "md-note", match md-note or text-note types
           if (filterType === "md-note") {
             return card.type === "md-note" || card.type === "text-note";
+          }
+          // For "image", match file cards with image category
+          if (filterType === "image") {
+            if (card.type === "file") {
+              const metadata = card.metadata as Record<string, unknown> | undefined;
+              return metadata?.fileCategory === "image";
+            }
+            return false;
+          }
+          // For "document", "audio", "video" - match file cards with matching category
+          if (filterType === "document" || filterType === "audio" || filterType === "video") {
+            if (card.type === "file") {
+              const metadata = card.metadata as Record<string, unknown> | undefined;
+              return metadata?.fileCategory === filterType;
+            }
+            return false;
+          }
+          // For "pdf" - match file cards with pdf category
+          if (filterType === "pdf") {
+            if (card.type === "file") {
+              const metadata = card.metadata as Record<string, unknown> | undefined;
+              return metadata?.fileCategory === "pdf";
+            }
+            return false;
+          }
+          // For "file" type, match file cards directly
+          if (filterType === "file") {
+            return card.type === "file";
           }
           // For other types, match the card type directly
           return card.type === filterType;

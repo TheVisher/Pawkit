@@ -9,7 +9,7 @@ export type ViewType = "library" | "notes" | "timeline" | "pawkits" | "home" | "
 export type SortBy = "createdAt" | "title" | "url" | "updatedAt" | "pawkit";
 export type SortOrder = "asc" | "desc";
 
-export type ContentType = "url" | "md-note" | "text-note" | "image" | "document" | "audio" | "video" | "email" | "bookmark" | "highlight" | "folder" | "other";
+export type ContentType = "url" | "md-note" | "text-note" | "file" | "image" | "pdf" | "document" | "audio" | "video" | "email" | "bookmark" | "highlight" | "folder" | "other";
 
 export type ViewSettings = {
   // Layout settings
