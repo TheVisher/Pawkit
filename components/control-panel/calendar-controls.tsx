@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect } from "react";
 import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Calendar, Filter, Plus, Film, Music, Clock, Rocket, CalendarDays, StickyNote, CalendarCheck, CalendarRange, ChevronRight, ChevronLeft, Bookmark } from "lucide-react";
+import { Calendar, Filter, Plus, Film, Music, Clock, Rocket, CalendarDays, StickyNote, CalendarCheck, CalendarRange, ChevronRight, ChevronLeft, Bookmark, Flag } from "lucide-react";
 import { format, setMonth, setYear, isAfter, startOfToday, startOfWeek, endOfWeek, addYears, subYears } from "date-fns";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { useDataStore } from "@/lib/stores/data-store";
@@ -10,16 +10,18 @@ import { useEventStore } from "@/lib/hooks/use-event-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { TodosSection } from "./todos-section";
 import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
+import { getUpcomingHolidays } from "@/lib/data/us-holidays";
 
-// Type for unified upcoming item (either card or event)
+// Type for unified upcoming item (card, event, or holiday)
 type UpcomingItem = {
-  type: 'card' | 'event';
+  type: 'card' | 'event' | 'holiday';
   id: string;
   title: string;
   date: string; // YYYY-MM-DD
   time?: string | null; // HH:mm for events
   color?: string | null; // For events
   isAllDay?: boolean;
+  holidayType?: 'major' | 'minor'; // For holidays
 };
 
 // Helper to format time in 12-hour format
@@ -66,6 +68,12 @@ export function CalendarControls() {
   const clearContentFilters = useCalendarStore((state) => state.clearContentFilters);
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
 
+  // Holiday settings
+  const showHolidays = useCalendarStore((state) => state.showHolidays);
+  const holidayFilter = useCalendarStore((state) => state.holidayFilter);
+  const setShowHolidays = useCalendarStore((state) => state.setShowHolidays);
+  const setHolidayFilter = useCalendarStore((state) => state.setHolidayFilter);
+
   // Get cards from data store
   const { cards } = useDataStore();
   const { events, isInitialized, initialize } = useEventStore();
@@ -81,7 +89,7 @@ export function CalendarControls() {
     }
   }, [isInitialized, initialize]);
 
-  // Get upcoming items (cards + events), sorted chronologically
+  // Get upcoming items (cards + events + holidays), sorted chronologically
   const upcomingItems = useMemo(() => {
     const today = format(startOfToday(), 'yyyy-MM-dd');
     const items: UpcomingItem[] = [];
@@ -117,14 +125,29 @@ export function CalendarControls() {
         });
       });
 
+    // Add upcoming holidays (only major holidays to avoid clutter)
+    if (showHolidays) {
+      const upcomingHolidayList = getUpcomingHolidays(10, 'major'); // Only major holidays in upcoming
+      upcomingHolidayList.forEach(holiday => {
+        items.push({
+          type: 'holiday',
+          id: `holiday-${holiday.date}`,
+          title: holiday.name,
+          date: holiday.date,
+          isAllDay: true,
+          holidayType: holiday.type,
+        });
+      });
+    }
+
     // Sort by date, then by time (all-day first)
     items.sort((a, b) => {
       if (a.date !== b.date) {
         return a.date.localeCompare(b.date);
       }
-      // Same date - sort by time
-      const aIsAllDay = a.type === 'card' || a.isAllDay;
-      const bIsAllDay = b.type === 'card' || b.isAllDay;
+      // Same date - sort by time (holidays and all-day first)
+      const aIsAllDay = a.type === 'card' || a.type === 'holiday' || a.isAllDay;
+      const bIsAllDay = b.type === 'card' || b.type === 'holiday' || b.isAllDay;
       if (aIsAllDay && !bIsAllDay) return -1;
       if (!aIsAllDay && bIsAllDay) return 1;
       if (a.time && b.time) {
@@ -134,7 +157,7 @@ export function CalendarControls() {
     });
 
     return items.slice(0, 5);
-  }, [cards, events]);
+  }, [cards, events, showHolidays]);
 
   const totalUpcomingItems = useMemo(() => {
     const today = format(startOfToday(), 'yyyy-MM-dd');
@@ -222,6 +245,53 @@ export function CalendarControls() {
           <div className="text-xs text-muted-foreground text-center">
             Viewing: <span className="text-foreground font-medium">{format(currentMonth, 'MMMM yyyy')}</span>
           </div>
+        </div>
+      </PanelSection>
+
+      {/* Holidays Section */}
+      <PanelSection
+        id="calendar-holidays"
+        title="US Holidays"
+        icon={<Flag className="h-4 w-4 text-accent" />}
+      >
+        <div className="space-y-3">
+          <PanelToggle
+            label="Show Holidays"
+            icon={<Flag size={14} />}
+            checked={showHolidays}
+            onChange={() => setShowHolidays(!showHolidays)}
+          />
+
+          {/* Holiday filter options - only show when holidays are enabled */}
+          {showHolidays && (
+            <div className="pl-6 space-y-2">
+              <div className="text-xs text-muted-foreground mb-2">Show:</div>
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="radio"
+                  name="holiday-filter"
+                  checked={holidayFilter === "major"}
+                  onChange={() => setHolidayFilter("major")}
+                  className="w-3.5 h-3.5 accent-purple-500"
+                />
+                <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                  Major holidays only
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer group">
+                <input
+                  type="radio"
+                  name="holiday-filter"
+                  checked={holidayFilter === "all"}
+                  onChange={() => setHolidayFilter("all")}
+                  className="w-3.5 h-3.5 accent-purple-500"
+                />
+                <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                  All holidays
+                </span>
+              </label>
+            </div>
+          )}
         </div>
       </PanelSection>
 
@@ -336,7 +406,7 @@ export function CalendarControls() {
                   if (item.type === 'card') {
                     openCardDetails(item.id);
                   } else {
-                    // For events, navigate to that day
+                    // For events and holidays, navigate to that day
                     const [year, month, day] = item.date.split('-').map(Number);
                     const eventDate = new Date(year, month - 1, day);
                     setSelectedDay(eventDate);
@@ -353,17 +423,23 @@ export function CalendarControls() {
                     className="w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5"
                     style={{ backgroundColor: item.color || EVENT_COLORS.purple }}
                   />
+                ) : item.type === 'holiday' ? (
+                  <Flag size={12} className="text-amber-400 flex-shrink-0 mt-1.5" />
                 ) : (
                   <Bookmark size={12} className="text-muted-foreground flex-shrink-0 mt-1.5" />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs text-accent font-medium mb-1 flex items-center gap-1.5">
+                  <div className={`text-xs font-medium mb-1 flex items-center gap-1.5 ${
+                    item.type === 'holiday' ? 'text-amber-400' : 'text-accent'
+                  }`}>
                     {format(new Date(item.date + 'T00:00:00'), 'MMM d, yyyy')}
                     {item.type === 'event' && item.time && !item.isAllDay && (
                       <span className="text-muted-foreground">at {formatTime12h(item.time)}</span>
                     )}
                   </div>
-                  <div className="text-sm text-foreground truncate">
+                  <div className={`text-sm truncate ${
+                    item.type === 'holiday' ? 'text-amber-300' : 'text-foreground'
+                  }`}>
                     {item.title}
                   </div>
                 </div>
