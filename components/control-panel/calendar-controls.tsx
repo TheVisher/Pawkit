@@ -2,7 +2,7 @@
 
 import { useMemo, useEffect } from "react";
 import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Calendar, Filter, Plus, Film, Music, Clock, Rocket, CalendarDays, StickyNote, CalendarCheck, CalendarRange, ChevronRight, ChevronLeft, Bookmark, Flag } from "lucide-react";
+import { Calendar, Clock, CalendarDays, CalendarCheck, CalendarRange, ChevronRight, ChevronLeft, Bookmark, Flag } from "lucide-react";
 import { format, setMonth, setYear, isAfter, startOfToday, startOfWeek, endOfWeek, addYears, subYears } from "date-fns";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { useDataStore } from "@/lib/stores/data-store";
@@ -61,11 +61,8 @@ export function CalendarControls() {
   // Get state from calendar store
   const currentMonth = useCalendarStore((state) => state.currentMonth);
   const viewMode = useCalendarStore((state) => state.viewMode);
-  const contentFilters = useCalendarStore((state) => state.contentFilters);
   const setCurrentMonth = useCalendarStore((state) => state.setCurrentMonth);
   const setViewMode = useCalendarStore((state) => state.setViewMode);
-  const toggleContentFilter = useCalendarStore((state) => state.toggleContentFilter);
-  const clearContentFilters = useCalendarStore((state) => state.clearContentFilters);
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
 
   // Holiday settings
@@ -184,10 +181,6 @@ export function CalendarControls() {
     setViewMode("month"); // Switch to month view when selecting a month
   };
 
-  const handleContentFilterToggle = (filter: CalendarContentFilter) => {
-    toggleContentFilter(filter);
-  };
-
   const handleJumpToToday = () => {
     setCurrentMonth(new Date());
     setViewMode("month");
@@ -301,62 +294,6 @@ export function CalendarControls() {
             </div>
           )}
         </div>
-      </PanelSection>
-
-      {/* Content Type Filters */}
-      <PanelSection
-        id="calendar-content-filters"
-        title="Content Filters"
-        icon={<Filter className="h-4 w-4 text-accent" />}
-      >
-        <div className="space-y-1">
-          <PanelToggle
-            label="Movies & Shows"
-            icon={<Film size={14} />}
-            checked={contentFilters.includes("movies-shows")}
-            onChange={() => handleContentFilterToggle("movies-shows")}
-          />
-          <PanelToggle
-            label="Concerts & Events"
-            icon={<Music size={14} />}
-            checked={contentFilters.includes("concerts-events")}
-            onChange={() => handleContentFilterToggle("concerts-events")}
-          />
-          <PanelToggle
-            label="Deadlines"
-            icon={<Clock size={14} />}
-            checked={contentFilters.includes("deadlines")}
-            onChange={() => handleContentFilterToggle("deadlines")}
-          />
-          <PanelToggle
-            label="Product Launches"
-            icon={<Rocket size={14} />}
-            checked={contentFilters.includes("product-launches")}
-            onChange={() => handleContentFilterToggle("product-launches")}
-          />
-          <PanelToggle
-            label="Other Events"
-            icon={<CalendarDays size={14} />}
-            checked={contentFilters.includes("other-events")}
-            onChange={() => handleContentFilterToggle("other-events")}
-          />
-          <PanelToggle
-            label="Daily Notes"
-            icon={<StickyNote size={14} />}
-            checked={contentFilters.includes("daily-notes")}
-            onChange={() => handleContentFilterToggle("daily-notes")}
-          />
-        </div>
-
-        {/* Clear filters button */}
-        {contentFilters.length > 0 && (
-          <button
-            onClick={clearContentFilters}
-            className="mt-2 text-xs text-accent hover:text-accent/80 transition-colors"
-          >
-            Clear all filters
-          </button>
-        )}
       </PanelSection>
 
       {/* Quick Actions */}

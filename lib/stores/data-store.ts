@@ -8,6 +8,7 @@ import { useConflictStore } from '@/lib/stores/conflict-store';
 import { useSettingsStore } from '@/lib/hooks/settings-store';
 import { markDeviceActive, getSessionId } from '@/lib/utils/device-session';
 import { useToastStore } from '@/lib/stores/toast-store';
+import { useEventStore } from '@/lib/hooks/use-event-store';
 import { processCardForDates } from '@/lib/utils/calendar-prompt';
 
 /**
@@ -209,7 +210,7 @@ type DataStore = {
   sync: () => Promise<void>;
   addCard: (cardData: Partial<CardDTO>) => Promise<void>;
   updateCard: (id: string, updates: Partial<CardDTO>) => Promise<void>;
-  deleteCard: (id: string) => Promise<void>;
+  deleteCard: (id: string, options?: { deleteLinkedEvents?: boolean; skipEventCheck?: boolean }) => Promise<void>;
   addCollection: (collectionData: { name: string; parentId?: string | null }) => Promise<void>;
   updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; isPrivate?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; coverImage?: string | null; coverImagePosition?: number | null }) => Promise<void>;
   deleteCollection: (id: string, deleteCards?: boolean, deleteSubPawkits?: boolean) => Promise<void>;
@@ -733,8 +734,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
   /**
    * Delete card: Soft delete locally first, then sync to server via queue
+   * If card has linked calendar events, shows a prompt to delete those too
    */
-  deleteCard: async (id: string) => {
+  deleteCard: async (id: string, options?: { deleteLinkedEvents?: boolean; skipEventCheck?: boolean }) => {
     // WRITE GUARD: Ensure this is the active device
     if (!ensureActiveDevice()) {
       return;
@@ -742,6 +744,44 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
     // Mark device as active - this is the source of truth
     markDeviceActive();
+
+    // Check for linked calendar events (unless skipping)
+    if (!options?.skipEventCheck) {
+      const eventStore = useEventStore.getState();
+      const linkedEvents = eventStore.getEventsByCardId(id);
+
+      if (linkedEvents.length > 0) {
+        // Show prompt to user
+        useToastStore.getState().withTwoActions(
+          'This bookmark has a linked calendar event',
+          {
+            label: 'Delete Both',
+            onClick: async () => {
+              // Delete linked events first
+              for (const event of linkedEvents) {
+                await eventStore.deleteEvent(event.id);
+              }
+              // Then delete the card (skip event check to avoid recursion)
+              await get().deleteCard(id, { skipEventCheck: true });
+            },
+          },
+          {
+            label: 'Keep Event',
+            onClick: async () => {
+              // Update events to clear their source link
+              for (const event of linkedEvents) {
+                await eventStore.updateEvent(event.id, { source: undefined });
+              }
+              // Then delete just the card
+              await get().deleteCard(id, { skipEventCheck: true });
+            },
+          },
+          'calendar',
+          10000 // 10 seconds to decide
+        );
+        return; // Don't delete yet - wait for user choice
+      }
+    }
 
     try {
       // STEP 0: Delete all note links for this card
