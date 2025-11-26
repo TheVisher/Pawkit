@@ -49,6 +49,7 @@ export function DayDetailsPanel() {
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
   const openCalendarControls = usePanelStore((state) => state.openCalendarControls);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
+  const setActiveCardId = usePanelStore((state) => state.setActiveCardId);
 
   const [showAddEventModal, setShowAddEventModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
@@ -163,9 +164,9 @@ export function DayDetailsPanel() {
   };
 
   const handleEventClick = (event: CalendarEvent) => {
-    // If event has a linked card, open the card modal
+    // If event has a linked card, open the card modal (without changing sidebar)
     if (event.source?.cardId) {
-      openCardDetails(event.source.cardId);
+      setActiveCardId(event.source.cardId);
       return;
     }
 
