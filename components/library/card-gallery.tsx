@@ -1130,6 +1130,16 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                   </span>
                 </a>
               )}
+              {/* Title Pill for file cards */}
+              {showLabels && isFileCard && (
+                <div
+                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white flex items-center justify-center"
+                >
+                  <span className="truncate max-w-full">
+                    {card.title || "Untitled"}
+                  </span>
+                </div>
+              )}
             </>
           ) : !isPending ? (
             // Fallback placeholder when no image is available (but not loading)
