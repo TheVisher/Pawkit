@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Cloud, CloudOff, RefreshCw, CheckCircle2, AlertCircle, Clock, Wifi, WifiOff } from "lucide-react";
 import { syncQueue } from "@/lib/services/sync-queue";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { useEventStore } from "@/lib/hooks/use-event-store";
 
 type SyncState =
   | { status: "synced"; lastSync: number }
@@ -18,6 +19,8 @@ export function SyncStatus() {
   const [mounted, setMounted] = useState(false);
   const serverSync = useSettingsStore((state) => state.serverSync);
   const setServerSync = useSettingsStore((state) => state.setServerSync);
+  const syncEvents = useEventStore((state) => state.sync);
+  const isEventsSyncing = useEventStore((state) => state.isSyncing);
 
   // Handle mounting
   useEffect(() => {
@@ -44,6 +47,12 @@ export function SyncStatus() {
     if (!mounted || !serverSync) return;
 
     const checkQueue = async () => {
+      // If events are currently syncing, show syncing state
+      if (isEventsSyncing) {
+        setSyncState({ status: "syncing", progress: "Syncing events..." });
+        return;
+      }
+
       const pending = await syncQueue.getPending();
 
       if (!isOnline && pending.length > 0) {
@@ -59,7 +68,7 @@ export function SyncStatus() {
     const interval = setInterval(checkQueue, 3000); // Check every 3 seconds
 
     return () => clearInterval(interval);
-  }, [isOnline, mounted, serverSync]);
+  }, [isOnline, mounted, serverSync, isEventsSyncing]);
 
   // Manual sync
   const handleSync = async () => {
@@ -68,7 +77,11 @@ export function SyncStatus() {
     setSyncState({ status: "syncing", progress: "Syncing..." });
 
     try {
-      await syncQueue.process();
+      // Sync both cards (via queue) and events in parallel
+      await Promise.all([
+        syncQueue.process(),
+        syncEvents(),
+      ]);
       setSyncState({ status: "synced", lastSync: Date.now() });
     } catch (error) {
       setSyncState({
