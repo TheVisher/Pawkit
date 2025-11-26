@@ -89,6 +89,9 @@ export type PrismaCard = {
   createdAt: Date;
   updatedAt: Date;
   userId: string;
+  // File card support
+  isFileCard: boolean;
+  fileId: string | null;
 };
 
 // PrismaCollection matches the Collection type from Prisma

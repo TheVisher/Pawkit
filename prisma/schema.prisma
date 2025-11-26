@@ -56,6 +56,10 @@ model Card {
   userId          String
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // File card support (files stored locally in IndexedDB, not synced to server)
+  isFileCard      Boolean   @default(false)
+  fileId          String?   // Reference to local IndexedDB file
+
   @@index([userId])
   @@index([userId, deleted])
   @@index([userId, inDen])

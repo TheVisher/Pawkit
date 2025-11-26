@@ -21,7 +21,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon, Calendar, ChevronRight, Plus, Paperclip } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon, Calendar, ChevronRight, Plus, Paperclip, Download } from "lucide-react";
+import { formatFileSize } from "@/lib/utils/file-utils";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 
@@ -186,7 +187,14 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const dataStore = useDataStore();
   const allCards = dataStore.cards;
   const isNote = card.type === "md-note" || card.type === "text-note";
+  const isFileCard = card.type === "file";
   const [isMounted, setIsMounted] = useState(false);
+
+  // File card preview state - must be declared before useEffects that use them
+  const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
+  const [filePreviewData, setFilePreviewData] = useState<StoredFile | null>(null);
+  const files = useFileStore((state) => state.files);
+  const loadFiles = useFileStore((state) => state.loadFiles);
 
   // Open control panel with card details when modal opens
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
@@ -231,6 +239,28 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       dataStore.initialize();
     }
   }, [dataStore]);
+
+  // Load original file for file cards
+  useEffect(() => {
+    if (isFileCard && card.fileId) {
+      // Load files if not already loaded
+      loadFiles();
+    }
+  }, [isFileCard, card.fileId, loadFiles]);
+
+  // Set file preview URL when files are loaded
+  useEffect(() => {
+    if (isFileCard && card.fileId && files.length > 0) {
+      const storedFile = files.find((f) => f.id === card.fileId);
+      if (storedFile?.blob) {
+        const url = URL.createObjectURL(storedFile.blob);
+        setFilePreviewUrl(url);
+        setFilePreviewData(storedFile);
+        return () => URL.revokeObjectURL(url);
+      }
+    }
+    return undefined;
+  }, [isFileCard, card.fileId, files]);
 
   // Extract links when modal opens if this is a note with content
   // Note: Link extraction is now handled automatically by the data store
@@ -451,6 +481,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [thumbnailUrl, setThumbnailUrl] = useState(card.image || "");
   const [thumbnailPreviewError, setThumbnailPreviewError] = useState(false);
   const [thumbnailPreviewLoaded, setThumbnailPreviewLoaded] = useState(false);
+
   const [noteMode, setNoteMode] = useState<'edit' | 'preview'>('preview');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(card.title || "");
@@ -1328,6 +1359,98 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   showToolbar={false}
                   textareaRef={editorTextareaRef}
                 />
+              </div>
+            ) : isFileCard ? (
+              // File card preview - show original file
+              <div className="h-full flex items-center justify-center p-[5px]">
+                {filePreviewData ? (
+                  <div className="w-full h-full flex items-center justify-center">
+                    {filePreviewData.category === "image" && filePreviewUrl && (
+                      <img
+                        src={filePreviewUrl}
+                        alt={filePreviewData.filename}
+                        className="max-w-full max-h-[calc(90vh-180px)] object-contain rounded-lg"
+                      />
+                    )}
+                    {filePreviewData.category === "pdf" && filePreviewUrl && (
+                      <iframe
+                        src={filePreviewUrl}
+                        className="w-full h-[calc(90vh-180px)] bg-white rounded-lg"
+                        title={filePreviewData.filename}
+                      />
+                    )}
+                    {filePreviewData.category === "video" && filePreviewUrl && (
+                      <video
+                        src={filePreviewUrl}
+                        controls
+                        className="max-w-full max-h-[calc(90vh-180px)] rounded-lg"
+                      >
+                        Your browser does not support video playback.
+                      </video>
+                    )}
+                    {filePreviewData.category === "audio" && filePreviewUrl && (
+                      <div className="flex flex-col items-center gap-6 p-8 bg-surface rounded-xl">
+                        <div className="w-24 h-24 flex items-center justify-center rounded-full bg-accent/20">
+                          <span className="text-4xl">🎵</span>
+                        </div>
+                        <div className="text-center">
+                          <h4 className="text-lg font-medium text-foreground">
+                            {filePreviewData.filename}
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            {formatFileSize(filePreviewData.size)}
+                          </p>
+                        </div>
+                        <audio src={filePreviewUrl} controls className="w-full max-w-md">
+                          Your browser does not support audio playback.
+                        </audio>
+                      </div>
+                    )}
+                    {(filePreviewData.category === "document" || filePreviewData.category === "spreadsheet" || filePreviewData.category === "other") && (
+                      <div className="flex flex-col items-center gap-6 p-8 bg-surface rounded-xl">
+                        <div className="w-24 h-24 flex items-center justify-center rounded-full bg-gray-600/20">
+                          <FileText className="w-12 h-12 text-gray-400" />
+                        </div>
+                        <div className="text-center">
+                          <h4 className="text-lg font-medium text-foreground">
+                            {filePreviewData.filename}
+                          </h4>
+                          <p className="text-sm text-muted-foreground mb-4">
+                            {formatFileSize(filePreviewData.size)}
+                          </p>
+                          <p className="text-sm text-gray-400 mb-4">
+                            Preview not available for this file type
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (filePreviewUrl) {
+                              const a = document.createElement("a");
+                              a.href = filePreviewUrl;
+                              a.download = filePreviewData.filename;
+                              document.body.appendChild(a);
+                              a.click();
+                              document.body.removeChild(a);
+                            }
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors"
+                        >
+                          <Download className="h-4 w-4" />
+                          Download to View
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center space-y-4">
+                    <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center animate-pulse">
+                      <FileText className="w-12 h-12 text-gray-400" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-300">
+                      Loading file...
+                    </h3>
+                  </div>
+                )}
               </div>
             ) : isYouTubeUrl(card.url) ? (
               // YouTube video embed in main content area

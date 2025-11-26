@@ -20,7 +20,7 @@ const collectionsArray = z
   .transform(normalizeCollections);
 
 export const cardCreateSchema = z.object({
-  type: z.enum(["url", "md-note", "text-note"]).default("url"),
+  type: z.enum(["url", "md-note", "text-note", "file"]).default("url"),
   url: z
     .string()
     .optional()
@@ -35,25 +35,33 @@ export const cardCreateSchema = z.object({
   // Allow extension to pass pre-fetched metadata
   image: nullableString,
   description: nullableString,
-  source: z.string().optional() // e.g., 'webext' for browser extension
+  source: z.string().optional(), // e.g., 'webext' for browser extension
+  // File card support
+  isFileCard: z.boolean().optional(),
+  fileId: nullableString,
+  metadata: z.record(z.any()).nullable().optional()
 }).refine(
   (data) => {
     // URL cards must have a URL
     if (data.type === "url") {
       return !!data.url && data.url.length > 0;
     }
+    // File cards must have a URL (file:// scheme)
+    if (data.type === "file") {
+      return !!data.url && data.url.length > 0;
+    }
     // Note cards don't require URL
     return true;
   },
   {
-    message: "URL is required for URL type cards",
+    message: "URL is required for URL and file type cards",
     path: ["url"]
   }
 );
 
 export const cardUpdateSchema = z
   .object({
-    type: z.enum(["url", "md-note", "text-note"]).optional(),
+    type: z.enum(["url", "md-note", "text-note", "file"]).optional(),
     url: z
       .string()
       .transform((val) => {
@@ -95,7 +103,7 @@ export const cardUpdateSchema = z
 export const cardListQuerySchema = z.object({
   q: z.string().trim().optional(),
   collection: z.string().trim().optional(),
-  type: z.enum(["url", "md-note", "text-note"]).optional(),
+  type: z.enum(["url", "md-note", "text-note", "file"]).optional(),
   status: z.enum(["PENDING", "READY", "ERROR"]).optional(),
   limit: z.coerce.number().int().min(1).max(10000).optional(),
   cursor: z.string().optional(),

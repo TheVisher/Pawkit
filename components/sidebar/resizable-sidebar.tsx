@@ -11,6 +11,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type CollectionNode } from "@/lib/types";
+import { StorageIndicator } from "@/components/files/storage-indicator";
 
 type IconProps = {
   className?: string;
@@ -279,6 +280,12 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
           {!collapsed && <span className="truncate text-sm text-muted-foreground">{username}</span>}
         </div>
         <Separator />
+        {/* Storage usage indicator */}
+        {!collapsed && (
+          <div className="my-3">
+            <StorageIndicator variant="compact" />
+          </div>
+        )}
         <div className={`mt-3 flex items-center gap-2`}>
           {bottomIconLinks.map((link) => (
             <SidebarIconButton key={link.href} config={link} active={isActive(link.href)} />
