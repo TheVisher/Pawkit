@@ -13,6 +13,7 @@ import { CalendarEvent } from "@/lib/types/calendar";
 
 export default function CalendarPage() {
   const { cards, addCard } = useDataStore();
+  const setActiveCardId = usePanelStore((state) => state.setActiveCardId);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const openCalendarControls = usePanelStore((state) => state.openCalendarControls);
   const openDayDetails = usePanelStore((state) => state.openDayDetails);
@@ -62,9 +63,9 @@ export default function CalendarPage() {
 
   // Handle event click - open linked card, URL, or select the day
   const handleEventClick = (event: CalendarEvent) => {
-    // If event has a linked card, open the card modal
+    // If event has a linked card, open the card modal (without changing sidebar)
     if (event.source?.cardId) {
-      openCardDetails(event.source.cardId);
+      setActiveCardId(event.source.cardId);
       return;
     }
 
@@ -131,7 +132,7 @@ export default function CalendarPage() {
           cards={cards}
           currentMonth={currentMonth}
           onDayClick={handleDayClick}
-          onCardClick={(card) => openCardDetails(card.id)}
+          onCardClick={(card) => setActiveCardId(card.id)}
           onEventClick={handleEventClick}
           onCreateDailyNote={handleCreateDailyNote}
         />
@@ -140,7 +141,7 @@ export default function CalendarPage() {
           cards={cards}
           currentMonth={currentMonth}
           onDayClick={handleDayClick}
-          onCardClick={(card) => openCardDetails(card.id)}
+          onCardClick={(card) => setActiveCardId(card.id)}
           onEventClick={handleEventClick}
           onCreateDailyNote={handleCreateDailyNote}
         />
