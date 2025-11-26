@@ -390,7 +390,14 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [extracting, setExtracting] = useState(false);
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
   // Bottom tab view mode: 'preview' | 'reader' | 'metadata'
-  const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'metadata'>('preview');
+  const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'metadata' | 'attachments'>('preview');
+
+  // Check for attachments
+  const attachments = useMemo(
+    () => files.filter((f) => f.cardId === card.id && !f.deleted),
+    [files, card.id]
+  );
+  const hasAttachments = attachments.length > 0;
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isModalExpanded, setIsModalExpanded] = useState(false);
@@ -1538,6 +1545,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     </div>
                   </div>
                 )}
+
+                {bottomTabMode === 'attachments' && hasAttachments && (
+                  <div className="absolute inset-0 overflow-hidden">
+                    <AttachmentsTabContent cardId={card.id} />
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1602,6 +1615,17 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     <Tag size={16} />
                     Metadata
                   </Button>
+                  {hasAttachments && (
+                    <Button
+                      onClick={() => setBottomTabMode('attachments')}
+                      variant={bottomTabMode === 'attachments' ? 'default' : 'ghost'}
+                      size="sm"
+                      className="flex items-center gap-2"
+                    >
+                      <Paperclip size={16} />
+                      Attachments ({attachments.length})
+                    </Button>
+                  )}
                 </>
               )}
             </div>

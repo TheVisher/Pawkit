@@ -1111,9 +1111,9 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center gap-2"
+                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors relative"
                 >
-                  <span className="truncate flex-1">
+                  <span className="block text-center truncate px-4">
                     {(() => {
                       try {
                         return new URL(card.url).hostname;
@@ -1123,20 +1123,20 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                     })()}
                   </span>
                   {hasAttachments && (
-                    <Paperclip className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                    <Paperclip className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2" />
                   )}
                 </a>
               )}
               {/* Title Pill for file cards */}
               {showLabels && isFileCard && (
                 <div
-                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white flex items-center gap-2"
+                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white relative"
                 >
-                  <span className="truncate flex-1">
+                  <span className="block text-center truncate px-4">
                     {card.title || "Untitled"}
                   </span>
                   {hasAttachments && (
-                    <Paperclip className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                    <Paperclip className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2" />
                   )}
                 </div>
               )}
@@ -1154,9 +1154,9 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center gap-2"
+                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors relative"
                 >
-                  <span className="truncate flex-1">
+                  <span className="block text-center truncate px-4">
                     {(() => {
                       try {
                         return new URL(card.url).hostname;
@@ -1166,7 +1166,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                     })()}
                   </span>
                   {hasAttachments && (
-                    <Paperclip className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                    <Paperclip className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2" />
                   )}
                 </a>
               )}
