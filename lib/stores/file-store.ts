@@ -131,9 +131,17 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
           thumbnailUrl = URL.createObjectURL(thumbnailBlob);
         }
 
+        // Generate clean title from filename
+        // "my_photo-2024.jpg" -> "my photo 2024"
+        const cleanTitle = file.name
+          .replace(/\.[^/.]+$/, "") // Remove extension
+          .replace(/[_-]/g, " ") // Replace underscores/dashes with spaces
+          .replace(/\s+/g, " ") // Collapse multiple spaces
+          .trim();
+
         // Create a card for this file
         await useDataStore.getState().addCard({
-          title: file.name,
+          title: cleanTitle || file.name,
           type: "file",
           url: `file://${storedFile.id}`, // Use file:// URL scheme
           isFileCard: true,
