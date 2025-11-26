@@ -1980,14 +1980,19 @@ function MetadataSection({ card }: { card: CardModel }) {
   const relevantDate = useMemo(() => {
     // First check if dates were already extracted and stored on the card
     if (card.extractedDates && card.extractedDates.length > 0) {
+      console.log('[MetadataSection] Using stored extractedDates:', card.extractedDates);
       return getMostRelevantDate(card.extractedDates);
     }
     // Otherwise, extract from metadata on-the-fly
     if (card.metadata && card.type === 'url') {
+      console.log('[MetadataSection] Extracting dates from metadata:', JSON.stringify(card.metadata, null, 2).slice(0, 2000));
       const extractedDates = extractDatesFromMetadata(card.metadata as Record<string, unknown>);
+      console.log('[MetadataSection] Extracted dates:', extractedDates);
       if (extractedDates.length > 0) {
         return getMostRelevantDate(extractedDates);
       }
+    } else {
+      console.log('[MetadataSection] No metadata or not url type:', { hasMetadata: !!card.metadata, type: card.type });
     }
     return null;
   }, [card.extractedDates, card.metadata, card.type]);
