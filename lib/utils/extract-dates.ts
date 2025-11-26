@@ -42,7 +42,7 @@ const SCHEMA_TYPE_MAP: Record<string, ExtractedDateType> = {
 const DATE_FIELD_MAP: Record<string, ExtractedDateType> = {
   'releasedate': 'release',
   'daterelease': 'release',
-  'datepublished': 'published',
+  'datepublished': 'release', // Changed from 'published' - often used for movie releases
   'publishdate': 'published',
   'startdate': 'event',
   'eventdate': 'event',
@@ -51,6 +51,10 @@ const DATE_FIELD_MAP: Record<string, ExtractedDateType> = {
   'duedate': 'deadline',
   'deadline': 'deadline',
   'availabilityends': 'deadline',
+  'datecreated': 'published',
+  'uploaddate': 'published',
+  'contentreleasedatetime': 'release',
+  'theatricalreleasedate': 'release',
 };
 
 // Labels for date types
@@ -199,8 +203,30 @@ function extractFromJsonLdObject(obj: Record<string, unknown>): ExtractedDate[] 
   const dateKeywords = [
     'date', 'time', 'release', 'premiere', 'launch', 'start', 'end',
     'publish', 'created', 'modified', 'valid', 'available', 'door',
-    'deadline', 'due', 'when', 'scheduled', 'air', 'broadcast'
+    'deadline', 'due', 'when', 'scheduled', 'air', 'broadcast',
+    'released', 'opens', 'coming', 'arrives', 'debuts'
   ];
+
+  // Special handling for IMDB's releasedEvent structure
+  const releasedEvent = obj['releasedEvent'] as Record<string, unknown> | Array<Record<string, unknown>> | undefined;
+  if (releasedEvent) {
+    const events = Array.isArray(releasedEvent) ? releasedEvent : [releasedEvent];
+    for (const event of events) {
+      const startDate = event['startDate'] as string;
+      if (startDate) {
+        const parsed = parseDate(startDate);
+        if (parsed) {
+          dates.push({
+            date: parsed,
+            type: 'release',
+            confidence: 'high',
+            source: 'json-ld',
+            label: getLabel('release', schemaType) || 'Release Date',
+          });
+        }
+      }
+    }
+  }
 
   // Check ALL fields in the object for potential dates
   for (const [key, value] of Object.entries(obj)) {
