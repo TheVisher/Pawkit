@@ -6,7 +6,9 @@ import { CardModel } from "@/lib/types";
 import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
 import { useEventStore } from "@/lib/hooks/use-event-store";
-import { ChevronLeft, ChevronRight, Plus, FileText, Clock } from "lucide-react";
+import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
+import { getHolidaysInRange, ResolvedHoliday } from "@/lib/data/us-holidays";
+import { ChevronLeft, ChevronRight, Plus, FileText, Clock, Flag } from "lucide-react";
 
 // Helper to format time in 12-hour format
 function formatTime12h(time24: string): string {
@@ -35,6 +37,10 @@ export function CustomCalendar({
 }: CustomCalendarProps) {
   const [isClient, setIsClient] = useState(false);
   const { events, isInitialized, initialize, generateRecurrenceInstances } = useEventStore();
+
+  // Holiday settings
+  const showHolidays = useCalendarStore((state) => state.showHolidays);
+  const holidayFilter = useCalendarStore((state) => state.holidayFilter);
 
   // Mark as client-side after mount to prevent hydration issues
   // This ensures the calendar uses the OS date/time consistently
@@ -125,6 +131,24 @@ export function CustomCalendar({
     return map;
   }, [events, calendarDays, generateRecurrenceInstances]);
 
+  // Group holidays by date
+  const holidaysByDate = useMemo(() => {
+    const map = new Map<string, ResolvedHoliday>();
+
+    if (!showHolidays || calendarDays.length === 0) return map;
+
+    const rangeStart = format(calendarDays[0], 'yyyy-MM-dd');
+    const rangeEnd = format(calendarDays[calendarDays.length - 1], 'yyyy-MM-dd');
+
+    const holidays = getHolidaysInRange(rangeStart, rangeEnd, holidayFilter);
+
+    holidays.forEach((holiday) => {
+      map.set(holiday.date, holiday);
+    });
+
+    return map;
+  }, [showHolidays, holidayFilter, calendarDays]);
+
   return (
     <div className="space-y-6">
       {/* Weekday headers */}
@@ -143,11 +167,12 @@ export function CustomCalendar({
           const dayCards = cardsByDate.get(dateStr) || [];
           const dayEvents = eventsByDate.get(dateStr) || [];
           const dailyNote = dailyNotesByDate.get(dateStr);
+          const holiday = holidaysByDate.get(dateStr);
           const isCurrentMonth = isSameMonth(day, currentMonth);
           // Only check if it's today on the client to prevent hydration mismatch
           const isCurrentDay = isClient ? isSameDay(day, new Date()) : false;
 
-          // Combined count for "more" indicator
+          // Combined count for "more" indicator (holidays don't count toward limit)
           const totalItems = dayCards.length + dayEvents.length;
           const maxVisible = 2;
 
@@ -232,6 +257,16 @@ export function CustomCalendar({
                 {totalItems > maxVisible && (
                   <div className="text-xs text-muted-foreground px-2">
                     +{totalItems - maxVisible} more
+                  </div>
+                )}
+
+                {/* Holiday (shown below events) */}
+                {holiday && (
+                  <div className="px-2 py-1 flex items-center gap-1.5">
+                    <Flag size={10} className="text-amber-400 flex-shrink-0" />
+                    <span className="text-xs text-amber-400 truncate">
+                      {holiday.name}
+                    </span>
                   </div>
                 )}
               </div>

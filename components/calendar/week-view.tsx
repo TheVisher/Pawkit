@@ -6,7 +6,9 @@ import { CardModel } from "@/lib/types";
 import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
 import { useEventStore } from "@/lib/hooks/use-event-store";
-import { FileText, Plus, Clock } from "lucide-react";
+import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
+import { getHolidaysInRange, ResolvedHoliday } from "@/lib/data/us-holidays";
+import { FileText, Plus, Clock, Flag } from "lucide-react";
 
 // Helper to format time in 12-hour format
 function formatTime12h(time24: string): string {
@@ -28,6 +30,10 @@ type WeekViewProps = {
 export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEventClick, onCreateDailyNote }: WeekViewProps) {
   const [isClient, setIsClient] = useState(false);
   const { events, isInitialized, initialize, generateRecurrenceInstances } = useEventStore();
+
+  // Holiday settings
+  const showHolidays = useCalendarStore((state) => state.showHolidays);
+  const holidayFilter = useCalendarStore((state) => state.holidayFilter);
 
   // Mark as client-side after mount to prevent hydration issues
   useEffect(() => {
@@ -126,6 +132,24 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
     return map;
   }, [events, weekDays, generateRecurrenceInstances]);
 
+  // Group holidays by date
+  const holidaysByDate = useMemo(() => {
+    const map = new Map<string, ResolvedHoliday>();
+
+    if (!showHolidays || weekDays.length === 0) return map;
+
+    const rangeStart = format(weekDays[0], 'yyyy-MM-dd');
+    const rangeEnd = format(weekDays[weekDays.length - 1], 'yyyy-MM-dd');
+
+    const holidays = getHolidaysInRange(rangeStart, rangeEnd, holidayFilter);
+
+    holidays.forEach((holiday) => {
+      map.set(holiday.date, holiday);
+    });
+
+    return map;
+  }, [showHolidays, holidayFilter, weekDays]);
+
   return (
     <div className="space-y-6">
       {/* Week days in horizontal columns */}
@@ -135,9 +159,10 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
           const dayCards = cardsByDate.get(dateStr) || [];
           const dayEvents = eventsByDate.get(dateStr) || [];
           const dailyNote = dailyNotesByDate.get(dateStr);
+          const holiday = holidaysByDate.get(dateStr);
           const isCurrentDay = isClient ? isToday(day) : false;
 
-          const hasContent = dailyNote || dayCards.length > 0 || dayEvents.length > 0;
+          const hasContent = dailyNote || dayCards.length > 0 || dayEvents.length > 0 || holiday;
 
           return (
             <div
@@ -237,6 +262,18 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
                     </div>
                   </button>
                 ))}
+
+                {/* Holiday */}
+                {holiday && (
+                  <div className="px-2 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                    <div className="flex items-center gap-2">
+                      <Flag size={12} className="text-amber-400 flex-shrink-0" />
+                      <span className="text-xs font-medium text-amber-400 truncate">
+                        {holiday.name}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Empty state */}
                 {!hasContent && (

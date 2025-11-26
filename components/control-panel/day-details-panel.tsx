@@ -8,7 +8,8 @@ import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/daily-notes";
-import { CalendarIcon, X, Plus, Clock, MapPin, Trash2 } from "lucide-react";
+import { getHolidayForDate } from "@/lib/data/us-holidays";
+import { CalendarIcon, X, Plus, Clock, MapPin, Trash2, Flag } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import Image from "next/image";
 import { AddEventModal } from "@/components/modals/add-event-modal";
@@ -44,6 +45,8 @@ export function DayDetailsPanel() {
   const { events, isInitialized, initialize, deleteEvent, excludeDateFromRecurrence, createExceptionInstance, generateRecurrenceInstances } = useEventStore();
   const selectedDay = useCalendarStore((state) => state.selectedDay);
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
+  const showHolidays = useCalendarStore((state) => state.showHolidays);
+  const holidayFilter = useCalendarStore((state) => state.holidayFilter);
   const openCalendarControls = usePanelStore((state) => state.openCalendarControls);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
 
@@ -85,6 +88,13 @@ export function DayDetailsPanel() {
     const title = generateDailyNoteTitle(selectedDay);
     return cards.find(c => c.title === title && !c.collections?.includes('the-den'));
   }, [selectedDay, cards]);
+
+  // Get holiday for the selected date
+  const holiday = useMemo(() => {
+    if (!selectedDay || !showHolidays) return null;
+    const dateStr = format(selectedDay, 'yyyy-MM-dd');
+    return getHolidayForDate(dateStr, holidayFilter);
+  }, [selectedDay, showHolidays, holidayFilter]);
 
   // Get events for the selected date (including recurring event instances)
   const dayEvents = useMemo(() => {
@@ -276,6 +286,21 @@ export function DayDetailsPanel() {
             {dayEvents.length + scheduledCards.length + (dailyNote ? 1 : 0)} item(s) for this day
           </p>
         </div>
+
+        {/* Holiday Section */}
+        {holiday && (
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
+            <div className="flex items-center gap-3">
+              <Flag size={20} className="text-amber-400 flex-shrink-0" />
+              <div>
+                <div className="font-medium text-amber-400">{holiday.name}</div>
+                <div className="text-sm text-amber-300/70 mt-0.5">
+                  {holiday.type === 'major' ? 'US Federal Holiday' : 'US Observance'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Daily Note Section */}
         <div>
