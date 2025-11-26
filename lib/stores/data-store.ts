@@ -487,8 +487,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
       }));
 
       // STEP 3: Sync to server in background (if enabled)
+      // Skip server sync for file cards - they're local-only (files stored in IndexedDB)
+      const isFileCard = newCard.type === 'file' || newCard.isFileCard;
       const serverSync = useSettingsStore.getState().serverSync;
-      if (serverSync) {
+      if (serverSync && !isFileCard) {
         // Queue for sync
         await syncQueue.enqueue({
           type: 'CREATE_CARD',
