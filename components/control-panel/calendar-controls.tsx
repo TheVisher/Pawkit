@@ -91,15 +91,21 @@ export function CalendarControls() {
 
   // Get upcoming items (cards + events + holidays), sorted chronologically
   const upcomingItems = useMemo(() => {
-    const today = format(startOfToday(), 'yyyy-MM-dd');
+    const today = startOfToday();
+    const todayStr = format(today, 'yyyy-MM-dd');
+    // Cutoff: only show items within the next 45 days
+    const cutoffDate = new Date(today);
+    cutoffDate.setDate(cutoffDate.getDate() + 45);
+    const cutoffStr = format(cutoffDate, 'yyyy-MM-dd');
     const items: UpcomingItem[] = [];
 
-    // Add scheduled cards
+    // Add scheduled cards (within cutoff)
     cards
       .filter(card =>
         card.scheduledDate &&
         !card.collections?.includes('the-den') &&
-        card.scheduledDate.split('T')[0] >= today
+        card.scheduledDate.split('T')[0] >= todayStr &&
+        card.scheduledDate.split('T')[0] <= cutoffStr
       )
       .forEach(card => {
         items.push({
@@ -110,9 +116,9 @@ export function CalendarControls() {
         });
       });
 
-    // Add calendar events
+    // Add calendar events (within cutoff)
     events
-      .filter(event => event.date >= today)
+      .filter(event => event.date >= todayStr && event.date <= cutoffStr)
       .forEach(event => {
         items.push({
           type: 'event',
@@ -125,19 +131,21 @@ export function CalendarControls() {
         });
       });
 
-    // Add upcoming holidays (only major holidays to avoid clutter)
+    // Add upcoming holidays (only major holidays within cutoff)
     if (showHolidays) {
       const upcomingHolidayList = getUpcomingHolidays(10, 'major'); // Only major holidays in upcoming
-      upcomingHolidayList.forEach(holiday => {
-        items.push({
-          type: 'holiday',
-          id: `holiday-${holiday.date}`,
-          title: holiday.name,
-          date: holiday.date,
-          isAllDay: true,
-          holidayType: holiday.type,
+      upcomingHolidayList
+        .filter(holiday => holiday.date <= cutoffStr)
+        .forEach(holiday => {
+          items.push({
+            type: 'holiday',
+            id: `holiday-${holiday.date}`,
+            title: holiday.name,
+            date: holiday.date,
+            isAllDay: true,
+            holidayType: holiday.type,
+          });
         });
-      });
     }
 
     // Sort by date, then by time (all-day first)
