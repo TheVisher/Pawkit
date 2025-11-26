@@ -453,8 +453,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
       title: cardData.title || null,
       notes: cardData.notes || null,
       content: cardData.content || null,
-      type: (cardData.type as 'url' | 'md-note' | 'text-note') || 'url',
-      status: 'PENDING',
+      type: (cardData.type as 'url' | 'md-note' | 'text-note' | 'file') || 'url',
+      status: (cardData.status as 'PENDING' | 'READY' | 'ERROR') || 'PENDING',
       collections: cardData.collections || [],
       tags: cardData.tags || [],
       createdAt: new Date().toISOString(),
@@ -464,13 +464,17 @@ export const useDataStore = create<DataStore>((set, get) => ({
       deletedAt: null,
       pinned: cardData.pinned || false,
       domain: null,
-      image: null,
+      image: cardData.image || null,
       description: null,
       articleContent: null,
-      metadata: undefined,
+      metadata: cardData.metadata || undefined,
       inDen: cardData.inDen || false,
       encryptedContent: null,
       scheduledDate: cardData.scheduledDate || null,
+      // File attachment fields
+      isFileCard: cardData.isFileCard || false,
+      fileId: cardData.fileId || undefined,
+      attachedFileIds: cardData.attachedFileIds || undefined,
     };
 
     try {

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { StoredFile, FileCategory } from "@/lib/types";
 import { localDb } from "@/lib/services/local-storage";
 import { useToastStore } from "@/lib/stores/toast-store";
+import { useDataStore } from "@/lib/stores/data-store";
 import {
   generateFileId,
   getFileCategory,
@@ -116,6 +117,31 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
         files: [...state.files, storedFile],
         totalSize: state.totalSize + file.size,
       }));
+
+      // If standalone file (not attached to existing card), create a file card
+      if (!cardId) {
+        // Generate thumbnail URL for image if available
+        let thumbnailUrl: string | undefined;
+        if (thumbnailBlob) {
+          thumbnailUrl = URL.createObjectURL(thumbnailBlob);
+        }
+
+        // Create a card for this file
+        await useDataStore.getState().addCard({
+          title: file.name,
+          type: "file",
+          url: `file://${storedFile.id}`, // Use file:// URL scheme
+          isFileCard: true,
+          fileId: storedFile.id,
+          image: thumbnailUrl || null,
+          status: "READY",
+          metadata: {
+            fileCategory: storedFile.category,
+            mimeType: storedFile.mimeType,
+            fileSize: storedFile.size,
+          },
+        });
+      }
 
       return storedFile;
     } catch (error) {
