@@ -227,6 +227,10 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
       }
     }
 
+    // Extract JSON-LD structured data for date extraction
+    const jsonLdData = extractAllJsonLd(html);
+    console.log('[Metadata] JSON-LD data found:', jsonLdData.length, 'blocks');
+
     console.log('[Metadata] Scraping results:', {
       title: title?.substring(0, 50),
       description: description?.substring(0, 50),
@@ -246,7 +250,8 @@ async function scrapeSiteMetadata(url: string): Promise<SitePreview | undefined>
       raw: {
         meta: metaMap,
         heroes: heroImages,
-        logos: logoImages
+        logos: logoImages,
+        jsonLd: jsonLdData
       }
     };
   } catch (error) {
@@ -278,6 +283,29 @@ function collectHeroImages(metaMap: Record<string, string>, baseUrl: string, htm
   }
 
   return Array.from(set);
+}
+
+// Extract ALL JSON-LD data from HTML (for date extraction and other uses)
+function extractAllJsonLd(html: string): Record<string, unknown>[] {
+  const results: Record<string, unknown>[] = [];
+  const jsonLdRegex = /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  let match;
+
+  while ((match = jsonLdRegex.exec(html)) !== null) {
+    try {
+      const jsonLd = JSON.parse(match[1]);
+      // Handle both single objects and arrays
+      if (Array.isArray(jsonLd)) {
+        results.push(...jsonLd);
+      } else {
+        results.push(jsonLd);
+      }
+    } catch {
+      // Invalid JSON, skip this script tag
+    }
+  }
+
+  return results;
 }
 
 // Extract image from JSON-LD structured data (Schema.org Product, Article, etc.)

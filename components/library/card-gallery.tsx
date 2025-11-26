@@ -11,7 +11,7 @@ import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
-import { FileText, Bookmark, Pin, MoreVertical, Trash2, FolderPlus, Eye, PinOff, ImageIcon, X } from "lucide-react";
+import { FileText, Bookmark, Pin, MoreVertical, Trash2, FolderPlus, Eye, PinOff, ImageIcon, X, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
@@ -20,6 +20,7 @@ import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { UnpinNotesModal } from "@/components/modals/unpin-notes-modal";
 import { useToastStore } from "@/lib/stores/toast-store";
+import { useEventStore } from "@/lib/hooks/use-event-store";
 import { createPortal } from "react-dom";
 import { useRef } from "react";
 import { addCollectionWithHierarchy, removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
@@ -865,6 +866,11 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
   const isError = card.status === "ERROR";
   const isNote = card.type === "md-note" || card.type === "text-note";
 
+  // Check if this card has associated calendar events
+  const hasCalendarEvents = useEventStore((state) =>
+    state.events.some(e => e.source?.type === 'card' && e.source?.cardId === card.id)
+  );
+
   // Detect movie/video domains for film sprocket holes
   const isMovie = card.url && (
     card.url.includes('imdb.com') ||
@@ -1055,7 +1061,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                   // Fallback to logo on image error
                   const target = e.target as HTMLImageElement;
                   target.onerror = null;
-                  target.src = "/logo.png";
+                  target.src = "/images/logo.png";
                   target.className = "h-16 w-16 opacity-50";
                   // Still call onImageLoad for the fallback image
                   onImageLoad?.();
@@ -1190,7 +1196,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                     )}
                   </div>
                 )}
-                {(showCardTags || isPinned) && (
+                {(showCardTags || isPinned || hasCalendarEvents) && (
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       {showCardTags && (
@@ -1199,11 +1205,18 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                         </span>
                       )}
                     </div>
-                    {isPinned && (
-                      <div className="flex items-center gap-1 text-purple-400">
-                        <Pin size={12} className="flex-shrink-0" />
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {hasCalendarEvents && (
+                        <div className="flex items-center gap-1 text-purple-400" title="On your calendar">
+                          <Calendar size={12} className="flex-shrink-0" />
+                        </div>
+                      )}
+                      {isPinned && (
+                        <div className="flex items-center gap-1 text-purple-400">
+                          <Pin size={12} className="flex-shrink-0" />
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1239,6 +1252,11 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                 <Bookmark size={16} />
               </span>
               <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
+              {hasCalendarEvents && (
+                <span className="text-purple-400 flex-shrink-0" title="On your calendar">
+                  <Calendar size={14} />
+                </span>
+              )}
             </div>
           )}
           {displaySubtext && showMetadata && (

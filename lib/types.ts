@@ -83,6 +83,16 @@ export type PrismaCollection = {
   userId: string;
 };
 
+// Extracted date from card metadata (for calendar suggestions)
+export type ExtractedDate = {
+  date: string;           // YYYY-MM-DD
+  type: 'release' | 'event' | 'published' | 'deadline' | 'unknown';
+  confidence: 'high' | 'medium' | 'low';
+  source: 'json-ld' | 'open-graph' | 'meta' | 'schema';
+  label?: string;         // Human-readable label like "Movie Release"
+  endDate?: string;       // For events with duration
+};
+
 export type CardModel = {
   id: string;
   type: CardType;
@@ -97,6 +107,7 @@ export type CardModel = {
   image: string | null;
   description: string | null;
   metadata: Record<string, unknown> | undefined;
+  extractedDates?: ExtractedDate[];  // Dates found in metadata
   articleContent: string | null;
   pinned: boolean;
   deleted: boolean;

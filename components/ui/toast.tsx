@@ -5,35 +5,47 @@ import { CheckCircle, XCircle, Info, AlertTriangle, Loader2 } from "lucide-react
 
 export type ToastType = "success" | "error" | "info" | "warning" | "loading";
 
+export type ToastAction = {
+  label: string;
+  onClick: () => void;
+};
+
 export type ToastProps = {
   message: string;
   type?: ToastType;
   duration?: number;
+  action?: ToastAction;
   onClose: () => void;
 };
 
-export function Toast({ message, type = "info", duration, onClose }: ToastProps) {
+export function Toast({ message, type = "info", duration, action, onClose }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
 
-  console.log('🔴 TOAST COMPONENT - Rendering:', { message, type, duration });
-
   useEffect(() => {
-    console.log('🔴 TOAST COMPONENT - useEffect triggered');
     // Don't auto-dismiss loading toasts unless duration is explicitly set
+    // Toasts with actions get longer default duration
+    const defaultDuration = action ? 8000 : 3000;
     const shouldAutoDismiss = type === "loading" ? duration !== undefined : true;
-    const dismissDuration = duration ?? 3000;
+    const dismissDuration = duration ?? defaultDuration;
 
     if (shouldAutoDismiss) {
-      console.log('🔴 TOAST COMPONENT - Setting auto-dismiss timer for', dismissDuration, 'ms');
       const timer = setTimeout(() => {
-        console.log('🔴 TOAST COMPONENT - Fading out');
         setIsVisible(false);
         setTimeout(onClose, 300); // Wait for fade out animation
       }, dismissDuration);
 
       return () => clearTimeout(timer);
     }
-  }, [duration, onClose, type]);
+  }, [duration, onClose, type, action]);
+
+  const handleActionClick = () => {
+    if (action) {
+      action.onClick();
+      // Dismiss toast after action is clicked
+      setIsVisible(false);
+      setTimeout(onClose, 300);
+    }
+  };
 
   const getToastStyles = () => {
     // All toasts use glass morphism base with colored accents
@@ -77,34 +89,37 @@ export function Toast({ message, type = "info", duration, onClose }: ToastProps)
       }`}
     >
       {getIcon()}
-      <p className="text-sm text-white font-medium">{message}</p>
+      <p className="text-sm text-white font-medium flex-1">{message}</p>
+      {action && (
+        <button
+          onClick={handleActionClick}
+          className="px-3 py-1 text-xs font-medium rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 hover:text-purple-200 transition-colors border border-purple-500/30"
+        >
+          {action.label}
+        </button>
+      )}
     </div>
   );
 }
 
 type ToastContainerProps = {
-  toasts: Array<{ id: string; message: string; type?: ToastType; duration?: number }>;
+  toasts: Array<{ id: string; message: string; type?: ToastType; duration?: number; action?: ToastAction }>;
   onDismiss: (id: string) => void;
 };
 
 export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
-  console.log('🔴 TOAST CONTAINER - Rendering. Toasts count:', toasts.length);
-  console.log('🔴 TOAST CONTAINER - Toasts:', toasts);
-
   return (
     <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[9999] space-y-2 pointer-events-none">
-      {toasts.map((toast) => {
-        console.log('🔴 TOAST CONTAINER - Rendering toast:', toast.id, toast.message);
-        return (
-          <Toast
-            key={toast.id}
-            message={toast.message}
-            type={toast.type}
-            duration={toast.duration}
-            onClose={() => onDismiss(toast.id)}
-          />
-        );
-      })}
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          message={toast.message}
+          type={toast.type}
+          duration={toast.duration}
+          action={toast.action}
+          onClose={() => onDismiss(toast.id)}
+        />
+      ))}
     </div>
   );
 }

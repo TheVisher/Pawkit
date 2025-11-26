@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon, Calendar } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 
@@ -39,6 +39,9 @@ interface AnchorComponentProps extends HTMLAttributes<HTMLAnchorElement> {
 import { GlowButton } from "@/components/ui/glow-button";
 import { useTrackCardView } from "@/lib/hooks/use-recent-history";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { useEventStore } from "@/lib/hooks/use-event-store";
+import { CalendarEvent } from "@/lib/types/calendar";
+import { format } from "date-fns";
 
 type TagsTabProps = {
   content: string;
@@ -1508,6 +1511,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               </TabsContent>
               <TabsContent value="schedule" className="p-4 mt-0 h-full">
                 <ScheduleTab
+                  cardId={card.id}
                   scheduledDate={card.scheduledDate}
                   onSave={handleSaveScheduledDate}
                 />
@@ -2076,15 +2080,19 @@ function MetadataSection({ card }: { card: CardModel }) {
 
 // Schedule Tab
 type ScheduleTabProps = {
+  cardId: string;
   scheduledDate: string | null;
   onSave: (date: string | null) => void;
 };
 
-function ScheduleTab({ scheduledDate, onSave }: ScheduleTabProps) {
+function ScheduleTab({ cardId, scheduledDate, onSave }: ScheduleTabProps) {
   const router = useRouter();
   // Convert scheduledDate (ISO string) to YYYY-MM-DD for date input
   const initialDate = scheduledDate ? scheduledDate.split('T')[0] : "";
   const [date, setDate] = useState(initialDate);
+
+  // Get calendar events associated with this card
+  const calendarEvents = useEventStore((state) => state.getEventsByCardId(cardId));
 
   const handleSave = () => {
     if (!date) return;
@@ -2102,10 +2110,50 @@ function ScheduleTab({ scheduledDate, onSave }: ScheduleTabProps) {
     router.push('/calendar');
   };
 
+  const handleViewEventOnCalendar = (eventDate: string) => {
+    // Navigate to calendar with the specific date
+    router.push(`/calendar?date=${eventDate}`);
+  };
+
+  const formatEventDate = (dateStr: string): string => {
+    try {
+      const [year, month, day] = dateStr.split('-').map(Number);
+      return format(new Date(year, month - 1, day), 'MMM d, yyyy');
+    } catch {
+      return dateStr;
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Calendar Events Section - Show if card has been added to calendar */}
+      {calendarEvents.length > 0 && (
+        <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30">
+          <div className="flex items-center gap-2 mb-2">
+            <Calendar size={16} className="text-purple-400" />
+            <h4 className="text-sm font-medium text-purple-300">On Your Calendar</h4>
+          </div>
+          <div className="space-y-2">
+            {calendarEvents.map((event) => (
+              <div
+                key={event.id}
+                className="flex items-center justify-between text-xs"
+              >
+                <span className="text-gray-300">{event.title}</span>
+                <button
+                  onClick={() => handleViewEventOnCalendar(event.date)}
+                  className="text-purple-400 hover:text-purple-300 hover:underline"
+                >
+                  {formatEventDate(event.date)}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div>
-        <h4 className="text-sm font-medium text-gray-200 mb-2">📅 Schedule for Calendar</h4>
+        <h4 className="text-sm font-medium text-gray-200 mb-2">Schedule for Calendar</h4>
         <p className="text-xs text-gray-400 mb-4">
           Assign a date to this card to display it on your calendar. Perfect for tracking release dates, reminders, or countdowns.
         </p>
