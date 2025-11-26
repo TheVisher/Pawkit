@@ -64,6 +64,7 @@ type EventStore = {
   // Query helpers
   getEventsByDateRange: (startDate: string, endDate: string) => CalendarEvent[];
   getUpcomingEvents: (limit?: number) => CalendarEvent[];
+  getEventsByCardId: (cardId: string) => CalendarEvent[];
   generateRecurrenceInstances: (event: CalendarEvent, rangeStart: string, rangeEnd: string) => RecurrenceInstance[];
 };
 
@@ -693,6 +694,14 @@ export const useEventStore = create<EventStore>((set, get) => ({
         return 0;
       })
       .slice(0, limit);
+  },
+
+  /**
+   * Get events associated with a specific card (via source.cardId)
+   */
+  getEventsByCardId: (cardId: string) => {
+    const { events } = get();
+    return events.filter(event => event.source?.type === 'card' && event.source?.cardId === cardId);
   },
 
   /**

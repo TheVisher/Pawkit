@@ -8,6 +8,7 @@ import { useConflictStore } from '@/lib/stores/conflict-store';
 import { useSettingsStore } from '@/lib/hooks/settings-store';
 import { markDeviceActive, getSessionId } from '@/lib/utils/device-session';
 import { useToastStore } from '@/lib/stores/toast-store';
+import { processCardForDates } from '@/lib/utils/calendar-prompt';
 
 /**
  * Write guard: Ensures only the active tab/session can modify data
@@ -563,6 +564,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
                     set((state) => ({
                       cards: state.cards.map(c => c.id === serverCard.id ? updatedCard : c),
                     }));
+
+                    // Extract dates and show calendar prompt if found
+                    if (updatedCard.metadata) {
+                      processCardForDates(updatedCard);
+                    }
                   }
                 }
               }).catch(() => {

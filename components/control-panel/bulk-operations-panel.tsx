@@ -150,7 +150,7 @@ function SelectedCardThumbnail({ card, onRemove }: SelectedCardThumbnailProps) {
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.onerror = null;
-              target.src = "/logo.png";
+              target.src = "/images/logo.png";
               target.className = "w-8 h-8 opacity-50";
             }}
           />
