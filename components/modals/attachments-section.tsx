@@ -5,10 +5,10 @@ import { Paperclip, Plus, X, FileText, FileImage, FileAudio, FileVideo, File } f
 import { useFileStore } from "@/lib/stores/file-store";
 import { StoredFile, FileCategory } from "@/lib/types";
 import { formatFileSize } from "@/lib/utils/file-utils";
-import { FilePreviewModal } from "@/components/files/file-preview-modal";
 
 interface AttachmentsSectionProps {
   cardId: string;
+  onSelectAttachment?: (fileId: string) => void;
 }
 
 // Get icon based on file category
@@ -98,9 +98,8 @@ function AttachmentItem({
   );
 }
 
-export function AttachmentsSection({ cardId }: AttachmentsSectionProps) {
+export function AttachmentsSection({ cardId, onSelectAttachment }: AttachmentsSectionProps) {
   const [isUploading, setIsUploading] = useState(false);
-  const [previewFile, setPreviewFile] = useState<StoredFile | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const files = useFileStore((state) => state.files);
@@ -112,12 +111,6 @@ export function AttachmentsSection({ cardId }: AttachmentsSectionProps) {
     () => files.filter((f) => f.cardId === cardId && !f.deleted),
     [files, cardId]
   );
-
-  // Get index of preview file for navigation
-  const previewFileIndex = useMemo(() => {
-    if (!previewFile) return -1;
-    return attachedFiles.findIndex((f) => f.id === previewFile.id);
-  }, [attachedFiles, previewFile]);
 
   const handleAttach = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -145,18 +138,8 @@ export function AttachmentsSection({ cardId }: AttachmentsSectionProps) {
   };
 
   const handleFileClick = (file: StoredFile) => {
-    setPreviewFile(file);
-  };
-
-  const handleNavigatePreview = (direction: "prev" | "next") => {
-    if (previewFileIndex === -1) return;
-
-    const newIndex =
-      direction === "prev"
-        ? (previewFileIndex - 1 + attachedFiles.length) % attachedFiles.length
-        : (previewFileIndex + 1) % attachedFiles.length;
-
-    setPreviewFile(attachedFiles[newIndex]);
+    // Trigger callback to switch to attachments tab in modal
+    onSelectAttachment?.(file.id);
   };
 
   return (
@@ -208,25 +191,6 @@ export function AttachmentsSection({ cardId }: AttachmentsSectionProps) {
         <Plus className="w-3 h-3" />
         {isUploading ? "Uploading..." : "Attach File"}
       </button>
-
-      {/* File Preview Modal */}
-      <FilePreviewModal
-        file={previewFile}
-        isOpen={!!previewFile}
-        onClose={() => setPreviewFile(null)}
-        onPrevious={
-          attachedFiles.length > 1
-            ? () => handleNavigatePreview("prev")
-            : undefined
-        }
-        onNext={
-          attachedFiles.length > 1
-            ? () => handleNavigatePreview("next")
-            : undefined
-        }
-        hasPrevious={attachedFiles.length > 1}
-        hasNext={attachedFiles.length > 1}
-      />
     </div>
   );
 }
