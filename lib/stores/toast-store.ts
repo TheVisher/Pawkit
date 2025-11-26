@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 
-export type ToastType = "success" | "error" | "info" | "warning" | "loading";
+export type ToastType = "success" | "error" | "info" | "warning" | "loading" | "calendar";
 
 export interface ToastAction {
   label: string;
@@ -15,13 +15,14 @@ export interface Toast {
   type: ToastType;
   duration?: number;
   action?: ToastAction;
+  secondaryAction?: ToastAction;
 }
 
 let toastCounter = 0;
 
 interface ToastStore {
   toasts: Toast[];
-  showToast: (message: string, type?: ToastType, duration?: number, action?: ToastAction) => string;
+  showToast: (message: string, type?: ToastType, duration?: number, action?: ToastAction, secondaryAction?: ToastAction) => string;
   dismissToast: (id: string) => void;
   success: (message: string, duration?: number) => string;
   error: (message: string, duration?: number) => string;
@@ -29,14 +30,15 @@ interface ToastStore {
   warning: (message: string, duration?: number) => string;
   loading: (message: string, duration?: number) => string;
   withAction: (message: string, action: ToastAction, type?: ToastType, duration?: number) => string;
+  withTwoActions: (message: string, primaryAction: ToastAction, secondaryAction: ToastAction, type?: ToastType, duration?: number) => string;
 }
 
 export const useToastStore = create<ToastStore>((set, get) => ({
   toasts: [],
 
-  showToast: (message: string, type: ToastType = "info", duration?: number, action?: ToastAction) => {
+  showToast: (message: string, type: ToastType = "info", duration?: number, action?: ToastAction, secondaryAction?: ToastAction) => {
     const id = `toast-${++toastCounter}-${Date.now()}`;
-    const newToast: Toast = { id, message, type, duration, action };
+    const newToast: Toast = { id, message, type, duration, action, secondaryAction };
 
     set((state) => ({
       toasts: [...state.toasts, newToast],
@@ -45,7 +47,8 @@ export const useToastStore = create<ToastStore>((set, get) => ({
     // Auto-dismiss after specified duration (default 3 seconds)
     // Loading toasts don't auto-dismiss unless duration is specified
     // Toasts with actions get longer default duration (8 seconds)
-    const defaultDuration = action ? 8000 : (type === "loading" ? undefined : 3000);
+    const hasActions = action || secondaryAction;
+    const defaultDuration = hasActions ? 8000 : (type === "loading" ? undefined : 3000);
     const dismissDuration = duration ?? defaultDuration;
 
     if (dismissDuration !== undefined) {
@@ -87,5 +90,9 @@ export const useToastStore = create<ToastStore>((set, get) => ({
 
   withAction: (message: string, action: ToastAction, type: ToastType = "info", duration?: number) => {
     return get().showToast(message, type, duration, action);
+  },
+
+  withTwoActions: (message: string, primaryAction: ToastAction, secondaryAction: ToastAction, type: ToastType = "info", duration?: number) => {
+    return get().showToast(message, type, duration, primaryAction, secondaryAction);
   },
 }));

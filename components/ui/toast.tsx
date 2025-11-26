@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CheckCircle, XCircle, Info, AlertTriangle, Loader2 } from "lucide-react";
+import { CheckCircle, XCircle, Info, AlertTriangle, Loader2, Calendar } from "lucide-react";
 
-export type ToastType = "success" | "error" | "info" | "warning" | "loading";
+export type ToastType = "success" | "error" | "info" | "warning" | "loading" | "calendar";
 
 export type ToastAction = {
   label: string;
   onClick: () => void;
+  variant?: 'primary' | 'secondary';
 };
 
 export type ToastProps = {
@@ -15,16 +16,18 @@ export type ToastProps = {
   type?: ToastType;
   duration?: number;
   action?: ToastAction;
+  secondaryAction?: ToastAction;
   onClose: () => void;
 };
 
-export function Toast({ message, type = "info", duration, action, onClose }: ToastProps) {
+export function Toast({ message, type = "info", duration, action, secondaryAction, onClose }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true);
 
   useEffect(() => {
     // Don't auto-dismiss loading toasts unless duration is explicitly set
     // Toasts with actions get longer default duration
-    const defaultDuration = action ? 8000 : 3000;
+    const hasActions = action || secondaryAction;
+    const defaultDuration = hasActions ? 8000 : 3000;
     const shouldAutoDismiss = type === "loading" ? duration !== undefined : true;
     const dismissDuration = duration ?? defaultDuration;
 
@@ -36,15 +39,13 @@ export function Toast({ message, type = "info", duration, action, onClose }: Toa
 
       return () => clearTimeout(timer);
     }
-  }, [duration, onClose, type, action]);
+  }, [duration, onClose, type, action, secondaryAction]);
 
-  const handleActionClick = () => {
-    if (action) {
-      action.onClick();
-      // Dismiss toast after action is clicked
-      setIsVisible(false);
-      setTimeout(onClose, 300);
-    }
+  const handleActionClick = (actionFn: () => void) => {
+    actionFn();
+    // Dismiss toast after action is clicked
+    setIsVisible(false);
+    setTimeout(onClose, 300);
   };
 
   const getToastStyles = () => {
@@ -59,6 +60,8 @@ export function Toast({ message, type = "info", duration, action, onClose }: Toa
       case "warning":
         return `${glassBase} border-yellow-500/30`;
       case "loading":
+        return `${glassBase} border-purple-500/30`;
+      case "calendar":
         return `${glassBase} border-purple-500/30`;
       case "info":
       default:
@@ -76,6 +79,8 @@ export function Toast({ message, type = "info", duration, action, onClose }: Toa
         return <AlertTriangle className="h-5 w-5 text-yellow-400" />;
       case "loading":
         return <Loader2 className="h-5 w-5 text-purple-400 animate-spin" />;
+      case "calendar":
+        return <Calendar className="h-5 w-5 text-purple-400" />;
       case "info":
       default:
         return <Info className="h-5 w-5 text-blue-400" />;
@@ -90,20 +95,32 @@ export function Toast({ message, type = "info", duration, action, onClose }: Toa
     >
       {getIcon()}
       <p className="text-sm text-white font-medium flex-1">{message}</p>
-      {action && (
-        <button
-          onClick={handleActionClick}
-          className="px-3 py-1 text-xs font-medium rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 hover:text-purple-200 transition-colors border border-purple-500/30"
-        >
-          {action.label}
-        </button>
+      {(action || secondaryAction) && (
+        <div className="flex items-center gap-2">
+          {secondaryAction && (
+            <button
+              onClick={() => handleActionClick(secondaryAction.onClick)}
+              className="px-3 py-1 text-xs font-medium rounded-md bg-gray-700/50 text-gray-300 hover:bg-gray-700/70 hover:text-gray-200 transition-colors border border-gray-600/30"
+            >
+              {secondaryAction.label}
+            </button>
+          )}
+          {action && (
+            <button
+              onClick={() => handleActionClick(action.onClick)}
+              className="px-3 py-1 text-xs font-medium rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 hover:text-purple-200 transition-colors border border-purple-500/30"
+            >
+              {action.label}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
 type ToastContainerProps = {
-  toasts: Array<{ id: string; message: string; type?: ToastType; duration?: number; action?: ToastAction }>;
+  toasts: Array<{ id: string; message: string; type?: ToastType; duration?: number; action?: ToastAction; secondaryAction?: ToastAction }>;
   onDismiss: (id: string) => void;
 };
 
@@ -117,6 +134,7 @@ export function ToastContainer({ toasts, onDismiss }: ToastContainerProps) {
           type={toast.type}
           duration={toast.duration}
           action={toast.action}
+          secondaryAction={toast.secondaryAction}
           onClose={() => onDismiss(toast.id)}
         />
       ))}

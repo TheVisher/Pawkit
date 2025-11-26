@@ -46,7 +46,7 @@ function showCalendarPrompt(card: CardDTO, date: ExtractedDate) {
   const formattedDate = formatDateForDisplay(date.date);
   const label = date.label || 'Date found';
 
-  const message = `📅 ${label}: ${formattedDate}`;
+  const message = `${label}: ${formattedDate}`;
 
   useToastStore.getState().withAction(
     message,
@@ -54,7 +54,7 @@ function showCalendarPrompt(card: CardDTO, date: ExtractedDate) {
       label: 'Add to Calendar',
       onClick: () => addToCalendar(card, date),
     },
-    'info',
+    'calendar',
     10000 // 10 seconds to give user time to decide
   );
 }
