@@ -1021,12 +1021,6 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         onClick={(event) => onClick(event, card)}
         data-id={card.id}
       >
-      {/* Attachments badge */}
-      {hasAttachments && (
-        <div className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/10" title="Has attachments">
-          <Paperclip className="w-3.5 h-3.5 text-purple-400" />
-        </div>
-      )}
 
       {showThumbnail && layout !== "compact" && !isNote && (
         <div
@@ -1117,9 +1111,9 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center justify-center"
+                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center gap-2"
                 >
-                  <span className="truncate max-w-full">
+                  <span className="truncate flex-1">
                     {(() => {
                       try {
                         return new URL(card.url).hostname;
@@ -1128,16 +1122,22 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                       }
                     })()}
                   </span>
+                  {hasAttachments && (
+                    <Paperclip className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                  )}
                 </a>
               )}
               {/* Title Pill for file cards */}
               {showLabels && isFileCard && (
                 <div
-                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white flex items-center justify-center"
+                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white flex items-center gap-2"
                 >
-                  <span className="truncate max-w-full">
+                  <span className="truncate flex-1">
                     {card.title || "Untitled"}
                   </span>
+                  {hasAttachments && (
+                    <Paperclip className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                  )}
                 </div>
               )}
             </>
@@ -1154,9 +1154,9 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center justify-center"
+                  className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors flex items-center gap-2"
                 >
-                  <span className="truncate max-w-full">
+                  <span className="truncate flex-1">
                     {(() => {
                       try {
                         return new URL(card.url).hostname;
@@ -1165,6 +1165,9 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                       }
                     })()}
                   </span>
+                  {hasAttachments && (
+                    <Paperclip className="w-3 h-3 text-gray-400 flex-shrink-0" />
+                  )}
                 </a>
               )}
             </div>

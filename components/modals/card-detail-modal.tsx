@@ -16,6 +16,7 @@ import { ReaderView } from "@/components/reader/reader-view";
 import { RichMDEditor } from "@/components/notes/md-editor";
 import { BacklinksPanel } from "@/components/notes/backlinks-panel";
 import { AttachmentsSection } from "@/components/modals/attachments-section";
+import { AttachmentsTabContent } from "@/components/modals/attachments-tab-content";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -87,91 +88,6 @@ function TagsTab({ content }: TagsTabProps) {
   );
 }
 
-type AttachmentsTabProps = {
-  cardId: string;
-};
-
-function AttachmentsTab({ cardId }: AttachmentsTabProps) {
-  const [previewFile, setPreviewFile] = useState<StoredFile | null>(null);
-  const files = useFileStore((state) => state.getFilesByCardId(cardId));
-  const allFiles = useFileStore((state) => state.files);
-  const attachFileToCard = useFileStore((state) => state.attachFileToCard);
-  const detachFileFromCard = useFileStore((state) => state.detachFileFromCard);
-
-  // Get files attached to this card
-  const attachedFiles = files;
-
-  // Get preview file index for navigation
-  const currentIndex = previewFile
-    ? attachedFiles.findIndex((f) => f.id === previewFile.id)
-    : -1;
-
-  const handleFilesUploaded = (fileIds: string[]) => {
-    // Files uploaded via FileUploadButton with cardId are already attached
-  };
-
-  const handleDetach = async (fileId: string) => {
-    await detachFileFromCard(fileId);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Paperclip size={16} className="text-accent" />
-          <h3 className="text-sm font-semibold text-gray-300">Attachments</h3>
-          <span className="text-xs text-gray-500">({attachedFiles.length})</span>
-        </div>
-        <FileUploadButton
-          cardId={cardId}
-          onFilesUploaded={handleFilesUploaded}
-          variant="compact"
-        />
-      </div>
-
-      {attachedFiles.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-700 bg-gray-900/30 p-6 text-center">
-          <Paperclip className="h-8 w-8 mx-auto mb-2 text-gray-600" />
-          <p className="text-sm text-gray-400">No attachments yet</p>
-          <p className="text-xs text-gray-500 mt-1">
-            Upload files to attach them to this card
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {attachedFiles.map((file) => (
-            <FileCard
-              key={file.id}
-              file={file}
-              layout="list"
-              onClick={() => setPreviewFile(file)}
-              onPreview={() => setPreviewFile(file)}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* File Preview Modal */}
-      <FilePreviewModal
-        file={previewFile}
-        isOpen={!!previewFile}
-        onClose={() => setPreviewFile(null)}
-        onNext={
-          currentIndex < attachedFiles.length - 1
-            ? () => setPreviewFile(attachedFiles[currentIndex + 1])
-            : undefined
-        }
-        onPrevious={
-          currentIndex > 0
-            ? () => setPreviewFile(attachedFiles[currentIndex - 1])
-            : undefined
-        }
-        hasNext={currentIndex < attachedFiles.length - 1}
-        hasPrevious={currentIndex > 0}
-      />
-    </div>
-  );
-}
 
 type CardDetailModalProps = {
   card: CardModel;
@@ -1860,8 +1776,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   onSave={handleSaveScheduledDate}
                 />
               </TabsContent>
-              <TabsContent value="attachments" className="p-4 mt-0 h-full">
-                <AttachmentsTab cardId={card.id} />
+              <TabsContent value="attachments" className="mt-0 h-full">
+                <AttachmentsTabContent cardId={card.id} />
               </TabsContent>
             </div>
 
