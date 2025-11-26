@@ -8,7 +8,7 @@ import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
 import { CardModel, CollectionNode, ExtractedDate } from "@/lib/types";
-import { getMostRelevantDate } from "@/lib/utils/extract-dates";
+import { getMostRelevantDate, extractDatesFromMetadata } from "@/lib/utils/extract-dates";
 import { useDataStore, extractAndSaveLinks } from "@/lib/stores/data-store";
 import { localDb } from "@/lib/services/local-storage";
 import { useToastStore } from "@/lib/stores/toast-store";
@@ -1976,11 +1976,21 @@ function MetadataSection({ card }: { card: CardModel }) {
     return events.find(e => e.source?.type === 'card' && e.source?.cardId === card.id);
   }, [events, card.id]);
 
-  // Get the most relevant extracted date
+  // Get the most relevant extracted date - extract on-the-fly from metadata
   const relevantDate = useMemo(() => {
-    if (!card.extractedDates || card.extractedDates.length === 0) return null;
-    return getMostRelevantDate(card.extractedDates);
-  }, [card.extractedDates]);
+    // First check if dates were already extracted and stored on the card
+    if (card.extractedDates && card.extractedDates.length > 0) {
+      return getMostRelevantDate(card.extractedDates);
+    }
+    // Otherwise, extract from metadata on-the-fly
+    if (card.metadata && card.type === 'url') {
+      const extractedDates = extractDatesFromMetadata(card.metadata as Record<string, unknown>);
+      if (extractedDates.length > 0) {
+        return getMostRelevantDate(extractedDates);
+      }
+    }
+    return null;
+  }, [card.extractedDates, card.metadata, card.type]);
 
   const handleAddToCalendar = async () => {
     if (!relevantDate) return;
