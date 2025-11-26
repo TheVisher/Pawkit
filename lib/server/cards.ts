@@ -40,9 +40,9 @@ function mapCard(card: Card): CardDTO {
     updatedAt: card.updatedAt.toISOString(),
     deletedAt: card.deletedAt?.toISOString() ?? null,
     scheduledDate: card.scheduledDate?.toISOString() ?? null,
-    // File card fields
-    isFileCard: card.isFileCard ?? false,
-    fileId: card.fileId ?? undefined
+    // File card fields - use optional chaining since columns may not exist yet
+    isFileCard: (card as any).isFileCard ?? false,
+    fileId: (card as any).fileId ?? undefined
   };
 }
 
@@ -89,7 +89,6 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
   const hasPreFetchedMetadata = !!(parsed.image || parsed.description);
 
   // Create card with different logic based on type
-  const isFileCard = cardType === "file";
   const data = {
     type: cardType,
     url: parsed.url || (isNote ? "" : ""),
@@ -108,9 +107,8 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
     // Store metadata as JSON string (for file category, mime type, etc.)
     metadata: parsed.metadata ? JSON.stringify(parsed.metadata) : undefined,
     inDen,
-    // File card support
-    isFileCard,
-    fileId: parsed.fileId,
+    // Note: isFileCard and fileId columns not yet migrated to production DB
+    // File cards are stored locally in IndexedDB, server just tracks the card type
     user: { connect: { id: userId } }
   };
 
