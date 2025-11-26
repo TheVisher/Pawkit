@@ -15,6 +15,7 @@ import { useToastStore } from "@/lib/stores/toast-store";
 import { ReaderView } from "@/components/reader/reader-view";
 import { RichMDEditor } from "@/components/notes/md-editor";
 import { BacklinksPanel } from "@/components/notes/backlinks-panel";
+import { AttachmentsSection } from "@/components/modals/attachments-section";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -1809,15 +1810,21 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   saving={saving}
                 />
               </TabsContent>
-              <TabsContent value="links" className="p-4 mt-0 h-full">
-                <BacklinksPanel
-                  noteId={card.id}
-                  onNavigate={(cardId) => {
-                    if (onNavigateToCard) {
-                      onNavigateToCard(cardId);
-                    }
-                  }}
-                />
+              <TabsContent value="links" className="p-4 mt-0 h-full overflow-y-auto">
+                <div className="space-y-6">
+                  <BacklinksPanel
+                    noteId={card.id}
+                    onNavigate={(cardId) => {
+                      if (onNavigateToCard) {
+                        onNavigateToCard(cardId);
+                      }
+                    }}
+                  />
+                  {/* Attachments Section */}
+                  <div className="border-t border-white/10 pt-6">
+                    <AttachmentsSection cardId={card.id} />
+                  </div>
+                </div>
               </TabsContent>
               {isNote && (
                 <TabsContent value="tags" className="p-4 mt-0 h-full">
