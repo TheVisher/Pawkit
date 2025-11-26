@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon, Calendar, ChevronRight, Plus } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon, Calendar, ChevronRight, Plus, Paperclip } from "lucide-react";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
 
@@ -43,6 +43,11 @@ import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { format } from "date-fns";
+import { useFileStore } from "@/lib/stores/file-store";
+import { FileCard, FileChip } from "@/components/files/file-card";
+import { FileUploadButton } from "@/components/files/file-drop-zone";
+import { FilePreviewModal } from "@/components/files/file-preview-modal";
+import { StoredFile } from "@/lib/types";
 
 type TagsTabProps = {
   content: string;
@@ -76,6 +81,92 @@ function TagsTab({ content }: TagsTabProps) {
       <div className="text-xs text-gray-500">
         <p>Tags are automatically extracted from hashtags (#tag) in your content.</p>
       </div>
+    </div>
+  );
+}
+
+type AttachmentsTabProps = {
+  cardId: string;
+};
+
+function AttachmentsTab({ cardId }: AttachmentsTabProps) {
+  const [previewFile, setPreviewFile] = useState<StoredFile | null>(null);
+  const files = useFileStore((state) => state.getFilesByCardId(cardId));
+  const allFiles = useFileStore((state) => state.files);
+  const attachFileToCard = useFileStore((state) => state.attachFileToCard);
+  const detachFileFromCard = useFileStore((state) => state.detachFileFromCard);
+
+  // Get files attached to this card
+  const attachedFiles = files;
+
+  // Get preview file index for navigation
+  const currentIndex = previewFile
+    ? attachedFiles.findIndex((f) => f.id === previewFile.id)
+    : -1;
+
+  const handleFilesUploaded = (fileIds: string[]) => {
+    // Files uploaded via FileUploadButton with cardId are already attached
+  };
+
+  const handleDetach = async (fileId: string) => {
+    await detachFileFromCard(fileId);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Paperclip size={16} className="text-accent" />
+          <h3 className="text-sm font-semibold text-gray-300">Attachments</h3>
+          <span className="text-xs text-gray-500">({attachedFiles.length})</span>
+        </div>
+        <FileUploadButton
+          cardId={cardId}
+          onFilesUploaded={handleFilesUploaded}
+          variant="compact"
+        />
+      </div>
+
+      {attachedFiles.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-700 bg-gray-900/30 p-6 text-center">
+          <Paperclip className="h-8 w-8 mx-auto mb-2 text-gray-600" />
+          <p className="text-sm text-gray-400">No attachments yet</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Upload files to attach them to this card
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {attachedFiles.map((file) => (
+            <FileCard
+              key={file.id}
+              file={file}
+              layout="list"
+              onClick={() => setPreviewFile(file)}
+              onPreview={() => setPreviewFile(file)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        file={previewFile}
+        isOpen={!!previewFile}
+        onClose={() => setPreviewFile(null)}
+        onNext={
+          currentIndex < attachedFiles.length - 1
+            ? () => setPreviewFile(attachedFiles[currentIndex + 1])
+            : undefined
+        }
+        onPrevious={
+          currentIndex > 0
+            ? () => setPreviewFile(attachedFiles[currentIndex - 1])
+            : undefined
+        }
+        hasNext={currentIndex < attachedFiles.length - 1}
+        hasPrevious={currentIndex > 0}
+      />
     </div>
   );
 }
@@ -1526,6 +1617,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             >
               <Clock className="h-5 w-5" />
             </TabsTrigger>
+            <TabsTrigger
+              value="attachments"
+              className="w-12 h-12 rounded-xl flex items-center justify-center border border-transparent data-[state=active]:border-accent data-[state=active]:bg-white/10 data-[state=active]:shadow-glow-accent hover:bg-white/5 transition-all"
+              title="Attachments"
+            >
+              <Paperclip className="h-5 w-5" />
+            </TabsTrigger>
             {!isNote && !isYouTubeUrl(card.url) && (
               <>
                 <TabsTrigger
@@ -1631,6 +1729,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   scheduledDate={card.scheduledDate}
                   onSave={handleSaveScheduledDate}
                 />
+              </TabsContent>
+              <TabsContent value="attachments" className="p-4 mt-0 h-full">
+                <AttachmentsTab cardId={card.id} />
               </TabsContent>
             </div>
 
