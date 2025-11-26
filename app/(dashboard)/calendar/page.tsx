@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useToastStore } from "@/lib/stores/toast-store";
 import { CustomCalendar } from "@/components/calendar/custom-calendar";
 import { WeekView } from "@/components/calendar/week-view";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -63,9 +64,27 @@ export default function CalendarPage() {
 
   // Handle event click - open linked card, URL, or select the day
   const handleEventClick = (event: CalendarEvent) => {
-    // If event has a linked card, open the card modal (without changing sidebar)
+    // If event has a linked card, check if card still exists
     if (event.source?.cardId) {
-      setActiveCardId(event.source.cardId);
+      const card = cards.find(c => c.id === event.source?.cardId && !c.deleted);
+      if (card) {
+        setActiveCardId(event.source.cardId);
+      } else {
+        // Card was deleted - show toast with option to open URL if available
+        const eventUrl = event.url;
+        if (eventUrl) {
+          useToastStore.getState().withAction(
+            "The linked bookmark was deleted",
+            {
+              label: "Open URL",
+              onClick: () => window.open(eventUrl, '_blank')
+            },
+            "info"
+          );
+        } else {
+          useToastStore.getState().info("The linked bookmark was deleted");
+        }
+      }
       return;
     }
 
