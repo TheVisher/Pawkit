@@ -11,7 +11,7 @@ import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
-import { FileText, Bookmark, Pin, MoreVertical, Trash2, FolderPlus, Eye, PinOff, ImageIcon, X, Calendar } from "lucide-react";
+import { FileText, Bookmark, Pin, MoreVertical, Trash2, FolderPlus, Eye, PinOff, ImageIcon, X, Calendar, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
@@ -21,6 +21,7 @@ import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { UnpinNotesModal } from "@/components/modals/unpin-notes-modal";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { useEventStore } from "@/lib/hooks/use-event-store";
+import { useFileStore } from "@/lib/stores/file-store";
 import { createPortal } from "react-dom";
 import { useRef } from "react";
 import { addCollectionWithHierarchy, removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
@@ -190,7 +191,19 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const selectRange = useSelection((state) => state.selectRange);
   const clearSelection = useSelection((state) => state.clear);
   const showThumbnails = useSettingsStore((state) => state.showThumbnails);
-  
+
+  // Get files from file store to check for attachments
+  const files = useFileStore((state) => state.files);
+  const cardsWithAttachments = useMemo(() => {
+    const cardIdSet = new Set<string>();
+    files.forEach((file) => {
+      if (file.cardId) {
+        cardIdSet.add(file.cardId);
+      }
+    });
+    return cardIdSet;
+  }, [files]);
+
   // Map area to view type for settings
   const viewType: ViewType = area === "pawkit" ? "pawkits" : (area as ViewType);
   const viewSettings = useViewSettingsStore((state) => state.getSettings(viewType));
@@ -655,6 +668,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 onPinToSidebar={() => handlePinToSidebar(card.id)}
                 onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
                 onSetThumbnail={() => handleOpenThumbnailModal(card.id)}
+                hasAttachments={cardsWithAttachments.has(card.id)}
               />
             ))}
           </div>
@@ -857,9 +871,10 @@ type CardCellProps = {
   onPinToSidebar?: () => void;
   onUnpinFromSidebar?: () => void;
   onSetThumbnail?: () => void;
+  hasAttachments?: boolean;
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar, onSetThumbnail }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar, onSetThumbnail, hasAttachments }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
@@ -979,12 +994,19 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           ...style,
           padding: `${cardPaddingPx}px`,
         }}
-        className={`card-hover group cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface transition-all select-none ${
+        className={`card-hover group relative cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface transition-all select-none ${
           selected ? "is-selected ring-2 ring-accent border-transparent" : "border-subtle"
         } ${isDragging ? "opacity-50" : ""}`}
         onClick={(event) => onClick(event, card)}
         data-id={card.id}
       >
+      {/* Attachments badge */}
+      {hasAttachments && (
+        <div className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/40 backdrop-blur-sm border border-white/10" title="Has attachments">
+          <Paperclip className="w-3.5 h-3.5 text-purple-400" />
+        </div>
+      )}
+
       {showThumbnail && layout !== "compact" && !isNote && (
         <div
           className={`relative ${hasTextSection && showMetadata ? "mb-3" : ""} w-full rounded-xl bg-surface-soft ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip`}
@@ -1311,7 +1333,8 @@ const CardCell = memo(CardCellInner, (prevProps, nextProps) => {
     prevProps.showThumbnail === nextProps.showThumbnail &&
     prevProps.layout === nextProps.layout &&
     prevProps.area === nextProps.area &&
-    prevProps.isPinned === nextProps.isPinned
+    prevProps.isPinned === nextProps.isPinned &&
+    prevProps.hasAttachments === nextProps.hasAttachments
   );
 });
 

@@ -39,7 +39,10 @@ function mapCard(card: Card): CardDTO {
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
     deletedAt: card.deletedAt?.toISOString() ?? null,
-    scheduledDate: card.scheduledDate?.toISOString() ?? null
+    scheduledDate: card.scheduledDate?.toISOString() ?? null,
+    // File card fields
+    isFileCard: card.isFileCard ?? false,
+    fileId: card.fileId ?? undefined
   };
 }
 
@@ -86,6 +89,7 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
   const hasPreFetchedMetadata = !!(parsed.image || parsed.description);
 
   // Create card with different logic based on type
+  const isFileCard = cardType === "file";
   const data = {
     type: cardType,
     url: parsed.url || (isNote ? "" : ""),
@@ -96,11 +100,17 @@ export async function createCard(userId: string, payload: CardInput): Promise<Ca
     collections: serializeCollections(normalizedCollections),
     domain: parsed.url && parsed.url.length > 0 ? safeHost(parsed.url) : undefined,
     // If pre-fetched metadata provided, mark as READY; otherwise PENDING for URL cards
+    // File cards are always READY since files are stored locally
     status: cardType === "url" ? (hasPreFetchedMetadata ? "READY" : "PENDING") : "READY",
     // Use pre-fetched image/description if provided
     image: parsed.image,
     description: parsed.description,
+    // Store metadata as JSON string (for file category, mime type, etc.)
+    metadata: parsed.metadata ? JSON.stringify(parsed.metadata) : undefined,
     inDen,
+    // File card support
+    isFileCard,
+    fileId: parsed.fileId,
     user: { connect: { id: userId } }
   };
 
