@@ -6,6 +6,7 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { FileText, Link2, Clock, Bot } from "lucide-react";
 import { BacklinksPanel } from "@/components/notes/backlinks-panel";
+import { AttachmentsSection } from "@/components/modals/attachments-section";
 
 export function CardDetailsPanel() {
   const router = useRouter();
@@ -115,15 +116,24 @@ export function CardDetailsPanel() {
 
         {/* Links/Backlinks Tab */}
         {activeTab === "links" && (
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Backlinks</h3>
-            <BacklinksPanel
-              noteId={card.id}
-              onNavigate={(id) => {
-                // Ensure both the panel and modal navigate consistently
-                openCardDetails(id);
-              }}
-            />
+          <div className="space-y-6">
+            {/* Backlinks Section */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-foreground">Backlinks</h3>
+              <BacklinksPanel
+                noteId={card.id}
+                onNavigate={(id) => {
+                  // Ensure both the panel and modal navigate consistently
+                  openCardDetails(id);
+                }}
+              />
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-white/10" />
+
+            {/* Attachments Section */}
+            <AttachmentsSection cardId={card.id} />
           </div>
         )}
 
