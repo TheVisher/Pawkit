@@ -9,6 +9,7 @@ import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/daily-notes";
 import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, startOfWeek, addMonths, subMonths, addWeeks, subWeeks } from "date-fns";
+import { CalendarEvent } from "@/lib/types/calendar";
 
 export default function CalendarPage() {
   const { cards, addCard } = useDataStore();
@@ -57,6 +58,26 @@ export default function CalendarPage() {
       }
     } catch (error) {
     }
+  };
+
+  // Handle event click - open linked card, URL, or select the day
+  const handleEventClick = (event: CalendarEvent) => {
+    // If event has a linked card, open the card modal
+    if (event.source?.cardId) {
+      openCardDetails(event.source.cardId);
+      return;
+    }
+
+    // If event has a URL but no linked card, open the URL
+    if (event.url) {
+      window.open(event.url, '_blank');
+      return;
+    }
+
+    // Otherwise, select the day to show event details
+    const [year, month, day] = event.date.split('-').map(Number);
+    setSelectedDay(new Date(year, month - 1, day));
+    openDayDetails();
   };
 
   return (
@@ -111,6 +132,7 @@ export default function CalendarPage() {
           currentMonth={currentMonth}
           onDayClick={handleDayClick}
           onCardClick={(card) => openCardDetails(card.id)}
+          onEventClick={handleEventClick}
           onCreateDailyNote={handleCreateDailyNote}
         />
       ) : (
@@ -119,6 +141,7 @@ export default function CalendarPage() {
           currentMonth={currentMonth}
           onDayClick={handleDayClick}
           onCardClick={(card) => openCardDetails(card.id)}
+          onEventClick={handleEventClick}
           onCreateDailyNote={handleCreateDailyNote}
         />
       )}

@@ -162,6 +162,23 @@ export function DayDetailsPanel() {
     setShowAddEventModal(true);
   };
 
+  const handleEventClick = (event: CalendarEvent) => {
+    // If event has a linked card, open the card modal
+    if (event.source?.cardId) {
+      openCardDetails(event.source.cardId);
+      return;
+    }
+
+    // If event has a URL but no linked card, open the URL
+    if (event.url) {
+      window.open(event.url, '_blank');
+      return;
+    }
+
+    // Otherwise, open the event edit modal
+    handleEditEvent(event);
+  };
+
   const handleEditEvent = (event: CalendarEvent) => {
     // If event is recurring, show the edit recurring modal first
     if (event.recurrence) {
@@ -361,7 +378,7 @@ export function DayDetailsPanel() {
                     />
                     <div className="flex-1 min-w-0">
                       <button
-                        onClick={() => handleEditEvent(event)}
+                        onClick={() => handleEventClick(event)}
                         className="text-left w-full"
                       >
                         <div className="font-medium text-foreground truncate">
