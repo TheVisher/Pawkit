@@ -12,6 +12,7 @@ import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
 import { FileText, Bookmark, Pin, MoreVertical, Trash2, FolderPlus, Eye, PinOff, ImageIcon, X, Calendar, Paperclip } from "lucide-react";
+import { CardImage, useCardImageUrl } from "@/components/cards/card-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
@@ -140,6 +141,33 @@ function CardActionsMenu({
         document.body
       )}
     </div>
+  );
+}
+
+// Small component to render list view card icon with proper blob URL handling
+function ListRowCardIcon({ card }: { card: CardModel }) {
+  const { imageUrl, isFileCard } = useCardImageUrl(card);
+  const isNote = card.type === "md-note" || card.type === "text-note";
+
+  if (isNote) {
+    return <FileText size={16} className="text-purple-400" />;
+  }
+
+  if (imageUrl) {
+    return (
+      <img
+        src={imageUrl}
+        alt=""
+        className="w-5 h-5 rounded object-cover"
+      />
+    );
+  }
+
+  // Fallback icon
+  return isFileCard ? (
+    <ImageIcon size={16} className="text-muted-foreground" />
+  ) : (
+    <Bookmark size={16} className="text-muted-foreground" />
   );
 }
 
@@ -582,17 +610,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                         <td className="py-3 px-4 max-w-xs">
                           <div className="flex items-center gap-3 min-w-0">
                             <span className="flex items-center justify-center h-8 w-8 rounded-lg backdrop-blur-sm bg-accent/20 text-accent flex-shrink-0">
-                              {isNote ? (
-                                <FileText size={16} className="text-purple-400" />
-                              ) : card.image ? (
-                                <img
-                                  src={card.image}
-                                  alt=""
-                                  className="w-5 h-5 rounded object-cover"
-                                />
-                              ) : (
-                                <Bookmark size={16} className="text-muted-foreground" />
-                              )}
+                              <ListRowCardIcon card={card} />
                             </span>
                             <span className="text-sm text-foreground font-medium truncate min-w-0 flex-1">{displayTitle}</span>
                             {isPinned && <Pin size={14} className="text-purple-400 flex-shrink-0" />}
@@ -881,6 +899,9 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
   const isError = card.status === "ERROR";
   const isNote = card.type === "md-note" || card.type === "text-note";
 
+  // Use hook to get the correct image URL (handles file cards with IndexedDB blobs)
+  const { imageUrl, isLoading: isImageLoading, isFileCard } = useCardImageUrl(card);
+
   // Check if this card has associated calendar events
   const hasCalendarEvents = useEventStore((state) =>
     state.events.some(e => e.source?.type === 'card' && e.source?.cardId === card.id)
@@ -1056,7 +1077,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               </div>
             </>
           )}
-          {isPending ? (
+          {isPending || (isFileCard && isImageLoading) ? (
             <div className="flex h-full w-full items-center justify-center">
               <div className="h-16 w-16 rounded-full border-4 border-gray-600 border-t-purple-500 animate-spin"></div>
             </div>
@@ -1066,10 +1087,10 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                 <span className="text-white text-2xl">⚠️</span>
               </div>
             </div>
-          ) : card.image ? (
+          ) : imageUrl ? (
             <>
               <img
-                src={card.image}
+                src={imageUrl}
                 alt={card.title ?? card.url}
                 className={layout === "masonry" ? "block w-full h-auto rounded-xl" : "block h-full w-full object-cover rounded-xl"}
                 loading="lazy"
@@ -1089,8 +1110,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                   onImageLoad?.();
                 }}
               />
-              {/* URL Pill Overlay */}
-              {showLabels && card.url && (
+              {/* URL Pill Overlay - hide for file cards */}
+              {showLabels && card.url && !isFileCard && (
                 <a
                   href={card.url}
                   target="_blank"
