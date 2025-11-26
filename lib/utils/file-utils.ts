@@ -77,9 +77,9 @@ export const MAX_FILE_SIZE = 50 * 1024 * 1024;
 // Soft storage limit (800MB)
 export const STORAGE_SOFT_LIMIT = 800 * 1024 * 1024;
 
-// Thumbnail settings
-const THUMBNAIL_MAX_SIZE = 200;
-const THUMBNAIL_QUALITY = 0.7;
+// Thumbnail settings - larger size for crisp display in grid view
+const THUMBNAIL_MAX_SIZE = 800;
+const THUMBNAIL_QUALITY = 0.85;
 
 /**
  * Get the category for a given MIME type
@@ -194,13 +194,16 @@ export async function generateThumbnail(file: File): Promise<Blob | null> {
 
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert to blob
+        // Convert to blob - preserve PNG for transparency support
+        const outputType = file.type === "image/png" ? "image/png" : "image/jpeg";
+        const quality = file.type === "image/png" ? undefined : THUMBNAIL_QUALITY;
+
         canvas.toBlob(
           (blob) => {
             resolve(blob);
           },
-          "image/jpeg",
-          THUMBNAIL_QUALITY
+          outputType,
+          quality
         );
       } catch {
         resolve(null);

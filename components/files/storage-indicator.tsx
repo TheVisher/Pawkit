@@ -37,7 +37,13 @@ export function StorageIndicator({
   const limitFormatted = formatFileSize(STORAGE_SOFT_LIMIT);
 
   if (isLoading) {
-    return null;
+    // Show placeholder while loading to avoid layout shift
+    return (
+      <div className={`flex items-center gap-2 text-xs text-muted-foreground/50 ${className}`}>
+        <HardDrive className="h-3.5 w-3.5 flex-shrink-0 animate-pulse" />
+        <span>Loading storage...</span>
+      </div>
+    );
   }
 
   if (variant === "compact") {
@@ -46,14 +52,14 @@ export function StorageIndicator({
         className={`flex items-center gap-2 text-xs ${
           nearLimit ? "text-amber-400" : "text-muted-foreground"
         } ${className}`}
-        title={`${usedFormatted} of ${limitFormatted} used`}
+        title={`${usedFormatted} of ${limitFormatted} used (${files.length} files)`}
       >
         {nearLimit ? (
-          <AlertTriangle className="h-3.5 w-3.5" />
+          <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0" />
         ) : (
-          <HardDrive className="h-3.5 w-3.5" />
+          <HardDrive className="h-3.5 w-3.5 flex-shrink-0" />
         )}
-        <span>{usedFormatted}</span>
+        <span>Storage: {usedFormatted} / {limitFormatted}</span>
       </div>
     );
   }
