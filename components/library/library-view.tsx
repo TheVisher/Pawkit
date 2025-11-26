@@ -12,6 +12,7 @@ import { sortCards } from "@/lib/utils/sort-cards";
 import { format } from "date-fns";
 import { Library, Settings } from "lucide-react";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { FileDropZone } from "@/components/files/file-drop-zone";
 
 type TimelineGroup = {
   date: string;
@@ -306,7 +307,7 @@ export function LibraryView({
   };
 
   return (
-    <>
+    <FileDropZone className="min-h-[50vh]">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -376,7 +377,6 @@ export function LibraryView({
           />
         )}
       </div>
-
-    </>
+    </FileDropZone>
   );
 }

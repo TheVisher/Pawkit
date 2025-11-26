@@ -1,5 +1,35 @@
 export type CardStatus = "PENDING" | "READY" | "ERROR";
-export type CardType = "url" | "md-note" | "text-note";
+export type CardType = "url" | "md-note" | "text-note" | "file";
+
+// File categories for content type filtering
+export type FileCategory = 'image' | 'pdf' | 'document' | 'spreadsheet' | 'audio' | 'video' | 'other';
+
+// Stored file in IndexedDB
+export type StoredFile = {
+  id: string;
+  userId: string;
+
+  // File metadata
+  filename: string;
+  mimeType: string;
+  size: number;             // bytes
+  category: FileCategory;
+
+  // Blob storage
+  blob: Blob;               // The actual file data
+
+  // Thumbnail (for images/PDFs)
+  thumbnailBlob?: Blob;     // Generated preview image
+
+  // Relationship
+  cardId?: string;          // If attached to a card (null = standalone file card)
+
+  // Metadata
+  createdAt: string;
+  updatedAt: string;
+  deleted?: boolean;
+  deletedAt?: string | null;
+};
 
 export type OldCardAgeThreshold = "1 day" | "12 hours" | "6 hours" | "1 hour";
 
@@ -117,6 +147,11 @@ export type CardModel = {
   scheduledDate: string | null;
   createdAt: string;
   updatedAt: string;
+
+  // File attachment support
+  isFileCard?: boolean;         // true if this card IS a file (standalone)
+  fileId?: string;              // reference to StoredFile (for standalone file cards)
+  attachedFileIds?: string[];   // files attached TO this card
 };
 
 export type CollectionNode = {

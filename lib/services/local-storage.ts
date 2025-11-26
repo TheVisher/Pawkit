@@ -1,6 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { CardDTO } from '@/lib/server/cards';
-import { CollectionNode } from '@/lib/types';
+import { CollectionNode, StoredFile } from '@/lib/types';
 import { CalendarEvent } from '@/lib/types/calendar';
 
 /**
@@ -99,13 +99,25 @@ interface LocalStorageDB extends DBSchema {
       'by-recurrence-parent': string;
     };
   };
+  files: {
+    key: string; // file.id
+    value: StoredFile & {
+      _locallyModified?: boolean;
+      _locallyCreated?: boolean;
+    };
+    indexes: {
+      'by-card': string;
+      'by-deleted': string;
+      'by-category': string;
+    };
+  };
 }
 
 class LocalStorage {
   private db: IDBPDatabase<LocalStorageDB> | null = null;
   private userId: string | null = null;
   private workspaceId: string | null = null;
-  private readonly DB_VERSION = 6; // Version 6: added 'events' store for calendar events
+  private readonly DB_VERSION = 7; // Version 7: added 'files' store for file attachments
 
   /**
    * Get user-specific database name with workspace support
@@ -199,6 +211,14 @@ class LocalStorage {
           eventsStore.createIndex('by-date', 'date');
           eventsStore.createIndex('by-deleted', 'deleted');
           eventsStore.createIndex('by-recurrence-parent', 'recurrenceParentId');
+        }
+
+        // Create files store (added in v7)
+        if (!db.objectStoreNames.contains('files')) {
+          const filesStore = db.createObjectStore('files', { keyPath: 'id' });
+          filesStore.createIndex('by-card', 'cardId');
+          filesStore.createIndex('by-deleted', 'deleted');
+          filesStore.createIndex('by-category', 'category');
         }
       },
     });
@@ -980,6 +1000,176 @@ class LocalStorage {
       _locallyCreated: false,
       _serverVersion: serverVersion,
     });
+  }
+
+  // ==================== FILES ====================
+
+  async getAllFiles(includeDeleted = false): Promise<StoredFile[]> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const files = await this.db.getAll('files');
+    return files
+      .filter(file => includeDeleted || file.deleted !== true)
+      .map(file => {
+        const { _locallyModified, _locallyCreated, ...cleanFile } = file;
+        return cleanFile as StoredFile;
+      });
+  }
+
+  async getFile(id: string): Promise<StoredFile | undefined> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const file = await this.db.get('files', id);
+    if (!file || file.deleted) return undefined;
+
+    const { _locallyModified, _locallyCreated, ...cleanFile } = file;
+    return cleanFile as StoredFile;
+  }
+
+  async getFilesByCardId(cardId: string): Promise<StoredFile[]> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const files = await this.db.getAllFromIndex('files', 'by-card', cardId);
+    return files
+      .filter(file => file.deleted !== true)
+      .map(file => {
+        const { _locallyModified, _locallyCreated, ...cleanFile } = file;
+        return cleanFile as StoredFile;
+      });
+  }
+
+  async getStandaloneFiles(): Promise<StoredFile[]> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    // Get all files where cardId is undefined (standalone files)
+    const allFiles = await this.db.getAll('files');
+    return allFiles
+      .filter(file => !file.cardId && file.deleted !== true)
+      .map(file => {
+        const { _locallyModified, _locallyCreated, ...cleanFile } = file;
+        return cleanFile as StoredFile;
+      });
+  }
+
+  async getFilesByCategory(category: string): Promise<StoredFile[]> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const files = await this.db.getAllFromIndex('files', 'by-category', category);
+    return files
+      .filter(file => file.deleted !== true)
+      .map(file => {
+        const { _locallyModified, _locallyCreated, ...cleanFile } = file;
+        return cleanFile as StoredFile;
+      });
+  }
+
+  async saveFile(file: StoredFile, options?: { localOnly?: boolean }): Promise<void> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const existing = await this.db.get('files', file.id);
+
+    const fileToSave = {
+      ...file,
+      _locallyModified: options?.localOnly ? true : (existing?._locallyModified || false),
+      _locallyCreated: options?.localOnly ? true : (existing?._locallyCreated || false),
+    };
+
+    try {
+      await this.db.put('files', fileToSave);
+    } catch (error) {
+      console.error('[LocalStorage] Failed to save file:', error);
+      throw error;
+    }
+  }
+
+  async deleteFile(id: string): Promise<void> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    // Soft delete: mark as deleted instead of removing
+    const file = await this.db.get('files', id);
+    if (file) {
+      file.deleted = true;
+      file.deletedAt = new Date().toISOString();
+      await this.db.put('files', file);
+    }
+  }
+
+  async permanentlyDeleteFile(id: string): Promise<void> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    await this.db.delete('files', id);
+  }
+
+  async deleteFilesByCardId(cardId: string): Promise<void> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const files = await this.db.getAllFromIndex('files', 'by-card', cardId);
+    for (const file of files) {
+      file.deleted = true;
+      file.deletedAt = new Date().toISOString();
+      await this.db.put('files', file);
+    }
+  }
+
+  async getTotalFileSize(): Promise<number> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const files = await this.db.getAll('files');
+    return files
+      .filter(file => file.deleted !== true)
+      .reduce((total, file) => total + file.size, 0);
+  }
+
+  async getFileStats(): Promise<{
+    totalFiles: number;
+    totalSize: number;
+    byCategory: Record<string, { count: number; size: number }>;
+  }> {
+    if (!this.db) {
+      return {
+        totalFiles: 0,
+        totalSize: 0,
+        byCategory: {},
+      };
+    }
+
+    const files = await this.db.getAll('files');
+    const activeFiles = files.filter(file => file.deleted !== true);
+
+    const byCategory: Record<string, { count: number; size: number }> = {};
+    for (const file of activeFiles) {
+      if (!byCategory[file.category]) {
+        byCategory[file.category] = { count: 0, size: 0 };
+      }
+      byCategory[file.category].count++;
+      byCategory[file.category].size += file.size;
+    }
+
+    return {
+      totalFiles: activeFiles.length,
+      totalSize: activeFiles.reduce((total, file) => total + file.size, 0),
+      byCategory,
+    };
   }
 }
 
