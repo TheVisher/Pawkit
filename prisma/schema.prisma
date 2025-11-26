@@ -27,6 +27,7 @@ model User {
   settings       UserSettings?
   deviceSessions DeviceSession[]
   todos          Todo[]
+  calendarEvents CalendarEvent[]
 }
 
 model Card {
@@ -177,5 +178,42 @@ model Todo {
 
   @@index([userId])
   @@index([userId, completed])
+}
+
+model CalendarEvent {
+  id                  String    @id @default(uuid())
+  userId              String
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title               String
+  date                String    // YYYY-MM-DD
+  endDate             String?   // For multi-day events
+  startTime           String?   // HH:mm
+  endTime             String?   // HH:mm
+  isAllDay            Boolean   @default(true)
+
+  description         String?
+  location            String?
+  url                 String?
+  color               String?
+
+  // Recurrence
+  recurrence          Json?     // Store recurrence object as JSON
+  recurrenceParentId  String?
+  excludedDates       String[]  @default([])
+  isException         Boolean   @default(false)
+
+  // Source tracking
+  source              Json?     // { type: 'manual' | 'card' | 'note', cardId?, noteId? }
+
+  // Metadata
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deleted             Boolean   @default(false)
+  deletedAt           DateTime?
+
+  @@index([userId])
+  @@index([userId, date])
+  @@index([userId, deleted])
 }
 

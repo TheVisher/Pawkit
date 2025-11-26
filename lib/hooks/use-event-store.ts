@@ -48,15 +48,18 @@ type EventStore = {
   // Loading states
   isLoading: boolean;
   isInitialized: boolean;
+  isSyncing: boolean;
 
   // Actions
   initialize: () => Promise<void>;
+  sync: () => Promise<void>;
   addEvent: (eventData: Partial<CalendarEvent>) => Promise<CalendarEvent | null>;
   updateEvent: (id: string, updates: CalendarEventUpdate) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
   excludeDateFromRecurrence: (id: string, dateToExclude: string) => Promise<void>;
   createExceptionInstance: (parentEvent: CalendarEvent, instanceDate: string) => Promise<CalendarEvent | null>;
   refresh: () => Promise<void>;
+  pushPendingEvents: () => Promise<void>;
 
   // Query helpers
   getEventsByDateRange: (startDate: string, endDate: string) => CalendarEvent[];
@@ -207,6 +210,7 @@ export const useEventStore = create<EventStore>((set, get) => ({
   events: [],
   isLoading: false,
   isInitialized: false,
+  isSyncing: false,
 
   /**
    * Initialize: Load events from IndexedDB
@@ -230,6 +234,123 @@ export const useEventStore = create<EventStore>((set, get) => ({
     } catch (error) {
       console.error('[EventStore] Failed to initialize:', error);
       set({ isLoading: false });
+    }
+  },
+
+  /**
+   * Sync: Bidirectional sync with server
+   */
+  sync: async () => {
+    const serverSync = useSettingsStore.getState().serverSync;
+    if (!serverSync) {
+      console.log('[EventStore] Server sync disabled, skipping');
+      return;
+    }
+
+    if (get().isSyncing) {
+      console.log('[EventStore] Already syncing, skipping');
+      return;
+    }
+
+    set({ isSyncing: true });
+
+    try {
+      // STEP 1: Push pending local changes to server
+      await get().pushPendingEvents();
+
+      // STEP 2: Pull events from server
+      const response = await fetch('/api/events?includeDeleted=true');
+      if (!response.ok) {
+        throw new Error(`Failed to fetch events: ${response.status}`);
+      }
+
+      const { items: serverEvents } = await response.json();
+
+      // STEP 3: Merge server events with local events
+      for (const serverEvent of serverEvents) {
+        const localEvent = await localDb.getEvent(serverEvent.id);
+
+        if (!localEvent) {
+          // New event from server - save locally
+          await localDb.saveEvent(serverEvent, { fromServer: true });
+        } else {
+          // Event exists locally - resolve conflict (newest wins)
+          const localTime = new Date(localEvent.updatedAt).getTime();
+          const serverTime = new Date(serverEvent.updatedAt).getTime();
+
+          if (serverTime > localTime) {
+            // Server is newer - update local
+            await localDb.saveEvent(serverEvent, { fromServer: true });
+          }
+          // If local is newer, it will be pushed in next sync
+        }
+      }
+
+      // STEP 4: Reload from local storage (now has merged data)
+      const allEvents = await localDb.getAllEvents();
+      const filteredEvents = allEvents.filter(e => e.deleted !== true);
+
+      set({ events: filteredEvents });
+      console.log('[EventStore] Sync complete:', filteredEvents.length, 'events');
+    } catch (error) {
+      console.error('[EventStore] Sync failed:', error);
+    } finally {
+      set({ isSyncing: false });
+    }
+  },
+
+  /**
+   * Push pending local events to server
+   */
+  pushPendingEvents: async () => {
+    const modifiedEvents = await localDb.getModifiedEvents();
+    if (modifiedEvents.length === 0) {
+      return;
+    }
+
+    console.log('[EventStore] Pushing', modifiedEvents.length, 'pending events');
+
+    for (const event of modifiedEvents) {
+      try {
+        const isTemp = event.id.startsWith('temp_');
+
+        if (isTemp) {
+          // Create new event on server
+          const response = await fetch('/api/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(event),
+          });
+
+          if (response.ok) {
+            const serverEvent = await response.json();
+
+            // Replace temp event with server event
+            await localDb.permanentlyDeleteEvent(event.id);
+            await localDb.saveEvent(serverEvent, { fromServer: true });
+
+            // Update state
+            set((state) => ({
+              events: state.events.map(e => e.id === event.id ? serverEvent : e),
+            }));
+          }
+        } else {
+          // Update existing event on server
+          const response = await fetch(`/api/events/${event.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(event),
+          });
+
+          if (response.ok) {
+            const serverEvent = await response.json();
+            await localDb.markEventSynced(event.id, serverEvent.updatedAt);
+          }
+        }
+      } catch (error) {
+        console.error('[EventStore] Failed to push event:', event.id, error);
+        // Continue with other events
+      }
     }
   },
 
@@ -295,8 +416,36 @@ export const useEventStore = create<EventStore>((set, get) => ({
         events: [newEvent, ...state.events],
       }));
 
-      // STEP 3: Server sync would go here (future implementation)
-      // For now, events are local-only until server API is built
+      // STEP 3: Sync to server in background (if enabled)
+      const serverSync = useSettingsStore.getState().serverSync;
+      if (serverSync) {
+        // Try immediate sync
+        try {
+          const response = await fetch('/api/events', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(eventData),
+          });
+
+          if (response.ok) {
+            const serverEvent = await response.json();
+
+            // Replace temp event with server event
+            await localDb.permanentlyDeleteEvent(tempId);
+            await localDb.saveEvent(serverEvent, { fromServer: true });
+
+            // Update state with server event
+            set((state) => ({
+              events: state.events.map(e => e.id === tempId ? serverEvent : e),
+            }));
+
+            return serverEvent;
+          }
+        } catch (syncError) {
+          console.log('[EventStore] Immediate sync failed, will retry later:', syncError);
+          // Event is saved locally, will be synced later
+        }
+      }
 
       return newEvent;
     } catch (error) {
@@ -333,7 +482,24 @@ export const useEventStore = create<EventStore>((set, get) => ({
         events: state.events.map(e => e.id === id ? updatedEvent : e),
       }));
 
-      // STEP 3: Server sync would go here (future implementation)
+      // STEP 3: Sync to server in background (if enabled)
+      const serverSync = useSettingsStore.getState().serverSync;
+      if (serverSync && !id.startsWith('temp_')) {
+        try {
+          const response = await fetch(`/api/events/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates),
+          });
+
+          if (response.ok) {
+            const serverEvent = await response.json();
+            await localDb.markEventSynced(id, serverEvent.updatedAt);
+          }
+        } catch (syncError) {
+          console.log('[EventStore] Update sync failed, will retry later:', syncError);
+        }
+      }
     } catch (error) {
       console.error('[EventStore] Failed to update event:', error);
       throw error;
@@ -359,7 +525,20 @@ export const useEventStore = create<EventStore>((set, get) => ({
         events: state.events.filter(e => e.id !== id),
       }));
 
-      // STEP 3: Server sync would go here (future implementation)
+      // STEP 3: Sync to server in background (if enabled)
+      const serverSync = useSettingsStore.getState().serverSync;
+      if (serverSync && !id.startsWith('temp_')) {
+        try {
+          await fetch(`/api/events/${id}`, {
+            method: 'DELETE',
+          });
+        } catch (syncError) {
+          console.log('[EventStore] Delete sync failed, will retry later:', syncError);
+        }
+      } else if (id.startsWith('temp_')) {
+        // Temp event that never synced - just remove from local storage permanently
+        await localDb.permanentlyDeleteEvent(id);
+      }
     } catch (error) {
       console.error('[EventStore] Failed to delete event:', error);
       throw error;
@@ -396,7 +575,19 @@ export const useEventStore = create<EventStore>((set, get) => ({
         events: state.events.map(e => e.id === id ? updatedEvent : e),
       }));
 
-      // STEP 3: Server sync would go here (future implementation)
+      // STEP 3: Sync to server in background (if enabled)
+      const serverSync = useSettingsStore.getState().serverSync;
+      if (serverSync && !id.startsWith('temp_')) {
+        try {
+          await fetch(`/api/events/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ excludedDates: updatedExcludedDates }),
+          });
+        } catch (syncError) {
+          console.log('[EventStore] excludeDate sync failed, will retry later:', syncError);
+        }
+      }
     } catch (error) {
       console.error('[EventStore] Failed to exclude date from recurrence:', error);
       throw error;

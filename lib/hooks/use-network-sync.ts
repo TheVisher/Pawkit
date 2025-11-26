@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useDataStore } from "@/lib/stores/data-store";
+import { useEventStore } from "@/lib/hooks/use-event-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { syncService } from "@/lib/services/sync-service";
 
@@ -21,6 +22,7 @@ import { syncService } from "@/lib/services/sync-service";
  */
 export function useNetworkSync() {
   const drainQueue = useDataStore((state) => state.drainQueue);
+  const syncEvents = useEventStore((state) => state.sync);
   const serverSync = useSettingsStore((state) => state.serverSync);
   const autoSyncOnReconnect = useSettingsStore((state) => state.autoSyncOnReconnect);
   const isDrainingRef = useRef(false);
@@ -51,7 +53,11 @@ export function useNetworkSync() {
       lastDrainRef.current = now;
 
       try {
-        await drainQueue();
+        // Sync both cards and events in parallel
+        await Promise.all([
+          drainQueue(),
+          syncEvents(),
+        ]);
       } catch (error) {
       } finally {
         isDrainingRef.current = false;
@@ -78,7 +84,11 @@ export function useNetworkSync() {
           const hasChanges = await syncService.checkForChanges();
 
           if (hasChanges) {
-            await drainQueue(); // drainQueue calls sync internally
+            // Sync both cards and events when changes detected
+            await Promise.all([
+              drainQueue(), // drainQueue calls sync internally
+              syncEvents(),
+            ]);
           } else {
           }
         } catch (error) {
@@ -108,5 +118,5 @@ export function useNetworkSync() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(intervalId);
     };
-  }, [drainQueue, serverSync, autoSyncOnReconnect]);
+  }, [drainQueue, syncEvents, serverSync, autoSyncOnReconnect]);
 }
