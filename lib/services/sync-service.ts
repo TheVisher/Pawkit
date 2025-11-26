@@ -587,7 +587,16 @@ class SyncService {
       // Push modified cards
       const modifiedCards = await localDb.getModifiedCards();
 
-      for (const card of modifiedCards) {
+      // Filter out file cards - they're local-only (files stored in IndexedDB, not server)
+      const syncableCards = modifiedCards.filter(card => {
+        const isFileCard = card.type === 'file' || card.isFileCard;
+        if (isFileCard) {
+          console.log('[SyncService] Skipping file card from sync:', card.id, card.title);
+        }
+        return !isFileCard;
+      });
+
+      for (const card of syncableCards) {
         try {
           // Check if card exists on server (has a real ID, not temp)
           const isTemp = card.id.startsWith('temp_');
