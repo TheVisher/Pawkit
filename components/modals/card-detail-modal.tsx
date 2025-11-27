@@ -133,6 +133,17 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     (card.metadata as { fileCategory?: string } | null)?.fileCategory === "pdf" ||
     filePreviewData?.category === "pdf"
   );
+
+  // DEBUG: Log tab state for file cards
+  console.log('[CardDetailModal] Debug:', {
+    cardType: card.type,
+    isFileCard,
+    isPdfFileCard,
+    fileId: card.fileId,
+    fileCategory: (card.metadata as { fileCategory?: string } | null)?.fileCategory,
+    filePreviewDataCategory: filePreviewData?.category,
+  });
+
   const files = useFileStore((state) => state.files);
   const loadFiles = useFileStore((state) => state.loadFiles);
 
@@ -1329,7 +1340,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               // File card content with tabs - similar structure to URL cards
               <div className="relative h-full">
                 {/* Preview tab content */}
-                <div className={`h-full flex items-center justify-center p-[5px] ${bottomTabMode === 'preview' ? '' : 'hidden'}`}>
+                <div className={`h-full flex items-center justify-center p-[5px] ${bottomTabMode === 'preview' ? '' : 'invisible'}`}>
                   {filePreviewData ? (
                     <div className="w-full h-full flex items-center justify-center">
                       {filePreviewData.category === "image" && filePreviewUrl && (
@@ -1431,7 +1442,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
                 {/* Reader tab content for file cards */}
                 {bottomTabMode === 'reader' && (
-                  <div className="absolute inset-0 p-[5px] overflow-y-auto">
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto bg-red-500/20">
+                    {console.log('[CardDetailModal] Rendering Reader tab for file card, isPdfFileCard:', isPdfFileCard, 'fileId:', card.fileId)}
                     {isPdfFileCard && card.fileId ? (
                       <PdfReaderView
                         fileId={card.fileId}
@@ -1724,7 +1736,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 // URL cards with tabs
                 <>
                   <Button
-                    onClick={() => setBottomTabMode('preview')}
+                    onClick={() => { console.log('[CardDetailModal] Tab clicked: preview'); setBottomTabMode('preview'); }}
                     variant={bottomTabMode === 'preview' ? 'default' : 'ghost'}
                     size="sm"
                     className="flex items-center gap-2"
@@ -1733,7 +1745,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     Preview
                   </Button>
                   <Button
-                    onClick={() => setBottomTabMode('reader')}
+                    onClick={() => { console.log('[CardDetailModal] Tab clicked: reader, isFileCard:', isFileCard, 'isPdfFileCard:', isPdfFileCard); setBottomTabMode('reader'); }}
                     variant={bottomTabMode === 'reader' ? 'default' : 'ghost'}
                     size="sm"
                     className="flex items-center gap-2"
@@ -1742,7 +1754,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     Reader
                   </Button>
                   <Button
-                    onClick={() => setBottomTabMode('metadata')}
+                    onClick={() => { console.log('[CardDetailModal] Tab clicked: metadata, isFileCard:', isFileCard, 'isPdfFileCard:', isPdfFileCard); setBottomTabMode('metadata'); }}
                     variant={bottomTabMode === 'metadata' ? 'default' : 'ghost'}
                     size="sm"
                     className="flex items-center gap-2"
