@@ -14,6 +14,7 @@ import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { format, addDays, startOfDay } from "date-fns";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
 import { Plus, FileText, CalendarIcon } from "lucide-react";
+import { CardImage } from "@/components/cards/card-image";
 import { GlowButton } from "@/components/ui/glow-button";
 import { HorizontalScrollContainer } from "@/components/ui/horizontal-scroll-container";
 import { addCollectionWithHierarchy, removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
@@ -548,6 +549,7 @@ function RecentCard({ card, onClick, onAddToPawkit, onDeleteCard, onRemoveFromPa
   const showUrls = (viewSettings as any)?.showUrls ?? true;
 
   const isNote = card.type === 'md-note' || card.type === 'text-note';
+  const isFileCard = card.type === 'file';
 
   return (
     <CardContextMenuWrapper
@@ -568,11 +570,20 @@ function RecentCard({ card, onClick, onAddToPawkit, onDeleteCard, onRemoveFromPa
         </div>
       )}
 
-      {card.image && !isNote && (
+      {/* Image preview - use CardImage for file cards to handle blob URLs properly */}
+      {(card.image || isFileCard) && !isNote && (
         <div className="mb-3 overflow-hidden rounded-xl bg-surface-soft relative">
-          <img src={card.image} alt={card.title ?? card.url} className="h-32 w-full object-cover" loading="lazy" />
-          {/* URL Pill Overlay */}
-          {showUrls && card.url && (
+          {isFileCard ? (
+            <CardImage
+              card={card}
+              className={`h-32 w-full ${(card.metadata as { fileCategory?: string } | null)?.fileCategory === 'pdf' ? 'object-contain bg-gray-800' : 'object-cover'}`}
+              loading="lazy"
+            />
+          ) : (
+            <img src={card.image!} alt={card.title ?? card.url} className="h-32 w-full object-cover" loading="lazy" />
+          )}
+          {/* URL Pill Overlay - show filename for file cards */}
+          {showUrls && (card.url || isFileCard) && !isFileCard && (
             <a
               href={card.url}
               target="_blank"
@@ -584,6 +595,14 @@ function RecentCard({ card, onClick, onAddToPawkit, onDeleteCard, onRemoveFromPa
                 {card.domain || new URL(card.url).hostname}
               </span>
             </a>
+          )}
+          {/* File name pill for file cards */}
+          {isFileCard && (
+            <div className="absolute bottom-2 left-2 right-2 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white flex items-center justify-center">
+              <span className="truncate max-w-full">
+                {card.title || 'File'}
+              </span>
+            </div>
           )}
         </div>
       )}
