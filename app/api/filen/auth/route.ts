@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import FilenSDK from "@filen/sdk";
-import { encrypt } from "@/lib/utils/crypto";
+import { encrypt, decrypt } from "@/lib/utils/crypto";
 
 const COOKIE_NAME = "filen_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
@@ -73,20 +73,35 @@ export async function POST(request: NextRequest) {
       authVersion: (config.authVersion as 1 | 2 | 3) || 2,
     };
 
-    console.log("[Filen] Login successful, storing session config for:", email);
+    // Debug: Log session data sizes
+    const sessionJson = JSON.stringify(sessionData);
+    console.log("[Filen] Session data size:", sessionJson.length, "bytes");
 
-    // Store encrypted session data in cookie (not credentials!)
-    const encryptedSession = encrypt(JSON.stringify(sessionData));
-    const cookieStore = await cookies();
-    cookieStore.set(COOKIE_NAME, encryptedSession, {
+    const encryptedSession = encrypt(sessionJson);
+    console.log("[Filen] Encrypted session size:", encryptedSession.length, "bytes");
+
+    if (encryptedSession.length > 4000) {
+      console.warn("[Filen] Warning: Cookie size exceeds 4KB limit!");
+    }
+
+    console.log("[Filen] Login successful for:", email);
+
+    // Use NextResponse to set cookie (more reliable than cookies() helper)
+    const response = NextResponse.json({ success: true, email });
+
+    response.cookies.set({
+      name: COOKIE_NAME,
+      value: encryptedSession,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax", // 'lax' is more permissive than 'strict'
       maxAge: COOKIE_MAX_AGE,
       path: "/",
     });
 
-    return NextResponse.json({ success: true, email });
+    console.log("[Filen] Cookie set on response, size:", encryptedSession.length);
+
+    return response;
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Failed to connect to Filen";
@@ -128,9 +143,9 @@ export async function POST(request: NextRequest) {
  * DELETE /api/filen/auth - Logout from Filen
  */
 export async function DELETE() {
-  const cookieStore = await cookies();
-  cookieStore.delete(COOKIE_NAME);
-  return NextResponse.json({ success: true });
+  const response = NextResponse.json({ success: true });
+  response.cookies.delete(COOKIE_NAME);
+  return response;
 }
 
 /**
@@ -141,12 +156,12 @@ export async function GET() {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get(COOKIE_NAME);
 
+    console.log("[Filen] Auth check - cookie exists:", !!sessionCookie?.value);
+
     if (!sessionCookie?.value) {
       return NextResponse.json({ authenticated: false, email: null });
     }
 
-    // Import decrypt here to avoid issues
-    const { decrypt } = await import("@/lib/utils/crypto");
     const sessionData = JSON.parse(decrypt(sessionCookie.value)) as FilenSessionData;
 
     return NextResponse.json({
