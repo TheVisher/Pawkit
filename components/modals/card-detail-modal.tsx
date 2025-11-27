@@ -142,10 +142,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const restorePreviousContent = usePanelStore((state) => state.restorePreviousContent);
 
   // Panel controls for reader mode - hide sidebars when expanded
+  // Use hideRight/showRight instead of close/open to preserve activeCardId
   const closeLeftPanel = usePanelStore((state) => state.closeLeft);
   const openLeftPanel = usePanelStore((state) => state.openLeft);
-  const closeRightPanel = usePanelStore((state) => state.close);
-  const openRightPanel = usePanelStore((state) => state.open);
+  const hideRightPanel = usePanelStore((state) => state.hideRight);
+  const showRightPanel = usePanelStore((state) => state.showRight);
   const isLeftPanelOpen = usePanelStore((state) => state.isLeftOpen);
   const isRightPanelOpen = usePanelStore((state) => state.isOpen);
 
@@ -445,16 +446,16 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         leftOpen: isLeftPanelOpen,
         rightOpen: isRightPanelOpen,
       });
-      // Hide both panels
+      // Hide both panels (use hideRight to preserve activeCardId)
       closeLeftPanel();
-      closeRightPanel();
+      hideRightPanel();
     } else if (panelStatesBeforeReader) {
       // Restore panels to their previous states
       if (panelStatesBeforeReader.leftOpen) {
         openLeftPanel();
       }
       if (panelStatesBeforeReader.rightOpen) {
-        openRightPanel();
+        showRightPanel();
       }
       setPanelStatesBeforeReader(null);
     }
