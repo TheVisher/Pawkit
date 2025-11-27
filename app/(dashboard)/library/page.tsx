@@ -199,6 +199,15 @@ function LibraryPageContent() {
           if (filterType === "file") {
             return card.type === "file";
           }
+          // For "other", match file cards with audio, spreadsheet, or other categories
+          if (filterType === "other") {
+            if (card.type === "file") {
+              const metadata = card.metadata as Record<string, unknown> | undefined;
+              const category = metadata?.fileCategory;
+              return category === "audio" || category === "spreadsheet" || category === "other";
+            }
+            return false;
+          }
           // For other types, match the card type directly
           return card.type === filterType;
         });
