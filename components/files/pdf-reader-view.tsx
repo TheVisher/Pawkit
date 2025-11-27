@@ -32,6 +32,41 @@ export function PdfReaderView({
   const [currentPage, setCurrentPage] = useState(1);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Zoom state for reader mode (1 = fit to width)
+  const [zoom, setZoom] = useState(1);
+
+  const zoomIn = useCallback(() => setZoom(z => Math.min(2, z + 0.25)), []);
+  const zoomOut = useCallback(() => setZoom(z => Math.max(0.5, z - 0.25)), []);
+  const resetZoom = useCallback(() => setZoom(1), []);
+
+  // Keyboard shortcuts for zoom (only in expanded mode)
+  useEffect(() => {
+    if (!isExpanded) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle if in an input field
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      if (e.key === '=' || e.key === '+') {
+        e.preventDefault();
+        zoomIn();
+      }
+      if (e.key === '-') {
+        e.preventDefault();
+        zoomOut();
+      }
+      if (e.key === '0') {
+        e.preventDefault();
+        resetZoom();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isExpanded, zoomIn, zoomOut, resetZoom]);
+
   // Calculate optimal scale based on container width
   const calculateFitScale = useCallback(
     async (pdf: pdfjsLib.PDFDocumentProxy) => {
@@ -185,10 +220,36 @@ export function PdfReaderView({
         </button>
       )}
 
-      {/* Floating Page Indicator - only in expanded mode */}
+      {/* Floating Zoom Controls - only in expanded mode */}
       {isExpanded && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-2 bg-gray-800/90 rounded-full text-sm text-white shadow-lg">
-          Page {currentPage} of {pages.length}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-gray-800/90 backdrop-blur rounded-full px-4 py-2 text-white text-sm shadow-lg">
+          <button
+            onClick={zoomOut}
+            disabled={zoom <= 0.5}
+            className="p-1.5 hover:bg-gray-700 rounded-full disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="Zoom out (-)"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          <button
+            onClick={resetZoom}
+            className="w-14 text-center hover:bg-gray-700 rounded px-2 py-1 transition-colors"
+            title="Reset zoom (0)"
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            onClick={zoomIn}
+            disabled={zoom >= 2}
+            className="p-1.5 hover:bg-gray-700 rounded-full disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            title="Zoom in (+)"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          <div className="w-px h-4 bg-gray-600 mx-1" />
+          <span className="text-gray-400 text-xs">
+            {currentPage}/{pages.length}
+          </span>
         </div>
       )}
 
@@ -232,12 +293,17 @@ export function PdfReaderView({
                 key={index}
                 id={`reader-page-${index + 1}`}
                 className="relative"
+                style={isExpanded ? {
+                  transform: `scale(${zoom})`,
+                  transformOrigin: 'top center',
+                  marginBottom: zoom > 1 ? `${(zoom - 1) * 100}%` : undefined,
+                } : undefined}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={dataUrl}
                   alt={`Page ${index + 1}`}
-                  className={`w-full shadow-xl rounded-lg ${isExpanded ? "shadow-2xl" : "shadow-lg"}`}
+                  className={`w-full shadow-xl rounded-lg transition-shadow ${isExpanded ? "shadow-2xl" : "shadow-lg"}`}
                 />
                 {/* Page number indicator - only in non-expanded */}
                 {!isExpanded && (
@@ -249,10 +315,21 @@ export function PdfReaderView({
             ))}
           </div>
 
-          {/* Exit hint at bottom in expanded mode */}
+          {/* Keyboard hints at bottom in expanded mode */}
           {isExpanded && (
-            <div className="mt-16 text-center text-gray-400 text-sm">
-              Press <kbd className="px-2 py-1 bg-gray-200 rounded text-gray-600 font-mono text-xs">Esc</kbd> to exit reader mode
+            <div className="mt-16 text-center text-gray-400 text-sm space-y-2">
+              <div>
+                <kbd className="px-2 py-1 bg-gray-200 rounded text-gray-600 font-mono text-xs">+</kbd>
+                <span className="mx-1">/</span>
+                <kbd className="px-2 py-1 bg-gray-200 rounded text-gray-600 font-mono text-xs">-</kbd>
+                <span className="ml-2">Zoom</span>
+                <span className="mx-3 text-gray-300">|</span>
+                <kbd className="px-2 py-1 bg-gray-200 rounded text-gray-600 font-mono text-xs">0</kbd>
+                <span className="ml-2">Reset</span>
+                <span className="mx-3 text-gray-300">|</span>
+                <kbd className="px-2 py-1 bg-gray-200 rounded text-gray-600 font-mono text-xs">Esc</kbd>
+                <span className="ml-2">Exit</span>
+              </div>
             </div>
           )}
         </div>
