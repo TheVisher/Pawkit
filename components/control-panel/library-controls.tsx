@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Grid, List, LayoutGrid, Columns, Tag, SortAsc, Eye, Maximize2, File, ArrowUpDown, Heart, Trash2, Clock, FolderPlus, EyeOff } from "lucide-react";
+import { Grid, List, LayoutGrid, Tag, SortAsc, Eye, Maximize2, File, ArrowUpDown, Heart, Trash2, Clock, FolderPlus, EyeOff } from "lucide-react";
 import Image from "next/image";
 import { useViewSettingsStore, type SortBy, type ContentType } from "@/lib/hooks/view-settings-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
@@ -486,13 +486,6 @@ export function LibraryControls() {
           icon={<List size={16} />}
         >
           List
-        </PanelButton>
-        <PanelButton
-          active={layout === "compact"}
-          onClick={() => handleLayoutChange("compact")}
-          icon={<Columns size={16} />}
-        >
-          Compact
         </PanelButton>
       </PanelSection>
 
