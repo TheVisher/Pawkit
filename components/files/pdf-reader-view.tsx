@@ -173,27 +173,22 @@ export function PdfReaderView({
   }
 
   return (
-    <div className={`flex flex-col h-full ${isExpanded ? "bg-[#faf8f3]" : ""}`}>
-      {/* Header - only show in expanded mode */}
+    <div className={`flex flex-col h-full ${isExpanded ? "min-h-screen bg-[#faf9f6]" : "bg-[#faf8f3]"}`}>
+      {/* Floating Exit Button - only in expanded mode */}
       {isExpanded && (
-        <div className="border-b border-gray-200 bg-[#faf8f3] px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={onToggleExpand}
-              className="text-gray-600 hover:text-gray-900 transition-colors"
-              title="Exit fullscreen"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <h1 className="text-lg font-semibold text-gray-900 truncate max-w-2xl">
-              {title}
-            </h1>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <span>
-              Page {currentPage} of {pages.length}
-            </span>
-          </div>
+        <button
+          onClick={onToggleExpand}
+          className="fixed top-6 right-6 z-50 p-3 bg-gray-800/90 hover:bg-gray-700 rounded-full text-white shadow-lg transition-all hover:scale-105"
+          title="Exit Reader (Esc)"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Floating Page Indicator - only in expanded mode */}
+      {isExpanded && (
+        <div className="fixed bottom-6 right-6 z-50 px-4 py-2 bg-gray-800/90 rounded-full text-sm text-white shadow-lg">
+          Page {currentPage} of {pages.length}
         </div>
       )}
 
@@ -201,21 +196,23 @@ export function PdfReaderView({
       <div
         ref={containerRef}
         onScroll={handleScroll}
-        className={`flex-1 overflow-y-auto bg-[#faf8f3] ${
-          isExpanded ? "px-8 py-12" : "p-6"
+        className={`flex-1 overflow-y-auto ${
+          isExpanded ? "py-16 px-4" : "p-6 bg-[#faf8f3]"
         }`}
       >
-        <div className="mx-auto max-w-[680px]">
-          {/* Title and controls - show in non-expanded mode */}
-          {!isExpanded && (
-            <>
-              <h1 className="text-3xl font-bold text-gray-900 mb-4 leading-tight font-serif">
-                {title}
-              </h1>
-              <div className="flex items-center gap-4 mb-8 pb-6 border-b border-gray-200">
-                <span className="text-sm text-gray-600">
-                  {pages.length} {pages.length === 1 ? "page" : "pages"}
-                </span>
+        <div className={`mx-auto ${isExpanded ? "max-w-4xl" : "max-w-[680px]"}`}>
+          {/* Title - always show, bigger in expanded mode */}
+          <div className={`${isExpanded ? "mb-12 text-center" : "mb-8"}`}>
+            <h1 className={`font-bold text-gray-900 leading-tight font-serif ${
+              isExpanded ? "text-4xl md:text-5xl" : "text-3xl"
+            }`}>
+              {title}
+            </h1>
+            <div className={`flex items-center gap-4 ${isExpanded ? "justify-center mt-4" : "mt-4 pb-6 border-b border-gray-200"}`}>
+              <span className="text-sm text-gray-600">
+                {pages.length} {pages.length === 1 ? "page" : "pages"}
+              </span>
+              {!isExpanded && (
                 <button
                   onClick={onToggleExpand}
                   className="ml-auto text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
@@ -224,12 +221,12 @@ export function PdfReaderView({
                   <Maximize2 className="w-4 h-4" />
                   Expand
                 </button>
-              </div>
-            </>
-          )}
+              )}
+            </div>
+          </div>
 
           {/* PDF Pages */}
-          <div className="space-y-8">
+          <div className={`space-y-8 ${isExpanded ? "space-y-12" : ""}`}>
             {pages.map((dataUrl, index) => (
               <div
                 key={index}
@@ -240,19 +237,28 @@ export function PdfReaderView({
                 <img
                   src={dataUrl}
                   alt={`Page ${index + 1}`}
-                  className="w-full shadow-lg rounded-lg"
+                  className={`w-full shadow-xl rounded-lg ${isExpanded ? "shadow-2xl" : "shadow-lg"}`}
                 />
-                {/* Page number indicator */}
-                <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-full bg-black/60 text-xs text-white">
-                  {index + 1}
-                </div>
+                {/* Page number indicator - only in non-expanded */}
+                {!isExpanded && (
+                  <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-full bg-black/60 text-xs text-white">
+                    {index + 1}
+                  </div>
+                )}
               </div>
             ))}
           </div>
+
+          {/* Exit hint at bottom in expanded mode */}
+          {isExpanded && (
+            <div className="mt-16 text-center text-gray-400 text-sm">
+              Press <kbd className="px-2 py-1 bg-gray-200 rounded text-gray-600 font-mono text-xs">Esc</kbd> to exit reader mode
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Footer with zoom controls - minimal */}
+      {/* Footer with zoom controls - only in non-expanded mode */}
       {!isExpanded && (
         <div className="flex items-center justify-center gap-4 py-2 border-t border-gray-200 bg-[#faf8f3]">
           <span className="text-xs text-gray-500">

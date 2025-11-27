@@ -134,22 +134,26 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     filePreviewData?.category === "pdf"
   );
 
-  // DEBUG: Log tab state for file cards
-  console.log('[CardDetailModal] Debug:', {
-    cardType: card.type,
-    isFileCard,
-    isPdfFileCard,
-    fileId: card.fileId,
-    fileCategory: (card.metadata as { fileCategory?: string } | null)?.fileCategory,
-    filePreviewDataCategory: filePreviewData?.category,
-  });
-
   const files = useFileStore((state) => state.files);
   const loadFiles = useFileStore((state) => state.loadFiles);
 
   // Open control panel with card details when modal opens
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const restorePreviousContent = usePanelStore((state) => state.restorePreviousContent);
+
+  // Panel controls for reader mode - hide sidebars when expanded
+  const closeLeftPanel = usePanelStore((state) => state.closeLeft);
+  const openLeftPanel = usePanelStore((state) => state.openLeft);
+  const closeRightPanel = usePanelStore((state) => state.close);
+  const openRightPanel = usePanelStore((state) => state.open);
+  const isLeftPanelOpen = usePanelStore((state) => state.isLeftOpen);
+  const isRightPanelOpen = usePanelStore((state) => state.isOpen);
+
+  // Track panel states before entering reader mode (to restore later)
+  const [panelStatesBeforeReader, setPanelStatesBeforeReader] = useState<{
+    leftOpen: boolean;
+    rightOpen: boolean;
+  } | null>(null);
 
   // Get panel states for modal positioning
   const isLeftOpen = usePanelStore((state) => state.isLeftOpen);
@@ -425,6 +429,53 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
   // Bottom tab view mode: 'preview' | 'reader' | 'metadata'
   const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'metadata' | 'attachments'>('preview');
+
+  // Auto-expand to fullscreen when Reader tab is selected for PDF files
+  useEffect(() => {
+    if (bottomTabMode === 'reader' && isPdfFileCard && card.fileId) {
+      setIsReaderExpanded(true);
+    }
+  }, [bottomTabMode, isPdfFileCard, card.fileId]);
+
+  // Hide sidebars when entering reader mode, restore when exiting
+  useEffect(() => {
+    if (isReaderExpanded) {
+      // Store current panel states before hiding
+      setPanelStatesBeforeReader({
+        leftOpen: isLeftPanelOpen,
+        rightOpen: isRightPanelOpen,
+      });
+      // Hide both panels
+      closeLeftPanel();
+      closeRightPanel();
+    } else if (panelStatesBeforeReader) {
+      // Restore panels to their previous states
+      if (panelStatesBeforeReader.leftOpen) {
+        openLeftPanel();
+      }
+      if (panelStatesBeforeReader.rightOpen) {
+        openRightPanel();
+      }
+      setPanelStatesBeforeReader(null);
+    }
+  }, [isReaderExpanded]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Escape key handler for reader mode
+  useEffect(() => {
+    if (!isReaderExpanded) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsReaderExpanded(false);
+        setBottomTabMode('preview');
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape, true);
+    return () => window.removeEventListener('keydown', handleEscape, true);
+  }, [isReaderExpanded]);
 
   // Check for attachments
   const attachments = useMemo(
@@ -1441,10 +1492,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
 
                 {/* Reader tab content for file cards */}
-                {bottomTabMode === 'reader' && (() => {
-                  console.log('[CardDetailModal] Rendering Reader tab for file card, isPdfFileCard:', isPdfFileCard, 'fileId:', card.fileId);
-                  return (
-                  <div className="absolute inset-0 p-[5px] overflow-y-auto bg-red-500/20">
+                {bottomTabMode === 'reader' && (
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto">
                     {isPdfFileCard && card.fileId ? (
                       <PdfReaderView
                         fileId={card.fileId}
@@ -1467,8 +1516,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                       </div>
                     )}
                   </div>
-                  );
-                })()}
+                )}
 
                 {/* Metadata tab content for file cards */}
                 {bottomTabMode === 'metadata' && (
@@ -1738,7 +1786,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 // URL cards with tabs
                 <>
                   <Button
-                    onClick={() => { console.log('[CardDetailModal] Tab clicked: preview'); setBottomTabMode('preview'); }}
+                    onClick={() => setBottomTabMode('preview')}
                     variant={bottomTabMode === 'preview' ? 'default' : 'ghost'}
                     size="sm"
                     className="flex items-center gap-2"
@@ -1747,7 +1795,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     Preview
                   </Button>
                   <Button
-                    onClick={() => { console.log('[CardDetailModal] Tab clicked: reader, isFileCard:', isFileCard, 'isPdfFileCard:', isPdfFileCard); setBottomTabMode('reader'); }}
+                    onClick={() => setBottomTabMode('reader')}
                     variant={bottomTabMode === 'reader' ? 'default' : 'ghost'}
                     size="sm"
                     className="flex items-center gap-2"
@@ -1756,7 +1804,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     Reader
                   </Button>
                   <Button
-                    onClick={() => { console.log('[CardDetailModal] Tab clicked: metadata, isFileCard:', isFileCard, 'isPdfFileCard:', isPdfFileCard); setBottomTabMode('metadata'); }}
+                    onClick={() => setBottomTabMode('metadata')}
                     variant={bottomTabMode === 'metadata' ? 'default' : 'ghost'}
                     size="sm"
                     className="flex items-center gap-2"
