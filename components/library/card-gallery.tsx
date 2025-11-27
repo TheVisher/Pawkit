@@ -27,6 +27,40 @@ import { createPortal } from "react-dom";
 import { useRef } from "react";
 import { addCollectionWithHierarchy, removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
 
+// Helper to get display type for a card (Note, PDF, Image, Bookmark, etc.)
+function getCardDisplayType(card: CardModel): string {
+  // Check if it's a file card first
+  if (card.isFileCard) {
+    const category = card.metadata?.fileCategory as string | undefined;
+
+    switch (category) {
+      case 'pdf':
+        return 'PDF';
+      case 'image':
+        return 'Image';
+      case 'document':
+        return 'Document';
+      case 'spreadsheet':
+        return 'Spreadsheet';
+      case 'video':
+        return 'Video';
+      case 'audio':
+        return 'Audio';
+      default:
+        return 'File';
+    }
+  }
+
+  // Check if it's a note
+  const isNote = card.type === "md-note" || card.type === "text-note";
+  if (isNote) {
+    return 'Note';
+  }
+
+  // Default to Bookmark
+  return 'Bookmark';
+}
+
 // Simple 3-dot menu component for list view
 function CardActionsMenu({
   card,
@@ -583,7 +617,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                   const displayTitle = card.title || card.url || "Untitled";
                   const formattedCreatedDate = card.createdAt ? new Date(card.createdAt).toLocaleDateString() : "-";
                   const formattedModifiedDate = card.updatedAt ? new Date(card.updatedAt).toLocaleDateString() : "-";
-                  const kind = isNote ? "Note" : "Bookmark";
+                  const kind = getCardDisplayType(card);
 
                   return (
                     <CardContextMenuWrapper

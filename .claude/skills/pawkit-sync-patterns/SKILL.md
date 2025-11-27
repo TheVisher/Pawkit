@@ -2706,3 +2706,274 @@ const filteredCards = React.useMemo(() => {
 **Storage**: @react-native-async-storage/async-storage v2.0.0
 **Status**: Production-ready mobile sync system
 
+---
+
+## FILEN CLOUD STORAGE SYNC (File Attachments)
+
+### Date Added: November 27, 2025
+### Platform: Next.js serverless API routes with Filen SDK
+
+**Context**: File attachments sync to Filen cloud storage with encrypted session persistence.
+
+---
+
+### Architecture Overview
+
+**Storage Layers**:
+1. **IndexedDB** (local) - Source of truth for file metadata and blobs
+2. **Filen Cloud** (remote) - E2E encrypted backup/sync for files
+3. **Session Cookie** - Encrypted Filen auth tokens (not credentials)
+
+**Sync Flow**:
+```
+User uploads file
+    ↓
+IndexedDB (instant save) ← SOURCE OF TRUTH
+    ↓
+UI Update (syncStatus: 'local')
+    ↓
+Background sync to Filen (async)
+    ↓
+Update syncStatus: 'synced' or 'error'
+```
+
+---
+
+### Session Token Storage (2FA Compatible)
+
+**Problem**: Filen 2FA accounts require fresh code on every `login()` call.
+
+**Solution**: Store authenticated session tokens instead of credentials.
+
+```typescript
+// ❌ WRONG: Store credentials (breaks 2FA)
+const session = {
+  email: user.email,
+  password: user.password,  // Can't re-login without 2FA code!
+};
+
+// ✅ CORRECT: Store session tokens after successful login
+interface FilenSession {
+  email: string;
+  apiKey: string;
+  masterKeys: string[];      // Only first key needed
+  userId: number;
+  baseFolderUUID: string;
+  authVersion: 1 | 2 | 3;
+  privateKey: string;        // REQUIRED for file encryption
+}
+```
+
+**Why privateKey is required**: Filen SDK uses privateKey for HMAC key generation during file encryption. Without it, uploads fail with "No private key set".
+
+**Restoring Session Without Login**:
+```typescript
+// Instead of calling filen.login()
+const filen = new FilenSDK({
+  apiKey: session.apiKey,
+  masterKeys: session.masterKeys,
+  userId: session.userId,
+  baseFolderUUID: session.baseFolderUUID,
+  authVersion: session.authVersion,
+  privateKey: session.privateKey,
+  metadataCache: true,
+  connectToSocket: false,
+  tmpPath: "/tmp",  // Required for serverless
+});
+
+// SDK is now authenticated - no login() needed
+await filen.cloud().uploadLocalFile({ ... });
+```
+
+---
+
+### Encrypted Cookie Storage
+
+**Problem**: HTTP cookies have 4KB size limit. Filen session with all tokens exceeds this.
+
+**Solution**: AES-256-GCM encryption with gzip compression.
+
+```typescript
+// lib/utils/crypto.ts
+import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { gzipSync, gunzipSync } from "zlib";
+
+export function encrypt(text: string): string {
+  // 1. Compress first (reduces size ~60%)
+  const compressed = gzipSync(Buffer.from(text, "utf8"));
+
+  // 2. Encrypt with AES-256-GCM
+  const iv = randomBytes(16);
+  const cipher = createCipheriv("aes-256-gcm", getSecretKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(compressed), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+
+  // 3. Use base64 (33% smaller than hex)
+  return `${iv.toString("base64")}:${authTag.toString("base64")}:${encrypted.toString("base64")}`;
+}
+```
+
+**Size Optimization Strategy**:
+| Optimization | Size Reduction |
+|--------------|----------------|
+| Gzip compression | ~60% |
+| Base64 vs hex | ~33% |
+| Remove publicKey | ~500 bytes |
+| Single masterKey | ~200 bytes |
+| **Final size** | ~2.8KB (under 4KB) |
+
+**Why Node.js crypto, not Web Crypto API**: Web Crypto API is async and unreliable in serverless (Vercel Edge). Node.js crypto is synchronous and works everywhere.
+
+---
+
+### File Sync Status Types
+
+```typescript
+type FileSyncStatus =
+  | 'local'       // File exists only in IndexedDB
+  | 'synced'      // File uploaded to Filen successfully
+  | 'uploading'   // Upload in progress
+  | 'downloading' // Download in progress (cloud-only file)
+  | 'cloud-only'  // File exists in Filen but not downloaded locally
+  | 'error';      // Sync failed
+```
+
+**Ghost Files** (cloud-only):
+```typescript
+interface StoredFile {
+  id: string;
+  filename: string;
+  blob: Blob | null;  // NULL for cloud-only files!
+  syncStatus: FileSyncStatus;
+  filenUUID?: string;
+  // ...
+}
+```
+
+**Pattern**: Check blob before operations:
+```typescript
+// ❌ WRONG: Assumes blob exists
+const arrayBuffer = await file.blob.arrayBuffer();  // TypeError!
+
+// ✅ CORRECT: Guard for null blob
+const blob = file?.blob;
+if (!blob) {
+  console.error('File is cloud-only, download first');
+  return;
+}
+const arrayBuffer = await blob.arrayBuffer();
+```
+
+---
+
+### API Route Patterns
+
+**Next.js Route File Restriction**:
+```typescript
+// ❌ WRONG: Export helper functions from route file
+// app/api/filen/files/route.ts
+export async function getFilenClient() { ... }  // ERROR!
+export async function POST(req) { ... }
+
+// ✅ CORRECT: Move helpers to lib folder
+// lib/services/filen-server.ts
+export async function getFilenClient() { ... }
+
+// app/api/filen/files/route.ts
+import { getFilenClient } from "@/lib/services/filen-server";
+export async function POST(req) { ... }
+```
+
+**Why**: Next.js route files can only export HTTP methods (GET, POST, PATCH, DELETE).
+
+**Cookie Setting Pattern**:
+```typescript
+// ❌ WRONG: cookies() helper (unreliable in some contexts)
+const cookieStore = cookies();
+cookieStore.set(COOKIE_NAME, value, options);
+
+// ✅ CORRECT: NextResponse.cookies.set()
+const response = NextResponse.json({ success: true });
+response.cookies.set({
+  name: COOKIE_NAME,
+  value: encryptedSession,
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",  // NOT 'strict' (breaks some redirects)
+  maxAge: COOKIE_MAX_AGE,
+  path: "/",
+});
+return response;
+```
+
+---
+
+### Sync Status UI
+
+**Badge Component**:
+```typescript
+// components/files/sync-status-badge.tsx
+const statusConfig: Record<FileSyncStatus, Config> = {
+  local: {
+    icon: CloudOff,
+    label: "Local only",
+    color: "text-gray-400",
+    bgColor: "bg-gray-500/20",
+  },
+  synced: {
+    icon: Check,
+    label: "Synced",
+    color: "text-green-400",
+    bgColor: "bg-green-500/20",
+  },
+  uploading: {
+    icon: Upload,
+    label: "Uploading",
+    color: "text-blue-400",
+    bgColor: "bg-blue-500/20",
+  },
+  // ... etc
+};
+
+// Animated icons for in-progress states
+const isAnimated = status === "uploading" || status === "downloading";
+<Icon className={`${iconSize} ${config.color} ${isAnimated ? "animate-pulse" : ""}`} />
+```
+
+**Conditional Display** (only when Filen connected):
+```typescript
+{filenService.isLoggedIn() && (
+  <SyncStatusBadge status={file.syncStatus} size="sm" />
+)}
+```
+
+---
+
+### Critical Rules
+
+1. **Never store Filen password** - Store session tokens for 2FA compatibility
+2. **Always include privateKey** - Required for file upload encryption
+3. **Compress before encrypt** - Gzip + base64 to fit 4KB cookie limit
+4. **Use Node.js crypto** - Web Crypto API unreliable in serverless
+5. **Check blob for null** - Cloud-only files have no local blob
+6. **Use NextResponse for cookies** - More reliable than cookies() helper
+7. **sameSite: 'lax'** - 'strict' breaks some auth flows
+
+---
+
+### Testing Checklist
+
+- [ ] Login with 2FA account
+- [ ] Upload file, verify appears in Filen
+- [ ] Refresh page, verify still authenticated
+- [ ] Check cookie size < 4KB
+- [ ] Verify sync status badges show correctly
+- [ ] Test cloud-only file download
+- [ ] Verify error handling on failed uploads
+
+---
+
+**Last Updated**: November 27, 2025
+**Integration**: Filen SDK v2.x with encrypted cookie session
+**Status**: Phase 2 complete - file sync operational
+
