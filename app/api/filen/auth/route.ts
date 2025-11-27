@@ -75,13 +75,18 @@ export async function POST(request: NextRequest) {
 
     // Debug: Log session data sizes
     const sessionJson = JSON.stringify(sessionData);
-    console.log("[Filen] Session data size:", sessionJson.length, "bytes");
+    console.log("[Filen] Original session size:", sessionJson.length, "bytes");
 
     const encryptedSession = encrypt(sessionJson);
-    console.log("[Filen] Encrypted session size:", encryptedSession.length, "bytes");
+    console.log("[Filen] Compressed+encrypted size:", encryptedSession.length, "bytes");
+    console.log("[Filen] Compression ratio:", Math.round((1 - encryptedSession.length / sessionJson.length) * 100) + "%");
 
-    if (encryptedSession.length > 4000) {
-      console.warn("[Filen] Warning: Cookie size exceeds 4KB limit!");
+    if (encryptedSession.length > 4096) {
+      console.error("[Filen] ERROR: Still too large after compression!");
+      return NextResponse.json(
+        { success: false, error: "Session data too large. Please contact support." },
+        { status: 500 }
+      );
     }
 
     console.log("[Filen] Login successful for:", email);
