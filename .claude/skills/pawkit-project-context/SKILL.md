@@ -12,13 +12,157 @@ description: Track development progress, major milestones, and session history a
 ## Current Status
 
 **Branch**: `main`
-**Status**: File attachments feature complete with PDF viewer, reader mode, and zoom controls
-**Last Updated**: November 26, 2025
-**Next Steps**: Continue with discoverability improvements (onboarding checklist)
+**Status**: Filen cloud storage integration Phase 2 complete - file sync with encrypted session storage
+**Last Updated**: November 27, 2025
+**Next Steps**: Filen Phase 3 (folder organization and auto-sync)
 
 ---
 
 ## Session History
+
+### Date: November 27, 2025 - Filen Cloud Storage Integration Phase 2
+
+**Status**: ✅ COMPLETED
+**Priority**: ⚡ FEATURE MILESTONE
+**Branch**: `feature/filen-integration` → merged to `main`
+**Impact**: Files now sync to Filen cloud storage with encrypted session persistence
+
+**Summary**: Completed Filen integration Phase 2 with file upload/download/list APIs, encrypted session cookie storage, and sync status UI indicators. Solved multiple technical challenges including serverless crypto compatibility, 2FA session tokens, and cookie size limits.
+
+#### 1. Server-Side Encryption Utilities
+
+**Feature**: AES-256-GCM encryption with gzip compression for secure cookie storage.
+
+**Files Created**:
+- `lib/utils/crypto.ts` - Encryption utilities
+
+**Key Implementation**:
+```typescript
+// Uses Node.js crypto (not Web Crypto API) for serverless compatibility
+import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { gzipSync, gunzipSync } from "zlib";
+
+export function encrypt(text: string): string {
+  const compressed = gzipSync(Buffer.from(text, "utf8"));
+  const iv = randomBytes(16);
+  const cipher = createCipheriv("aes-256-gcm", getSecretKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(compressed), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  return `${iv.toString("base64")}:${authTag.toString("base64")}:${encrypted.toString("base64")}`;
+}
+```
+
+**Why Node.js crypto instead of Web Crypto API**: Web Crypto API is async and doesn't work reliably in serverless environments (Vercel Edge).
+
+#### 2. Filen API Routes
+
+**Feature**: RESTful API endpoints for Filen file operations.
+
+**Files Created**:
+- `app/api/filen/auth/route.ts` - Login/logout/status endpoints
+- `app/api/filen/files/route.ts` - Upload and list files
+- `app/api/filen/files/[uuid]/route.ts` - Download and delete files
+- `lib/services/filen-server.ts` - Server-side SDK helpers
+
+**Key Pattern - Session Token Storage (not credentials)**:
+```typescript
+// For 2FA accounts, store session tokens instead of email/password
+interface FilenSession {
+  email: string;
+  apiKey: string;
+  masterKeys: string[];  // Only first key needed
+  userId: number;
+  baseFolderUUID: string;
+  authVersion: 1 | 2 | 3;
+  privateKey: string;    // Required for HMAC file encryption
+}
+
+// Restore session without calling login()
+const filen = new FilenSDK({
+  apiKey: session.apiKey,
+  masterKeys: session.masterKeys,
+  userId: session.userId,
+  // ... other config
+});
+```
+
+**Why session tokens**: 2FA accounts require a fresh code on every login. By storing the authenticated session tokens, users only need to enter 2FA once.
+
+#### 3. Sync Status UI Indicators
+
+**Feature**: Visual indicators showing file sync status.
+
+**Files Created**:
+- `components/files/sync-status-badge.tsx` - Badge and icon components
+
+**Files Modified**:
+- `components/files/file-card.tsx` - Added sync status badges to file cards
+
+**Status Types**:
+- `local` - CloudOff icon, gray (local only)
+- `synced` - Check icon, green (fully synced)
+- `uploading` - Upload icon, blue + pulse animation
+- `downloading` - Download icon, blue + pulse animation
+- `cloud-only` - Cloud icon, purple (ghost file)
+- `error` - AlertCircle icon, red
+
+#### 4. Cookie Size Optimization
+
+**Problem**: Encrypted Filen session exceeded 4KB cookie limit.
+
+**Solutions Applied**:
+1. **Gzip compression** - Reduced size by ~60%
+2. **Base64 encoding** - 33% smaller than hex
+3. **Minimal fields** - Removed publicKey, kept only first masterKey
+
+**Final Session Size**: ~2.8KB (under 4KB limit)
+
+#### 5. Bug Fixes and Technical Challenges
+
+**Next.js Route Export Error**:
+- Issue: `getFilenClient is not a valid Route export field`
+- Fix: Moved helper functions from route file to `lib/services/filen-server.ts`
+- Lesson: Next.js route files can only export HTTP methods (GET, POST, etc.)
+
+**401 Authentication Error**:
+- Issue: Web Crypto API async functions failing in serverless
+- Fix: Rewrote to use Node.js `crypto` module with synchronous functions
+
+**Cookie Not Persisting**:
+- Issue: Using `cookies()` helper instead of `NextResponse.cookies.set()`
+- Fix: Use NextResponse for reliable cookie setting, changed sameSite from 'strict' to 'lax'
+
+**Upload Failed - Missing privateKey**:
+- Issue: "No private key set for HMAC key generation"
+- Fix: Added privateKey back to session (required for file encryption)
+
+**TypeScript Null Check Errors**:
+- Issue: `file.blob` is possibly null (new ghost file type)
+- Fix: Capture blob in local variable before async operations
+
+#### Files Modified Summary
+
+**New Files (6)**:
+- `lib/utils/crypto.ts`
+- `lib/services/filen-server.ts`
+- `app/api/filen/auth/route.ts`
+- `app/api/filen/files/route.ts`
+- `app/api/filen/files/[uuid]/route.ts`
+- `components/files/sync-status-badge.tsx`
+
+**Modified Files (4)**:
+- `components/files/file-card.tsx`
+- `components/files/pdf-metadata-view.tsx`
+- `components/files/pdf-reader-view.tsx`
+- `lib/types/index.ts` (StoredFile.blob now nullable)
+
+#### Merge Stats
+
+```
+22 files changed, 3724 insertions(+), 112 deletions(-)
+```
+
+---
 
 ### Date: November 26, 2025 - File Attachments Feature Complete
 
