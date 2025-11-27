@@ -1326,103 +1326,174 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 />
               </div>
             ) : isFileCard ? (
-              // File card preview - show original file
-              <div className="h-full flex items-center justify-center p-[5px]">
-                {filePreviewData ? (
-                  <div className="w-full h-full flex items-center justify-center">
-                    {filePreviewData.category === "image" && filePreviewUrl && (
-                      <img
-                        src={filePreviewUrl}
-                        alt={filePreviewData.filename}
-                        className="max-w-full max-h-[calc(90vh-180px)] object-contain rounded-lg"
-                      />
-                    )}
-                    {filePreviewData.category === "pdf" && filePreviewUrl && (
-                      <div className="w-full h-[calc(90vh-180px)] rounded-lg overflow-hidden">
-                        <PdfViewer
-                          url={filePreviewUrl}
-                          filename={filePreviewData.filename}
-                          onDownload={() => {
-                            const a = document.createElement("a");
-                            a.href = filePreviewUrl;
-                            a.download = filePreviewData.filename;
-                            document.body.appendChild(a);
-                            a.click();
-                            document.body.removeChild(a);
-                          }}
+              // File card content with tabs - similar structure to URL cards
+              <div className="relative h-full">
+                {/* Preview tab content */}
+                <div className={`h-full flex items-center justify-center p-[5px] ${bottomTabMode === 'preview' ? '' : 'hidden'}`}>
+                  {filePreviewData ? (
+                    <div className="w-full h-full flex items-center justify-center">
+                      {filePreviewData.category === "image" && filePreviewUrl && (
+                        <img
+                          src={filePreviewUrl}
+                          alt={filePreviewData.filename}
+                          className="max-w-full max-h-[calc(90vh-180px)] object-contain rounded-lg"
                         />
-                      </div>
-                    )}
-                    {filePreviewData.category === "video" && filePreviewUrl && (
-                      <video
-                        src={filePreviewUrl}
-                        controls
-                        className="max-w-full max-h-[calc(90vh-180px)] rounded-lg"
-                      >
-                        Your browser does not support video playback.
-                      </video>
-                    )}
-                    {filePreviewData.category === "audio" && filePreviewUrl && (
-                      <div className="flex flex-col items-center gap-6 p-8 bg-surface rounded-xl">
-                        <div className="w-24 h-24 flex items-center justify-center rounded-full bg-accent/20">
-                          <span className="text-4xl">🎵</span>
-                        </div>
-                        <div className="text-center">
-                          <h4 className="text-lg font-medium text-foreground">
-                            {filePreviewData.filename}
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            {formatFileSize(filePreviewData.size)}
-                          </p>
-                        </div>
-                        <audio src={filePreviewUrl} controls className="w-full max-w-md">
-                          Your browser does not support audio playback.
-                        </audio>
-                      </div>
-                    )}
-                    {(filePreviewData.category === "document" || filePreviewData.category === "spreadsheet" || filePreviewData.category === "other") && (
-                      <div className="flex flex-col items-center gap-6 p-8 bg-surface rounded-xl">
-                        <div className="w-24 h-24 flex items-center justify-center rounded-full bg-gray-600/20">
-                          <FileText className="w-12 h-12 text-gray-400" />
-                        </div>
-                        <div className="text-center">
-                          <h4 className="text-lg font-medium text-foreground">
-                            {filePreviewData.filename}
-                          </h4>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            {formatFileSize(filePreviewData.size)}
-                          </p>
-                          <p className="text-sm text-gray-400 mb-4">
-                            Preview not available for this file type
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => {
-                            if (filePreviewUrl) {
+                      )}
+                      {filePreviewData.category === "pdf" && filePreviewUrl && (
+                        <div className="w-full h-[calc(90vh-180px)] rounded-lg overflow-hidden">
+                          <PdfViewer
+                            url={filePreviewUrl}
+                            filename={filePreviewData.filename}
+                            onDownload={() => {
                               const a = document.createElement("a");
                               a.href = filePreviewUrl;
                               a.download = filePreviewData.filename;
                               document.body.appendChild(a);
                               a.click();
                               document.body.removeChild(a);
-                            }
-                          }}
-                          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors"
+                            }}
+                          />
+                        </div>
+                      )}
+                      {filePreviewData.category === "video" && filePreviewUrl && (
+                        <video
+                          src={filePreviewUrl}
+                          controls
+                          className="max-w-full max-h-[calc(90vh-180px)] rounded-lg"
                         >
-                          <Download className="h-4 w-4" />
-                          Download to View
-                        </button>
+                          Your browser does not support video playback.
+                        </video>
+                      )}
+                      {filePreviewData.category === "audio" && filePreviewUrl && (
+                        <div className="flex flex-col items-center gap-6 p-8 bg-surface rounded-xl">
+                          <div className="w-24 h-24 flex items-center justify-center rounded-full bg-accent/20">
+                            <span className="text-4xl">🎵</span>
+                          </div>
+                          <div className="text-center">
+                            <h4 className="text-lg font-medium text-foreground">
+                              {filePreviewData.filename}
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                              {formatFileSize(filePreviewData.size)}
+                            </p>
+                          </div>
+                          <audio src={filePreviewUrl} controls className="w-full max-w-md">
+                            Your browser does not support audio playback.
+                          </audio>
+                        </div>
+                      )}
+                      {(filePreviewData.category === "document" || filePreviewData.category === "spreadsheet" || filePreviewData.category === "other") && (
+                        <div className="flex flex-col items-center gap-6 p-8 bg-surface rounded-xl">
+                          <div className="w-24 h-24 flex items-center justify-center rounded-full bg-gray-600/20">
+                            <FileText className="w-12 h-12 text-gray-400" />
+                          </div>
+                          <div className="text-center">
+                            <h4 className="text-lg font-medium text-foreground">
+                              {filePreviewData.filename}
+                            </h4>
+                            <p className="text-sm text-muted-foreground mb-4">
+                              {formatFileSize(filePreviewData.size)}
+                            </p>
+                            <p className="text-sm text-gray-400 mb-4">
+                              Preview not available for this file type
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (filePreviewUrl) {
+                                const a = document.createElement("a");
+                                a.href = filePreviewUrl;
+                                a.download = filePreviewData.filename;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                              }
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent/90 transition-colors"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download to View
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center space-y-4">
+                      <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center animate-pulse">
+                        <FileText className="w-12 h-12 text-gray-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-300">
+                        Loading file...
+                      </h3>
+                    </div>
+                  )}
+                </div>
+
+                {/* Reader tab content for file cards */}
+                {bottomTabMode === 'reader' && (
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto">
+                    {isPdfFileCard && card.fileId ? (
+                      <PdfReaderView
+                        fileId={card.fileId}
+                        title={card.title || filePreviewData?.filename || "PDF Document"}
+                        isExpanded={false}
+                        onToggleExpand={() => setIsReaderExpanded(true)}
+                        onClose={onClose}
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <div className="text-center space-y-4">
+                          <div className="text-gray-400 mb-4">
+                            <BookOpen size={48} className="mx-auto" />
+                          </div>
+                          <h3 className="text-xl font-semibold text-gray-300">Reader Not Available</h3>
+                          <p className="text-sm text-gray-500 max-w-md mx-auto">
+                            Reader mode is only available for PDF files.
+                          </p>
+                        </div>
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div className="text-center space-y-4">
-                    <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center animate-pulse">
-                      <FileText className="w-12 h-12 text-gray-400" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-300">
-                      Loading file...
-                    </h3>
+                )}
+
+                {/* Metadata tab content for file cards */}
+                {bottomTabMode === 'metadata' && (
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto flex items-start justify-center">
+                    {isPdfFileCard && card.fileId ? (
+                      <PdfMetadataView fileId={card.fileId} />
+                    ) : (
+                      <div className="max-w-2xl w-full space-y-6 py-8">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-200 mb-4">File Information</h3>
+                          <div className="space-y-3 text-sm">
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Filename</span>
+                              <span className="text-gray-200 text-right max-w-md truncate">{filePreviewData?.filename || card.title || "—"}</span>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Type</span>
+                              <span className="text-gray-200">{filePreviewData?.category || "—"}</span>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Size</span>
+                              <span className="text-gray-200">{filePreviewData?.size ? formatFileSize(filePreviewData.size) : "—"}</span>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">MIME Type</span>
+                              <span className="text-gray-200">{filePreviewData?.mimeType || "—"}</span>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Created</span>
+                              <span className="text-gray-200">{new Date(card.createdAt).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Updated</span>
+                              <span className="text-gray-200">{new Date(card.updatedAt).toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
