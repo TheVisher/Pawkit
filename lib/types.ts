@@ -4,6 +4,9 @@ export type CardType = "url" | "md-note" | "text-note" | "file";
 // File categories for content type filtering
 export type FileCategory = 'image' | 'pdf' | 'document' | 'spreadsheet' | 'audio' | 'video' | 'other';
 
+// Sync status for files with Filen cloud storage
+export type FileSyncStatus = 'local' | 'synced' | 'uploading' | 'downloading' | 'cloud-only' | 'error';
+
 // Stored file in IndexedDB
 export type StoredFile = {
   id: string;
@@ -15,14 +18,20 @@ export type StoredFile = {
   size: number;             // bytes
   category: FileCategory;
 
-  // Blob storage
-  blob: Blob;               // The actual file data
+  // Blob storage (null for cloud-only ghost files)
+  blob: Blob | null;        // The actual file data
 
   // Thumbnail (for images/PDFs)
   thumbnailBlob?: Blob;     // Generated preview image
 
   // Relationship
   cardId?: string;          // If attached to a card (null = standalone file card)
+
+  // Filen sync fields
+  filenUuid?: string;       // UUID in Filen (if synced)
+  filenPath?: string;       // Path in Filen
+  syncStatus: FileSyncStatus;
+  lastSyncedAt?: string;    // ISO date string
 
   // Metadata
   createdAt: string;

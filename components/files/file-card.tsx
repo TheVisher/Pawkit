@@ -7,7 +7,9 @@ import {
   getFileIcon,
   formatFileSize,
 } from "@/lib/utils/file-utils";
-import { MoreVertical, Trash2, Download, Eye, Paperclip } from "lucide-react";
+import { MoreVertical, Trash2, Download, Eye, Paperclip, Cloud } from "lucide-react";
+import { SyncStatusBadge, SyncStatusIcon } from "./sync-status-badge";
+import { filenService } from "@/lib/services/filen-service";
 
 interface FileCardProps {
   file: StoredFile;
@@ -89,8 +91,11 @@ export function FileCard({
           <div className="text-sm font-medium text-foreground truncate">
             {file.filename}
           </div>
-          <div className="text-xs text-muted-foreground">
-            {formatFileSize(file.size)}
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{formatFileSize(file.size)}</span>
+            {filenService.isLoggedIn() && (
+              <SyncStatusIcon status={file.syncStatus} />
+            )}
           </div>
         </div>
 
@@ -138,12 +143,19 @@ export function FileCard({
       }`}
       onClick={onClick}
     >
-      {/* File attachment indicator */}
-      {file.cardId && (
-        <div className="absolute top-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-accent/20 text-accent">
-          <Paperclip className="h-3.5 w-3.5" />
-        </div>
-      )}
+      {/* File indicators - top right corner */}
+      <div className="absolute top-2 right-2 z-10 flex items-center gap-1">
+        {/* Sync status indicator (only when Filen connected) */}
+        {filenService.isLoggedIn() && (
+          <SyncStatusBadge status={file.syncStatus} size="sm" />
+        )}
+        {/* File attachment indicator */}
+        {file.cardId && (
+          <div className="flex h-6 w-6 items-center justify-center rounded-full bg-accent/20 text-accent">
+            <Paperclip className="h-3.5 w-3.5" />
+          </div>
+        )}
+      </div>
 
       {/* Thumbnail/Preview area */}
       <div
@@ -198,6 +210,16 @@ export function FileCard({
           <span className="capitalize">{file.category}</span>
         </div>
       </div>
+
+      {/* Cloud-only overlay for ghost files */}
+      {file.syncStatus === "cloud-only" && !file.blob && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl">
+          <div className="flex flex-col items-center gap-2 text-center px-4">
+            <Cloud className="h-8 w-8 text-purple-400" />
+            <span className="text-xs text-gray-300">Available in cloud</span>
+          </div>
+        </div>
+      )}
 
       {/* Context menu trigger */}
       <div className="absolute top-2 left-2">
@@ -272,6 +294,7 @@ interface FileChipProps {
 
 export function FileChip({ file, onRemove, onClick }: FileChipProps) {
   const FileIcon = getFileIcon(file.mimeType);
+  const showSyncStatus = filenService.isLoggedIn();
 
   return (
     <div
@@ -285,6 +308,9 @@ export function FileChip({ file, onRemove, onClick }: FileChipProps) {
       <span className="text-xs text-muted-foreground">
         {formatFileSize(file.size)}
       </span>
+      {showSyncStatus && (
+        <SyncStatusIcon status={file.syncStatus} />
+      )}
       {onRemove && (
         <button
           onClick={(e) => {

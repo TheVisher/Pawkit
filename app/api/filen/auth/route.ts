@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import FilenSDK from "@filen/sdk";
+import { encryptCredentials } from "@/lib/utils/crypto";
+import { getFilenSessionEmail } from "@/lib/services/filen-server";
 
-// Server-side Filen SDK instance (credentials stored only in memory during session)
-let filenInstance: FilenSDK | null = null;
-let sessionEmail: string | null = null;
+const COOKIE_NAME = "filen_session";
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 /**
  * POST /api/filen/auth - Authenticate with Filen
@@ -19,30 +21,40 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create new SDK instance
-    filenInstance = new FilenSDK({
+    // Create SDK instance and attempt login
+    const filen = new FilenSDK({
       metadataCache: true,
       connectToSocket: false,
     });
 
-    // Attempt login
-    await filenInstance.login({
+    await filen.login({
       email,
       password,
       twoFactorCode: twoFactorCode || undefined,
     });
 
-    sessionEmail = email;
+    // Create Pawkit folder structure if it doesn't exist
+    const fs = filen.fs();
+    const folders = ["/Pawkit", "/Pawkit/_Library", "/Pawkit/_Attachments"];
 
-    // Create Pawkit folder if it doesn't exist
-    const fs = filenInstance.fs();
-    const pawkitPath = "/Pawkit";
-
-    try {
-      await fs.stat({ path: pawkitPath });
-    } catch {
-      await fs.mkdir({ path: pawkitPath });
+    for (const folderPath of folders) {
+      try {
+        await fs.stat({ path: folderPath });
+      } catch {
+        await fs.mkdir({ path: folderPath });
+      }
     }
+
+    // Store encrypted credentials in cookie
+    const encryptedCreds = await encryptCredentials({ email, password });
+    const cookieStore = await cookies();
+    cookieStore.set(COOKIE_NAME, encryptedCreds, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: COOKIE_MAX_AGE,
+      path: "/",
+    });
 
     return NextResponse.json({ success: true, email });
   } catch (error) {
@@ -62,7 +74,11 @@ export async function POST(request: NextRequest) {
         { status: 200 }
       );
     }
-    if (errorMessage.includes("credentials") || errorMessage.includes("password") || errorMessage.includes("Invalid")) {
+    if (
+      errorMessage.includes("credentials") ||
+      errorMessage.includes("password") ||
+      errorMessage.includes("Invalid")
+    ) {
       return NextResponse.json(
         { success: false, error: "Invalid email or password" },
         { status: 401 }
@@ -80,8 +96,8 @@ export async function POST(request: NextRequest) {
  * DELETE /api/filen/auth - Logout from Filen
  */
 export async function DELETE() {
-  filenInstance = null;
-  sessionEmail = null;
+  const cookieStore = await cookies();
+  cookieStore.delete(COOKIE_NAME);
   return NextResponse.json({ success: true });
 }
 
@@ -89,8 +105,9 @@ export async function DELETE() {
  * GET /api/filen/auth - Check authentication status
  */
 export async function GET() {
+  const email = await getFilenSessionEmail();
   return NextResponse.json({
-    authenticated: filenInstance !== null,
-    email: sessionEmail,
+    authenticated: email !== null,
+    email,
   });
 }

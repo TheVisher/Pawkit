@@ -1,7 +1,7 @@
 /**
  * Filen Service - Client-side wrapper for Filen cloud storage operations.
  * All SDK operations happen server-side via API routes.
- * Credentials are processed on the server and never stored client-side.
+ * Credentials are stored as encrypted HTTP-only cookies.
  */
 
 export interface FilenCredentials {
@@ -10,13 +10,22 @@ export interface FilenCredentials {
   twoFactorCode?: string;
 }
 
-export interface FilenFile {
+export interface FilenFileInfo {
   uuid: string;
   name: string;
+  path: string;
   size: number;
   mime: string;
-  parent: string;
-  timestamp: number;
+  modified: number;
+  pawkit: string | null;
+  isAttachment: boolean;
+}
+
+export interface FilenUploadResult {
+  success: boolean;
+  filenUuid: string;
+  path: string;
+  fileId: string;
 }
 
 export interface FilenSyncStatus {
@@ -49,7 +58,9 @@ export const filenService = {
    * Authenticate with Filen using email and password
    * Optionally accepts 2FA code if enabled on account
    */
-  async login(credentials: FilenCredentials): Promise<{ success: boolean; error?: string; needs2FA?: boolean }> {
+  async login(
+    credentials: FilenCredentials
+  ): Promise<{ success: boolean; error?: string; needs2FA?: boolean }> {
     try {
       const response = await fetch("/api/filen/auth", {
         method: "POST",
@@ -67,7 +78,11 @@ export const filenService = {
 
       // Handle 2FA requirement
       if (data.needs2FA) {
-        return { success: false, error: "Two-factor authentication code required", needs2FA: true };
+        return {
+          success: false,
+          error: "Two-factor authentication code required",
+          needs2FA: true,
+        };
       }
 
       return { success: false, error: data.error || "Failed to connect to Filen" };
@@ -105,6 +120,93 @@ export const filenService = {
       isConnected = false;
       connectedEmail = null;
       return { authenticated: false, email: null };
+    }
+  },
+
+  // ============================================
+  // File Operations
+  // ============================================
+
+  /**
+   * Upload a file to Filen
+   * @param file - The file to upload
+   * @param options - Upload options
+   * @returns Upload result with Filen UUID and path
+   */
+  async uploadFile(
+    file: File,
+    options: {
+      fileId: string;
+      pawkit?: string | null;
+      isAttachment?: boolean;
+    }
+  ): Promise<FilenUploadResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("fileId", options.fileId);
+    if (options.pawkit) {
+      formData.append("pawkit", options.pawkit);
+    }
+    if (options.isAttachment) {
+      formData.append("isAttachment", "true");
+    }
+
+    const response = await fetch("/api/filen/files", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Upload failed");
+    }
+
+    return response.json();
+  },
+
+  /**
+   * List all files in the Pawkit folder on Filen
+   */
+  async listFiles(): Promise<FilenFileInfo[]> {
+    const response = await fetch("/api/filen/files");
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Failed to list files");
+    }
+
+    const data = await response.json();
+    return data.files;
+  },
+
+  /**
+   * Download a file from Filen by UUID
+   * @param uuid - The Filen UUID of the file
+   * @returns Blob containing the file data
+   */
+  async downloadFile(uuid: string): Promise<Blob> {
+    const response = await fetch(`/api/filen/files/${uuid}`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Download failed" }));
+      throw new Error(error.error || "Download failed");
+    }
+
+    return response.blob();
+  },
+
+  /**
+   * Delete a file from Filen by UUID
+   * @param uuid - The Filen UUID of the file
+   */
+  async deleteFile(uuid: string): Promise<void> {
+    const response = await fetch(`/api/filen/files/${uuid}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || "Delete failed");
     }
   },
 

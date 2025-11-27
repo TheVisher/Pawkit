@@ -82,7 +82,8 @@ export function PdfReaderView({
 
   // Load and render PDF
   useEffect(() => {
-    if (!file?.blob) return;
+    const blob = file?.blob;
+    if (!blob) return;
 
     let cancelled = false;
 
@@ -91,7 +92,7 @@ export function PdfReaderView({
       setError(null);
 
       try {
-        const arrayBuffer = await file.blob.arrayBuffer();
+        const arrayBuffer = await blob.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
         if (cancelled) return;
