@@ -3624,4 +3624,153 @@ const collectionName = getCollectionName(collection);
 
 ---
 
-**Last Updated**: November 24, 2025
+## Session Update: November 26, 2025
+
+### PDF Reader Mode UI Pattern
+
+**Files**: `components/files/pdf-reader-view.tsx`
+
+**Purpose**: Fullscreen reading experience for PDFs with minimal distractions
+
+**Design Principles**:
+1. **Clean reading surface** - Warm off-white background (`#faf9f6`)
+2. **Floating controls** - Don't clutter content area
+3. **Keyboard-first** - Power users can zoom without mouse
+4. **Page-like feel** - Large shadows, generous margins
+
+**Layout Pattern**:
+```tsx
+<div className="flex flex-col h-full min-h-screen bg-[#faf9f6]">
+  {/* Floating Exit Button - top right */}
+  <button className="fixed top-6 right-6 z-50 p-3 bg-gray-800/90 hover:bg-gray-700 rounded-full text-white shadow-lg">
+    <X className="w-5 h-5" />
+  </button>
+
+  {/* Floating Zoom Controls - bottom center */}
+  <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 bg-gray-800/90 backdrop-blur rounded-full px-4 py-2 text-white text-sm shadow-lg">
+    <button onClick={zoomOut}><ZoomOut className="w-4 h-4" /></button>
+    <span className="w-14 text-center">{Math.round(zoom * 100)}%</span>
+    <button onClick={zoomIn}><ZoomIn className="w-4 h-4" /></button>
+    <div className="w-px h-4 bg-gray-600 mx-1" />
+    <span className="text-gray-400 text-xs">{currentPage}/{pages.length}</span>
+  </div>
+
+  {/* PDF Content - centered, constrained width */}
+  <div className="flex-1 overflow-y-auto py-16 px-4">
+    <div className="mx-auto max-w-4xl">
+      {/* Title - serif font, large */}
+      <h1 className="text-4xl md:text-5xl font-bold text-gray-900 font-serif mb-12 text-center">
+        {title}
+      </h1>
+
+      {/* Pages - large shadows, spacing */}
+      <div className="space-y-12">
+        {pages.map((page, i) => (
+          <img
+            key={i}
+            src={page}
+            className="w-full shadow-2xl rounded-lg"
+            style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}
+          />
+        ))}
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+**Floating Control Bar Pattern**:
+```tsx
+// Glass-morphism dark bar for controls
+<div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+  flex items-center gap-2
+  bg-gray-800/90 backdrop-blur
+  rounded-full px-4 py-2
+  text-white text-sm shadow-lg">
+```
+
+Key styling:
+- `bg-gray-800/90` - Semi-transparent dark background
+- `backdrop-blur` - Glass effect
+- `rounded-full` - Pill shape
+- `shadow-lg` - Floating appearance
+- `z-50` - Above content
+
+**Keyboard Shortcuts Pattern**:
+```tsx
+useEffect(() => {
+  if (!isExpanded) return;
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.target instanceof HTMLInputElement) return;
+
+    if (e.key === '=' || e.key === '+') { e.preventDefault(); zoomIn(); }
+    if (e.key === '-') { e.preventDefault(); zoomOut(); }
+    if (e.key === '0') { e.preventDefault(); resetZoom(); }
+  };
+
+  window.addEventListener('keydown', handleKeyDown);
+  return () => window.removeEventListener('keydown', handleKeyDown);
+}, [isExpanded, zoomIn, zoomOut, resetZoom]);
+```
+
+**Zoom Transform Pattern**:
+```tsx
+// Apply scale transform to each page
+style={isExpanded ? {
+  transform: `scale(${zoom})`,
+  transformOrigin: 'top center',
+  // Add extra margin when zoomed in to prevent overlap
+  marginBottom: zoom > 1 ? `${(zoom - 1) * 100}%` : undefined,
+} : undefined}
+```
+
+---
+
+### PDF Metadata View Pattern
+
+**Files**: `components/files/pdf-metadata-view.tsx`
+
+**Purpose**: Display PDF metadata in consistent style with URL card metadata
+
+**Design Pattern - Simple Key-Value Rows**:
+```tsx
+<div className="w-full max-w-3xl mx-auto py-8 px-6">
+  <h3 className="text-lg font-semibold text-gray-200 mb-6">
+    PDF Information
+  </h3>
+
+  <div className="space-y-3 text-sm">
+    <MetadataRow label="Filename" value={filename} />
+    <MetadataRow label="Pages" value={pageCount?.toString()} />
+    <MetadataRow label="File Size" value={formatFileSize(fileSize)} />
+    {/* Conditional rows for optional metadata */}
+    {title && <MetadataRow label="Title" value={title} />}
+    {author && <MetadataRow label="Author" value={author} />}
+  </div>
+</div>
+
+function MetadataRow({ label, value }: { label: string; value?: string }) {
+  if (!value) return null;
+
+  return (
+    <div className="flex justify-between py-2 border-b border-white/10">
+      <span className="text-gray-400">{label}</span>
+      <span className="text-gray-200 text-right max-w-md truncate">{value}</span>
+    </div>
+  );
+}
+```
+
+**Key Styling**:
+- `max-w-3xl` - Wide but not full width
+- `border-b border-white/10` - Subtle dividers
+- `text-gray-400` for labels, `text-gray-200` for values
+- `truncate` on values for long content
+- No icons - clean, text-only layout
+
+**Consistency Rule**: PDF metadata layout must match URL card metadata layout in card-details-panel.
+
+---
+
+**Last Updated**: November 26, 2025
