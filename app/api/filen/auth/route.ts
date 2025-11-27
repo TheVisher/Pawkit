@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
     const filen = new FilenSDK({
       metadataCache: true,
       connectToSocket: false,
+      tmpPath: "/tmp",
     });
 
     await filen.login({
@@ -46,7 +47,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Store encrypted credentials in cookie
-    const encryptedCreds = await encryptCredentials({ email, password });
+    const encryptedCreds = encryptCredentials({ email, password });
+    console.log("[Filen] Storing encrypted credentials in cookie");
     const cookieStore = await cookies();
     cookieStore.set(COOKIE_NAME, encryptedCreds, {
       httpOnly: true,
