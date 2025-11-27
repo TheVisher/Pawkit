@@ -4246,6 +4246,156 @@ const handlePawkitSelected = (slug: string) => {  // No async!
 
 ---
 
+### 35. Card Modal Has TWO Tab Systems - One is Disabled
+
+**Date**: November 26, 2025
+**Severity**: 🔴 High (UI Not Appearing)
+**Category**: Architecture, Modal Design
+**Status**: ✅ Documented
+
+**Issue**: Adding UI to the card modal's vertical sidebar tabs doesn't work because that sidebar is disabled with `{false && ...}`.
+
+**Symptom**:
+```
+1. Add new tab to vertical sidebar in card-detail-modal.tsx
+2. Component renders in code but doesn't appear in UI
+3. No errors, just missing UI
+4. Hours spent debugging "why isn't my tab showing?"
+```
+
+**Root Cause**:
+The card detail modal has TWO separate tab systems:
+1. **Disabled vertical sidebar** (wrapped in `{false && ...}`) - DO NOT USE
+2. **Active bottom bar** using `bottomTabMode` state - USE THIS
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Adding to disabled sidebar (this code is wrapped in {false && ...})
+{/* Vertical Tabs Sidebar - DISABLED */}
+{false && (
+  <div className="sidebar">
+    <TabsTrigger value="preview">Preview</TabsTrigger>
+    <TabsTrigger value="reader">Reader</TabsTrigger>
+    <TabsTrigger value="attachments">Attachments</TabsTrigger>  {/* Won't appear! */}
+  </div>
+)}
+```
+
+**The Fix - Use Bottom Tab Bar**:
+```tsx
+// ✅ CORRECT: Use bottomTabMode state with Button components
+const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'metadata' | 'attachments'>('preview');
+
+// In the bottom bar section:
+<div className="flex gap-2">
+  <Button
+    onClick={() => setBottomTabMode('preview')}
+    variant={bottomTabMode === 'preview' ? 'default' : 'ghost'}
+  >
+    Preview
+  </Button>
+  <Button
+    onClick={() => setBottomTabMode('attachments')}
+    variant={bottomTabMode === 'attachments' ? 'default' : 'ghost'}
+  >
+    <Paperclip size={16} />
+    Attachments
+  </Button>
+</div>
+
+// Content area:
+{bottomTabMode === 'preview' && <PreviewContent />}
+{bottomTabMode === 'attachments' && <AttachmentsTabContent cardId={card.id} />}
+```
+
+**Key Pattern**:
+1. Bottom bar uses `bottomTabMode` state (string union type)
+2. Uses `Button` components with variant switching, NOT Radix Tabs
+3. Content rendered conditionally based on `bottomTabMode` value
+4. Add new mode to type union: `'preview' | 'reader' | 'metadata' | 'attachments'`
+
+**Files**:
+- `components/modals/card-detail-modal.tsx` - Search for `bottomTabMode` state
+
+**How to Avoid**:
+- **NEVER** add tabs to the `{false && ...}` wrapped sidebar
+- **ALWAYS** search for `bottomTabMode` when adding modal tabs
+- Look for the pattern: `setBottomTabMode('tabname')` in onClick handlers
+- Check for Button components with `variant={bottomTabMode === 'x' ? 'default' : 'ghost'}`
+
+---
+
+### 36. URL Pill Icon Styling - Text Must Stay Centered
+
+**Date**: November 26, 2025
+**Severity**: 🟡 Medium (UI Broken)
+**Category**: Styling, CSS
+**Status**: ✅ Documented
+
+**Issue**: Adding icons to URL pills affects text positioning, making pills look broken.
+
+**Symptom**:
+```
+1. Add paperclip icon to URL pill using flex
+2. Pills become massive or text is off-center
+3. Different URL lengths cause inconsistent appearance
+```
+
+**What Failed**:
+```tsx
+// ❌ WRONG: Flex pushes text off-center
+<a className="px-3 py-1.5 rounded-full bg-black/40 ...">
+  <span className="flex items-center justify-center gap-1.5">
+    <span className="truncate">{hostname}</span>
+    {hasAttachments && <Paperclip className="w-3 h-3" />}  {/* Affects centering! */}
+  </span>
+</a>
+
+// ❌ WRONG: Block makes pill full-width
+<a className="block text-center ...">
+  {hostname}
+  {hasAttachments && <Paperclip className="w-3 h-3" />}
+</a>
+```
+
+**The Fix - Absolute Positioning**:
+```tsx
+// ✅ CORRECT: Icon on separate layer, doesn't affect text
+<a className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white hover:bg-black/60 transition-colors">
+  {/* Text always centered */}
+  <span className="block text-center truncate">
+    {hostname}
+  </span>
+  {/* Icon floats on right, separate layer */}
+  {hasAttachments && (
+    <Paperclip className="w-3 h-3 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
+  )}
+</a>
+```
+
+**Key Pattern**:
+1. Text uses `block text-center truncate` - always centered
+2. Icon uses `absolute right-2.5 top-1/2 -translate-y-1/2` - fixed position
+3. Icon doesn't affect text layout (separate layer)
+4. Long URLs can truncate and pass "behind" the icon
+5. Pill size/shape stays consistent regardless of URL length
+
+**Files**:
+- `components/library/card-gallery.tsx` - All URL pill overlays
+
+**Where Used**:
+- Grid view URL pills
+- List view URL pills
+- Masonry view URL pills
+- Compact view URL pills
+
+**When to Apply**:
+- Adding indicators to fixed-size UI elements
+- Icons that shouldn't push/shift text
+- Badges or status indicators on pills/buttons
+
+---
+
 ## Debugging Strategies
 
 ### When API Returns 500 Error

@@ -931,3 +931,147 @@ Setting `leftMode: "floating"` anywhere defaults new users to collapsed sidebar.
 **File**: `mobile/src/lib/utils.ts`
 **Web Equivalent**: `lib/utils/index.ts`
 
+---
+
+## Card Detail Modal Tab System
+
+### CRITICAL: Modal Has TWO Tab Systems (One is Disabled)
+
+The card detail modal (`components/modals/card-detail-modal.tsx`) has two separate tab systems:
+
+1. **Disabled vertical sidebar** - wrapped in `{false && ...}` - **DO NOT USE**
+2. **Active bottom bar** - uses `bottomTabMode` state - **USE THIS**
+
+### Bottom Tab Bar Pattern
+
+**State Declaration**:
+```typescript
+const [bottomTabMode, setBottomTabMode] = useState<
+  'preview' | 'reader' | 'metadata' | 'attachments'
+>('preview');
+```
+
+**Button Pattern** (NOT Radix Tabs):
+```tsx
+<Button
+  onClick={() => setBottomTabMode('preview')}
+  variant={bottomTabMode === 'preview' ? 'default' : 'ghost'}
+>
+  Preview
+</Button>
+```
+
+**Content Rendering**:
+```tsx
+{bottomTabMode === 'preview' && <PreviewContent />}
+{bottomTabMode === 'attachments' && <AttachmentsTabContent cardId={card.id} />}
+```
+
+### Adding New Tabs to Modal
+
+1. **Add to type union**: Extend `bottomTabMode` type declaration
+2. **Add Button**: Copy existing button pattern with new mode name
+3. **Add Content**: Add conditional rendering for content
+4. **Import component**: Import the tab content component
+
+### Files
+- `components/modals/card-detail-modal.tsx` - Main modal
+- `components/modals/attachments-tab-content.tsx` - Example tab content component
+
+### Why Not Vertical Sidebar?
+
+The vertical sidebar was disabled during an earlier design iteration but the code remains. It uses Radix Tabs primitives which work differently from the bottom bar. Always use the bottom bar pattern.
+
+---
+
+## URL Pill Icon Pattern
+
+### RULE: Icons Must Not Affect Text Centering
+
+When adding icons (like attachment indicators) to URL pills, use **absolute positioning** so the icon doesn't affect text layout.
+
+### Correct Pattern
+
+```tsx
+<a className="absolute bottom-2 left-8 right-8 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-xs text-white">
+  {/* Text always centered */}
+  <span className="block text-center truncate">
+    {hostname}
+  </span>
+  {/* Icon floats on right, separate layer */}
+  {hasAttachments && (
+    <Paperclip className="w-3 h-3 text-gray-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
+  )}
+</a>
+```
+
+### Key Classes
+
+- **Text**: `block text-center truncate` - Always centered, truncates on overflow
+- **Icon**: `absolute right-2.5 top-1/2 -translate-y-1/2` - Fixed position on right
+
+### What NOT to Do
+
+```tsx
+// ❌ Flex affects centering when icon present
+<span className="flex items-center justify-center gap-1.5">
+
+// ❌ Inline icon shifts text
+{hostname} <Paperclip />
+```
+
+### Files
+- `components/library/card-gallery.tsx` - Grid, List, Masonry, Compact URL pills
+
+---
+
+## File Attachments Architecture
+
+### Storage Location
+
+Files are stored in **IndexedDB** only (local-first, no server sync for file blobs).
+
+**File**: `lib/stores/file-store.ts`
+
+### Key Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `AttachmentsSection` | `components/modals/attachments-section.tsx` | Simple list in sidebar (control panel) |
+| `AttachmentsTabContent` | `components/modals/attachments-tab-content.tsx` | Full preview in modal bottom tab |
+
+### Where AttachmentsSection Lives
+
+**CORRECT**: `components/control-panel/card-details-panel.tsx` (Links tab)
+
+```tsx
+{activeTab === "links" && (
+  <div className="space-y-6">
+    <BacklinksPanel noteId={card.id} ... />
+    <div className="border-t border-white/10" />
+    <AttachmentsSection cardId={card.id} />
+  </div>
+)}
+```
+
+### Blob URLs Don't Persist
+
+Blob URLs (`blob:http://...`) are created from IndexedDB blobs and are **session-only**. They must be recreated on page reload.
+
+```typescript
+// Create from stored blob
+const url = URL.createObjectURL(file.blob);
+
+// Clean up when done
+URL.revokeObjectURL(url);
+```
+
+### File Types
+
+Files have `cardId` set (attached to card) vs files without `cardId` (standalone file cards).
+
+```typescript
+// Get attachments for a card
+const attachments = files.filter((f) => f.cardId === cardId && !f.deleted);
+```
+
