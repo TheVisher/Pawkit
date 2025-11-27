@@ -35,7 +35,8 @@ export function PdfMetadataView({ fileId }: PdfMetadataViewProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!file?.blob) return;
+    const blob = file?.blob;
+    if (!blob) return;
 
     let cancelled = false;
 
@@ -44,7 +45,7 @@ export function PdfMetadataView({ fileId }: PdfMetadataViewProps) {
       setError(null);
 
       try {
-        const arrayBuffer = await file.blob.arrayBuffer();
+        const arrayBuffer = await blob.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         const metadata = await pdf.getMetadata();
         const info = metadata.info as Record<string, unknown>;
