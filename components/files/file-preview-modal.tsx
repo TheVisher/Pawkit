@@ -17,6 +17,13 @@ import {
   ZoomOut,
   RotateCw,
 } from "lucide-react";
+import dynamic from "next/dynamic";
+
+// Dynamic import to avoid SSR issues with pdf.js
+const PdfViewer = dynamic(
+  () => import("./pdf-viewer").then((mod) => mod.PdfViewer),
+  { ssr: false }
+);
 
 interface FilePreviewModalProps {
   file: StoredFile | null;
@@ -230,11 +237,13 @@ export function FilePreviewModal({
             )}
 
             {isPdf && fileUrl && (
-              <iframe
-                src={fileUrl}
-                className="w-[90vw] h-[calc(100vh-120px)] bg-white rounded-lg"
-                title={file.filename}
-              />
+              <div className="w-[90vw] h-[calc(100vh-120px)] rounded-lg overflow-hidden">
+                <PdfViewer
+                  url={fileUrl}
+                  filename={file.filename}
+                  onDownload={handleDownload}
+                />
+              </div>
             )}
 
             {isVideo && fileUrl && (
