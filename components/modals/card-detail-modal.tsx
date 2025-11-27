@@ -1441,9 +1441,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 </div>
 
                 {/* Reader tab content for file cards */}
-                {bottomTabMode === 'reader' && (
+                {bottomTabMode === 'reader' && (() => {
+                  console.log('[CardDetailModal] Rendering Reader tab for file card, isPdfFileCard:', isPdfFileCard, 'fileId:', card.fileId);
+                  return (
                   <div className="absolute inset-0 p-[5px] overflow-y-auto bg-red-500/20">
-                    {console.log('[CardDetailModal] Rendering Reader tab for file card, isPdfFileCard:', isPdfFileCard, 'fileId:', card.fileId)}
                     {isPdfFileCard && card.fileId ? (
                       <PdfReaderView
                         fileId={card.fileId}
@@ -1466,7 +1467,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                       </div>
                     )}
                   </div>
-                )}
+                  );
+                })()}
 
                 {/* Metadata tab content for file cards */}
                 {bottomTabMode === 'metadata' && (
