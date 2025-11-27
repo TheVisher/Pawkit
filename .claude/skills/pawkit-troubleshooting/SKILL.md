@@ -45,6 +45,8 @@ description: Living document of issues encountered, their fixes, and prevention 
    - Rediscover Queue Reset on Card Update
    - Slow Modal Loading (API vs Local Data Store)
    - Optimistic Updates Pattern
+   - Hidden vs Invisible CSS Classes
+   - Panel Store close() Clears activeCardId
 3. [Debugging Strategies](#debugging-strategies)
 4. [How to Add New Issues](#how-to-add-new-issues)
 5. [Maintenance](#maintenance)
@@ -4396,6 +4398,151 @@ const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'metad
 
 ---
 
+### 37. Hidden vs Invisible CSS Classes - Tab Content Disappearing
+
+**Date**: November 26, 2025
+**Severity**: 🟡 Medium (UI Broken)
+**Category**: CSS, Layout
+**Status**: ✅ Fixed
+
+**Issue**: Using `hidden` class instead of `invisible` causes sibling elements to collapse, making entire tab content areas disappear.
+
+**Symptom**:
+```
+1. Card detail modal has multiple tabs (Preview, Reader, Metadata)
+2. When non-Preview tab is active, content area shows empty
+3. Entire tab container appears to have zero height
+```
+
+**Root Cause**:
+```css
+/* hidden = display: none */
+.hidden { display: none; }
+/* Removes element from layout flow entirely */
+
+/* invisible = visibility: hidden */
+.invisible { visibility: hidden; }
+/* Element still takes up space but is not visible */
+```
+
+**What Failed**:
+```tsx
+// ❌ WRONG: hidden removes from layout, parent collapses
+<div className={bottomTabMode === 'preview' ? '' : 'hidden'}>
+  <PreviewContent />  {/* When hidden, parent height = 0 */}
+</div>
+<div>
+  {bottomTabMode === 'reader' && <ReaderContent />}  {/* Shows but in collapsed container */}
+</div>
+```
+
+**The Fix**:
+```tsx
+// ✅ CORRECT: invisible preserves layout space
+<div className={bottomTabMode === 'preview' ? '' : 'invisible'}>
+  <PreviewContent />  {/* Still occupies space when invisible */}
+</div>
+<div>
+  {bottomTabMode === 'reader' && <ReaderContent />}  {/* Shows in properly sized container */}
+</div>
+```
+
+**When to Use Each**:
+| Class | Effect | Use When |
+|-------|--------|----------|
+| `hidden` | `display: none` | Completely remove from layout (dropdowns, modals) |
+| `invisible` | `visibility: hidden` | Keep space reserved (tabs, carousels) |
+
+**Files**:
+- `components/modals/card-detail-modal.tsx` - Tab content visibility
+
+**Prevention**:
+- Use `invisible` when sibling content needs the space to render correctly
+- Use `hidden` only when you want layout reflow
+- Test tab switching with different content heights
+
+---
+
+### 38. Panel Store close() Clears activeCardId - Modal Unmounts
+
+**Date**: November 26, 2025
+**Severity**: 🔴 High (Feature Broken)
+**Category**: State Management, Zustand
+**Status**: ✅ Fixed
+
+**Issue**: Calling panel store's `close()` function to hide the sidebar also clears `activeCardId`, causing modals that depend on it to unmount.
+
+**Symptom**:
+```
+1. Open a PDF in card detail modal
+2. Click "Reader" tab to enter fullscreen reader mode
+3. Modal closes instead of expanding to fullscreen
+4. Both sidebars close but no reader content shows
+```
+
+**Root Cause**:
+The `close()` function in `use-panel-store.ts` resets multiple state values:
+```typescript
+close: () => {
+  set({
+    isOpen: false,
+    contentType: "closed",
+    activeCardId: null,  // ← This unmounts the modal!
+    // ...
+  });
+},
+```
+
+When `activeCardId` becomes `null`, any component with `if (!activeCardId) return null` unmounts.
+
+**What Failed**:
+```typescript
+// ❌ WRONG: Using close() to hide panel during reader mode
+const closePanel = usePanelStore((state) => state.close);
+
+const handleEnterReaderMode = () => {
+  closePanel();  // ← Clears activeCardId, unmounts modal!
+  setIsReaderExpanded(true);
+};
+```
+
+**The Fix - Add hide/show Functions**:
+```typescript
+// In use-panel-store.ts, add new functions that ONLY toggle visibility:
+hideRight: () => {
+  set({ isOpen: false });  // Only changes isOpen, preserves activeCardId
+},
+
+showRight: () => {
+  set({ isOpen: true });
+},
+
+// ✅ CORRECT: Use hideRight() instead of close()
+const hideRightPanel = usePanelStore((state) => state.hideRight);
+
+const handleEnterReaderMode = () => {
+  hideRightPanel();  // ← Only hides panel, keeps activeCardId
+  setIsReaderExpanded(true);
+};
+```
+
+**Rule**:
+| Function | Use When |
+|----------|----------|
+| `close()` | User explicitly closes panel (X button, toggle) |
+| `hideRight()` | Temporarily hiding panel while keeping modal context |
+
+**Files Modified**:
+- `lib/hooks/use-panel-store.ts` - Added `hideRight()`/`showRight()` functions
+- `components/modals/card-detail-modal.tsx` - Use hideRight for reader mode
+
+**Prevention**:
+- Always check what state a store function modifies before using it
+- If you need to hide UI without losing context, add targeted visibility functions
+- Don't reuse general-purpose functions for specialized use cases
+
+---
+
 ## Debugging Strategies
 
 ### When API Returns 500 Error
@@ -4773,7 +4920,7 @@ After adding a new issue:
 
 ---
 
-**Last Updated**: November 24, 2025 (Added Issue #30: Browser extension collections using slugs not IDs)
+**Last Updated**: November 26, 2025 (Added Issues #37-38: Hidden vs Invisible CSS, Panel store activeCardId)
 **Next Review**: April 2025 (Quarterly)
 
 **This is a living document. Keep it current!**

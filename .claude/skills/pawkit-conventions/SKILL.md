@@ -1075,3 +1075,109 @@ Files have `cardId` set (attached to card) vs files without `cardId` (standalone
 const attachments = files.filter((f) => f.cardId === cardId && !f.deleted);
 ```
 
+---
+
+## PDF Viewer Architecture
+
+### Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| `PdfReaderView` | `components/files/pdf-reader-view.tsx` | Full reading experience with zoom |
+| `PdfMetadataView` | `components/files/pdf-metadata-view.tsx` | Metadata display (pages, author, etc.) |
+| `PdfViewer` | `components/files/pdf-viewer.tsx` | Basic PDF preview (deprecated for reader) |
+
+### PDF.js Worker Setup
+
+**CRITICAL**: Worker must be set before any PDF operations.
+
+```typescript
+import * as pdfjsLib from "pdfjs-dist";
+
+// Set worker path - same in all PDF components
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+```
+
+**Worker file location**: `public/pdf.worker.min.mjs`
+
+### Rendering Pattern
+
+PDFs are rendered to canvas, then converted to data URLs for display:
+
+```typescript
+const canvas = document.createElement("canvas");
+canvas.width = viewport.width;
+canvas.height = viewport.height;
+const context = canvas.getContext("2d");
+
+await page.render({
+  canvasContext: context,
+  viewport: viewport,
+}).promise;
+
+const dataUrl = canvas.toDataURL("image/png");
+```
+
+### Reader Mode State Management
+
+When entering reader mode, panels must be hidden **without** clearing `activeCardId`:
+
+```typescript
+// ✅ CORRECT: Use hideRight() to preserve modal
+const hideRightPanel = usePanelStore((state) => state.hideRight);
+hideRightPanel();  // Only sets isOpen: false
+
+// ❌ WRONG: close() clears activeCardId and unmounts modal
+const closePanel = usePanelStore((state) => state.close);
+closePanel();  // Sets activeCardId: null, modal unmounts!
+```
+
+---
+
+## Panel Store Hide/Show Pattern
+
+### CRITICAL: When to Use close() vs hideRight()
+
+**File**: `lib/hooks/use-panel-store.ts`
+
+| Function | Effect | Use When |
+|----------|--------|----------|
+| `close()` | Sets `isOpen: false` AND `activeCardId: null` | User explicitly closes panel |
+| `hideRight()` | Only sets `isOpen: false` | Temporarily hide while keeping context |
+| `showRight()` | Only sets `isOpen: true` | Restore panel visibility |
+
+### Pattern for Fullscreen Modes
+
+When implementing fullscreen/expanded modes that need to hide panels:
+
+```typescript
+// Store panel states before entering fullscreen
+const [panelStatesBeforeExpand, setPanelStatesBeforeExpand] = useState<{
+  leftOpen: boolean;
+  rightOpen: boolean;
+} | null>(null);
+
+useEffect(() => {
+  if (isExpanded) {
+    // Save current state
+    setPanelStatesBeforeExpand({
+      leftOpen: isLeftPanelOpen,
+      rightOpen: isRightPanelOpen,
+    });
+    // Hide panels (don't close!)
+    closeLeftPanel();
+    hideRightPanel();
+  } else if (panelStatesBeforeExpand) {
+    // Restore previous state
+    if (panelStatesBeforeExpand.leftOpen) openLeftPanel();
+    if (panelStatesBeforeExpand.rightOpen) showRightPanel();
+    setPanelStatesBeforeExpand(null);
+  }
+}, [isExpanded]);
+```
+
+---
+
+**Last Updated**: November 26, 2025
+**Reason**: Added PDF viewer architecture and panel store hide/show pattern
+

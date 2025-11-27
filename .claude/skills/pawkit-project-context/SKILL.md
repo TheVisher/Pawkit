@@ -12,13 +12,99 @@ description: Track development progress, major milestones, and session history a
 ## Current Status
 
 **Branch**: `main`
-**Status**: Rediscover mode polished + sidebar UX improvements
-**Last Updated**: November 25, 2025
+**Status**: File attachments feature complete with PDF viewer, reader mode, and zoom controls
+**Last Updated**: November 26, 2025
 **Next Steps**: Continue with discoverability improvements (onboarding checklist)
 
 ---
 
 ## Session History
+
+### Date: November 26, 2025 - File Attachments Feature Complete
+
+**Status**: ✅ COMPLETED
+**Priority**: ⚡ FEATURE MILESTONE
+**Branch**: `feature/file-attachments` → merged to `main`
+**Impact**: Full PDF viewing experience with reader mode and professional UX
+
+**Summary**: Completed and merged the file attachments feature with focus on PDF viewing. Added fullscreen reader mode, zoom controls, and fixed multiple UX bugs.
+
+#### 1. PDF Reader Mode with Fullscreen Expansion
+
+**Feature**: Fullscreen reader mode for distraction-free PDF reading.
+
+**Implementation**:
+- Reader tab in card detail modal expands to fullscreen
+- Auto-hides both left and right panels when entering reader mode
+- Restores panel state when exiting
+- Floating exit button (X) in top-right corner
+- Keyboard shortcut: Escape to exit
+
+**Files Modified**:
+- `components/modals/card-detail-modal.tsx` - Added panel state management for reader mode
+- `lib/hooks/use-panel-store.ts` - Added `hideRight()`/`showRight()` functions
+
+**Key Pattern - Preserve activeCardId**:
+```typescript
+// DON'T use close() - it clears activeCardId and unmounts modal
+closePanel(); // ❌ Wrong - unmounts the modal
+
+// DO use hideRight() - only toggles visibility
+hideRight(); // ✅ Correct - preserves activeCardId
+```
+
+#### 2. PDF Zoom Controls
+
+**Feature**: Floating zoom bar with keyboard shortcuts.
+
+**Implementation**:
+- Floating control bar at bottom center (only in expanded mode)
+- Zoom range: 50% to 200% in 25% increments
+- Page counter display (e.g., "3/12")
+- Keyboard shortcuts: `+`/`-` for zoom, `0` for reset
+
+**Technical**:
+```typescript
+// Transform scale applied to each page
+style={isExpanded ? {
+  transform: `scale(${zoom})`,
+  transformOrigin: 'top center',
+  marginBottom: zoom > 1 ? `${(zoom - 1) * 100}%` : undefined,
+} : undefined}
+```
+
+**Files Modified**:
+- `components/files/pdf-reader-view.tsx`
+
+#### 3. PDF Metadata Layout Consistency
+
+**Problem**: PDF metadata view had different layout from URL card metadata.
+
+**Solution**: Rewrote layout to match URL card style:
+- Simple key-value rows with border separator
+- Wider container (max-w-3xl)
+- No icons, cleaner visual hierarchy
+- Consistent text styling
+
+**Files Modified**:
+- `components/files/pdf-metadata-view.tsx`
+
+#### 4. Bug Fixes
+
+**Reader/Metadata Tabs Showing Empty**:
+- Issue: Used `hidden` class on Preview tab, causing parent to collapse
+- Fix: Changed to `invisible` class (preserves layout space)
+- Lesson: `hidden` = `display: none`, `invisible` = `visibility: hidden`
+
+**Reader Mode Closing Modal Instead of Expanding**:
+- Issue: `close()` function cleared `activeCardId`, unmounting modal
+- Fix: Added `hideRight()`/`showRight()` functions that only toggle `isOpen`
+
+**Files Modified**:
+- `components/modals/card-detail-modal.tsx`
+- `lib/hooks/use-panel-store.ts`
+
+---
 
 ### Date: November 25, 2025 - Rediscover Mode Enhancements + Sidebar UX
 
