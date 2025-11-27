@@ -7,16 +7,18 @@ const COOKIE_NAME = "filen_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 /**
- * Minimal session data - only essential fields for file operations.
- * Excludes privateKey/publicKey (needed only for sharing).
+ * Session data - essential fields for file operations.
+ * Includes privateKey (needed for HMAC key generation during upload).
+ * Excludes publicKey (only needed for sharing with others).
  */
-interface FilenMinimalSession {
+interface FilenSession {
   email: string;
   apiKey: string;
   masterKeys: string[]; // Only first key
   userId: number;
   baseFolderUUID: string;
   authVersion: 1 | 2 | 3;
+  privateKey: string; // Required for file encryption
 }
 
 /**
@@ -58,9 +60,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Extract MINIMAL session data (skip privateKey/publicKey to save space)
+    // Extract session data (includes privateKey for HMAC, excludes publicKey)
     const config = filen.config;
-    const minimalSession: FilenMinimalSession = {
+    const session: FilenSession = {
       email: config.email || email,
       apiKey: config.apiKey || "",
       // Only first master key - most operations only need one
@@ -68,17 +70,19 @@ export async function POST(request: NextRequest) {
       userId: config.userId || 0,
       baseFolderUUID: config.baseFolderUUID || "",
       authVersion: (config.authVersion as 1 | 2 | 3) || 2,
+      privateKey: config.privateKey || "", // Required for file encryption
     };
 
     // Debug: Log individual field sizes
-    console.log("[Filen] Minimal session field sizes:");
-    console.log("  email:", minimalSession.email?.length || 0, "bytes");
-    console.log("  apiKey:", minimalSession.apiKey?.length || 0, "bytes");
-    console.log("  masterKeys[0]:", (minimalSession.masterKeys[0] || "").length, "bytes");
-    console.log("  userId:", String(minimalSession.userId).length, "bytes");
-    console.log("  baseFolderUUID:", (minimalSession.baseFolderUUID || "").length, "bytes");
+    console.log("[Filen] Session field sizes:");
+    console.log("  email:", session.email?.length || 0, "bytes");
+    console.log("  apiKey:", session.apiKey?.length || 0, "bytes");
+    console.log("  masterKeys[0]:", (session.masterKeys[0] || "").length, "bytes");
+    console.log("  privateKey:", session.privateKey?.length || 0, "bytes");
+    console.log("  userId:", String(session.userId).length, "bytes");
+    console.log("  baseFolderUUID:", (session.baseFolderUUID || "").length, "bytes");
 
-    const sessionJson = JSON.stringify(minimalSession);
+    const sessionJson = JSON.stringify(session);
     console.log("[Filen] Total minimal session:", sessionJson.length, "bytes");
 
     const encryptedSession = encrypt(sessionJson);
@@ -168,7 +172,7 @@ export async function GET() {
       return NextResponse.json({ authenticated: false, email: null });
     }
 
-    const session = JSON.parse(decrypt(sessionCookie.value)) as FilenMinimalSession;
+    const session = JSON.parse(decrypt(sessionCookie.value)) as FilenSession;
 
     return NextResponse.json({
       authenticated: true,
