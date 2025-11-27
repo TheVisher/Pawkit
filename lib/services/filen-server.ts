@@ -10,14 +10,12 @@ import { decrypt } from "@/lib/utils/crypto";
 const COOKIE_NAME = "filen_session";
 
 /**
- * Session data structure - matches what's stored in the cookie.
+ * Minimal session data - matches what's stored in the cookie.
  */
-interface FilenSessionData {
+interface FilenMinimalSession {
   email: string;
   apiKey: string;
   masterKeys: string[];
-  publicKey: string;
-  privateKey: string;
   userId: number;
   baseFolderUUID: string;
   authVersion: 1 | 2 | 3;
@@ -25,7 +23,7 @@ interface FilenSessionData {
 
 /**
  * Get an authenticated Filen SDK instance from the session cookie.
- * Restores the session from saved config - no login() call needed!
+ * Uses minimal session data (no privateKey/publicKey).
  */
 export async function getFilenClient(): Promise<FilenSDK | null> {
   try {
@@ -37,33 +35,33 @@ export async function getFilenClient(): Promise<FilenSDK | null> {
       return null;
     }
 
-    // Decrypt and parse session data
-    const sessionData = JSON.parse(decrypt(sessionCookie.value)) as FilenSessionData;
+    // Decrypt and parse minimal session
+    const session = JSON.parse(decrypt(sessionCookie.value)) as FilenMinimalSession;
 
-    if (!sessionData.apiKey || !sessionData.masterKeys?.length) {
-      console.log("[Filen] Invalid session data - missing apiKey or masterKeys");
+    if (!session.apiKey || !session.masterKeys?.length) {
+      console.log("[Filen] Invalid session - missing apiKey or masterKeys");
       return null;
     }
 
-    console.log("[Filen] Restoring session for:", sessionData.email);
+    console.log("[Filen] Restoring minimal session for:", session.email);
 
-    // Create SDK instance with saved session config - no login required!
+    // Create SDK instance with minimal config
     const filen = new FilenSDK({
-      // Auth config from saved session
-      apiKey: sessionData.apiKey,
-      masterKeys: sessionData.masterKeys,
-      publicKey: sessionData.publicKey,
-      privateKey: sessionData.privateKey,
-      userId: sessionData.userId,
-      baseFolderUUID: sessionData.baseFolderUUID,
-      authVersion: sessionData.authVersion,
-      // SDK options
       metadataCache: true,
       connectToSocket: false,
       tmpPath: "/tmp",
+      // Pass auth config directly to constructor
+      apiKey: session.apiKey,
+      masterKeys: session.masterKeys,
+      userId: session.userId,
+      baseFolderUUID: session.baseFolderUUID,
+      authVersion: session.authVersion,
     });
 
-    console.log("[Filen] Session restored successfully");
+    // Also set email for identification
+    filen.config.email = session.email;
+
+    console.log("[Filen] Session restored successfully (minimal config)");
     return filen;
   } catch (error) {
     console.error("[Filen] Failed to restore session:", error);
@@ -73,7 +71,6 @@ export async function getFilenClient(): Promise<FilenSDK | null> {
 
 /**
  * Get the email from the session cookie without creating SDK instance.
- * Useful for quick status checks.
  */
 export async function getFilenSessionEmail(): Promise<string | null> {
   try {
@@ -84,8 +81,8 @@ export async function getFilenSessionEmail(): Promise<string | null> {
       return null;
     }
 
-    const sessionData = JSON.parse(decrypt(sessionCookie.value)) as FilenSessionData;
-    return sessionData.email || null;
+    const session = JSON.parse(decrypt(sessionCookie.value)) as FilenMinimalSession;
+    return session.email || null;
   } catch (error) {
     console.error("[Filen] Failed to get session email:", error);
     return null;

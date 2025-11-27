@@ -7,15 +7,13 @@ const COOKIE_NAME = "filen_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 /**
- * Session data structure - stores SDK config after successful login.
- * This allows restoring the session without re-authenticating.
+ * Minimal session data - only essential fields for file operations.
+ * Excludes privateKey/publicKey (needed only for sharing).
  */
-interface FilenSessionData {
+interface FilenMinimalSession {
   email: string;
   apiKey: string;
-  masterKeys: string[];
-  publicKey: string;
-  privateKey: string;
+  masterKeys: string[]; // Only first key
   userId: number;
   baseFolderUUID: string;
   authVersion: 1 | 2 | 3;
@@ -60,26 +58,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Extract session data from SDK config after successful login
+    // Extract MINIMAL session data (skip privateKey/publicKey to save space)
     const config = filen.config;
-    const sessionData: FilenSessionData = {
+    const minimalSession: FilenMinimalSession = {
       email: config.email || email,
       apiKey: config.apiKey || "",
-      masterKeys: config.masterKeys || [],
-      publicKey: config.publicKey || "",
-      privateKey: config.privateKey || "",
+      // Only first master key - most operations only need one
+      masterKeys: config.masterKeys?.slice(0, 1) || [],
       userId: config.userId || 0,
       baseFolderUUID: config.baseFolderUUID || "",
       authVersion: (config.authVersion as 1 | 2 | 3) || 2,
     };
 
-    // Debug: Log session data sizes
-    const sessionJson = JSON.stringify(sessionData);
-    console.log("[Filen] Original session size:", sessionJson.length, "bytes");
+    // Debug: Log individual field sizes
+    console.log("[Filen] Minimal session field sizes:");
+    console.log("  email:", minimalSession.email?.length || 0, "bytes");
+    console.log("  apiKey:", minimalSession.apiKey?.length || 0, "bytes");
+    console.log("  masterKeys[0]:", (minimalSession.masterKeys[0] || "").length, "bytes");
+    console.log("  userId:", String(minimalSession.userId).length, "bytes");
+    console.log("  baseFolderUUID:", (minimalSession.baseFolderUUID || "").length, "bytes");
+
+    const sessionJson = JSON.stringify(minimalSession);
+    console.log("[Filen] Total minimal session:", sessionJson.length, "bytes");
 
     const encryptedSession = encrypt(sessionJson);
     console.log("[Filen] Compressed+encrypted size:", encryptedSession.length, "bytes");
-    console.log("[Filen] Compression ratio:", Math.round((1 - encryptedSession.length / sessionJson.length) * 100) + "%");
 
     if (encryptedSession.length > 4096) {
       console.error("[Filen] ERROR: Still too large after compression!");
@@ -91,7 +94,7 @@ export async function POST(request: NextRequest) {
 
     console.log("[Filen] Login successful for:", email);
 
-    // Use NextResponse to set cookie (more reliable than cookies() helper)
+    // Use NextResponse to set cookie
     const response = NextResponse.json({ success: true, email });
 
     response.cookies.set({
@@ -99,12 +102,12 @@ export async function POST(request: NextRequest) {
       value: encryptedSession,
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax", // 'lax' is more permissive than 'strict'
+      sameSite: "lax",
       maxAge: COOKIE_MAX_AGE,
       path: "/",
     });
 
-    console.log("[Filen] Cookie set on response, size:", encryptedSession.length);
+    console.log("[Filen] Cookie set, size:", encryptedSession.length, "bytes");
 
     return response;
   } catch (error) {
@@ -113,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     console.error("[Filen] Login error:", errorMessage);
 
-    // Handle common errors - check for 2FA requirement (case-insensitive)
+    // Handle common errors
     const lowerError = errorMessage.toLowerCase();
     if (
       lowerError.includes("2fa") ||
@@ -161,17 +164,15 @@ export async function GET() {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get(COOKIE_NAME);
 
-    console.log("[Filen] Auth check - cookie exists:", !!sessionCookie?.value);
-
     if (!sessionCookie?.value) {
       return NextResponse.json({ authenticated: false, email: null });
     }
 
-    const sessionData = JSON.parse(decrypt(sessionCookie.value)) as FilenSessionData;
+    const session = JSON.parse(decrypt(sessionCookie.value)) as FilenMinimalSession;
 
     return NextResponse.json({
       authenticated: true,
-      email: sessionData.email,
+      email: session.email,
     });
   } catch (error) {
     console.error("[Filen] Auth check error:", error);
