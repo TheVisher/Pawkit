@@ -402,34 +402,19 @@ export function LibraryControls() {
             onChange={() => handleContentTypeToggle("image")}
           />
           <PanelToggle
+            label="PDF"
+            checked={contentTypeFilter.includes("pdf")}
+            onChange={() => handleContentTypeToggle("pdf")}
+          />
+          <PanelToggle
             label="Document"
             checked={contentTypeFilter.includes("document")}
             onChange={() => handleContentTypeToggle("document")}
           />
           <PanelToggle
-            label="Audio"
-            checked={contentTypeFilter.includes("audio")}
-            onChange={() => handleContentTypeToggle("audio")}
-          />
-          <PanelToggle
             label="Video"
             checked={contentTypeFilter.includes("video")}
             onChange={() => handleContentTypeToggle("video")}
-          />
-          <PanelToggle
-            label="Email"
-            checked={contentTypeFilter.includes("email")}
-            onChange={() => handleContentTypeToggle("email")}
-          />
-          <PanelToggle
-            label="Highlight"
-            checked={contentTypeFilter.includes("highlight")}
-            onChange={() => handleContentTypeToggle("highlight")}
-          />
-          <PanelToggle
-            label="Folder"
-            checked={contentTypeFilter.includes("folder")}
-            onChange={() => handleContentTypeToggle("folder")}
           />
           <PanelToggle
             label="Other"
