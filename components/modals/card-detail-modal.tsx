@@ -127,6 +127,12 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   // File card preview state - must be declared before useEffects that use them
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [filePreviewData, setFilePreviewData] = useState<StoredFile | null>(null);
+
+  // Determine if this is a PDF file card - check card metadata first (immediate), then file data (async)
+  const isPdfFileCard = isFileCard && (
+    (card.metadata as { fileCategory?: string } | null)?.fileCategory === "pdf" ||
+    filePreviewData?.category === "pdf"
+  );
   const files = useFileStore((state) => state.files);
   const loadFiles = useFileStore((state) => state.loadFiles);
 
@@ -911,13 +917,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   // When reader is expanded, render different layout
   // For PDF file cards
-  if (isReaderExpanded && isFileCard && filePreviewData?.category === "pdf" && card.fileId) {
+  if (isReaderExpanded && isPdfFileCard && card.fileId) {
     return (
       <>
         <div className="fixed inset-0 z-50 bg-[#faf8f3]">
           <PdfReaderView
             fileId={card.fileId}
-            title={card.title || filePreviewData.filename}
+            title={card.title || filePreviewData?.filename || "PDF Document"}
             isExpanded={true}
             onToggleExpand={() => setIsReaderExpanded(false)}
             onClose={onClose}
@@ -1461,10 +1467,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 {bottomTabMode === 'reader' && (
                   <div className="absolute inset-0 p-[5px] overflow-y-auto">
                     {/* PDF file card - show PDF reader */}
-                    {isFileCard && filePreviewData?.category === "pdf" && card.fileId ? (
+                    {isPdfFileCard && card.fileId ? (
                       <PdfReaderView
                         fileId={card.fileId}
-                        title={card.title || filePreviewData.filename}
+                        title={card.title || filePreviewData?.filename || "PDF Document"}
                         isExpanded={false}
                         onToggleExpand={() => setIsReaderExpanded(true)}
                         onClose={onClose}
@@ -1516,7 +1522,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 {bottomTabMode === 'metadata' && (
                   <div className="absolute inset-0 p-[5px] overflow-y-auto flex items-start justify-center">
                     {/* PDF file card - show PDF metadata */}
-                    {isFileCard && filePreviewData?.category === "pdf" && card.fileId ? (
+                    {isPdfFileCard && card.fileId ? (
                       <PdfMetadataView fileId={card.fileId} />
                     ) : (
                       <div className="max-w-2xl w-full space-y-6 py-8">
