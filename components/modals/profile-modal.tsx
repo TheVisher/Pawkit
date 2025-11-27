@@ -9,7 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettingsStore, type Theme, type AccentColor } from "@/lib/hooks/settings-store";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { Check, LogOut } from "lucide-react";
+import { Check, LogOut, Cloud, Calendar, HardDrive, Loader2, Settings2 } from "lucide-react";
+import { useConnectorStore } from "@/lib/stores/connector-store";
+import { filenService } from "@/lib/services/filen-service";
+import { useToastStore } from "@/lib/stores/toast-store";
 
 type ProfileModalProps = {
   open: boolean;
@@ -26,6 +29,362 @@ const ACCENT_COLORS: { name: AccentColor; value: string }[] = [
   { name: "red", value: "bg-red-500" },
   { name: "orange", value: "bg-orange-500" },
 ];
+
+// Connector status type
+type ConnectorStatus = "connected" | "disconnected" | "coming_soon" | "syncing" | "error";
+
+// Connector Card component for the Connectors tab
+function ConnectorCard({
+  name,
+  description,
+  icon,
+  status,
+  category,
+  lastSync,
+  onConnect,
+  onDisconnect,
+  onSettings,
+}: {
+  name: string;
+  description: string;
+  icon: React.ReactNode;
+  status: ConnectorStatus;
+  category: string;
+  lastSync?: Date | null;
+  onConnect?: () => void;
+  onDisconnect?: () => void;
+  onSettings?: () => void;
+}) {
+  const getStatusBadge = () => {
+    switch (status) {
+      case "connected":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+            <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
+            Connected
+          </span>
+        );
+      case "syncing":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Syncing
+          </span>
+        );
+      case "error":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400 border border-red-500/30">
+            Error
+          </span>
+        );
+      case "coming_soon":
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30">
+            Coming Soon
+          </span>
+        );
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400 border border-gray-500/30">
+            Not Connected
+          </span>
+        );
+    }
+  };
+
+  const isDisabled = status === "coming_soon";
+
+  return (
+    <div className={`p-4 rounded-xl border ${isDisabled ? "border-gray-800/50 bg-gray-900/30 opacity-60" : "border-white/10 bg-white/5"}`}>
+      <div className="flex items-start gap-4">
+        <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${isDisabled ? "bg-gray-800/50" : "bg-purple-500/20 border border-purple-500/30"}`}>
+          {icon}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="text-sm font-medium text-white">{name}</h3>
+            {getStatusBadge()}
+          </div>
+          <p className="text-xs text-gray-400 mb-2">{description}</p>
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span className="px-1.5 py-0.5 rounded bg-gray-800/50">{category}</span>
+            {lastSync && status === "connected" && (
+              <span>Last sync: {new Date(lastSync).toLocaleDateString()}</span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {status === "connected" && onSettings && (
+            <button
+              onClick={onSettings}
+              className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+              title="Settings"
+            >
+              <Settings2 className="h-4 w-4" />
+            </button>
+          )}
+          {status === "connected" ? (
+            <GlowButton onClick={onDisconnect} variant="danger" size="sm">
+              Disconnect
+            </GlowButton>
+          ) : status !== "coming_soon" ? (
+            <GlowButton onClick={onConnect} variant="primary" size="sm">
+              Connect
+            </GlowButton>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Connectors Tab Content
+function ConnectorsTabContent() {
+  const [showFilenModal, setShowFilenModal] = useState(false);
+  const filenState = useConnectorStore((state) => state.filen);
+  const setFilenDisconnected = useConnectorStore((state) => state.setFilenDisconnected);
+
+  const getFilenStatus = (): ConnectorStatus => {
+    if (filenState.status === "connecting" || filenState.status === "syncing") {
+      return "syncing";
+    }
+    if (filenState.status === "error") {
+      return "error";
+    }
+    if (filenState.connected) {
+      return "connected";
+    }
+    return "disconnected";
+  };
+
+  const handleFilenDisconnect = async () => {
+    try {
+      await filenService.logout();
+      setFilenDisconnected();
+      useToastStore.getState().success("Disconnected from Filen");
+    } catch {
+      useToastStore.getState().error("Failed to disconnect");
+    }
+  };
+
+  const handleFilenSettings = () => {
+    useToastStore.getState().info("Filen settings coming soon");
+  };
+
+  return (
+    <>
+      <div className="space-y-4">
+        <div>
+          <Label className="text-gray-300">External Connectors</Label>
+          <p className="text-sm text-gray-500 mt-1">
+            Connect external services to sync your data across devices.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          {/* Filen Connector */}
+          <ConnectorCard
+            name="Filen"
+            description="End-to-end encrypted cloud storage for file sync"
+            icon={<Cloud className="h-6 w-6 text-purple-400" />}
+            status={getFilenStatus()}
+            category="Storage"
+            lastSync={filenState.lastSync}
+            onConnect={() => setShowFilenModal(true)}
+            onDisconnect={handleFilenDisconnect}
+            onSettings={handleFilenSettings}
+          />
+
+          {/* Google Calendar - Coming Soon */}
+          <ConnectorCard
+            name="Google Calendar"
+            description="Sync events with Google Calendar"
+            icon={<Calendar className="h-6 w-6 text-blue-400" />}
+            status="coming_soon"
+            category="Calendar"
+          />
+
+          {/* Google Drive - Coming Soon */}
+          <ConnectorCard
+            name="Google Drive"
+            description="Access and sync files from Google Drive"
+            icon={<HardDrive className="h-6 w-6 text-green-400" />}
+            status="coming_soon"
+            category="Storage"
+          />
+        </div>
+      </div>
+
+      {/* Filen Connect Modal */}
+      {showFilenModal && (
+        <FilenConnectModalInline
+          open={showFilenModal}
+          onClose={() => setShowFilenModal(false)}
+        />
+      )}
+    </>
+  );
+}
+
+// Inline Filen Connect Modal (simplified version for the profile modal)
+function FilenConnectModalInline({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [twoFactor, setTwoFactor] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [needs2FA, setNeeds2FA] = useState(false);
+
+  const setFilenConnecting = useConnectorStore((state) => state.setFilenConnecting);
+  const setFilenConnected = useConnectorStore((state) => state.setFilenConnected);
+  const setFilenError = useConnectorStore((state) => state.setFilenError);
+
+  const handleConnect = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    setFilenConnecting();
+
+    try {
+      const result = await filenService.login({
+        email,
+        password,
+        twoFactorCode: twoFactor || undefined,
+      });
+
+      if (result.success) {
+        setFilenConnected(email);
+        useToastStore.getState().success("Connected to Filen");
+        handleClose();
+      } else {
+        if (result.needs2FA) {
+          setNeeds2FA(true);
+          setError(null);
+        } else {
+          setError(result.error || "Failed to connect");
+          setFilenError(result.error || "Failed to connect");
+        }
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      setError(errorMessage);
+      setFilenError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    setEmail("");
+    setPassword("");
+    setTwoFactor("");
+    setError(null);
+    setNeeds2FA(false);
+    onClose();
+  };
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={handleClose}
+    >
+      <div
+        className="rounded-2xl border border-white/10 bg-gray-900/95 backdrop-blur-lg shadow-2xl w-full max-w-md p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/20 border border-purple-500/30">
+            <Cloud className="h-5 w-5 text-purple-400" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-white">Connect to Filen</h2>
+            <p className="text-sm text-gray-400">End-to-end encrypted cloud storage</p>
+          </div>
+        </div>
+
+        <form onSubmit={handleConnect} className="space-y-4">
+          <div>
+            <Label htmlFor="filen-email" className="text-gray-300 mb-1.5 block text-sm">
+              Email
+            </Label>
+            <Input
+              id="filen-email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+              required
+              autoComplete="email"
+            />
+          </div>
+
+          <div>
+            <Label htmlFor="filen-password" className="text-gray-300 mb-1.5 block text-sm">
+              Password
+            </Label>
+            <Input
+              id="filen-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your Filen password"
+              required
+              autoComplete="current-password"
+            />
+          </div>
+
+          {needs2FA && (
+            <div>
+              <Label htmlFor="filen-2fa" className="text-gray-300 mb-1.5 block text-sm">
+                2FA Code
+              </Label>
+              <Input
+                id="filen-2fa"
+                type="text"
+                inputMode="numeric"
+                value={twoFactor}
+                onChange={(e) => setTwoFactor(e.target.value)}
+                placeholder="Enter 6-digit code"
+                autoComplete="one-time-code"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Enter the code from your authenticator app
+              </p>
+            </div>
+          )}
+
+          {error && (
+            <div className="px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20">
+              <p className="text-sm text-rose-400">{error}</p>
+            </div>
+          )}
+
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <Button type="button" variant="ghost" onClick={handleClose}>
+              Cancel
+            </Button>
+            <GlowButton
+              type="submit"
+              disabled={isLoading || !email || !password}
+              variant="primary"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Connecting...
+                </>
+              ) : (
+                "Connect"
+              )}
+            </GlowButton>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 // Inner component that only renders when modal is open
 function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }: ProfileModalProps) {
@@ -248,10 +607,11 @@ function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }:
 
         <div className="p-4 md:p-6">
           <Tabs defaultValue="account" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 md:grid-cols-5 gap-1">
+            <TabsList className="grid w-full grid-cols-3 md:grid-cols-6 gap-1">
               <TabsTrigger value="account" className="text-xs md:text-sm">Account</TabsTrigger>
               <TabsTrigger value="appearance" className="text-xs md:text-sm">Appearance</TabsTrigger>
               <TabsTrigger value="preferences" className="text-xs md:text-sm">Preferences</TabsTrigger>
+              <TabsTrigger value="connectors" className="text-xs md:text-sm">Connectors</TabsTrigger>
               <TabsTrigger value="sync-data" className="text-xs md:text-sm">Sync & Data</TabsTrigger>
               <TabsTrigger value="advanced" className="text-xs md:text-sm">Advanced</TabsTrigger>
             </TabsList>
@@ -553,6 +913,11 @@ function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }:
                   </select>
                 </div>
               </div>
+            </TabsContent>
+
+            {/* Connectors Tab */}
+            <TabsContent value="connectors" className="space-y-6 mt-6 h-[550px] overflow-y-auto">
+              <ConnectorsTabContent />
             </TabsContent>
 
             {/* Sync & Data Tab */}
