@@ -51,6 +51,13 @@ import { FileCard, FileChip } from "@/components/files/file-card";
 import { FileUploadButton } from "@/components/files/file-drop-zone";
 import { FilePreviewModal } from "@/components/files/file-preview-modal";
 import { StoredFile } from "@/lib/types";
+import dynamic from "next/dynamic";
+
+// Dynamic import to avoid SSR issues with pdf.js
+const PdfViewer = dynamic(
+  () => import("@/components/files/pdf-viewer").then((mod) => mod.PdfViewer),
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-full"><div className="animate-spin h-8 w-8 border-2 border-gray-500 border-t-accent rounded-full" /></div> }
+);
 
 type TagsTabProps = {
   content: string;
@@ -1297,11 +1304,20 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                       />
                     )}
                     {filePreviewData.category === "pdf" && filePreviewUrl && (
-                      <iframe
-                        src={filePreviewUrl}
-                        className="w-full h-[calc(90vh-180px)] bg-white rounded-lg"
-                        title={filePreviewData.filename}
-                      />
+                      <div className="w-full h-[calc(90vh-180px)] rounded-lg overflow-hidden">
+                        <PdfViewer
+                          url={filePreviewUrl}
+                          filename={filePreviewData.filename}
+                          onDownload={() => {
+                            const a = document.createElement("a");
+                            a.href = filePreviewUrl;
+                            a.download = filePreviewData.filename;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                          }}
+                        />
+                      </div>
                     )}
                     {filePreviewData.category === "video" && filePreviewUrl && (
                       <video
