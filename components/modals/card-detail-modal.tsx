@@ -53,9 +53,19 @@ import { FilePreviewModal } from "@/components/files/file-preview-modal";
 import { StoredFile } from "@/lib/types";
 import dynamic from "next/dynamic";
 
-// Dynamic import to avoid SSR issues with pdf.js
+// Dynamic imports to avoid SSR issues with pdf.js
 const PdfViewer = dynamic(
   () => import("@/components/files/pdf-viewer").then((mod) => mod.PdfViewer),
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-full"><div className="animate-spin h-8 w-8 border-2 border-gray-500 border-t-accent rounded-full" /></div> }
+);
+
+const PdfReaderView = dynamic(
+  () => import("@/components/files/pdf-reader-view").then((mod) => mod.PdfReaderView),
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-full"><div className="animate-spin h-8 w-8 border-2 border-gray-500 border-t-accent rounded-full" /></div> }
+);
+
+const PdfMetadataView = dynamic(
+  () => import("@/components/files/pdf-metadata-view").then((mod) => mod.PdfMetadataView),
   { ssr: false, loading: () => <div className="flex items-center justify-center h-full"><div className="animate-spin h-8 w-8 border-2 border-gray-500 border-t-accent rounded-full" /></div> }
 );
 
@@ -900,6 +910,24 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   };
 
   // When reader is expanded, render different layout
+  // For PDF file cards
+  if (isReaderExpanded && isFileCard && filePreviewData?.category === "pdf" && card.fileId) {
+    return (
+      <>
+        <div className="fixed inset-0 z-50 bg-[#faf8f3]">
+          <PdfReaderView
+            fileId={card.fileId}
+            title={card.title || filePreviewData.filename}
+            isExpanded={true}
+            onToggleExpand={() => setIsReaderExpanded(false)}
+            onClose={onClose}
+          />
+        </div>
+      </>
+    );
+  }
+
+  // For article content
   if (isReaderExpanded && articleContent) {
     return (
       <>
@@ -1432,7 +1460,16 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
                 {bottomTabMode === 'reader' && (
                   <div className="absolute inset-0 p-[5px] overflow-y-auto">
-                    {articleContent ? (
+                    {/* PDF file card - show PDF reader */}
+                    {isFileCard && filePreviewData?.category === "pdf" && card.fileId ? (
+                      <PdfReaderView
+                        fileId={card.fileId}
+                        title={card.title || filePreviewData.filename}
+                        isExpanded={false}
+                        onToggleExpand={() => setIsReaderExpanded(true)}
+                        onClose={onClose}
+                      />
+                    ) : articleContent ? (
                       <ReaderView
                         title={card.title || card.domain || card.url}
                         content={articleContent}
@@ -1478,87 +1515,92 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
                 {bottomTabMode === 'metadata' && (
                   <div className="absolute inset-0 p-[5px] overflow-y-auto flex items-start justify-center">
-                    <div className="max-w-2xl w-full space-y-6 py-8">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
-                        <div className="space-y-3 text-sm">
-                          <div className="flex justify-between py-2 border-b border-white/10">
-                            <span className="text-gray-400">Title</span>
-                            <span className="text-gray-200 text-right max-w-md truncate">{card.title || "—"}</span>
-                          </div>
-                          <div className="flex justify-between py-2 border-b border-white/10">
-                            <span className="text-gray-400">Domain</span>
-                            <span className="text-gray-200">{card.domain || "—"}</span>
-                          </div>
-                          <div className="flex justify-between py-2 border-b border-white/10">
-                            <span className="text-gray-400">URL</span>
-                            <a
-                              href={card.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-accent hover:underline max-w-md truncate"
-                            >
-                              {card.url}
-                            </a>
-                          </div>
-                          <div className="flex justify-between py-2 border-b border-white/10">
-                            <span className="text-gray-400">Created</span>
-                            <span className="text-gray-200">{new Date(card.createdAt).toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between py-2 border-b border-white/10">
-                            <span className="text-gray-400">Updated</span>
-                            <span className="text-gray-200">{new Date(card.updatedAt).toLocaleString()}</span>
-                          </div>
-                          {card.description && (
-                            <div className="py-2">
-                              <span className="text-gray-400 block mb-2">Description</span>
-                              <p className="text-gray-200">{card.description}</p>
+                    {/* PDF file card - show PDF metadata */}
+                    {isFileCard && filePreviewData?.category === "pdf" && card.fileId ? (
+                      <PdfMetadataView fileId={card.fileId} />
+                    ) : (
+                      <div className="max-w-2xl w-full space-y-6 py-8">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
+                          <div className="space-y-3 text-sm">
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Title</span>
+                              <span className="text-gray-200 text-right max-w-md truncate">{card.title || "—"}</span>
                             </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Release Date / Calendar Section */}
-                      {(linkedCalendarEvent || extractedReleaseDate) && (
-                        <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                                <Calendar size={20} className="text-purple-400" />
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Domain</span>
+                              <span className="text-gray-200">{card.domain || "—"}</span>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">URL</span>
+                              <a
+                                href={card.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-accent hover:underline max-w-md truncate"
+                              >
+                                {card.url}
+                              </a>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Created</span>
+                              <span className="text-gray-200">{new Date(card.createdAt).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between py-2 border-b border-white/10">
+                              <span className="text-gray-400">Updated</span>
+                              <span className="text-gray-200">{new Date(card.updatedAt).toLocaleString()}</span>
+                            </div>
+                            {card.description && (
+                              <div className="py-2">
+                                <span className="text-gray-400 block mb-2">Description</span>
+                                <p className="text-gray-200">{card.description}</p>
                               </div>
-                              <div>
-                                <span className="text-sm text-gray-400">
-                                  {linkedCalendarEvent ? 'On Calendar' : (extractedReleaseDate?.label || 'Release Date')}
-                                </span>
-                                <div className="text-lg font-semibold text-white">
-                                  {linkedCalendarEvent
-                                    ? formatDateDisplay(linkedCalendarEvent.date)
-                                    : extractedReleaseDate ? formatDateDisplay(extractedReleaseDate.date) : ''}
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Release Date / Calendar Section */}
+                        {(linkedCalendarEvent || extractedReleaseDate) && (
+                          <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                                  <Calendar size={20} className="text-purple-400" />
+                                </div>
+                                <div>
+                                  <span className="text-sm text-gray-400">
+                                    {linkedCalendarEvent ? 'On Calendar' : (extractedReleaseDate?.label || 'Release Date')}
+                                  </span>
+                                  <div className="text-lg font-semibold text-white">
+                                    {linkedCalendarEvent
+                                      ? formatDateDisplay(linkedCalendarEvent.date)
+                                      : extractedReleaseDate ? formatDateDisplay(extractedReleaseDate.date) : ''}
+                                  </div>
                                 </div>
                               </div>
+                              {linkedCalendarEvent ? (
+                                <button
+                                  onClick={() => router.push(`/calendar?date=${linkedCalendarEvent.date}`)}
+                                  className="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 hover:text-purple-200 transition-colors text-sm font-medium flex items-center gap-2"
+                                >
+                                  View on Calendar
+                                  <ChevronRight size={16} />
+                                </button>
+                              ) : extractedReleaseDate ? (
+                                <button
+                                  onClick={handleAddToCalendar}
+                                  disabled={isAddingToCalendar}
+                                  className="px-4 py-2 rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                                >
+                                  <Plus size={16} />
+                                  {isAddingToCalendar ? 'Adding...' : 'Add to Calendar'}
+                                </button>
+                              ) : null}
                             </div>
-                            {linkedCalendarEvent ? (
-                              <button
-                                onClick={() => router.push(`/calendar?date=${linkedCalendarEvent.date}`)}
-                                className="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 hover:text-purple-200 transition-colors text-sm font-medium flex items-center gap-2"
-                              >
-                                View on Calendar
-                                <ChevronRight size={16} />
-                              </button>
-                            ) : extractedReleaseDate ? (
-                              <button
-                                onClick={handleAddToCalendar}
-                                disabled={isAddingToCalendar}
-                                className="px-4 py-2 rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
-                              >
-                                <Plus size={16} />
-                                {isAddingToCalendar ? 'Adding...' : 'Add to Calendar'}
-                              </button>
-                            ) : null}
                           </div>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
