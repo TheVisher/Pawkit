@@ -1,9 +1,10 @@
 /**
  * Server-side encryption utilities for secure credential storage.
- * Uses AES-256-GCM encryption with Node.js crypto module.
+ * Uses AES-256-GCM encryption with gzip compression.
  */
 
 import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { gzipSync, gunzipSync } from "zlib";
 
 const ALGORITHM = "aes-256-gcm";
 
@@ -11,52 +12,59 @@ const ALGORITHM = "aes-256-gcm";
  * Get the encryption key from environment variable.
  * Must be exactly 32 characters for AES-256.
  */
-function getSecretKey(): string {
+function getSecretKey(): Buffer {
   const key = process.env.FILEN_ENCRYPTION_KEY;
   if (!key) {
-    // Fallback for development - in production this should be set
     console.warn(
       "[Crypto] FILEN_ENCRYPTION_KEY not set, using fallback. Set this in production!"
     );
-    return "pawkit-dev-encryption-key-32ch!"; // Exactly 32 chars
+    return Buffer.from("pawkit-dev-encryption-key-32ch!"); // Exactly 32 chars
   }
-  // Ensure exactly 32 characters
-  return key.padEnd(32, "0").slice(0, 32);
+  // Ensure exactly 32 bytes
+  const keyBuffer = Buffer.from(key.padEnd(32, "0").slice(0, 32));
+  return keyBuffer;
 }
 
 /**
- * Encrypt a string value
- * Returns format: iv:authTag:encrypted (hex encoded)
+ * Encrypt a string value with gzip compression.
+ * Returns format: iv:authTag:encrypted (base64 encoded for smaller size)
  */
 export function encrypt(text: string): string {
+  // Compress first for smaller output
+  const compressed = gzipSync(Buffer.from(text, "utf8"));
+
   const iv = randomBytes(16);
-  const cipher = createCipheriv(ALGORITHM, Buffer.from(getSecretKey()), iv);
+  const cipher = createCipheriv(ALGORITHM, getSecretKey(), iv);
 
-  let encrypted = cipher.update(text, "utf8", "hex");
-  encrypted += cipher.final("hex");
-
+  const encrypted = Buffer.concat([cipher.update(compressed), cipher.final()]);
   const authTag = cipher.getAuthTag();
 
-  return `${iv.toString("hex")}:${authTag.toString("hex")}:${encrypted}`;
+  // Use base64 instead of hex (33% smaller)
+  return `${iv.toString("base64")}:${authTag.toString("base64")}:${encrypted.toString("base64")}`;
 }
 
 /**
- * Decrypt an encrypted string
- * Expects format: iv:authTag:encrypted (hex encoded)
+ * Decrypt and decompress an encrypted string.
+ * Expects format: iv:authTag:encrypted (base64 encoded)
  */
 export function decrypt(encryptedText: string): string {
-  const [ivHex, authTagHex, encrypted] = encryptedText.split(":");
+  const [ivB64, authTagB64, encryptedB64] = encryptedText.split(":");
 
-  const iv = Buffer.from(ivHex, "hex");
-  const authTag = Buffer.from(authTagHex, "hex");
-  const decipher = createDecipheriv(ALGORITHM, Buffer.from(getSecretKey()), iv);
+  const iv = Buffer.from(ivB64, "base64");
+  const authTag = Buffer.from(authTagB64, "base64");
+  const encrypted = Buffer.from(encryptedB64, "base64");
 
+  const decipher = createDecipheriv(ALGORITHM, getSecretKey(), iv);
   decipher.setAuthTag(authTag);
 
-  let decrypted = decipher.update(encrypted, "hex", "utf8");
-  decrypted += decipher.final("utf8");
+  const compressed = Buffer.concat([
+    decipher.update(encrypted),
+    decipher.final(),
+  ]);
 
-  return decrypted;
+  // Decompress
+  const decompressed = gunzipSync(compressed);
+  return decompressed.toString("utf8");
 }
 
 /**
