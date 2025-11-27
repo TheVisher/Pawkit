@@ -38,14 +38,12 @@ export function FilenConnectModal({ open, onClose }: FilenConnectModalProps) {
       });
 
       if (result.success) {
-        // Create Pawkit folder
-        await filenService.ensurePawkitFolder();
-
+        // Pawkit folder is created server-side during auth
         setFilenConnected(email);
         handleClose();
       } else {
         // Check if 2FA is required
-        if (result.error?.includes("Two-factor")) {
+        if (result.needs2FA) {
           setNeeds2FA(true);
           setError(null);
         } else {
@@ -156,7 +154,7 @@ export function FilenConnectModal({ open, onClose }: FilenConnectModalProps) {
           <div>
             <p className="text-xs text-gray-400">
               Your credentials are encrypted end-to-end using Filen&apos;s zero-knowledge
-              architecture. They are processed locally and never stored on Pawkit servers.
+              architecture. They are processed securely and not permanently stored.
             </p>
           </div>
         </div>
