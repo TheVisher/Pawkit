@@ -141,11 +141,59 @@ export function isFileSizeValid(bytes: number): boolean {
 }
 
 /**
- * Generate a thumbnail for an image file
- * Returns null if the file is not an image or thumbnail generation fails
+ * Generate a thumbnail for a PDF file using pdf.js
+ * Returns null if thumbnail generation fails
+ */
+export async function generatePdfThumbnail(file: File): Promise<Blob | null> {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdfjsLib = await import("pdfjs-dist");
+
+    // Set worker path - must match pdf-viewer.tsx
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const page = await pdf.getPage(1);
+
+    const scale = 1.0;
+    const viewport = page.getViewport({ scale });
+
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+
+    // Calculate thumbnail size maintaining aspect ratio
+    const maxSize = THUMBNAIL_MAX_SIZE;
+    const ratio = Math.min(maxSize / viewport.width, maxSize / viewport.height);
+    canvas.width = viewport.width * ratio;
+    canvas.height = viewport.height * ratio;
+
+    // @ts-expect-error - pdfjs-dist types require canvas but it works with canvasContext
+    await page.render({
+      canvasContext: context,
+      viewport: page.getViewport({ scale: scale * ratio }),
+    }).promise;
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), "image/jpeg", THUMBNAIL_QUALITY);
+    });
+  } catch (error) {
+    console.error("[file-utils] Failed to generate PDF thumbnail:", error);
+    return null;
+  }
+}
+
+/**
+ * Generate a thumbnail for an image or PDF file
+ * Returns null if the file type doesn't support thumbnails or generation fails
  */
 export async function generateThumbnail(file: File): Promise<Blob | null> {
   const category = getFileCategory(file.type);
+
+  // Generate thumbnails for PDFs
+  if (category === "pdf") {
+    return generatePdfThumbnail(file);
+  }
 
   // Only generate thumbnails for images
   if (category !== "image") {

@@ -193,6 +193,63 @@ description: Living, interactive roadmap serving as single source of truth for p
   **Files**: components/navigation/left-navigation-panel.tsx
   **Impact**: Quick unpin directly from sidebar via right-click
 
+### November 26, 2025 - Phase 1 File Attachments
+
+- ✅ **File Attachments Infrastructure** (3 hours)
+  Local-first file storage in IndexedDB for card attachments
+  **Architecture**:
+  - Files stored in IndexedDB with blob data
+  - Thumbnail generation for images
+  - Category detection (image, pdf, document, audio, video)
+  - Storage quota tracking with soft limit
+  **Files**: lib/stores/file-store.ts, lib/types.ts, lib/utils/file-utils.ts
+  **Impact**: Foundation for attachments feature
+
+- ✅ **AttachmentsSection Component** (1 hour)
+  Simple attachment list for control panel sidebar
+  **Features**:
+  - Shows thumbnails or file type icons
+  - File name and size display
+  - Delete attachment button (X on hover)
+  - Add attachment button
+  - Click to open in preview tab
+  **Location**: components/control-panel/card-details-panel.tsx (Links tab)
+  **Files**: components/modals/attachments-section.tsx
+  **Impact**: Users can attach files to cards from sidebar
+
+- ✅ **AttachmentsTabContent Component** (2 hours)
+  Full-featured attachment preview in card modal
+  **Features**:
+  - Image preview with zoom (0.5x-3x) and rotate (90° increments)
+  - PDF preview via iframe
+  - Video player with controls
+  - Audio player with controls
+  - Download button for all file types
+  - Thumbnail strip for multiple attachments
+  - Navigation arrows (prev/next)
+  - Keyboard shortcut hints
+  **Files**: components/modals/attachments-tab-content.tsx
+  **Impact**: Rich preview experience for all attachment types
+
+- ✅ **Attachments Tab in Card Modal** (1 hour)
+  Added Attachments tab to bottom bar (not disabled sidebar!)
+  **Key Learning**: Modal has TWO tab systems - only use `bottomTabMode` state
+  **Changes**:
+  - Added 'attachments' to bottomTabMode type union
+  - Added conditional Attachments button (only shows when card has attachments)
+  - Added AttachmentsTabContent rendering
+  **Files**: components/modals/card-detail-modal.tsx
+  **Impact**: Users can preview attachments in card detail modal
+
+- ✅ **Attachment Indicator on URL Pills** (30 min)
+  Subtle paperclip icon on cards with attachments
+  **Key Learning**: Use absolute positioning to not affect text centering
+  **Solution**:
+  - Text: `block text-center truncate`
+  - Icon: `absolute right-2.5 top-1/2 -translate-y-1/2`
+  **Files**: components/library/card-gallery.tsx (Grid, List, Masonry, Compact views)
+  **Impact**: Users can see at a glance which cards have attachments
+
 ### January 14, 2025 - Performance Optimization: Excessive Re-renders
 
 - ✅ **ProfileModal Excessive Re-renders Fix** (2 hours) - CRITICAL PERFORMANCE

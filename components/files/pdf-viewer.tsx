@@ -13,8 +13,8 @@ import {
 import * as pdfjsLib from "pdfjs-dist";
 import { cn } from "@/lib/utils";
 
-// Configure PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+// Configure PDF.js worker - use local file to avoid CSP issues
+pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 interface PdfViewerProps {
   url: string; // Blob URL or regular URL
