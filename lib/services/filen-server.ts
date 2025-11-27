@@ -10,20 +10,21 @@ import { decrypt } from "@/lib/utils/crypto";
 const COOKIE_NAME = "filen_session";
 
 /**
- * Minimal session data - matches what's stored in the cookie.
+ * Session data - matches what's stored in the cookie.
  */
-interface FilenMinimalSession {
+interface FilenSession {
   email: string;
   apiKey: string;
   masterKeys: string[];
   userId: number;
   baseFolderUUID: string;
   authVersion: 1 | 2 | 3;
+  privateKey: string; // Required for file encryption
 }
 
 /**
  * Get an authenticated Filen SDK instance from the session cookie.
- * Uses minimal session data (no privateKey/publicKey).
+ * Includes privateKey for HMAC key generation (required for uploads).
  */
 export async function getFilenClient(): Promise<FilenSDK | null> {
   try {
@@ -35,17 +36,17 @@ export async function getFilenClient(): Promise<FilenSDK | null> {
       return null;
     }
 
-    // Decrypt and parse minimal session
-    const session = JSON.parse(decrypt(sessionCookie.value)) as FilenMinimalSession;
+    // Decrypt and parse session
+    const session = JSON.parse(decrypt(sessionCookie.value)) as FilenSession;
 
     if (!session.apiKey || !session.masterKeys?.length) {
       console.log("[Filen] Invalid session - missing apiKey or masterKeys");
       return null;
     }
 
-    console.log("[Filen] Restoring minimal session for:", session.email);
+    console.log("[Filen] Restoring session for:", session.email);
 
-    // Create SDK instance with minimal config
+    // Create SDK instance with session config
     const filen = new FilenSDK({
       metadataCache: true,
       connectToSocket: false,
@@ -56,12 +57,13 @@ export async function getFilenClient(): Promise<FilenSDK | null> {
       userId: session.userId,
       baseFolderUUID: session.baseFolderUUID,
       authVersion: session.authVersion,
+      privateKey: session.privateKey, // Required for HMAC key generation
     });
 
     // Also set email for identification
     filen.config.email = session.email;
 
-    console.log("[Filen] Session restored successfully (minimal config)");
+    console.log("[Filen] Session restored successfully");
     return filen;
   } catch (error) {
     console.error("[Filen] Failed to restore session:", error);
@@ -81,7 +83,7 @@ export async function getFilenSessionEmail(): Promise<string | null> {
       return null;
     }
 
-    const session = JSON.parse(decrypt(sessionCookie.value)) as FilenMinimalSession;
+    const session = JSON.parse(decrypt(sessionCookie.value)) as FilenSession;
     return session.email || null;
   } catch (error) {
     console.error("[Filen] Failed to get session email:", error);
