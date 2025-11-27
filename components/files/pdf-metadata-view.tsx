@@ -2,17 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useFileStore } from "@/lib/stores/file-store";
-import {
-  FileText,
-  User,
-  Calendar,
-  Hash,
-  Tag,
-  FileCode,
-  Clock,
-  Layers,
-  Info,
-} from "lucide-react";
 import * as pdfjsLib from "pdfjs-dist";
 import { formatFileSize } from "@/lib/utils/file-utils";
 
@@ -124,128 +113,78 @@ export function PdfMetadataView({ fileId }: PdfMetadataViewProps) {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 py-8 px-4">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
-          <FileText className="w-5 h-5 text-red-400" />
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-gray-200">
-            PDF Information
-          </h3>
-          <p className="text-sm text-gray-500">Document metadata and details</p>
-        </div>
-      </div>
+    <div className="w-full max-w-3xl mx-auto py-8 px-6">
+      <h3 className="text-lg font-semibold text-gray-200 mb-6">
+        PDF Information
+      </h3>
 
       {error && (
-        <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm text-yellow-400">
+        <div className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm text-yellow-400 mb-4">
           {error}
         </div>
       )}
 
-      <div className="space-y-1">
+      <div className="space-y-3 text-sm">
         {/* Always show filename and file size */}
+        <MetadataRow label="Filename" value={pdfInfo?.filename} />
+        <MetadataRow label="Pages" value={pdfInfo?.pageCount?.toString()} />
         <MetadataRow
-          icon={FileText}
-          label="Filename"
-          value={pdfInfo?.filename}
-        />
-        <MetadataRow
-          icon={Layers}
-          label="Pages"
-          value={pdfInfo?.pageCount?.toString()}
-        />
-        <MetadataRow
-          icon={Hash}
           label="File Size"
           value={pdfInfo?.fileSize ? formatFileSize(pdfInfo.fileSize) : undefined}
         />
 
         {/* Document metadata - only show if available */}
-        {pdfInfo?.title && (
-          <MetadataRow icon={FileText} label="Title" value={pdfInfo.title} />
-        )}
-        {pdfInfo?.author && (
-          <MetadataRow icon={User} label="Author" value={pdfInfo.author} />
-        )}
-        {pdfInfo?.subject && (
-          <MetadataRow icon={Tag} label="Subject" value={pdfInfo.subject} />
-        )}
-        {pdfInfo?.keywords && (
-          <MetadataRow icon={Tag} label="Keywords" value={pdfInfo.keywords} />
-        )}
+        {pdfInfo?.title && <MetadataRow label="Title" value={pdfInfo.title} />}
+        {pdfInfo?.author && <MetadataRow label="Author" value={pdfInfo.author} />}
+        {pdfInfo?.subject && <MetadataRow label="Subject" value={pdfInfo.subject} />}
+        {pdfInfo?.keywords && <MetadataRow label="Keywords" value={pdfInfo.keywords} />}
 
         {/* Dates */}
         {pdfInfo?.creationDate && (
-          <MetadataRow
-            icon={Calendar}
-            label="Created"
-            value={pdfInfo.creationDate}
-          />
+          <MetadataRow label="Created" value={pdfInfo.creationDate} />
         )}
         {pdfInfo?.modDate && (
-          <MetadataRow
-            icon={Clock}
-            label="Modified"
-            value={pdfInfo.modDate}
-          />
+          <MetadataRow label="Modified" value={pdfInfo.modDate} />
         )}
 
         {/* Technical info */}
         {pdfInfo?.creator && (
-          <MetadataRow
-            icon={FileCode}
-            label="Created With"
-            value={pdfInfo.creator}
-          />
+          <MetadataRow label="Created With" value={pdfInfo.creator} />
         )}
         {pdfInfo?.producer && (
-          <MetadataRow
-            icon={FileCode}
-            label="PDF Producer"
-            value={pdfInfo.producer}
-          />
+          <MetadataRow label="PDF Producer" value={pdfInfo.producer} />
         )}
         {pdfInfo?.pdfVersion && (
-          <MetadataRow
-            icon={Info}
-            label="PDF Version"
-            value={pdfInfo.pdfVersion}
-          />
+          <MetadataRow label="PDF Version" value={pdfInfo.pdfVersion} />
+        )}
+
+        {/* Show note if minimal metadata */}
+        {!pdfInfo?.title && !pdfInfo?.author && !pdfInfo?.creationDate && (
+          <div className="flex justify-between py-2 border-b border-white/10">
+            <span className="text-gray-400">Note</span>
+            <span className="text-gray-500 text-right max-w-md">
+              This PDF has limited embedded metadata
+            </span>
+          </div>
         )}
       </div>
-
-      {/* Show note if minimal metadata */}
-      {!pdfInfo?.title && !pdfInfo?.author && !pdfInfo?.creationDate && (
-        <div className="mt-6 p-4 rounded-lg bg-gray-800/50 border border-white/5">
-          <p className="text-sm text-gray-400">
-            This PDF has limited embedded metadata. Some documents don&apos;t
-            include author or creation information.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
 
 function MetadataRow({
-  icon: Icon,
   label,
   value,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
   label: string;
   value?: string;
 }) {
   if (!value) return null;
 
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-white/5 last:border-0">
-      <Icon className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-gray-500 mb-0.5">{label}</p>
-        <p className="text-sm text-gray-200 break-words">{value}</p>
-      </div>
+    <div className="flex justify-between py-2 border-b border-white/10">
+      <span className="text-gray-400">{label}</span>
+      <span className="text-gray-200 text-right max-w-md truncate">{value}</span>
     </div>
   );
 }
