@@ -52,6 +52,10 @@ export type PanelState = {
   toggleLeft: () => void;
   setLeftMode: (mode: ControlPanelMode) => void;
 
+  // Hide panels without affecting activeCardId (for reader mode)
+  hideRight: () => void;
+  showRight: () => void;
+
   // Open specific content types
   openHomeControls: () => void;
   openLibraryControls: () => void;
@@ -149,6 +153,15 @@ export const usePanelStore = create<PanelState>()(
 
       setLeftMode: (leftMode) => {
         set({ leftMode });
+      },
+
+      // Hide/show right panel without affecting activeCardId (for reader mode)
+      hideRight: () => {
+        set({ isOpen: false });
+      },
+
+      showRight: () => {
+        set({ isOpen: true });
       },
 
       openHomeControls: () => {
