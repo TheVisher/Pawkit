@@ -49,8 +49,14 @@ export async function POST(request: NextRequest) {
     const errorMessage =
       error instanceof Error ? error.message : "Failed to connect to Filen";
 
-    // Handle common errors
-    if (errorMessage.includes("2FA") || errorMessage.includes("two-factor")) {
+    // Handle common errors - check for 2FA requirement (case-insensitive)
+    const lowerError = errorMessage.toLowerCase();
+    if (
+      lowerError.includes("2fa") ||
+      lowerError.includes("two-factor") ||
+      lowerError.includes("two factor") ||
+      lowerError.includes("authentication code")
+    ) {
       return NextResponse.json(
         { success: false, error: "Two-factor authentication code required", needs2FA: true },
         { status: 200 }
