@@ -79,26 +79,37 @@ Happy organizing!`;
 
 /**
  * Check if user has completed onboarding (has seeded data or dismissed onboarding)
+ * Returns: { completed: boolean, authError: boolean }
+ * - completed: true if onboarding was already done
+ * - authError: true if we couldn't check due to auth issues (caller should retry)
  */
-export async function hasCompletedOnboarding(): Promise<boolean> {
+export async function hasCompletedOnboarding(): Promise<{ completed: boolean; authError: boolean }> {
   console.log('[Onboarding] hasCompletedOnboarding called');
   try {
     const response = await fetch('/api/user/settings');
     console.log('[Onboarding] /api/user/settings response status:', response.status);
+
+    // If we get a 401, it means auth isn't ready yet - signal to retry
+    if (response.status === 401) {
+      console.warn('[Onboarding] Auth not ready (401), signaling retry');
+      return { completed: false, authError: true };
+    }
+
     if (!response.ok) {
       console.warn('[Onboarding] Failed to fetch user settings, status:', response.status);
-      return true; // Assume completed on error to prevent re-seeding
+      return { completed: true, authError: false }; // Assume completed on other errors to prevent re-seeding
     }
+
     const settings = await response.json();
     console.log('[Onboarding] Settings received:', {
       onboardingSeeded: settings.onboardingSeeded,
       onboardingBannerDismissed: settings.onboardingBannerDismissed,
       onboardingTourCompleted: settings.onboardingTourCompleted,
     });
-    return settings.onboardingSeeded === true;
+    return { completed: settings.onboardingSeeded === true, authError: false };
   } catch (error) {
     console.error('[Onboarding] Error checking onboarding status:', error);
-    return true; // Assume completed on error
+    return { completed: true, authError: false }; // Assume completed on error
   }
 }
 
