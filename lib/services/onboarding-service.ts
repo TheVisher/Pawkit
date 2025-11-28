@@ -81,13 +81,20 @@ Happy organizing!`;
  * Check if user has completed onboarding (has seeded data or dismissed onboarding)
  */
 export async function hasCompletedOnboarding(): Promise<boolean> {
+  console.log('[Onboarding] hasCompletedOnboarding called');
   try {
     const response = await fetch('/api/user/settings');
+    console.log('[Onboarding] /api/user/settings response status:', response.status);
     if (!response.ok) {
-      console.warn('[Onboarding] Failed to fetch user settings');
+      console.warn('[Onboarding] Failed to fetch user settings, status:', response.status);
       return true; // Assume completed on error to prevent re-seeding
     }
     const settings = await response.json();
+    console.log('[Onboarding] Settings received:', {
+      onboardingSeeded: settings.onboardingSeeded,
+      onboardingBannerDismissed: settings.onboardingBannerDismissed,
+      onboardingTourCompleted: settings.onboardingTourCompleted,
+    });
     return settings.onboardingSeeded === true;
   } catch (error) {
     console.error('[Onboarding] Error checking onboarding status:', error);
@@ -349,7 +356,17 @@ export async function deleteOnboardingData(): Promise<{ deletedCards: number; de
 export function shouldRunOnboarding(cards: any[], collections: any[]): boolean {
   // If user has any non-deleted cards or collections, don't seed
   const hasCards = cards.length > 0;
-  const hasCollections = collections.filter(c => !c.isSystem).length > 0;
+  const nonSystemCollections = collections.filter(c => !c.isSystem);
+  const hasCollections = nonSystemCollections.length > 0;
+
+  console.log('[Onboarding] shouldRunOnboarding check:', {
+    cardsLength: cards.length,
+    hasCards,
+    collectionsLength: collections.length,
+    nonSystemCollectionsLength: nonSystemCollections.length,
+    hasCollections,
+    result: !hasCards && !hasCollections,
+  });
 
   return !hasCards && !hasCollections;
 }
