@@ -103,7 +103,7 @@ export default function PawkitLanding() {
       </section>
 
       {/* Features Section - Ticker tape animation */}
-      <section className="py-24 fade-in-section overflow-hidden">
+      <section className="py-24 fade-in-section">
         <div className="container mx-auto px-4 mb-12">
           <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 text-balance text-[#f5f5f7]">
             Built for Speed, Privacy, and Control
@@ -113,8 +113,10 @@ export default function PawkitLanding() {
           </p>
         </div>
 
-        {/* Ticker Row 1 - scrolls left */}
-        <div className="relative mb-6 ticker-fade-left ticker-fade-right">
+        {/* Constrained ticker container */}
+        <div className="max-w-6xl mx-auto px-4 overflow-hidden">
+          {/* Ticker Row 1 - scrolls left */}
+          <div className="relative mb-6 ticker-fade-left ticker-fade-right">
           <div className="flex gap-6 animate-ticker-left hover:[animation-play-state:paused]">
             {/* First set */}
             <TickerCard
@@ -247,6 +249,7 @@ export default function PawkitLanding() {
               description="Save any page in one click."
             />
           </div>
+        </div>
         </div>
       </section>
 
