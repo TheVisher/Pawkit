@@ -23,25 +23,46 @@ export function useOnboarding() {
   const collections = useDataStore((state) => state.collections);
   const hasTriggered = useRef(false);
 
+  console.log('[useOnboarding] Hook rendered:', {
+    isInitialized,
+    cardsLength: cards.length,
+    collectionsLength: collections.length,
+    hasTriggered: hasTriggered.current,
+  });
+
   useEffect(() => {
+    console.log('[useOnboarding] useEffect triggered:', {
+      isInitialized,
+      hasTriggered: hasTriggered.current,
+    });
+
     // Only run once, after data store is initialized
     if (!isInitialized || hasTriggered.current) {
+      console.log('[useOnboarding] Early return - isInitialized:', isInitialized, 'hasTriggered:', hasTriggered.current);
       return;
     }
 
     const runOnboarding = async () => {
+      console.log('[useOnboarding] runOnboarding started');
       hasTriggered.current = true;
 
       try {
         // Check if onboarding was already completed (stored in server)
+        console.log('[useOnboarding] Checking hasCompletedOnboarding...');
         const completed = await hasCompletedOnboarding();
+        console.log('[useOnboarding] hasCompletedOnboarding returned:', completed);
+
         if (completed) {
           console.log('[useOnboarding] Onboarding already completed, skipping');
           return;
         }
 
         // Check if user has any existing data
-        if (!shouldRunOnboarding(cards, collections)) {
+        console.log('[useOnboarding] Checking shouldRunOnboarding with cards:', cards.length, 'collections:', collections.length);
+        const shouldRun = shouldRunOnboarding(cards, collections);
+        console.log('[useOnboarding] shouldRunOnboarding returned:', shouldRun);
+
+        if (!shouldRun) {
           console.log('[useOnboarding] User has existing data, marking onboarding complete');
           // User has data, mark onboarding as complete to prevent future checks
           const { markOnboardingComplete } = await import('@/lib/services/onboarding-service');
