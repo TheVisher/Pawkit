@@ -24,8 +24,7 @@
     "storage",
     "tabs",
     "activeTab",
-    "contextMenus",
-    "scripting"
+    "contextMenus"
   ],
   "host_permissions": [
     "https://pawkit.vercel.app/*",
