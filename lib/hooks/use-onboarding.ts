@@ -76,15 +76,29 @@ export function useOnboarding(isUserStorageReady: boolean = false) {
           retryCount++;
         }
 
-        // If we exhausted retries due to auth errors, don't proceed
+        // If we exhausted retries due to auth errors, use local state as fallback
         if (result.authError) {
-          console.warn('[useOnboarding] Auth still not ready after retries, will try again on next render');
-          hasTriggered.current = false; // Allow retry on next render
-          return;
-        }
+          console.warn('[useOnboarding] Auth still not ready after retries, falling back to local state check');
 
-        if (result.completed) {
+          // Check localStorage for onboarding flag as a backup
+          const localOnboardingDone = localStorage.getItem('pawkit_onboarding_seeded');
+          if (localOnboardingDone === 'true') {
+            console.log('[useOnboarding] Found local onboarding flag, skipping');
+            return;
+          }
+
+          // If user has local data, they're not a new user
+          if (cards.length > 0 || collections.filter(c => !c.isSystem).length > 0) {
+            console.log('[useOnboarding] User has local data, not a new user, skipping');
+            localStorage.setItem('pawkit_onboarding_seeded', 'true');
+            return;
+          }
+
+          // User appears to be new (no local data), proceed with seeding
+          console.log('[useOnboarding] No server response but user appears new, proceeding with seeding');
+        } else if (result.completed) {
           console.log('[useOnboarding] Onboarding already completed, skipping');
+          localStorage.setItem('pawkit_onboarding_seeded', 'true');
           return;
         }
 
@@ -98,12 +112,14 @@ export function useOnboarding(isUserStorageReady: boolean = false) {
           // User has data, mark onboarding as complete to prevent future checks
           const { markOnboardingComplete } = await import('@/lib/services/onboarding-service');
           await markOnboardingComplete();
+          localStorage.setItem('pawkit_onboarding_seeded', 'true');
           return;
         }
 
         // User is new and has no data - seed onboarding content
         console.log('[useOnboarding] New user detected, seeding onboarding data...');
         await seedOnboardingData();
+        localStorage.setItem('pawkit_onboarding_seeded', 'true');
         console.log('[useOnboarding] Onboarding data seeded successfully');
 
       } catch (error) {
