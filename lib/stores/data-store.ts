@@ -523,6 +523,13 @@ export const useDataStore = create<DataStore>((set, get) => ({
             throw new Error(isInTrash ? 'DUPLICATE_URL_IN_TRASH' : 'DUPLICATE_URL');
           }
 
+          // Handle auth errors gracefully (common during initial load)
+          if (response.status === 401) {
+            console.log('[DataStore] Auth not ready yet, card will sync later');
+            // Card is safe in local storage - will sync when auth is ready
+            return;
+          }
+
           if (response.ok) {
             const serverCard = await response.json();
 
@@ -876,6 +883,12 @@ export const useDataStore = create<DataStore>((set, get) => ({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(collectionData),
           });
+
+          // Handle auth errors gracefully
+          if (response.status === 401) {
+            console.log('[DataStore] Auth not ready yet, collection will sync later');
+            return;
+          }
 
           if (response.ok) {
             const serverCollection = await response.json();

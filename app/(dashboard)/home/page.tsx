@@ -22,6 +22,7 @@ import { CardImage } from "@/components/cards/card-image";
 import { GlowButton } from "@/components/ui/glow-button";
 import { HorizontalScrollContainer } from "@/components/ui/horizontal-scroll-container";
 import { addCollectionWithHierarchy, removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
+import { WelcomeBanner } from "@/components/onboarding/welcome-banner";
 
 const GREETINGS = [
   "Welcome back",
@@ -340,6 +341,9 @@ export default function HomePage() {
   return (
     <>
       <div className="flex flex-1 flex-col gap-12 pb-16 min-h-full">
+        {/* Welcome Banner for new users */}
+        <WelcomeBanner className="mb-2" />
+
         <section className="relative text-center">
           <h1 className="text-4xl font-semibold text-gray-100 sm:text-5xl">
             <span className="mr-3 inline-block" aria-hidden="true">👋</span>

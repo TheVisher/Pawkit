@@ -6,7 +6,7 @@ import { isProbablyUrl } from "@/lib/utils/strings";
 import { AddCardModal } from "@/components/modals/add-card-modal";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
-import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { useDataStore } from "@/lib/stores/data-store";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { findDailyNoteForDate } from "@/lib/utils/daily-notes";
@@ -24,7 +24,7 @@ function OmniBarContent() {
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [mounted, setMounted] = useState(false);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
-  const { addCard: addCardToStore, cards } = useDemoAwareStore();
+  const { addCard: addCardToStore, cards } = useDataStore();
   const lastSearchedRef = useRef(initialQuery);
   const isTypingRef = useRef(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -199,7 +199,7 @@ function OmniBarContent() {
   };
 
   return (
-    <div>
+    <div data-tour="omnibar">
       <form onSubmit={handleSubmit} className="relative">
         <input
           value={value}

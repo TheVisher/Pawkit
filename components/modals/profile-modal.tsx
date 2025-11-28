@@ -9,10 +9,17 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSettingsStore, type Theme, type AccentColor } from "@/lib/hooks/settings-store";
 import { useAuth } from "@/lib/contexts/auth-context";
-import { Check, LogOut, Cloud, Calendar, HardDrive, Loader2, Settings2 } from "lucide-react";
+import { Check, LogOut, Cloud, Calendar, HardDrive, Loader2, Settings2, Trash2 } from "lucide-react";
 import { useConnectorStore } from "@/lib/stores/connector-store";
 import { filenService } from "@/lib/services/filen-service";
 import { useToastStore } from "@/lib/stores/toast-store";
+import { useDataStore } from "@/lib/stores/data-store";
+import {
+  hasOnboardingData,
+  deleteOnboardingData,
+  ONBOARDING_TAG,
+  ONBOARDING_PAWKIT_SLUGS,
+} from "@/lib/services/onboarding-service";
 
 type ProfileModalProps = {
   open: boolean;
@@ -396,8 +403,16 @@ function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }:
   const [saving, setSaving] = useState(false);
   const [dataMessage, setDataMessage] = useState<string | null>(null);
   const [includeDenInExport, setIncludeDenInExport] = useState(false);
+  const [deletingSampleData, setDeletingSampleData] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Check if onboarding data exists - subscribe to cards/collections changes
+  const cards = useDataStore((state) => state.cards);
+  const collections = useDataStore((state) => state.collections);
+  const hasSampleData = cards.some(c => c.tags?.includes(ONBOARDING_TAG)) ||
+    collections.some(c => ONBOARDING_PAWKIT_SLUGS.includes(c.slug));
 
   // Auth
   const { signOut } = useAuth();
@@ -566,6 +581,23 @@ function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }:
       return;
     }
     setDataMessage("All data cleared");
+  };
+
+  const handleDeleteSampleData = async () => {
+    setDeletingSampleData(true);
+    setShowDeleteConfirm(false);
+    try {
+      const result = await deleteOnboardingData();
+      const toast = useToastStore.getState();
+      toast.success(`Sample data deleted! Removed ${result.deletedCards} items and ${result.deletedPawkits} pawkits.`);
+      setDataMessage(`Deleted ${result.deletedCards} sample items and ${result.deletedPawkits} sample pawkits`);
+    } catch (error) {
+      const toast = useToastStore.getState();
+      toast.error("Failed to delete sample data");
+      setDataMessage("Failed to delete sample data");
+    } finally {
+      setDeletingSampleData(false);
+    }
   };
 
   const getAvatarDisplay = () => {
@@ -1042,6 +1074,77 @@ function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }:
                   </p>
                 )}
               </div>
+
+              {/* Sample Data Section - only show if sample data exists */}
+              {hasSampleData && (
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-gray-300">Sample Data</Label>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Remove the sample bookmarks, notes, and pawkits created when you signed up
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg border border-amber-900/50 bg-amber-950/20">
+                    {showDeleteConfirm ? (
+                      <div className="space-y-3">
+                        <p className="text-sm text-amber-200">
+                          Are you sure? This will delete all sample content including:
+                        </p>
+                        <ul className="text-xs text-gray-400 list-disc list-inside space-y-1">
+                          <li>Welcome to Pawkit, Read Later, and Articles pawkits</li>
+                          <li>All sample bookmarks (IMDB, GitHub, YouTube, etc.)</li>
+                          <li>Welcome notes and daily note</li>
+                          <li>Sample calendar event</li>
+                        </ul>
+                        <div className="flex gap-2 pt-2">
+                          <GlowButton
+                            variant="danger"
+                            size="sm"
+                            onClick={handleDeleteSampleData}
+                            disabled={deletingSampleData}
+                          >
+                            {deletingSampleData ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                Deleting...
+                              </>
+                            ) : (
+                              "Yes, Delete Sample Data"
+                            )}
+                          </GlowButton>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowDeleteConfirm(false)}
+                            disabled={deletingSampleData}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                            <Trash2 className="h-4 w-4 text-amber-500" />
+                            Delete Sample Data
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Your own data will not be affected
+                          </p>
+                        </div>
+                        <GlowButton
+                          variant="primary"
+                          size="sm"
+                          onClick={() => setShowDeleteConfirm(true)}
+                        >
+                          Delete Sample Data
+                        </GlowButton>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Danger Zone */}
               <div className="mt-8 pt-6 border-t border-gray-800">

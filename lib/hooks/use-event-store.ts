@@ -261,6 +261,13 @@ export const useEventStore = create<EventStore>((set, get) => ({
 
       // STEP 2: Pull events from server
       const response = await fetch('/api/events?includeDeleted=true');
+
+      // Handle auth errors gracefully (common during initial load)
+      if (response.status === 401) {
+        console.log('[EventStore] Auth not ready yet, will sync later');
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(`Failed to fetch events: ${response.status}`);
       }
@@ -323,6 +330,12 @@ export const useEventStore = create<EventStore>((set, get) => ({
             body: JSON.stringify(event),
           });
 
+          // Handle auth errors gracefully
+          if (response.status === 401) {
+            console.log('[EventStore] Auth not ready, event will sync later:', event.id);
+            continue;
+          }
+
           if (response.ok) {
             const serverEvent = await response.json();
 
@@ -342,6 +355,12 @@ export const useEventStore = create<EventStore>((set, get) => ({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(event),
           });
+
+          // Handle auth errors gracefully
+          if (response.status === 401) {
+            console.log('[EventStore] Auth not ready, event will sync later:', event.id);
+            continue;
+          }
 
           if (response.ok) {
             const serverEvent = await response.json();
@@ -427,6 +446,12 @@ export const useEventStore = create<EventStore>((set, get) => ({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(eventData),
           });
+
+          // Handle auth errors gracefully (common during initial load)
+          if (response.status === 401) {
+            console.log('[EventStore] Auth not ready yet, event will sync later');
+            return newEvent;
+          }
 
           if (response.ok) {
             const serverEvent = await response.json();

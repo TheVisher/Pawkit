@@ -120,7 +120,6 @@ export async function middleware(request: NextRequest) {
   const PUBLIC_PATHS = ['/privacy', '/privacy.html', '/terms', '/robots.txt', '/sitemap.xml', '/favicon.ico'];
   if (
     request.nextUrl.pathname === '/' ||
-    request.nextUrl.pathname.startsWith('/demo') ||
     PUBLIC_PATHS.some(p => request.nextUrl.pathname === p)
   ) {
     return response
