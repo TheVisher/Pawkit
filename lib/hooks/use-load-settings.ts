@@ -7,12 +7,15 @@ import { useSettingsStore } from "./settings-store";
  * Hook to load user settings from server on mount
  * Only loads once per session, respects serverSync flag
  */
-export function useLoadSettings() {
+export function useLoadSettings(isAuthReady: boolean = true) {
   const loadFromServer = useSettingsStore((state) => state.loadFromServer);
   const serverSync = useSettingsStore((state) => state.serverSync);
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
+    // Wait for auth to be ready before making API calls
+    if (!isAuthReady) return;
+
     // Only load if:
     // 1. Haven't loaded yet this session
     // 2. Server sync is enabled
@@ -24,5 +27,5 @@ export function useLoadSettings() {
     } else if (hasLoadedRef.current) {
     } else if (!serverSync) {
     }
-  }, [loadFromServer, serverSync]);
+  }, [loadFromServer, serverSync, isAuthReady]);
 }

@@ -204,16 +204,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, [isReady, loadFromServer]);
 
   // Network sync hook handles queue draining on reconnection + periodic retries
-  useNetworkSync();
+  // Pass isReady to prevent 401 errors before auth is confirmed
+  useNetworkSync(isReady);
 
   // Sync settings hook ensures localStorage serverSync is synced to database
-  useSyncSettings();
+  // Pass isReady to prevent 401 errors before auth is confirmed
+  useSyncSettings(isReady);
 
   // Sync triggers hook manages periodic sync and event-based sync
   useSyncTriggers();
 
   // Load user settings from server on mount (respects serverSync flag)
-  useLoadSettings();
+  // Pass isReady to prevent 401 errors before auth is confirmed
+  useLoadSettings(isReady);
 
   // Onboarding hook - seeds sample data for new users
   // Pass isReady to ensure auth is complete before checking onboarding status
