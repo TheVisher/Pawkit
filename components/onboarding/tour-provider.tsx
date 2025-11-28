@@ -16,10 +16,7 @@ export const TOUR_STEPS: StepType[] = [
     selector: '[data-tour="omnibar"]',
     content: "This is your Command Palette - press ⌘K (or /) anytime to open it. Paste URLs to save bookmarks, or search your entire library instantly.",
     position: "bottom", // Position tooltip below the command palette
-    action: (node) => {
-      // Open the command palette when this step is shown, with flag for tour mode
-      window.dispatchEvent(new CustomEvent("pawkit:open-command-palette", { detail: { forTour: true } }));
-    },
+    // Note: Command palette is opened by startTour() before tour begins
   },
   {
     selector: '[data-tour="library-link"]',
@@ -80,7 +77,13 @@ function TourController({ children }: { children: ReactNode }) {
     loadTourState();
   }, []);
 
-  const startTour = useCallback(() => {
+  const startTour = useCallback(async () => {
+    // Open command palette first for step 1 (before tour calculates position)
+    window.dispatchEvent(new CustomEvent("pawkit:open-command-palette", { detail: { forTour: true } }));
+
+    // Wait for React to render the command palette before starting tour
+    await new Promise(resolve => setTimeout(resolve, 150));
+
     setCurrentStep(0);
     setIsOpen(true);
   }, [setCurrentStep, setIsOpen]);
