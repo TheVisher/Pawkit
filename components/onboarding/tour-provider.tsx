@@ -82,18 +82,15 @@ function TourController({ children }: { children: ReactNode }) {
     window.dispatchEvent(new CustomEvent("pawkit:open-command-palette", { detail: { forTour: true } }));
 
     // Wait for React to render AND browser to paint the command palette
-    await new Promise<void>(resolve => {
-      // Double requestAnimationFrame ensures paint has happened
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          // Additional timeout to ensure portal is fully mounted
-          setTimeout(resolve, 100);
-        });
-      });
-    });
+    // Using a longer delay to ensure the portal is fully mounted and positioned
+    await new Promise<void>(resolve => setTimeout(resolve, 300));
 
     setCurrentStep(0);
     setIsOpen(true);
+
+    // Force a position recalculation by briefly toggling the step
+    await new Promise<void>(resolve => setTimeout(resolve, 50));
+    setCurrentStep(0); // Re-set to trigger position recalculation
   }, [setCurrentStep, setIsOpen]);
 
   const endTour = useCallback(async () => {
@@ -344,8 +341,6 @@ export function TourProvider({ children }: TourProviderProps) {
       disableInteraction={false}
       onClickMask={() => {}} // Prevent closing on mask click
       ContentComponent={CustomTooltip}
-      mutationObservables={['body', '[data-tour]']} // Watch for portal mounts and tour elements
-      resizeObservables={['[data-tour="omnibar"]']} // Watch for size changes
     >
       <TourController>{children}</TourController>
     </ReactTourProvider>
