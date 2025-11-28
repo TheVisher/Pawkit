@@ -18,6 +18,12 @@ import {
   WifiOff,
   ArrowRight,
   CheckCircle2,
+  Cloud,
+  FileText,
+  FileBox,
+  CalendarDays,
+  Command,
+  Tags,
 } from "lucide-react"
 import { useEffect } from "react"
 import Link from "next/link"
@@ -56,11 +62,11 @@ export default function PawkitLanding() {
       <section className="relative container mx-auto px-4 pt-24 pb-20">
         <div className="max-w-5xl mx-auto text-center space-y-8">
           <h1 className="text-5xl md:text-7xl font-bold text-balance bg-gradient-to-r from-[#7c3aed] via-[#a36bff] to-[#7c3aed] bg-clip-text text-transparent leading-tight">
-            Your Bookmarks,<br />Fetched and Organized
+            Your Bookmarks, Notes & Files<br />Fetched and Organized
           </h1>
 
           <p className="text-xl md:text-2xl text-[#a3a3b0] text-balance max-w-3xl mx-auto">
-            Fast, private, and local-first—your bookmarks live on your device.
+            Fast, private, and local-first—your data lives on your device.
           </p>
 
           {/* Primary CTAs */}
@@ -96,56 +102,13 @@ export default function PawkitLanding() {
         </div>
       </section>
 
-      {/* Trust & Security Module */}
-      <section className="relative container mx-auto px-4 py-12 fade-in-section">
-        <div className="max-w-4xl mx-auto">
-          <Card className="bg-gradient-to-br from-[#7c3aed]/5 to-transparent border-2 border-[#7c3aed]/20 p-8 rounded-2xl backdrop-blur-sm">
-            <div className="flex flex-col md:flex-row items-start gap-6">
-              <div className="flex-shrink-0">
-                <div className="w-12 h-12 rounded-xl bg-[#7c3aed]/10 flex items-center justify-center">
-                  <Shield className="w-6 h-6 text-[#7c3aed]" />
-                </div>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-2xl font-semibold text-[#f5f5f7] mb-4">How Pawkit Protects You</h3>
-                <ul className="space-y-3 text-[#a3a3b0]">
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-[#22c55e] flex-shrink-0 mt-0.5" />
-                    <span>Your data lives on your device—works offline, loads instantly</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-[#22c55e] flex-shrink-0 mt-0.5" />
-                    <span>End-to-end encryption in The Den—only you hold the keys</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-[#22c55e] flex-shrink-0 mt-0.5" />
-                    <span>No tracking. No ads. No nonsense.</span>
-                  </li>
-                </ul>
-                <div className="mt-6">
-                  <a
-                    href="https://github.com/TheVisher/Pawkit#readme"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-[#7c3aed] hover:text-[#a36bff] transition-colors"
-                  >
-                    Privacy & Security Overview
-                    <ArrowRight className="w-4 h-4" />
-                  </a>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-      </section>
-
       {/* Features Section - Reordered to emphasize differentiators */}
       <section className="container mx-auto px-4 py-24 fade-in-section">
         <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 text-balance text-[#f5f5f7]">
           Built for Speed, Privacy, and Control
         </h2>
         <p className="text-center text-[#a3a3b0] text-lg mb-16 max-w-2xl mx-auto">
-          Pawkit gives you everything you need to save, organize, and rediscover your bookmarks—without compromising on privacy.
+          Pawkit gives you everything you need to save, organize, and rediscover your bookmarks, notes, and files—without compromising on privacy.
         </p>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
@@ -163,6 +126,36 @@ export default function PawkitLanding() {
             icon={<FolderTree className="w-10 h-10 text-[#7c3aed]" />}
             title="Smart Pawkits"
             description="Nested collections with drag-and-drop. Organize like folders—only smarter."
+          />
+          <FeatureCard
+            icon={<FileText className="w-10 h-10 text-[#7c3aed]" />}
+            title="Rich Notes"
+            description="Markdown notes with wiki-style linking and daily journaling built-in."
+          />
+          <FeatureCard
+            icon={<FileBox className="w-10 h-10 text-[#7c3aed]" />}
+            title="File Storage"
+            description="Store PDFs, images, and documents alongside your bookmarks."
+          />
+          <FeatureCard
+            icon={<Cloud className="w-10 h-10 text-[#7c3aed]" />}
+            title="Filen Cloud Backup"
+            description="Sync to your own Filen storage—your data, your cloud, your control."
+          />
+          <FeatureCard
+            icon={<CalendarDays className="w-10 h-10 text-[#7c3aed]" />}
+            title="Calendar & Scheduling"
+            description="Schedule bookmarks to read later and track your daily notes."
+          />
+          <FeatureCard
+            icon={<Command className="w-10 h-10 text-[#7c3aed]" />}
+            title="Command Palette"
+            description="Quick access to everything with ⌘K—power user friendly."
+          />
+          <FeatureCard
+            icon={<Tags className="w-10 h-10 text-[#7c3aed]" />}
+            title="Tags & Filters"
+            description="Flexible tagging and powerful search across all your content."
           />
           <FeatureCard
             icon={<BookOpen className="w-10 h-10 text-[#7c3aed]" />}
@@ -292,21 +285,63 @@ export default function PawkitLanding() {
         </div>
       </section>
 
-      {/* Open Source Card */}
+      {/* Combined Security & Open Source Card */}
       <section className="container mx-auto px-4 py-12 fade-in-section">
-        <div className="max-w-4xl mx-auto">
-          <Card className="bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.08)] p-8 rounded-2xl backdrop-blur-sm">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex-1 text-center md:text-left">
-                <h3 className="text-2xl font-semibold text-[#f5f5f7] mb-2">Explore the Code on GitHub</h3>
-                <p className="text-[#a3a3b0] mb-4">Built with Next.js, local-first architecture, and privacy by design.</p>
-                <div className="flex flex-wrap justify-center md:justify-start gap-3">
+        <div className="max-w-5xl mx-auto">
+          <Card className="bg-gradient-to-br from-[#7c3aed]/5 to-transparent border-2 border-[#7c3aed]/20 p-8 md:p-10 rounded-2xl backdrop-blur-sm">
+            <div className="grid md:grid-cols-2 gap-8 md:gap-12 relative">
+              {/* Security Side */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#7c3aed]/10 flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-[#7c3aed]" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-[#f5f5f7]">How Pawkit Protects You</h3>
+                </div>
+                <ul className="space-y-3 text-[#a3a3b0]">
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-[#22c55e] flex-shrink-0 mt-0.5" />
+                    <span>Your data lives on your device—works offline, loads instantly</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-[#22c55e] flex-shrink-0 mt-0.5" />
+                    <span>End-to-end encryption in The Den—only you hold the keys</span>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 text-[#22c55e] flex-shrink-0 mt-0.5" />
+                    <span>No tracking. No ads. No nonsense.</span>
+                  </li>
+                </ul>
+                <a
+                  href="https://github.com/TheVisher/Pawkit#readme"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-[#7c3aed] hover:text-[#a36bff] transition-colors text-sm"
+                >
+                  Privacy & Security Overview
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+              </div>
+
+              {/* Divider */}
+              <div className="hidden md:block absolute left-1/2 top-8 bottom-8 w-px bg-[rgba(255,255,255,0.1)]" />
+
+              {/* Open Source Side */}
+              <div className="space-y-4 md:pl-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#7c3aed]/10 flex items-center justify-center">
+                    <Github className="w-5 h-5 text-[#7c3aed]" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-[#f5f5f7]">Open Source</h3>
+                </div>
+                <p className="text-[#a3a3b0]">
+                  Built with Next.js, local-first architecture, and privacy by design. Explore the code, contribute, or self-host.
+                </p>
+                <div className="flex flex-wrap gap-2">
                   <Badge text="Next.js" />
                   <Badge text="Local-First" />
-                  <Badge text="Open Source" />
+                  <Badge text="TypeScript" />
                 </div>
-              </div>
-              <div className="flex-shrink-0">
                 <a
                   href="https://github.com/TheVisher/Pawkit"
                   target="_blank"
@@ -314,7 +349,7 @@ export default function PawkitLanding() {
                 >
                   <Button
                     variant="outline"
-                    className="border-2 border-[#7c3aed] text-[#7c3aed] hover:bg-[#7c3aed] hover:text-white px-8 py-6 rounded-xl transition-all duration-300"
+                    className="border-2 border-[#7c3aed] text-[#7c3aed] hover:bg-[#7c3aed] hover:text-white px-6 py-5 rounded-xl transition-all duration-300 mt-2"
                   >
                     <Github className="w-5 h-5 mr-2" />
                     View on GitHub
