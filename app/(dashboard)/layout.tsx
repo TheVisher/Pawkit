@@ -44,6 +44,8 @@ import type { CardModel, CollectionNode } from "@/lib/types";
 import { initActivityTracking } from "@/lib/utils/device-session";
 import { SessionWarningBanner } from "@/components/session-warning-banner";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
+import { useOnboarding } from "@/lib/hooks/use-onboarding";
+import { TourProvider } from "@/components/onboarding/tour-provider";
 import { CardDTO } from "@/lib/server/cards";
 
 // Wrapper component that provides bulk operation handlers with access to selection store
@@ -212,6 +214,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   // Load user settings from server on mount (respects serverSync flag)
   useLoadSettings();
+
+  // Onboarding hook - seeds sample data for new users
+  useOnboarding();
 
   // Initialize activity tracking to mark this device as active
   useEffect(() => {
@@ -394,9 +399,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SelectionStoreProvider>
-      <PawkitActionsProvider>
-        <SidebarProvider>
+    <TourProvider>
+      <SelectionStoreProvider>
+        <PawkitActionsProvider>
+          <SidebarProvider>
           <SidebarInset className="bg-transparent">
             {/* Mobile-only OmniBar - Shows on screens smaller than lg (1024px) */}
             <div className="sticky top-0 z-30 lg:hidden border-b border-white/10 bg-surface-80/95 backdrop-blur-xl">
@@ -621,8 +627,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               onNavigateToCard={handleNavigateToCard}
             />
           )}
-        </SidebarProvider>
-      </PawkitActionsProvider>
-    </SelectionStoreProvider>
+          </SidebarProvider>
+        </PawkitActionsProvider>
+      </SelectionStoreProvider>
+    </TourProvider>
   );
 }

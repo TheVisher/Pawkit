@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { useDataStore } from "@/lib/stores/data-store";
 import { useToastStore } from "@/lib/stores/toast-store";
 
 type PawkitActionsProps = {
@@ -38,7 +38,7 @@ export function PawkitActions({ pawkitId, pawkitName, isPinned = false, isPrivat
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
-  const { deleteCollection, updateCollection } = useDemoAwareStore();
+  const { deleteCollection, updateCollection } = useDataStore();
   const toast = useToastStore();
 
   useEffect(() => {
