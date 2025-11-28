@@ -8,13 +8,18 @@ import {
   shouldRunOnboarding,
 } from '@/lib/services/onboarding-service';
 
+// Maximum number of retries when auth isn't ready
+const MAX_AUTH_RETRIES = 5;
+// Delay between retries (doubles each time)
+const INITIAL_RETRY_DELAY = 500;
+
 /**
  * Hook to trigger onboarding data seeding for new users
  *
  * This hook:
  * 1. Waits for user storage to be ready (auth complete)
  * 2. Waits for the data store to be initialized
- * 3. Checks if onboarding has already been completed
+ * 3. Checks if onboarding has already been completed (with retry on auth errors)
  * 4. If not, and user has no data, seeds the account with sample data
  * 5. Runs only once per account lifetime
  *
@@ -53,11 +58,32 @@ export function useOnboarding(isUserStorageReady: boolean = false) {
 
       try {
         // Check if onboarding was already completed (stored in server)
-        console.log('[useOnboarding] Checking hasCompletedOnboarding...');
-        const completed = await hasCompletedOnboarding();
-        console.log('[useOnboarding] hasCompletedOnboarding returned:', completed);
+        // Retry with backoff if we get auth errors (session not ready yet)
+        let result = { completed: false, authError: true };
+        let retryCount = 0;
+        let delay = INITIAL_RETRY_DELAY;
 
-        if (completed) {
+        while (result.authError && retryCount < MAX_AUTH_RETRIES) {
+          if (retryCount > 0) {
+            console.log(`[useOnboarding] Auth not ready, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_AUTH_RETRIES})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2; // Exponential backoff
+          }
+
+          console.log('[useOnboarding] Checking hasCompletedOnboarding...');
+          result = await hasCompletedOnboarding();
+          console.log('[useOnboarding] hasCompletedOnboarding returned:', result);
+          retryCount++;
+        }
+
+        // If we exhausted retries due to auth errors, don't proceed
+        if (result.authError) {
+          console.warn('[useOnboarding] Auth still not ready after retries, will try again on next render');
+          hasTriggered.current = false; // Allow retry on next render
+          return;
+        }
+
+        if (result.completed) {
           console.log('[useOnboarding] Onboarding already completed, skipping');
           return;
         }
