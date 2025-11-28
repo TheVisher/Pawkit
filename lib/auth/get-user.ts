@@ -35,22 +35,37 @@ export async function getCurrentUser(): Promise<PrismaUser | null> {
       return null
     }
 
-    // Try to get user from cache/database
+    // Try to get user from cache/database by ID
     let dbUser = await getCachedUser(user.id)
 
-    // If user doesn't exist, create them (only happens on first login)
+    // If user doesn't exist by ID, check if they exist by email
+    // This handles cases where Supabase ID changed (e.g., different auth provider)
     if (!dbUser) {
-      dbUser = await prisma.user.upsert({
-        where: { id: user.id },
-        update: {
-          email: user.email,
-          updatedAt: new Date()
-        },
-        create: {
-          id: user.id,
-          email: user.email
-        },
+      const existingByEmail = await prisma.user.findUnique({
+        where: { email: user.email }
       })
+
+      if (existingByEmail) {
+        // User exists with this email but different ID - update the ID
+        // This can happen when signing in with a different auth provider
+        console.log('[getCurrentUser] Updating user ID for email:', user.email)
+        dbUser = await prisma.user.update({
+          where: { email: user.email },
+          data: {
+            id: user.id,
+            updatedAt: new Date()
+          }
+        })
+      } else {
+        // Truly new user - create them
+        console.log('[getCurrentUser] Creating new user:', user.email)
+        dbUser = await prisma.user.create({
+          data: {
+            id: user.id,
+            email: user.email
+          }
+        })
+      }
     }
 
     return dbUser
