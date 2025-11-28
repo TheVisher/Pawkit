@@ -54,7 +54,9 @@
       "Skill(pawkit-sync-patterns)",
       "Skill(pawkit-api-patterns)",
       "Skill(pawkit-performance)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npx next lint:*)"
     ],
     "deny": [],
     "ask": []
