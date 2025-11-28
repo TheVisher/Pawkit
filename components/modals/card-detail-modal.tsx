@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { useDataStore } from "@/lib/stores/data-store";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
 import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon, Calendar, ChevronRight, Plus, Paperclip, Download } from "lucide-react";
 import { formatFileSize } from "@/lib/utils/file-utils";
@@ -117,7 +117,7 @@ type CardDetailModalProps = {
 
 export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete, onNavigateToCard }: CardDetailModalProps) {
   const router = useRouter();
-  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDemoAwareStore();
+  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore } = useDataStore();
   const dataStore = useDataStore();
   const allCards = dataStore.cards;
   const isNote = card.type === "md-note" || card.type === "text-note";
@@ -920,12 +920,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
       // Simply refresh the entire data store to get the latest state from server
       // This ensures consistency and will properly filter out Den items
-      // Note: Demo mode doesn't need refresh since it's all local
-      const pathname = window.location.pathname;
-      if (!pathname.startsWith('/demo')) {
-        const { useDataStore } = await import('@/lib/stores/data-store');
-        await useDataStore.getState().refresh();
-      }
+      const { useDataStore } = await import('@/lib/stores/data-store');
+      await useDataStore.getState().refresh();
 
       toast.success(newInDen ? "Moved to The Den" : "Removed from The Den");
 
@@ -2449,7 +2445,7 @@ function getColorForDateType(type: ExtractedDate['type']): string {
 // Metadata Section
 function MetadataSection({ card }: { card: CardModel }) {
   const router = useRouter();
-  const { updateCard: updateCardInStore } = useDemoAwareStore();
+  const { updateCard: updateCardInStore } = useDataStore();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState(card.title || "");
   const [isAddingToCalendar, setIsAddingToCalendar] = useState(false);

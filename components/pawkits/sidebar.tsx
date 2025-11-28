@@ -5,7 +5,7 @@ import { useDroppable } from "@dnd-kit/core";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Folder, Lock, FolderPlus, Edit3, ArrowUpDown, Trash2 } from "lucide-react";
 import { CollectionNode } from "@/lib/types";
-import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { useDataStore } from "@/lib/stores/data-store";
 import { GenericContextMenu, ContextMenuItemConfig } from "@/components/ui/generic-context-menu";
 import { ConfirmDeleteModal } from "@/components/modals/confirm-delete-modal";
 
@@ -44,7 +44,7 @@ function CollectionsSidebarContent({
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { addCollection, updateCollection, deleteCollection: deleteCollectionFromStore } = useDemoAwareStore();
+  const { addCollection, updateCollection, deleteCollection: deleteCollectionFromStore } = useDataStore();
 
   // Save collections expansion state to localStorage whenever it changes
   useEffect(() => {

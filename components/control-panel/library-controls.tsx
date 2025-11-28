@@ -49,10 +49,6 @@ export function LibraryControls() {
   // Get Rediscover mode state
   const rediscoverStore = useRediscoverStore();
 
-  // Detect if we're in demo mode
-  const isDemo = pathname?.startsWith('/demo');
-  const pathPrefix = isDemo ? '/demo' : '';
-
   // Get collapsed sections for managing section state
   const collapsedSections = usePanelStore((state) => state.collapsedSections);
   const toggleSection = usePanelStore((state) => state.toggleSection);
@@ -334,10 +330,10 @@ export function LibraryControls() {
         <PanelSection
           id="library-tags"
           title="Tags"
-          icon={<Tag className={`h-4 w-4 ${pathname === pathPrefix + "/tags" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
-          active={pathname === pathPrefix + "/tags"}
+          icon={<Tag className={`h-4 w-4 ${pathname === "/tags" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
+          active={pathname === "/tags"}
           onClick={() => {
-            router.push(`${pathPrefix}/tags`);
+            router.push("/tags");
             // Ensure section is expanded when clicking header
             if (collapsedSections["library-tags"]) {
               toggleSection("library-tags");

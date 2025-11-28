@@ -74,15 +74,6 @@ export default function PawkitLanding() {
                 <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </Link>
-            <Link href="/demo">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-2 border-[#7c3aed]/30 text-[#f5f5f7] hover:bg-[#7c3aed]/10 hover:border-[#7c3aed] text-lg px-10 py-7 rounded-xl transition-all duration-300 bg-transparent"
-              >
-                Try Demo
-              </Button>
-            </Link>
           </div>
 
           {/* Trust badges */}
@@ -268,15 +259,6 @@ export default function PawkitLanding() {
                     className="bg-white text-[#7c3aed] hover:bg-purple-50 text-lg px-10 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-semibold"
                   >
                     Launch Pawkit
-                  </Button>
-                </Link>
-                <Link href="/demo">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="border-2 border-white text-white hover:bg-white/10 text-lg px-10 py-7 rounded-xl transition-all duration-300"
-                  >
-                    Try Demo
                   </Button>
                 </Link>
               </div>

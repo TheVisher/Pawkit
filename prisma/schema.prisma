@@ -143,6 +143,11 @@ model UserSettings {
   autoSyncOnReconnect Boolean @default(true)
   cardSize            Int     @default(3)           // 1-5 scale
 
+  // Onboarding
+  onboardingSeeded          Boolean @default(false)   // true once sample data has been seeded
+  onboardingBannerDismissed Boolean @default(false)   // true once welcome banner has been dismissed
+  onboardingTourCompleted   Boolean @default(false)   // true once guided tour has been completed or skipped
+
   // JSON fields for complex data structures
   displaySettings     String  @default("{}") // JSON: Record<Area, DisplaySettings>
   pinnedNoteIds       String  @default("[]") // JSON: string[]

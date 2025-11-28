@@ -15,7 +15,7 @@ import { FileText, Bookmark, Pin, MoreVertical, Trash2, FolderPlus, Eye, PinOff,
 import { CardImage, useCardImageUrl } from "@/components/cards/card-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
+import { useDataStore } from "@/lib/stores/data-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -218,7 +218,7 @@ export type CardGalleryProps = {
 };
 
 function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCards, setNextCursor, hideControls = false, area, currentPawkitSlug }: CardGalleryProps) {
-  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore, collections: allCollections } = useDemoAwareStore();
+  const { updateCard: updateCardInStore, deleteCard: deleteCardFromStore, collections: allCollections } = useDataStore();
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const openBulkOperations = usePanelStore((state) => state.openBulkOperations);
   const restorePreviousContent = usePanelStore((state) => state.restorePreviousContent);
@@ -344,7 +344,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     };
   }, [layout]);
 
-  // Collections are now provided by useDemoAwareStore - no need to fetch from API
+  // Collections are now provided by useDataStore - no need to fetch from API
 
   // Removed polling - cards are updated via the data store sync queue
   // The data store handles pending card updates automatically
