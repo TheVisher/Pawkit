@@ -15,6 +15,7 @@ export const TOUR_STEPS: StepType[] = [
   {
     selector: '[data-tour="omnibar"]',
     content: "This is your Command Palette - press ⌘K (or /) anytime to open it. Paste URLs to save bookmarks, or search your entire library instantly.",
+    position: "bottom", // Position tooltip below the command palette
     action: (node) => {
       // Open the command palette when this step is shown
       window.dispatchEvent(new CustomEvent("pawkit:open-command-palette"));
@@ -140,7 +141,7 @@ const pawkitTourStyles = {
     boxShadow: "0 0 30px rgba(139, 92, 246, 0.15), 0 8px 32px rgba(0, 0, 0, 0.4)",
     padding: "20px",
     maxWidth: "340px",
-    zIndex: 70, // Above command palette (z-60)
+    zIndex: 9999, // Very high to ensure it's always on top
   }),
   maskArea: (base: object) => ({
     ...base,
