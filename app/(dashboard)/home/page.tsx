@@ -7,13 +7,17 @@ import { DEFAULT_USERNAME } from "@/lib/constants";
 import { QuickAccessCard } from "@/components/home/quick-access-card";
 import { QuickAccessPawkitCard } from "@/components/home/quick-access-pawkit-card";
 import { CardModel, CollectionNode } from "@/lib/types";
+import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { useEventStore } from "@/lib/hooks/use-event-store";
+import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { format, addDays, startOfDay } from "date-fns";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
-import { Plus, FileText, CalendarIcon } from "lucide-react";
+import { getHolidaysInRange, ResolvedHoliday } from "@/lib/data/us-holidays";
+import { Plus, FileText, CalendarIcon, Flag, Clock } from "lucide-react";
 import { CardImage } from "@/components/cards/card-image";
 import { GlowButton } from "@/components/ui/glow-button";
 import { HorizontalScrollContainer } from "@/components/ui/horizontal-scroll-container";
@@ -26,6 +30,14 @@ const GREETINGS = [
   "Happy to see you",
   "Great to have you back"
 ];
+
+// Helper to format time in 12-hour format
+function formatTime12h(time24: string): string {
+  const [hours, minutes] = time24.split(':').map(Number);
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hours12 = hours % 12 || 12;
+  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
 
 export default function HomePage() {
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
@@ -48,6 +60,20 @@ export default function HomePage() {
 
   // Read from global store - instant, no API calls
   const { cards, collections, updateCard, deleteCard, addCard } = useDataStore();
+
+  // Event store for calendar events
+  const { events, isInitialized: eventsInitialized, initialize: initializeEvents, generateRecurrenceInstances } = useEventStore();
+
+  // Calendar store for holiday settings
+  const showHolidays = useCalendarStore((state) => state.showHolidays);
+  const holidayFilter = useCalendarStore((state) => state.holidayFilter);
+
+  // Initialize event store
+  useEffect(() => {
+    if (!eventsInitialized) {
+      initializeEvents();
+    }
+  }, [eventsInitialized, initializeEvents]);
 
   // Open Home control panel when this page loads
   useEffect(() => {
@@ -165,6 +191,63 @@ export default function HomePage() {
     return map;
   }, [cards]);
 
+  // Group events by date (including recurrence instances)
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+
+    if (weekDays.length === 0) return map;
+
+    const rangeStart = format(weekDays[0], 'yyyy-MM-dd');
+    const rangeEnd = format(weekDays[weekDays.length - 1], 'yyyy-MM-dd');
+
+    events.forEach((event) => {
+      // Generate recurrence instances for recurring events
+      const instances = generateRecurrenceInstances(event, rangeStart, rangeEnd);
+
+      instances.forEach((instance) => {
+        const dateStr = instance.instanceDate;
+        if (!map.has(dateStr)) {
+          map.set(dateStr, []);
+        }
+        map.get(dateStr)!.push(instance.event);
+      });
+    });
+
+    // Sort events by time within each day
+    map.forEach((dayEvents) => {
+      dayEvents.sort((a, b) => {
+        // All-day events first
+        if (a.isAllDay && !b.isAllDay) return -1;
+        if (!a.isAllDay && b.isAllDay) return 1;
+        // Then by start time
+        if (a.startTime && b.startTime) {
+          return a.startTime.localeCompare(b.startTime);
+        }
+        return 0;
+      });
+    });
+
+    return map;
+  }, [events, weekDays, generateRecurrenceInstances]);
+
+  // Group holidays by date
+  const holidaysByDate = useMemo(() => {
+    const map = new Map<string, ResolvedHoliday>();
+
+    if (!showHolidays || weekDays.length === 0) return map;
+
+    const rangeStart = format(weekDays[0], 'yyyy-MM-dd');
+    const rangeEnd = format(weekDays[weekDays.length - 1], 'yyyy-MM-dd');
+
+    const holidays = getHolidaysInRange(rangeStart, rangeEnd, holidayFilter);
+
+    holidays.forEach((holiday) => {
+      map.set(holiday.date, holiday);
+    });
+
+    return map;
+  }, [showHolidays, holidayFilter, weekDays]);
+
   const recentIds = new Set(recent.map(card => card.id));
   let quickAccessUnique = quickAccess.filter(item => !recentIds.has(item.id));
 
@@ -240,6 +323,18 @@ export default function HomePage() {
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
     const title = `${year}-${month}-${day} - ${dayName}`;
     return cards.find(c => c.title === title && !c.collections?.includes('the-den'));
+  };
+
+  // Get events for a specific date
+  const getEventsForDate = (date: Date): CalendarEvent[] => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return eventsByDate.get(dateStr) || [];
+  };
+
+  // Get holiday for a specific date
+  const getHolidayForDate = (date: Date): ResolvedHoliday | undefined => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    return holidaysByDate.get(dateStr);
   };
 
   return (
@@ -329,6 +424,8 @@ export default function HomePage() {
             {weekDays.map((day, index) => {
             const dateStr = format(day, 'yyyy-MM-dd');
             const dayCards = cardsByDate.get(dateStr) || [];
+            const dayEvents = eventsByDate.get(dateStr) || [];
+            const holiday = holidaysByDate.get(dateStr);
             const isToday = format(new Date(), 'yyyy-MM-dd') === dateStr;
 
             // Check if there's a daily note for this date
@@ -355,7 +452,50 @@ export default function HomePage() {
                     {format(day, 'd')}
                   </p>
                 </div>
-                <div className="space-y-1 md:space-y-2 flex-1">
+                <div className="space-y-1 md:space-y-2 flex-1 overflow-y-auto max-h-[100px]">
+                  {/* Holiday */}
+                  {holiday && (
+                    <div className="px-1.5 md:px-2 py-1 md:py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                      <div className="flex items-center gap-1 md:gap-1.5">
+                        <Flag size={10} className="text-amber-400 flex-shrink-0" />
+                        <span className="text-[10px] md:text-xs font-medium text-amber-400 truncate">
+                          {holiday.name}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Calendar Events */}
+                  {dayEvents.map((event) => (
+                    <button
+                      key={event.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // TODO: Open event details panel when implemented
+                      }}
+                      className="w-full text-left p-1.5 md:p-2 rounded-lg bg-surface-soft hover:bg-surface-soft/80 transition-colors"
+                    >
+                      <div className="flex items-start gap-1.5 md:gap-2">
+                        <span
+                          className="w-2 h-2 rounded-full flex-shrink-0 mt-1"
+                          style={{ backgroundColor: event.color || EVENT_COLORS.purple }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          {!event.isAllDay && event.startTime && (
+                            <div className="text-[8px] md:text-[10px] text-muted-foreground flex items-center gap-0.5 mb-0.5">
+                              <Clock size={8} />
+                              {formatTime12h(event.startTime)}
+                            </div>
+                          )}
+                          <p className="text-[10px] md:text-xs font-medium text-foreground truncate">
+                            {event.title}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+
+                  {/* Scheduled Cards */}
                   {dayCards.map((card) => (
                     <button
                       key={card.id}
@@ -406,6 +546,10 @@ export default function HomePage() {
       {selectedDate && !activeCardId && isMounted && typeof document !== 'undefined' && document.body && (() => {
         const scheduledCards = getCardsForDate(selectedDate);
         const dailyNote = getDailyNoteForDate(selectedDate);
+        const dayEvents = getEventsForDate(selectedDate);
+        const holiday = getHolidayForDate(selectedDate);
+
+        const totalItems = scheduledCards.length + dayEvents.length + (dailyNote ? 1 : 0) + (holiday ? 1 : 0);
 
         const modalContent = (
           <div
@@ -426,8 +570,22 @@ export default function HomePage() {
                 })}
               </h2>
               <p className="text-sm text-muted-foreground mb-6">
-                {scheduledCards.length + (dailyNote ? 1 : 0)} item(s) for this day
+                {totalItems} item(s) for this day
               </p>
+
+              {/* Holiday Section */}
+              {holiday && (
+                <div className="mb-6">
+                  <div className="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/30">
+                    <div className="flex items-center gap-2">
+                      <Flag size={16} className="text-amber-400 flex-shrink-0" />
+                      <span className="text-sm font-medium text-amber-400">
+                        {holiday.name}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Daily Note Section */}
               <div className="mb-6">
@@ -466,6 +624,51 @@ export default function HomePage() {
                   </GlowButton>
                 )}
               </div>
+
+              {/* Calendar Events Section */}
+              {dayEvents.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                    <CalendarIcon size={16} />
+                    Calendar Events ({dayEvents.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {dayEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className="p-3 rounded-lg bg-surface-soft border border-subtle flex items-start gap-3"
+                      >
+                        <span
+                          className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
+                          style={{ backgroundColor: event.color || EVENT_COLORS.purple }}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-foreground">
+                            {event.title}
+                          </div>
+                          {!event.isAllDay && event.startTime && (
+                            <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                              <Clock size={12} />
+                              {formatTime12h(event.startTime)}
+                              {event.endTime && ` - ${formatTime12h(event.endTime)}`}
+                            </div>
+                          )}
+                          {event.location && (
+                            <div className="text-sm text-muted-foreground mt-1">
+                              {event.location}
+                            </div>
+                          )}
+                          {event.description && (
+                            <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                              {event.description}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Scheduled Cards Section */}
               <div className="mb-6">
