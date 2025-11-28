@@ -786,24 +786,28 @@ textarea:focus-visible {
   animation: ticker-right 40s linear infinite;
 }
 
-/* Fade edges for ticker */
-.ticker-fade-left::before,
-.ticker-fade-right::after {
+/* Fade edges for ticker - applied to the overflow container */
+.ticker-container {
+  position: relative;
+}
+
+.ticker-container::before,
+.ticker-container::after {
   content: '';
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 100px;
+  width: 80px;
   z-index: 10;
   pointer-events: none;
 }
 
-.ticker-fade-left::before {
+.ticker-container::before {
   left: 0;
-  background: linear-gradient(to right, #0a0814 0%, transparent 100%);
+  background: linear-gradient(to right, #0a0814 0%, #0a0814 20%, transparent 100%);
 }
 
-.ticker-fade-right::after {
+.ticker-container::after {
   right: 0;
-  background: linear-gradient(to left, #0a0814 0%, transparent 100%);
+  background: linear-gradient(to left, #0a0814 0%, #0a0814 20%, transparent 100%);
 }

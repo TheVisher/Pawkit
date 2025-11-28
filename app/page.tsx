@@ -114,9 +114,9 @@ export default function PawkitLanding() {
         </div>
 
         {/* Constrained ticker container */}
-        <div className="max-w-6xl mx-auto px-4 overflow-hidden">
+        <div className="max-w-6xl mx-auto px-4 overflow-hidden ticker-container">
           {/* Ticker Row 1 - scrolls left */}
-          <div className="relative mb-6 ticker-fade-left ticker-fade-right">
+          <div className="relative mb-6">
           <div className="flex gap-6 animate-ticker-left hover:[animation-play-state:paused]">
             {/* First set */}
             <TickerCard
@@ -184,7 +184,7 @@ export default function PawkitLanding() {
         </div>
 
         {/* Ticker Row 2 - scrolls right */}
-        <div className="relative ticker-fade-left ticker-fade-right">
+        <div className="relative">
           <div className="flex gap-6 animate-ticker-right hover:[animation-play-state:paused]">
             {/* First set */}
             <TickerCard
