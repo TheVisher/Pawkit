@@ -76,18 +76,6 @@ function TourController({ children }: { children: ReactNode }) {
     setIsOpen(true);
   }, [setCurrentStep, setIsOpen]);
 
-  // Listen for custom event to start tour (from WelcomeBanner)
-  useEffect(() => {
-    const handleStartTour = () => {
-      startTour();
-    };
-
-    window.addEventListener("pawkit:start-tour", handleStartTour);
-    return () => {
-      window.removeEventListener("pawkit:start-tour", handleStartTour);
-    };
-  }, [startTour]);
-
   const endTour = useCallback(async () => {
     setIsOpen(false);
     setTourCompleted(true);
@@ -103,6 +91,24 @@ function TourController({ children }: { children: ReactNode }) {
       console.error("[TourProvider] Error saving tour completion:", error);
     }
   }, [setIsOpen]);
+
+  // Listen for custom events to start/end tour
+  useEffect(() => {
+    const handleStartTour = () => {
+      startTour();
+    };
+
+    const handleEndTour = () => {
+      endTour();
+    };
+
+    window.addEventListener("pawkit:start-tour", handleStartTour);
+    window.addEventListener("pawkit:end-tour", handleEndTour);
+    return () => {
+      window.removeEventListener("pawkit:start-tour", handleStartTour);
+      window.removeEventListener("pawkit:end-tour", handleEndTour);
+    };
+  }, [startTour, endTour]);
 
   const value: TourContextValue = {
     startTour,
@@ -173,36 +179,27 @@ function TourContent({ content }: { content: string }) {
   );
 }
 
-// Navigation buttons component
-function TourNavigation() {
-  const { currentStep, setCurrentStep, setIsOpen, steps } = useTour();
-  const { endTour } = useTourContext();
-
-  const isLastStep = currentStep === steps.length - 1;
+// Navigation buttons component - uses props instead of context to avoid context nesting issues
+function TourNavigation({
+  currentStep,
+  totalSteps,
+  onNext,
+  onPrev,
+  onSkip
+}: {
+  currentStep: number;
+  totalSteps: number;
+  onNext: () => void;
+  onPrev: () => void;
+  onSkip: () => void;
+}) {
+  const isLastStep = currentStep === totalSteps - 1;
   const isFirstStep = currentStep === 0;
-
-  const handleNext = () => {
-    if (isLastStep) {
-      endTour();
-    } else {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handlePrev = () => {
-    if (!isFirstStep) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleSkip = () => {
-    endTour();
-  };
 
   return (
     <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/10">
       <button
-        onClick={handleSkip}
+        onClick={onSkip}
         className="text-xs text-gray-400 hover:text-gray-300 transition-colors"
       >
         Skip tour
@@ -210,14 +207,14 @@ function TourNavigation() {
       <div className="flex items-center gap-2">
         {!isFirstStep && (
           <button
-            onClick={handlePrev}
+            onClick={onPrev}
             className="px-3 py-1.5 text-sm rounded-full bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all"
           >
             Back
           </button>
         )}
         <button
-          onClick={handleNext}
+          onClick={onNext}
           className="px-4 py-1.5 text-sm rounded-full bg-purple-500/20 border border-purple-500/50 text-purple-200 shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:bg-purple-500/30 transition-all"
         >
           {isLastStep ? "Finish" : "Next"}
@@ -234,8 +231,9 @@ function CustomTooltip(props: {
   setCurrentStep: React.Dispatch<React.SetStateAction<number>>;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
-  const { steps, currentStep } = props;
+  const { steps, currentStep, setCurrentStep, setIsOpen } = props;
   const stepContent = steps[currentStep]?.content;
+  const isLastStep = currentStep === steps.length - 1;
 
   // Render the content based on its type
   const renderContent = () => {
@@ -248,6 +246,25 @@ function CustomTooltip(props: {
     }
     // ReactElement type - render directly
     return stepContent;
+  };
+
+  const handleNext = () => {
+    if (isLastStep) {
+      // Dispatch event to end tour (handled by TourController)
+      window.dispatchEvent(new CustomEvent("pawkit:end-tour"));
+    } else {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handlePrev = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleSkip = () => {
+    window.dispatchEvent(new CustomEvent("pawkit:end-tour"));
   };
 
   return (
@@ -269,7 +286,13 @@ function CustomTooltip(props: {
       {renderContent()}
 
       {/* Navigation */}
-      <TourNavigation />
+      <TourNavigation
+        currentStep={currentStep}
+        totalSteps={steps.length}
+        onNext={handleNext}
+        onPrev={handlePrev}
+        onSkip={handleSkip}
+      />
     </div>
   );
 }
