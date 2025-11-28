@@ -256,6 +256,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('paste', handlePaste);
   }, [showCommandPalette]);
 
+  // Listen for tour event to open command palette
+  useEffect(() => {
+    const handleOpenCommandPalette = () => {
+      setCommandPaletteInitialValue("");
+      setShowCommandPalette(true);
+    };
+
+    window.addEventListener("pawkit:open-command-palette", handleOpenCommandPalette);
+    return () => window.removeEventListener("pawkit:open-command-palette", handleOpenCommandPalette);
+  }, []);
+
   // Global keyboard shortcuts
   useKeyboardShortcuts({
     onCommandPalette: () => {

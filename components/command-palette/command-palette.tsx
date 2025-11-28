@@ -566,6 +566,7 @@ export function CommandPalette({
       onClick={onClose}
     >
       <div
+        data-tour="omnibar"
         className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl w-full max-w-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
