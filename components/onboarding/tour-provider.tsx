@@ -81,8 +81,16 @@ function TourController({ children }: { children: ReactNode }) {
     // Open command palette first for step 1 (before tour calculates position)
     window.dispatchEvent(new CustomEvent("pawkit:open-command-palette", { detail: { forTour: true } }));
 
-    // Wait for React to render the command palette before starting tour
-    await new Promise(resolve => setTimeout(resolve, 150));
+    // Wait for React to render AND browser to paint the command palette
+    await new Promise<void>(resolve => {
+      // Double requestAnimationFrame ensures paint has happened
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          // Additional timeout to ensure portal is fully mounted
+          setTimeout(resolve, 100);
+        });
+      });
+    });
 
     setCurrentStep(0);
     setIsOpen(true);
@@ -336,6 +344,8 @@ export function TourProvider({ children }: TourProviderProps) {
       disableInteraction={false}
       onClickMask={() => {}} // Prevent closing on mask click
       ContentComponent={CustomTooltip}
+      mutationObservables={['body', '[data-tour]']} // Watch for portal mounts and tour elements
+      resizeObservables={['[data-tour="omnibar"]']} // Watch for size changes
     >
       <TourController>{children}</TourController>
     </ReactTourProvider>
