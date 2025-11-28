@@ -1020,7 +1020,7 @@ export function LeftNavigationPanel({
               }
             }}
           >
-            <div className="space-y-1">
+            <div className="space-y-1" data-tour="home-section">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
                 const fullPath = item.path;

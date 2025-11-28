@@ -13,9 +13,9 @@ import { TourProvider as ReactTourProvider, useTour, StepType } from "@reactour/
 // Tour step definitions
 export const TOUR_STEPS: StepType[] = [
   {
-    selector: '[data-tour="omnibar"]',
+    // Anchor to home section for consistent positioning with other steps
+    selector: '[data-tour="home-section"]',
     content: "This is your Command Palette - press ⌘K (or /) anytime to open it. Paste URLs to save bookmarks, or search your entire library instantly.",
-    position: "bottom", // Position tooltip below the command palette
     // Note: Command palette is opened by startTour() before tour begins
   },
   {
@@ -77,20 +77,13 @@ function TourController({ children }: { children: ReactNode }) {
     loadTourState();
   }, []);
 
-  const startTour = useCallback(async () => {
-    // Open command palette first for step 1 (before tour calculates position)
+  const startTour = useCallback(() => {
+    // Open command palette for step 1
     window.dispatchEvent(new CustomEvent("pawkit:open-command-palette", { detail: { forTour: true } }));
 
-    // Wait for React to render AND browser to paint the command palette
-    // Using a longer delay to ensure the portal is fully mounted and positioned
-    await new Promise<void>(resolve => setTimeout(resolve, 300));
-
+    // Start tour - home-section element is always in DOM so no timing issues
     setCurrentStep(0);
     setIsOpen(true);
-
-    // Force a position recalculation by briefly toggling the step
-    await new Promise<void>(resolve => setTimeout(resolve, 50));
-    setCurrentStep(0); // Re-set to trigger position recalculation
   }, [setCurrentStep, setIsOpen]);
 
   const endTour = useCallback(async () => {
