@@ -12,18 +12,22 @@ import {
  * Hook to trigger onboarding data seeding for new users
  *
  * This hook:
- * 1. Waits for the data store to be initialized
- * 2. Checks if onboarding has already been completed
- * 3. If not, and user has no data, seeds the account with sample data
- * 4. Runs only once per account lifetime
+ * 1. Waits for user storage to be ready (auth complete)
+ * 2. Waits for the data store to be initialized
+ * 3. Checks if onboarding has already been completed
+ * 4. If not, and user has no data, seeds the account with sample data
+ * 5. Runs only once per account lifetime
+ *
+ * @param isUserStorageReady - Whether user storage/auth is ready (from useUserStorage)
  */
-export function useOnboarding() {
+export function useOnboarding(isUserStorageReady: boolean = false) {
   const isInitialized = useDataStore((state) => state.isInitialized);
   const cards = useDataStore((state) => state.cards);
   const collections = useDataStore((state) => state.collections);
   const hasTriggered = useRef(false);
 
   console.log('[useOnboarding] Hook rendered:', {
+    isUserStorageReady,
     isInitialized,
     cardsLength: cards.length,
     collectionsLength: collections.length,
@@ -32,13 +36,14 @@ export function useOnboarding() {
 
   useEffect(() => {
     console.log('[useOnboarding] useEffect triggered:', {
+      isUserStorageReady,
       isInitialized,
       hasTriggered: hasTriggered.current,
     });
 
-    // Only run once, after data store is initialized
-    if (!isInitialized || hasTriggered.current) {
-      console.log('[useOnboarding] Early return - isInitialized:', isInitialized, 'hasTriggered:', hasTriggered.current);
+    // Wait for user storage to be ready (auth complete) AND data store initialized
+    if (!isUserStorageReady || !isInitialized || hasTriggered.current) {
+      console.log('[useOnboarding] Early return - isUserStorageReady:', isUserStorageReady, 'isInitialized:', isInitialized, 'hasTriggered:', hasTriggered.current);
       return;
     }
 
@@ -83,5 +88,5 @@ export function useOnboarding() {
 
     // Run onboarding check in background (don't block UI)
     runOnboarding();
-  }, [isInitialized, cards, collections]);
+  }, [isUserStorageReady, isInitialized, cards, collections]);
 }
