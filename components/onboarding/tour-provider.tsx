@@ -15,7 +15,7 @@ export const TOUR_STEPS: StepType[] = [
   {
     selector: '[data-tour="omnibar"]',
     content: "This is your Command Palette - press ⌘K (or /) anytime to open it. Paste URLs to save bookmarks, or search your entire library instantly.",
-    action: () => {
+    action: (node) => {
       // Open the command palette when this step is shown
       window.dispatchEvent(new CustomEvent("pawkit:open-command-palette"));
     },
@@ -23,6 +23,10 @@ export const TOUR_STEPS: StepType[] = [
   {
     selector: '[data-tour="library-link"]',
     content: "Your Library contains all your bookmarks and notes in one place. Everything you save lives here.",
+    action: () => {
+      // Close the command palette when moving to this step
+      window.dispatchEvent(new CustomEvent("pawkit:close-command-palette"));
+    },
   },
   {
     selector: '[data-tour="pawkits-link"]',
@@ -136,6 +140,7 @@ const pawkitTourStyles = {
     boxShadow: "0 0 30px rgba(139, 92, 246, 0.15), 0 8px 32px rgba(0, 0, 0, 0.4)",
     padding: "20px",
     maxWidth: "340px",
+    zIndex: 70, // Above command palette (z-60)
   }),
   maskArea: (base: object) => ({
     ...base,
@@ -144,6 +149,15 @@ const pawkitTourStyles = {
   maskWrapper: (base: object) => ({
     ...base,
     color: "rgba(0, 0, 0, 0.7)",
+    zIndex: 55, // Below command palette (z-60) so it shows above the mask
+  }),
+  svgWrapper: (base: object) => ({
+    ...base,
+    zIndex: 55,
+  }),
+  highlightedArea: (base: object) => ({
+    ...base,
+    zIndex: 65, // Between mask and popover
   }),
   badge: (base: object) => ({
     ...base,

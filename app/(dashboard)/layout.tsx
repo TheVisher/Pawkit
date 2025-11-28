@@ -256,15 +256,24 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('paste', handlePaste);
   }, [showCommandPalette]);
 
-  // Listen for tour event to open command palette
+  // Listen for tour events to open/close command palette
   useEffect(() => {
     const handleOpenCommandPalette = () => {
       setCommandPaletteInitialValue("");
       setShowCommandPalette(true);
     };
 
+    const handleCloseCommandPalette = () => {
+      setShowCommandPalette(false);
+      setCommandPaletteInitialValue("");
+    };
+
     window.addEventListener("pawkit:open-command-palette", handleOpenCommandPalette);
-    return () => window.removeEventListener("pawkit:open-command-palette", handleOpenCommandPalette);
+    window.addEventListener("pawkit:close-command-palette", handleCloseCommandPalette);
+    return () => {
+      window.removeEventListener("pawkit:open-command-palette", handleOpenCommandPalette);
+      window.removeEventListener("pawkit:close-command-palette", handleCloseCommandPalette);
+    };
   }, []);
 
   // Global keyboard shortcuts
