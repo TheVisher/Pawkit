@@ -216,7 +216,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   useLoadSettings();
 
   // Onboarding hook - seeds sample data for new users
-  useOnboarding();
+  // Pass isReady to ensure auth is complete before checking onboarding status
+  useOnboarding(isReady);
 
   // Initialize activity tracking to mark this device as active
   useEffect(() => {
