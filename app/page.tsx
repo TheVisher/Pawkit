@@ -102,76 +102,151 @@ export default function PawkitLanding() {
         </div>
       </section>
 
-      {/* Features Section - Reordered to emphasize differentiators */}
-      <section className="container mx-auto px-4 py-24 fade-in-section">
-        <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 text-balance text-[#f5f5f7]">
-          Built for Speed, Privacy, and Control
-        </h2>
-        <p className="text-center text-[#a3a3b0] text-lg mb-16 max-w-2xl mx-auto">
-          Pawkit gives you everything you need to save, organize, and rediscover your bookmarks, notes, and files—without compromising on privacy.
-        </p>
+      {/* Features Section - Ticker tape animation */}
+      <section className="py-24 fade-in-section overflow-hidden">
+        <div className="container mx-auto px-4 mb-12">
+          <h2 className="text-4xl md:text-5xl font-bold text-center mb-4 text-balance text-[#f5f5f7]">
+            Built for Speed, Privacy, and Control
+          </h2>
+          <p className="text-center text-[#a3a3b0] text-lg max-w-2xl mx-auto">
+            Pawkit gives you everything you need to save, organize, and rediscover your bookmarks, notes, and files—without compromising on privacy.
+          </p>
+        </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          <FeatureCard
-            icon={<Zap className="w-10 h-10 text-[#7c3aed]" />}
-            title="Instant Speed"
-            description="No server lag. Everything loads instantly because it's already on your device."
-          />
-          <FeatureCard
-            icon={<Lock className="w-10 h-10 text-[#7c3aed]" />}
-            title="Private Collections"
-            description="End-to-end encrypted collections for sensitive bookmarks—only you hold the keys."
-          />
-          <FeatureCard
-            icon={<FolderTree className="w-10 h-10 text-[#7c3aed]" />}
-            title="Smart Pawkits"
-            description="Nested collections with drag-and-drop. Organize like folders—only smarter."
-          />
-          <FeatureCard
-            icon={<FileText className="w-10 h-10 text-[#7c3aed]" />}
-            title="Rich Notes"
-            description="Markdown notes with wiki-style linking and daily journaling built-in."
-          />
-          <FeatureCard
-            icon={<FileBox className="w-10 h-10 text-[#7c3aed]" />}
-            title="File Storage"
-            description="Store PDFs, images, and documents alongside your bookmarks."
-          />
-          <FeatureCard
-            icon={<Cloud className="w-10 h-10 text-[#7c3aed]" />}
-            title="Filen Cloud Backup"
-            description="Sync to your own Filen storage—your data, your cloud, your control."
-          />
-          <FeatureCard
-            icon={<CalendarDays className="w-10 h-10 text-[#7c3aed]" />}
-            title="Calendar & Scheduling"
-            description="Schedule bookmarks to read later and track your daily notes."
-          />
-          <FeatureCard
-            icon={<Command className="w-10 h-10 text-[#7c3aed]" />}
-            title="Command Palette"
-            description="Quick access to everything with ⌘K—power user friendly."
-          />
-          <FeatureCard
-            icon={<Tags className="w-10 h-10 text-[#7c3aed]" />}
-            title="Tags & Filters"
-            description="Flexible tagging and powerful search across all your content."
-          />
-          <FeatureCard
-            icon={<BookOpen className="w-10 h-10 text-[#7c3aed]" />}
-            title="Reader Mode"
-            description="Automatic article extraction for distraction-free reading."
-          />
-          <FeatureCard
-            icon={<RefreshCw className="w-10 h-10 text-[#7c3aed]" />}
-            title="Cross-Device Sync"
-            description="Encrypted sync; keys never leave your device."
-          />
-          <FeatureCard
-            icon={<Chrome className="w-10 h-10 text-[#7c3aed]" />}
-            title="Browser Extension"
-            description="Save any page in one click—Chrome, Firefox, and Safari."
-          />
+        {/* Ticker Row 1 - scrolls left */}
+        <div className="relative mb-6 ticker-fade-left ticker-fade-right">
+          <div className="flex gap-6 animate-ticker-left hover:[animation-play-state:paused]">
+            {/* First set */}
+            <TickerCard
+              icon={<Zap className="w-8 h-8 text-[#7c3aed]" />}
+              title="Instant Speed"
+              description="Everything loads instantly—it's already on your device."
+            />
+            <TickerCard
+              icon={<Lock className="w-8 h-8 text-[#7c3aed]" />}
+              title="Private Collections"
+              description="End-to-end encrypted—only you hold the keys."
+            />
+            <TickerCard
+              icon={<FolderTree className="w-8 h-8 text-[#7c3aed]" />}
+              title="Smart Pawkits"
+              description="Nested collections with drag-and-drop."
+            />
+            <TickerCard
+              icon={<FileText className="w-8 h-8 text-[#7c3aed]" />}
+              title="Rich Notes"
+              description="Markdown notes with wiki-style linking."
+            />
+            <TickerCard
+              icon={<FileBox className="w-8 h-8 text-[#7c3aed]" />}
+              title="File Storage"
+              description="Store PDFs, images, and documents."
+            />
+            <TickerCard
+              icon={<Cloud className="w-8 h-8 text-[#7c3aed]" />}
+              title="Filen Cloud Backup"
+              description="Your data, your cloud, your control."
+            />
+            {/* Duplicate set for seamless loop */}
+            <TickerCard
+              icon={<Zap className="w-8 h-8 text-[#7c3aed]" />}
+              title="Instant Speed"
+              description="Everything loads instantly—it's already on your device."
+            />
+            <TickerCard
+              icon={<Lock className="w-8 h-8 text-[#7c3aed]" />}
+              title="Private Collections"
+              description="End-to-end encrypted—only you hold the keys."
+            />
+            <TickerCard
+              icon={<FolderTree className="w-8 h-8 text-[#7c3aed]" />}
+              title="Smart Pawkits"
+              description="Nested collections with drag-and-drop."
+            />
+            <TickerCard
+              icon={<FileText className="w-8 h-8 text-[#7c3aed]" />}
+              title="Rich Notes"
+              description="Markdown notes with wiki-style linking."
+            />
+            <TickerCard
+              icon={<FileBox className="w-8 h-8 text-[#7c3aed]" />}
+              title="File Storage"
+              description="Store PDFs, images, and documents."
+            />
+            <TickerCard
+              icon={<Cloud className="w-8 h-8 text-[#7c3aed]" />}
+              title="Filen Cloud Backup"
+              description="Your data, your cloud, your control."
+            />
+          </div>
+        </div>
+
+        {/* Ticker Row 2 - scrolls right */}
+        <div className="relative ticker-fade-left ticker-fade-right">
+          <div className="flex gap-6 animate-ticker-right hover:[animation-play-state:paused]">
+            {/* First set */}
+            <TickerCard
+              icon={<CalendarDays className="w-8 h-8 text-[#7c3aed]" />}
+              title="Calendar & Scheduling"
+              description="Schedule bookmarks to read later."
+            />
+            <TickerCard
+              icon={<Command className="w-8 h-8 text-[#7c3aed]" />}
+              title="Command Palette"
+              description="Quick access to everything with ⌘K."
+            />
+            <TickerCard
+              icon={<Tags className="w-8 h-8 text-[#7c3aed]" />}
+              title="Tags & Filters"
+              description="Powerful search across all content."
+            />
+            <TickerCard
+              icon={<BookOpen className="w-8 h-8 text-[#7c3aed]" />}
+              title="Reader Mode"
+              description="Distraction-free article reading."
+            />
+            <TickerCard
+              icon={<RefreshCw className="w-8 h-8 text-[#7c3aed]" />}
+              title="Cross-Device Sync"
+              description="Encrypted sync; keys never leave your device."
+            />
+            <TickerCard
+              icon={<Chrome className="w-8 h-8 text-[#7c3aed]" />}
+              title="Browser Extension"
+              description="Save any page in one click."
+            />
+            {/* Duplicate set for seamless loop */}
+            <TickerCard
+              icon={<CalendarDays className="w-8 h-8 text-[#7c3aed]" />}
+              title="Calendar & Scheduling"
+              description="Schedule bookmarks to read later."
+            />
+            <TickerCard
+              icon={<Command className="w-8 h-8 text-[#7c3aed]" />}
+              title="Command Palette"
+              description="Quick access to everything with ⌘K."
+            />
+            <TickerCard
+              icon={<Tags className="w-8 h-8 text-[#7c3aed]" />}
+              title="Tags & Filters"
+              description="Powerful search across all content."
+            />
+            <TickerCard
+              icon={<BookOpen className="w-8 h-8 text-[#7c3aed]" />}
+              title="Reader Mode"
+              description="Distraction-free article reading."
+            />
+            <TickerCard
+              icon={<RefreshCw className="w-8 h-8 text-[#7c3aed]" />}
+              title="Cross-Device Sync"
+              description="Encrypted sync; keys never leave your device."
+            />
+            <TickerCard
+              icon={<Chrome className="w-8 h-8 text-[#7c3aed]" />}
+              title="Browser Extension"
+              description="Save any page in one click."
+            />
+          </div>
         </div>
       </section>
 
@@ -394,6 +469,20 @@ export default function PawkitLanding() {
           <div>© 2025 Pawkit</div>
         </div>
       </footer>
+    </div>
+  )
+}
+
+function TickerCard({ icon, title, description }: { icon: React.ReactNode; title: string; description: string }) {
+  return (
+    <div className="flex-shrink-0 w-[280px] p-6 border-2 border-[rgba(255,255,255,0.08)] hover:border-[#7c3aed]/30 bg-[rgba(255,255,255,0.03)] rounded-2xl backdrop-blur-sm transition-all duration-300 hover:bg-[rgba(255,255,255,0.05)]">
+      <div className="flex items-start gap-4">
+        <div className="flex-shrink-0 mt-1">{icon}</div>
+        <div>
+          <h3 className="text-base font-semibold text-[#f5f5f7] mb-1">{title}</h3>
+          <p className="text-sm text-[#a3a3b0] leading-relaxed">{description}</p>
+        </div>
+      </div>
     </div>
   )
 }

@@ -758,3 +758,52 @@ textarea:focus-visible {
   padding-bottom: 0.5rem;
   border-bottom: 1px solid hsl(var(--border));
 }
+
+/* Ticker tape animations for landing page */
+@keyframes ticker-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes ticker-right {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-ticker-left {
+  animation: ticker-left 40s linear infinite;
+}
+
+.animate-ticker-right {
+  animation: ticker-right 40s linear infinite;
+}
+
+/* Fade edges for ticker */
+.ticker-fade-left::before,
+.ticker-fade-right::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.ticker-fade-left::before {
+  left: 0;
+  background: linear-gradient(to right, #0a0814 0%, transparent 100%);
+}
+
+.ticker-fade-right::after {
+  right: 0;
+  background: linear-gradient(to left, #0a0814 0%, transparent 100%);
+}
