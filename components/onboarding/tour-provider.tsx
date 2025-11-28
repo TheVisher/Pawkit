@@ -14,7 +14,11 @@ import { TourProvider as ReactTourProvider, useTour, StepType } from "@reactour/
 export const TOUR_STEPS: StepType[] = [
   {
     selector: '[data-tour="omnibar"]',
-    content: "Add bookmarks by pasting URLs here, or search your entire library instantly. You can also press ⌘K to open the command palette.",
+    content: "This is your Command Palette - press ⌘K (or /) anytime to open it. Paste URLs to save bookmarks, or search your entire library instantly.",
+    action: () => {
+      // Open the command palette when this step is shown
+      window.dispatchEvent(new CustomEvent("pawkit:open-command-palette"));
+    },
   },
   {
     selector: '[data-tour="library-link"]',
