@@ -17,8 +17,8 @@ export const TOUR_STEPS: StepType[] = [
     content: "This is your Command Palette - press ⌘K (or /) anytime to open it. Paste URLs to save bookmarks, or search your entire library instantly.",
     position: "bottom", // Position tooltip below the command palette
     action: (node) => {
-      // Open the command palette when this step is shown
-      window.dispatchEvent(new CustomEvent("pawkit:open-command-palette"));
+      // Open the command palette when this step is shown, with flag for tour mode
+      window.dispatchEvent(new CustomEvent("pawkit:open-command-palette", { detail: { forTour: true } }));
     },
   },
   {
@@ -141,7 +141,7 @@ const pawkitTourStyles = {
     boxShadow: "0 0 30px rgba(139, 92, 246, 0.15), 0 8px 32px rgba(0, 0, 0, 0.4)",
     padding: "20px",
     maxWidth: "340px",
-    zIndex: 9999, // Very high to ensure it's always on top
+    zIndex: 100000, // Higher than command palette (z-99999) during tour
   }),
   maskArea: (base: object) => ({
     ...base,
@@ -150,15 +150,15 @@ const pawkitTourStyles = {
   maskWrapper: (base: object) => ({
     ...base,
     color: "rgba(0, 0, 0, 0.7)",
-    zIndex: 55, // Below command palette (z-60) so it shows above the mask
+    zIndex: 9998, // High z-index so sidebars are dimmed
   }),
   svgWrapper: (base: object) => ({
     ...base,
-    zIndex: 55,
+    zIndex: 9998,
   }),
   highlightedArea: (base: object) => ({
     ...base,
-    zIndex: 65, // Between mask and popover
+    zIndex: 9998,
   }),
   badge: (base: object) => ({
     ...base,

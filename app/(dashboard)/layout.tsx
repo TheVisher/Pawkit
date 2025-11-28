@@ -116,6 +116,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Command Palette state
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [commandPaletteInitialValue, setCommandPaletteInitialValue] = useState("");
+  const [isCommandPaletteForTour, setIsCommandPaletteForTour] = useState(false);
   const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
   const [showCreateCardModal, setShowCreateCardModal] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
@@ -258,7 +259,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   // Listen for tour events to open/close command palette
   useEffect(() => {
-    const handleOpenCommandPalette = () => {
+    const handleOpenCommandPalette = (e: Event) => {
+      const customEvent = e as CustomEvent<{ forTour?: boolean }>;
+      setIsCommandPaletteForTour(customEvent.detail?.forTour ?? false);
       setCommandPaletteInitialValue("");
       setShowCommandPalette(true);
     };
@@ -266,6 +269,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     const handleCloseCommandPalette = () => {
       setShowCommandPalette(false);
       setCommandPaletteInitialValue("");
+      setIsCommandPaletteForTour(false);
     };
 
     window.addEventListener("pawkit:open-command-palette", handleOpenCommandPalette);
@@ -484,7 +488,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             onClose={() => {
               setShowCommandPalette(false);
               setCommandPaletteInitialValue("");
+              setIsCommandPaletteForTour(false);
             }}
+            forTour={isCommandPaletteForTour}
             onOpenCreateNote={() => {
               setShowCommandPalette(false);
               setShowCreateNoteModal(true);

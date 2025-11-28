@@ -74,6 +74,7 @@ type CommandPaletteProps = {
   onOpenCreateCard: () => void;
   footer?: React.ReactNode;
   initialValue?: string;
+  forTour?: boolean; // When true, uses higher z-index to appear above tour mask
 };
 
 export function CommandPalette({
@@ -83,6 +84,7 @@ export function CommandPalette({
   onOpenCreateCard,
   footer,
   initialValue = "",
+  forTour = false,
 }: CommandPaletteProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -481,7 +483,8 @@ export function CommandPalette({
         if (command) {
           executeCommand(command);
         }
-      } else if (e.key === "Escape") {
+      } else if (e.key === "Escape" && !forTour) {
+        // Don't close with ESC during tour - let the tour handle it
         e.preventDefault();
         e.stopPropagation();
         onClose();
@@ -490,7 +493,7 @@ export function CommandPalette({
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, allVisibleCommands, selectedIndex, executeCommand, onClose]);
+  }, [open, allVisibleCommands, selectedIndex, executeCommand, onClose, forTour]);
 
   // Reset selected index when commands change
   useEffect(() => {
@@ -562,12 +565,18 @@ export function CommandPalette({
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm flex items-start justify-center pt-[20vh] p-4"
-      onClick={onClose}
+      className={`fixed inset-0 flex items-start justify-center pt-[20vh] p-4 ${
+        forTour
+          ? "z-[99999] bg-transparent pointer-events-none" // Above tour mask, no extra dimming, pass clicks through
+          : "z-[60] bg-black/60 backdrop-blur-sm" // Normal mode with backdrop
+      }`}
+      onClick={forTour ? undefined : onClose}
     >
       <div
         data-tour="omnibar"
-        className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl w-full max-w-2xl overflow-hidden"
+        className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl w-full max-w-2xl overflow-hidden ${
+          forTour ? "pointer-events-auto" : ""
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input */}
