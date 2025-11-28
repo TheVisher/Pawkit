@@ -19,8 +19,9 @@ import { syncService } from "@/lib/services/sync-service";
  * - Periodic fallback drain (in case online event is missed)
  * - Prevents duplicate drains with debouncing
  * - Respects serverSync setting (local-only mode when disabled)
+ * - Waits for auth to be ready before syncing (prevents 401 errors)
  */
-export function useNetworkSync() {
+export function useNetworkSync(isAuthReady: boolean = true) {
   const drainQueue = useDataStore((state) => state.drainQueue);
   const syncEvents = useEventStore((state) => state.sync);
   const serverSync = useSettingsStore((state) => state.serverSync);
@@ -31,6 +32,12 @@ export function useNetworkSync() {
   useEffect(() => {
     // Skip all syncing if server sync is disabled
     if (!serverSync) {
+      return;
+    }
+
+    // CRITICAL: Wait for auth to be ready before attempting any sync
+    // This prevents 401 errors during initial app load
+    if (!isAuthReady) {
       return;
     }
 
@@ -118,5 +125,5 @@ export function useNetworkSync() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(intervalId);
     };
-  }, [drainQueue, syncEvents, serverSync, autoSyncOnReconnect]);
+  }, [drainQueue, syncEvents, serverSync, autoSyncOnReconnect, isAuthReady]);
 }

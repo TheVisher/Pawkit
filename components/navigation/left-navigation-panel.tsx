@@ -7,7 +7,6 @@ import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronR
 import { shallow } from "zustand/shallow";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
-import { useDemoAwareStore } from "@/lib/hooks/use-demo-aware-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
@@ -96,10 +95,6 @@ export function LeftNavigationPanel({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<CollectionNode | null>(null);
 
-  // Detect if we're in demo mode
-  const isDemo = pathname?.startsWith('/demo');
-  const pathPrefix = isDemo ? '/demo' : '';
-
   // Get pinned note IDs and active card first (needed for selective subscription)
   const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
   const reorderPinnedNotes = useSettingsStore((state) => state.reorderPinnedNotes);
@@ -111,7 +106,7 @@ export function LeftNavigationPanel({
 
   // PERFORMANCE: Selective subscription - only get cards we actually need for the sidebar
   // This prevents re-renders when unrelated cards change
-  const store = useDemoAwareStore();
+  const store = useDataStore();
   const cards = useDataStore((state) => {
     return state.cards.filter((card) => {
       // Include daily notes (for streak, navigation)
@@ -242,7 +237,7 @@ export function LeftNavigationPanel({
   };
 
   const handleNavigate = (path: string) => {
-    router.push(pathPrefix + path);
+    router.push(path);
   };
 
   const toggleCollection = (id: string) => {
@@ -319,7 +314,7 @@ export function LeftNavigationPanel({
     const existingNote = findDailyNoteForDate(cards, today);
 
     if (existingNote) {
-      router.push(`${pathPrefix}/notes#${existingNote.id}`);
+      router.push(`/notes#${existingNote.id}`);
     } else {
       const title = generateDailyNoteTitle(today);
       const content = generateDailyNoteContent(today);
@@ -338,11 +333,11 @@ export function LeftNavigationPanel({
       setTimeout(() => {
         const newNote = findDailyNoteForDate(cards, today);
         if (newNote) {
-          router.push(`${pathPrefix}/notes#${newNote.id}`);
+          router.push(`/notes#${newNote.id}`);
         }
       }, 200);
     }
-  }, [cards, addCard, router, pathPrefix]);
+  }, [cards, addCard, router]);
 
   // Handle creating note from modal
   const handleCreateNote = useCallback(async (data: { type: CardType; title: string; content?: string; tags?: string[] }) => {
@@ -367,9 +362,9 @@ export function LeftNavigationPanel({
 
     // Navigate to the newly created note
     setTimeout(() => {
-      router.push(`${pathPrefix}/notes`);
+      router.push('/notes');
     }, 100);
-  }, [addCard, router, pathPrefix]);
+  }, [addCard, router]);
 
   // Navigate to yesterday's note
   const goToYesterdaysNote = () => {
@@ -1015,8 +1010,8 @@ export function LeftNavigationPanel({
               <PanelSection
             id="left-home"
             title="Home"
-            icon={<Home className={`h-4 w-4 ${pathname === pathPrefix + "/home" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
-            active={pathname === pathPrefix + "/home"}
+            icon={<Home className={`h-4 w-4 ${pathname === "/home" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
+            active={pathname === "/home"}
             onClick={() => {
               handleNavigate("/home");
               // Ensure section is expanded when clicking header
@@ -1025,14 +1020,15 @@ export function LeftNavigationPanel({
               }
             }}
           >
-            <div className="space-y-1">
+            <div className="space-y-1" data-tour="home-section">
               {navigationItems.map((item) => {
                 const Icon = item.icon;
-                const fullPath = pathPrefix + item.path;
+                const fullPath = item.path;
                 const isActive = pathname === fullPath;
                 return (
                   <button
                     key={item.id}
+                    data-tour={`${item.id}-link`}
                     onClick={() => handleNavigate(item.path)}
                     className={`
                       w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all relative
@@ -1076,8 +1072,8 @@ export function LeftNavigationPanel({
 
           {/* Pawkits Section */}
           {collections.length > 0 && (
-            <div className="space-y-3 pb-3">
-              <div className={`w-full flex items-center gap-2 group relative ${pathname === pathPrefix + "/pawkits" ? "pb-2" : ""}`}>
+            <div className="space-y-3 pb-3" data-tour="pawkits-link">
+              <div className={`w-full flex items-center gap-2 group relative ${pathname === "/pawkits" ? "pb-2" : ""}`}>
                 <GenericContextMenu
                   items={[
                     {
@@ -1102,15 +1098,15 @@ export function LeftNavigationPanel({
                     }}
                     className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1"
                   >
-                    <FolderOpen className={`h-4 w-4 ${pathname === pathPrefix + "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />
+                    <FolderOpen className={`h-4 w-4 ${pathname === "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />
                     <h3 className={`text-sm font-semibold uppercase tracking-wide transition-all ${
-                      pathname === pathPrefix + "/pawkits" ? "text-accent-foreground drop-shadow-glow-accent" : "text-foreground"
+                      pathname === "/pawkits" ? "text-accent-foreground drop-shadow-glow-accent" : "text-foreground"
                     }`}>
                       Pawkits
                     </h3>
                   </button>
                 </GenericContextMenu>
-                {pathname === pathPrefix + "/pawkits" && (
+                {pathname === "/pawkits" && (
                   <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
                 )}
                 <button
@@ -1148,8 +1144,8 @@ export function LeftNavigationPanel({
           <PanelSection
             id="left-notes"
             title="Notes"
-            icon={<FileText className={`h-4 w-4 ${pathname === pathPrefix + "/notes" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
-            active={pathname === pathPrefix + "/notes"}
+            icon={<FileText className={`h-4 w-4 ${pathname === "/notes" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
+            active={pathname === "/notes"}
             onClick={() => {
               handleNavigate("/notes");
               // Ensure section is expanded when clicking header

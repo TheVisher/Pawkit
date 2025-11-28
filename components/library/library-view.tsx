@@ -13,6 +13,7 @@ import { format } from "date-fns";
 import { Library, Settings } from "lucide-react";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { FileDropZone } from "@/components/files/file-drop-zone";
+import { WelcomeBanner } from "@/components/onboarding/welcome-banner";
 
 type TimelineGroup = {
   date: string;
@@ -309,6 +310,9 @@ export function LibraryView({
   return (
     <FileDropZone className="min-h-[50vh]">
       <div className="space-y-4">
+        {/* Welcome Banner for new users */}
+        <WelcomeBanner className="mb-2" />
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">

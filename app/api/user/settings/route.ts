@@ -133,9 +133,13 @@ export async function PATCH(request: Request) {
       select: { serverSync: true }
     });
 
-    // If server sync is disabled, return success without saving
-    // Settings will only be stored in localStorage
-    if (!userProfile?.serverSync) {
+    // If server sync is disabled and this is NOT just an onboarding-related update,
+    // return success without saving (settings will only be stored in localStorage)
+    // Exception: onboarding flags must always be saved to prevent re-seeding and track banner/tour state
+    const onboardingKeys = ['onboardingSeeded', 'onboardingBannerDismissed', 'onboardingTourCompleted'];
+    const bodyKeys = Object.keys(body);
+    const isOnlyOnboardingUpdate = bodyKeys.length > 0 && bodyKeys.every(key => onboardingKeys.includes(key));
+    if (!userProfile?.serverSync && !isOnlyOnboardingUpdate) {
       return success({ message: 'Settings not synced (server sync disabled)' });
     }
 
@@ -179,6 +183,11 @@ export async function PATCH(request: Request) {
     if (body.showPreviews !== undefined) updateData.showPreviews = body.showPreviews;
     if (body.autoSyncOnReconnect !== undefined) updateData.autoSyncOnReconnect = body.autoSyncOnReconnect;
     if (body.cardSize !== undefined) updateData.cardSize = body.cardSize;
+
+    // Onboarding flags
+    if (body.onboardingSeeded !== undefined) updateData.onboardingSeeded = body.onboardingSeeded;
+    if (body.onboardingBannerDismissed !== undefined) updateData.onboardingBannerDismissed = body.onboardingBannerDismissed;
+    if (body.onboardingTourCompleted !== undefined) updateData.onboardingTourCompleted = body.onboardingTourCompleted;
 
     // Note: showSyncStatusInSidebar, showKeyboardShortcutsInSidebar, defaultView, defaultSort
     // are localStorage-only fields and intentionally not synced to server

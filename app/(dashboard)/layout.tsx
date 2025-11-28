@@ -44,6 +44,8 @@ import type { CardModel, CollectionNode } from "@/lib/types";
 import { initActivityTracking } from "@/lib/utils/device-session";
 import { SessionWarningBanner } from "@/components/session-warning-banner";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
+import { useOnboarding } from "@/lib/hooks/use-onboarding";
+import { TourProvider } from "@/components/onboarding/tour-provider";
 import { CardDTO } from "@/lib/server/cards";
 
 // Wrapper component that provides bulk operation handlers with access to selection store
@@ -114,6 +116,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   // Command Palette state
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [commandPaletteInitialValue, setCommandPaletteInitialValue] = useState("");
+  const [isCommandPaletteForTour, setIsCommandPaletteForTour] = useState(false);
   const [showCreateNoteModal, setShowCreateNoteModal] = useState(false);
   const [showCreateCardModal, setShowCreateCardModal] = useState(false);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
@@ -202,16 +205,23 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }, [isReady, loadFromServer]);
 
   // Network sync hook handles queue draining on reconnection + periodic retries
-  useNetworkSync();
+  // Pass isReady to prevent 401 errors before auth is confirmed
+  useNetworkSync(isReady);
 
   // Sync settings hook ensures localStorage serverSync is synced to database
-  useSyncSettings();
+  // Pass isReady to prevent 401 errors before auth is confirmed
+  useSyncSettings(isReady);
 
   // Sync triggers hook manages periodic sync and event-based sync
   useSyncTriggers();
 
   // Load user settings from server on mount (respects serverSync flag)
-  useLoadSettings();
+  // Pass isReady to prevent 401 errors before auth is confirmed
+  useLoadSettings(isReady);
+
+  // Onboarding hook - seeds sample data for new users
+  // Pass isReady to ensure auth is complete before checking onboarding status
+  useOnboarding(isReady);
 
   // Initialize activity tracking to mark this device as active
   useEffect(() => {
@@ -246,6 +256,29 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     document.addEventListener('paste', handlePaste);
     return () => document.removeEventListener('paste', handlePaste);
   }, [showCommandPalette]);
+
+  // Listen for tour events to open/close command palette
+  useEffect(() => {
+    const handleOpenCommandPalette = (e: Event) => {
+      const customEvent = e as CustomEvent<{ forTour?: boolean }>;
+      setIsCommandPaletteForTour(customEvent.detail?.forTour ?? false);
+      setCommandPaletteInitialValue("");
+      setShowCommandPalette(true);
+    };
+
+    const handleCloseCommandPalette = () => {
+      setShowCommandPalette(false);
+      setCommandPaletteInitialValue("");
+      setIsCommandPaletteForTour(false);
+    };
+
+    window.addEventListener("pawkit:open-command-palette", handleOpenCommandPalette);
+    window.addEventListener("pawkit:close-command-palette", handleCloseCommandPalette);
+    return () => {
+      window.removeEventListener("pawkit:open-command-palette", handleOpenCommandPalette);
+      window.removeEventListener("pawkit:close-command-palette", handleCloseCommandPalette);
+    };
+  }, []);
 
   // Global keyboard shortcuts
   useKeyboardShortcuts({
@@ -394,9 +427,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <SelectionStoreProvider>
-      <PawkitActionsProvider>
-        <SidebarProvider>
+    <TourProvider>
+      <SelectionStoreProvider>
+        <PawkitActionsProvider>
+          <SidebarProvider>
           <SidebarInset className="bg-transparent">
             {/* Mobile-only OmniBar - Shows on screens smaller than lg (1024px) */}
             <div className="sticky top-0 z-30 lg:hidden border-b border-white/10 bg-surface-80/95 backdrop-blur-xl">
@@ -454,7 +488,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             onClose={() => {
               setShowCommandPalette(false);
               setCommandPaletteInitialValue("");
+              setIsCommandPaletteForTour(false);
             }}
+            forTour={isCommandPaletteForTour}
             onOpenCreateNote={() => {
               setShowCommandPalette(false);
               setShowCreateNoteModal(true);
@@ -621,8 +657,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               onNavigateToCard={handleNavigateToCard}
             />
           )}
-        </SidebarProvider>
-      </PawkitActionsProvider>
-    </SelectionStoreProvider>
+          </SidebarProvider>
+        </PawkitActionsProvider>
+      </SelectionStoreProvider>
+    </TourProvider>
   );
 }
