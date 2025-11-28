@@ -13,10 +13,15 @@ import { TourProvider as ReactTourProvider, useTour, StepType } from "@reactour/
 // Tour step definitions
 export const TOUR_STEPS: StepType[] = [
   {
-    // Anchor to home section for consistent positioning with other steps
+    // Anchor to home section for positioning, but hide the highlight
     selector: '[data-tour="home-section"]',
     content: "This is your Command Palette - press ⌘K (or /) anytime to open it. Paste URLs to save bookmarks, or search your entire library instantly.",
     // Note: Command palette is opened by startTour() before tour begins
+    // Hide the highlight box since we're talking about the command palette, not the sidebar
+    styles: {
+      maskArea: (base: object) => ({ ...base, opacity: 0 }),
+      highlightedArea: (base: object) => ({ ...base, display: 'none' }),
+    },
   },
   {
     selector: '[data-tour="library-link"]',
