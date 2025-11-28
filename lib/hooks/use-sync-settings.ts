@@ -7,12 +7,15 @@ import { useSettingsStore } from "@/lib/hooks/settings-store";
  * Hook to sync localStorage serverSync setting with database
  * This ensures the middleware can enforce local-only mode server-side
  */
-export function useSyncSettings() {
+export function useSyncSettings(isAuthReady: boolean = true) {
   const serverSync = useSettingsStore((state) => state.serverSync);
   const setServerSync = useSettingsStore((state) => state.setServerSync);
   const hasSynced = useRef(false);
 
   useEffect(() => {
+    // Wait for auth to be ready before making API calls
+    if (!isAuthReady) return;
+
     // Only sync once on mount
     if (hasSynced.current) return;
     hasSynced.current = true;
@@ -37,5 +40,5 @@ export function useSyncSettings() {
 
     syncSettings();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - only run once on mount, prevent infinite loop
+  }, [isAuthReady]); // Run once when auth becomes ready
 }
