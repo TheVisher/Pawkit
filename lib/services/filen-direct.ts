@@ -192,11 +192,15 @@ class FilenDirectService {
   }
 
   /**
-   * Encrypt data using AES-256-GCM (Filen version 2 format)
-   * Returns: version (1 byte: 0x02) + IV (12 bytes) + ciphertext + auth tag (16 bytes)
+   * Encrypt data using AES-256-GCM
+   * Key is a 32-char string used as UTF-8 bytes (Filen's format)
+   * Returns: IV (12 bytes) + ciphertext + auth tag (16 bytes)
    */
-  private async encryptData(data: ArrayBuffer, keyHex: string): Promise<Uint8Array> {
-    const keyBytes = hexToBuffer(keyHex);
+  private async encryptData(data: ArrayBuffer, keyString: string): Promise<Uint8Array> {
+    // Filen uses the key string as UTF-8 bytes directly, NOT as hex
+    const encoder = new TextEncoder();
+    const keyBytes = encoder.encode(keyString);
+
     const key = await crypto.subtle.importKey(
       "raw",
       toArrayBuffer(keyBytes),
@@ -212,9 +216,8 @@ class FilenDirectService {
       data
     );
 
-    // Filen format: version byte (0x02) + IV + ciphertext + auth tag
-    const versionByte = new Uint8Array([2]);
-    return concatBuffers(versionByte, iv, encrypted);
+    // Format: IV + ciphertext + auth tag (no version byte for file data)
+    return concatBuffers(iv, encrypted);
   }
 
   /**
@@ -488,7 +491,7 @@ class FilenDirectService {
 
     // Generate upload parameters
     const uuid = generateUUID();
-    const encryptionKey = generateRandomHex(32); // 64 hex chars = 32 bytes
+    const encryptionKey = generateRandomString(32); // 32-char string used as UTF-8 bytes
     const uploadKey = generateRandomString(32);
     const rm = generateRandomString(32);
     const lastModified = file.lastModified;
