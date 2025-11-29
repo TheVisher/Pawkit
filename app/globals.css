@@ -786,29 +786,8 @@ textarea:focus-visible {
   animation: ticker-right 40s linear infinite;
 }
 
-/* Fade edges for ticker - applied to the overflow container */
+/* Fade edges for ticker - uses mask to fade content regardless of background */
 .ticker-container {
-  position: relative;
-}
-
-.ticker-container::before,
-.ticker-container::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  z-index: 10;
-  pointer-events: none;
-}
-
-.ticker-container::before {
-  left: 0;
-  width: 80px;
-  background: linear-gradient(to right, #0a0814 0%, #0a0814 20%, transparent 100%);
-}
-
-.ticker-container::after {
-  right: 0;
-  width: 120px;
-  background: linear-gradient(to left, #0a0814 0%, #0a0814 40%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
 }
