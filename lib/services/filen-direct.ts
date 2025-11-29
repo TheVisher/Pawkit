@@ -24,6 +24,10 @@ export interface FilenDirectCredentials {
   masterKeys: string[];
   baseFolderUUID: string;
   authVersion: 1 | 2 | 3;
+  pawkitFolderUUIDs?: {
+    library: string;
+    attachments: string;
+  };
 }
 
 export interface FilenDirectUploadResult {
@@ -132,6 +136,7 @@ class FilenDirectService {
       masterKeys: data.credentials.masterKeys,
       baseFolderUUID: data.credentials.baseFolderUUID,
       authVersion: data.credentials.authVersion,
+      pawkitFolderUUIDs: data.credentials.pawkitFolderUUIDs,
     };
 
     console.log("[FilenDirect] Initialized for:", data.credentials.email);
@@ -417,10 +422,24 @@ class FilenDirectService {
   }
 
   /**
-   * Get or create a folder by path
-   * Returns the folder UUID
+   * Get folder UUID for a path
+   * Uses pre-resolved UUIDs from auth if available, falls back to API
    */
-  private async getOrCreateFolder(path: string): Promise<string> {
+  private async getFolderUUID(path: string): Promise<string> {
+    // Check for pre-resolved Pawkit folder UUIDs
+    if (this.credentials?.pawkitFolderUUIDs) {
+      if (path === "/Pawkit/_Library") {
+        console.log(`[FilenDirect] Using pre-resolved Library UUID: ${this.credentials.pawkitFolderUUIDs.library}`);
+        return this.credentials.pawkitFolderUUIDs.library;
+      }
+      if (path === "/Pawkit/_Attachments") {
+        console.log(`[FilenDirect] Using pre-resolved Attachments UUID: ${this.credentials.pawkitFolderUUIDs.attachments}`);
+        return this.credentials.pawkitFolderUUIDs.attachments;
+      }
+    }
+
+    // Fall back to folder API for other paths or if UUIDs not available
+    console.log(`[FilenDirect] Resolving folder path via API: ${path}`);
     const response = await fetch("/api/filen/folder", {
       method: "POST",
       headers: {
@@ -464,7 +483,7 @@ class FilenDirectService {
     }
 
     // Resolve target folder path to UUID
-    const parent = await this.getOrCreateFolder(targetPath);
+    const parent = await this.getFolderUUID(targetPath);
 
     // Generate upload parameters
     const uuid = generateUUID();
