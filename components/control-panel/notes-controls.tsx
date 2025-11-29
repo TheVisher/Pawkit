@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Grid, List, Columns, Tag, SortAsc, Eye, Maximize2, ArrowUpDown } from "lucide-react";
+import { Grid, List, Tag, SortAsc, Eye, Maximize2, ArrowUpDown } from "lucide-react";
 import { useViewSettingsStore, type SortBy } from "@/lib/hooks/view-settings-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -56,7 +56,8 @@ export function NotesControls() {
   const setViewSpecific = useViewSettingsStore((state) => state.setViewSpecific);
 
   // Extract current values
-  const layout = viewSettings.layout;
+  // Fallback: If user had "compact" selected, default to "grid" (compact removed from Notes)
+  const layout = viewSettings.layout === "compact" ? "grid" : viewSettings.layout;
   const cardSizeValue = viewSettings.cardSize;
   const cardSpacingValue = viewSettings.cardSpacing;
   const cardPaddingValue = viewSettings.cardPadding;
@@ -235,13 +236,6 @@ export function NotesControls() {
           icon={<List size={16} />}
         >
           List
-        </PanelButton>
-        <PanelButton
-          active={layout === "compact"}
-          onClick={() => handleLayoutChange("compact")}
-          icon={<Columns size={16} />}
-        >
-          Compact
         </PanelButton>
       </PanelSection>
 
