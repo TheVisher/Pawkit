@@ -14,13 +14,8 @@
 
 // Constants matching Filen SDK
 const CHUNK_SIZE = 1024 * 1024; // 1MB
-const INGEST_URLS = [
-  "https://ingest.filen.io",
-  "https://ingest.filen.net",
-  "https://ingest-1.filen.net",
-  "https://ingest-2.filen.net",
-  "https://ingest-3.filen.net",
-];
+// Use only the main ingest URL - numbered ones may not exist
+const INGEST_URL = "https://ingest.filen.io";
 const API_URL = "https://api.filen.io";
 
 export interface FilenDirectCredentials {
@@ -263,10 +258,10 @@ class FilenDirectService {
   }
 
   /**
-   * Get a random ingest URL
+   * Get the ingest URL
    */
   private getIngestUrl(): string {
-    return INGEST_URLS[Math.floor(Math.random() * INGEST_URLS.length)];
+    return INGEST_URL;
   }
 
   /**
