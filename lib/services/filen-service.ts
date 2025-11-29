@@ -157,8 +157,28 @@ export const filenService = {
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Upload failed");
+      // Handle 413 Payload Too Large - server returns HTML, not JSON
+      if (response.status === 413) {
+        throw new Error(`File too large for upload (${file.name}). Maximum size is 4MB for cloud sync.`);
+      }
+
+      // Try to parse JSON error, but handle non-JSON responses gracefully
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const error = await response.json();
+          throw new Error(error.error || "Upload failed");
+        } else {
+          // Non-JSON response (likely HTML error page)
+          throw new Error(`Upload failed with status ${response.status}`);
+        }
+      } catch (parseError) {
+        // If JSON parsing fails, throw a generic error
+        if (parseError instanceof Error && parseError.message.includes("File too large")) {
+          throw parseError;
+        }
+        throw new Error(`Upload failed with status ${response.status}`);
+      }
     }
 
     return response.json();
@@ -171,8 +191,21 @@ export const filenService = {
     const response = await fetch("/api/filen/files");
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to list files");
+      // Try to parse JSON error, but handle non-JSON responses gracefully
+      try {
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.includes("application/json")) {
+          const error = await response.json();
+          throw new Error(error.error || "Failed to list files");
+        } else {
+          throw new Error(`Failed to list files (status ${response.status})`);
+        }
+      } catch (parseError) {
+        if (parseError instanceof Error && parseError.message.includes("Failed to list")) {
+          throw parseError;
+        }
+        throw new Error(`Failed to list files (status ${response.status})`);
+      }
     }
 
     const data = await response.json();

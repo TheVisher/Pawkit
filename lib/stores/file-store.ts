@@ -12,6 +12,7 @@ import {
   isFileSizeValid,
   wouldExceedStorageLimit,
   MAX_FILE_SIZE,
+  MAX_FILEN_UPLOAD_SIZE,
   formatFileSize,
   STORAGE_SOFT_LIMIT,
 } from "@/lib/utils/file-utils";
@@ -85,6 +86,20 @@ async function syncFileToFilen(
 ): Promise<void> {
   const { filen } = useConnectorStore.getState();
   if (!filen.connected) return;
+
+  // Check file size before attempting upload (Vercel API limit is ~4.5MB)
+  if (originalFile.size > MAX_FILEN_UPLOAD_SIZE) {
+    console.warn(
+      `[FileStore] File too large for Filen sync: ${originalFile.name} (${formatFileSize(originalFile.size)}). ` +
+      `Max size: ${formatFileSize(MAX_FILEN_UPLOAD_SIZE)}`
+    );
+    // Mark as local-only - file is saved locally but too large for cloud sync
+    updateStatus("local");
+    useToastStore.getState().warning(
+      `"${originalFile.name}" is too large for cloud sync (max ${formatFileSize(MAX_FILEN_UPLOAD_SIZE)}). Saved locally.`
+    );
+    return;
+  }
 
   updateStatus("uploading");
 
