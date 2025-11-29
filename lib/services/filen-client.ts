@@ -88,6 +88,16 @@ class FilenClientService {
    * Safe to call multiple times - will reuse existing initialization.
    */
   async initialize(): Promise<void> {
+    // Guard against SSR - SDK requires browser APIs
+    if (typeof window === "undefined") {
+      throw new Error("FilenClient can only be initialized in the browser");
+    }
+
+    // Check for Web Crypto API (required by Filen SDK)
+    if (!window.crypto?.subtle) {
+      throw new Error("Web Crypto API not available - HTTPS required");
+    }
+
     // Already initialized
     if (this.sdk && this.credentials) {
       return;
