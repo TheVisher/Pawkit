@@ -19,6 +19,11 @@ interface FilenSession {
   baseFolderUUID: string;
   authVersion: 1 | 2 | 3;
   privateKey: string; // Required for file encryption
+  // Pre-resolved Pawkit folder UUIDs for direct uploads
+  pawkitFolderUUIDs?: {
+    library: string;
+    attachments: string;
+  };
 }
 
 /**
@@ -48,7 +53,7 @@ export async function POST(request: NextRequest) {
       twoFactorCode: twoFactorCode || undefined,
     });
 
-    // Create Pawkit folder structure if it doesn't exist
+    // Create Pawkit folder structure if it doesn't exist and get UUIDs
     const fs = filen.fs();
     const folders = ["/Pawkit", "/Pawkit/_Library", "/Pawkit/_Attachments"];
 
@@ -58,6 +63,21 @@ export async function POST(request: NextRequest) {
       } catch {
         await fs.mkdir({ path: folderPath });
       }
+    }
+
+    // Get the UUIDs of the Pawkit folders for direct uploads
+    let libraryUUID = "";
+    let attachmentsUUID = "";
+    try {
+      const libraryStat = await fs.stat({ path: "/Pawkit/_Library" });
+      libraryUUID = libraryStat.uuid;
+      console.log("[Filen] Library folder UUID:", libraryUUID);
+
+      const attachmentsStat = await fs.stat({ path: "/Pawkit/_Attachments" });
+      attachmentsUUID = attachmentsStat.uuid;
+      console.log("[Filen] Attachments folder UUID:", attachmentsUUID);
+    } catch (statError) {
+      console.warn("[Filen] Could not get Pawkit folder UUIDs:", statError);
     }
 
     // Extract session data (includes privateKey for HMAC, excludes publicKey)
@@ -71,6 +91,11 @@ export async function POST(request: NextRequest) {
       baseFolderUUID: config.baseFolderUUID || "",
       authVersion: (config.authVersion as 1 | 2 | 3) || 2,
       privateKey: config.privateKey || "", // Required for file encryption
+      // Pre-resolved Pawkit folder UUIDs for direct uploads
+      pawkitFolderUUIDs: libraryUUID && attachmentsUUID ? {
+        library: libraryUUID,
+        attachments: attachmentsUUID,
+      } : undefined,
     };
 
     // Debug: Log individual field sizes

@@ -17,6 +17,10 @@ interface FilenSession {
   authVersion: 1 | 2 | 3;
   privateKey: string;
   publicKey?: string;
+  pawkitFolderUUIDs?: {
+    library: string;
+    attachments: string;
+  };
 }
 
 /**
@@ -86,6 +90,7 @@ export async function GET() {
         userId: session.userId,
         baseFolderUUID: session.baseFolderUUID,
         authVersion: session.authVersion,
+        pawkitFolderUUIDs: session.pawkitFolderUUIDs,
       },
     });
   } catch (error) {
