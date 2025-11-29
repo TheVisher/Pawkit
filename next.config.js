@@ -9,13 +9,13 @@ const nextConfig = {
 
     // Handle @filen/sdk browser build which incorrectly imports Node.js modules
     // Only apply fallbacks for client-side builds
+    // Note: Do NOT set crypto: false - browser needs native window.crypto for Web Crypto API
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
         path: false,
         os: false,
-        crypto: false,
         stream: false,
         buffer: false,
       };
