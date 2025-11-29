@@ -6,6 +6,21 @@ const nextConfig = {
       ...config.watchOptions,
       ignored: ['**/node_modules', '**/mobile/**'],
     };
+
+    // Handle @filen/sdk browser build which incorrectly imports Node.js modules
+    // Only apply fallbacks for client-side builds
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        os: false,
+        crypto: false,
+        stream: false,
+        buffer: false,
+      };
+    }
+
     return config;
   },
 
