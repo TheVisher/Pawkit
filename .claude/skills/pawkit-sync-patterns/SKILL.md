@@ -2973,7 +2973,208 @@ const isAnimated = status === "uploading" || status === "downloading";
 
 ---
 
-**Last Updated**: November 27, 2025
-**Integration**: Filen SDK v2.x with encrypted cookie session
-**Status**: Phase 2 complete - file sync operational
+**Last Updated**: November 29, 2025
+**Integration**: Direct browser uploads with Web Crypto API
+**Status**: Phase 3 complete - unlimited file size uploads
+
+---
+
+### FILEN DIRECT UPLOAD (Bypassing SDK - November 2025)
+
+**Problem**: Vercel API routes have 4MB body size limit. Server-side Filen SDK proxied all file data through the API, limiting uploads to 4MB.
+
+**Solution**: Direct browser-to-Filen uploads using Web Crypto API, bypassing both the Filen SDK and Vercel's API routes.
+
+---
+
+#### Why Not Client-Side Filen SDK?
+
+**Attempted**: Using `@filen/sdk` directly in browser
+**Failed**: Webpack/Next.js bundling issues with Node.js dependencies (crypto, fs, path, etc.)
+**Conclusion**: SDK is designed for Node.js, not browsers
+
+---
+
+#### Architecture
+
+```
+Browser                          Filen
+   |                               |
+   |--[chunks via XHR]------------>| ingest.filen.io (CORS OK)
+   |                               |
+   |--[finalize via proxy]-------->|
+   |        |                      |
+   |   Vercel API                  |
+   |   /api/filen/upload-done ---->| gateway.filen.io (no CORS)
+```
+
+**Key Points**:
+- Single bandwidth (browser → Filen directly for chunks)
+- No file size limit (1MB chunks)
+- Proxy only needed for small finalization request (~1KB)
+
+---
+
+#### Critical Technical Details
+
+##### 1. Filen API Endpoints
+
+| Endpoint | Purpose | CORS |
+|----------|---------|------|
+| `ingest.filen.io` | Chunk uploads | ✅ Yes |
+| `gateway.filen.io` | API calls (finalize) | ❌ No - needs proxy |
+| `api.filen.io` | **DOES NOT EXIST** | N/A |
+
+**Warning**: Documentation references `api.filen.io` but it returns NXDOMAIN!
+
+##### 2. Chunk Upload Checksum
+
+The `Checksum` header must be SHA-512 of ALL URL parameters as JSON:
+
+```typescript
+// ❌ WRONG: Missing parameters
+const checksumData = JSON.stringify({ uuid, hash: chunkHash });
+
+// ✅ CORRECT: All URL params included
+const urlParamsObj = {
+  uuid,
+  index: index.toString(),  // Must be string!
+  parent,
+  uploadKey,
+  hash: chunkHash
+};
+const checksumData = JSON.stringify(urlParamsObj);
+const checksum = await sha512(checksumData);
+```
+
+**Error if wrong**: "Wrong query checksum"
+
+##### 3. Metadata Encryption (Version 2 Format)
+
+Format: `"002" + ivString (12 alphanumeric chars) + base64(ciphertext + auth tag)`
+
+```typescript
+// ❌ WRONG: IV as random bytes base64
+const iv = crypto.getRandomValues(new Uint8Array(12));
+const ivString = btoa(String.fromCharCode(...iv));  // Wrong format!
+
+// ✅ CORRECT: IV as 12 alphanumeric characters
+const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+let ivString = "";
+for (let i = 0; i < 12; i++) {
+  ivString += chars[crypto.getRandomValues(new Uint8Array(1))[0] % chars.length];
+}
+const ivBytes = new TextEncoder().encode(ivString);  // Use as UTF-8
+```
+
+Key derivation: PBKDF2 with masterKey as both password AND salt, 1 iteration, SHA-512
+
+##### 4. File Data Encryption Key (THE CRITICAL FIX)
+
+**This was the hardest bug to find.**
+
+```typescript
+// ❌ WRONG: 64 hex chars decoded to 32 bytes
+const encryptionKey = generateRandomHex(32);  // "a1b2c3d4..." (64 chars)
+const keyBytes = hexToBuffer(encryptionKey);  // Converts to 32 bytes
+
+// ✅ CORRECT: 32 alphanumeric chars used as UTF-8
+const encryptionKey = generateRandomString(32);  // "aBc123XyZ..." (32 chars)
+const keyBytes = new TextEncoder().encode(encryptionKey);  // 32 UTF-8 bytes
+```
+
+**Why it matters**: Filen SDK does `Buffer.from(key, "utf-8")`, treating the key STRING as UTF-8 bytes directly. If you use hex decoding, Filen can't decrypt the file.
+
+**Symptom if wrong**: Files upload but can't be downloaded/viewed (corrupted)
+
+##### 5. Encrypted Chunk Format
+
+```typescript
+// Format: IV (12 bytes) + ciphertext + auth tag (16 bytes)
+// NO version byte for file data!
+
+const iv = crypto.getRandomValues(new Uint8Array(12));
+const encrypted = await crypto.subtle.encrypt(
+  { name: "AES-GCM", iv },
+  key,
+  data
+);
+return concatBuffers(iv, encrypted);  // Just IV + ciphertext+tag
+```
+
+##### 6. Pre-Resolved Folder UUIDs
+
+**Problem**: Navigating folder paths via API was unreliable (encrypted folder names, API issues)
+
+**Solution**: Store folder UUIDs during authentication:
+
+```typescript
+// In /api/filen/auth during login
+const libraryStat = await fs.stat({ path: "/Pawkit/_Library" });
+const attachmentsStat = await fs.stat({ path: "/Pawkit/_Attachments" });
+
+session.pawkitFolderUUIDs = {
+  library: libraryStat.uuid,
+  attachments: attachmentsStat.uuid,
+};
+```
+
+Then use directly in uploads:
+```typescript
+// In filen-direct.ts
+if (path === "/Pawkit/_Library") {
+  return this.credentials.pawkitFolderUUIDs.library;
+}
+```
+
+**Note**: User must re-authenticate after this change to get UUIDs stored
+
+---
+
+#### Files Created
+
+| File | Purpose |
+|------|---------|
+| `lib/services/filen-direct.ts` | Web Crypto upload service |
+| `app/api/filen/upload-done/route.ts` | Proxy for finalization (CORS) |
+| `app/api/filen/folder/route.ts` | Folder path resolution (optional) |
+
+#### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/filen/auth/route.ts` | Store folder UUIDs during login |
+| `app/api/filen/session/route.ts` | Return folder UUIDs to client |
+| `lib/stores/file-store.ts` | Use filen-direct instead of SDK |
+
+---
+
+#### Error Reference
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `ERR_NAME_NOT_RESOLVED api.filen.io` | Domain doesn't exist | Use `gateway.filen.io` |
+| `Wrong query checksum` | Missing params in checksum | Include ALL URL params as JSON |
+| `CANNOT_DECRYPT_NAME` | Wrong metadata IV format | Use 12 alphanumeric chars as UTF-8 |
+| `Folder not found` | Can't navigate encrypted folders | Store folder UUIDs during auth |
+| Files corrupted/won't open | Wrong encryption key format | Use 32-char string as UTF-8, not hex |
+
+---
+
+#### Testing Checklist
+
+- [ ] Upload small file (<1MB) - single chunk
+- [ ] Upload large file (>10MB) - multiple chunks
+- [ ] Verify file appears in correct Filen folder
+- [ ] Download file from Filen - should open correctly
+- [ ] Test with 2FA-enabled Filen account
+- [ ] Test after re-authenticating (folder UUIDs)
+
+---
+
+#### Key Lesson
+
+When reverse-engineering encryption protocols, the **key format** matters as much as the algorithm. Filen's use of UTF-8 string bytes vs hex-decoded bytes was the critical difference that took hours to debug.
+
+**Documentation**: See `/docs/filen-direct-upload-implementation.md` for full implementation history
 

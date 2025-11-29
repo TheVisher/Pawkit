@@ -4848,6 +4848,85 @@ After adding a new issue:
 
 ---
 
+### 39. Filen Direct Upload - Files Corrupted After Upload
+
+**Date**: November 29, 2025
+**Severity**: Critical
+**Component**: File sync / Filen integration
+
+**Symptom**: Files upload to Filen successfully (appear in folder with correct name) but cannot be downloaded or viewed - they're corrupted.
+
+**Root Cause**: Encryption key format mismatch between our implementation and Filen SDK.
+
+**What Failed**:
+```typescript
+// ❌ WRONG: Using hex-encoded key
+const encryptionKey = generateRandomHex(32);  // "a1b2c3d4e5f6..." (64 hex chars)
+const keyBytes = hexToBuffer(encryptionKey);  // Decoded to 32 bytes
+```
+
+**What Worked**:
+```typescript
+// ✅ CORRECT: Using alphanumeric string as UTF-8
+const encryptionKey = generateRandomString(32);  // "aBc123XyZ..." (32 chars)
+const keyBytes = new TextEncoder().encode(encryptionKey);  // 32 UTF-8 bytes
+```
+
+**Why**: Filen SDK uses `Buffer.from(key, "utf-8")` to convert the key string to bytes. It treats the key as a literal UTF-8 string, not as hex. The key stored in file metadata is the raw 32-char string.
+
+**Prevention**:
+- When reverse-engineering crypto protocols, pay attention to encoding (UTF-8 vs hex vs base64)
+- Test file decryption immediately after implementing encryption
+- The encryption key format in metadata must match what the decryptor expects
+
+**Files Changed**:
+- `lib/services/filen-direct.ts` - Changed key generation and usage
+
+**Related**: See sync-patterns skill "FILEN DIRECT UPLOAD" section for full implementation details.
+
+---
+
+### 40. Filen API - api.filen.io Does Not Exist
+
+**Date**: November 29, 2025
+**Severity**: High
+**Component**: File sync / Filen integration
+
+**Symptom**: `ERR_NAME_NOT_RESOLVED` when calling Filen API endpoints.
+
+**Root Cause**: Documentation and some examples reference `api.filen.io` but this domain doesn't exist (NXDOMAIN).
+
+**What Failed**:
+```typescript
+// ❌ WRONG: Domain doesn't exist
+const response = await fetch("https://api.filen.io/v3/upload/done", { ... });
+// Error: getaddrinfo ENOTFOUND api.filen.io
+```
+
+**What Worked**:
+```typescript
+// ✅ CORRECT: Use gateway.filen.io
+const response = await fetch("https://gateway.filen.io/v3/upload/done", { ... });
+```
+
+**Filen API Endpoints**:
+| Endpoint | Purpose | CORS |
+|----------|---------|------|
+| `ingest.filen.io` | Chunk uploads | ✅ Yes |
+| `gateway.filen.io` | All other API calls | ❌ No |
+| `api.filen.io` | **DOES NOT EXIST** | N/A |
+
+**Prevention**:
+- Always verify API endpoints actually resolve before implementing
+- When documentation is unclear, check actual SDK source code
+- Test DNS resolution: `nslookup api.filen.io` → NXDOMAIN
+
+**Files Changed**:
+- `lib/services/filen-direct.ts`
+- `app/api/filen/upload-done/route.ts`
+
+---
+
 ## Issue Categories Quick Reference
 
 **API Routes**:
@@ -4920,7 +4999,7 @@ After adding a new issue:
 
 ---
 
-**Last Updated**: November 26, 2025 (Added Issues #37-38: Hidden vs Invisible CSS, Panel store activeCardId)
+**Last Updated**: November 29, 2025 (Added Issues #39-40: Filen Direct Upload encryption key format, api.filen.io DNS)
 **Next Review**: April 2025 (Quarterly)
 
 **This is a living document. Keep it current!**
