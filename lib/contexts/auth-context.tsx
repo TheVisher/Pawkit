@@ -62,7 +62,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // CRITICAL: Clear user session markers BEFORE signing out
       // This allows useUserStorage to detect user switches on next login
       localStorage.removeItem('pawkit_last_user_id');
-      localStorage.removeItem('pawkit_active_device');
 
       // Sign out from Supabase
       await supabase.auth.signOut();

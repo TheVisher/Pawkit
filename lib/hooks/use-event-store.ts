@@ -3,8 +3,7 @@
 import { create } from 'zustand';
 import { localDb } from '@/lib/services/local-storage';
 import { useSettingsStore } from '@/lib/hooks/settings-store';
-import { markDeviceActive, getSessionId } from '@/lib/utils/device-session';
-import { useToastStore } from '@/lib/stores/toast-store';
+import { markDeviceActive } from '@/lib/utils/device-session';
 import {
   CalendarEvent,
   CalendarEventUpdate,
@@ -25,21 +24,6 @@ import {
   getDate,
   differenceInDays,
 } from 'date-fns';
-
-/**
- * Write guard: Ensures only the active tab/session can modify data
- */
-function ensureActiveDevice(): boolean {
-  const currentSessionId = getSessionId();
-  const activeSessionId = localStorage.getItem('pawkit_active_device');
-
-  if (activeSessionId && activeSessionId !== currentSessionId) {
-    useToastStore.getState().warning('Another tab is active. Please refresh and click "Use This Tab" to continue.', 5000);
-    return false;
-  }
-
-  return true;
-}
 
 type EventStore = {
   // Data
@@ -395,10 +379,6 @@ export const useEventStore = create<EventStore>((set, get) => ({
    * Add event: Save to local first, then sync to server
    */
   addEvent: async (eventData: Partial<CalendarEvent>) => {
-    if (!ensureActiveDevice()) {
-      return null;
-    }
-
     markDeviceActive();
 
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -484,10 +464,6 @@ export const useEventStore = create<EventStore>((set, get) => ({
    * Update event: Save to local first, then sync to server
    */
   updateEvent: async (id: string, updates: CalendarEventUpdate) => {
-    if (!ensureActiveDevice()) {
-      return;
-    }
-
     markDeviceActive();
 
     const oldEvent = get().events.find(e => e.id === id);
@@ -536,10 +512,6 @@ export const useEventStore = create<EventStore>((set, get) => ({
    * Delete event: Soft delete locally first, then sync
    */
   deleteEvent: async (id: string) => {
-    if (!ensureActiveDevice()) {
-      return;
-    }
-
     markDeviceActive();
 
     try {
@@ -575,10 +547,6 @@ export const useEventStore = create<EventStore>((set, get) => ({
    * Exclude a specific date from a recurring event (delete single instance)
    */
   excludeDateFromRecurrence: async (id: string, dateToExclude: string) => {
-    if (!ensureActiveDevice()) {
-      return;
-    }
-
     markDeviceActive();
 
     const event = get().events.find(e => e.id === id);
@@ -625,10 +593,6 @@ export const useEventStore = create<EventStore>((set, get) => ({
    * This creates a new non-recurring event for a specific date and excludes that date from the parent
    */
   createExceptionInstance: async (parentEvent: CalendarEvent, instanceDate: string) => {
-    if (!ensureActiveDevice()) {
-      return null;
-    }
-
     markDeviceActive();
 
     if (!parentEvent.recurrence) return null;

@@ -42,7 +42,6 @@ import { Menu, Settings, ChevronRight, ChevronLeft } from "lucide-react";
 import { CardDetailModal } from "@/components/modals/card-detail-modal";
 import type { CardModel, CollectionNode } from "@/lib/types";
 import { initActivityTracking } from "@/lib/utils/device-session";
-import { SessionWarningBanner } from "@/components/session-warning-banner";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useOnboarding } from "@/lib/hooks/use-onboarding";
 import { TourProvider } from "@/components/onboarding/tour-provider";
@@ -478,9 +477,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </SidebarInset>
           <ConflictNotifications />
           <GlobalToastProvider />
-
-          {/* Multi-Session Warning Banner */}
-          <SessionWarningBanner />
 
           {/* Command Palette */}
           <CommandPalette
