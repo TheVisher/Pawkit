@@ -12,7 +12,6 @@ import {
   isFileSizeValid,
   wouldExceedStorageLimit,
   MAX_FILE_SIZE,
-  MAX_FILEN_UPLOAD_SIZE,
   formatFileSize,
   STORAGE_SOFT_LIMIT,
 } from "@/lib/utils/file-utils";
@@ -77,8 +76,8 @@ function getPawkitNameForCard(cardId: string): string | null {
 }
 
 /**
- * Sync a file to Filen in the background using server-side API.
- * Files larger than 4MB are kept local-only due to Vercel API limits.
+ * Sync a file to Filen in the background using direct browser upload.
+ * Uses Web Crypto API for encryption - no file size limit.
  */
 async function syncFileToFilen(
   file: StoredFile,
@@ -88,26 +87,16 @@ async function syncFileToFilen(
   const { filen } = useConnectorStore.getState();
   if (!filen.connected) return;
 
-  // Check file size limit for server-side upload (Vercel API limit)
-  if (originalFile.size > MAX_FILEN_UPLOAD_SIZE) {
-    console.log(
-      `[FileStore] File too large for Filen sync: ${originalFile.name} (${formatFileSize(originalFile.size)} > ${formatFileSize(MAX_FILEN_UPLOAD_SIZE)})`
-    );
-    updateStatus("local");
-    useToastStore.getState().info(
-      `"${originalFile.name}" saved locally (${formatFileSize(originalFile.size)} exceeds 4MB cloud limit)`
-    );
-    return;
-  }
-
   updateStatus("uploading");
 
   try {
-    // Determine destination folder (pawkit name)
-    let pawkitName: string | null = null;
+    // Determine destination folder path
+    let targetPath = "/Pawkit/_Library";
     const isAttachment = !!file.cardId;
 
-    if (!isAttachment) {
+    if (isAttachment) {
+      targetPath = "/Pawkit/_Attachments";
+    } else {
       // For standalone files, find the associated card to get its pawkit
       const dataStore = useDataStore.getState();
       const fileCard = dataStore.cards.find(
@@ -117,39 +106,42 @@ async function syncFileToFilen(
         const collection = dataStore.collections.find(
           (c) => c.slug === fileCard.collections[0] || c.id === fileCard.collections[0]
         );
-        pawkitName = collection?.name || null;
+        if (collection?.name) {
+          // Sanitize pawkit name for folder path
+          const safePawkitName = collection.name.replace(/[/\\:*?"<>|]/g, "_");
+          targetPath = `/Pawkit/${safePawkitName}`;
+        }
       }
     }
 
-    // Use server-side API for upload
-    const result = await filenService.uploadFile(originalFile, {
-      fileId: file.id,
-      pawkit: pawkitName,
-      isAttachment,
+    // Use direct browser upload (Web Crypto API, no SDK)
+    const { filenDirect } = await import("@/lib/services/filen-direct");
+    const result = await filenDirect.uploadFile(originalFile, targetPath, {
+      onProgress: (progress) => {
+        console.log(`[FileStore] Upload progress: ${progress.percentage}%`);
+      },
     });
 
-    updateStatus("synced", { uuid: result.filenUuid, path: result.path });
-    console.log(`[FileStore] File synced to Filen: ${originalFile.name} (${formatFileSize(originalFile.size)})`);
+    updateStatus("synced", { uuid: result.uuid, path: result.path });
+    console.log(`[FileStore] File synced to Filen: ${result.name} (${formatFileSize(originalFile.size)})`);
   } catch (error) {
     console.error("[FileStore] Filen sync failed:", error);
 
     const errorMessage = error instanceof Error ? error.message : String(error);
 
-    // Check for file size error (413 or explicit message)
-    if (errorMessage.includes("too large") || errorMessage.includes("413")) {
-      updateStatus("local");
-      useToastStore.getState().info(
-        `"${originalFile.name}" saved locally (exceeds cloud upload limit)`
-      );
-    } else if (
+    if (
       errorMessage.includes("Not authenticated") ||
-      errorMessage.includes("Filen not connected")
+      errorMessage.includes("Filen not connected") ||
+      errorMessage.includes("Not initialized")
     ) {
       // Mark as local - Filen connection lost
       updateStatus("local");
       useToastStore.getState().warning(
         `Filen sync unavailable. "${originalFile.name}" saved locally.`
       );
+    } else if (errorMessage.includes("aborted")) {
+      updateStatus("local");
+      useToastStore.getState().info(`Upload cancelled for "${originalFile.name}"`);
     } else {
       updateStatus("error");
       useToastStore.getState().error(
