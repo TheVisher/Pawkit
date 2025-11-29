@@ -393,23 +393,40 @@ class FilenDirectService {
       uploadKey: params.uploadKey,
     };
 
-    const response = await fetch(`${API_URL}/v3/upload/done`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${this.credentials.apiKey}`,
-      },
-      body: JSON.stringify(body),
+    console.log(`[FilenDirect] Finishing upload to ${API_URL}/v3/upload/done`);
+    console.log(`[FilenDirect] Upload body:`, body);
+
+    // Use XHR for consistency with chunk uploads
+    const response = await new Promise<{ status: boolean; message?: string; data?: unknown }>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${API_URL}/v3/upload/done`);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.setRequestHeader("Authorization", `Bearer ${this.credentials!.apiKey}`);
+
+      xhr.onload = () => {
+        try {
+          const result = JSON.parse(xhr.responseText);
+          console.log(`[FilenDirect] Finish upload response:`, result);
+          resolve(result);
+        } catch (e) {
+          console.error(`[FilenDirect] Failed to parse finish response:`, xhr.responseText);
+          reject(new Error(`Invalid response: ${xhr.responseText}`));
+        }
+      };
+
+      xhr.onerror = () => {
+        console.error(`[FilenDirect] XHR error for finish upload:`, xhr.status, xhr.statusText);
+        reject(new Error(`Network error: ${xhr.statusText || 'Connection failed'}`));
+      };
+
+      xhr.timeout = 60000; // 1 minute
+      xhr.ontimeout = () => reject(new Error("Finish upload timeout"));
+
+      xhr.send(JSON.stringify(body));
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Upload finalization failed: ${response.status} - ${errorText}`);
-    }
-
-    const result = await response.json();
-    if (!result.status) {
-      throw new Error(result.message || "Upload finalization failed");
+    if (!response.status) {
+      throw new Error(response.message || "Upload finalization failed");
     }
   }
 
