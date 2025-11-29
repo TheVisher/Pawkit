@@ -16,7 +16,8 @@
 const CHUNK_SIZE = 1024 * 1024; // 1MB
 // Use only the main ingest URL - numbered ones may not exist
 const INGEST_URL = "https://ingest.filen.io";
-const API_URL = "https://api.filen.io";
+// Note: api.filen.io doesn't exist (NXDOMAIN), gateway.filen.io is the actual API
+const API_URL = "https://gateway.filen.io";
 
 export interface FilenDirectCredentials {
   apiKey: string;
