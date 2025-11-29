@@ -1265,53 +1265,55 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                 </div>
               )}
 
-              {/* Spacer when no content */}
-              {!card.content && <div className="flex-1"></div>}
+              {/* Spacer when preview is not shown (either no content or preview disabled) */}
+              {!(showPreview && card.content) && <div className="flex-1"></div>}
 
-              {/* Bottom section - tags and metadata */}
-              <div className="space-y-2 mt-auto">
-                {showCardTags && card.collections && card.collections.length > 0 && layout !== "compact" && (
-                  <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
-                    {card.collections
-                      .filter((collection) =>
-                        !collection.startsWith('den-')
-                      )
-                      .map((collection) => (
-                        <span key={collection} className="rounded bg-surface-soft/80 backdrop-blur-sm px-2 py-0.5 border border-purple-500/10">
-                          {collection}
-                        </span>
-                      ))}
-                    {card.collections?.includes('the-den') && (
-                      <span className="rounded bg-surface-soft/80 backdrop-blur-sm px-2 py-0.5 border border-purple-500/10">
-                        The Den
-                      </span>
-                    )}
-                  </div>
-                )}
-                {(showCardTags || isPinned || hasCalendarEvents) && (
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      {showCardTags && (
-                        <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-200 border border-purple-500/20">
-                          {card.type === "md-note" ? "Markdown" : "Text"}
+              {/* Bottom section - tags and metadata - only render if has visible content */}
+              {(showCardTags || isPinned || hasCalendarEvents) && (
+                <div className="space-y-2 mt-auto">
+                  {showCardTags && card.collections && card.collections.length > 0 && layout !== "compact" && (
+                    <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+                      {card.collections
+                        .filter((collection) =>
+                          !collection.startsWith('den-')
+                        )
+                        .map((collection) => (
+                          <span key={collection} className="rounded bg-surface-soft/80 backdrop-blur-sm px-2 py-0.5 border border-purple-500/10">
+                            {collection}
+                          </span>
+                        ))}
+                      {card.collections?.includes('the-den') && (
+                        <span className="rounded bg-surface-soft/80 backdrop-blur-sm px-2 py-0.5 border border-purple-500/10">
+                          The Den
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
-                      {hasCalendarEvents && (
-                        <div className="flex items-center gap-1 text-purple-400" title="On your calendar">
-                          <Calendar size={12} className="flex-shrink-0" />
-                        </div>
-                      )}
-                      {isPinned && (
-                        <div className="flex items-center gap-1 text-purple-400">
-                          <Pin size={12} className="flex-shrink-0" />
-                        </div>
-                      )}
+                  )}
+                  {(showCardTags || isPinned || hasCalendarEvents) && (
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {showCardTags && (
+                          <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-200 border border-purple-500/20">
+                            {card.type === "md-note" ? "Markdown" : "Text"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {hasCalendarEvents && (
+                          <div className="flex items-center gap-1 text-purple-400" title="On your calendar">
+                            <Calendar size={12} className="flex-shrink-0" />
+                          </div>
+                        )}
+                        {isPinned && (
+                          <div className="flex items-center gap-1 text-purple-400">
+                            <Pin size={12} className="flex-shrink-0" />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
