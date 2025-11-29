@@ -3,7 +3,8 @@ import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { decrypt } from "@/lib/utils/crypto";
 
-const FILEN_API_URL = "https://api.filen.io";
+// Note: api.filen.io doesn't exist (NXDOMAIN), use gateway.filen.io instead
+const FILEN_API_URL = "https://gateway.filen.io";
 const FILEN_COOKIE_NAME = "filen_session";
 
 interface FilenSession {
