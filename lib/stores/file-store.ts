@@ -130,13 +130,18 @@ async function syncFileToFilen(
   } catch (error) {
     console.error("[FileStore] Filen sync failed:", error);
 
-    // Check if it's an initialization error (credentials issue)
+    // Check if it's an initialization error (credentials or environment issue)
     const errorMessage = error instanceof Error ? error.message : String(error);
-    if (errorMessage.includes("Not authenticated") || errorMessage.includes("Filen not connected")) {
-      // Mark as local - Filen connection lost
+    if (
+      errorMessage.includes("Not authenticated") ||
+      errorMessage.includes("Filen not connected") ||
+      errorMessage.includes("only be initialized in the browser") ||
+      errorMessage.includes("Web Crypto API not available")
+    ) {
+      // Mark as local - Filen connection lost or not available
       updateStatus("local");
       useToastStore.getState().warning(
-        `Filen connection lost. "${originalFile.name}" saved locally.`
+        `Filen sync unavailable. "${originalFile.name}" saved locally.`
       );
     } else {
       updateStatus("error");
