@@ -192,8 +192,8 @@ class FilenDirectService {
   }
 
   /**
-   * Encrypt data using AES-256-GCM
-   * Returns: IV (12 bytes) + ciphertext + auth tag (16 bytes)
+   * Encrypt data using AES-256-GCM (Filen version 2 format)
+   * Returns: version (1 byte: 0x02) + IV (12 bytes) + ciphertext + auth tag (16 bytes)
    */
   private async encryptData(data: ArrayBuffer, keyHex: string): Promise<Uint8Array> {
     const keyBytes = hexToBuffer(keyHex);
@@ -212,8 +212,9 @@ class FilenDirectService {
       data
     );
 
-    // Web Crypto appends auth tag to ciphertext
-    return concatBuffers(iv, encrypted);
+    // Filen format: version byte (0x02) + IV + ciphertext + auth tag
+    const versionByte = new Uint8Array([2]);
+    return concatBuffers(versionByte, iv, encrypted);
   }
 
   /**
