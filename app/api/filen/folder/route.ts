@@ -73,22 +73,29 @@ export async function POST(request: Request) {
 
     for (const folderName of segments) {
       // List current folder contents
+      console.log(`[Filen Folder] Listing folder UUID: ${currentUUID}`);
+      const requestBody = { uuid: currentUUID };
+      console.log(`[Filen Folder] Request body:`, JSON.stringify(requestBody));
+
       const listResponse = await fetch(`${FILEN_API_URL}/v3/dir/content`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.apiKey}`,
         },
-        body: JSON.stringify({ uuid: currentUUID }),
+        body: JSON.stringify(requestBody),
       });
 
+      console.log(`[Filen Folder] Response status: ${listResponse.status}`);
+
       if (!listResponse.ok) {
-        console.error("[Filen Folder] Failed to list folder:", listResponse.status);
+        const errorText = await listResponse.text();
+        console.error("[Filen Folder] Failed to list folder:", listResponse.status, errorText);
         return NextResponse.json({ error: "Failed to list folder" }, { status: 500 });
       }
 
       const listResult = await listResponse.json();
-      console.log("[Filen Folder] List response:", JSON.stringify(listResult).substring(0, 500));
+      console.log("[Filen Folder] List response:", JSON.stringify(listResult).substring(0, 1000));
 
       if (!listResult.status) {
         console.error("[Filen Folder] API error:", listResult.message);
