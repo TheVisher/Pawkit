@@ -61,6 +61,9 @@ export async function POST(request: Request) {
 
     // 4. Split path into segments (e.g., "/Pawkit/_Library" -> ["Pawkit", "_Library"])
     const segments = path.split("/").filter(Boolean);
+    console.log(`[Filen Folder] Path: "${path}", segments:`, segments);
+    console.log(`[Filen Folder] Base folder UUID: ${session.baseFolderUUID}`);
+
     if (segments.length === 0) {
       return NextResponse.json({ uuid: session.baseFolderUUID });
     }
@@ -85,27 +88,38 @@ export async function POST(request: Request) {
       }
 
       const listResult = await listResponse.json();
+      console.log("[Filen Folder] List response:", JSON.stringify(listResult).substring(0, 500));
+
       if (!listResult.status) {
         console.error("[Filen Folder] API error:", listResult.message);
         return NextResponse.json({ error: listResult.message }, { status: 500 });
       }
 
       const content: FolderContent = listResult.data;
-      console.log(`[Filen Folder] Listing ${currentUUID}, found ${content.folders?.length || 0} folders`);
+      console.log(`[Filen Folder] Listing ${currentUUID}, found ${content?.folders?.length || 0} folders`);
+
+      if (!content) {
+        console.error("[Filen Folder] No data in response");
+        return NextResponse.json({ error: "No folder data returned" }, { status: 500 });
+      }
 
       // Look for existing folder - need to decrypt folder names
       let existingFolder: { uuid: string; name: string } | undefined;
       const folders = content.folders || [];
+      console.log(`[Filen Folder] Looking for "${folderName}" among ${folders.length} folders`);
+
       for (const folder of folders) {
         try {
           const decryptedName = await decryptMetadata(folder.name, session.masterKeys);
+          console.log(`[Filen Folder] Decrypted folder: "${decryptedName}"`);
           if (decryptedName.toLowerCase() === folderName.toLowerCase()) {
             existingFolder = folder;
+            console.log(`[Filen Folder] Found match: ${folder.uuid}`);
             break;
           }
         } catch (e) {
           // Skip folders we can't decrypt
-          console.warn("[Filen Folder] Could not decrypt folder name:", e);
+          console.warn("[Filen Folder] Could not decrypt folder name:", folder.name?.substring(0, 20), e);
         }
       }
 
@@ -148,9 +162,11 @@ export async function POST(request: Request) {
       }
     }
 
+    console.log(`[Filen Folder] Success! Final UUID: ${currentUUID}`);
     return NextResponse.json({ uuid: currentUUID });
   } catch (error) {
-    console.error("[Filen Folder] Error:", error);
+    console.error("[Filen Folder] Caught error:", error);
+    console.error("[Filen Folder] Error stack:", error instanceof Error ? error.stack : "no stack");
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
