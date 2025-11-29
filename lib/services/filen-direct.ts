@@ -212,15 +212,18 @@ class FilenDirectService {
   }
 
   /**
-   * Encrypt metadata string (version 2 format for compatibility)
-   * Format: "002" + base64(iv) + base64(ciphertext + tag)
+   * Encrypt metadata string (version 2 format matching Filen SDK)
+   * Format: "002" + iv (12 alphanumeric chars) + base64(ciphertext + tag)
    */
   private async encryptMetadata(metadata: string, masterKey: string): Promise<string> {
     const encoder = new TextEncoder();
     const data = encoder.encode(metadata);
 
-    // For version 2, we use the master key directly
-    // Derive key using PBKDF2 with 1 iteration (matching Filen's implementation)
+    // Generate 12-character alphanumeric IV (matching Filen's generateRandomString)
+    const ivString = generateRandomString(12);
+    const ivBytes = encoder.encode(ivString);
+
+    // Derive key using PBKDF2 with master key as both password and salt
     const keyMaterial = await crypto.subtle.importKey(
       "raw",
       toArrayBuffer(encoder.encode(masterKey)),
@@ -229,13 +232,10 @@ class FilenDirectService {
       ["deriveBits", "deriveKey"]
     );
 
-    const iv = crypto.getRandomValues(new Uint8Array(12));
-    const salt = encoder.encode(masterKey);
-
     const key = await crypto.subtle.deriveKey(
       {
         name: "PBKDF2",
-        salt: toArrayBuffer(salt),
+        salt: toArrayBuffer(encoder.encode(masterKey)),
         iterations: 1,
         hash: "SHA-512",
       },
@@ -246,16 +246,15 @@ class FilenDirectService {
     );
 
     const encrypted = await crypto.subtle.encrypt(
-      { name: "AES-GCM", iv: toArrayBuffer(iv) },
+      { name: "AES-GCM", iv: toArrayBuffer(ivBytes) },
       key,
       toArrayBuffer(data)
     );
 
-    // Format: "002" + base64(iv) + base64(ciphertext+tag)
-    const ivBase64 = btoa(String.fromCharCode(...iv));
+    // Format: "002" + iv (12 chars UTF-8) + base64(ciphertext+tag)
     const encryptedBase64 = btoa(String.fromCharCode(...new Uint8Array(encrypted)));
 
-    return "002" + ivBase64 + encryptedBase64;
+    return "002" + ivString + encryptedBase64;
   }
 
   /**
