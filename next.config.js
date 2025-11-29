@@ -13,6 +13,13 @@ const nextConfig = {
     // Configuration based on Filen's official web app (uses vite-plugin-node-polyfills)
     // Only apply fallbacks for client-side builds
     if (!isServer) {
+      // Force webpack to use browser builds for problematic packages
+      config.resolve.alias = {
+        ...config.resolve.alias,
+        // Ensure SDK uses its browser build
+        '@filen/sdk': require.resolve('@filen/sdk/dist/browser/index.js'),
+      };
+
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,

@@ -140,10 +140,8 @@ class FilenClientService {
       const credentials = data.credentials as FilenCredentials;
       this.credentials = credentials;
 
-      // Dynamically import SDK browser build explicitly
-      // The default import might pick Node.js build causing "native" errors
-      // @ts-expect-error - Direct browser build import has no type declarations
-      const FilenSDK = (await import("@filen/sdk/dist/browser/index.js")).default;
+      // Dynamically import SDK (webpack alias ensures browser build is used)
+      const FilenSDK = (await import("@filen/sdk")).default;
 
       // Initialize SDK with credentials
       const sdk = new FilenSDK({
