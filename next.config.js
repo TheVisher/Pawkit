@@ -16,8 +16,9 @@ const nextConfig = {
         fs: false,
         path: false,
         os: false,
-        stream: false,
-        buffer: false,
+        // Provide polyfills for stream and buffer (required by Filen SDK)
+        stream: require.resolve('stream-browserify'),
+        buffer: require.resolve('buffer/'),
       };
     }
 
