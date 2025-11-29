@@ -417,6 +417,34 @@ class FilenDirectService {
   }
 
   /**
+   * Get or create a folder by path
+   * Returns the folder UUID
+   */
+  private async getOrCreateFolder(path: string): Promise<string> {
+    const response = await fetch("/api/filen/folder", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ path }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: "Failed to get folder" }));
+      throw new Error(error.error || `Failed to get folder: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.uuid) {
+      throw new Error("Invalid folder response");
+    }
+
+    console.log(`[FilenDirect] Resolved folder path "${path}" to UUID: ${data.uuid}`);
+    return data.uuid;
+  }
+
+  /**
    * Upload a file to Filen
    */
   async uploadFile(
@@ -435,12 +463,14 @@ class FilenDirectService {
       throw new Error("Upload aborted");
     }
 
+    // Resolve target folder path to UUID
+    const parent = await this.getOrCreateFolder(targetPath);
+
     // Generate upload parameters
     const uuid = generateUUID();
     const encryptionKey = generateRandomHex(32); // 64 hex chars = 32 bytes
     const uploadKey = generateRandomString(32);
     const rm = generateRandomString(32);
-    const parent = this.credentials.baseFolderUUID;
     const lastModified = file.lastModified;
 
     // Calculate chunks
