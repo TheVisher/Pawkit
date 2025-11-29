@@ -1460,6 +1460,8 @@ function getLayoutConfig(layout: LayoutMode, cardSize: number = 50, cardSpacing:
           gap: `${gapPx}px`,
           // Center the grid when cards don't fill the full width
           justifyContent: 'center',
+          // Align cards to top - prevents stretching to match tallest card in row
+          alignItems: 'start',
         }
       };
     case "grid":
@@ -1472,6 +1474,8 @@ function getLayoutConfig(layout: LayoutMode, cardSize: number = 50, cardSpacing:
           gap: `${gapPx}px`,
           // Center the grid when cards don't fill the full width
           justifyContent: 'center',
+          // Align cards to top - prevents stretching to match tallest card in row
+          alignItems: 'start',
         }
       };
   }
