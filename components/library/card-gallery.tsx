@@ -1270,53 +1270,6 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
 
               {/* Spacer when no content */}
               {!card.content && <div className="flex-1"></div>}
-
-              {/* Bottom section - tags and metadata - only render if has visible content */}
-              {(showMetadata || isPinned || hasCalendarEvents) && (
-                <div className="space-y-2 mt-auto">
-                  {showMetadata && card.collections && card.collections.length > 0 && layout !== "compact" && (
-                    <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
-                      {card.collections
-                        .filter((collection) =>
-                          !collection.startsWith('den-')
-                        )
-                        .map((collection) => (
-                          <span key={collection} className="rounded bg-surface-soft/80 backdrop-blur-sm px-2 py-0.5 border border-purple-500/10">
-                            {collection}
-                          </span>
-                        ))}
-                      {card.collections?.includes('the-den') && (
-                        <span className="rounded bg-surface-soft/80 backdrop-blur-sm px-2 py-0.5 border border-purple-500/10">
-                          The Den
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {(showMetadata || isPinned || hasCalendarEvents) && (
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        {showMetadata && (
-                          <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-200 border border-purple-500/20">
-                            {card.type === "md-note" ? "Markdown" : "Text"}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {hasCalendarEvents && (
-                          <div className="flex items-center gap-1 text-purple-400" title="On your calendar">
-                            <Calendar size={12} className="flex-shrink-0" />
-                          </div>
-                        )}
-                        {isPinned && (
-                          <div className="flex items-center gap-1 text-purple-400">
-                            <Pin size={12} className="flex-shrink-0" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -1338,26 +1291,6 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               <FileText size={32} className="text-purple-400" />
             </div>
           )}
-          {/* Tags and icons */}
-          {(showMetadata || isPinned || hasCalendarEvents) && (
-            <div className={`flex items-center justify-between gap-2 ${layout === "grid" ? "mt-4" : "mt-auto"}`}>
-              <div className="flex items-center gap-2">
-                {showMetadata && (
-                  <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-200 border border-purple-500/20">
-                    {card.type === "md-note" ? "Markdown" : "Text"}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2">
-                {hasCalendarEvents && (
-                  <Calendar size={12} className="text-purple-400" />
-                )}
-                {isPinned && (
-                  <Pin size={12} className="text-purple-400" />
-                )}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -1376,6 +1309,51 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               })()}
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Show metadata section for notes - separate from card content */}
+      {isNote && showMetadata && (
+        <div className="space-y-1 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-purple-400">
+              <FileText size={16} />
+            </span>
+            <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
+            {hasCalendarEvents && (
+              <span className="text-purple-400 flex-shrink-0" title="On your calendar">
+                <Calendar size={14} />
+              </span>
+            )}
+            {isPinned && (
+              <span className="text-purple-400 flex-shrink-0">
+                <Pin size={14} />
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-200 border border-purple-500/20">
+              {card.type === "md-note" ? "Markdown" : "Text"}
+            </span>
+          </div>
+          {card.collections && card.collections.length > 0 && layout !== "compact" && (
+            <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+              {card.collections
+                .filter((collection) =>
+                  !collection.startsWith('den-')
+                )
+                .map((collection) => (
+                  <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
+                    {collection}
+                  </span>
+                ))}
+              {card.collections?.includes('the-den') && (
+                <span className="rounded bg-surface-soft px-2 py-0.5">
+                  The Den
+                </span>
+              )}
+            </div>
+          )}
         </div>
       )}
 
