@@ -292,8 +292,9 @@ class FilenDirectService {
     });
     const url = `${ingestUrl}/v3/upload?${queryParams}`;
 
-    // Calculate checksum header (SHA-512 of params JSON)
-    const checksumData = JSON.stringify({ uuid, index, parent, uploadKey });
+    // Calculate checksum header (SHA-512 of params JSON - matches Filen SDK)
+    // Note: only uuid, index, uploadKey - NOT parent
+    const checksumData = JSON.stringify({ uuid, index, uploadKey });
     const checksum = await this.sha512(new TextEncoder().encode(checksumData));
 
     console.log(`[FilenDirect] Uploading chunk ${index} to ${ingestUrl} (${encryptedChunk.byteLength} bytes)`);
