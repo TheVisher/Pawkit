@@ -721,6 +721,11 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
                 onSetThumbnail={() => handleOpenThumbnailModal(card.id)}
                 hasAttachments={cardsWithAttachments.has(card.id)}
+                showLabels={viewSettings.showLabels}
+                showMetadata={viewSettings.showMetadata}
+                showCardTags={viewSettings.showTags}
+                showPreview={viewSettings.showPreview}
+                cardPadding={viewSettings.cardPadding}
               />
             ))}
           </div>
@@ -924,9 +929,15 @@ type CardCellProps = {
   onUnpinFromSidebar?: () => void;
   onSetThumbnail?: () => void;
   hasAttachments?: boolean;
+  // View settings props - passed from parent to ensure memo updates correctly
+  showLabels: boolean;
+  showMetadata: boolean;
+  showCardTags: boolean;
+  showPreview: boolean;
+  cardPadding: number;
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar, onSetThumbnail, hasAttachments }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar, onSetThumbnail, hasAttachments, showLabels, showMetadata, showCardTags, showPreview, cardPadding }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
@@ -951,15 +962,6 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
     card.url.includes('movies.') ||
     card.url.includes('film.')
   );
-
-  // Map area to view type and get display settings from new view settings store
-  const viewType: ViewType = area === "pawkit" ? "pawkits" : (area as ViewType);
-  const viewSettings = useViewSettingsStore((state) => state.getSettings(viewType));
-  const showLabels = viewSettings.showLabels; // URL pills on bookmarks, title pills on notes
-  const showMetadata = viewSettings.showMetadata; // Card info below (for bookmarks)
-  const showCardTags = viewSettings.showTags;
-  const showPreview = viewSettings.showPreview; // Plain text preview for notes
-  const cardPadding = viewSettings.cardPadding;
 
   // Convert cardPadding from 1-100 scale to pixels for smooth scaling
   // Scale from 0px (1) to 32px (100) for smooth transitions
@@ -1402,7 +1404,13 @@ const CardCell = memo(CardCellInner, (prevProps, nextProps) => {
     prevProps.layout === nextProps.layout &&
     prevProps.area === nextProps.area &&
     prevProps.isPinned === nextProps.isPinned &&
-    prevProps.hasAttachments === nextProps.hasAttachments
+    prevProps.hasAttachments === nextProps.hasAttachments &&
+    // View settings - must be included to ensure cards re-render when settings change
+    prevProps.showLabels === nextProps.showLabels &&
+    prevProps.showMetadata === nextProps.showMetadata &&
+    prevProps.showCardTags === nextProps.showCardTags &&
+    prevProps.showPreview === nextProps.showPreview &&
+    prevProps.cardPadding === nextProps.cardPadding
   );
 });
 
