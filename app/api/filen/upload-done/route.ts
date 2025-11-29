@@ -74,21 +74,41 @@ export async function POST(request: Request) {
 
     // 5. Forward to Filen API
     let response: Response;
+    const requestBody = JSON.stringify(body);
+
+    console.log("[Filen Upload Done] Making request to:", `${FILEN_API_URL}/v3/upload/done`);
+    console.log("[Filen Upload Done] Body length:", requestBody.length);
+
     try {
       response = await fetch(`${FILEN_API_URL}/v3/upload/done`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.apiKey}`,
+          "User-Agent": "Pawkit/1.0",
+          "Accept": "application/json",
         },
-        body: JSON.stringify(body),
+        body: requestBody,
+        // Add signal with timeout
+        signal: AbortSignal.timeout(30000), // 30 second timeout
       });
     } catch (fetchError) {
-      console.error("[Filen Upload Done] Fetch to Filen failed:", fetchError);
+      const errorMessage = fetchError instanceof Error ? fetchError.message : 'Unknown';
+      const errorCause = fetchError instanceof Error && 'cause' in fetchError ? String(fetchError.cause) : 'no cause';
+      console.error("[Filen Upload Done] Fetch to Filen failed:", errorMessage);
+      console.error("[Filen Upload Done] Error cause:", errorCause);
+      console.error("[Filen Upload Done] Full error:", fetchError);
+
+      // Build detailed error message
+      let detailedMessage = errorMessage;
+      if (errorCause !== 'no cause') {
+        detailedMessage += ` (cause: ${errorCause})`;
+      }
+
       return NextResponse.json(
         {
           status: false,
-          message: `Filen API unreachable: ${fetchError instanceof Error ? fetchError.message : 'Unknown'}`
+          message: `Filen API error: ${detailedMessage}`
         },
         { status: 502 }
       );
