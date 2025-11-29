@@ -70,16 +70,42 @@ export async function POST(request: Request) {
     const body = await request.json();
 
     console.log("[Filen Upload Done] Forwarding request to Filen API");
+    console.log("[Filen Upload Done] Request body keys:", Object.keys(body));
 
     // 5. Forward to Filen API
-    const response = await fetch(`${FILEN_API_URL}/v3/upload/done`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${session.apiKey}`,
-      },
-      body: JSON.stringify(body),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${FILEN_API_URL}/v3/upload/done`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.apiKey}`,
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (fetchError) {
+      console.error("[Filen Upload Done] Fetch to Filen failed:", fetchError);
+      return NextResponse.json(
+        {
+          status: false,
+          message: `Filen API unreachable: ${fetchError instanceof Error ? fetchError.message : 'Unknown'}`
+        },
+        { status: 502 }
+      );
+    }
+
+    // Log response status
+    console.log("[Filen Upload Done] Filen response status:", response.status);
+
+    // Handle non-OK responses
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[Filen Upload Done] Filen API error:", response.status, errorText);
+      return NextResponse.json(
+        { status: false, message: `Filen API error: ${response.status}` },
+        { status: response.status }
+      );
+    }
 
     const result = await response.json();
     console.log("[Filen Upload Done] Filen response:", result);
@@ -87,7 +113,7 @@ export async function POST(request: Request) {
     // 6. Return Filen's response
     return NextResponse.json(result);
   } catch (error) {
-    console.error("[Filen Upload Done] Error:", error);
+    console.error("[Filen Upload Done] Unexpected error:", error);
     return NextResponse.json(
       { status: false, message: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
