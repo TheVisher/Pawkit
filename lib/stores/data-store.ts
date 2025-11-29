@@ -6,35 +6,10 @@ import { syncService } from '@/lib/services/sync-service';
 import { syncQueue } from '@/lib/services/sync-queue';
 import { useConflictStore } from '@/lib/stores/conflict-store';
 import { useSettingsStore } from '@/lib/hooks/settings-store';
-import { markDeviceActive, getSessionId } from '@/lib/utils/device-session';
+import { markDeviceActive } from '@/lib/utils/device-session';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { useEventStore } from '@/lib/hooks/use-event-store';
 import { processCardForDates } from '@/lib/utils/calendar-prompt';
-
-/**
- * Write guard: Ensures only the active tab/session can modify data
- * Prevents corruption from concurrent writes across multiple tabs
- *
- * NOTE: This only applies to USER-INITIATED writes (data-store methods).
- * Sync operations bypass this by calling localDb methods directly.
- */
-function ensureActiveDevice(): boolean {
-  const currentSessionId = getSessionId();
-  const activeSessionId = localStorage.getItem('pawkit_active_device');
-
-  if (activeSessionId && activeSessionId !== currentSessionId) {
-    console.error('[WriteGuard] ❌ Write blocked - another tab is active:', {
-      currentSession: currentSessionId,
-      activeSession: activeSessionId,
-      stack: new Error().stack
-    });
-    // Use warning toast for this critical multi-tab conflict message
-    useToastStore.getState().warning('Another tab is active. Please refresh and click "Use This Tab" to continue.', 5000);
-    return false;
-  }
-
-  return true;
-}
 
 /**
  * Deduplicate cards: Remove duplicate IDs and clean up temp cards
@@ -436,12 +411,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Add card: Save to local first, then sync to server
    */
   addCard: async (cardData: Partial<CardDTO>) => {
-    // WRITE GUARD: Ensure this is the active device
-    if (!ensureActiveDevice()) {
-      return;
-    }
-
-    // Mark device as active - this is the source of truth
+    // Mark device as active
     markDeviceActive();
 
     // Generate ID for the card
@@ -607,12 +577,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Update card: Save to local first, then sync to server
    */
   updateCard: async (id: string, updates: Partial<CardDTO>) => {
-    // WRITE GUARD: Ensure this is the active device
-    if (!ensureActiveDevice()) {
-      return;
-    }
-
-    // Mark device as active - this is the source of truth
+    // Mark device as active
     markDeviceActive();
 
     const oldCard = get().cards.find(c => c.id === id);
@@ -750,12 +715,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * If card has linked calendar events, shows a prompt to delete those too
    */
   deleteCard: async (id: string, options?: { deleteLinkedEvents?: boolean; skipEventCheck?: boolean }) => {
-    // WRITE GUARD: Ensure this is the active device
-    if (!ensureActiveDevice()) {
-      return;
-    }
-
-    // Mark device as active - this is the source of truth
+    // Mark device as active
     markDeviceActive();
 
     // Check for linked calendar events (unless skipping)
@@ -842,12 +802,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Add collection: Save to local first, then sync
    */
   addCollection: async (collectionData: { name: string; parentId?: string | null }) => {
-    // WRITE GUARD: Ensure this is the active device
-    if (!ensureActiveDevice()) {
-      return;
-    }
-
-    // Mark device as active - this is the source of truth
+    // Mark device as active
     markDeviceActive();
 
     const tempId = `temp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -911,12 +866,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   updateCollection: async (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; isPrivate?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; coverImage?: string | null; coverImagePosition?: number | null }) => {
-    // WRITE GUARD: Ensure this is the active device
-    if (!ensureActiveDevice()) {
-      return;
-    }
-
-    // Mark device as active - this is the source of truth
+    // Mark device as active
     markDeviceActive();
 
     try {
@@ -961,12 +911,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
   },
 
   deleteCollection: async (id: string, deleteCards = false, deleteSubPawkits = false) => {
-    // WRITE GUARD: Ensure this is the active device
-    if (!ensureActiveDevice()) {
-      return;
-    }
-
-    // Mark device as active - this is the source of truth
+    // Mark device as active
     markDeviceActive();
 
     try {
