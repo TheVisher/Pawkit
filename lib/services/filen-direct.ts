@@ -298,13 +298,15 @@ class FilenDirectService {
     const checksum = await this.sha512(new TextEncoder().encode(checksumData));
 
     console.log(`[FilenDirect] Uploading chunk ${index} to ${ingestUrl} (${encryptedChunk.byteLength} bytes)`);
+    console.log(`[FilenDirect] Checksum input: ${checksumData}`);
+    console.log(`[FilenDirect] Checksum output: ${checksum}`);
 
     // Use XMLHttpRequest like Filen SDK does (fetch can have issues with binary uploads)
     const result = await new Promise<{ status: boolean; message?: string; data?: { bucket: string; region: string } }>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open("POST", url);
       xhr.setRequestHeader("Authorization", `Bearer ${this.credentials!.apiKey}`);
-      xhr.setRequestHeader("Checksum", checksum);
+      xhr.setRequestHeader("checksum", checksum);  // lowercase to match CORS headers
 
       xhr.onload = () => {
         try {
