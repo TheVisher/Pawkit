@@ -59,6 +59,8 @@
     "next": "15.5",
     "next-themes": "^0.3.0",
     "node-html-parser": "^7.0.1",
+    "os-browserify": "^0.3.0",
+    "path-browserify": "^1.0.1",
     "pdfjs-dist": "^5.4.394",
     "react": "^19.2.0",
     "react-big-calendar": "^1.19.4",
