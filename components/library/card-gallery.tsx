@@ -1057,6 +1057,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         onClick={(event) => onClick(event, card)}
         data-id={card.id}
       >
+        {/* Uniform sizing container for Grid view - all cards same aspect ratio */}
+        <div className={layout === "grid" ? "aspect-video overflow-hidden flex flex-col" : ""}>
 
       {showThumbnail && layout !== "compact" && !isNote && (
         <div
@@ -1212,9 +1214,12 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       )}
       {/* Notes: Full document-style when preview is on, minimal when off */}
       {isNote && showPreview && (
-        <div className="relative w-full group/note" style={{ aspectRatio: '3 / 2' }}>
+        <div
+          className="relative w-full group/note flex-1"
+          style={layout !== "grid" ? { aspectRatio: '3 / 2' } : undefined}
+        >
           {/* Document-styled container with binder hole aesthetic */}
-          <div className="absolute inset-0 flex flex-col p-4 pl-8 bg-surface-soft rounded-lg border border-purple-500/20 shadow-lg shadow-purple-900/10 overflow-hidden">
+          <div className={`flex flex-col p-4 pl-8 bg-surface-soft rounded-lg border border-purple-500/20 shadow-lg shadow-purple-900/10 overflow-hidden ${layout === "grid" ? "h-full" : "absolute inset-0"}`}>
 
             {/* Ring binder holes on the left side */}
             <div className="absolute left-2 top-0 bottom-0 flex flex-col justify-evenly items-center py-2 pointer-events-none z-[5]">
@@ -1319,25 +1324,25 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         </div>
       )}
 
-      {/* Notes: Minimal card when preview is off - matches bookmark height */}
+      {/* Notes: Minimal card when preview is off - fills Grid container */}
       {isNote && !showPreview && (
-        <div className="flex flex-col p-4 bg-surface-soft rounded-lg border border-purple-500/20">
+        <div className={`flex flex-col p-4 bg-surface-soft rounded-lg border border-purple-500/20 ${layout === "grid" ? "flex-1 h-full justify-center" : ""}`}>
           {/* Title */}
           {showLabels && (
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2">
               <FileText size={16} className="text-purple-400 flex-shrink-0" />
               <span className="text-sm font-medium text-foreground truncate">{displayTitle}</span>
             </div>
           )}
           {/* Minimal fallback when no labels */}
           {!showLabels && (
-            <div className="flex items-center justify-center py-4">
-              <FileText size={24} className="text-purple-400" />
+            <div className="flex items-center justify-center flex-1">
+              <FileText size={32} className="text-purple-400" />
             </div>
           )}
           {/* Tags and icons */}
           {(showCardTags || isPinned || hasCalendarEvents) && (
-            <div className="flex items-center justify-between gap-2 mt-auto">
+            <div className={`flex items-center justify-between gap-2 ${layout === "grid" ? "mt-4" : "mt-auto"}`}>
               <div className="flex items-center gap-2">
                 {showCardTags && (
                   <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-200 border border-purple-500/20">
@@ -1358,9 +1363,9 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         </div>
       )}
 
-      {/* Compact fallback when thumbnails are hidden - always show as thumbnail replacement */}
+      {/* Compact fallback when thumbnails are hidden - fills Grid container */}
       {!isNote && !showThumbnail && (
-        <div className="flex items-center justify-center py-6 min-h-[80px]">
+        <div className={`flex items-center justify-center ${layout === "grid" ? "flex-1 h-full" : "py-6 min-h-[80px]"}`}>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Bookmark size={20} />
             <span className="text-xs truncate max-w-[150px]">
@@ -1429,6 +1434,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           )}
         </div>
       )}
+        </div>{/* Close uniform sizing container */}
     </div>
     </CardContextMenuWrapper>
   );
