@@ -50,6 +50,7 @@ export function NotesControls() {
   const setCardSpacing = useViewSettingsStore((state) => state.setCardSpacing);
   const setCardPadding = useViewSettingsStore((state) => state.setCardPadding);
   const setShowLabels = useViewSettingsStore((state) => state.setShowLabels);
+  const setShowMetadata = useViewSettingsStore((state) => state.setShowMetadata);
   const setShowPreview = useViewSettingsStore((state) => state.setShowPreview);
   const setSortBy = useViewSettingsStore((state) => state.setSortBy);
   const setSortOrder = useViewSettingsStore((state) => state.setSortOrder);
@@ -62,6 +63,7 @@ export function NotesControls() {
   const cardSpacingValue = viewSettings.cardSpacing;
   const cardPaddingValue = viewSettings.cardPadding;
   const showLabelsValue = viewSettings.showLabels;
+  const showMetadataValue = viewSettings.showMetadata;
   const showPreviewValue = viewSettings.showPreview;
   const sortBy = mapSortByToControl(viewSettings.sortBy);
   const sortOrder = viewSettings.sortOrder;
@@ -129,6 +131,10 @@ export function NotesControls() {
 
   const handleShowLabelsChange = (show: boolean) => {
     setShowLabels("notes", show);
+  };
+
+  const handleShowMetadataChange = (show: boolean) => {
+    setShowMetadata("notes", show);
   };
 
   const handleShowPreviewChange = (show: boolean) => {
@@ -309,6 +315,11 @@ export function NotesControls() {
           label="Show Labels"
           checked={showLabelsValue}
           onChange={handleShowLabelsChange}
+        />
+        <PanelToggle
+          label="Show Metadata"
+          checked={showMetadataValue}
+          onChange={handleShowMetadataChange}
         />
         <PanelToggle
           label="Show Preview"
