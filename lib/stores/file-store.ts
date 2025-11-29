@@ -12,7 +12,6 @@ import {
   isFileSizeValid,
   wouldExceedStorageLimit,
   MAX_FILE_SIZE,
-  MAX_FILEN_UPLOAD_SIZE,
   formatFileSize,
   STORAGE_SOFT_LIMIT,
 } from "@/lib/utils/file-utils";
@@ -77,7 +76,8 @@ function getPawkitNameForCard(cardId: string): string | null {
 }
 
 /**
- * Sync a file to Filen in the background
+ * Sync a file to Filen in the background using direct client-side SDK.
+ * No file size limit - uses chunked uploads directly to Filen.
  */
 async function syncFileToFilen(
   file: StoredFile,
@@ -87,28 +87,16 @@ async function syncFileToFilen(
   const { filen } = useConnectorStore.getState();
   if (!filen.connected) return;
 
-  // Check file size before attempting upload (Vercel API limit is ~4.5MB)
-  if (originalFile.size > MAX_FILEN_UPLOAD_SIZE) {
-    console.warn(
-      `[FileStore] File too large for Filen sync: ${originalFile.name} (${formatFileSize(originalFile.size)}). ` +
-      `Max size: ${formatFileSize(MAX_FILEN_UPLOAD_SIZE)}`
-    );
-    // Mark as local-only - file is saved locally but too large for cloud sync
-    updateStatus("local");
-    useToastStore.getState().warning(
-      `"${originalFile.name}" is too large for cloud sync (max ${formatFileSize(MAX_FILEN_UPLOAD_SIZE)}). Saved locally.`
-    );
-    return;
-  }
-
   updateStatus("uploading");
 
   try {
-    // Determine destination folder
-    let pawkitName: string | null = null;
+    // Determine destination folder path
+    let targetPath = "/Pawkit/_Library";
     const isAttachment = !!file.cardId;
 
-    if (!isAttachment) {
+    if (isAttachment) {
+      targetPath = "/Pawkit/_Attachments";
+    } else {
       // For standalone files, find the associated card to get its pawkit
       const dataStore = useDataStore.getState();
       const fileCard = dataStore.cards.find(
@@ -118,20 +106,44 @@ async function syncFileToFilen(
         const collection = dataStore.collections.find(
           (c) => c.slug === fileCard.collections[0] || c.id === fileCard.collections[0]
         );
-        pawkitName = collection?.name || null;
+        if (collection?.name) {
+          // Sanitize pawkit name for folder path
+          const safePawkitName = collection.name.replace(/[/\\:*?"<>|]/g, "_");
+          targetPath = `/Pawkit/${safePawkitName}`;
+        }
       }
     }
 
-    const result = await filenService.uploadFile(originalFile, {
-      fileId: file.id,
-      pawkit: pawkitName,
-      isAttachment,
+    // Dynamically import client SDK to avoid bundling Node.js modules
+    const { filenClient } = await import("@/lib/services/filen-client");
+
+    // Use client-side SDK for direct upload (no size limit)
+    const result = await filenClient.uploadFile(originalFile, targetPath, {
+      onProgress: (progress) => {
+        // Could update UI with progress here if needed
+        console.log(`[FileStore] Upload progress: ${progress.percentage}%`);
+      },
     });
 
-    updateStatus("synced", { uuid: result.filenUuid, path: result.path });
+    updateStatus("synced", { uuid: result.uuid, path: result.path });
+    console.log(`[FileStore] File synced to Filen: ${result.name} (${formatFileSize(originalFile.size)})`);
   } catch (error) {
     console.error("[FileStore] Filen sync failed:", error);
-    updateStatus("error");
+
+    // Check if it's an initialization error (credentials issue)
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes("Not authenticated") || errorMessage.includes("Filen not connected")) {
+      // Mark as local - Filen connection lost
+      updateStatus("local");
+      useToastStore.getState().warning(
+        `Filen connection lost. "${originalFile.name}" saved locally.`
+      );
+    } else {
+      updateStatus("error");
+      useToastStore.getState().error(
+        `Failed to sync "${originalFile.name}" to Filen cloud.`
+      );
+    }
   }
 }
 

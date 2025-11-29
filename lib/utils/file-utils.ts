@@ -74,9 +74,6 @@ const CATEGORY_ICONS: Record<FileCategory, LucideIcon> = {
 // Maximum file size (50MB)
 export const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
-// Maximum file size for Filen cloud sync (4MB - Vercel API body limit)
-export const MAX_FILEN_UPLOAD_SIZE = 4 * 1024 * 1024;
-
 // Soft storage limit (800MB)
 export const STORAGE_SOFT_LIMIT = 800 * 1024 * 1024;
 
