@@ -301,21 +301,38 @@ class FilenDirectService {
     const checksumData = JSON.stringify({ uuid, index, parent, uploadKey });
     const checksum = await this.sha512(new TextEncoder().encode(checksumData));
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.credentials.apiKey}`,
-        Checksum: checksum,
-      },
-      body: new Blob([toArrayBuffer(encryptedChunk)]),
+    console.log(`[FilenDirect] Uploading chunk ${index} to ${ingestUrl} (${encryptedChunk.byteLength} bytes)`);
+
+    // Use XMLHttpRequest like Filen SDK does (fetch can have issues with binary uploads)
+    const result = await new Promise<{ status: boolean; message?: string; data?: { bucket: string; region: string } }>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", url);
+      xhr.setRequestHeader("Authorization", `Bearer ${this.credentials!.apiKey}`);
+      xhr.setRequestHeader("Checksum", checksum);
+
+      xhr.onload = () => {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          console.log(`[FilenDirect] Chunk ${index} response:`, response);
+          resolve(response);
+        } catch (e) {
+          console.error(`[FilenDirect] Failed to parse response:`, xhr.responseText);
+          reject(new Error(`Invalid response: ${xhr.responseText}`));
+        }
+      };
+
+      xhr.onerror = () => {
+        console.error(`[FilenDirect] XHR error for chunk ${index}:`, xhr.status, xhr.statusText);
+        reject(new Error(`Network error: ${xhr.statusText || 'Connection failed'}`));
+      };
+
+      xhr.ontimeout = () => {
+        reject(new Error("Upload timeout"));
+      };
+
+      xhr.timeout = 300000; // 5 minutes
+      xhr.send(toArrayBuffer(encryptedChunk));
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Chunk upload failed: ${response.status} - ${errorText}`);
-    }
-
-    const result = await response.json();
     if (!result.status) {
       throw new Error(result.message || "Chunk upload failed");
     }
