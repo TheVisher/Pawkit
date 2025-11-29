@@ -723,7 +723,6 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 hasAttachments={cardsWithAttachments.has(card.id)}
                 showLabels={viewSettings.showLabels}
                 showMetadata={viewSettings.showMetadata}
-                showCardTags={viewSettings.showTags}
                 showPreview={viewSettings.showPreview}
                 cardPadding={viewSettings.cardPadding}
               />
@@ -931,13 +930,12 @@ type CardCellProps = {
   hasAttachments?: boolean;
   // View settings props - passed from parent to ensure memo updates correctly
   showLabels: boolean;
-  showMetadata: boolean;
-  showCardTags: boolean;
+  showMetadata: boolean; // Also controls tags/badges visibility
   showPreview: boolean;
   cardPadding: number;
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar, onSetThumbnail, hasAttachments, showLabels, showMetadata, showCardTags, showPreview, cardPadding }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar, onSetThumbnail, hasAttachments, showLabels, showMetadata, showPreview, cardPadding }: CardCellProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
@@ -968,7 +966,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
   const cardPaddingPx = Math.round((cardPadding - 1) / 99 * 32);
 
   // Check if text section will render (used for conditional thumbnail margin)
-  const hasTextSection = showMetadata || showCardTags || isPending || isError || isNote || (!card.image && !showThumbnail);
+  const hasTextSection = showMetadata || isPending || isError || isNote || (!card.image && !showThumbnail);
 
   // Extract excerpt from content for notes - preserves line breaks
   const getExcerpt = () => {
@@ -1274,9 +1272,9 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               {!card.content && <div className="flex-1"></div>}
 
               {/* Bottom section - tags and metadata - only render if has visible content */}
-              {(showCardTags || isPinned || hasCalendarEvents) && (
+              {(showMetadata || isPinned || hasCalendarEvents) && (
                 <div className="space-y-2 mt-auto">
-                  {showCardTags && card.collections && card.collections.length > 0 && layout !== "compact" && (
+                  {showMetadata && card.collections && card.collections.length > 0 && layout !== "compact" && (
                     <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
                       {card.collections
                         .filter((collection) =>
@@ -1294,10 +1292,10 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                       )}
                     </div>
                   )}
-                  {(showCardTags || isPinned || hasCalendarEvents) && (
+                  {(showMetadata || isPinned || hasCalendarEvents) && (
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
-                        {showCardTags && (
+                        {showMetadata && (
                           <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-200 border border-purple-500/20">
                             {card.type === "md-note" ? "Markdown" : "Text"}
                           </span>
@@ -1341,10 +1339,10 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
             </div>
           )}
           {/* Tags and icons */}
-          {(showCardTags || isPinned || hasCalendarEvents) && (
+          {(showMetadata || isPinned || hasCalendarEvents) && (
             <div className={`flex items-center justify-between gap-2 ${layout === "grid" ? "mt-4" : "mt-auto"}`}>
               <div className="flex items-center gap-2">
-                {showCardTags && (
+                {showMetadata && (
                   <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-200 border border-purple-500/20">
                     {card.type === "md-note" ? "Markdown" : "Text"}
                   </span>
@@ -1400,7 +1398,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           {displaySubtext && showMetadata && (
             <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
           )}
-          {showCardTags && card.collections && card.collections.length > 0 && layout !== "compact" && (
+          {showMetadata && card.collections && card.collections.length > 0 && layout !== "compact" && (
             <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
               {card.collections
                 .filter((collection) =>
@@ -1455,7 +1453,6 @@ const CardCell = memo(CardCellInner, (prevProps, nextProps) => {
     // View settings - must be included to ensure cards re-render when settings change
     prevProps.showLabels === nextProps.showLabels &&
     prevProps.showMetadata === nextProps.showMetadata &&
-    prevProps.showCardTags === nextProps.showCardTags &&
     prevProps.showPreview === nextProps.showPreview &&
     prevProps.cardPadding === nextProps.cardPadding
   );
