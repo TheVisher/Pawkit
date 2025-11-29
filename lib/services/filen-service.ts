@@ -230,16 +230,26 @@ export const filenService = {
 
   /**
    * Delete a file from Filen by UUID
+   * Uses direct API call to bypass SDK folder navigation issues.
    * @param uuid - The Filen UUID of the file
    */
   async deleteFile(uuid: string): Promise<void> {
-    const response = await fetch(`/api/filen/files/${uuid}`, {
-      method: "DELETE",
+    const response = await fetch("/api/filen/delete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ uuid }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Delete failed");
+      const error = await response.json().catch(() => ({ message: "Delete failed" }));
+      throw new Error(error.message || "Delete failed");
+    }
+
+    const result = await response.json();
+    if (!result.status) {
+      throw new Error(result.message || "Delete failed");
     }
   },
 

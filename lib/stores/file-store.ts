@@ -299,14 +299,20 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
     try {
       const file = get().files.find((f) => f.id === fileId);
 
+      console.log("[FileStore] Deleting file:", fileId, "filenUuid:", file?.filenUuid || "none");
+
       // Also delete from Filen if synced
       if (file?.filenUuid) {
         try {
+          console.log("[FileStore] Attempting Filen delete for UUID:", file.filenUuid);
           await filenService.deleteFile(file.filenUuid);
+          console.log("[FileStore] Filen delete successful");
         } catch (error) {
           console.error("[FileStore] Failed to delete from Filen:", error);
           // Continue with local deletion anyway
         }
+      } else {
+        console.log("[FileStore] No filenUuid - skipping Filen delete");
       }
 
       await localDb.deleteFile(fileId);
@@ -330,13 +336,19 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
     try {
       const file = get().files.find((f) => f.id === fileId);
 
+      console.log("[FileStore] Permanently deleting file:", fileId, "filenUuid:", file?.filenUuid || "none");
+
       // Also delete from Filen if synced
       if (file?.filenUuid) {
         try {
+          console.log("[FileStore] Attempting Filen delete for UUID:", file.filenUuid);
           await filenService.deleteFile(file.filenUuid);
+          console.log("[FileStore] Filen delete successful");
         } catch (error) {
           console.error("[FileStore] Failed to delete from Filen:", error);
         }
+      } else {
+        console.log("[FileStore] No filenUuid - skipping Filen delete");
       }
 
       await localDb.permanentlyDeleteFile(fileId);
