@@ -14,9 +14,9 @@ const nextConfig = {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
-        path: false,
-        os: false,
-        // Provide polyfills for stream and buffer (required by Filen SDK)
+        // Provide polyfills for modules required by Filen SDK
+        path: require.resolve('path-browserify'),
+        os: require.resolve('os-browserify/browser'),
         stream: require.resolve('stream-browserify'),
         buffer: require.resolve('buffer/'),
       };
