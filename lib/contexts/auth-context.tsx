@@ -57,19 +57,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-
     try {
       // CRITICAL: Clear user session markers BEFORE signing out
       // This allows useUserStorage to detect user switches on next login
       localStorage.removeItem('pawkit_last_user_id');
-
-      // Clear Filen client credentials from memory
-      try {
-        const { filenClient } = await import('@/lib/services/filen-client');
-        filenClient.clear();
-      } catch {
-        // Non-critical - filenClient may not be loaded
-      }
 
       // Sign out from Supabase
       await supabase.auth.signOut();

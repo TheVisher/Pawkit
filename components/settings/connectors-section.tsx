@@ -30,18 +30,11 @@ export function ConnectorsSection() {
 
   const handleFilenDisconnect = async () => {
     try {
-      // Clear client-side SDK credentials from memory (dynamic import to avoid bundling)
-      try {
-        const { filenClient } = await import("@/lib/services/filen-client");
-        filenClient.clear();
-      } catch {
-        // Non-critical - client may not be initialized
-      }
       // Logout from server (clears HTTP-only cookie)
       await filenService.logout();
       setFilenDisconnected();
       useToastStore.getState().success("Disconnected from Filen");
-    } catch (error) {
+    } catch {
       useToastStore.getState().error("Failed to disconnect");
     }
   };

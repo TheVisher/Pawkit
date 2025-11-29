@@ -12,6 +12,7 @@ import {
   isFileSizeValid,
   wouldExceedStorageLimit,
   MAX_FILE_SIZE,
+  MAX_FILEN_UPLOAD_SIZE,
   formatFileSize,
   STORAGE_SOFT_LIMIT,
 } from "@/lib/utils/file-utils";
@@ -76,8 +77,8 @@ function getPawkitNameForCard(cardId: string): string | null {
 }
 
 /**
- * Sync a file to Filen in the background using direct client-side SDK.
- * No file size limit - uses chunked uploads directly to Filen.
+ * Sync a file to Filen in the background using server-side API.
+ * Files larger than 4MB are kept local-only due to Vercel API limits.
  */
 async function syncFileToFilen(
   file: StoredFile,
@@ -87,16 +88,26 @@ async function syncFileToFilen(
   const { filen } = useConnectorStore.getState();
   if (!filen.connected) return;
 
+  // Check file size limit for server-side upload (Vercel API limit)
+  if (originalFile.size > MAX_FILEN_UPLOAD_SIZE) {
+    console.log(
+      `[FileStore] File too large for Filen sync: ${originalFile.name} (${formatFileSize(originalFile.size)} > ${formatFileSize(MAX_FILEN_UPLOAD_SIZE)})`
+    );
+    updateStatus("local");
+    useToastStore.getState().info(
+      `"${originalFile.name}" saved locally (${formatFileSize(originalFile.size)} exceeds 4MB cloud limit)`
+    );
+    return;
+  }
+
   updateStatus("uploading");
 
   try {
-    // Determine destination folder path
-    let targetPath = "/Pawkit/_Library";
+    // Determine destination folder (pawkit name)
+    let pawkitName: string | null = null;
     const isAttachment = !!file.cardId;
 
-    if (isAttachment) {
-      targetPath = "/Pawkit/_Attachments";
-    } else {
+    if (!isAttachment) {
       // For standalone files, find the associated card to get its pawkit
       const dataStore = useDataStore.getState();
       const fileCard = dataStore.cards.find(
@@ -106,39 +117,35 @@ async function syncFileToFilen(
         const collection = dataStore.collections.find(
           (c) => c.slug === fileCard.collections[0] || c.id === fileCard.collections[0]
         );
-        if (collection?.name) {
-          // Sanitize pawkit name for folder path
-          const safePawkitName = collection.name.replace(/[/\\:*?"<>|]/g, "_");
-          targetPath = `/Pawkit/${safePawkitName}`;
-        }
+        pawkitName = collection?.name || null;
       }
     }
 
-    // Dynamically import client SDK to avoid bundling Node.js modules
-    const { filenClient } = await import("@/lib/services/filen-client");
-
-    // Use client-side SDK for direct upload (no size limit)
-    const result = await filenClient.uploadFile(originalFile, targetPath, {
-      onProgress: (progress) => {
-        // Could update UI with progress here if needed
-        console.log(`[FileStore] Upload progress: ${progress.percentage}%`);
-      },
+    // Use server-side API for upload
+    const result = await filenService.uploadFile(originalFile, {
+      fileId: file.id,
+      pawkit: pawkitName,
+      isAttachment,
     });
 
-    updateStatus("synced", { uuid: result.uuid, path: result.path });
-    console.log(`[FileStore] File synced to Filen: ${result.name} (${formatFileSize(originalFile.size)})`);
+    updateStatus("synced", { uuid: result.filenUuid, path: result.path });
+    console.log(`[FileStore] File synced to Filen: ${originalFile.name} (${formatFileSize(originalFile.size)})`);
   } catch (error) {
     console.error("[FileStore] Filen sync failed:", error);
 
-    // Check if it's an initialization error (credentials or environment issue)
     const errorMessage = error instanceof Error ? error.message : String(error);
-    if (
+
+    // Check for file size error (413 or explicit message)
+    if (errorMessage.includes("too large") || errorMessage.includes("413")) {
+      updateStatus("local");
+      useToastStore.getState().info(
+        `"${originalFile.name}" saved locally (exceeds cloud upload limit)`
+      );
+    } else if (
       errorMessage.includes("Not authenticated") ||
-      errorMessage.includes("Filen not connected") ||
-      errorMessage.includes("only be initialized in the browser") ||
-      errorMessage.includes("Web Crypto API not available")
+      errorMessage.includes("Filen not connected")
     ) {
-      // Mark as local - Filen connection lost or not available
+      // Mark as local - Filen connection lost
       updateStatus("local");
       useToastStore.getState().warning(
         `Filen sync unavailable. "${originalFile.name}" saved locally.`
