@@ -1210,8 +1210,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           ) : null}
         </div>
       )}
-      {/* Notes: Document-shaped card with portrait aspect ratio */}
-      {isNote && (
+      {/* Notes: Full document-style when preview is on, minimal when off */}
+      {isNote && showPreview && (
         <div className="relative w-full group/note" style={{ aspectRatio: '3 / 2' }}>
           {/* Document-styled container with binder hole aesthetic */}
           <div className="absolute inset-0 flex flex-col p-4 pl-8 bg-surface-soft rounded-lg border border-purple-500/20 shadow-lg shadow-purple-900/10 overflow-hidden">
@@ -1257,7 +1257,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
             {/* Content layer - preview text with proper formatting */}
             <div className="relative z-10 w-full h-full flex flex-col">
               {/* Preview text area - plain text only (fast and performant) */}
-              {showPreview && card.content && (
+              {card.content && (
                 <div className="flex-1 overflow-hidden pt-10 pb-2">
                   <div className="text-xs text-muted-foreground/70 leading-relaxed whitespace-pre-wrap line-clamp-[14]">
                     {excerptText}
@@ -1265,8 +1265,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                 </div>
               )}
 
-              {/* Spacer when preview is not shown (either no content or preview disabled) */}
-              {!(showPreview && card.content) && <div className="flex-1"></div>}
+              {/* Spacer when no content */}
+              {!card.content && <div className="flex-1"></div>}
 
               {/* Bottom section - tags and metadata - only render if has visible content */}
               {(showCardTags || isPinned || hasCalendarEvents) && (
@@ -1316,6 +1316,45 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Notes: Minimal card when preview is off - matches bookmark height */}
+      {isNote && !showPreview && (
+        <div className="flex flex-col p-4 bg-surface-soft rounded-lg border border-purple-500/20">
+          {/* Title */}
+          {showLabels && (
+            <div className="flex items-center gap-2 mb-2">
+              <FileText size={16} className="text-purple-400 flex-shrink-0" />
+              <span className="text-sm font-medium text-foreground truncate">{displayTitle}</span>
+            </div>
+          )}
+          {/* Minimal fallback when no labels */}
+          {!showLabels && (
+            <div className="flex items-center justify-center py-4">
+              <FileText size={24} className="text-purple-400" />
+            </div>
+          )}
+          {/* Tags and icons */}
+          {(showCardTags || isPinned || hasCalendarEvents) && (
+            <div className="flex items-center justify-between gap-2 mt-auto">
+              <div className="flex items-center gap-2">
+                {showCardTags && (
+                  <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-200 border border-purple-500/20">
+                    {card.type === "md-note" ? "Markdown" : "Text"}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {hasCalendarEvents && (
+                  <Calendar size={12} className="text-purple-400" />
+                )}
+                {isPinned && (
+                  <Pin size={12} className="text-purple-400" />
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
