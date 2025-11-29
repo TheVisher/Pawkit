@@ -9,12 +9,12 @@ const nextConfig = {
 
     // Handle @filen/sdk browser build which incorrectly imports Node.js modules
     // Only apply fallbacks for client-side builds
-    // Note: Do NOT set crypto: false - browser needs native window.crypto for Web Crypto API
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
         // Provide polyfills for modules required by Filen SDK
+        crypto: require.resolve('crypto-browserify'),
         path: require.resolve('path-browserify'),
         os: require.resolve('os-browserify/browser'),
         stream: require.resolve('stream-browserify'),
