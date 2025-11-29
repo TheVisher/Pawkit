@@ -91,11 +91,23 @@ export async function POST(request: Request) {
       }
 
       const content: FolderContent = listResult.data;
+      console.log(`[Filen Folder] Listing ${currentUUID}, found ${content.folders?.length || 0} folders`);
 
-      // Look for existing folder
-      const existingFolder = content.folders.find(
-        (f) => f.name.toLowerCase() === folderName.toLowerCase()
-      );
+      // Look for existing folder - need to decrypt folder names
+      let existingFolder: { uuid: string; name: string } | undefined;
+      const folders = content.folders || [];
+      for (const folder of folders) {
+        try {
+          const decryptedName = await decryptMetadata(folder.name, session.masterKeys);
+          if (decryptedName.toLowerCase() === folderName.toLowerCase()) {
+            existingFolder = folder;
+            break;
+          }
+        } catch (e) {
+          // Skip folders we can't decrypt
+          console.warn("[Filen Folder] Could not decrypt folder name:", e);
+        }
+      }
 
       if (existingFolder) {
         currentUUID = existingFolder.uuid;
@@ -144,6 +156,63 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Decrypt metadata - tries all master keys
+ * Supports version 2 format: "002" + iv (12 chars) + base64(ciphertext+tag)
+ */
+async function decryptMetadata(encrypted: string, masterKeys: string[]): Promise<string> {
+  // Check version prefix
+  if (!encrypted.startsWith("002")) {
+    throw new Error(`Unsupported encryption version: ${encrypted.substring(0, 3)}`);
+  }
+
+  const ivString = encrypted.substring(3, 15); // 12 chars after "002"
+  const ciphertextBase64 = encrypted.substring(15);
+  const ciphertext = Buffer.from(ciphertextBase64, "base64");
+
+  const encoder = new TextEncoder();
+  const ivBytes = encoder.encode(ivString);
+
+  // Try each master key
+  for (const masterKey of masterKeys) {
+    try {
+      const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(masterKey),
+        "PBKDF2",
+        false,
+        ["deriveBits", "deriveKey"]
+      );
+
+      const key = await crypto.subtle.deriveKey(
+        {
+          name: "PBKDF2",
+          salt: encoder.encode(masterKey),
+          iterations: 1,
+          hash: "SHA-512",
+        },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["decrypt"]
+      );
+
+      const decrypted = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: ivBytes },
+        key,
+        ciphertext
+      );
+
+      return new TextDecoder().decode(decrypted);
+    } catch {
+      // Try next key
+      continue;
+    }
+  }
+
+  throw new Error("Could not decrypt with any master key");
 }
 
 /**
