@@ -298,9 +298,7 @@ class FilenDirectService {
     const checksumData = JSON.stringify(urlParamsObj);
     const checksum = await this.sha512(new TextEncoder().encode(checksumData));
 
-    console.log(`[FilenDirect] Uploading chunk ${index} to ${ingestUrl} (${encryptedChunk.byteLength} bytes)`);
-    console.log(`[FilenDirect] Checksum input: ${checksumData}`);
-    console.log(`[FilenDirect] Checksum output: ${checksum}`);
+    console.log(`[FilenDirect] Uploading chunk ${index}/${encryptedChunk.byteLength} bytes`);
 
     // Use XMLHttpRequest like Filen SDK does (fetch can have issues with binary uploads)
     const result = await new Promise<{ status: boolean; message?: string; data?: { bucket: string; region: string } }>((resolve, reject) => {
@@ -312,7 +310,6 @@ class FilenDirectService {
       xhr.onload = () => {
         try {
           const response = JSON.parse(xhr.responseText);
-          console.log(`[FilenDirect] Chunk ${index} response:`, response);
           resolve(response);
         } catch (e) {
           console.error(`[FilenDirect] Failed to parse response:`, xhr.responseText);
@@ -393,8 +390,7 @@ class FilenDirectService {
       uploadKey: params.uploadKey,
     };
 
-    console.log(`[FilenDirect] Finishing upload via proxy`);
-    console.log(`[FilenDirect] Upload body:`, body);
+    console.log(`[FilenDirect] Finalizing upload: ${params.name}`);
 
     // Use our proxy endpoint because api.filen.io doesn't support CORS
     // (ingest.filen.io supports CORS, but api.filen.io doesn't)
@@ -414,7 +410,6 @@ class FilenDirectService {
     }
 
     const response = await proxyResponse.json();
-    console.log(`[FilenDirect] Finish upload response:`, response);
 
     if (!response.status) {
       throw new Error(response.message || "Upload finalization failed");
