@@ -140,11 +140,13 @@ class FilenClientService {
       const credentials = data.credentials as FilenCredentials;
       this.credentials = credentials;
 
-      // Dynamically import SDK to avoid bundling Node.js modules
-      const FilenSDK = (await import("@filen/sdk")).default;
+      // Dynamically import SDK browser build explicitly
+      // The default import might pick Node.js build causing "native" errors
+      // @ts-expect-error - Direct browser build import has no type declarations
+      const FilenSDK = (await import("@filen/sdk/dist/browser/index.js")).default;
 
       // Initialize SDK with credentials
-      this.sdk = new FilenSDK({
+      const sdk = new FilenSDK({
         metadataCache: true,
         connectToSocket: false,
         // Pass auth config directly to constructor
@@ -158,7 +160,8 @@ class FilenClientService {
       });
 
       // Set email for identification
-      this.sdk.config.email = credentials.email;
+      sdk.config.email = credentials.email;
+      this.sdk = sdk;
 
       console.log("[FilenClient] SDK initialized for:", credentials.email);
     } catch (error) {
