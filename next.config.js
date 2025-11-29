@@ -1,52 +1,11 @@
 /** @type {import('next').NextConfig} */
-const webpack = require('webpack');
-
 const nextConfig = {
   // Exclude React Native mobile app from Next.js build
-  webpack: (config, { isServer }) => {
+  webpack: (config) => {
     config.watchOptions = {
       ...config.watchOptions,
       ignored: ['**/node_modules', '**/mobile/**'],
     };
-
-    // Handle @filen/sdk browser build which incorrectly imports Node.js modules
-    // Configuration based on Filen's official web app (uses vite-plugin-node-polyfills)
-    // Only apply fallbacks for client-side builds
-    if (!isServer) {
-      // Force webpack to use browser builds for problematic packages
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        // Ensure SDK uses its browser build
-        '@filen/sdk': require.resolve('@filen/sdk/dist/browser/index.js'),
-      };
-
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        fs: false,
-        // Provide polyfills for modules required by Filen SDK
-        crypto: require.resolve('crypto-browserify'),
-        path: require.resolve('path-browserify'),
-        os: require.resolve('os-browserify/browser'),
-        stream: require.resolve('stream-browserify'),
-        buffer: require.resolve('buffer/'),
-      };
-
-      // Inject globals that Filen SDK expects (Buffer, process, global)
-      // This replicates vite-plugin-node-polyfills globals config
-      config.plugins.push(
-        new webpack.ProvidePlugin({
-          Buffer: ['buffer', 'Buffer'],
-          process: 'process/browser',
-        })
-      );
-
-      // Define global for browser compatibility
-      config.plugins.push(
-        new webpack.DefinePlugin({
-          'global': 'globalThis',
-        })
-      );
-    }
 
     return config;
   },
