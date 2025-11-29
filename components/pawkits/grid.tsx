@@ -49,15 +49,15 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
   const viewSettings = useViewSettingsStore((state) => state.getSettings("pawkits"));
   const pawkitSize = viewSettings.cardSize || 50;
 
-  // Calculate target pawkit width based on size slider (1-100)
-  // 1 = 200px (smallest), 100 = 500px (largest)
-  // This is the MAXIMUM width - cards will be this size or smaller
-  const targetPawkitWidth = useMemo(() => {
-    return Math.round(200 + ((pawkitSize - 1) / 99) * 300);
+  // Calculate pawkit widths based on size slider (1-100)
+  // Both min and max scale together (like Library grid) to prevent jumpy repositioning
+  // 1 = 180px min, 100 = 400px min
+  const minPawkitWidth = useMemo(() => {
+    return Math.round(180 + ((pawkitSize - 1) / 99) * 220);
   }, [pawkitSize]);
 
-  // Fixed minimum width for the grid minmax - cards won't shrink below this
-  const minPawkitWidth = 180;
+  // Max is always 1.5x min, capped at 600px (same pattern as Library)
+  const maxPawkitWidth = Math.min(minPawkitWidth * 1.5, 600);
 
   if (!collections.length) {
     return (
@@ -228,7 +228,7 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
     <div
       className="grid gap-6"
       style={{
-        gridTemplateColumns: `repeat(auto-fill, minmax(${minPawkitWidth}px, ${targetPawkitWidth}px))`,
+        gridTemplateColumns: `repeat(auto-fill, minmax(${minPawkitWidth}px, ${maxPawkitWidth}px))`,
         justifyContent: 'center',
         alignItems: 'start',
       }}
