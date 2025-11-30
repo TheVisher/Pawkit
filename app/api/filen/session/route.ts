@@ -2,13 +2,16 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { decrypt } from "@/lib/utils/crypto";
+import type { PawkitFolderKey } from "@/lib/services/cloud-storage/folder-config";
 
 const FILEN_COOKIE_NAME = "filen_session";
+const FILEN_FOLDERS_COOKIE_NAME = "filen_folders";
+
+type PawkitFolderUUIDs = Partial<Record<PawkitFolderKey, string>>;
 
 /**
  * Session data stored in the Filen cookie.
- * NOTE: pawkitFolderUUIDs are NOT stored in cookie (too large).
- * They are stored in client localStorage via connector-store.
+ * Folder UUIDs are stored in a separate cookie (filen_folders).
  */
 interface FilenSession {
   email: string;
@@ -75,9 +78,19 @@ export async function GET() {
       );
     }
 
-    // 5. Return credentials for client-side SDK initialization
-    // Note: These will be stored in memory only, not localStorage
-    // pawkitFolderUUIDs are NOT included - they're in client localStorage
+    // 5. Get folder UUIDs from separate cookie
+    let folderUUIDs: PawkitFolderUUIDs | undefined;
+    const foldersCookie = cookieStore.get(FILEN_FOLDERS_COOKIE_NAME);
+    if (foldersCookie?.value) {
+      try {
+        folderUUIDs = JSON.parse(foldersCookie.value) as PawkitFolderUUIDs;
+        console.log("[Filen Session] Folder UUIDs from cookie:", Object.keys(folderUUIDs));
+      } catch (e) {
+        console.error("[Filen Session] Failed to parse folders cookie:", e);
+      }
+    }
+
+    // 6. Return credentials for client-side SDK initialization
     return NextResponse.json({
       success: true,
       credentials: {
@@ -89,6 +102,7 @@ export async function GET() {
         userId: session.userId,
         baseFolderUUID: session.baseFolderUUID,
         authVersion: session.authVersion,
+        pawkitFolderUUIDs: folderUUIDs,
       },
     });
   } catch (error) {

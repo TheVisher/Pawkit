@@ -32,42 +32,14 @@ export function FilenConnectModal({ open, onClose }: FilenConnectModalProps) {
     setFilenConnecting();
 
     try {
-      console.log("[FilenConnect] Calling filenService.login...");
       const result = await filenService.login({
         email,
         password,
         twoFactorCode: twoFactor || undefined,
       });
-      console.log("[FilenConnect] Login result:", result);
 
       if (result.success) {
-        console.log("[FilenConnect] Auth successful!");
-
-        // Store folder UUIDs in localStorage BEFORE setting connected
-        if (result.folderUUIDs && Object.keys(result.folderUUIDs).length > 0) {
-          console.log("[FilenConnect] Storing folder UUIDs:", Object.keys(result.folderUUIDs));
-
-          // Store via zustand
-          setFilenConfig({ folderUUIDs: result.folderUUIDs });
-
-          // Also store directly to localStorage as fallback (debug)
-          try {
-            const existing = localStorage.getItem("pawkit-connectors");
-            if (existing) {
-              const parsed = JSON.parse(existing);
-              if (parsed.state?.filen?.config) {
-                parsed.state.filen.config.folderUUIDs = result.folderUUIDs;
-                localStorage.setItem("pawkit-connectors", JSON.stringify(parsed));
-                console.log("[FilenConnect] Direct localStorage write successful");
-              }
-            }
-          } catch (e) {
-            console.error("[FilenConnect] Direct localStorage write failed:", e);
-          }
-        } else {
-          console.warn("[FilenConnect] No folderUUIDs in auth response!");
-        }
-
+        // folderUUIDs are stored in server-side cookie, retrieved via /api/filen/session
         setFilenConnected(email);
         handleClose();
       } else {
