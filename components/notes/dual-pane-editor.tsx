@@ -109,6 +109,8 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedContentRef = useRef(card.content || "");
+  const lastSavedTitleRef = useRef(card.title || "");
 
   // Data store
   const cards = useDataStore((state) => state.cards);
@@ -135,9 +137,10 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
     }
   }, [viewMode]);
 
-  // Auto-save with debounce
+  // Auto-save with debounce - use refs to avoid re-render issues
   useEffect(() => {
-    if (content === card.content && title === card.title) {
+    // Check against refs, not props (props change on save causing re-render)
+    if (content === lastSavedContentRef.current && title === lastSavedTitleRef.current) {
       setSaveStatus("saved");
       return;
     }
@@ -152,6 +155,9 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
       setSaveStatus("saving");
       try {
         await updateCard(card.id, { content, title });
+        // Update refs after successful save
+        lastSavedContentRef.current = content;
+        lastSavedTitleRef.current = title;
         onSave(content);
         setSaveStatus("saved");
       } catch (error) {
@@ -165,7 +171,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
         clearTimeout(saveTimeoutRef.current);
       }
     };
-  }, [content, title, card.id, card.content, card.title, updateCard, onSave]);
+  }, [content, title, card.id, updateCard, onSave]);
 
   // Metadata calculation
   const metadata = useMemo(() => {
