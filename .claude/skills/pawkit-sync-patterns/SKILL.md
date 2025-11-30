@@ -3178,3 +3178,163 @@ When reverse-engineering encryption protocols, the **key format** matters as muc
 
 **Documentation**: See `/docs/filen-direct-upload-implementation.md` for full implementation history
 
+---
+
+### FILEN SYNC IMPROVEMENTS (November 2025)
+
+#### 1. Server-Side Cookie for Folder UUIDs
+
+**Problem**: Client-side localStorage writes weren't executing due to Vercel edge cache serving stale JavaScript bundles. Even incognito, hard refresh, and force redeploy couldn't fix it.
+
+**Failed Approach**:
+```typescript
+// ❌ Client-side storage - never executed due to edge cache
+if (result.success && result.folderUUIDs) {
+  setFilenConfig({ folderUUIDs: result.folderUUIDs });  // Never ran
+}
+```
+
+**Solution**: Store folder UUIDs in server-side HTTP-only cookie:
+```typescript
+// app/api/filen/auth/route.ts - Set TWO cookies
+const FOLDERS_COOKIE_NAME = "filen_folders";
+
+response.cookies.set({
+  name: FOLDERS_COOKIE_NAME,
+  value: JSON.stringify(pawkitFolderUUIDs),
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge: COOKIE_MAX_AGE,
+  path: "/",
+});
+
+// app/api/filen/session/route.ts - Return in response
+const foldersCookie = cookieStore.get(FILEN_FOLDERS_COOKIE_NAME);
+if (foldersCookie?.value) {
+  folderUUIDs = JSON.parse(foldersCookie.value);
+}
+return NextResponse.json({
+  success: true,
+  credentials: { ...other, pawkitFolderUUIDs: folderUUIDs },
+});
+```
+
+**Why Two Cookies**: Session cookie was near 4KB limit. Folder UUIDs in separate cookie.
+
+**Key Insight**: Server-side API routes update immediately on deploy; client bundles may be cached.
+
+---
+
+#### 2. Manual Filen Sync Button
+
+**Feature**: Users can manually trigger Filen sync instead of waiting for 5-minute interval.
+
+**Location**: `components/sync/sync-status.tsx`
+
+**Implementation**:
+```typescript
+// Track dirty notes count
+const calculateDirtyNotes = useCallback(() => {
+  let count = 0;
+  for (const card of cards) {
+    if (card.type !== "md-note" && card.type !== "text-note") continue;
+    if (card.deleted) continue;
+    const updatedAt = new Date(card.updatedAt);
+    const cloudSyncedAt = card.cloudSyncedAt ? new Date(card.cloudSyncedAt) : null;
+    if (!cloudSyncedAt || updatedAt > cloudSyncedAt) count++;
+  }
+  return count;
+}, [cards]);
+
+// Trigger sync
+const handleFilenSync = async () => {
+  const result = await syncScheduler.syncNow();
+  if (result.success) setDirtyNotesCount(0);
+};
+```
+
+**UI**: HardDrive icon with purple badge showing dirty count. Click to sync immediately.
+
+---
+
+#### 3. Sync Metadata Update Fix
+
+**Problem**: After Filen sync completed, notes were immediately detected as dirty again.
+
+**Root Cause**: `updateCard` was bumping `updatedAt` AND triggering server sync with conflict resolution.
+
+**Solution**: Skip `updatedAt` bump and server sync for sync-metadata-only updates:
+```typescript
+// data-store.ts updateCard function
+const syncMetadataFields = ['cloudId', 'cloudProvider', 'cloudSyncedAt'];
+const updateKeys = Object.keys(updates);
+const isOnlySyncMetadata = updateKeys.every(key => syncMetadataFields.includes(key));
+
+const updatedCard = {
+  ...oldCard,
+  ...updates,
+  updatedAt: isOnlySyncMetadata ? oldCard.updatedAt : new Date().toISOString(),
+};
+
+// Skip server sync for sync metadata
+if (serverSync && !id.startsWith('temp_') && !isOnlySyncMetadata) {
+  // ... server sync logic
+}
+```
+
+---
+
+#### 4. File Deletion Sync to Filen
+
+**Problem**: Deleting file cards in Pawkit didn't delete from Filen.
+
+**Root Cause**: `data-store.ts` was calling `localDb.deleteFile()` (local only) instead of `fileStore.deleteFile()` (which handles Filen deletion).
+
+**Fix**:
+```typescript
+// data-store.ts deleteCard function
+const { useFileStore } = await import('@/lib/stores/file-store');
+const fileStore = useFileStore.getState();
+
+// Delete attachments (includes Filen sync)
+const attachments = fileStore.getFilesByCardId(id);
+for (const attachment of attachments) {
+  await fileStore.deleteFile(attachment.id);
+}
+
+// Delete main file for file cards
+if (cardToDelete?.isFileCard && cardToDelete.fileId) {
+  await fileStore.deleteFile(cardToDelete.fileId);
+}
+```
+
+---
+
+#### 5. TXT File Import as Native Notes
+
+**Feature**: Dragging `.txt` files creates native `text-note` cards (like `.md` files).
+
+**Location**: `lib/stores/file-store.ts` - `uploadFiles` function
+
+```typescript
+// Handle .txt files as native text notes
+if (lowerName.endsWith('.txt') && !cardId) {
+  const content = await file.text();
+  const title = file.name
+    .replace(/\.txt$/i, "")
+    .replace(/[_-]/g, " ")
+    .trim() || "Untitled Note";
+
+  await useDataStore.getState().addCard({
+    type: 'text-note',
+    title,
+    content,
+    url: "",
+  });
+  continue;
+}
+```
+
+**Note**: Text notes sync to Filen as `.md` files (plain text is valid markdown).
+
