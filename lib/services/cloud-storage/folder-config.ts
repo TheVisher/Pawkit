@@ -41,13 +41,13 @@ export const PAWKIT_FOLDERS: Record<PawkitFolderKey, PawkitFolder> = {
     key: "bookmarksJson",
     path: "/Pawkit/_Bookmarks/_json",
     description: "Pawkit bookmark data (JSON)",
-    storeUuid: true,
+    storeUuid: false, // Not stored in session - bookmark sync not yet implemented
   },
   bookmarksHtml: {
     key: "bookmarksHtml",
     path: "/Pawkit/_Bookmarks/_html",
     description: "Browser-compatible bookmarks (HTML)",
-    storeUuid: true,
+    storeUuid: false, // Not stored in session - bookmark sync not yet implemented
   },
 
   // Notes - markdown and text files
