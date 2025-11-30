@@ -1,9 +1,14 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { PawkitFolderKey } from "@/lib/services/cloud-storage/folder-config";
+
+// Folder UUIDs mapped by folder key (stored in localStorage, not cookie)
+export type PawkitFolderUUIDs = Partial<Record<PawkitFolderKey, string>>;
 
 export interface FilenConfig {
   email: string;
   syncFolder?: string;
+  folderUUIDs?: PawkitFolderUUIDs; // Stored locally, not in session cookie
 }
 
 export interface FilenState {
@@ -129,7 +134,11 @@ export const useConnectorStore = create<ConnectorState & ConnectorActions>()(
           connected: state.filen.connected,
           lastSync: state.filen.lastSync,
           config: state.filen.config
-            ? { email: state.filen.config.email, syncFolder: state.filen.config.syncFolder }
+            ? {
+                email: state.filen.config.email,
+                syncFolder: state.filen.config.syncFolder,
+                folderUUIDs: state.filen.config.folderUUIDs, // Persist folder UUIDs locally
+              }
             : null,
         },
         googleCalendar: state.googleCalendar,

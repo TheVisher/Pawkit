@@ -57,10 +57,16 @@ export const filenService = {
   /**
    * Authenticate with Filen using email and password
    * Optionally accepts 2FA code if enabled on account
+   * Returns folderUUIDs which should be stored in localStorage (not in cookie)
    */
   async login(
     credentials: FilenCredentials
-  ): Promise<{ success: boolean; error?: string; needs2FA?: boolean }> {
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    needs2FA?: boolean;
+    folderUUIDs?: Record<string, string>;
+  }> {
     try {
       const response = await fetch("/api/filen/auth", {
         method: "POST",
@@ -73,7 +79,7 @@ export const filenService = {
       if (data.success) {
         isConnected = true;
         connectedEmail = data.email;
-        return { success: true };
+        return { success: true, folderUUIDs: data.folderUUIDs };
       }
 
       // Handle 2FA requirement
