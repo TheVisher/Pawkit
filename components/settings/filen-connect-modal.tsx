@@ -1,6 +1,5 @@
 "use client";
 
-// Force cache bust: 2024-11-30-v1
 import { useState } from "react";
 import { Loader2, Lock, Shield } from "lucide-react";
 import { GlassModal } from "@/components/ui/glass-modal";

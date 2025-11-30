@@ -68,6 +68,7 @@ export const filenService = {
     folderUUIDs?: Record<string, string>;
   }> {
     try {
+      console.log("[FilenService] Starting login...");
       const response = await fetch("/api/filen/auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,10 +76,29 @@ export const filenService = {
       });
 
       const data = await response.json();
+      console.log("[FilenService] Auth response:", JSON.stringify(data, null, 2));
 
       if (data.success) {
         isConnected = true;
         connectedEmail = data.email;
+        console.log("[FilenService] Login successful, folderUUIDs:", data.folderUUIDs ? Object.keys(data.folderUUIDs) : "NONE");
+
+        // Store folderUUIDs directly to localStorage as immediate backup
+        if (data.folderUUIDs) {
+          try {
+            const existing = localStorage.getItem("pawkit-connectors");
+            const parsed = existing ? JSON.parse(existing) : { state: { filen: { config: {} } } };
+            if (!parsed.state) parsed.state = {};
+            if (!parsed.state.filen) parsed.state.filen = {};
+            if (!parsed.state.filen.config) parsed.state.filen.config = {};
+            parsed.state.filen.config.folderUUIDs = data.folderUUIDs;
+            localStorage.setItem("pawkit-connectors", JSON.stringify(parsed));
+            console.log("[FilenService] Stored folderUUIDs directly to localStorage");
+          } catch (e) {
+            console.error("[FilenService] Failed to store folderUUIDs:", e);
+          }
+        }
+
         return { success: true, folderUUIDs: data.folderUUIDs };
       }
 
