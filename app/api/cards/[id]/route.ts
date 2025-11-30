@@ -67,12 +67,13 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
     const params = await segmentData.params;
 
     // Conflict detection: Check if client has stale version
-    // Skip conflict detection for metadata updates (server-side operations)
+    // Skip conflict detection for metadata updates (server-side operations) and cloud sync updates
     const body = await request.json();
     const isMetadataUpdate = body.metadata || body.title || body.description || body.image;
+    const isCloudSyncUpdate = body.cloudId !== undefined || body.cloudProvider !== undefined || body.cloudSyncedAt !== undefined;
 
     const ifUnmodifiedSince = request.headers.get('If-Unmodified-Since');
-    if (ifUnmodifiedSince && !isMetadataUpdate) {
+    if (ifUnmodifiedSince && !isMetadataUpdate && !isCloudSyncUpdate) {
       const currentCard = await getCard(user.id, params.id);
       if (currentCard) {
         const clientTimestamp = new Date(ifUnmodifiedSince).getTime();
