@@ -772,6 +772,20 @@ export const useDataStore = create<DataStore>((set, get) => ({
         await localDb.deleteFile(cardToDelete.fileId);
       }
 
+      // STEP 0.6: Delete synced note from Filen cloud
+      // If this is a note with a cloudId, delete the .md file from Filen
+      if (cardToDelete?.cloudId && (cardToDelete.type === 'md-note' || cardToDelete.type === 'text-note')) {
+        try {
+          const { filenService } = await import('@/lib/services/filen-service');
+          console.warn(`[DataStore] Deleting synced note from Filen: ${cardToDelete.cloudId}`);
+          await filenService.deleteFile(cardToDelete.cloudId);
+          console.warn(`[DataStore] Successfully deleted note from Filen`);
+        } catch (error) {
+          // Don't block local deletion if Filen delete fails
+          console.error(`[DataStore] Failed to delete note from Filen:`, error);
+        }
+      }
+
       // STEP 1: Soft delete in local storage (mark as deleted, don't remove)
       await localDb.deleteCard(id);
 
