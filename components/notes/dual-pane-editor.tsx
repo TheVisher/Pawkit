@@ -723,39 +723,14 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
             </button>
           </div>
 
-          {/* Status + Save + Close */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-4 text-xs text-white/60">
-              <span>{metadata.words} words</span>
-              <span>{metadata.characters} chars</span>
-              <span>{metadata.linkCount} links</span>
-              <div className="flex items-center gap-1">
-                {saveStatus === "saving" && <><RefreshCw size={12} className="animate-spin" /> Saving...</>}
-                {saveStatus === "saved" && <><Check size={12} className="text-green-500" /> Saved</>}
-                {saveStatus === "unsaved" && <><Clock size={12} className="text-yellow-500" /> Unsaved</>}
-              </div>
-            </div>
-            <button
-              onClick={saveChanges}
-              disabled={saveStatus === "saved" || saveStatus === "saving"}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                saveStatus === "unsaved"
-                  ? "bg-purple-500/20 text-purple-300 hover:bg-purple-500/30"
-                  : "text-white/40 cursor-not-allowed"
-              }`}
-              title="Save (Cmd+S)"
-            >
-              <Save size={14} />
-              Save
-            </button>
-            <button
-              onClick={handleClose}
-              className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
-              title="Close (Esc)"
-            >
-              <X size={20} />
-            </button>
-          </div>
+          {/* Close button */}
+          <button
+            onClick={handleClose}
+            className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+            title="Close (Esc)"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         {/* Content Area */}
@@ -767,6 +742,34 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
               style={{ width: viewMode === "split" ? `${dividerPosition}%` : "100%" }}
             >
               {toolbarElement}
+              {/* Metadata + Save bar */}
+              <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.02] border-b border-white/10 text-xs">
+                <div className="flex items-center gap-3 text-white/50">
+                  <span>{metadata.words} words</span>
+                  <span>{metadata.characters} chars</span>
+                  <span>{metadata.linkCount} links</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 text-white/50">
+                    {saveStatus === "saving" && <><RefreshCw size={12} className="animate-spin" /> Saving...</>}
+                    {saveStatus === "saved" && <><Check size={12} className="text-green-500" /> Saved</>}
+                    {saveStatus === "unsaved" && <><Clock size={12} className="text-yellow-500" /> Unsaved</>}
+                  </div>
+                  <button
+                    onClick={saveChanges}
+                    disabled={saveStatus === "saved" || saveStatus === "saving"}
+                    className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                      saveStatus === "unsaved"
+                        ? "bg-purple-500/20 text-purple-300 hover:bg-purple-500/30"
+                        : "text-white/30 cursor-not-allowed"
+                    }`}
+                    title="Save (Cmd+S)"
+                  >
+                    <Save size={12} />
+                    Save
+                  </button>
+                </div>
+              </div>
               {showTemplates && (
                 <div className="border-b border-white/10 bg-white/5 p-3">
                   <div className="space-y-2">
