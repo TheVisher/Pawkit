@@ -14,6 +14,7 @@ import { localDb } from "@/lib/services/local-storage";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { ReaderView } from "@/components/reader/reader-view";
 import { RichMDEditor } from "@/components/notes/md-editor";
+import { DualPaneEditor } from "@/components/notes/dual-pane-editor";
 import { BacklinksPanel } from "@/components/notes/backlinks-panel";
 import { AttachmentsSection } from "@/components/modals/attachments-section";
 import { AttachmentsTabContent } from "@/components/modals/attachments-tab-content";
@@ -1010,39 +1011,22 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     );
   }
 
-  // When note is expanded, render fullscreen view (edit or preview)
+  // When note is expanded, render dual-pane editor
   if (isNoteExpanded && isNote) {
     return (
-      <>
-        <div className="fixed inset-0 z-50 bg-gray-950">
-          <div className="h-full flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-800">
-              <h2 className="text-xl font-semibold text-gray-100">{card.title || "Untitled Note"}</h2>
-              <Button
-                onClick={() => setIsNoteExpanded(false)}
-                variant="ghost"
-                size="icon"
-                title="Exit fullscreen"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9l6 6m0-6l-6 6m12-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </Button>
-            </div>
-            {/* Content */}
-            <div className="flex-1 overflow-hidden p-4">
-              <RichMDEditor
-                content={content}
-                onChange={setContent}
-                placeholder="Start writing your note..."
-                onNavigate={onNavigateToCard}
-                customComponents={wikiLinkComponents}
-              />
-            </div>
-          </div>
-        </div>
-      </>
+      <DualPaneEditor
+        card={{
+          id: card.id,
+          title: card.title || "Untitled Note",
+          content: content,
+          type: card.type,
+        }}
+        onClose={() => setIsNoteExpanded(false)}
+        onSave={(newContent) => {
+          setContent(newContent);
+        }}
+        onNavigate={onNavigateToCard}
+      />
     );
   }
 
@@ -1765,8 +1749,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     Preview
                   </Button>
                   <Button
-                    onClick={() => setNoteMode('edit')}
-                    variant={noteMode === 'edit' ? 'default' : 'ghost'}
+                    onClick={() => setIsNoteExpanded(true)}
+                    variant="ghost"
                     size="sm"
                     className="flex items-center gap-2"
                   >
