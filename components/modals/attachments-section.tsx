@@ -11,12 +11,11 @@ interface AttachmentsSectionProps {
   onSelectAttachment?: (fileId: string) => void;
 }
 
-// Get icon based on file category
+// Get icon based on file category (PDF is now in document category)
 function getFileIcon(category: FileCategory) {
   switch (category) {
     case "image":
       return FileImage;
-    case "pdf":
     case "document":
       return FileText;
     case "audio":

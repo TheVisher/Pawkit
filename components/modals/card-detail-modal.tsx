@@ -127,10 +127,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
   const [filePreviewData, setFilePreviewData] = useState<StoredFile | null>(null);
 
-  // Determine if this is a PDF file card - check card metadata first (immediate), then file data (async)
+  // Determine if this is a PDF file card - check MIME type from file data
+  // PDF is now in "document" category, so check MIME type instead
   const isPdfFileCard = isFileCard && (
-    (card.metadata as { fileCategory?: string } | null)?.fileCategory === "pdf" ||
-    filePreviewData?.category === "pdf"
+    (card.metadata as { fileMimeType?: string } | null)?.fileMimeType === "application/pdf" ||
+    filePreviewData?.mimeType === "application/pdf"
   );
 
   const files = useFileStore((state) => state.files);
@@ -1397,7 +1398,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                           className="max-w-full max-h-[calc(90vh-180px)] object-contain rounded-lg"
                         />
                       )}
-                      {filePreviewData.category === "pdf" && filePreviewUrl && (
+                      {filePreviewData.mimeType === "application/pdf" && filePreviewUrl && (
                         <div className="w-full h-[calc(90vh-180px)] rounded-lg overflow-hidden">
                           <PdfViewer
                             url={filePreviewUrl}
@@ -1440,7 +1441,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                           </audio>
                         </div>
                       )}
-                      {(filePreviewData.category === "document" || filePreviewData.category === "spreadsheet" || filePreviewData.category === "other") && (
+                      {(filePreviewData.category === "document" || filePreviewData.category === "other") && filePreviewData.mimeType !== "application/pdf" && (
                         <div className="flex flex-col items-center gap-6 p-8 bg-surface rounded-xl">
                           <div className="w-24 h-24 flex items-center justify-center rounded-full bg-gray-600/20">
                             <FileText className="w-12 h-12 text-gray-400" />

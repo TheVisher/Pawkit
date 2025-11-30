@@ -187,24 +187,15 @@ function LibraryPageContent() {
             }
             return false;
           }
-          // For "pdf" - match file cards with pdf category
-          if (filterType === "pdf") {
-            if (card.type === "file") {
-              const metadata = card.metadata as Record<string, unknown> | undefined;
-              return metadata?.fileCategory === "pdf";
-            }
-            return false;
-          }
           // For "file" type, match file cards directly
           if (filterType === "file") {
             return card.type === "file";
           }
-          // For "other", match file cards with audio, spreadsheet, or other categories
+          // For "other", match file cards with "other" category only
           if (filterType === "other") {
             if (card.type === "file") {
               const metadata = card.metadata as Record<string, unknown> | undefined;
-              const category = metadata?.fileCategory;
-              return category === "audio" || category === "spreadsheet" || category === "other";
+              return metadata?.fileCategory === "other";
             }
             return false;
           }

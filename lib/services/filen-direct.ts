@@ -12,6 +12,8 @@
  * - Finalize: POST to api.filen.io/v3/upload/done
  */
 
+import { PAWKIT_FOLDERS, PawkitFolderKey } from "@/lib/services/cloud-storage/folder-config";
+
 // Constants matching Filen SDK
 const CHUNK_SIZE = 1024 * 1024; // 1MB
 // Use only the main ingest URL - numbered ones may not exist
@@ -19,16 +21,15 @@ const INGEST_URL = "https://ingest.filen.io";
 // Note: api.filen.io doesn't exist (NXDOMAIN), gateway.filen.io is the actual API
 const API_URL = "https://gateway.filen.io";
 
+// Folder UUIDs mapped by folder key (from folder-config)
+export type PawkitFolderUUIDs = Partial<Record<PawkitFolderKey, string>>;
+
 export interface FilenDirectCredentials {
   apiKey: string;
   masterKeys: string[];
   baseFolderUUID: string;
   authVersion: 1 | 2 | 3;
-  pawkitFolderUUIDs?: {
-    library: string;
-    attachments: string;
-    notes: string;
-  };
+  pawkitFolderUUIDs?: PawkitFolderUUIDs;
 }
 
 export interface FilenDirectUploadResult {
@@ -431,19 +432,17 @@ class FilenDirectService {
    * Uses pre-resolved UUIDs from auth if available, falls back to API
    */
   private async getFolderUUID(path: string): Promise<string> {
-    // Check for pre-resolved Pawkit folder UUIDs
+    // Check for pre-resolved Pawkit folder UUIDs using folder config
     if (this.credentials?.pawkitFolderUUIDs) {
-      if (path === "/Pawkit/_Library") {
-        console.log(`[FilenDirect] Using pre-resolved Library UUID: ${this.credentials.pawkitFolderUUIDs.library}`);
-        return this.credentials.pawkitFolderUUIDs.library;
-      }
-      if (path === "/Pawkit/_Attachments") {
-        console.log(`[FilenDirect] Using pre-resolved Attachments UUID: ${this.credentials.pawkitFolderUUIDs.attachments}`);
-        return this.credentials.pawkitFolderUUIDs.attachments;
-      }
-      if (path === "/Pawkit/_Notes") {
-        console.log(`[FilenDirect] Using pre-resolved Notes UUID: ${this.credentials.pawkitFolderUUIDs.notes}`);
-        return this.credentials.pawkitFolderUUIDs.notes;
+      // Find the folder key that matches this path
+      for (const folder of Object.values(PAWKIT_FOLDERS)) {
+        if (path === folder.path && folder.storeUuid) {
+          const uuid = this.credentials.pawkitFolderUUIDs[folder.key];
+          if (uuid) {
+            console.log(`[FilenDirect] Using pre-resolved ${folder.key} UUID: ${uuid}`);
+            return uuid;
+          }
+        }
       }
     }
 

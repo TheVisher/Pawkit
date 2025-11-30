@@ -3,14 +3,13 @@ import {
   File,
   FileImage,
   FileText,
-  FileSpreadsheet,
   FileAudio,
   FileVideo,
   FileIcon,
   LucideIcon,
 } from "lucide-react";
 
-// MIME type to category mapping
+// MIME type to category mapping (matches cloud folder structure)
 const FILE_CATEGORIES: Record<string, FileCategory> = {
   // Images
   "image/jpeg": "image",
@@ -24,22 +23,21 @@ const FILE_CATEGORIES: Record<string, FileCategory> = {
   "image/heif": "image",
   "image/avif": "image",
 
-  // PDF
-  "application/pdf": "pdf",
-
-  // Documents
+  // Documents (includes PDF, word processors, spreadsheets, presentations)
+  "application/pdf": "document",
   "application/msword": "document",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "document",
   "application/rtf": "document",
   "text/plain": "document",
   "text/markdown": "document",
   "application/vnd.oasis.opendocument.text": "document",
-
-  // Spreadsheets
-  "application/vnd.ms-excel": "spreadsheet",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "spreadsheet",
-  "text/csv": "spreadsheet",
-  "application/vnd.oasis.opendocument.spreadsheet": "spreadsheet",
+  "application/vnd.ms-excel": "document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "document",
+  "text/csv": "document",
+  "application/vnd.oasis.opendocument.spreadsheet": "document",
+  "application/vnd.ms-powerpoint": "document",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation": "document",
+  "application/vnd.oasis.opendocument.presentation": "document",
 
   // Audio
   "audio/mpeg": "audio",
@@ -50,6 +48,9 @@ const FILE_CATEGORIES: Record<string, FileCategory> = {
   "audio/flac": "audio",
   "audio/m4a": "audio",
   "audio/webm": "audio",
+  "audio/x-m4a": "audio",
+  "audio/x-aiff": "audio",
+  "audio/opus": "audio",
 
   // Video
   "video/mp4": "video",
@@ -58,14 +59,15 @@ const FILE_CATEGORIES: Record<string, FileCategory> = {
   "video/quicktime": "video",
   "video/x-msvideo": "video",
   "video/x-matroska": "video",
+  "video/3gpp": "video",
+  "video/x-flv": "video",
+  "video/x-ms-wmv": "video",
 };
 
-// Category to icon mapping
+// Category to icon mapping (matches cloud folder structure)
 const CATEGORY_ICONS: Record<FileCategory, LucideIcon> = {
   image: FileImage,
-  pdf: FileText,
   document: FileText,
-  spreadsheet: FileSpreadsheet,
   audio: FileAudio,
   video: FileVideo,
   other: File,
@@ -188,14 +190,13 @@ export async function generatePdfThumbnail(file: File): Promise<Blob | null> {
  * Returns null if the file type doesn't support thumbnails or generation fails
  */
 export async function generateThumbnail(file: File): Promise<Blob | null> {
-  const category = getFileCategory(file.type);
-
-  // Generate thumbnails for PDFs
-  if (category === "pdf") {
+  // Generate thumbnails for PDFs (check by MIME type since PDF is now in document category)
+  if (file.type === "application/pdf") {
     return generatePdfThumbnail(file);
   }
 
   // Only generate thumbnails for images
+  const category = getFileCategory(file.type);
   if (category !== "image") {
     return null;
   }
