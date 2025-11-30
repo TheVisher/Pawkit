@@ -10,6 +10,7 @@ import { FileText, Folder } from "lucide-react";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useToastStore } from "@/lib/stores/toast-store";
+import { useFileStore } from "@/lib/stores/file-store";
 
 type CardTrashItem = CardDTO & { itemType: "card" };
 type PawkitTrashItem = CollectionDTO & { itemType: "pawkit" };
@@ -31,6 +32,8 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
   const serverSync = useSettingsStore((state) => state.serverSync);
   const refreshDataStore = useDataStore((state) => state.refresh);
   const toast = useToastStore();
+  const files = useFileStore((state) => state.files);
+  const permanentlyDeleteFile = useFileStore((state) => state.permanentlyDeleteFile);
 
   // Load deleted items from local storage
   const loadLocalTrash = useCallback(async () => {
@@ -171,6 +174,25 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
 
       if (!response.ok) throw new Error("Failed to delete");
 
+      // Delete associated files from Filen when deleting a card
+      if (deleteConfirm.itemType === "card") {
+        // Find files attached to this card OR file cards with this card's fileId
+        const cardToDelete = [...localCards, ...serverCards].find(c => c.id === deleteConfirm.id);
+        const filesToDelete = files.filter(f =>
+          f.cardId === deleteConfirm.id || // Attachments
+          (cardToDelete?.isFileCard && cardToDelete.fileId === f.id) // File card's file
+        );
+
+        // Delete each file (this will also delete from Filen)
+        for (const file of filesToDelete) {
+          try {
+            await permanentlyDeleteFile(file.id);
+          } catch (error) {
+            console.error("[TrashView] Failed to delete file from Filen:", file.id, error);
+          }
+        }
+      }
+
       // Also delete from IndexedDB
       if (deleteConfirm.itemType === "card") {
         await localDb.permanentlyDeleteCard(deleteConfirm.id);
@@ -199,6 +221,25 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
   const confirmEmptyTrash = async () => {
     setLoading("empty-all");
     try {
+      // Get all deleted cards to find their files
+      const allDeletedCards = [...localCards, ...serverCards].filter(c => c.deleted);
+
+      // Delete files from Filen for all deleted cards
+      for (const card of allDeletedCards) {
+        const filesToDelete = files.filter(f =>
+          f.cardId === card.id || // Attachments
+          (card.isFileCard && card.fileId === f.id) // File card's file
+        );
+
+        for (const file of filesToDelete) {
+          try {
+            await permanentlyDeleteFile(file.id);
+          } catch (error) {
+            console.error("[TrashView] Failed to delete file from Filen:", file.id, error);
+          }
+        }
+      }
+
       const response = await fetch("/api/trash/empty", { method: "POST" });
       if (!response.ok) throw new Error("Failed to empty trash");
 
