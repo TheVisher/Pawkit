@@ -109,29 +109,11 @@ async function syncFileToFilen(
   updateStatus("uploading");
 
   try {
-    // Determine destination folder path
-    let targetPath = "/Pawkit/_Library";
-    const isAttachment = !!file.cardId;
-
-    if (isAttachment) {
-      targetPath = "/Pawkit/_Attachments";
-    } else {
-      // For standalone files, find the associated card to get its pawkit
-      const dataStore = useDataStore.getState();
-      const fileCard = dataStore.cards.find(
-        (c) => c.isFileCard && c.fileId === file.id
-      );
-      if (fileCard?.collections?.length) {
-        const collection = dataStore.collections.find(
-          (c) => c.slug === fileCard.collections[0] || c.id === fileCard.collections[0]
-        );
-        if (collection?.name) {
-          // Sanitize pawkit name for folder path
-          const safePawkitName = collection.name.replace(/[/\\:*?"<>|]/g, "_");
-          targetPath = `/Pawkit/${safePawkitName}`;
-        }
-      }
-    }
+    // Determine destination folder path based on file category
+    // Uses folder config for consistent routing across all cloud providers
+    const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
+    const targetFolder = getTargetFolder(originalFile.name, originalFile.type);
+    const targetPath = targetFolder.path;
 
     // Use direct browser upload (Web Crypto API, no SDK)
     const { filenDirect } = await import("@/lib/services/filen-direct");

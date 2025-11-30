@@ -52,7 +52,7 @@ export function FilePreviewModal({
 
   const FileIcon = file ? getFileIcon(file.mimeType) : null;
   const isImage = file?.category === "image";
-  const isPdf = file?.category === "pdf";
+  const isPdf = file?.mimeType === "application/pdf"; // Check MIME type since PDF is in document category
   const isVideo = file?.category === "video";
   const isAudio = file?.category === "audio";
 

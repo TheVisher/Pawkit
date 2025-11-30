@@ -1,8 +1,9 @@
 export type CardStatus = "PENDING" | "READY" | "ERROR";
 export type CardType = "url" | "md-note" | "text-note" | "file";
 
-// File categories for content type filtering
-export type FileCategory = 'image' | 'pdf' | 'document' | 'spreadsheet' | 'audio' | 'video' | 'other';
+// File categories for content type filtering (matches cloud folder structure)
+// Note: PDF and spreadsheets are included in 'document' category
+export type FileCategory = 'image' | 'document' | 'audio' | 'video' | 'other';
 
 // Sync status for files with Filen cloud storage
 export type FileSyncStatus = 'local' | 'synced' | 'uploading' | 'downloading' | 'cloud-only' | 'error';

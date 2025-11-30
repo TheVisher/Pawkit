@@ -2,9 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import FilenSDK from "@filen/sdk";
 import { encrypt, decrypt } from "@/lib/utils/crypto";
+import {
+  getAllFolderPaths,
+  getFoldersWithUuids,
+  PawkitFolderKey,
+} from "@/lib/services/cloud-storage/folder-config";
 
 const COOKIE_NAME = "filen_session";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
+
+/**
+ * Folder UUIDs mapped by folder key
+ */
+export type PawkitFolderUUIDs = Partial<Record<PawkitFolderKey, string>>;
 
 /**
  * Session data - essential fields for file operations.
@@ -19,12 +29,8 @@ interface FilenSession {
   baseFolderUUID: string;
   authVersion: 1 | 2 | 3;
   privateKey: string; // Required for file encryption
-  // Pre-resolved Pawkit folder UUIDs for direct uploads
-  pawkitFolderUUIDs?: {
-    library: string;
-    attachments: string;
-    notes: string;
-  };
+  // Pre-resolved Pawkit folder UUIDs for direct uploads (keyed by folder name)
+  pawkitFolderUUIDs?: PawkitFolderUUIDs;
 }
 
 /**
@@ -54,36 +60,33 @@ export async function POST(request: NextRequest) {
       twoFactorCode: twoFactorCode || undefined,
     });
 
-    // Create Pawkit folder structure if it doesn't exist and get UUIDs
+    // Create Pawkit folder structure if it doesn't exist
+    // Uses shared folder config for consistency across all cloud providers
     const fs = filen.fs();
-    const folders = ["/Pawkit", "/Pawkit/_Library", "/Pawkit/_Attachments", "/Pawkit/_Notes"];
+    const allFolderPaths = getAllFolderPaths();
 
-    for (const folderPath of folders) {
+    for (const folderPath of allFolderPaths) {
       try {
         await fs.stat({ path: folderPath });
       } catch {
         await fs.mkdir({ path: folderPath });
+        console.log("[Filen] Created folder:", folderPath);
       }
     }
 
-    // Get the UUIDs of the Pawkit folders for direct uploads
-    let libraryUUID = "";
-    let attachmentsUUID = "";
-    let notesUUID = "";
-    try {
-      const libraryStat = await fs.stat({ path: "/Pawkit/_Library" });
-      libraryUUID = libraryStat.uuid;
-      console.log("[Filen] Library folder UUID:", libraryUUID);
+    // Get the UUIDs of folders that need direct upload support
+    // This uses the shared folder config to determine which folders need UUIDs
+    const foldersToResolve = getFoldersWithUuids();
+    const pawkitFolderUUIDs: PawkitFolderUUIDs = {};
 
-      const attachmentsStat = await fs.stat({ path: "/Pawkit/_Attachments" });
-      attachmentsUUID = attachmentsStat.uuid;
-      console.log("[Filen] Attachments folder UUID:", attachmentsUUID);
-
-      const notesStat = await fs.stat({ path: "/Pawkit/_Notes" });
-      notesUUID = notesStat.uuid;
-      console.log("[Filen] Notes folder UUID:", notesUUID);
-    } catch (statError) {
-      console.warn("[Filen] Could not get Pawkit folder UUIDs:", statError);
+    for (const folder of foldersToResolve) {
+      try {
+        const stat = await fs.stat({ path: folder.path });
+        pawkitFolderUUIDs[folder.key] = stat.uuid;
+        console.log(`[Filen] ${folder.key} folder UUID:`, stat.uuid);
+      } catch (statError) {
+        console.warn(`[Filen] Could not get UUID for ${folder.path}:`, statError);
+      }
     }
 
     // Extract session data (includes privateKey for HMAC, excludes publicKey)
@@ -97,12 +100,8 @@ export async function POST(request: NextRequest) {
       baseFolderUUID: config.baseFolderUUID || "",
       authVersion: (config.authVersion as 1 | 2 | 3) || 2,
       privateKey: config.privateKey || "", // Required for file encryption
-      // Pre-resolved Pawkit folder UUIDs for direct uploads
-      pawkitFolderUUIDs: libraryUUID && attachmentsUUID && notesUUID ? {
-        library: libraryUUID,
-        attachments: attachmentsUUID,
-        notes: notesUUID,
-      } : undefined,
+      // Pre-resolved Pawkit folder UUIDs for direct uploads (from shared folder config)
+      pawkitFolderUUIDs: Object.keys(pawkitFolderUUIDs).length > 0 ? pawkitFolderUUIDs : undefined,
     };
 
     // Debug: Log individual field sizes
