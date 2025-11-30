@@ -20,6 +20,7 @@ import {
   ONBOARDING_TAG,
   ONBOARDING_PAWKIT_SLUGS,
 } from "@/lib/services/onboarding-service";
+import { StorageCleanupSection } from "@/components/settings/storage-cleanup-section";
 
 type ProfileModalProps = {
   open: boolean;
@@ -1074,6 +1075,9 @@ function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }:
                   </p>
                 )}
               </div>
+
+              {/* Storage Cleanup Section */}
+              <StorageCleanupSection />
 
               {/* Sample Data Section - only show if sample data exists */}
               {hasSampleData && (
