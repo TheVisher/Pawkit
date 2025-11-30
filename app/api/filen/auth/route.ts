@@ -9,6 +9,7 @@ import {
 } from "@/lib/services/cloud-storage/folder-config";
 
 const COOKIE_NAME = "filen_session";
+const FOLDERS_COOKIE_NAME = "filen_folders";
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 /**
@@ -154,7 +155,22 @@ export async function POST(request: NextRequest) {
       path: "/",
     });
 
-    console.log("[Filen] Cookie set, size:", encryptedSession.length, "bytes");
+    // Set separate cookie for folder UUIDs (small enough to not need encryption)
+    if (Object.keys(pawkitFolderUUIDs).length > 0) {
+      const foldersJson = JSON.stringify(pawkitFolderUUIDs);
+      response.cookies.set({
+        name: FOLDERS_COOKIE_NAME,
+        value: foldersJson,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: COOKIE_MAX_AGE,
+        path: "/",
+      });
+      console.log("[Filen] Folders cookie set, size:", foldersJson.length, "bytes");
+    }
+
+    console.log("[Filen] Session cookie set, size:", encryptedSession.length, "bytes");
 
     return response;
   } catch (error) {
@@ -200,6 +216,7 @@ export async function POST(request: NextRequest) {
 export async function DELETE() {
   const response = NextResponse.json({ success: true });
   response.cookies.delete(COOKIE_NAME);
+  response.cookies.delete(FOLDERS_COOKIE_NAME);
   return response;
 }
 
