@@ -138,12 +138,19 @@ class FilenDirectService {
     let folderUUIDs: PawkitFolderUUIDs | undefined;
     try {
       const stored = localStorage.getItem("pawkit-connectors");
+      console.log("[FilenDirect] Raw localStorage pawkit-connectors:", stored?.substring(0, 500));
       if (stored) {
         const parsed = JSON.parse(stored);
+        console.log("[FilenDirect] Parsed config:", JSON.stringify(parsed?.state?.filen?.config, null, 2));
         folderUUIDs = parsed?.state?.filen?.config?.folderUUIDs;
+        if (!folderUUIDs) {
+          console.warn("[FilenDirect] No folderUUIDs in localStorage config!");
+        }
+      } else {
+        console.warn("[FilenDirect] No pawkit-connectors in localStorage");
       }
-    } catch {
-      console.warn("[FilenDirect] Could not read folder UUIDs from localStorage");
+    } catch (e) {
+      console.error("[FilenDirect] Error reading localStorage:", e);
     }
 
     this.credentials = {
@@ -154,7 +161,8 @@ class FilenDirectService {
       pawkitFolderUUIDs: folderUUIDs,
     };
 
-    console.log("[FilenDirect] Initialized for:", data.credentials.email, "folders:", Object.keys(folderUUIDs || {}));
+    const folderKeys = Object.keys(folderUUIDs || {});
+    console.log("[FilenDirect] Initialized for:", data.credentials.email, "with", folderKeys.length, "folder UUIDs:", folderKeys);
   }
 
   /**

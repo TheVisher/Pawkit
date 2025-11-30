@@ -65,30 +65,37 @@ export async function POST(request: NextRequest) {
     // Uses shared folder config for consistency across all cloud providers
     const fs = filen.fs();
     const allFolderPaths = getAllFolderPaths();
-
-    for (const folderPath of allFolderPaths) {
-      try {
-        await fs.stat({ path: folderPath });
-      } catch {
-        await fs.mkdir({ path: folderPath });
-        console.log("[Filen] Created folder:", folderPath);
-      }
-    }
-
-    // Get the UUIDs of folders that need direct upload support
-    // This uses the shared folder config to determine which folders need UUIDs
     const foldersToResolve = getFoldersWithUuids();
     const pawkitFolderUUIDs: PawkitFolderUUIDs = {};
 
-    for (const folder of foldersToResolve) {
+    // Create folders and collect UUIDs in a single pass
+    // This avoids timing issues where newly created folders don't have UUIDs yet
+    for (const folderPath of allFolderPaths) {
       try {
-        const stat = await fs.stat({ path: folder.path });
-        pawkitFolderUUIDs[folder.key] = stat.uuid;
-        console.log(`[Filen] ${folder.key} folder UUID:`, stat.uuid);
-      } catch (statError) {
-        console.warn(`[Filen] Could not get UUID for ${folder.path}:`, statError);
+        // Try to stat the folder first
+        let stat;
+        try {
+          stat = await fs.stat({ path: folderPath });
+        } catch {
+          // Folder doesn't exist, create it
+          await fs.mkdir({ path: folderPath });
+          console.log("[Filen] Created folder:", folderPath);
+          // Get the stat after creation
+          stat = await fs.stat({ path: folderPath });
+        }
+
+        // Check if this folder needs its UUID stored
+        const folderConfig = foldersToResolve.find((f) => f.path === folderPath);
+        if (folderConfig && stat?.uuid) {
+          pawkitFolderUUIDs[folderConfig.key] = stat.uuid;
+          console.log(`[Filen] ${folderConfig.key} folder UUID:`, stat.uuid);
+        }
+      } catch (error) {
+        console.error(`[Filen] Error processing folder ${folderPath}:`, error);
       }
     }
+
+    console.log("[Filen] Collected folder UUIDs:", Object.keys(pawkitFolderUUIDs));
 
     // Extract session data (includes privateKey for HMAC, excludes publicKey)
     // NOTE: pawkitFolderUUIDs NOT included - stored in client localStorage instead

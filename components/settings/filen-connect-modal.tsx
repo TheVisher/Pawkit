@@ -40,11 +40,18 @@ export function FilenConnectModal({ open, onClose }: FilenConnectModalProps) {
 
       if (result.success) {
         // Pawkit folder is created server-side during auth
-        setFilenConnected(email);
-        // Store folder UUIDs in localStorage (not in cookie - too large)
-        if (result.folderUUIDs) {
+        console.log("[FilenConnect] Auth successful. Full result:", JSON.stringify(result, null, 2));
+
+        // Store folder UUIDs in localStorage BEFORE setting connected
+        // This ensures UUIDs are available when FilenDirect initializes
+        if (result.folderUUIDs && Object.keys(result.folderUUIDs).length > 0) {
+          console.log("[FilenConnect] Storing folder UUIDs:", Object.keys(result.folderUUIDs));
           setFilenConfig({ folderUUIDs: result.folderUUIDs });
+        } else {
+          console.warn("[FilenConnect] No folderUUIDs in auth response!");
         }
+
+        setFilenConnected(email);
         handleClose();
       } else {
         // Check if 2FA is required
