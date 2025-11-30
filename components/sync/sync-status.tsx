@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Cloud, CloudOff, RefreshCw, Check, AlertCircle } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { Cloud, CloudOff, RefreshCw, Check, AlertCircle, HardDrive } from "lucide-react";
 import { syncQueue } from "@/lib/services/sync-queue";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { useFileStore } from "@/lib/stores/file-store";
+import { useConnectorStore } from "@/lib/stores/connector-store";
+import { useDataStore } from "@/lib/stores/data-store";
+import { syncScheduler } from "@/lib/services/cloud-storage";
 import {
   formatFileSize,
   getStorageUsagePercent,
@@ -32,6 +35,56 @@ export function SyncStatus() {
   const totalSize = useFileStore((state) => state.totalSize);
   const loadFiles = useFileStore((state) => state.loadFiles);
   const isFilesLoaded = useFileStore((state) => state.isLoaded);
+
+  // Filen sync state
+  const filenConnected = useConnectorStore((state) => state.filen.connected);
+  const cards = useDataStore((state) => state.cards);
+  const [isFilenSyncing, setIsFilenSyncing] = useState(false);
+  const [dirtyNotesCount, setDirtyNotesCount] = useState(0);
+
+  // Calculate dirty notes count
+  const calculateDirtyNotes = useCallback(() => {
+    let count = 0;
+    for (const card of cards) {
+      if (card.type !== "md-note" && card.type !== "text-note") continue;
+      if (card.deleted) continue;
+
+      const updatedAt = new Date(card.updatedAt);
+      const cloudSyncedAt = card.cloudSyncedAt ? new Date(card.cloudSyncedAt) : null;
+      const isDirty = !cloudSyncedAt || updatedAt > cloudSyncedAt;
+
+      if (isDirty) count++;
+    }
+    return count;
+  }, [cards]);
+
+  // Update dirty notes count periodically
+  useEffect(() => {
+    if (!mounted || !filenConnected) return;
+
+    const updateCount = () => setDirtyNotesCount(calculateDirtyNotes());
+    updateCount();
+
+    const interval = setInterval(updateCount, 5000);
+    return () => clearInterval(interval);
+  }, [mounted, filenConnected, calculateDirtyNotes]);
+
+  // Filen sync handler
+  const handleFilenSync = async () => {
+    if (!filenConnected || isFilenSyncing) return;
+
+    setIsFilenSyncing(true);
+    try {
+      const result = await syncScheduler.syncNow();
+      if (result.success) {
+        setDirtyNotesCount(0);
+      }
+    } catch (error) {
+      console.error("[SyncStatus] Filen sync failed:", error);
+    } finally {
+      setIsFilenSyncing(false);
+    }
+  };
 
   // Handle mounting
   useEffect(() => {
@@ -228,14 +281,31 @@ export function SyncStatus() {
           <span>{statusInfo.text}</span>
         </div>
 
-        {/* Right: Sync button + Online indicator */}
+        {/* Right: Sync buttons + Online indicator */}
         <div className="flex items-center gap-2">
+          {/* Filen sync button */}
+          {filenConnected && (
+            <button
+              onClick={handleFilenSync}
+              disabled={isFilenSyncing}
+              className="relative p-1 hover:bg-white/10 rounded transition-colors disabled:opacity-50"
+              title={dirtyNotesCount > 0 ? `Sync ${dirtyNotesCount} note(s) to Filen` : "Filen sync (all synced)"}
+            >
+              <HardDrive className={`w-3.5 h-3.5 ${dirtyNotesCount > 0 ? "text-purple-400" : "text-muted-foreground"} ${isFilenSyncing ? "animate-pulse" : ""}`} />
+              {dirtyNotesCount > 0 && !isFilenSyncing && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-purple-500 text-[9px] font-bold text-white rounded-full flex items-center justify-center">
+                  {dirtyNotesCount > 9 ? "9+" : dirtyNotesCount}
+                </span>
+              )}
+            </button>
+          )}
+          {/* Server sync button */}
           {serverSync && (
             <button
               onClick={handleSync}
               disabled={isSyncing || !isOnline}
               className="p-1 hover:bg-white/10 rounded transition-colors disabled:opacity-50"
-              title="Sync now"
+              title="Sync to server"
             >
               <RefreshCw className={`w-3.5 h-3.5 text-muted-foreground ${isSyncing ? "animate-spin" : ""}`} />
             </button>
