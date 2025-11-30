@@ -137,41 +137,39 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
     }
   }, [viewMode]);
 
-  // Auto-save with debounce - use refs to avoid re-render issues
+  // Track unsaved changes (no auto-save during editing to avoid re-render issues)
   useEffect(() => {
-    // Check against refs, not props (props change on save causing re-render)
     if (content === lastSavedContentRef.current && title === lastSavedTitleRef.current) {
       setSaveStatus("saved");
-      return;
+    } else {
+      setSaveStatus("unsaved");
+    }
+  }, [content, title]);
+
+  // Save function - called on close
+  const saveChanges = useCallback(async () => {
+    if (content === lastSavedContentRef.current && title === lastSavedTitleRef.current) {
+      return; // Nothing to save
     }
 
-    setSaveStatus("unsaved");
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current);
+    setSaveStatus("saving");
+    try {
+      await updateCard(card.id, { content, title });
+      lastSavedContentRef.current = content;
+      lastSavedTitleRef.current = title;
+      onSave(content);
+      setSaveStatus("saved");
+    } catch (error) {
+      console.error("[DualPaneEditor] Save failed:", error);
+      setSaveStatus("unsaved");
     }
-
-    saveTimeoutRef.current = setTimeout(async () => {
-      setSaveStatus("saving");
-      try {
-        await updateCard(card.id, { content, title });
-        // Update refs after successful save
-        lastSavedContentRef.current = content;
-        lastSavedTitleRef.current = title;
-        onSave(content);
-        setSaveStatus("saved");
-      } catch (error) {
-        console.error("[DualPaneEditor] Save failed:", error);
-        setSaveStatus("unsaved");
-      }
-    }, 1000);
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current);
-      }
-    };
   }, [content, title, card.id, updateCard, onSave]);
+
+  // Handle close - save before closing
+  const handleClose = useCallback(async () => {
+    await saveChanges();
+    onClose();
+  }, [saveChanges, onClose]);
 
   // Metadata calculation
   const metadata = useMemo(() => {
@@ -361,7 +359,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
           }, 100);
           return;
         }
-        onClose();
+        handleClose();
         return;
       }
 
@@ -424,7 +422,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
 
     document.addEventListener("keydown", handleKeyDown, true);
     return () => document.removeEventListener("keydown", handleKeyDown, true);
-  }, [autocompleteOpen, autocompleteSuggestions, selectedIndex, insertMarkdown, insertAutocompleteSuggestion, onClose]);
+  }, [autocompleteOpen, autocompleteSuggestions, selectedIndex, insertMarkdown, insertAutocompleteSuggestion, handleClose]);
 
   // Detect [[ for autocomplete
   useEffect(() => {
@@ -797,7 +795,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
               </div>
             </div>
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
               title="Close (Esc)"
             >
