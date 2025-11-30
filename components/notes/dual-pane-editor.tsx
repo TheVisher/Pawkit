@@ -564,8 +564,8 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
     },
   }), [cardTitleMap, noteTitleMap, onNavigate]);
 
-  // Toolbar component
-  const Toolbar = () => (
+  // Memoized toolbar JSX to prevent re-renders
+  const toolbarElement = useMemo(() => (
     <div className="flex items-center gap-1 px-3 py-2 bg-white/5 border-b border-white/10 flex-wrap">
       <button onClick={() => insertMarkdown("**", "**")} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Bold (Cmd+B)">
         <Bold size={16} />
@@ -611,128 +611,61 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
         <Layout size={16} />
       </button>
     </div>
-  );
+  ), [insertMarkdown, showTemplates]);
 
-  // Template dropdown
-  const TemplateDropdown = () => (
-    showTemplates ? (
-      <div className="border-b border-white/10 bg-white/5 p-3">
-        <div className="space-y-2">
-          <h4 className="text-sm font-medium text-white">Choose a Template</h4>
-          <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
-            {noteTemplates.map((template) => (
-              <button
-                key={template.id}
-                onClick={() => insertTemplate(template)}
-                className="text-left p-2 rounded border border-white/10 hover:bg-white/10 transition-colors"
-              >
-                <div className="font-medium text-sm text-white">{template.name}</div>
-                <div className="text-xs text-white/60">{template.description}</div>
-              </button>
-            ))}
+  // Memoized autocomplete dropdown
+  const autocompleteDropdown = useMemo(() => {
+    if (!isMounted || !autocompleteOpen || autocompleteSuggestions.length === 0) return null;
+
+    return createPortal(
+      <div
+        ref={autocompleteRef}
+        className="fixed z-[200] bg-gray-900 border border-purple-500/50 shadow-lg flex flex-col overflow-hidden rounded-lg"
+        style={{
+          top: `${autocompletePosition.top}px`,
+          left: `${autocompletePosition.left}px`,
+          minWidth: "300px",
+          maxWidth: "400px",
+          maxHeight: "256px",
+        }}
+      >
+        <div className="border-b border-white/10 px-3 py-2 bg-white/5 text-xs text-white/60 flex-shrink-0">
+          {autocompleteQuery ? `Search: "${autocompleteQuery}"` : "Recent cards"}
+        </div>
+        <div className="p-2 overflow-y-auto flex-1">
+          {autocompleteSuggestions.map((note, index) => (
+            <button
+              key={note.id}
+              onClick={() => note.title && insertAutocompleteSuggestion(note.title)}
+              className={`w-full text-left px-3 py-2 rounded transition-colors ${
+                index === selectedIndex ? "bg-purple-500/30 text-white" : "hover:bg-white/10 text-white/80"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {note.type === "url" ? <Globe size={14} /> : <FileText size={14} />}
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm truncate">{note.title}</div>
+                  {note.type === "url" ? (
+                    <div className="text-xs text-white/50 truncate mt-0.5">{note.domain || note.url}</div>
+                  ) : note.content ? (
+                    <div className="text-xs text-white/50 truncate mt-0.5">{note.content.substring(0, 60)}...</div>
+                  ) : null}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+        <div className="border-t border-white/10 px-3 py-2 bg-white/5 text-xs text-white/60 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <span>↑↓ navigate</span>
+            <span>Enter to select</span>
+            <span>Esc to close</span>
           </div>
         </div>
-      </div>
-    ) : null
-  );
-
-  // Editor pane
-  const EditorPane = () => (
-    <div className="flex flex-col h-full">
-      <Toolbar />
-      <TemplateDropdown />
-      <div className="flex-1 overflow-hidden relative">
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="Start writing in Markdown...&#10;&#10;Use [[Note Title]] to link to other notes.&#10;Use #tag for hashtags.&#10;Use **bold** and *italic* for formatting."
-          className="w-full h-full p-4 bg-transparent text-white font-mono text-sm resize-none focus:outline-none"
-          style={{ lineHeight: "1.6" }}
-          autoFocus
-        />
-      </div>
-    </div>
-  );
-
-  // Preview pane
-  const PreviewPane = () => (
-    <div className="h-full overflow-y-auto p-6 prose prose-invert max-w-none">
-      <ReactMarkdown
-        remarkPlugins={[
-          remarkGfm,
-          remarkBreaks,
-          [remarkWikiLink, {
-            aliasDivider: "|",
-            pageResolver: (name: string) => {
-              if (name.startsWith("card:") || name.startsWith("http://") || name.startsWith("https://")) {
-                return [name];
-              }
-              return [name.replace(/ /g, "-")];
-            },
-            hrefTemplate: (permalink: string) => `#/wiki/${permalink}`,
-          }],
-        ]}
-        components={markdownComponents}
-      >
-        {content || "*No content to preview*"}
-      </ReactMarkdown>
-    </div>
-  );
-
-  // Autocomplete dropdown
-  const AutocompleteDropdown = () => (
-    isMounted && autocompleteOpen && autocompleteSuggestions.length > 0
-      ? createPortal(
-          <div
-            ref={autocompleteRef}
-            className="fixed z-[200] bg-gray-900 border border-purple-500/50 shadow-lg flex flex-col overflow-hidden rounded-lg"
-            style={{
-              top: `${autocompletePosition.top}px`,
-              left: `${autocompletePosition.left}px`,
-              minWidth: "300px",
-              maxWidth: "400px",
-              maxHeight: "256px",
-            }}
-          >
-            <div className="border-b border-white/10 px-3 py-2 bg-white/5 text-xs text-white/60 flex-shrink-0">
-              {autocompleteQuery ? `Search: "${autocompleteQuery}"` : "Recent cards"}
-            </div>
-            <div className="p-2 overflow-y-auto flex-1">
-              {autocompleteSuggestions.map((note, index) => (
-                <button
-                  key={note.id}
-                  onClick={() => note.title && insertAutocompleteSuggestion(note.title)}
-                  className={`w-full text-left px-3 py-2 rounded transition-colors ${
-                    index === selectedIndex ? "bg-purple-500/30 text-white" : "hover:bg-white/10 text-white/80"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    {note.type === "url" ? <Globe size={14} /> : <FileText size={14} />}
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">{note.title}</div>
-                      {note.type === "url" ? (
-                        <div className="text-xs text-white/50 truncate mt-0.5">{note.domain || note.url}</div>
-                      ) : note.content ? (
-                        <div className="text-xs text-white/50 truncate mt-0.5">{note.content.substring(0, 60)}...</div>
-                      ) : null}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="border-t border-white/10 px-3 py-2 bg-white/5 text-xs text-white/60 flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <span>↑↓ navigate</span>
-                <span>Enter to select</span>
-                <span>Esc to close</span>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )
-      : null
-  );
+      </div>,
+      document.body
+    );
+  }, [isMounted, autocompleteOpen, autocompleteSuggestions, autocompletePosition, autocompleteQuery, selectedIndex, insertAutocompleteSuggestion]);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm">
@@ -806,13 +739,43 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
 
         {/* Content Area */}
         <div ref={containerRef} className="flex-1 flex overflow-hidden relative" style={{ cursor: isDragging ? "col-resize" : "default" }}>
-          {/* Editor Pane */}
+          {/* Editor Pane - inlined to prevent remounting */}
           {(viewMode === "split" || viewMode === "edit") && (
             <div
-              className="h-full overflow-hidden border-r border-white/10"
+              className="h-full overflow-hidden border-r border-white/10 flex flex-col"
               style={{ width: viewMode === "split" ? `${dividerPosition}%` : "100%" }}
             >
-              <EditorPane />
+              {toolbarElement}
+              {showTemplates && (
+                <div className="border-b border-white/10 bg-white/5 p-3">
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-white">Choose a Template</h4>
+                    <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+                      {noteTemplates.map((template) => (
+                        <button
+                          key={template.id}
+                          onClick={() => insertTemplate(template)}
+                          className="text-left p-2 rounded border border-white/10 hover:bg-white/10 transition-colors"
+                        >
+                          <div className="font-medium text-sm text-white">{template.name}</div>
+                          <div className="text-xs text-white/60">{template.description}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="flex-1 overflow-hidden relative">
+                <textarea
+                  ref={textareaRef}
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Start writing in Markdown...&#10;&#10;Use [[Note Title]] to link to other notes.&#10;Use #tag for hashtags.&#10;Use **bold** and *italic* for formatting."
+                  className="w-full h-full p-4 bg-transparent text-white font-mono text-sm resize-none focus:outline-none"
+                  style={{ lineHeight: "1.6" }}
+                  autoFocus
+                />
+              </div>
             </div>
           )}
 
@@ -828,19 +791,39 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
             </div>
           )}
 
-          {/* Preview Pane */}
+          {/* Preview Pane - inlined to prevent remounting */}
           {(viewMode === "split" || viewMode === "preview") && (
             <div
               className="h-full overflow-hidden bg-black/20"
               style={{ width: viewMode === "split" ? `${100 - dividerPosition}%` : "100%" }}
             >
-              <PreviewPane />
+              <div className="h-full overflow-y-auto p-6 prose prose-invert max-w-none">
+                <ReactMarkdown
+                  remarkPlugins={[
+                    remarkGfm,
+                    remarkBreaks,
+                    [remarkWikiLink, {
+                      aliasDivider: "|",
+                      pageResolver: (name: string) => {
+                        if (name.startsWith("card:") || name.startsWith("http://") || name.startsWith("https://")) {
+                          return [name];
+                        }
+                        return [name.replace(/ /g, "-")];
+                      },
+                      hrefTemplate: (permalink: string) => `#/wiki/${permalink}`,
+                    }],
+                  ]}
+                  components={markdownComponents}
+                >
+                  {content || "*No content to preview*"}
+                </ReactMarkdown>
+              </div>
             </div>
           )}
         </div>
 
         {/* Autocomplete Dropdown */}
-        <AutocompleteDropdown />
+        {autocompleteDropdown}
       </div>
     </div>
   );
