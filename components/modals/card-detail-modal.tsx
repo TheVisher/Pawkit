@@ -1124,17 +1124,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             </div>
 
               <div className="flex items-center gap-2 ml-4">
-                {/* Expand Button - Opens dual-pane editor for notes, expands modal for others */}
+                {/* Expand Button */}
                 <button
-                  onClick={() => {
-                    if (isNote) {
-                      setIsNoteExpanded(true);
-                    } else {
-                      setIsModalExpanded(!isModalExpanded);
-                    }
-                  }}
+                  onClick={() => setIsModalExpanded(!isModalExpanded)}
                   className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                  title={isNote ? "Open split view editor" : (isModalExpanded ? "Restore size" : "Expand to fill window")}
+                  title={isModalExpanded ? "Restore size" : "Expand to fill window"}
                 >
                   <Maximize2 size={20} className="text-gray-400" />
                 </button>
@@ -1755,8 +1749,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     Preview
                   </Button>
                   <Button
-                    onClick={() => setNoteMode('edit')}
-                    variant={noteMode === 'edit' ? 'default' : 'ghost'}
+                    onClick={() => setIsNoteExpanded(true)}
+                    variant="ghost"
                     size="sm"
                     className="flex items-center gap-2"
                   >

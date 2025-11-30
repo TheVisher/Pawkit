@@ -731,8 +731,8 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="w-full h-full max-w-[95vw] max-h-[95vh] m-4 bg-gray-900/95 border border-white/10 rounded-xl overflow-hidden flex flex-col shadow-2xl">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div className="w-full h-full bg-gray-900 overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5">
           {/* Title (editable) */}
