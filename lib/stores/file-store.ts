@@ -625,7 +625,12 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
     filenData?: { uuid?: string; path?: string }
   ) => {
     const file = get().files.find((f) => f.id === fileId);
-    if (!file) return;
+    if (!file) {
+      console.warn("[FileStore] updateFileSyncStatus: file not found:", fileId);
+      return;
+    }
+
+    console.warn("[FileStore] updateFileSyncStatus:", fileId, "status:", status, "filenData:", filenData);
 
     const updatedFile: StoredFile = {
       ...file,
@@ -635,6 +640,8 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
       ...(status === "synced" && { lastSyncedAt: new Date().toISOString() }),
       updatedAt: new Date().toISOString(),
     };
+
+    console.warn("[FileStore] Saving file with filenUuid:", updatedFile.filenUuid);
 
     await localDb.saveFile(updatedFile);
 
