@@ -13,6 +13,7 @@ import {
   CloudSyncStatus,
 } from "./types";
 import { filenProvider } from "./filen-provider";
+import { gdriveProvider } from "@/lib/services/google-drive/gdrive-provider";
 
 class CloudStorageManager {
   private providers: Map<CloudProviderId, CloudStorageProvider> = new Map();
@@ -21,6 +22,7 @@ class CloudStorageManager {
   constructor() {
     // Register built-in providers
     this.registerProvider(filenProvider);
+    this.registerProvider(gdriveProvider);
   }
 
   /**

@@ -19,11 +19,24 @@ export interface FilenState {
   errorMessage: string | null;
 }
 
+export interface GoogleDriveConfig {
+  email: string;
+  name?: string;
+}
+
+export interface GoogleDriveState {
+  connected: boolean;
+  lastSync: Date | null;
+  config: GoogleDriveConfig | null;
+  status: "idle" | "connecting" | "syncing" | "error";
+  errorMessage: string | null;
+}
+
 export interface ConnectorState {
   filen: FilenState;
+  googleDrive: GoogleDriveState;
   // Future connectors
   googleCalendar: { connected: boolean; lastSync: Date | null };
-  googleDrive: { connected: boolean; lastSync: Date | null };
 }
 
 interface ConnectorActions {
@@ -35,6 +48,14 @@ interface ConnectorActions {
   setFilenSyncing: () => void;
   setFilenSynced: () => void;
   setFilenConfig: (config: Partial<FilenConfig>) => void;
+
+  // Google Drive actions
+  setGDriveConnecting: () => void;
+  setGDriveConnected: (email: string, name?: string) => void;
+  setGDriveDisconnected: () => void;
+  setGDriveError: (message: string) => void;
+  setGDriveSyncing: () => void;
+  setGDriveSynced: () => void;
 
   // General
   reset: () => void;
@@ -48,10 +69,18 @@ const initialFilenState: FilenState = {
   errorMessage: null,
 };
 
+const initialGDriveState: GoogleDriveState = {
+  connected: false,
+  lastSync: null,
+  config: null,
+  status: "idle",
+  errorMessage: null,
+};
+
 const initialState: ConnectorState = {
   filen: initialFilenState,
+  googleDrive: initialGDriveState,
   googleCalendar: { connected: false, lastSync: null },
-  googleDrive: { connected: false, lastSync: null },
 };
 
 export const useConnectorStore = create<ConnectorState & ConnectorActions>()(
@@ -124,6 +153,62 @@ export const useConnectorStore = create<ConnectorState & ConnectorActions>()(
           },
         })),
 
+      // Google Drive actions
+      setGDriveConnecting: () =>
+        set((state) => ({
+          googleDrive: {
+            ...state.googleDrive,
+            status: "connecting",
+            errorMessage: null,
+          },
+        })),
+
+      setGDriveConnected: (email: string, name?: string) =>
+        set((state) => ({
+          googleDrive: {
+            ...state.googleDrive,
+            connected: true,
+            status: "idle",
+            errorMessage: null,
+            config: {
+              email,
+              name,
+            },
+            lastSync: new Date(),
+          },
+        })),
+
+      setGDriveDisconnected: () =>
+        set({
+          googleDrive: initialGDriveState,
+        }),
+
+      setGDriveError: (message: string) =>
+        set((state) => ({
+          googleDrive: {
+            ...state.googleDrive,
+            status: "error",
+            errorMessage: message,
+          },
+        })),
+
+      setGDriveSyncing: () =>
+        set((state) => ({
+          googleDrive: {
+            ...state.googleDrive,
+            status: "syncing",
+          },
+        })),
+
+      setGDriveSynced: () =>
+        set((state) => ({
+          googleDrive: {
+            ...state.googleDrive,
+            status: "idle",
+            lastSync: new Date(),
+          },
+        })),
+
       reset: () => set(initialState),
     }),
     {
@@ -141,8 +226,17 @@ export const useConnectorStore = create<ConnectorState & ConnectorActions>()(
               }
             : null,
         },
+        googleDrive: {
+          connected: state.googleDrive.connected,
+          lastSync: state.googleDrive.lastSync,
+          config: state.googleDrive.config
+            ? {
+                email: state.googleDrive.config.email,
+                name: state.googleDrive.config.name,
+              }
+            : null,
+        },
         googleCalendar: state.googleCalendar,
-        googleDrive: state.googleDrive,
       }),
     }
   )
