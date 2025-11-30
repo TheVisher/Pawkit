@@ -105,7 +105,7 @@ export function FileDropZone({
             <div className="text-sm text-muted-foreground text-center">
               Files will be added to your library
               <br />
-              <span className="text-xs opacity-75">.md files become native notes</span>
+              <span className="text-xs opacity-75">.md and .txt files become native notes</span>
             </div>
           </div>
         </div>

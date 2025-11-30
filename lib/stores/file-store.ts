@@ -284,8 +284,10 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
     let importedNotes = 0;
 
     for (const file of files) {
-      // Handle .md files as native notes (unless being attached to a card)
-      if (file.name.toLowerCase().endsWith('.md') && !cardId) {
+      const lowerName = file.name.toLowerCase();
+
+      // Handle .md files as native markdown notes (unless being attached to a card)
+      if (lowerName.endsWith('.md') && !cardId) {
         try {
           const content = await file.text();
           const title = extractTitleFromMarkdown(file.name, content);
@@ -298,9 +300,36 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
           });
 
           importedNotes++;
-          console.warn(`[FileStore] Imported markdown as note: ${title}`);
+          console.log(`[FileStore] Imported markdown as note: ${title}`);
         } catch (error) {
           console.error(`[FileStore] Failed to import markdown file: ${file.name}`, error);
+          useToastStore.getState().error(`Failed to import ${file.name}`);
+        }
+        continue;
+      }
+
+      // Handle .txt files as native text notes (unless being attached to a card)
+      if (lowerName.endsWith('.txt') && !cardId) {
+        try {
+          const content = await file.text();
+          // Extract title from filename (remove .txt extension and clean up)
+          const title = file.name
+            .replace(/\.txt$/i, "")
+            .replace(/[_-]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim() || "Untitled Note";
+
+          await useDataStore.getState().addCard({
+            type: 'text-note',
+            title,
+            content,
+            url: "",
+          });
+
+          importedNotes++;
+          console.log(`[FileStore] Imported text file as note: ${title}`);
+        } catch (error) {
+          console.error(`[FileStore] Failed to import text file: ${file.name}`, error);
           useToastStore.getState().error(`Failed to import ${file.name}`);
         }
         continue;

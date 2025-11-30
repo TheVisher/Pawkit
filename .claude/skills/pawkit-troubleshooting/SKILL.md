@@ -47,6 +47,7 @@ description: Living document of issues encountered, their fixes, and prevention 
    - Optimistic Updates Pattern
    - Hidden vs Invisible CSS Classes
    - Panel Store close() Clears activeCardId
+   - Filen Folder UUIDs Not Persisting (Vercel Edge Cache)
 3. [Debugging Strategies](#debugging-strategies)
 4. [How to Add New Issues](#how-to-add-new-issues)
 5. [Maintenance](#maintenance)
@@ -4927,6 +4928,118 @@ const response = await fetch("https://gateway.filen.io/v3/upload/done", { ... })
 
 ---
 
+### 41. Filen Folder UUIDs Not Persisting - Vercel Edge Cache
+
+**Date**: November 29, 2025
+**Severity**: Critical
+**Component**: File sync / Filen integration
+
+**Symptom**: After folder restructure (from `_Library`/`_Attachments` to `_Notes`/`_Images`/`_Audio`/`_Videos`/`_Documents`/`_Other`), file uploads fail with "Folder not found" error. Server returns 500.
+
+**Root Cause**: Client-side localStorage writes were never executing because Vercel edge cache was serving stale JavaScript bundles. Even with incognito mode, hard refresh, cache-busting comments, and force redeploy without build cache - the client code wouldn't update.
+
+**Investigation Trail**:
+1. Checked localStorage: `pawkit-connectors` had `config: {"email":"..."}` with NO `folderUUIDs`
+2. Added debug logging (`[FilenConnect]` logs) to client components
+3. Reconnected Filen - server logs showed auth success with all 6 folder UUIDs
+4. Client console showed ZERO `[FilenConnect]` logs - code never executed
+5. Tried: Hard refresh, incognito, cache-bust comments, force redeploy - all failed
+6. Conclusion: Vercel edge cache issue with client bundles
+
+**What Failed**:
+```typescript
+// ❌ WRONG: Storing folderUUIDs in client localStorage
+// filen-connect-modal.tsx
+if (result.success && result.folderUUIDs) {
+  console.log("[FilenConnect] Storing UUIDs:", result.folderUUIDs);  // NEVER LOGGED
+  setFilenConfig({ folderUUIDs: result.folderUUIDs });
+  // Uses Zustand persist middleware - writes to localStorage
+}
+
+// filen-direct.ts
+const connectorStore = JSON.parse(localStorage.getItem("pawkit-connectors") || "{}");
+const folderUUIDs = connectorStore?.state?.config?.folderUUIDs;  // Always undefined
+```
+
+**What Worked**:
+```typescript
+// ✅ CORRECT: Store folderUUIDs in server-side HTTP-only cookie
+
+// app/api/filen/auth/route.ts - Set TWO cookies
+const COOKIE_NAME = "filen_session";
+const FOLDERS_COOKIE_NAME = "filen_folders";
+
+// Session cookie (encrypted, contains auth credentials)
+response.cookies.set({
+  name: COOKIE_NAME,
+  value: encryptedSession,
+  httpOnly: true,
+  secure: process.env.NODE_ENV === "production",
+  sameSite: "lax",
+  maxAge: COOKIE_MAX_AGE,
+  path: "/",
+});
+
+// Separate folder UUIDs cookie (small, unencrypted)
+if (Object.keys(pawkitFolderUUIDs).length > 0) {
+  response.cookies.set({
+    name: FOLDERS_COOKIE_NAME,
+    value: JSON.stringify(pawkitFolderUUIDs),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: COOKIE_MAX_AGE,
+    path: "/",
+  });
+}
+
+// app/api/filen/session/route.ts - Read both cookies, return in response
+const sessionCookie = cookieStore.get(FILEN_COOKIE_NAME);
+const foldersCookie = cookieStore.get(FILEN_FOLDERS_COOKIE_NAME);
+
+let folderUUIDs: PawkitFolderUUIDs | undefined;
+if (foldersCookie?.value) {
+  folderUUIDs = JSON.parse(foldersCookie.value);
+}
+
+return NextResponse.json({
+  success: true,
+  credentials: {
+    // ... other credentials
+    pawkitFolderUUIDs: folderUUIDs,
+  },
+});
+
+// lib/services/filen-direct.ts - Get UUIDs from session response
+const data = await sessionResponse.json();
+const folderUUIDs = data.credentials.pawkitFolderUUIDs;
+this.credentials = {
+  // ... other credentials
+  pawkitFolderUUIDs: folderUUIDs,
+};
+```
+
+**Why Two Cookies**:
+- Session cookie was already near 4KB limit (contains encrypted masterKeys, privateKey, etc.)
+- Adding folder UUIDs (~200 bytes) would exceed cookie size limit
+- Separate cookie avoids size issues and doesn't need encryption (UUIDs are not sensitive)
+
+**Prevention**:
+- Don't trust client-side storage for critical config after edge deployments
+- Server-side cookies are immune to client bundle caching
+- When debugging client code that "isn't running", consider edge cache issues
+- Test in new browser profile, not just incognito (shared edge cache)
+
+**Files Changed**:
+- `app/api/filen/auth/route.ts` - Set two separate cookies
+- `app/api/filen/session/route.ts` - Read folders cookie, return in response
+- `lib/services/filen-direct.ts` - Get UUIDs from session response
+- `components/settings/filen-connect-modal.tsx` - Remove localStorage writes
+
+**Key Insight**: When Vercel edge serves stale JS bundles, NO client-side code changes will take effect until cache expires. Server-side API routes update immediately on deploy, making cookies more reliable than localStorage.
+
+---
+
 ## Issue Categories Quick Reference
 
 **API Routes**:
@@ -4947,6 +5060,7 @@ const response = await fetch("https://gateway.filen.io/v3/upload/done", { ... })
 - Queue failures
 - Retry logic
 - Offline handling
+- Filen folder UUID persistence (server cookies vs localStorage)
 
 **Performance**:
 - Missing debounce
@@ -4999,7 +5113,7 @@ const response = await fetch("https://gateway.filen.io/v3/upload/done", { ... })
 
 ---
 
-**Last Updated**: November 29, 2025 (Added Issues #39-40: Filen Direct Upload encryption key format, api.filen.io DNS)
+**Last Updated**: November 29, 2025 (Added Issue #41: Filen folder UUID persistence - server-side cookie solution for Vercel edge cache)
 **Next Review**: April 2025 (Quarterly)
 
 **This is a living document. Keep it current!**

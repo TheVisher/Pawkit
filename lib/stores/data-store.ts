@@ -764,12 +764,19 @@ export const useDataStore = create<DataStore>((set, get) => ({
       // Get the card to check if it's a file card
       const cardToDelete = get().cards.find(c => c.id === id);
 
-      // Soft delete attachments (files with cardId === id)
-      await localDb.deleteFilesByCardId(id);
+      // Delete attachments and main file (includes Filen sync)
+      const { useFileStore } = await import('@/lib/stores/file-store');
+      const fileStore = useFileStore.getState();
 
-      // Soft delete the file if this is a file card
+      // Delete attachments (files with cardId === id)
+      const attachments = fileStore.getFilesByCardId(id);
+      for (const attachment of attachments) {
+        await fileStore.deleteFile(attachment.id);
+      }
+
+      // Delete the main file if this is a file card
       if (cardToDelete?.isFileCard && cardToDelete.fileId) {
-        await localDb.deleteFile(cardToDelete.fileId);
+        await fileStore.deleteFile(cardToDelete.fileId);
       }
 
       // STEP 0.6: Delete synced note from Filen cloud
@@ -1012,6 +1019,9 @@ export const useDataStore = create<DataStore>((set, get) => ({
         // If deleteCards is true, soft-delete cards and their files locally
         if (deleteCards) {
           const { cards } = get();
+          const { useFileStore } = await import('@/lib/stores/file-store');
+          const fileStore = useFileStore.getState();
+
           for (const collectionId of collectionsToDelete) {
             const collectionSlug = collections.find(c => c.id === collectionId)?.slug;
             // Find cards in this collection
@@ -1020,11 +1030,14 @@ export const useDataStore = create<DataStore>((set, get) => ({
             );
 
             for (const card of cardsInCollection) {
-              // Soft delete attachments
-              await localDb.deleteFilesByCardId(card.id);
-              // Soft delete file for file cards
+              // Delete attachments (includes Filen sync)
+              const attachments = fileStore.getFilesByCardId(card.id);
+              for (const attachment of attachments) {
+                await fileStore.deleteFile(attachment.id);
+              }
+              // Delete file for file cards (includes Filen sync)
               if (card.isFileCard && card.fileId) {
-                await localDb.deleteFile(card.fileId);
+                await fileStore.deleteFile(card.fileId);
               }
               // Soft delete the card
               await localDb.deleteCard(card.id);
