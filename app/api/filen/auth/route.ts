@@ -23,6 +23,7 @@ interface FilenSession {
   pawkitFolderUUIDs?: {
     library: string;
     attachments: string;
+    notes: string;
   };
 }
 
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     // Create Pawkit folder structure if it doesn't exist and get UUIDs
     const fs = filen.fs();
-    const folders = ["/Pawkit", "/Pawkit/_Library", "/Pawkit/_Attachments"];
+    const folders = ["/Pawkit", "/Pawkit/_Library", "/Pawkit/_Attachments", "/Pawkit/_Notes"];
 
     for (const folderPath of folders) {
       try {
@@ -68,6 +69,7 @@ export async function POST(request: NextRequest) {
     // Get the UUIDs of the Pawkit folders for direct uploads
     let libraryUUID = "";
     let attachmentsUUID = "";
+    let notesUUID = "";
     try {
       const libraryStat = await fs.stat({ path: "/Pawkit/_Library" });
       libraryUUID = libraryStat.uuid;
@@ -76,6 +78,10 @@ export async function POST(request: NextRequest) {
       const attachmentsStat = await fs.stat({ path: "/Pawkit/_Attachments" });
       attachmentsUUID = attachmentsStat.uuid;
       console.log("[Filen] Attachments folder UUID:", attachmentsUUID);
+
+      const notesStat = await fs.stat({ path: "/Pawkit/_Notes" });
+      notesUUID = notesStat.uuid;
+      console.log("[Filen] Notes folder UUID:", notesUUID);
     } catch (statError) {
       console.warn("[Filen] Could not get Pawkit folder UUIDs:", statError);
     }
@@ -92,9 +98,10 @@ export async function POST(request: NextRequest) {
       authVersion: (config.authVersion as 1 | 2 | 3) || 2,
       privateKey: config.privateKey || "", // Required for file encryption
       // Pre-resolved Pawkit folder UUIDs for direct uploads
-      pawkitFolderUUIDs: libraryUUID && attachmentsUUID ? {
+      pawkitFolderUUIDs: libraryUUID && attachmentsUUID && notesUUID ? {
         library: libraryUUID,
         attachments: attachmentsUUID,
+        notes: notesUUID,
       } : undefined,
     };
 

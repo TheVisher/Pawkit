@@ -20,6 +20,7 @@ interface FilenSession {
   pawkitFolderUUIDs?: {
     library: string;
     attachments: string;
+    notes: string;
   };
 }
 

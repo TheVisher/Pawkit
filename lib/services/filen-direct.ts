@@ -27,6 +27,7 @@ export interface FilenDirectCredentials {
   pawkitFolderUUIDs?: {
     library: string;
     attachments: string;
+    notes: string;
   };
 }
 
@@ -439,6 +440,10 @@ class FilenDirectService {
       if (path === "/Pawkit/_Attachments") {
         console.log(`[FilenDirect] Using pre-resolved Attachments UUID: ${this.credentials.pawkitFolderUUIDs.attachments}`);
         return this.credentials.pawkitFolderUUIDs.attachments;
+      }
+      if (path === "/Pawkit/_Notes") {
+        console.log(`[FilenDirect] Using pre-resolved Notes UUID: ${this.credentials.pawkitFolderUUIDs.notes}`);
+        return this.credentials.pawkitFolderUUIDs.notes;
       }
     }
 
