@@ -56,6 +56,25 @@ interface FileStoreState {
 const blobUrlCache = new Map<string, string>();
 
 /**
+ * Extract title from markdown file
+ * Priority: first # heading > filename without extension
+ */
+function extractTitleFromMarkdown(filename: string, content: string): string {
+  // Try to find first # heading in content
+  const headingMatch = content.match(/^#\s+(.+)$/m);
+  if (headingMatch && headingMatch[1].trim()) {
+    return headingMatch[1].trim();
+  }
+
+  // Fall back to filename without extension
+  const nameWithoutExt = filename.replace(/\.md$/i, "");
+  return nameWithoutExt
+    .replace(/[_-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim() || "Untitled Note";
+}
+
+/**
  * Get the pawkit name for a card based on its first collection
  */
 function getPawkitNameForCard(cardId: string): string | null {
@@ -280,15 +299,43 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
 
   uploadFiles: async (files: File[], userId: string, cardId?: string) => {
     const uploadedFiles: StoredFile[] = [];
+    let importedNotes = 0;
 
     for (const file of files) {
+      // Handle .md files as native notes (unless being attached to a card)
+      if (file.name.toLowerCase().endsWith('.md') && !cardId) {
+        try {
+          const content = await file.text();
+          const title = extractTitleFromMarkdown(file.name, content);
+
+          await useDataStore.getState().addCard({
+            type: 'md-note',
+            title,
+            content,
+            url: "",
+          });
+
+          importedNotes++;
+          console.warn(`[FileStore] Imported markdown as note: ${title}`);
+        } catch (error) {
+          console.error(`[FileStore] Failed to import markdown file: ${file.name}`, error);
+          useToastStore.getState().error(`Failed to import ${file.name}`);
+        }
+        continue;
+      }
+
       const uploaded = await get().uploadFile(file, userId, cardId);
       if (uploaded) {
         uploadedFiles.push(uploaded);
       }
     }
 
-    if (uploadedFiles.length > 0) {
+    // Show appropriate toast messages
+    if (importedNotes > 0 && uploadedFiles.length > 0) {
+      useToastStore.getState().success(`Imported ${importedNotes} note(s), uploaded ${uploadedFiles.length} file(s)`);
+    } else if (importedNotes > 0) {
+      useToastStore.getState().success(`Imported ${importedNotes} note(s)`);
+    } else if (uploadedFiles.length > 0) {
       useToastStore.getState().success(`Uploaded ${uploadedFiles.length} file(s)`);
     }
 

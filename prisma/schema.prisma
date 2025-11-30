@@ -60,6 +60,11 @@ model Card {
   isFileCard      Boolean   @default(false)
   fileId          String?   // Reference to local IndexedDB file
 
+  // Cloud sync tracking (for notes syncing to cloud providers)
+  cloudId         String?   // Provider-specific ID (e.g., Filen UUID)
+  cloudProvider   String?   // Provider name: "filen", "google-drive", "dropbox", etc.
+  cloudSyncedAt   DateTime? // Last successful sync to cloud
+
   @@index([userId])
   @@index([userId, deleted])
   @@index([userId, inDen])

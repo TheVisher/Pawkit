@@ -101,6 +101,10 @@ export type PrismaCard = {
   // File card support
   isFileCard: boolean;
   fileId: string | null;
+  // Cloud sync tracking
+  cloudId: string | null;
+  cloudProvider: string | null;
+  cloudSyncedAt: Date | null;
 };
 
 // PrismaCollection matches the Collection type from Prisma
@@ -164,6 +168,11 @@ export type CardModel = {
   isFileCard?: boolean;         // true if this card IS a file (standalone)
   fileId?: string;              // reference to StoredFile (for standalone file cards)
   attachedFileIds?: string[];   // files attached TO this card
+
+  // Cloud sync tracking (for notes)
+  cloudId?: string | null;             // Provider-specific ID (e.g., Filen UUID)
+  cloudProvider?: string | null;       // Provider name: "filen", "google-drive", etc.
+  cloudSyncedAt?: string | null;       // ISO date string of last sync
 };
 
 export type CollectionNode = {

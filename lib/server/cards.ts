@@ -40,9 +40,13 @@ function mapCard(card: Card): CardDTO {
     updatedAt: card.updatedAt.toISOString(),
     deletedAt: card.deletedAt?.toISOString() ?? null,
     scheduledDate: card.scheduledDate?.toISOString() ?? null,
-    // File card fields - use optional chaining since columns may not exist yet
-    isFileCard: (card as any).isFileCard ?? false,
-    fileId: (card as any).fileId ?? undefined
+    // File card fields
+    isFileCard: card.isFileCard ?? false,
+    fileId: card.fileId ?? undefined,
+    // Cloud sync fields
+    cloudId: card.cloudId ?? null,
+    cloudProvider: card.cloudProvider ?? null,
+    cloudSyncedAt: card.cloudSyncedAt?.toISOString() ?? null
   };
 }
 

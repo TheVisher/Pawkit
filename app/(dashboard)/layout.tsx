@@ -44,6 +44,7 @@ import type { CardModel, CollectionNode } from "@/lib/types";
 import { initActivityTracking } from "@/lib/utils/device-session";
 import { useUserStorage } from "@/lib/hooks/use-user-storage";
 import { useOnboarding } from "@/lib/hooks/use-onboarding";
+import { useCloudSync } from "@/lib/hooks/use-cloud-sync";
 import { TourProvider } from "@/components/onboarding/tour-provider";
 import { CardDTO } from "@/lib/server/cards";
 
@@ -213,6 +214,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
   // Sync triggers hook manages periodic sync and event-based sync
   useSyncTriggers();
+
+  // Cloud sync hook manages automatic note syncing to cloud storage (Filen, etc.)
+  // Only activates when a cloud provider is connected
+  useCloudSync();
 
   // Load user settings from server on mount (respects serverSync flag)
   // Pass isReady to prevent 401 errors before auth is confirmed
