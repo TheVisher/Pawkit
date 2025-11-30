@@ -32,6 +32,7 @@ import {
   Check,
   Clock,
   GripVertical,
+  Save,
 } from "lucide-react";
 
 // Storage key for divider position
@@ -370,6 +371,13 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
         return;
       }
 
+      // Cmd+S to save
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        saveChanges();
+        return;
+      }
+
       // Autocomplete navigation
       if (autocompleteOpen) {
         if (e.key === "ArrowDown") {
@@ -422,7 +430,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
 
     document.addEventListener("keydown", handleKeyDown, true);
     return () => document.removeEventListener("keydown", handleKeyDown, true);
-  }, [autocompleteOpen, autocompleteSuggestions, selectedIndex, insertMarkdown, insertAutocompleteSuggestion, handleClose]);
+  }, [autocompleteOpen, autocompleteSuggestions, selectedIndex, insertMarkdown, insertAutocompleteSuggestion, handleClose, saveChanges]);
 
   // Detect [[ for autocomplete
   useEffect(() => {
@@ -715,7 +723,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
             </button>
           </div>
 
-          {/* Status + Close */}
+          {/* Status + Save + Close */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-4 text-xs text-white/60">
               <span>{metadata.words} words</span>
@@ -727,6 +735,19 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
                 {saveStatus === "unsaved" && <><Clock size={12} className="text-yellow-500" /> Unsaved</>}
               </div>
             </div>
+            <button
+              onClick={saveChanges}
+              disabled={saveStatus === "saved" || saveStatus === "saving"}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                saveStatus === "unsaved"
+                  ? "bg-purple-500/20 text-purple-300 hover:bg-purple-500/30"
+                  : "text-white/40 cursor-not-allowed"
+              }`}
+              title="Save (Cmd+S)"
+            >
+              <Save size={14} />
+              Save
+            </button>
             <button
               onClick={handleClose}
               className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
