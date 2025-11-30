@@ -4,6 +4,9 @@
  * Credentials are stored as encrypted HTTP-only cookies.
  */
 
+// Module load timestamp for cache debugging
+console.log("[FilenService] Module loaded at:", new Date().toISOString(), "v2");
+
 export interface FilenCredentials {
   email: string;
   password: string;
