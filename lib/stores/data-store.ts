@@ -583,10 +583,16 @@ export const useDataStore = create<DataStore>((set, get) => ({
     const oldCard = get().cards.find(c => c.id === id);
     if (!oldCard) return;
 
+    // Check if only sync metadata is being updated (don't bump updatedAt for these)
+    const syncMetadataFields = ['cloudId', 'cloudProvider', 'cloudSyncedAt'];
+    const updateKeys = Object.keys(updates);
+    const isOnlySyncMetadata = updateKeys.every(key => syncMetadataFields.includes(key));
+
     const updatedCard = {
       ...oldCard,
       ...updates,
-      updatedAt: new Date().toISOString(),
+      // Only update timestamp if actual content changed, not just sync metadata
+      updatedAt: isOnlySyncMetadata ? oldCard.updatedAt : new Date().toISOString(),
     };
 
     try {
