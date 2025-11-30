@@ -191,6 +191,17 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
             console.error("[TrashView] Failed to delete file from Filen:", file.id, error);
           }
         }
+
+        // Delete synced note (.md file) from Filen if it has a cloudId
+        if (cardToDelete?.cloudId && (cardToDelete.type === 'md-note' || cardToDelete.type === 'text-note')) {
+          try {
+            const { filenService } = await import('@/lib/services/filen-service');
+            console.warn(`[TrashView] Deleting synced note from Filen: ${cardToDelete.cloudId}`);
+            await filenService.deleteFile(cardToDelete.cloudId);
+          } catch (error) {
+            console.error("[TrashView] Failed to delete note from Filen:", cardToDelete.cloudId, error);
+          }
+        }
       }
 
       // Also delete from IndexedDB
@@ -236,6 +247,17 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
             await permanentlyDeleteFile(file.id);
           } catch (error) {
             console.error("[TrashView] Failed to delete file from Filen:", file.id, error);
+          }
+        }
+
+        // Delete synced note (.md file) from Filen if it has a cloudId
+        if (card.cloudId && (card.type === 'md-note' || card.type === 'text-note')) {
+          try {
+            const { filenService } = await import('@/lib/services/filen-service');
+            console.warn(`[TrashView] Deleting synced note from Filen: ${card.cloudId}`);
+            await filenService.deleteFile(card.cloudId);
+          } catch (error) {
+            console.error("[TrashView] Failed to delete note from Filen:", card.cloudId, error);
           }
         }
       }
