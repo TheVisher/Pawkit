@@ -7,6 +7,8 @@ const FILEN_COOKIE_NAME = "filen_session";
 
 /**
  * Session data stored in the Filen cookie.
+ * NOTE: pawkitFolderUUIDs are NOT stored in cookie (too large).
+ * They are stored in client localStorage via connector-store.
  */
 interface FilenSession {
   email: string;
@@ -17,11 +19,6 @@ interface FilenSession {
   authVersion: 1 | 2 | 3;
   privateKey: string;
   publicKey?: string;
-  pawkitFolderUUIDs?: {
-    library: string;
-    attachments: string;
-    notes: string;
-  };
 }
 
 /**
@@ -80,6 +77,7 @@ export async function GET() {
 
     // 5. Return credentials for client-side SDK initialization
     // Note: These will be stored in memory only, not localStorage
+    // pawkitFolderUUIDs are NOT included - they're in client localStorage
     return NextResponse.json({
       success: true,
       credentials: {
@@ -91,7 +89,6 @@ export async function GET() {
         userId: session.userId,
         baseFolderUUID: session.baseFolderUUID,
         authVersion: session.authVersion,
-        pawkitFolderUUIDs: session.pawkitFolderUUIDs,
       },
     });
   } catch (error) {

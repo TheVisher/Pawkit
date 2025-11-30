@@ -133,15 +133,28 @@ class FilenDirectService {
       throw new Error(data.error || "Invalid session response");
     }
 
+    // Get folder UUIDs from localStorage (stored by connector-store)
+    // They're not in the session cookie due to size limits
+    let folderUUIDs: PawkitFolderUUIDs | undefined;
+    try {
+      const stored = localStorage.getItem("pawkit-connectors");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        folderUUIDs = parsed?.state?.filen?.config?.folderUUIDs;
+      }
+    } catch {
+      console.warn("[FilenDirect] Could not read folder UUIDs from localStorage");
+    }
+
     this.credentials = {
       apiKey: data.credentials.apiKey,
       masterKeys: data.credentials.masterKeys,
       baseFolderUUID: data.credentials.baseFolderUUID,
       authVersion: data.credentials.authVersion,
-      pawkitFolderUUIDs: data.credentials.pawkitFolderUUIDs,
+      pawkitFolderUUIDs: folderUUIDs,
     };
 
-    console.log("[FilenDirect] Initialized for:", data.credentials.email);
+    console.log("[FilenDirect] Initialized for:", data.credentials.email, "folders:", Object.keys(folderUUIDs || {}));
   }
 
   /**

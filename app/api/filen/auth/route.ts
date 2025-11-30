@@ -20,6 +20,9 @@ export type PawkitFolderUUIDs = Partial<Record<PawkitFolderKey, string>>;
  * Session data - essential fields for file operations.
  * Includes privateKey (needed for HMAC key generation during upload).
  * Excludes publicKey (only needed for sharing with others).
+ *
+ * NOTE: pawkitFolderUUIDs are NOT stored in session cookie (too large).
+ * They are returned in the response body and stored in client localStorage.
  */
 interface FilenSession {
   email: string;
@@ -29,8 +32,6 @@ interface FilenSession {
   baseFolderUUID: string;
   authVersion: 1 | 2 | 3;
   privateKey: string; // Required for file encryption
-  // Pre-resolved Pawkit folder UUIDs for direct uploads (keyed by folder name)
-  pawkitFolderUUIDs?: PawkitFolderUUIDs;
 }
 
 /**
@@ -90,6 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Extract session data (includes privateKey for HMAC, excludes publicKey)
+    // NOTE: pawkitFolderUUIDs NOT included - stored in client localStorage instead
     const config = filen.config;
     const session: FilenSession = {
       email: config.email || email,
@@ -100,8 +102,6 @@ export async function POST(request: NextRequest) {
       baseFolderUUID: config.baseFolderUUID || "",
       authVersion: (config.authVersion as 1 | 2 | 3) || 2,
       privateKey: config.privateKey || "", // Required for file encryption
-      // Pre-resolved Pawkit folder UUIDs for direct uploads (from shared folder config)
-      pawkitFolderUUIDs: Object.keys(pawkitFolderUUIDs).length > 0 ? pawkitFolderUUIDs : undefined,
     };
 
     // Debug: Log individual field sizes
@@ -130,7 +130,12 @@ export async function POST(request: NextRequest) {
     console.log("[Filen] Login successful for:", email);
 
     // Use NextResponse to set cookie
-    const response = NextResponse.json({ success: true, email });
+    // folderUUIDs returned in body (stored in client localStorage, not cookie)
+    const response = NextResponse.json({
+      success: true,
+      email,
+      folderUUIDs: Object.keys(pawkitFolderUUIDs).length > 0 ? pawkitFolderUUIDs : undefined,
+    });
 
     response.cookies.set({
       name: COOKIE_NAME,

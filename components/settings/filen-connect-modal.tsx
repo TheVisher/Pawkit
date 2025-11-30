@@ -23,6 +23,7 @@ export function FilenConnectModal({ open, onClose }: FilenConnectModalProps) {
   const setFilenConnecting = useConnectorStore((state) => state.setFilenConnecting);
   const setFilenConnected = useConnectorStore((state) => state.setFilenConnected);
   const setFilenError = useConnectorStore((state) => state.setFilenError);
+  const setFilenConfig = useConnectorStore((state) => state.setFilenConfig);
 
   const handleConnect = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,6 +41,10 @@ export function FilenConnectModal({ open, onClose }: FilenConnectModalProps) {
       if (result.success) {
         // Pawkit folder is created server-side during auth
         setFilenConnected(email);
+        // Store folder UUIDs in localStorage (not in cookie - too large)
+        if (result.folderUUIDs) {
+          setFilenConfig({ folderUUIDs: result.folderUUIDs });
+        }
         handleClose();
       } else {
         // Check if 2FA is required
