@@ -760,6 +760,18 @@ export const useDataStore = create<DataStore>((set, get) => ({
       // STEP 0: Delete all note links for this card
       await localDb.deleteAllLinksForNote(id);
 
+      // STEP 0.5: Soft delete associated files
+      // Get the card to check if it's a file card
+      const cardToDelete = get().cards.find(c => c.id === id);
+
+      // Soft delete attachments (files with cardId === id)
+      await localDb.deleteFilesByCardId(id);
+
+      // Soft delete the file if this is a file card
+      if (cardToDelete?.isFileCard && cardToDelete.fileId) {
+        await localDb.deleteFile(cardToDelete.fileId);
+      }
+
       // STEP 1: Soft delete in local storage (mark as deleted, don't remove)
       await localDb.deleteCard(id);
 
@@ -981,6 +993,34 @@ export const useDataStore = create<DataStore>((set, get) => ({
             };
             await localDb.saveCollection(deletedCollection, { localOnly: true });
           }
+        }
+
+        // If deleteCards is true, soft-delete cards and their files locally
+        if (deleteCards) {
+          const { cards } = get();
+          for (const collectionId of collectionsToDelete) {
+            const collectionSlug = collections.find(c => c.id === collectionId)?.slug;
+            // Find cards in this collection
+            const cardsInCollection = cards.filter(c =>
+              c.collections?.includes(collectionId) || c.collections?.includes(collectionSlug || '')
+            );
+
+            for (const card of cardsInCollection) {
+              // Soft delete attachments
+              await localDb.deleteFilesByCardId(card.id);
+              // Soft delete file for file cards
+              if (card.isFileCard && card.fileId) {
+                await localDb.deleteFile(card.fileId);
+              }
+              // Soft delete the card
+              await localDb.deleteCard(card.id);
+            }
+          }
+
+          // Also update cards state
+          const allCards = await localDb.getAllCards();
+          const activeCards = allCards.filter(c => c.deleted !== true);
+          set({ cards: activeCards });
         }
 
         // STEP 2: Update Zustand state immediately (UI updates instantly)

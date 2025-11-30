@@ -3,6 +3,7 @@
 import { ChangeEvent, useRef, useState } from "react";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { ConnectorsSection } from "./connectors-section";
+import { StorageCleanupSection } from "./storage-cleanup-section";
 
 export function SettingsPanel() {
   const autoFetchMetadata = useSettingsStore((state) => state.autoFetchMetadata);
@@ -133,6 +134,9 @@ export function SettingsPanel() {
         </div>
       </section>
       {message && <p className="text-xs text-gray-400">{message}</p>}
+
+      {/* Storage Cleanup Section */}
+      <StorageCleanupSection />
 
       {/* Connectors Section */}
       <ConnectorsSection />
