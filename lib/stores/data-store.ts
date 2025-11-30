@@ -610,8 +610,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
       }));
 
       // STEP 3: Sync to server in background (if enabled)
+      // Skip server sync for sync-metadata-only updates (cloudId, cloudProvider, cloudSyncedAt)
+      // These are local-only fields for Filen sync, server doesn't need them
       const serverSync = useSettingsStore.getState().serverSync;
-      if (serverSync && !id.startsWith('temp_')) {
+      if (serverSync && !id.startsWith('temp_') && !isOnlySyncMetadata) {
         try {
           const response = await fetch(`/api/cards/${id}`, {
             method: 'PATCH',
