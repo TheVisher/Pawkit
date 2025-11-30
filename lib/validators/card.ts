@@ -39,7 +39,11 @@ export const cardCreateSchema = z.object({
   // File card support
   isFileCard: z.boolean().optional(),
   fileId: nullableString,
-  metadata: z.record(z.any()).nullable().optional()
+  metadata: z.record(z.any()).nullable().optional(),
+  // Cloud sync tracking (for notes)
+  cloudId: nullableString,
+  cloudProvider: nullableString,
+  cloudSyncedAt: z.string().datetime().nullable().optional()
 }).refine(
   (data) => {
     // URL cards must have a URL
@@ -94,7 +98,11 @@ export const cardUpdateSchema = z
       .record(z.any())
       .nullable()
       .optional()
-      .transform((value) => (value ? value : undefined))
+      .transform((value) => (value ? value : undefined)),
+    // Cloud sync tracking (for notes)
+    cloudId: nullableString,
+    cloudProvider: nullableString,
+    cloudSyncedAt: z.string().datetime().nullable().optional()
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided"

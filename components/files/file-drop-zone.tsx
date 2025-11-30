@@ -102,8 +102,10 @@ export function FileDropZone({
               <Upload className="h-8 w-8" />
             </div>
             <div className="text-lg font-medium">Drop files here</div>
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground text-center">
               Files will be added to your library
+              <br />
+              <span className="text-xs opacity-75">.md files become native notes</span>
             </div>
           </div>
         </div>
