@@ -192,17 +192,18 @@ class SyncScheduler {
 
             if (item.type === "note" && item.content) {
               // Upload note as markdown
+              // Use full path for Filen compatibility
               uploadResult = await provider.uploadNote(
                 item.content,
                 item.filename,
-                "_Notes"
+                "/Pawkit/_Notes"
               );
             } else if (item.blob) {
               // Upload file
               uploadResult = await provider.uploadFile(
                 item.blob,
                 item.filename,
-                "_Library"
+                "/Pawkit/_Library"
               );
             } else {
               throw new Error(`Invalid sync item: ${item.id}`);
