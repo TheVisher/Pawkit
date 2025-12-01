@@ -3,6 +3,7 @@
  *
  * Implements the CloudStorageProvider interface for Google Drive.
  * Uses OAuth tokens stored in HTTP-only cookies for authentication.
+ * Creates the same folder structure as Filen for consistency.
  */
 
 import {
@@ -13,33 +14,39 @@ import {
   CloudSyncStatus,
   CloudUploadResult,
 } from "@/lib/services/cloud-storage/types";
+import {
+  getAllFolderPaths,
+  getTargetFolder,
+  PAWKIT_FOLDERS,
+  type PawkitFolderKey,
+} from "@/lib/services/cloud-storage/folder-config";
 
 const GDRIVE_API_BASE = "https://www.googleapis.com/drive/v3";
 const GDRIVE_UPLOAD_URL = "https://www.googleapis.com/upload/drive/v3/files";
 
-// Default folder for Pawkit files in Google Drive
-const PAWKIT_FOLDER_NAME = "Pawkit";
-const NOTES_FOLDER_NAME = "_Notes";
+// Cache folder IDs to avoid repeated lookups
+type FolderIdCache = Record<string, string>;
 
 export class GoogleDriveProvider implements CloudStorageProvider {
   readonly id: CloudProviderId = "google-drive";
   readonly name = "Google Drive";
 
-  private pawkitFolderId: string | null = null;
-  private notesFolderId: string | null = null;
+  // Cache of folder path -> folder ID
+  private folderIds: FolderIdCache = {};
+  private initialized = false;
 
   /**
    * Google Drive uses OAuth - authentication happens via redirect flow
    * This method is called after OAuth callback to verify connection
    */
   async authenticate(_credentials: Record<string, string>): Promise<CloudAuthResult> {
-    // For Google Drive, we don't use credentials directly
-    // Instead, check if we have valid tokens via the status endpoint
     try {
       const response = await fetch("/api/auth/gdrive/status");
       const data = await response.json();
 
       if (data.connected) {
+        // Initialize folder structure on first auth
+        await this.initializeFolders();
         return {
           success: true,
           email: data.email,
@@ -60,8 +67,8 @@ export class GoogleDriveProvider implements CloudStorageProvider {
 
   async disconnect(): Promise<void> {
     await fetch("/api/auth/gdrive/disconnect", { method: "POST" });
-    this.pawkitFolderId = null;
-    this.notesFolderId = null;
+    this.folderIds = {};
+    this.initialized = false;
   }
 
   async checkConnection(): Promise<CloudSyncStatus> {
@@ -96,117 +103,138 @@ export class GoogleDriveProvider implements CloudStorageProvider {
   }
 
   /**
-   * Ensure Pawkit folder exists in Google Drive
+   * Initialize the full Pawkit folder structure in Google Drive
+   * Creates: Pawkit/_Audio, _Bookmarks, _Documents, _Images, _Notes, _Other, _Videos
    */
-  private async ensurePawkitFolder(accessToken: string): Promise<string> {
-    if (this.pawkitFolderId) {
-      return this.pawkitFolderId;
+  async initializeFolders(): Promise<void> {
+    if (this.initialized) {
+      return;
     }
 
-    // Search for existing Pawkit folder
-    const searchResponse = await fetch(
-      `${GDRIVE_API_BASE}/files?q=name='${PAWKIT_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`,
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
+    try {
+      const accessToken = await this.getAccessToken();
+      const allFolderPaths = getAllFolderPaths();
+
+      console.log("[GDrive] Initializing folder structure...");
+
+      for (const folderPath of allFolderPaths) {
+        try {
+          const folderId = await this.ensureFolderByPath(accessToken, folderPath);
+          this.folderIds[folderPath] = folderId;
+          console.log(`[GDrive] Folder ready: ${folderPath} -> ${folderId}`);
+        } catch (error) {
+          console.error(`[GDrive] Failed to create folder ${folderPath}:`, error);
+        }
       }
-    );
 
-    if (!searchResponse.ok) {
-      throw new Error("Failed to search for Pawkit folder");
+      this.initialized = true;
+      console.log("[GDrive] Folder structure initialized");
+    } catch (error) {
+      console.error("[GDrive] Failed to initialize folders:", error);
     }
-
-    const searchData = await searchResponse.json();
-
-    if (searchData.files && searchData.files.length > 0) {
-      this.pawkitFolderId = searchData.files[0].id;
-      return this.pawkitFolderId!;
-    }
-
-    // Create Pawkit folder
-    const createResponse = await fetch(`${GDRIVE_API_BASE}/files`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: PAWKIT_FOLDER_NAME,
-        mimeType: "application/vnd.google-apps.folder",
-      }),
-    });
-
-    if (!createResponse.ok) {
-      throw new Error("Failed to create Pawkit folder");
-    }
-
-    const createData = await createResponse.json();
-    this.pawkitFolderId = createData.id;
-    return this.pawkitFolderId!;
   }
 
   /**
-   * Ensure _Notes folder exists inside Pawkit folder
+   * Ensure a folder exists by its full path (e.g., "/Pawkit/_Notes")
+   * Creates parent folders if needed
    */
-  private async ensureNotesFolder(accessToken: string): Promise<string> {
-    if (this.notesFolderId) {
-      return this.notesFolderId;
+  private async ensureFolderByPath(accessToken: string, fullPath: string): Promise<string> {
+    // Check cache first
+    if (this.folderIds[fullPath]) {
+      return this.folderIds[fullPath];
     }
 
-    const pawkitFolderId = await this.ensurePawkitFolder(accessToken);
+    // Split path into parts (e.g., "/Pawkit/_Notes" -> ["Pawkit", "_Notes"])
+    const parts = fullPath.split("/").filter(Boolean);
+    let parentId: string | null = null;
+    let currentPath = "";
 
-    // Search for existing _Notes folder
-    const searchResponse = await fetch(
-      `${GDRIVE_API_BASE}/files?q=name='${NOTES_FOLDER_NAME}' and '${pawkitFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`,
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
+    for (const folderName of parts) {
+      currentPath += "/" + folderName;
+
+      // Check cache for this level
+      if (this.folderIds[currentPath]) {
+        parentId = this.folderIds[currentPath];
+        continue;
       }
-    );
 
-    if (!searchResponse.ok) {
-      throw new Error("Failed to search for Notes folder");
+      // Search for existing folder
+      let query = `name='${folderName}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+      if (parentId) {
+        query += ` and '${parentId}' in parents`;
+      } else {
+        // Root level - search in "My Drive"
+        query += ` and 'root' in parents`;
+      }
+
+      const searchResponse: Response = await fetch(
+        `${GDRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=files(id,name)`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      if (!searchResponse.ok) {
+        throw new Error(`Failed to search for folder: ${folderName}`);
+      }
+
+      const searchData: { files?: Array<{ id: string; name: string }> } = await searchResponse.json();
+
+      if (searchData.files && searchData.files.length > 0) {
+        // Folder exists
+        parentId = searchData.files[0].id as string;
+        this.folderIds[currentPath] = parentId;
+      } else {
+        // Create folder
+        const createResponse: Response = await fetch(`${GDRIVE_API_BASE}/files`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: folderName,
+            mimeType: "application/vnd.google-apps.folder",
+            parents: parentId ? [parentId] : undefined,
+          }),
+        });
+
+        if (!createResponse.ok) {
+          throw new Error(`Failed to create folder: ${folderName}`);
+        }
+
+        const createData: { id: string } = await createResponse.json();
+        parentId = createData.id;
+        this.folderIds[currentPath] = parentId;
+        console.log(`[GDrive] Created folder: ${currentPath}`);
+      }
     }
 
-    const searchData = await searchResponse.json();
-
-    if (searchData.files && searchData.files.length > 0) {
-      this.notesFolderId = searchData.files[0].id;
-      return this.notesFolderId!;
-    }
-
-    // Create _Notes folder
-    const createResponse = await fetch(`${GDRIVE_API_BASE}/files`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: NOTES_FOLDER_NAME,
-        mimeType: "application/vnd.google-apps.folder",
-        parents: [pawkitFolderId],
-      }),
-    });
-
-    if (!createResponse.ok) {
-      throw new Error("Failed to create Notes folder");
-    }
-
-    const createData = await createResponse.json();
-    this.notesFolderId = createData.id;
-    return this.notesFolderId!;
+    return parentId as string;
   }
 
   /**
-   * Get or create a folder by path (relative to Pawkit folder)
+   * Get folder ID for a given path, initializing if needed
    */
-  private async getOrCreateFolder(accessToken: string, path: string): Promise<string> {
-    // If path is for notes, use the notes folder
-    if (path.includes("_Notes")) {
-      return this.ensureNotesFolder(accessToken);
+  private async getFolderId(path: string): Promise<string> {
+    // Normalize path
+    const normalizedPath = path.startsWith("/") ? path : "/" + path;
+    const fullPath = normalizedPath.startsWith("/Pawkit") ? normalizedPath : "/Pawkit" + normalizedPath;
+
+    // Initialize folders if not done
+    if (!this.initialized) {
+      await this.initializeFolders();
     }
 
-    // Otherwise, just use the Pawkit folder
-    return this.ensurePawkitFolder(accessToken);
+    // Check cache
+    if (this.folderIds[fullPath]) {
+      return this.folderIds[fullPath];
+    }
+
+    // Fallback: create the specific folder
+    const accessToken = await this.getAccessToken();
+    const folderId = await this.ensureFolderByPath(accessToken, fullPath);
+    return folderId;
   }
 
   async uploadFile(
@@ -216,7 +244,18 @@ export class GoogleDriveProvider implements CloudStorageProvider {
   ): Promise<CloudUploadResult> {
     try {
       const accessToken = await this.getAccessToken();
-      const parentFolderId = await this.getOrCreateFolder(accessToken, path);
+
+      // Determine the correct folder based on path or file type
+      let targetPath = path;
+      if (!path.includes("_")) {
+        // Path doesn't specify a folder, determine by file extension
+        const folder = getTargetFolder(filename, content.type);
+        targetPath = folder.path;
+      } else if (!path.startsWith("/Pawkit")) {
+        targetPath = "/Pawkit/" + path.replace(/^\//, "");
+      }
+
+      const parentFolderId = await this.getFolderId(targetPath);
 
       // Check if file already exists (for update)
       const existingFileId = await this.findFileByName(accessToken, filename, parentFolderId);
@@ -255,7 +294,7 @@ export class GoogleDriveProvider implements CloudStorageProvider {
       return {
         success: true,
         cloudId: data.id,
-        path: `/${PAWKIT_FOLDER_NAME}/${path}/${filename}`,
+        path: `${targetPath}/${filename}`,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : "Upload failed";
@@ -274,8 +313,10 @@ export class GoogleDriveProvider implements CloudStorageProvider {
     filename: string,
     parentFolderId: string
   ): Promise<string | null> {
+    // Escape single quotes in filename
+    const escapedFilename = filename.replace(/'/g, "\\'");
     const response = await fetch(
-      `${GDRIVE_API_BASE}/files?q=name='${filename}' and '${parentFolderId}' in parents and trashed=false&fields=files(id)`,
+      `${GDRIVE_API_BASE}/files?q=name='${escapedFilename}' and '${parentFolderId}' in parents and trashed=false&fields=files(id)`,
       {
         headers: { Authorization: `Bearer ${accessToken}` },
       }
@@ -323,12 +364,9 @@ export class GoogleDriveProvider implements CloudStorageProvider {
     try {
       const accessToken = await this.getAccessToken();
 
-      let folderId: string;
-      if (path?.includes("_Notes")) {
-        folderId = await this.ensureNotesFolder(accessToken);
-      } else {
-        folderId = await this.ensurePawkitFolder(accessToken);
-      }
+      // Default to Pawkit root
+      const targetPath = path || "/Pawkit";
+      const folderId = await this.getFolderId(targetPath);
 
       const response = await fetch(
         `${GDRIVE_API_BASE}/files?q='${folderId}' in parents and trashed=false&fields=files(id,name,mimeType,size,modifiedTime)`,
@@ -352,7 +390,7 @@ export class GoogleDriveProvider implements CloudStorageProvider {
       }) => ({
         cloudId: file.id,
         name: file.name,
-        path: `/${PAWKIT_FOLDER_NAME}/${file.name}`,
+        path: `${targetPath}/${file.name}`,
         size: parseInt(file.size || "0", 10),
         mimeType: file.mimeType,
         modifiedAt: new Date(file.modifiedTime),
@@ -373,7 +411,9 @@ export class GoogleDriveProvider implements CloudStorageProvider {
     const blob = new Blob([content], { type: "text/markdown" });
     const file = new File([blob], name, { type: "text/markdown" });
 
-    return this.uploadFile(file, name, path);
+    // Use the notes folder path
+    const notesPath = PAWKIT_FOLDERS.notes.path;
+    return this.uploadFile(file, name, notesPath);
   }
 }
 
