@@ -10,6 +10,7 @@ import { markDeviceActive } from '@/lib/utils/device-session';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { useEventStore } from '@/lib/hooks/use-event-store';
 import { processCardForDates } from '@/lib/utils/calendar-prompt';
+import { useConnectorStore } from '@/lib/stores/connector-store';
 
 /**
  * Deduplicate cards: Remove duplicate IDs and clean up temp cards
@@ -787,17 +788,47 @@ export const useDataStore = create<DataStore>((set, get) => ({
         await fileStore.deleteFile(cardToDelete.fileId);
       }
 
-      // STEP 0.6: Delete synced note from Filen cloud
-      // If this is a note with a cloudId, delete the .md file from Filen
+      // STEP 0.6: Delete synced note from cloud providers
+      // If this is a note with a cloudId, delete the .md file from cloud storage
       if (cardToDelete?.cloudId && (cardToDelete.type === 'md-note' || cardToDelete.type === 'text-note')) {
+        // Delete from Filen if connected
         try {
-          const { filenService } = await import('@/lib/services/filen-service');
-          console.warn(`[DataStore] Deleting synced note from Filen: ${cardToDelete.cloudId}`);
-          await filenService.deleteFile(cardToDelete.cloudId);
-          console.warn(`[DataStore] Successfully deleted note from Filen`);
+          const { filen } = useConnectorStore.getState();
+          if (filen.connected) {
+            const { filenService } = await import('@/lib/services/filen-service');
+            console.warn(`[DataStore] Deleting synced note from Filen: ${cardToDelete.cloudId}`);
+            await filenService.deleteFile(cardToDelete.cloudId);
+            console.warn(`[DataStore] Successfully deleted note from Filen`);
+          }
         } catch (error) {
           // Don't block local deletion if Filen delete fails
           console.error(`[DataStore] Failed to delete note from Filen:`, error);
+        }
+
+        // Delete from Google Drive if connected
+        try {
+          const { googleDrive } = useConnectorStore.getState();
+          if (googleDrive.connected) {
+            const { gdriveProvider } = await import('@/lib/services/google-drive/gdrive-provider');
+            // Generate the same filename used for sync
+            const safeTitle = (cardToDelete.title || "Untitled")
+              .replace(/[/\\:*?"<>|]/g, "_")
+              .substring(0, 100);
+            const filename = `${safeTitle}.md`;
+
+            // List files in _Notes folder and find matching file
+            const files = await gdriveProvider.listFiles("/Pawkit/_Notes");
+            const matchingFile = files.find(f => f.name === filename);
+
+            if (matchingFile) {
+              console.warn(`[DataStore] Deleting synced note from Google Drive: ${matchingFile.cloudId}`);
+              await gdriveProvider.deleteFile(matchingFile.cloudId);
+              console.warn(`[DataStore] Successfully deleted note from Google Drive`);
+            }
+          }
+        } catch (error) {
+          // Don't block local deletion if Google Drive delete fails
+          console.error(`[DataStore] Failed to delete note from Google Drive:`, error);
         }
       }
 

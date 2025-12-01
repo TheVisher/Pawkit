@@ -410,6 +410,31 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
         console.warn("[FileStore] No filenUuid - skipping Filen delete");
       }
 
+      // Also delete from Google Drive if connected
+      if (file) {
+        try {
+          const { googleDrive } = useConnectorStore.getState();
+          if (googleDrive.connected) {
+            const { gdriveProvider } = await import("@/lib/services/google-drive/gdrive-provider");
+            const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
+
+            // Find the file in the appropriate folder
+            const targetFolder = getTargetFolder(file.filename, file.mimeType);
+            const files = await gdriveProvider.listFiles(targetFolder.path);
+            const matchingFile = files.find(f => f.name === file.filename);
+
+            if (matchingFile) {
+              console.warn("[FileStore] Deleting from Google Drive:", matchingFile.cloudId);
+              await gdriveProvider.deleteFile(matchingFile.cloudId);
+              console.warn("[FileStore] Google Drive delete successful");
+            }
+          }
+        } catch (error) {
+          console.error("[FileStore] Failed to delete from Google Drive:", error);
+          // Continue with local deletion anyway
+        }
+      }
+
       await localDb.deleteFile(fileId);
 
       if (blobUrlCache.has(fileId)) {
@@ -444,6 +469,30 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
         }
       } else {
         console.warn("[FileStore] No filenUuid - skipping Filen delete");
+      }
+
+      // Also delete from Google Drive if connected
+      if (file) {
+        try {
+          const { googleDrive } = useConnectorStore.getState();
+          if (googleDrive.connected) {
+            const { gdriveProvider } = await import("@/lib/services/google-drive/gdrive-provider");
+            const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
+
+            // Find the file in the appropriate folder
+            const targetFolder = getTargetFolder(file.filename, file.mimeType);
+            const files = await gdriveProvider.listFiles(targetFolder.path);
+            const matchingFile = files.find(f => f.name === file.filename);
+
+            if (matchingFile) {
+              console.warn("[FileStore] Deleting from Google Drive:", matchingFile.cloudId);
+              await gdriveProvider.deleteFile(matchingFile.cloudId);
+              console.warn("[FileStore] Google Drive delete successful");
+            }
+          }
+        } catch (error) {
+          console.error("[FileStore] Failed to delete from Google Drive:", error);
+        }
       }
 
       await localDb.permanentlyDeleteFile(fileId);
