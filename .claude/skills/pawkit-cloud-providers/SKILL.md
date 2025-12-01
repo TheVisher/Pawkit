@@ -277,9 +277,15 @@ export interface ConnectorState {
 
 ### Step 5: Add UI Components
 
-**Files to update**:
-- `components/settings/connectors-section.tsx` - Settings page connector card
-- `components/modals/profile-modal.tsx` - Profile modal connector section (if different from above)
+**IMPORTANT**: The PRIMARY location for connector UI is the Profile Settings modal:
+
+**File to update (REQUIRED)**:
+- `components/modals/profile-modal.tsx` - **This is the main location** where users see and manage cloud connectors. The `ConnectorsTabContent` component contains all connector cards.
+
+**Secondary file (optional, may be deprecated)**:
+- `components/settings/connectors-section.tsx` - Settings page connector card (separate from profile modal)
+
+**NOTE**: Always add new providers to `profile-modal.tsx` first. This is where users actually connect/disconnect cloud providers.
 
 Use existing Filen/Google Drive cards as templates. Key elements:
 - Connect button (starts OAuth flow or shows credentials modal)
@@ -561,11 +567,11 @@ MICROSOFT_CLIENT_SECRET=xxx
 | `lib/hooks/use-cloud-sync.ts` | React hook for sync |
 | `lib/stores/data-store.ts` | Note deletion integration |
 | `lib/stores/file-store.ts` | File deletion integration |
-| `components/settings/connectors-section.tsx` | Settings UI |
-| `components/modals/profile-modal.tsx` | Profile modal UI |
+| `components/modals/profile-modal.tsx` | **PRIMARY** - Profile modal connector UI (add providers here!) |
+| `components/settings/connectors-section.tsx` | Secondary settings UI (may be deprecated) |
 
 ---
 
-**Last Updated**: November 30, 2025
-**Reason**: Initial creation documenting Filen and Google Drive implementations
+**Last Updated**: December 1, 2025
+**Reason**: Added Dropbox implementation, clarified primary UI location is profile-modal.tsx
 
