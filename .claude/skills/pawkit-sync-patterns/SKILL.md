@@ -3338,3 +3338,132 @@ if (lowerName.endsWith('.txt') && !cardId) {
 
 **Note**: Text notes sync to Filen as `.md` files (plain text is valid markdown).
 
+---
+
+## MULTI-PROVIDER CLOUD SYNC (November 2025)
+
+### Overview
+
+Pawkit now supports **multiple simultaneous cloud providers**. When users connect to both Filen AND Google Drive, all files sync to BOTH providers for redundancy.
+
+**Detailed documentation**: See `pawkit-cloud-providers` skill for full implementation guide.
+
+### Architecture
+
+```
+User Action (save note/file)
+    ↓
+IndexedDB (local) ← SOURCE OF TRUTH
+    ↓
+Sync Scheduler (background, 5-min interval)
+    ↓
+Get ALL Connected Providers
+    ↓
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│     Filen       │    │  Google Drive   │    │  Future...      │
+│ /Pawkit/_Notes  │    │ /Pawkit/_Notes  │    │ /Pawkit/_Notes  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `lib/services/cloud-storage/types.ts` | `CloudStorageProvider` interface |
+| `lib/services/cloud-storage/folder-config.ts` | Shared folder structure |
+| `lib/services/cloud-storage/cloud-storage-manager.ts` | Provider registry |
+| `lib/services/cloud-storage/sync-scheduler.ts` | Multi-provider background sync |
+| `lib/services/google-drive/gdrive-provider.ts` | Google Drive implementation |
+
+### Sync Scheduler - Multi-Provider Logic
+
+**Location**: `lib/services/cloud-storage/sync-scheduler.ts`
+
+```typescript
+async syncNow(): Promise<SyncResult> {
+  // Get ALL connected providers (not just active)
+  const connectedProviders = await this.getConnectedProviders();
+
+  // Get items where localUpdatedAt > cloudSyncedAt
+  const dirtyItems = await this.getDirtyItems();
+
+  // Sync each item to EACH provider
+  for (const item of dirtyItems) {
+    for (const provider of connectedProviders) {
+      if (item.type === "note") {
+        // CRITICAL: Use full path "/Pawkit/_Notes" for Filen compatibility
+        await provider.uploadNote(item.content, item.filename, "/Pawkit/_Notes");
+      } else if (item.blob) {
+        await provider.uploadFile(item.blob, item.filename, "/Pawkit/_Library");
+      }
+    }
+  }
+}
+```
+
+### Deletion - Multi-Provider
+
+When deleting cards/files, must delete from ALL connected providers:
+
+**Notes** (`lib/stores/data-store.ts`):
+```typescript
+// Delete from Filen
+if (filen.connected && cardToDelete.cloudId) {
+  await filenService.deleteFile(cardToDelete.cloudId);
+}
+
+// Delete from Google Drive (lookup by filename)
+if (googleDrive.connected) {
+  const files = await gdriveProvider.listFiles("/Pawkit/_Notes");
+  const matchingFile = files.find(f => f.name === filename);
+  if (matchingFile) {
+    await gdriveProvider.deleteFile(matchingFile.cloudId);
+  }
+}
+```
+
+**Files** (`lib/stores/file-store.ts`):
+```typescript
+// Delete from Filen (has UUID)
+if (file.filenUuid) {
+  await filenService.deleteFile(file.filenUuid);
+}
+
+// Delete from Google Drive (lookup by filename in type-specific folder)
+if (googleDrive.connected) {
+  const targetFolder = getTargetFolder(file.filename, file.mimeType);
+  const files = await gdriveProvider.listFiles(targetFolder.path);
+  const matchingFile = files.find(f => f.name === file.filename);
+  if (matchingFile) {
+    await gdriveProvider.deleteFile(matchingFile.cloudId);
+  }
+}
+```
+
+### Adding New Providers
+
+See `pawkit-cloud-providers` skill for complete step-by-step guide.
+
+Quick checklist:
+1. Add provider ID to `CloudProviderId` type
+2. Implement `CloudStorageProvider` interface
+3. Register in `cloud-storage-manager.ts`
+4. Add state to `connector-store.ts`
+5. Add UI in settings/connectors
+6. Add OAuth routes (if applicable)
+7. Add deletion support in data-store.ts and file-store.ts
+
+### Current Providers
+
+| Provider | Status | Auth Method |
+|----------|--------|-------------|
+| Filen | Complete | Email/Password + 2FA |
+| Google Drive | Complete | OAuth 2.0 |
+| Dropbox | Planned | OAuth 2.0 |
+| OneDrive | Planned | OAuth 2.0 |
+
+---
+
+**Last Updated**: November 30, 2025
+**Reason**: Added multi-provider cloud sync documentation
+
