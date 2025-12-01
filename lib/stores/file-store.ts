@@ -152,6 +152,37 @@ async function syncFileToFilen(
   }
 }
 
+/**
+ * Sync a file to Google Drive in the background.
+ * Uses the same folder structure as Filen for consistency.
+ */
+async function syncFileToGDrive(
+  file: StoredFile,
+  originalFile: File
+): Promise<void> {
+  const { googleDrive } = useConnectorStore.getState();
+  if (!googleDrive.connected) return;
+
+  try {
+    // Determine destination folder path based on file category
+    const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
+    const targetFolder = getTargetFolder(originalFile.name, originalFile.type);
+    const targetPath = targetFolder.path;
+
+    // Use Google Drive provider
+    const { gdriveProvider } = await import("@/lib/services/google-drive/gdrive-provider");
+    const result = await gdriveProvider.uploadFile(originalFile, originalFile.name, targetPath);
+
+    if (result.success) {
+      console.log(`[FileStore] File synced to Google Drive: ${originalFile.name} -> ${result.path}`);
+    } else {
+      console.error(`[FileStore] Google Drive sync failed: ${result.error}`);
+    }
+  } catch (error) {
+    console.error("[FileStore] Google Drive sync failed:", error);
+  }
+}
+
 export const useFileStore = create<FileStoreState>((set, get) => ({
   files: [],
   isLoading: false,
@@ -260,7 +291,7 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
         });
       }
 
-      // Sync to Filen in background if connected
+      // Sync to cloud providers in background if connected
       if (filen.connected) {
         syncFileToFilen(
           storedFile,
@@ -269,6 +300,12 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
             get().updateFileSyncStatus(storedFile.id, status, filenData);
           }
         );
+      }
+
+      // Also sync to Google Drive if connected
+      const { googleDrive } = useConnectorStore.getState();
+      if (googleDrive.connected) {
+        syncFileToGDrive(storedFile, file);
       }
 
       return storedFile;
