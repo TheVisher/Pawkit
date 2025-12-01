@@ -625,6 +625,7 @@ function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }:
   const notifications = useSettingsStore((state) => state.notifications);
   const autoSave = useSettingsStore((state) => state.autoSave);
   const autoFetchMetadata = useSettingsStore((state) => state.autoFetchMetadata);
+  const showThumbnails = useSettingsStore((state) => state.showThumbnails);
   const previewServiceUrl = useSettingsStore((state) => state.previewServiceUrl);
   const serverSync = useSettingsStore((state) => state.serverSync);
   const autoSyncOnReconnect = useSettingsStore((state) => state.autoSyncOnReconnect);
@@ -642,6 +643,7 @@ function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }:
   const setNotifications = useSettingsStore((state) => state.setNotifications);
   const setAutoSave = useSettingsStore((state) => state.setAutoSave);
   const setAutoFetchMetadata = useSettingsStore((state) => state.setAutoFetchMetadata);
+  const setShowThumbnails = useSettingsStore((state) => state.setShowThumbnails);
   const setPreviewServiceUrl = useSettingsStore((state) => state.setPreviewServiceUrl);
   const setServerSync = useSettingsStore((state) => state.setServerSync);
   const setAutoSyncOnReconnect = useSettingsStore((state) => state.setAutoSyncOnReconnect);
@@ -1049,6 +1051,21 @@ function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }:
                     className="h-5 w-5 rounded"
                     checked={autoFetchMetadata}
                     onChange={(e) => setAutoFetchMetadata(e.target.checked)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-gray-300">Show thumbnails in card views</Label>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Display thumbnail images on bookmark cards
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 rounded"
+                    checked={showThumbnails}
+                    onChange={(e) => setShowThumbnails(e.target.checked)}
                   />
                 </div>
 
