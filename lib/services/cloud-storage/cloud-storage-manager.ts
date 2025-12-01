@@ -14,6 +14,7 @@ import {
 } from "./types";
 import { filenProvider } from "./filen-provider";
 import { gdriveProvider } from "@/lib/services/google-drive/gdrive-provider";
+import { dropboxProvider } from "@/lib/services/dropbox/dropbox-provider";
 
 class CloudStorageManager {
   private providers: Map<CloudProviderId, CloudStorageProvider> = new Map();
@@ -23,6 +24,7 @@ class CloudStorageManager {
     // Register built-in providers
     this.registerProvider(filenProvider);
     this.registerProvider(gdriveProvider);
+    this.registerProvider(dropboxProvider);
   }
 
   /**

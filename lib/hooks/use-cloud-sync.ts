@@ -32,9 +32,10 @@ export function useCloudSync(config: CloudSyncConfig = {}) {
 
   const filenConnected = useConnectorStore((state) => state.filen.connected);
   const gdriveConnected = useConnectorStore((state) => state.googleDrive.connected);
+  const dropboxConnected = useConnectorStore((state) => state.dropbox.connected);
 
   // Any provider connected means we can sync
-  const anyProviderConnected = filenConnected || gdriveConnected;
+  const anyProviderConnected = filenConnected || gdriveConnected || dropboxConnected;
 
   /**
    * Find notes that need to be synced (dirty items)
@@ -146,6 +147,8 @@ export function useCloudSync(config: CloudSyncConfig = {}) {
         cloudStorage.setActiveProvider("filen");
       } else if (gdriveConnected) {
         cloudStorage.setActiveProvider("google-drive");
+      } else if (dropboxConnected) {
+        cloudStorage.setActiveProvider("dropbox");
       }
 
       // Start scheduler if not already running
@@ -160,7 +163,7 @@ export function useCloudSync(config: CloudSyncConfig = {}) {
         console.warn("[CloudSync] Scheduler stopped (no providers connected)");
       }
     }
-  }, [filenConnected, gdriveConnected, anyProviderConnected, mergedConfig.enabled]);
+  }, [filenConnected, gdriveConnected, dropboxConnected, anyProviderConnected, mergedConfig.enabled]);
 
   /**
    * Cleanup on unmount
@@ -186,6 +189,7 @@ export function useCloudSync(config: CloudSyncConfig = {}) {
     isConnected: anyProviderConnected,
     isFilenConnected: filenConnected,
     isGDriveConnected: gdriveConnected,
+    isDropboxConnected: dropboxConnected,
     isSchedulerRunning: syncScheduler.isRunning(),
     isSyncing: syncScheduler.isSyncInProgress(),
     lastSyncAt: syncScheduler.getLastSyncAt(),

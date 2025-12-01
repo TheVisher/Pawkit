@@ -32,9 +32,23 @@ export interface GoogleDriveState {
   errorMessage: string | null;
 }
 
+export interface DropboxConfig {
+  email: string;
+  name?: string;
+}
+
+export interface DropboxState {
+  connected: boolean;
+  lastSync: Date | null;
+  config: DropboxConfig | null;
+  status: "idle" | "connecting" | "syncing" | "error";
+  errorMessage: string | null;
+}
+
 export interface ConnectorState {
   filen: FilenState;
   googleDrive: GoogleDriveState;
+  dropbox: DropboxState;
   // Future connectors
   googleCalendar: { connected: boolean; lastSync: Date | null };
 }
@@ -57,6 +71,14 @@ interface ConnectorActions {
   setGDriveSyncing: () => void;
   setGDriveSynced: () => void;
 
+  // Dropbox actions
+  setDropboxConnecting: () => void;
+  setDropboxConnected: (email: string, name?: string) => void;
+  setDropboxDisconnected: () => void;
+  setDropboxError: (message: string) => void;
+  setDropboxSyncing: () => void;
+  setDropboxSynced: () => void;
+
   // General
   reset: () => void;
 }
@@ -77,9 +99,18 @@ const initialGDriveState: GoogleDriveState = {
   errorMessage: null,
 };
 
+const initialDropboxState: DropboxState = {
+  connected: false,
+  lastSync: null,
+  config: null,
+  status: "idle",
+  errorMessage: null,
+};
+
 const initialState: ConnectorState = {
   filen: initialFilenState,
   googleDrive: initialGDriveState,
+  dropbox: initialDropboxState,
   googleCalendar: { connected: false, lastSync: null },
 };
 
@@ -209,6 +240,62 @@ export const useConnectorStore = create<ConnectorState & ConnectorActions>()(
           },
         })),
 
+      // Dropbox actions
+      setDropboxConnecting: () =>
+        set((state) => ({
+          dropbox: {
+            ...state.dropbox,
+            status: "connecting",
+            errorMessage: null,
+          },
+        })),
+
+      setDropboxConnected: (email: string, name?: string) =>
+        set((state) => ({
+          dropbox: {
+            ...state.dropbox,
+            connected: true,
+            status: "idle",
+            errorMessage: null,
+            config: {
+              email,
+              name,
+            },
+            lastSync: new Date(),
+          },
+        })),
+
+      setDropboxDisconnected: () =>
+        set({
+          dropbox: initialDropboxState,
+        }),
+
+      setDropboxError: (message: string) =>
+        set((state) => ({
+          dropbox: {
+            ...state.dropbox,
+            status: "error",
+            errorMessage: message,
+          },
+        })),
+
+      setDropboxSyncing: () =>
+        set((state) => ({
+          dropbox: {
+            ...state.dropbox,
+            status: "syncing",
+          },
+        })),
+
+      setDropboxSynced: () =>
+        set((state) => ({
+          dropbox: {
+            ...state.dropbox,
+            status: "idle",
+            lastSync: new Date(),
+          },
+        })),
+
       reset: () => set(initialState),
     }),
     {
@@ -233,6 +320,16 @@ export const useConnectorStore = create<ConnectorState & ConnectorActions>()(
             ? {
                 email: state.googleDrive.config.email,
                 name: state.googleDrive.config.name,
+              }
+            : null,
+        },
+        dropbox: {
+          connected: state.dropbox.connected,
+          lastSync: state.dropbox.lastSync,
+          config: state.dropbox.config
+            ? {
+                email: state.dropbox.config.email,
+                name: state.dropbox.config.name,
               }
             : null,
         },

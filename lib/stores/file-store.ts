@@ -435,6 +435,31 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
         }
       }
 
+      // Also delete from Dropbox if connected
+      if (file) {
+        try {
+          const { dropbox } = useConnectorStore.getState();
+          if (dropbox.connected) {
+            const { dropboxProvider } = await import("@/lib/services/dropbox/dropbox-provider");
+            const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
+
+            // Find the file in the appropriate folder
+            const targetFolder = getTargetFolder(file.filename, file.mimeType);
+            const files = await dropboxProvider.listFiles(targetFolder.path);
+            const matchingFile = files.find(f => f.name === file.filename);
+
+            if (matchingFile) {
+              console.warn("[FileStore] Deleting from Dropbox:", matchingFile.cloudId);
+              await dropboxProvider.deleteFile(matchingFile.cloudId);
+              console.warn("[FileStore] Dropbox delete successful");
+            }
+          }
+        } catch (error) {
+          console.error("[FileStore] Failed to delete from Dropbox:", error);
+          // Continue with local deletion anyway
+        }
+      }
+
       await localDb.deleteFile(fileId);
 
       if (blobUrlCache.has(fileId)) {
@@ -492,6 +517,30 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
           }
         } catch (error) {
           console.error("[FileStore] Failed to delete from Google Drive:", error);
+        }
+      }
+
+      // Also delete from Dropbox if connected
+      if (file) {
+        try {
+          const { dropbox } = useConnectorStore.getState();
+          if (dropbox.connected) {
+            const { dropboxProvider } = await import("@/lib/services/dropbox/dropbox-provider");
+            const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
+
+            // Find the file in the appropriate folder
+            const targetFolder = getTargetFolder(file.filename, file.mimeType);
+            const files = await dropboxProvider.listFiles(targetFolder.path);
+            const matchingFile = files.find(f => f.name === file.filename);
+
+            if (matchingFile) {
+              console.warn("[FileStore] Deleting from Dropbox:", matchingFile.cloudId);
+              await dropboxProvider.deleteFile(matchingFile.cloudId);
+              console.warn("[FileStore] Dropbox delete successful");
+            }
+          }
+        } catch (error) {
+          console.error("[FileStore] Failed to delete from Dropbox:", error);
         }
       }
 

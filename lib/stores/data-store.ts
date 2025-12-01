@@ -830,6 +830,32 @@ export const useDataStore = create<DataStore>((set, get) => ({
           // Don't block local deletion if Google Drive delete fails
           console.error(`[DataStore] Failed to delete note from Google Drive:`, error);
         }
+
+        // Delete from Dropbox if connected
+        try {
+          const { dropbox } = useConnectorStore.getState();
+          if (dropbox.connected) {
+            const { dropboxProvider } = await import('@/lib/services/dropbox/dropbox-provider');
+            // Generate the same filename used for sync
+            const safeTitle = (cardToDelete.title || "Untitled")
+              .replace(/[/\\:*?"<>|]/g, "_")
+              .substring(0, 100);
+            const filename = `${safeTitle}.md`;
+
+            // List files in _Notes folder and find matching file
+            const files = await dropboxProvider.listFiles("/Pawkit/_Notes");
+            const matchingFile = files.find(f => f.name === filename);
+
+            if (matchingFile) {
+              console.warn(`[DataStore] Deleting synced note from Dropbox: ${matchingFile.cloudId}`);
+              await dropboxProvider.deleteFile(matchingFile.cloudId);
+              console.warn(`[DataStore] Successfully deleted note from Dropbox`);
+            }
+          }
+        } catch (error) {
+          // Don't block local deletion if Dropbox delete fails
+          console.error(`[DataStore] Failed to delete note from Dropbox:`, error);
+        }
       }
 
       // STEP 1: Soft delete in local storage (mark as deleted, don't remove)
