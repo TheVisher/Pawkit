@@ -26,6 +26,8 @@ export function ConnectorsSection() {
         const status = await gdriveProvider.checkConnection();
         if (status.connected && status.email) {
           setGDriveConnected(status.email);
+          // Initialize folder structure in background
+          gdriveProvider.initializeFolders().catch(console.error);
         }
       } catch {
         // Ignore - not connected
@@ -43,6 +45,13 @@ export function ConnectorsSection() {
       if (email) {
         setGDriveConnected(decodeURIComponent(email));
         useToastStore.getState().success("Connected to Google Drive!");
+        // Initialize folder structure after OAuth
+        useToastStore.getState().info("Setting up folder structure...");
+        gdriveProvider.initializeFolders().then(() => {
+          useToastStore.getState().success("Google Drive folders ready!");
+        }).catch((err) => {
+          console.error("[GDrive] Failed to initialize folders:", err);
+        });
       }
       // Clear the URL params
       window.history.replaceState({}, "", window.location.pathname);
