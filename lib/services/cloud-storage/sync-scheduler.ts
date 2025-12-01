@@ -3,10 +3,11 @@
  *
  * Handles automatic interval-based syncing of notes and files to cloud storage.
  * Tracks dirty items (localUpdatedAt > cloudSyncedAt) and syncs them.
+ * Syncs to ALL connected providers for redundancy.
  */
 
 import { cloudStorage } from "./cloud-storage-manager";
-import { CloudUploadResult } from "./types";
+import { CloudUploadResult, CloudStorageProvider } from "./types";
 
 export interface SyncItem {
   id: string;
@@ -141,7 +142,7 @@ class SyncScheduler {
   }
 
   /**
-   * Trigger an immediate sync
+   * Trigger an immediate sync to ALL connected providers
    */
   async syncNow(): Promise<SyncResult> {
     if (this.isSyncing) {
@@ -154,11 +155,11 @@ class SyncScheduler {
       return { success: false, syncedCount: 0, failedCount: 0, errors: ["Callbacks not registered"] };
     }
 
-    // Check if cloud provider is connected
-    const provider = cloudStorage.getActiveProvider();
-    if (!provider) {
-      console.warn("[SyncScheduler] No active cloud provider");
-      return { success: false, syncedCount: 0, failedCount: 0, errors: ["No active cloud provider"] };
+    // Get all connected providers
+    const connectedProviders = await this.getConnectedProviders();
+    if (connectedProviders.length === 0) {
+      console.warn("[SyncScheduler] No connected cloud providers");
+      return { success: false, syncedCount: 0, failedCount: 0, errors: ["No connected cloud providers"] };
     }
 
     this.isSyncing = true;
@@ -179,51 +180,57 @@ class SyncScheduler {
         return result;
       }
 
-      console.warn(`[SyncScheduler] Found ${dirtyItems.length} dirty items to sync`);
+      console.warn(`[SyncScheduler] Found ${dirtyItems.length} dirty items to sync to ${connectedProviders.length} provider(s)`);
 
-      // Process items with concurrency limit
-      const chunks = this.chunkArray(dirtyItems, this.config.maxConcurrent);
+      // Sync each item to ALL connected providers
+      for (const item of dirtyItems) {
+        let itemSynced = false;
 
-      for (const chunk of chunks) {
-        const promises = chunk.map(async (item) => {
+        for (const provider of connectedProviders) {
           try {
             let uploadResult: CloudUploadResult;
 
             if (item.type === "note" && item.content) {
               // Upload note as markdown
-              uploadResult = await cloudStorage.uploadNote(
+              uploadResult = await provider.uploadNote(
                 item.content,
                 item.filename,
-                "/Pawkit/_Notes"
+                "_Notes"
               );
             } else if (item.blob) {
               // Upload file
-              uploadResult = await cloudStorage.uploadFile(
+              uploadResult = await provider.uploadFile(
                 item.blob,
                 item.filename,
-                "/Pawkit/_Library"
+                "_Library"
               );
             } else {
               throw new Error(`Invalid sync item: ${item.id}`);
             }
 
             if (uploadResult.success) {
-              await this.onSyncComplete!(item.id, uploadResult.cloudId, provider.id);
-              result.syncedCount++;
-              console.warn(`[SyncScheduler] Synced: ${item.title}`);
+              console.warn(`[SyncScheduler] Synced to ${provider.name}: ${item.title}`);
+              // Only call onSyncComplete once per item (use first successful provider)
+              if (!itemSynced) {
+                await this.onSyncComplete!(item.id, uploadResult.cloudId, provider.id);
+                itemSynced = true;
+              }
             } else {
               throw new Error(uploadResult.error || "Upload failed");
             }
           } catch (error) {
             const errorMsg = error instanceof Error ? error.message : "Unknown error";
-            result.errors.push(`${item.title}: ${errorMsg}`);
-            result.failedCount++;
-            this.onSyncError?.(item.id, errorMsg);
-            console.error(`[SyncScheduler] Failed to sync ${item.title}:`, error);
+            result.errors.push(`${item.title} (${provider.name}): ${errorMsg}`);
+            console.error(`[SyncScheduler] Failed to sync ${item.title} to ${provider.name}:`, error);
           }
-        });
+        }
 
-        await Promise.all(promises);
+        if (itemSynced) {
+          result.syncedCount++;
+        } else {
+          result.failedCount++;
+          this.onSyncError?.(item.id, "Failed to sync to any provider");
+        }
       }
 
       result.success = result.failedCount === 0;
@@ -239,6 +246,27 @@ class SyncScheduler {
     }
 
     return result;
+  }
+
+  /**
+   * Get all providers that are currently connected
+   */
+  private async getConnectedProviders(): Promise<CloudStorageProvider[]> {
+    const allProviders = cloudStorage.getAllProviders();
+    const connected: CloudStorageProvider[] = [];
+
+    for (const provider of allProviders) {
+      try {
+        const status = await provider.checkConnection();
+        if (status.connected) {
+          connected.push(provider);
+        }
+      } catch {
+        // Provider not connected
+      }
+    }
+
+    return connected;
   }
 
   /**

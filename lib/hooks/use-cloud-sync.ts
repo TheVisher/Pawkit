@@ -9,6 +9,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { useConnectorStore } from "@/lib/stores/connector-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { cloudStorage, syncScheduler, SyncItem } from "@/lib/services/cloud-storage";
+import { gdriveProvider } from "@/lib/services/google-drive/gdrive-provider";
 
 export interface CloudSyncConfig {
   enabled?: boolean;
@@ -30,6 +31,10 @@ export function useCloudSync(config: CloudSyncConfig = {}) {
   const isInitialized = useRef(false);
 
   const filenConnected = useConnectorStore((state) => state.filen.connected);
+  const gdriveConnected = useConnectorStore((state) => state.googleDrive.connected);
+
+  // Any provider connected means we can sync
+  const anyProviderConnected = filenConnected || gdriveConnected;
 
   /**
    * Find notes that need to be synced (dirty items)
@@ -130,28 +135,32 @@ export function useCloudSync(config: CloudSyncConfig = {}) {
   }, [getDirtyNotes, handleSyncComplete, handleSyncError, mergedConfig]);
 
   /**
-   * Start/stop scheduler based on Filen connection
+   * Start/stop scheduler based on any provider connection
    */
   useEffect(() => {
     if (!isInitialized.current) return;
 
-    if (filenConnected && mergedConfig.enabled) {
-      // Set Filen as active provider
-      cloudStorage.setActiveProvider("filen");
+    if (anyProviderConnected && mergedConfig.enabled) {
+      // Set the first connected provider as active (for backward compatibility)
+      if (filenConnected) {
+        cloudStorage.setActiveProvider("filen");
+      } else if (gdriveConnected) {
+        cloudStorage.setActiveProvider("google-drive");
+      }
 
       // Start scheduler if not already running
       if (!syncScheduler.isRunning()) {
         syncScheduler.start();
-        console.warn("[CloudSync] Scheduler started (Filen connected)");
+        console.warn("[CloudSync] Scheduler started (provider connected)");
       }
     } else {
-      // Stop scheduler when disconnected
+      // Stop scheduler when all disconnected
       if (syncScheduler.isRunning()) {
         syncScheduler.stop();
-        console.warn("[CloudSync] Scheduler stopped (Filen disconnected)");
+        console.warn("[CloudSync] Scheduler stopped (no providers connected)");
       }
     }
-  }, [filenConnected, mergedConfig.enabled]);
+  }, [filenConnected, gdriveConnected, anyProviderConnected, mergedConfig.enabled]);
 
   /**
    * Cleanup on unmount
@@ -166,15 +175,17 @@ export function useCloudSync(config: CloudSyncConfig = {}) {
    * Manual sync trigger
    */
   const syncNow = useCallback(async () => {
-    if (!filenConnected) {
-      console.warn("[CloudSync] Cannot sync - Filen not connected");
+    if (!anyProviderConnected) {
+      console.warn("[CloudSync] Cannot sync - no providers connected");
       return null;
     }
     return syncScheduler.syncNow();
-  }, [filenConnected]);
+  }, [anyProviderConnected]);
 
   return {
-    isConnected: filenConnected,
+    isConnected: anyProviderConnected,
+    isFilenConnected: filenConnected,
+    isGDriveConnected: gdriveConnected,
     isSchedulerRunning: syncScheduler.isRunning(),
     isSyncing: syncScheduler.isSyncInProgress(),
     lastSyncAt: syncScheduler.getLastSyncAt(),
