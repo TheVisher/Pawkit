@@ -48,6 +48,10 @@ description: Living document of issues encountered, their fixes, and prevention 
    - Hidden vs Invisible CSS Classes
    - Panel Store close() Clears activeCardId
    - Filen Folder UUIDs Not Persisting (Vercel Edge Cache)
+   - Google Drive API 400 Bad Request - URL Encoding
+   - Filen Sync Broken - Path Format Change
+   - Google Drive Connector Not Appearing - Duplicate UI Components
+   - Missing Import - useConnectorStore in Data Store
 3. [Debugging Strategies](#debugging-strategies)
 4. [How to Add New Issues](#how-to-add-new-issues)
 5. [Maintenance](#maintenance)
@@ -5040,6 +5044,153 @@ this.credentials = {
 
 ---
 
+### 42. Google Drive API 400 Bad Request - URL Encoding
+
+**Date**: November 30, 2025
+**Severity**: Medium
+**Component**: Google Drive integration
+
+**Symptom**: Google Drive API returns 400 Bad Request when searching for files with special characters (like `&`, `'`, quotes) in filenames.
+
+**Root Cause**: The search query was not URL-encoded before being passed to the API.
+
+**What Failed**:
+```typescript
+// ❌ WRONG: Query not URL-encoded
+const query = `name='${filename}' and '${parentId}' in parents and trashed=false`;
+const response = await fetch(
+  `${GDRIVE_API_BASE}/files?q=${query}&fields=files(id)`
+);
+// Fails with 400 for filenames like "Tom's Note" or "Q&A Session"
+```
+
+**What Worked**:
+```typescript
+// ✅ CORRECT: Escape single quotes AND URL-encode the query
+const escapedFilename = filename.replace(/'/g, "\\'");
+const query = `name='${escapedFilename}' and '${parentId}' in parents and trashed=false`;
+const url = `${GDRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=files(id)`;
+const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+```
+
+**Prevention**:
+- Always URL-encode query parameters for external APIs
+- Escape special characters (quotes, apostrophes) in Google Drive queries
+- Test with filenames containing: `'`, `"`, `&`, `=`, `?`, `#`
+
+**Files Changed**: `lib/services/google-drive/gdrive-provider.ts`
+
+---
+
+### 43. Filen Sync Broken - Path Format Change
+
+**Date**: November 30, 2025
+**Severity**: Critical
+**Component**: Multi-provider sync scheduler
+
+**Symptom**: After adding Google Drive support, Filen notes stopped syncing. Filen console showed errors about folder not found.
+
+**Root Cause**: Changed path from `/Pawkit/_Notes` to `_Notes` in sync scheduler, but Filen requires full paths starting with `/Pawkit`.
+
+**What Failed**:
+```typescript
+// ❌ WRONG: Short path breaks Filen
+if (item.type === "note" && item.content) {
+  uploadResult = await provider.uploadNote(item.content, item.filename, "_Notes");
+}
+```
+
+**What Worked**:
+```typescript
+// ✅ CORRECT: Full path required for Filen compatibility
+if (item.type === "note" && item.content) {
+  uploadResult = await provider.uploadNote(
+    item.content,
+    item.filename,
+    "/Pawkit/_Notes"  // Full path!
+  );
+}
+```
+
+**Prevention**:
+- Always use full paths starting with `/Pawkit` in sync scheduler
+- Test BOTH providers after any sync code changes
+- Add comment explaining path format requirement
+
+**Files Changed**: `lib/services/cloud-storage/sync-scheduler.ts`
+
+---
+
+### 44. Google Drive Connector Not Appearing - Duplicate UI Components
+
+**Date**: November 30, 2025
+**Severity**: Medium
+**Component**: Settings UI
+
+**Symptom**: Google Drive connector was showing "Coming Soon" in Profile Settings even after implementing the provider. Worked in Settings page but not Profile modal.
+
+**Root Cause**: There were TWO separate implementations of the connectors section:
+1. `components/settings/connectors-section.tsx` - Settings page (was updated)
+2. `components/modals/profile-modal.tsx` - Profile modal (was NOT updated)
+
+**What Failed**:
+```typescript
+// ❌ Only updated one file, forgot the other had duplicate UI
+// connectors-section.tsx was updated
+// profile-modal.tsx still had "Coming Soon" for Google Drive
+```
+
+**What Worked**:
+```typescript
+// ✅ Updated BOTH files with identical Google Drive connector UI
+// Both files now check googleDrive.connected and show connect/disconnect buttons
+```
+
+**Prevention**:
+- When updating UI, search for all instances of the component name
+- Search for text like "Coming Soon" or "Google Drive" to find all occurrences
+- Consider extracting shared connector UI to reusable component
+
+**Files Changed**:
+- `components/settings/connectors-section.tsx`
+- `components/modals/profile-modal.tsx`
+
+---
+
+### 45. Missing Import - useConnectorStore in Data Store
+
+**Date**: November 30, 2025
+**Severity**: Low (Build error)
+**Component**: Data store / TypeScript
+
+**Symptom**: Build fails with `Cannot find name 'useConnectorStore'` error in data-store.ts.
+
+**Root Cause**: Added Google Drive deletion code that used `useConnectorStore` but forgot to add the import statement.
+
+**What Failed**:
+```typescript
+// ❌ WRONG: Used store without importing
+const { googleDrive } = useConnectorStore.getState();  // TypeScript error!
+```
+
+**What Worked**:
+```typescript
+// ✅ CORRECT: Add import at top of file
+import { useConnectorStore } from '@/lib/stores/connector-store';
+
+// Then use it
+const { googleDrive } = useConnectorStore.getState();
+```
+
+**Prevention**:
+- Always run `pnpm build` before committing changes
+- TypeScript will catch missing imports
+- Use IDE auto-import features
+
+**Files Changed**: `lib/stores/data-store.ts`
+
+---
+
 ## Issue Categories Quick Reference
 
 **API Routes**:
@@ -5095,6 +5246,7 @@ this.credentials = {
 
 - **API Patterns**: `.claude/skills/pawkit-api-patterns/SKILL.md`
 - **Sync Patterns**: `.claude/skills/pawkit-sync-patterns/SKILL.md`
+- **Cloud Providers**: `.claude/skills/pawkit-cloud-providers/skill.md` (Filen, Google Drive, Dropbox, OneDrive)
 - **Performance**: `.claude/skills/pawkit-performance/SKILL.md`
 - **Security**: `.claude/skills/pawkit-security/SKILL.md`
 - **Migrations**: `.claude/skills/pawkit-migrations/SKILL.md`
@@ -5113,7 +5265,7 @@ this.credentials = {
 
 ---
 
-**Last Updated**: November 29, 2025 (Added Issue #41: Filen folder UUID persistence - server-side cookie solution for Vercel edge cache)
+**Last Updated**: November 30, 2025 (Added Issues #42-45: Google Drive integration issues - URL encoding, path format, duplicate UI, missing imports)
 **Next Review**: April 2025 (Quarterly)
 
 **This is a living document. Keep it current!**
