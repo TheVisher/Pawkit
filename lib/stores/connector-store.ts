@@ -45,10 +45,24 @@ export interface DropboxState {
   errorMessage: string | null;
 }
 
+export interface OneDriveConfig {
+  email: string;
+  name?: string;
+}
+
+export interface OneDriveState {
+  connected: boolean;
+  lastSync: Date | null;
+  config: OneDriveConfig | null;
+  status: "idle" | "connecting" | "syncing" | "error";
+  errorMessage: string | null;
+}
+
 export interface ConnectorState {
   filen: FilenState;
   googleDrive: GoogleDriveState;
   dropbox: DropboxState;
+  onedrive: OneDriveState;
   // Future connectors
   googleCalendar: { connected: boolean; lastSync: Date | null };
 }
@@ -79,6 +93,14 @@ interface ConnectorActions {
   setDropboxSyncing: () => void;
   setDropboxSynced: () => void;
 
+  // OneDrive actions
+  setOneDriveConnecting: () => void;
+  setOneDriveConnected: (email: string, name?: string) => void;
+  setOneDriveDisconnected: () => void;
+  setOneDriveError: (message: string) => void;
+  setOneDriveSyncing: () => void;
+  setOneDriveSynced: () => void;
+
   // General
   reset: () => void;
 }
@@ -107,10 +129,19 @@ const initialDropboxState: DropboxState = {
   errorMessage: null,
 };
 
+const initialOneDriveState: OneDriveState = {
+  connected: false,
+  lastSync: null,
+  config: null,
+  status: "idle",
+  errorMessage: null,
+};
+
 const initialState: ConnectorState = {
   filen: initialFilenState,
   googleDrive: initialGDriveState,
   dropbox: initialDropboxState,
+  onedrive: initialOneDriveState,
   googleCalendar: { connected: false, lastSync: null },
 };
 
@@ -296,6 +327,62 @@ export const useConnectorStore = create<ConnectorState & ConnectorActions>()(
           },
         })),
 
+      // OneDrive actions
+      setOneDriveConnecting: () =>
+        set((state) => ({
+          onedrive: {
+            ...state.onedrive,
+            status: "connecting",
+            errorMessage: null,
+          },
+        })),
+
+      setOneDriveConnected: (email: string, name?: string) =>
+        set((state) => ({
+          onedrive: {
+            ...state.onedrive,
+            connected: true,
+            status: "idle",
+            errorMessage: null,
+            config: {
+              email,
+              name,
+            },
+            lastSync: new Date(),
+          },
+        })),
+
+      setOneDriveDisconnected: () =>
+        set({
+          onedrive: initialOneDriveState,
+        }),
+
+      setOneDriveError: (message: string) =>
+        set((state) => ({
+          onedrive: {
+            ...state.onedrive,
+            status: "error",
+            errorMessage: message,
+          },
+        })),
+
+      setOneDriveSyncing: () =>
+        set((state) => ({
+          onedrive: {
+            ...state.onedrive,
+            status: "syncing",
+          },
+        })),
+
+      setOneDriveSynced: () =>
+        set((state) => ({
+          onedrive: {
+            ...state.onedrive,
+            status: "idle",
+            lastSync: new Date(),
+          },
+        })),
+
       reset: () => set(initialState),
     }),
     {
@@ -330,6 +417,16 @@ export const useConnectorStore = create<ConnectorState & ConnectorActions>()(
             ? {
                 email: state.dropbox.config.email,
                 name: state.dropbox.config.name,
+              }
+            : null,
+        },
+        onedrive: {
+          connected: state.onedrive.connected,
+          lastSync: state.onedrive.lastSync,
+          config: state.onedrive.config
+            ? {
+                email: state.onedrive.config.email,
+                name: state.onedrive.config.name,
               }
             : null,
         },

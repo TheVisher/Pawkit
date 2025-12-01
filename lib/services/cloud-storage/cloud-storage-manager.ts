@@ -15,6 +15,7 @@ import {
 import { filenProvider } from "./filen-provider";
 import { gdriveProvider } from "@/lib/services/google-drive/gdrive-provider";
 import { dropboxProvider } from "@/lib/services/dropbox/dropbox-provider";
+import { onedriveProvider } from "@/lib/services/onedrive/onedrive-provider";
 
 class CloudStorageManager {
   private providers: Map<CloudProviderId, CloudStorageProvider> = new Map();
@@ -25,6 +26,7 @@ class CloudStorageManager {
     this.registerProvider(filenProvider);
     this.registerProvider(gdriveProvider);
     this.registerProvider(dropboxProvider);
+    this.registerProvider(onedriveProvider);
   }
 
   /**
