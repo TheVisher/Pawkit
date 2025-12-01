@@ -14,6 +14,7 @@ import { useConnectorStore } from "@/lib/stores/connector-store";
 import { filenService } from "@/lib/services/filen-service";
 import { gdriveProvider } from "@/lib/services/google-drive/gdrive-provider";
 import { dropboxProvider } from "@/lib/services/dropbox/dropbox-provider";
+import { onedriveProvider } from "@/lib/services/onedrive/onedrive-provider";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import {
@@ -153,15 +154,19 @@ function ConnectorsTabContent() {
   const [showFilenModal, setShowFilenModal] = useState(false);
   const [gdriveLoading, setGdriveLoading] = useState(false);
   const [dropboxLoading, setDropboxLoading] = useState(false);
+  const [onedriveLoading, setOnedriveLoading] = useState(false);
 
   const filenState = useConnectorStore((state) => state.filen);
   const gdriveState = useConnectorStore((state) => state.googleDrive);
   const dropboxState = useConnectorStore((state) => state.dropbox);
+  const onedriveState = useConnectorStore((state) => state.onedrive);
   const setFilenDisconnected = useConnectorStore((state) => state.setFilenDisconnected);
   const setGDriveConnected = useConnectorStore((state) => state.setGDriveConnected);
   const setGDriveDisconnected = useConnectorStore((state) => state.setGDriveDisconnected);
   const setDropboxConnected = useConnectorStore((state) => state.setDropboxConnected);
   const setDropboxDisconnected = useConnectorStore((state) => state.setDropboxDisconnected);
+  const setOneDriveConnected = useConnectorStore((state) => state.setOneDriveConnected);
+  const setOneDriveDisconnected = useConnectorStore((state) => state.setOneDriveDisconnected);
 
   // Check Google Drive connection on mount and after OAuth callback
   useEffect(() => {
@@ -241,6 +246,44 @@ function ConnectorsTabContent() {
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [setDropboxConnected]);
+
+  // Check OneDrive connection on mount and after OAuth callback
+  useEffect(() => {
+    const checkOneDriveStatus = async () => {
+      try {
+        const status = await onedriveProvider.checkConnection();
+        if (status.connected && status.email) {
+          setOneDriveConnected(status.email);
+          onedriveProvider.initializeFolders().catch(console.error);
+        }
+      } catch {
+        // Ignore - not connected
+      }
+    };
+
+    checkOneDriveStatus();
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const onedriveResult = urlParams.get("onedrive");
+    if (onedriveResult === "connected") {
+      const email = urlParams.get("email");
+      if (email) {
+        setOneDriveConnected(decodeURIComponent(email));
+        useToastStore.getState().success("Connected to OneDrive!");
+        useToastStore.getState().info("Setting up folder structure...");
+        onedriveProvider.initializeFolders().then(() => {
+          useToastStore.getState().success("OneDrive folders ready!");
+        }).catch((err) => {
+          console.error("[OneDrive] Failed to initialize folders:", err);
+        });
+      }
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (onedriveResult === "error") {
+      const message = urlParams.get("message") || "Connection failed";
+      useToastStore.getState().error(`OneDrive: ${message}`);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [setOneDriveConnected]);
 
   const getFilenStatus = (): ConnectorStatus => {
     if (filenState.status === "connecting" || filenState.status === "syncing") {
@@ -339,6 +382,41 @@ function ConnectorsTabContent() {
     useToastStore.getState().info("Dropbox settings coming soon");
   };
 
+  const getOneDriveStatus = (): ConnectorStatus => {
+    if (onedriveLoading || onedriveState.status === "connecting" || onedriveState.status === "syncing") {
+      return "syncing";
+    }
+    if (onedriveState.status === "error") {
+      return "error";
+    }
+    if (onedriveState.connected) {
+      return "connected";
+    }
+    return "disconnected";
+  };
+
+  const handleOneDriveConnect = () => {
+    setOnedriveLoading(true);
+    window.location.href = "/api/auth/onedrive";
+  };
+
+  const handleOneDriveDisconnect = async () => {
+    try {
+      setOnedriveLoading(true);
+      await onedriveProvider.disconnect();
+      setOneDriveDisconnected();
+      useToastStore.getState().success("Disconnected from OneDrive");
+    } catch {
+      useToastStore.getState().error("Failed to disconnect");
+    } finally {
+      setOnedriveLoading(false);
+    }
+  };
+
+  const handleOneDriveSettings = () => {
+    useToastStore.getState().info("OneDrive settings coming soon");
+  };
+
   return (
     <>
       <div className="space-y-4">
@@ -396,6 +474,19 @@ function ConnectorsTabContent() {
             onConnect={handleDropboxConnect}
             onDisconnect={handleDropboxDisconnect}
             onSettings={handleDropboxSettings}
+          />
+
+          {/* OneDrive Connector */}
+          <ConnectorCard
+            name="OneDrive"
+            description="Sync files with Microsoft OneDrive"
+            icon={<Cloud className="h-6 w-6 text-sky-400" />}
+            status={getOneDriveStatus()}
+            category="Storage"
+            lastSync={onedriveState.lastSync}
+            onConnect={handleOneDriveConnect}
+            onDisconnect={handleOneDriveDisconnect}
+            onSettings={handleOneDriveSettings}
           />
         </div>
       </div>

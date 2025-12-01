@@ -7,8 +7,7 @@ description: Guide for implementing cloud storage providers (Filen, Google Drive
 
 **Purpose**: Complete guide for implementing and maintaining cloud storage providers for backup/sync.
 
-**Current Providers**: Filen (complete), Google Drive (complete), Dropbox (complete)
-**Planned Providers**: OneDrive
+**Current Providers**: Filen (complete), Google Drive (complete), Dropbox (complete), OneDrive (complete)
 
 ---
 
@@ -354,18 +353,96 @@ if (file) {
 }
 ```
 
-### Step 8: Update Sync Hook (Optional)
+### Step 8: Wire Up File Uploads (CRITICAL)
+
+**File**: `lib/stores/file-store.ts`
+
+The sync scheduler only handles NOTES. Files (PDFs, images, documents) must be synced on upload. Add a sync function and call it:
+
+```typescript
+/**
+ * Sync a file to <Provider> in the background.
+ * Uses the same folder structure as other providers for consistency.
+ */
+async function syncFileTo<Provider>(
+  file: StoredFile,
+  originalFile: File
+): Promise<void> {
+  const { <provider> } = useConnectorStore.getState();
+  if (!<provider>.connected) return;
+
+  try {
+    const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
+    const targetFolder = getTargetFolder(originalFile.name, originalFile.type);
+    const targetPath = targetFolder.path;
+
+    const { <provider>Provider } = await import("@/lib/services/<provider>/<provider>-provider");
+    const result = await <provider>Provider.uploadFile(originalFile, originalFile.name, targetPath);
+
+    if (result.success) {
+      console.log(`[FileStore] File synced to <Provider>: ${originalFile.name} -> ${result.path}`);
+    } else {
+      console.error(`[FileStore] <Provider> sync failed: ${result.error}`);
+    }
+  } catch (error) {
+    console.error("[FileStore] <Provider> sync failed:", error);
+  }
+}
+```
+
+Then in `uploadFile` method, after existing syncs:
+
+```typescript
+// Also sync to <Provider> if connected
+const { <provider> } = useConnectorStore.getState();
+if (<provider>.connected) {
+  syncFileTo<Provider>(storedFile, file);
+}
+```
+
+### Step 9: Update Sync Hook
 
 **File**: `lib/hooks/use-cloud-sync.ts`
 
-If the provider should participate in automatic sync:
+Add the provider to the connection check:
 
 ```typescript
+const <provider>Connected = useConnectorStore((state) => state.<provider>.connected);
+
 // Check if ANY cloud provider is connected
-const isCloudConnected =
-  filenConnected ||
-  gdriveConnected ||
-  dropboxConnected;  // Add new check
+const anyProviderConnected = filenConnected || gdriveConnected || dropboxConnected || <provider>Connected;
+```
+
+---
+
+## IMPORTANT PATTERNS
+
+### Silencing 409 Folder Conflict Errors
+
+When creating folders, APIs like Dropbox and OneDrive return 409 Conflict if the folder already exists. This is EXPECTED behavior, not an error. Handle it silently:
+
+```typescript
+private async createFolderIfNotExists(accessToken: string, path: string): Promise<void> {
+  try {
+    const response = await fetch(`${API_URL}/create_folder`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ path }),
+    });
+
+    // 409 Conflict means folder already exists - that's expected and fine
+    if (response.status === 409) {
+      return; // Silently ignore
+    }
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      console.warn(`[Provider] Unexpected folder create error for ${path}:`, data);
+    }
+  } catch (error) {
+    console.warn(`[Provider] Network error creating folder ${path}:`, error);
+  }
+}
 ```
 
 ---
@@ -464,8 +541,33 @@ Dropbox API quirks:
 - Uses `Dropbox-API-Arg` header for upload/download metadata (JSON)
 - Upload endpoint: `https://content.dropboxapi.com/2/files/upload`
 - API endpoint: `https://api.dropboxapi.com/2`
-- Folder creation returns conflict error if folder exists (expected, not an error)
+- Folder creation returns 409 Conflict if folder exists - silently ignore (see IMPORTANT PATTERNS)
 - Delete requires file path, not file ID (get metadata first)
+
+### OneDrive
+
+**Auth**: OAuth 2.0 flow (Microsoft Identity Platform)
+**Session**: HTTP-only cookie (`onedrive_tokens`)
+**Token Refresh**: Access tokens expire in 1 hour, auto-refreshed
+
+Key files:
+- `lib/services/onedrive/onedrive-provider.ts` - Provider implementation
+- `lib/services/onedrive/oauth.ts` - OAuth utilities
+- `app/api/auth/onedrive/*` - OAuth API routes
+
+OAuth setup:
+1. Register app at https://portal.azure.com → App registrations
+2. Add `MICROSOFT_CLIENT_ID` and `MICROSOFT_CLIENT_SECRET` to `.env.local`
+3. Add redirect URI: `https://your-domain.com/api/auth/onedrive/callback`
+4. Required scopes: `Files.ReadWrite`, `User.Read`, `offline_access`
+
+OneDrive API quirks:
+- Uses Microsoft Graph API: `https://graph.microsoft.com/v1.0`
+- Folder creation: PUT `/me/drive/root:/path:/children` with `{ "name": "folder", "folder": {} }`
+- Upload small files (<4MB): PUT `/me/drive/root:/path/file.ext:/content`
+- Upload large files: Use upload session
+- 409 Conflict on folder create means folder exists - silently ignore
+- Item IDs are stable, can be used for delete/download
 
 ---
 
@@ -547,7 +649,7 @@ DROPBOX_CLIENT_ID=xxx
 DROPBOX_CLIENT_SECRET=xxx
 ```
 
-**OneDrive** (future):
+**OneDrive**:
 ```env
 MICROSOFT_CLIENT_ID=xxx
 MICROSOFT_CLIENT_SECRET=xxx
@@ -573,5 +675,5 @@ MICROSOFT_CLIENT_SECRET=xxx
 ---
 
 **Last Updated**: December 1, 2025
-**Reason**: Added Dropbox implementation, clarified primary UI location is profile-modal.tsx
+**Reason**: OneDrive implementation complete, all 4 cloud providers now functional
 

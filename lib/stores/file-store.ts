@@ -214,6 +214,37 @@ async function syncFileToDropbox(
   }
 }
 
+/**
+ * Sync a file to OneDrive in the background.
+ * Uses the same folder structure as other providers for consistency.
+ */
+async function syncFileToOneDrive(
+  file: StoredFile,
+  originalFile: File
+): Promise<void> {
+  const { onedrive } = useConnectorStore.getState();
+  if (!onedrive.connected) return;
+
+  try {
+    // Determine destination folder path based on file category
+    const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
+    const targetFolder = getTargetFolder(originalFile.name, originalFile.type);
+    const targetPath = targetFolder.path;
+
+    // Use OneDrive provider
+    const { onedriveProvider } = await import("@/lib/services/onedrive/onedrive-provider");
+    const result = await onedriveProvider.uploadFile(originalFile, originalFile.name, targetPath);
+
+    if (result.success) {
+      console.log(`[FileStore] File synced to OneDrive: ${originalFile.name} -> ${result.path}`);
+    } else {
+      console.error(`[FileStore] OneDrive sync failed: ${result.error}`);
+    }
+  } catch (error) {
+    console.error("[FileStore] OneDrive sync failed:", error);
+  }
+}
+
 export const useFileStore = create<FileStoreState>((set, get) => ({
   files: [],
   isLoading: false,
@@ -343,6 +374,12 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
       const { dropbox } = useConnectorStore.getState();
       if (dropbox.connected) {
         syncFileToDropbox(storedFile, file);
+      }
+
+      // Also sync to OneDrive if connected
+      const { onedrive } = useConnectorStore.getState();
+      if (onedrive.connected) {
+        syncFileToOneDrive(storedFile, file);
       }
 
       return storedFile;
@@ -497,6 +534,31 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
         }
       }
 
+      // Also delete from OneDrive if connected
+      if (file) {
+        try {
+          const { onedrive } = useConnectorStore.getState();
+          if (onedrive.connected) {
+            const { onedriveProvider } = await import("@/lib/services/onedrive/onedrive-provider");
+            const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
+
+            // Find the file in the appropriate folder
+            const targetFolder = getTargetFolder(file.filename, file.mimeType);
+            const files = await onedriveProvider.listFiles(targetFolder.path);
+            const matchingFile = files.find(f => f.name === file.filename);
+
+            if (matchingFile) {
+              console.warn("[FileStore] Deleting from OneDrive:", matchingFile.cloudId);
+              await onedriveProvider.deleteFile(matchingFile.cloudId);
+              console.warn("[FileStore] OneDrive delete successful");
+            }
+          }
+        } catch (error) {
+          console.error("[FileStore] Failed to delete from OneDrive:", error);
+          // Continue with local deletion anyway
+        }
+      }
+
       await localDb.deleteFile(fileId);
 
       if (blobUrlCache.has(fileId)) {
@@ -578,6 +640,30 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
           }
         } catch (error) {
           console.error("[FileStore] Failed to delete from Dropbox:", error);
+        }
+      }
+
+      // Also delete from OneDrive if connected
+      if (file) {
+        try {
+          const { onedrive } = useConnectorStore.getState();
+          if (onedrive.connected) {
+            const { onedriveProvider } = await import("@/lib/services/onedrive/onedrive-provider");
+            const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
+
+            // Find the file in the appropriate folder
+            const targetFolder = getTargetFolder(file.filename, file.mimeType);
+            const files = await onedriveProvider.listFiles(targetFolder.path);
+            const matchingFile = files.find(f => f.name === file.filename);
+
+            if (matchingFile) {
+              console.warn("[FileStore] Deleting from OneDrive:", matchingFile.cloudId);
+              await onedriveProvider.deleteFile(matchingFile.cloudId);
+              console.warn("[FileStore] OneDrive delete successful");
+            }
+          }
+        } catch (error) {
+          console.error("[FileStore] Failed to delete from OneDrive:", error);
         }
       }
 
