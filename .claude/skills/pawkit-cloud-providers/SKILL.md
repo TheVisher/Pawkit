@@ -7,8 +7,8 @@ description: Guide for implementing cloud storage providers (Filen, Google Drive
 
 **Purpose**: Complete guide for implementing and maintaining cloud storage providers for backup/sync.
 
-**Current Providers**: Filen (complete), Google Drive (complete)
-**Planned Providers**: Dropbox, OneDrive
+**Current Providers**: Filen (complete), Google Drive (complete), Dropbox (complete)
+**Planned Providers**: OneDrive
 
 ---
 
@@ -437,6 +437,30 @@ OAuth setup:
 2. Add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` to `.env.local`
 3. Configure redirect URIs in Google Console
 
+### Dropbox
+
+**Auth**: OAuth 2.0 flow
+**Session**: HTTP-only cookie (`dropbox_tokens`)
+**Token Refresh**: Access tokens expire in 4 hours, auto-refreshed
+
+Key files:
+- `lib/services/dropbox/dropbox-provider.ts` - Provider implementation
+- `lib/services/dropbox/oauth.ts` - OAuth utilities
+- `app/api/auth/dropbox/*` - OAuth API routes
+
+OAuth setup:
+1. Create app at https://www.dropbox.com/developers/apps
+2. Choose "Scoped access" → "Full Dropbox"
+3. Add `DROPBOX_CLIENT_ID` and `DROPBOX_CLIENT_SECRET` to `.env.local`
+4. Add redirect URI: `https://your-domain.com/api/auth/dropbox/callback`
+
+Dropbox API quirks:
+- Uses `Dropbox-API-Arg` header for upload/download metadata (JSON)
+- Upload endpoint: `https://content.dropboxapi.com/2/files/upload`
+- API endpoint: `https://api.dropboxapi.com/2`
+- Folder creation returns conflict error if folder exists (expected, not an error)
+- Delete requires file path, not file ID (get metadata first)
+
 ---
 
 ## COMMON ISSUES
@@ -511,10 +535,10 @@ GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
 GOOGLE_CLIENT_SECRET=xxx
 ```
 
-**Dropbox** (future):
+**Dropbox**:
 ```env
-DROPBOX_APP_KEY=xxx
-DROPBOX_APP_SECRET=xxx
+DROPBOX_CLIENT_ID=xxx
+DROPBOX_CLIENT_SECRET=xxx
 ```
 
 **OneDrive** (future):

@@ -3,21 +3,26 @@
 import { useState, useEffect } from "react";
 import { ConnectorCard, ConnectorStatus } from "./connector-card";
 import { FilenConnectModal } from "./filen-connect-modal";
-import { FilenIcon, GoogleCalendarIcon, GoogleDriveIcon } from "./connector-icons";
+import { FilenIcon, GoogleCalendarIcon, GoogleDriveIcon, DropboxIcon } from "./connector-icons";
 import { useConnectorStore } from "@/lib/stores/connector-store";
 import { filenService } from "@/lib/services/filen-service";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { gdriveProvider } from "@/lib/services/google-drive/gdrive-provider";
+import { dropboxProvider } from "@/lib/services/dropbox/dropbox-provider";
 
 export function ConnectorsSection() {
   const [showFilenModal, setShowFilenModal] = useState(false);
   const [gdriveLoading, setGdriveLoading] = useState(false);
+  const [dropboxLoading, setDropboxLoading] = useState(false);
 
   const filenState = useConnectorStore((state) => state.filen);
   const gdriveState = useConnectorStore((state) => state.googleDrive);
+  const dropboxState = useConnectorStore((state) => state.dropbox);
   const setFilenDisconnected = useConnectorStore((state) => state.setFilenDisconnected);
   const setGDriveConnected = useConnectorStore((state) => state.setGDriveConnected);
   const setGDriveDisconnected = useConnectorStore((state) => state.setGDriveDisconnected);
+  const setDropboxConnected = useConnectorStore((state) => state.setDropboxConnected);
+  const setDropboxDisconnected = useConnectorStore((state) => state.setDropboxDisconnected);
 
   // Check Google Drive connection status on mount and after OAuth callback
   useEffect(() => {
@@ -61,6 +66,49 @@ export function ConnectorsSection() {
       window.history.replaceState({}, "", window.location.pathname);
     }
   }, [setGDriveConnected]);
+
+  // Check Dropbox connection status on mount and after OAuth callback
+  useEffect(() => {
+    const checkDropboxStatus = async () => {
+      try {
+        const status = await dropboxProvider.checkConnection();
+        if (status.connected && status.email) {
+          setDropboxConnected(status.email);
+          // Initialize folder structure in background
+          dropboxProvider.initializeFolders().catch(console.error);
+        }
+      } catch {
+        // Ignore - not connected
+      }
+    };
+
+    // Check on mount
+    checkDropboxStatus();
+
+    // Also check if we just came back from OAuth
+    const urlParams = new URLSearchParams(window.location.search);
+    const dropboxResult = urlParams.get("dropbox");
+    if (dropboxResult === "connected") {
+      const email = urlParams.get("email");
+      if (email) {
+        setDropboxConnected(decodeURIComponent(email));
+        useToastStore.getState().success("Connected to Dropbox!");
+        // Initialize folder structure after OAuth
+        useToastStore.getState().info("Setting up folder structure...");
+        dropboxProvider.initializeFolders().then(() => {
+          useToastStore.getState().success("Dropbox folders ready!");
+        }).catch((err) => {
+          console.error("[Dropbox] Failed to initialize folders:", err);
+        });
+      }
+      // Clear the URL params
+      window.history.replaceState({}, "", window.location.pathname);
+    } else if (dropboxResult === "error") {
+      const message = urlParams.get("message") || "Connection failed";
+      useToastStore.getState().error(`Dropbox: ${message}`);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [setDropboxConnected]);
 
   // Determine Filen connector status
   const getFilenStatus = (): ConnectorStatus => {
@@ -129,6 +177,43 @@ export function ConnectorsSection() {
     useToastStore.getState().info("Google Drive settings coming soon");
   };
 
+  // Determine Dropbox connector status
+  const getDropboxStatus = (): ConnectorStatus => {
+    if (dropboxLoading || dropboxState.status === "connecting" || dropboxState.status === "syncing") {
+      return "syncing";
+    }
+    if (dropboxState.status === "error") {
+      return "error";
+    }
+    if (dropboxState.connected) {
+      return "connected";
+    }
+    return "disconnected";
+  };
+
+  const handleDropboxConnect = () => {
+    setDropboxLoading(true);
+    // Redirect to OAuth flow
+    window.location.href = "/api/auth/dropbox";
+  };
+
+  const handleDropboxDisconnect = async () => {
+    try {
+      setDropboxLoading(true);
+      await dropboxProvider.disconnect();
+      setDropboxDisconnected();
+      useToastStore.getState().success("Disconnected from Dropbox");
+    } catch {
+      useToastStore.getState().error("Failed to disconnect");
+    } finally {
+      setDropboxLoading(false);
+    }
+  };
+
+  const handleDropboxSettings = () => {
+    useToastStore.getState().info("Dropbox settings coming soon");
+  };
+
   return (
     <section className="space-y-3">
       <h2 className="text-lg font-semibold text-gray-100">Connectors</h2>
@@ -170,6 +255,19 @@ export function ConnectorsSection() {
           onConnect={handleGDriveConnect}
           onDisconnect={handleGDriveDisconnect}
           onSettings={handleGDriveSettings}
+        />
+
+        {/* Dropbox Connector */}
+        <ConnectorCard
+          name="Dropbox"
+          description="Sync files with Dropbox"
+          icon={<DropboxIcon />}
+          status={getDropboxStatus()}
+          category="Storage"
+          lastSync={dropboxState.lastSync}
+          onConnect={handleDropboxConnect}
+          onDisconnect={handleDropboxDisconnect}
+          onSettings={handleDropboxSettings}
         />
       </div>
 
