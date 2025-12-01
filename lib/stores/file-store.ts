@@ -183,6 +183,37 @@ async function syncFileToGDrive(
   }
 }
 
+/**
+ * Sync a file to Dropbox in the background.
+ * Uses the same folder structure as Filen and Google Drive for consistency.
+ */
+async function syncFileToDropbox(
+  file: StoredFile,
+  originalFile: File
+): Promise<void> {
+  const { dropbox } = useConnectorStore.getState();
+  if (!dropbox.connected) return;
+
+  try {
+    // Determine destination folder path based on file category
+    const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
+    const targetFolder = getTargetFolder(originalFile.name, originalFile.type);
+    const targetPath = targetFolder.path;
+
+    // Use Dropbox provider
+    const { dropboxProvider } = await import("@/lib/services/dropbox/dropbox-provider");
+    const result = await dropboxProvider.uploadFile(originalFile, originalFile.name, targetPath);
+
+    if (result.success) {
+      console.log(`[FileStore] File synced to Dropbox: ${originalFile.name} -> ${result.path}`);
+    } else {
+      console.error(`[FileStore] Dropbox sync failed: ${result.error}`);
+    }
+  } catch (error) {
+    console.error("[FileStore] Dropbox sync failed:", error);
+  }
+}
+
 export const useFileStore = create<FileStoreState>((set, get) => ({
   files: [],
   isLoading: false,
@@ -306,6 +337,12 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
       const { googleDrive } = useConnectorStore.getState();
       if (googleDrive.connected) {
         syncFileToGDrive(storedFile, file);
+      }
+
+      // Also sync to Dropbox if connected
+      const { dropbox } = useConnectorStore.getState();
+      if (dropbox.connected) {
+        syncFileToDropbox(storedFile, file);
       }
 
       return storedFile;
