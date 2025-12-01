@@ -108,20 +108,13 @@ export class DropboxProvider implements CloudStorageProvider {
       const accessToken = await this.getAccessToken();
       const allFolderPaths = getAllFolderPaths();
 
-      console.log("[Dropbox] Initializing folder structure...");
-
+      // Silently ensure all folders exist (409 conflicts are expected and ignored)
       for (const folderPath of allFolderPaths) {
-        try {
-          await this.createFolderIfNotExists(accessToken, folderPath);
-          console.log(`[Dropbox] Folder ready: ${folderPath}`);
-        } catch (error) {
-          // Folder might already exist, that's fine
-          console.log(`[Dropbox] Folder check: ${folderPath}`, error);
-        }
+        await this.createFolderIfNotExists(accessToken, folderPath);
       }
 
       this.initialized = true;
-      console.log("[Dropbox] Folder structure initialized");
+      console.log("[Dropbox] Folder structure ready");
     } catch (error) {
       console.error("[Dropbox] Failed to initialize folders:", error);
     }
@@ -130,6 +123,7 @@ export class DropboxProvider implements CloudStorageProvider {
   /**
    * Create a folder if it doesn't exist
    * Dropbox auto-creates parent folders
+   * 409 Conflict is expected if folder exists - silently ignore
    */
   private async createFolderIfNotExists(accessToken: string, path: string): Promise<void> {
     try {
@@ -145,18 +139,19 @@ export class DropboxProvider implements CloudStorageProvider {
         }),
       });
 
+      // 409 Conflict means folder already exists - that's expected and fine
+      if (response.status === 409) {
+        return;
+      }
+
       if (!response.ok) {
-        const data = await response.json();
-        // Error tag "path/conflict/folder" means folder already exists - that's fine
-        if (data.error?.[".tag"] === "path" && data.error?.path?.[".tag"] === "conflict") {
-          return;
-        }
-        // Any other error, just log and continue
-        console.log(`[Dropbox] Folder create response for ${path}:`, data);
+        // Unexpected error - log for debugging but don't throw
+        const data = await response.json().catch(() => ({}));
+        console.warn(`[Dropbox] Unexpected folder create error for ${path}:`, data);
       }
     } catch (error) {
-      // Log but don't throw - folder might already exist
-      console.log(`[Dropbox] Error creating folder ${path}:`, error);
+      // Network error - log but don't throw
+      console.warn(`[Dropbox] Network error creating folder ${path}:`, error);
     }
   }
 
