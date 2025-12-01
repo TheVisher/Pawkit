@@ -313,20 +313,22 @@ export class GoogleDriveProvider implements CloudStorageProvider {
     filename: string,
     parentFolderId: string
   ): Promise<string | null> {
-    // Escape single quotes in filename
+    // Escape single quotes in filename for Google Drive query
     const escapedFilename = filename.replace(/'/g, "\\'");
-    const response = await fetch(
-      `${GDRIVE_API_BASE}/files?q=name='${escapedFilename}' and '${parentFolderId}' in parents and trashed=false&fields=files(id)`,
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      }
-    );
+    // Build query and properly URL encode it
+    const query = `name='${escapedFilename}' and '${parentFolderId}' in parents and trashed=false`;
+    const url = `${GDRIVE_API_BASE}/files?q=${encodeURIComponent(query)}&fields=files(id)`;
+
+    const response: Response = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
 
     if (!response.ok) {
+      console.warn(`[GDrive] findFileByName failed for "${filename}":`, response.status);
       return null;
     }
 
-    const data = await response.json();
+    const data: { files?: Array<{ id: string }> } = await response.json();
     return data.files?.[0]?.id || null;
   }
 
