@@ -425,6 +425,20 @@ class SyncService {
         const localHasMetadata = localCard.image || localCard.description ||
                                  localCard.articleContent || localCard.metadata;
 
+        // ALWAYS merge image field if server has it and local doesn't
+        // This ensures custom thumbnails set on one device sync to all devices
+        // Image is treated specially because it's often manually set by users
+        if (serverCard.image && !localCard.image) {
+          const mergedCard = {
+            ...localCard,
+            image: serverCard.image,
+            // Keep the later updatedAt to avoid re-syncing
+            updatedAt: serverTime > localTime ? serverCard.updatedAt : localCard.updatedAt,
+          };
+          await localDb.saveCard(mergedCard, { fromServer: true });
+          continue;
+        }
+
         // SPECIAL CASE: If server has metadata but local doesn't, always merge metadata
         // This ensures metadata fetched on other devices is never lost
         if (serverHasMetadata && !localHasMetadata) {
