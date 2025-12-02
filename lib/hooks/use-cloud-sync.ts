@@ -80,6 +80,7 @@ export function useCloudSync(config: CloudSyncConfig = {}) {
           cloudId: card.cloudId || undefined,
           cloudSyncedAt: cloudSyncedAt || undefined,
           cloudProvider: card.cloudProvider || undefined,
+          cardType: card.type, // For content type routing
         });
       }
     }

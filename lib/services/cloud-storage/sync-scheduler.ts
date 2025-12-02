@@ -3,11 +3,17 @@
  *
  * Handles automatic interval-based syncing of notes and files to cloud storage.
  * Tracks dirty items (localUpdatedAt > cloudSyncedAt) and syncs them.
- * Syncs to ALL connected providers for redundancy.
+ * Syncs to providers based on Storage Strategy settings.
  */
 
 import { cloudStorage } from "./cloud-storage-manager";
 import { CloudUploadResult, CloudStorageProvider } from "./types";
+import {
+  useStorageStrategyStore,
+  getContentTypeFromCard,
+  type StorageProviderId,
+  type ContentType,
+} from "@/lib/stores/storage-strategy-store";
 
 export interface SyncItem {
   id: string;
@@ -20,6 +26,8 @@ export interface SyncItem {
   cloudId?: string;
   cloudSyncedAt?: Date;
   cloudProvider?: string;
+  cardType?: string;  // Card type for content routing (e.g., "md-note", "bookmark", "image")
+  mimeType?: string;  // MIME type for file routing
 }
 
 export interface SyncResult {
@@ -142,7 +150,7 @@ class SyncScheduler {
   }
 
   /**
-   * Trigger an immediate sync to ALL connected providers
+   * Trigger an immediate sync based on Storage Strategy settings
    */
   async syncNow(): Promise<SyncResult> {
     if (this.isSyncing) {
@@ -155,12 +163,24 @@ class SyncScheduler {
       return { success: false, syncedCount: 0, failedCount: 0, errors: ["Callbacks not registered"] };
     }
 
-    // Get all connected providers
+    // Get storage strategy
+    const { strategy, getDestinations } = useStorageStrategyStore.getState();
+
+    // Check if primary provider is set
+    if (!strategy.primaryProvider) {
+      console.warn("[SyncScheduler] No primary storage provider configured");
+      return { success: false, syncedCount: 0, failedCount: 0, errors: ["No primary storage provider configured. Please set one in Settings > Sync & Data."] };
+    }
+
+    // Get all connected providers for validation
     const connectedProviders = await this.getConnectedProviders();
     if (connectedProviders.length === 0) {
       console.warn("[SyncScheduler] No connected cloud providers");
       return { success: false, syncedCount: 0, failedCount: 0, errors: ["No connected cloud providers"] };
     }
+
+    // Create a map of connected provider IDs for quick lookup
+    const connectedProviderIds = new Set(connectedProviders.map((p) => p.id));
 
     this.isSyncing = true;
     const result: SyncResult = {
@@ -180,19 +200,44 @@ class SyncScheduler {
         return result;
       }
 
-      console.warn(`[SyncScheduler] Found ${dirtyItems.length} dirty items to sync to ${connectedProviders.length} provider(s)`);
+      console.warn(`[SyncScheduler] Found ${dirtyItems.length} dirty items to sync`);
 
-      // Sync each item to ALL connected providers
+      // Sync each item to its configured destination(s)
       for (const item of dirtyItems) {
+        // Determine content type for routing
+        const contentType = getContentTypeFromCard(item.cardType || item.type, item.mimeType);
+
+        // Get destination providers from storage strategy
+        const destinationIds = getDestinations(contentType);
+
+        if (destinationIds.length === 0) {
+          result.failedCount++;
+          result.errors.push(`${item.title}: No destination provider configured`);
+          this.onSyncError?.(item.id, "No destination provider configured");
+          continue;
+        }
+
+        // Filter to only connected providers
+        const availableDestinations = destinationIds.filter((id) => connectedProviderIds.has(id));
+
+        if (availableDestinations.length === 0) {
+          result.failedCount++;
+          result.errors.push(`${item.title}: Configured provider(s) not connected`);
+          this.onSyncError?.(item.id, "Configured provider(s) not connected");
+          continue;
+        }
+
         let itemSynced = false;
 
-        for (const provider of connectedProviders) {
+        for (const providerId of availableDestinations) {
+          const provider = connectedProviders.find((p) => p.id === providerId);
+          if (!provider) continue;
+
           try {
             let uploadResult: CloudUploadResult;
 
             if (item.type === "note" && item.content) {
               // Upload note as markdown
-              // Use full path for Filen compatibility
               uploadResult = await provider.uploadNote(
                 item.content,
                 item.filename,
@@ -230,7 +275,7 @@ class SyncScheduler {
           result.syncedCount++;
         } else {
           result.failedCount++;
-          this.onSyncError?.(item.id, "Failed to sync to any provider");
+          this.onSyncError?.(item.id, "Failed to sync to any configured provider");
         }
       }
 

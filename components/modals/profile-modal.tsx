@@ -24,6 +24,7 @@ import {
   ONBOARDING_PAWKIT_SLUGS,
 } from "@/lib/services/onboarding-service";
 import { StorageCleanupSection } from "@/components/settings/storage-cleanup-section";
+import { StorageStrategySettings } from "@/components/settings/storage-strategy-settings";
 
 type ProfileModalProps = {
   open: boolean;
@@ -1240,6 +1241,11 @@ function ProfileModalContent({ open, onClose, username, email = "", avatarUrl }:
 
             {/* Sync & Data Tab */}
             <TabsContent value="sync-data" className="space-y-6 mt-6 h-[550px] overflow-y-auto">
+              {/* Storage Strategy Section */}
+              <StorageStrategySettings />
+
+              <div className="border-t border-white/10 pt-6" />
+
               <div className="space-y-4">
                 <div>
                   <Label className="text-gray-300">Sync Settings</Label>
