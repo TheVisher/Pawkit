@@ -4,6 +4,7 @@ import { localDb } from "@/lib/services/local-storage";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useConnectorStore } from "@/lib/stores/connector-store";
+import { useStorageStrategyStore, getContentTypeFromCard } from "@/lib/stores/storage-strategy-store";
 import { filenService, FilenFileInfo } from "@/lib/services/filen-service";
 import {
   generateFileId,
@@ -353,33 +354,44 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
         });
       }
 
-      // Sync to cloud providers in background if connected
-      if (filen.connected) {
-        syncFileToFilen(
-          storedFile,
-          file,
-          (status, filenData) => {
-            get().updateFileSyncStatus(storedFile.id, status, filenData);
-          }
-        );
-      }
+      // Use storage strategy to determine which providers to sync to
+      const { getDestinations } = useStorageStrategyStore.getState();
+      const contentType = getContentTypeFromCard("file", file.type);
+      const destinationIds = getDestinations(contentType);
 
-      // Also sync to Google Drive if connected
-      const { googleDrive } = useConnectorStore.getState();
-      if (googleDrive.connected) {
-        syncFileToGDrive(storedFile, file);
-      }
+      // Get connector state for checking which providers are connected
+      const connectorState = useConnectorStore.getState();
 
-      // Also sync to Dropbox if connected
-      const { dropbox } = useConnectorStore.getState();
-      if (dropbox.connected) {
-        syncFileToDropbox(storedFile, file);
-      }
-
-      // Also sync to OneDrive if connected
-      const { onedrive } = useConnectorStore.getState();
-      if (onedrive.connected) {
-        syncFileToOneDrive(storedFile, file);
+      // Sync to configured destinations only
+      for (const providerId of destinationIds) {
+        switch (providerId) {
+          case "filen":
+            if (connectorState.filen.connected) {
+              syncFileToFilen(
+                storedFile,
+                file,
+                (status, filenData) => {
+                  get().updateFileSyncStatus(storedFile.id, status, filenData);
+                }
+              );
+            }
+            break;
+          case "google-drive":
+            if (connectorState.googleDrive.connected) {
+              syncFileToGDrive(storedFile, file);
+            }
+            break;
+          case "dropbox":
+            if (connectorState.dropbox.connected) {
+              syncFileToDropbox(storedFile, file);
+            }
+            break;
+          case "onedrive":
+            if (connectorState.onedrive.connected) {
+              syncFileToOneDrive(storedFile, file);
+            }
+            break;
+        }
       }
 
       return storedFile;
