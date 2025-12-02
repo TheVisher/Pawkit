@@ -1,10 +1,20 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { decrypt } from "@/lib/utils/crypto";
 
 const FILEN_API_URL = "https://gateway.filen.io";
 const FILEN_COOKIE_NAME = "filen_session";
+
+export interface FilenFolderItem {
+  uuid: string;
+  name: string;
+  path: string;
+  size: number;
+  mime: string;
+  modified: number;
+  isFolder: boolean;
+}
 
 interface FilenSession {
   email: string;
@@ -237,4 +247,211 @@ async function hashFolderName(name: string): Promise<string> {
   // Then SHA1
   const sha1 = await crypto.subtle.digest("SHA-1", encoder.encode(sha512Hex));
   return Buffer.from(sha1).toString("hex");
+}
+
+/**
+ * Decrypt metadata (version 2 format)
+ */
+async function decryptMetadata(encrypted: string, masterKeys: string[]): Promise<string | null> {
+  // Try each master key
+  for (const masterKey of masterKeys) {
+    try {
+      // Version 2 format: "002" + 12-char IV + base64 ciphertext
+      if (!encrypted.startsWith("002")) {
+        continue;
+      }
+
+      const ivString = encrypted.substring(3, 15);
+      const ciphertextBase64 = encrypted.substring(15);
+
+      const encoder = new TextEncoder();
+      const ivBytes = encoder.encode(ivString);
+      const ciphertext = Buffer.from(ciphertextBase64, "base64");
+
+      // Derive key using PBKDF2
+      const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(masterKey),
+        "PBKDF2",
+        false,
+        ["deriveBits", "deriveKey"]
+      );
+
+      const key = await crypto.subtle.deriveKey(
+        {
+          name: "PBKDF2",
+          salt: encoder.encode(masterKey),
+          iterations: 1,
+          hash: "SHA-512",
+        },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["decrypt"]
+      );
+
+      const decrypted = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: ivBytes },
+        key,
+        ciphertext
+      );
+
+      return new TextDecoder().decode(decrypted);
+    } catch {
+      // Try next key
+      continue;
+    }
+  }
+  return null;
+}
+
+/**
+ * GET /api/filen/folder?path=/Pawkit/_Notes
+ *
+ * List contents of a folder (files AND subfolders, non-recursive).
+ * Used by the Cloud Drives file explorer.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    // 1. Verify authentication
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
+    // 2. Get Filen session
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(FILEN_COOKIE_NAME);
+
+    if (!sessionCookie?.value) {
+      return NextResponse.json({ error: "Filen not connected" }, { status: 401 });
+    }
+
+    let session: FilenSession;
+    try {
+      session = JSON.parse(decrypt(sessionCookie.value)) as FilenSession;
+    } catch {
+      return NextResponse.json({ error: "Invalid Filen session" }, { status: 401 });
+    }
+
+    // 3. Get requested path
+    const searchParams = request.nextUrl.searchParams;
+    const path = searchParams.get("path") || "/Pawkit";
+
+    // 4. Navigate to the folder to get its UUID
+    const segments = path.split("/").filter(Boolean);
+    let currentUUID = session.baseFolderUUID;
+    let currentPath = "";
+
+    for (const folderName of segments) {
+      currentPath += "/" + folderName;
+
+      const listResponse = await fetch(`${FILEN_API_URL}/v3/dir/content`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session.apiKey}`,
+        },
+        body: JSON.stringify({ uuid: currentUUID }),
+      });
+
+      if (!listResponse.ok) {
+        return NextResponse.json({ error: "Failed to navigate to folder" }, { status: 500 });
+      }
+
+      const listResult = await listResponse.json();
+      if (!listResult.status) {
+        return NextResponse.json({ error: listResult.message }, { status: 500 });
+      }
+
+      const content: FolderContent = listResult.data;
+      const targetHash = await hashFolderName(folderName);
+
+      interface FolderWithHash { uuid: string; name: string; nameHashed?: string }
+      const folders = (content.folders || []) as FolderWithHash[];
+      const existingFolder = folders.find(f => f.nameHashed === targetHash);
+
+      if (!existingFolder) {
+        return NextResponse.json({
+          items: [],
+          path,
+          error: `Folder not found: ${currentPath}`
+        });
+      }
+
+      currentUUID = existingFolder.uuid;
+    }
+
+    // 5. List the final folder contents
+    const finalResponse = await fetch(`${FILEN_API_URL}/v3/dir/content`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.apiKey}`,
+      },
+      body: JSON.stringify({ uuid: currentUUID }),
+    });
+
+    if (!finalResponse.ok) {
+      return NextResponse.json({ error: "Failed to list folder" }, { status: 500 });
+    }
+
+    const finalResult = await finalResponse.json();
+    if (!finalResult.status) {
+      return NextResponse.json({ error: finalResult.message }, { status: 500 });
+    }
+
+    const content: FolderContent = finalResult.data;
+    const items: FilenFolderItem[] = [];
+
+    // Add folders
+    for (const folder of (content.folders || [])) {
+      const decryptedName = await decryptMetadata(folder.name, session.masterKeys);
+      if (decryptedName) {
+        items.push({
+          uuid: folder.uuid,
+          name: decryptedName,
+          path: `${path}/${decryptedName}`,
+          size: 0,
+          mime: "folder",
+          modified: Date.now(),
+          isFolder: true,
+        });
+      }
+    }
+
+    // Add files
+    interface FilenUpload {
+      uuid: string;
+      name: string;
+      size: number;
+      mime: string;
+      timestamp: number;
+      metadata?: string;
+    }
+    for (const file of ((content.uploads || []) as FilenUpload[])) {
+      const decryptedName = await decryptMetadata(file.name, session.masterKeys);
+      if (decryptedName) {
+        items.push({
+          uuid: file.uuid,
+          name: decryptedName,
+          path: `${path}/${decryptedName}`,
+          size: file.size || 0,
+          mime: file.mime || "application/octet-stream",
+          modified: file.timestamp || Date.now(),
+          isFolder: false,
+        });
+      }
+    }
+
+    return NextResponse.json({ items, path });
+  } catch (error) {
+    console.error("[Filen Folder GET] Error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to list folder" },
+      { status: 500 }
+    );
+  }
 }

@@ -319,21 +319,22 @@ export class DropboxProvider implements CloudStorageProvider {
       const data = await response.json();
 
       return (data.entries || [])
-        .filter((entry: { ".tag": string }) => entry[".tag"] === "file")
-        .map((file: {
+        .map((entry: {
+          ".tag": string;
           id: string;
           name: string;
           path_display: string;
-          size: number;
-          server_modified: string;
+          size?: number;
+          server_modified?: string;
         }) => ({
-          cloudId: file.id,
-          name: file.name,
-          path: file.path_display,
-          size: file.size || 0,
-          mimeType: this.getMimeType(file.name),
-          modifiedAt: new Date(file.server_modified),
+          cloudId: entry.id,
+          name: entry.name,
+          path: entry.path_display,
+          size: entry.size || 0,
+          mimeType: entry[".tag"] === "folder" ? "folder" : this.getMimeType(entry.name),
+          modifiedAt: entry.server_modified ? new Date(entry.server_modified) : new Date(),
           provider: this.id,
+          isFolder: entry[".tag"] === "folder",
         }));
     } catch (error) {
       console.error("[DropboxProvider] List files failed:", error);

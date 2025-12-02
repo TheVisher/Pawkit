@@ -397,6 +397,7 @@ export class GoogleDriveProvider implements CloudStorageProvider {
         mimeType: file.mimeType,
         modifiedAt: new Date(file.modifiedTime),
         provider: this.id,
+        isFolder: file.mimeType === "application/vnd.google-apps.folder",
       }));
     } catch (error) {
       console.error("[GDriveProvider] List files failed:", error);

@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, type LucideIcon } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, type LucideIcon } from "lucide-react";
 import { shallow } from "zustand/shallow";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -12,6 +12,7 @@ import { useToastStore } from "@/lib/stores/toast-store";
 import { useRecentHistory } from "@/lib/hooks/use-recent-history";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
+import { useConnectorStore } from "@/lib/stores/connector-store";
 import { GenericContextMenu, type ContextMenuItemConfig } from "@/components/ui/generic-context-menu";
 import {
   Tooltip,
@@ -163,6 +164,21 @@ export function LeftNavigationPanel({
 
   // Get Rediscover mode state
   const rediscoverStore = useRediscoverStore();
+
+  // Get cloud connector states
+  const filenConnected = useConnectorStore((state) => state.filen.connected);
+  const gdriveConnected = useConnectorStore((state) => state.googleDrive.connected);
+  const dropboxConnected = useConnectorStore((state) => state.dropbox.connected);
+  const onedriveConnected = useConnectorStore((state) => state.onedrive.connected);
+
+  const connectedCloudProviders = useMemo(() => {
+    const providers: { id: string; name: string; slug: string }[] = [];
+    if (filenConnected) providers.push({ id: "filen", name: "Filen", slug: "filen" });
+    if (gdriveConnected) providers.push({ id: "google-drive", name: "Google Drive", slug: "gdrive" });
+    if (dropboxConnected) providers.push({ id: "dropbox", name: "Dropbox", slug: "dropbox" });
+    if (onedriveConnected) providers.push({ id: "onedrive", name: "OneDrive", slug: "onedrive" });
+    return providers;
+  }, [filenConnected, gdriveConnected, dropboxConnected, onedriveConnected]);
 
   // Calculate uncategorized cards count for Rediscover badge
   // Uses a separate subscription to avoid re-renders from unrelated card changes
@@ -1202,6 +1218,48 @@ export function LeftNavigationPanel({
               )}
             </div>
           </PanelSection>
+
+          {/* Cloud Drives Section - Only show if at least one provider connected */}
+          {connectedCloudProviders.length > 0 && (
+            <PanelSection
+              id="left-cloud-drives"
+              title="Cloud Drives"
+              icon={<Cloud className={`h-4 w-4 ${pathname?.startsWith("/cloud-drives") ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
+              active={pathname === "/cloud-drives"}
+              onClick={() => {
+                handleNavigate("/cloud-drives");
+                if (collapsedSections["left-cloud-drives"]) {
+                  toggleSection("left-cloud-drives");
+                }
+              }}
+            >
+              <div className="space-y-1">
+                {connectedCloudProviders.map((provider) => {
+                  const providerPath = `/cloud-drives/${provider.slug}`;
+                  const isActive = pathname === providerPath;
+                  return (
+                    <button
+                      key={provider.id}
+                      onClick={() => handleNavigate(providerPath)}
+                      className={`
+                        w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all relative
+                        ${isActive
+                          ? "text-accent-foreground font-medium shadow-glow-accent-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                        }
+                      `}
+                    >
+                      <FolderOpen size={16} className="flex-shrink-0" />
+                      <span className="flex-1 text-left">{provider.name}</span>
+                      {isActive && (
+                        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </PanelSection>
+          )}
 
           {/* Recently Viewed Section */}
           {recentItems.length > 0 && (
