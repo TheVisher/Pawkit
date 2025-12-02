@@ -1,17 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, RefreshCw, Upload, Loader2 } from "lucide-react";
+import { ArrowLeft, RefreshCw, Loader2, List, FolderTree } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { GlowButton } from "@/components/ui/glow-button";
 import { CloudBreadcrumb } from "./cloud-breadcrumb";
 import { CloudFileList } from "./cloud-file-list";
 import { CloudFilePreview } from "./cloud-file-preview";
 import { CloudUploadButton } from "./cloud-upload-button";
+import { CloudFolderTree } from "./cloud-folder-tree";
 import { cloudStorage } from "@/lib/services/cloud-storage";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { useCloudDrivesStore } from "@/lib/stores/cloud-drives-store";
 import type { CloudFile, CloudProviderId } from "@/lib/services/cloud-storage/types";
+
+const VIEW_MODE_KEY = "cloud-drives-view-mode";
 
 interface CloudFileExplorerProps {
   providerId: CloudProviderId;
@@ -26,7 +29,19 @@ export function CloudFileExplorer({ providerId, providerName }: CloudFileExplore
   const [refreshing, setRefreshing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<CloudFile | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "tree">(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem(VIEW_MODE_KEY);
+      return (stored === "list" || stored === "tree") ? stored : "tree";
+    }
+    return "tree";
+  });
   const toast = useToastStore();
+
+  // Persist view mode preference
+  useEffect(() => {
+    localStorage.setItem(VIEW_MODE_KEY, viewMode);
+  }, [viewMode]);
 
   // Cloud drives store for sidebar selection
   const setStoreSelectedFile = useCloudDrivesStore((state) => state.setSelectedFile);
@@ -142,6 +157,32 @@ export function CloudFileExplorer({ providerId, providerName }: CloudFileExplore
         </div>
 
         <div className="flex items-center gap-2">
+          {/* View Mode Toggle */}
+          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`p-1.5 rounded transition-colors ${
+                viewMode === "list"
+                  ? "bg-purple-500/20 text-purple-400"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+              }`}
+              title="List View"
+            >
+              <List className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("tree")}
+              className={`p-1.5 rounded transition-colors ${
+                viewMode === "tree"
+                  ? "bg-purple-500/20 text-purple-400"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+              }`}
+              title="Tree View"
+            >
+              <FolderTree className="h-4 w-4" />
+            </button>
+          </div>
+
           <CloudUploadButton
             providerId={providerId}
             currentPath={currentPath}
@@ -162,22 +203,39 @@ export function CloudFileExplorer({ providerId, providerName }: CloudFileExplore
         </div>
       </div>
 
-      {/* Breadcrumb */}
-      <div className="mb-4 px-2">
-        <CloudBreadcrumb path={currentPath} onNavigate={handleNavigate} />
-      </div>
+      {/* Breadcrumb - only show in list view */}
+      {viewMode === "list" && (
+        <div className="mb-4 px-2">
+          <CloudBreadcrumb path={currentPath} onNavigate={handleNavigate} />
+        </div>
+      )}
 
-      {/* File list */}
+      {/* File view - list or tree */}
       <div className="flex-1 overflow-auto">
-        <CloudFileList
-          files={files}
-          loading={loading}
-          currentPath={currentPath}
-          onNavigate={handleNavigate}
-          onDownload={handleDownload}
-          onDelete={handleDelete}
-          onPreview={handlePreview}
-        />
+        {viewMode === "tree" ? (
+          <div className="p-2">
+            <CloudFolderTree
+              providerId={providerId}
+              onFileSelect={(file) => {
+                setStoreSelectedFile(file);
+                setSelectedFile(file);
+                setShowPreview(true);
+              }}
+              selectedFileId={selectedFile?.cloudId}
+              rootPath="/Pawkit"
+            />
+          </div>
+        ) : (
+          <CloudFileList
+            files={files}
+            loading={loading}
+            currentPath={currentPath}
+            onNavigate={handleNavigate}
+            onDownload={handleDownload}
+            onDelete={handleDelete}
+            onPreview={handlePreview}
+          />
+        )}
       </div>
 
       {/* Preview modal */}
