@@ -9,12 +9,25 @@ import { CloudFileList } from "./cloud-file-list";
 import { CloudFilePreview } from "./cloud-file-preview";
 import { CloudUploadButton } from "./cloud-upload-button";
 import { CloudFolderTree } from "./cloud-folder-tree";
+import { CloudDeleteModal } from "./cloud-delete-modal";
 import { cloudStorage } from "@/lib/services/cloud-storage";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { useCloudDrivesStore } from "@/lib/stores/cloud-drives-store";
+import { useStorageStrategyStore } from "@/lib/stores/storage-strategy-store";
+import { useCloudDelete, type CloudFileForDelete } from "@/lib/hooks/use-cloud-delete";
 import type { CloudFile, CloudProviderId } from "@/lib/services/cloud-storage/types";
 
 const VIEW_MODE_KEY = "cloud-drives-view-mode";
+
+// Helper to find a file by name (for backup deletion)
+function findFileRecursive(files: CloudFile[], name: string): CloudFile | undefined {
+  for (const file of files) {
+    if (file.name === name && !file.isFolder) {
+      return file;
+    }
+  }
+  return undefined;
+}
 
 interface CloudFileExplorerProps {
   providerId: CloudProviderId;
@@ -47,6 +60,10 @@ export function CloudFileExplorer({ providerId, providerName }: CloudFileExplore
   const setStoreSelectedFile = useCloudDrivesStore((state) => state.setSelectedFile);
   const clearStoreSelection = useCloudDrivesStore((state) => state.clearSelection);
 
+  // Storage strategy for backup-aware deletion
+  const strategy = useStorageStrategyStore((state) => state.strategy);
+
+  // loadFolder must be defined before handleActualDelete (uses it)
   const loadFolder = useCallback(async (path: string) => {
     setLoading(true);
     try {
@@ -66,6 +83,52 @@ export function CloudFileExplorer({ providerId, providerName }: CloudFileExplore
       setLoading(false);
     }
   }, [providerId, toast]);
+
+  // Cloud delete hook for backup-aware deletion
+  const handleActualDelete = useCallback(
+    async (file: CloudFileForDelete, deleteFromBackup: boolean) => {
+      try {
+        // Delete from primary provider (the one we're browsing)
+        const provider = cloudStorage.getProvider(providerId);
+        if (!provider) return;
+        await provider.deleteFile(file.cloudId);
+
+        // If deleteFromBackup is true and there's a backup provider configured, delete from it too
+        if (deleteFromBackup && strategy.secondaryEnabled && strategy.secondaryProvider) {
+          const backupProvider = cloudStorage.getProvider(strategy.secondaryProvider);
+          if (backupProvider) {
+            try {
+              // Find the file in the backup by searching for it
+              const backupFiles = await backupProvider.listFiles("/Pawkit");
+              const backupFile = findFileRecursive(backupFiles, file.name);
+              if (backupFile) {
+                await backupProvider.deleteFile(backupFile.cloudId);
+              }
+            } catch (backupError) {
+              console.warn("[CloudFileExplorer] Failed to delete from backup:", backupError);
+            }
+          }
+        }
+
+        toast.success(`Deleted ${file.name}`);
+        await loadFolder(currentPath);
+      } catch (error) {
+        console.error("[CloudFileExplorer] Delete failed:", error);
+        toast.error("Delete failed");
+      }
+    },
+    [providerId, strategy, toast, loadFolder, currentPath]
+  );
+
+  const {
+    showModal: showDeleteModal,
+    pendingFile,
+    secondaryProvider,
+    primaryProvider,
+    initiateDelete,
+    closeModal: closeDeleteModal,
+    confirmDelete,
+  } = useCloudDelete(handleActualDelete);
 
   useEffect(() => {
     loadFolder(currentPath);
@@ -109,23 +172,14 @@ export function CloudFileExplorer({ providerId, providerName }: CloudFileExplore
     }
   };
 
-  const handleDelete = async (file: CloudFile) => {
-    const confirmed = window.confirm(`Delete "${file.name}"? This cannot be undone.`);
-    if (!confirmed) return;
-
-    try {
-      const provider = cloudStorage.getProvider(providerId);
-      if (!provider) return;
-
-      await provider.deleteFile(file.cloudId);
-      toast.success(`Deleted ${file.name}`);
-
-      // Refresh the file list
-      await loadFolder(currentPath);
-    } catch (error) {
-      console.error("[CloudFileExplorer] Delete failed:", error);
-      toast.error("Delete failed");
-    }
+  const handleDelete = (file: CloudFile) => {
+    // Convert CloudFile to CloudFileForDelete and use the hook
+    const fileForDelete: CloudFileForDelete = {
+      name: file.name,
+      cloudId: file.cloudId,
+      provider: providerId,
+    };
+    initiateDelete(fileForDelete);
   };
 
   const handlePreview = (file: CloudFile) => {
@@ -248,6 +302,18 @@ export function CloudFileExplorer({ providerId, providerName }: CloudFileExplore
             setSelectedFile(null);
           }}
           onDownload={() => handleDownload(selectedFile)}
+        />
+      )}
+
+      {/* Delete confirmation modal for independent backup mode */}
+      {showDeleteModal && pendingFile && primaryProvider && (
+        <CloudDeleteModal
+          isOpen={showDeleteModal}
+          onClose={closeDeleteModal}
+          fileName={pendingFile.name}
+          primaryProvider={primaryProvider}
+          secondaryProvider={secondaryProvider}
+          onConfirm={confirmDelete}
         />
       )}
     </div>

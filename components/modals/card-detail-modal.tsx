@@ -52,6 +52,7 @@ import { FileUploadButton } from "@/components/files/file-drop-zone";
 import { FilePreviewModal } from "@/components/files/file-preview-modal";
 import { StoredFile } from "@/lib/types";
 import dynamic from "next/dynamic";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
 // Dynamic imports to avoid SSR issues with pdf.js
 const PdfViewer = dynamic(
@@ -163,16 +164,20 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const isPanelOpen = usePanelStore((state) => state.isOpen);
   const panelMode = usePanelStore((state) => state.mode);
 
+  // Mobile detection - modal is full-screen on mobile
+  const isMobile = useIsMobile();
+
   // Calculate modal offset based on panel states
+  // On mobile: no offsets, modal takes full screen
   // Floating panels: 325px width + 16px margin on each side = 357px total space
   // Anchored panels: 325px width, flush to edge
-  const leftOffset = isLeftOpen
+  const leftOffset = isMobile ? "0px" : (isLeftOpen
     ? (leftMode === "floating" ? "357px" : "325px")
-    : "0px";
+    : "0px");
 
-  const rightOffset = isPanelOpen
+  const rightOffset = isMobile ? "0px" : (isPanelOpen
     ? (panelMode === "floating" ? "357px" : "325px")
-    : "0px";
+    : "0px");
 
   // Track card view for recent history
   useTrackCardView(card);
@@ -184,11 +189,19 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   }, []);
 
   // Open control panel when card modal opens or card changes.
+  // On mobile: only set activeCardId without opening the side panel
   // Do NOT restore in cleanup here, because card switches (key changes)
   // would trigger cleanup and incorrectly restore the panel.
+  const setActiveCardId = usePanelStore((state) => state.setActiveCardId);
   useEffect(() => {
-    openCardDetails(card.id);
-  }, [card.id, openCardDetails]);
+    if (isMobile) {
+      // On mobile, just set the active card ID without opening the right panel
+      setActiveCardId(card.id);
+    } else {
+      // On desktop, open the control panel with card details
+      openCardDetails(card.id);
+    }
+  }, [card.id, isMobile, openCardDetails, setActiveCardId]);
 
   // Initialize data store if not already initialized
   useEffect(() => {
@@ -1052,7 +1065,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
       {/* Centered Card Content - dynamically centered over content panel */}
       <div
-        className="fixed inset-0 z-[101] flex items-center justify-center p-4 md:p-8 pointer-events-none"
+        className={`fixed inset-0 z-[101] flex items-center justify-center pointer-events-none ${
+          isMobile ? "p-0" : "p-4 md:p-8"
+        }`}
         style={{
           left: leftOffset,
           right: rightOffset,
@@ -1060,8 +1075,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         }}
       >
         <div
-          className={`rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative flex flex-col ${
-            isReaderExpanded || isModalExpanded
+          className={`${isMobile ? "rounded-none" : "rounded-3xl"} border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative flex flex-col ${
+            isMobile || isReaderExpanded || isModalExpanded
               ? "w-full h-full"
               : isYouTubeUrl(card.url)
                 ? "w-full max-w-6xl max-h-[85vh]"

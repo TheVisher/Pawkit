@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
 type ContentPanelProps = {
   children: ReactNode;
@@ -17,6 +18,9 @@ export function ContentPanel({
   rightOpen,
   rightMode,
 }: ContentPanelProps) {
+  // Mobile detection - on mobile, content takes full width
+  const isMobile = useIsMobile();
+
   // Content panel mode is always tied to left panel mode
   const contentIsAnchored = leftMode === "anchored";
 
@@ -36,38 +40,54 @@ export function ContentPanel({
   //   - Special case (right embedded): Right margin is 16px
   //   - Normal: 357px (floating panel) or 325px (anchored panel) or 16px (closed)
 
-  const leftPosition = contentIsAnchored
-    ? (leftOpen ? "325px" : "0")
-    : (leftOpen ? (leftMode === "floating" ? "357px" : "325px") : "16px");
+  // Mobile: full width, no margins
+  // Desktop: calculate based on panel states
+  const leftPosition = isMobile
+    ? "0"
+    : (contentIsAnchored
+      ? (leftOpen ? "325px" : "0")
+      : (leftOpen ? (leftMode === "floating" ? "357px" : "325px") : "16px"));
 
   // Right position calculation:
+  // - Mobile: 0 (full width)
   // - Embedded mode: content ends at 341px (325px panel + 16px margin) so panel sits flush
   // - Normal mode: standard positioning
-  const rightPosition = contentIsAnchored
-    ? (rightOpen && rightMode === "anchored" ? "325px" : "0")
-    : (isRightEmbedded ? "341px" : (rightOpen ? (rightMode === "floating" ? "357px" : "325px") : "16px"));
+  const rightPosition = isMobile
+    ? "0"
+    : (contentIsAnchored
+      ? (rightOpen && rightMode === "anchored" ? "325px" : "0")
+      : (isRightEmbedded ? "341px" : (rightOpen ? (rightMode === "floating" ? "357px" : "325px") : "16px")));
 
   // Build border classes dynamically
+  // Mobile: no borders (full screen)
   // When content is anchored, remove all borders
   // When content is floating, show borders except where anchored/embedded panels are
-  const borderClasses = contentIsAnchored
+  const borderClasses = isMobile
     ? "border-0"
-    : `
-      ${hasAnchoredLeft ? "border-l-0" : "border-l"}
-      ${hasAnchoredRight || isRightEmbedded ? "border-r-0" : "border-r"}
-      border-t border-b border-white/10
-    `;
+    : (contentIsAnchored
+      ? "border-0"
+      : `
+        ${hasAnchoredLeft ? "border-l-0" : "border-l"}
+        ${hasAnchoredRight || isRightEmbedded ? "border-r-0" : "border-r"}
+        border-t border-b border-white/10
+      `);
 
-  // Border radius - only rounded when content is floating
-  // When right is embedded, remove right-side rounding to merge with embedded panel
-  const roundedClasses = contentIsAnchored
+  // Border radius - only rounded when content is floating on desktop
+  // Mobile: no rounding (full screen)
+  const roundedClasses = isMobile
     ? "rounded-none"
-    : isRightEmbedded
-      ? "rounded-l-2xl rounded-r-none"
-      : "rounded-2xl";
+    : (contentIsAnchored
+      ? "rounded-none"
+      : isRightEmbedded
+        ? "rounded-l-2xl rounded-r-none"
+        : "rounded-2xl");
 
-  // Vertical positioning - anchored content takes full height
-  const verticalClasses = contentIsAnchored ? "top-0 bottom-0" : "top-4 bottom-4";
+  // Vertical positioning
+  // Mobile: account for mobile header (sticky top bar)
+  // Desktop: anchored content takes full height, floating has margins
+  const verticalClasses = isMobile
+    ? "top-0 bottom-0"
+    : (contentIsAnchored ? "top-0 bottom-0" : "top-4 bottom-4");
 
   // Debug logging to track panel state and dimensions
   useEffect(() => {

@@ -3,8 +3,9 @@ import { deleteCard, getCard, updateCard, softDeleteCard } from "@/lib/server/ca
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
-import { unauthorized, notFound, conflict, success, ErrorCodes } from "@/lib/utils/api-responses";
+import { unauthorized, notFound, conflict, success, rateLimited, ErrorCodes } from "@/lib/utils/api-responses";
 import { ensureToCategorizePawkit, getToCategorizeSlug } from "@/lib/utils/system-pawkits";
+import { rateLimit, getRateLimitHeaders } from "@/lib/utils/rate-limit";
 
 // Force Node.js runtime for Prisma compatibility
 export const runtime = 'nodejs';
@@ -62,6 +63,21 @@ export async function PATCH(request: NextRequest, segmentData: RouteParams) {
       }
     } catch (error) {
       // On error, allow the operation to proceed (fail open for availability)
+    }
+
+    // Rate limiting: 60 card updates per minute per user
+    const rateLimitResult = rateLimit({
+      identifier: `card-update:${user.id}`,
+      limit: 60,
+      windowMs: 60000, // 1 minute
+    });
+
+    if (!rateLimitResult.allowed) {
+      const response = rateLimited('Too many card updates. Please try again later.');
+      Object.entries(getRateLimitHeaders(rateLimitResult)).forEach(([key, value]) => {
+        response.headers.set(key, value as string);
+      });
+      return response;
     }
 
     const params = await segmentData.params;
@@ -133,6 +149,21 @@ export async function DELETE(_request: NextRequest, segmentData: RouteParams) {
       }
     } catch (error) {
       // On error, allow the operation to proceed (fail open for availability)
+    }
+
+    // Rate limiting: 60 card deletions per minute per user
+    const rateLimitResult = rateLimit({
+      identifier: `card-delete:${user.id}`,
+      limit: 60,
+      windowMs: 60000, // 1 minute
+    });
+
+    if (!rateLimitResult.allowed) {
+      const response = rateLimited('Too many card deletions. Please try again later.');
+      Object.entries(getRateLimitHeaders(rateLimitResult)).forEach(([key, value]) => {
+        response.headers.set(key, value as string);
+      });
+      return response;
     }
 
     const params = await segmentData.params;

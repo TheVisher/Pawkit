@@ -4,15 +4,15 @@
  */
 
 // Allowed Chrome extension IDs
-// Add your published Chrome extension ID here when you publish
 export const ALLOWED_CHROME_EXTENSIONS: string[] = [
-  // Example: 'abcdefghijklmnopqrstuvwxyz123456'
+  'bbmhcminlncbpkmblbaelhkamhmknjcj', // Pawkit Web Clipper - Chrome Web Store
 ];
 
 // Allowed Firefox extension IDs
 // Add your published Firefox extension ID here when you publish
 export const ALLOWED_FIREFOX_EXTENSIONS: string[] = [
-  // Example: '{12345678-1234-1234-1234-123456789012}'
+  // Firefox extension not yet published
+  // Format: '{uuid}' or 'name@domain'
 ];
 
 // In development AND when no specific extensions are configured, allow any extension origin

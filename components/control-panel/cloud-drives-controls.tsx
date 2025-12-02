@@ -1,14 +1,20 @@
 "use client";
 
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Cloud, RefreshCw, FileText, HardDrive, CheckCircle2, XCircle, Loader2, ExternalLink, Trash2, Copy } from "lucide-react";
+import { Cloud, RefreshCw, FileText, HardDrive, CheckCircle2, Loader2, ExternalLink, Trash2, Copy } from "lucide-react";
 import { PanelSection } from "./control-panel";
 import { TodosSection } from "./todos-section";
 import { useConnectorStore } from "@/lib/stores/connector-store";
 import { useCloudDrivesStore } from "@/lib/stores/cloud-drives-store";
+import { useStorageStrategyStore } from "@/lib/stores/storage-strategy-store";
 import { CloudProviderItem } from "./cloud-provider-item";
+import { CloudDeleteModal } from "@/components/cloud-drives/cloud-delete-modal";
 import { GlowButton } from "@/components/ui/glow-button";
 import { formatFileSize } from "@/lib/utils/file-utils";
+import { cloudStorage } from "@/lib/services/cloud-storage";
+import { useToastStore } from "@/lib/stores/toast-store";
+import { useCloudDelete, type CloudFileForDelete } from "@/lib/hooks/use-cloud-delete";
 import type { CloudProviderId } from "@/lib/services/cloud-storage/types";
 
 interface ProviderInfo {
@@ -23,8 +29,57 @@ interface ProviderInfo {
 
 export function CloudDrivesControls() {
   const router = useRouter();
+  const toast = useToastStore();
   const selectedFile = useCloudDrivesStore((state) => state.selectedFile);
   const clearSelection = useCloudDrivesStore((state) => state.clearSelection);
+
+  // Storage strategy for backup-aware deletion
+  const strategy = useStorageStrategyStore((state) => state.strategy);
+
+  // Cloud delete handler
+  const handleActualDelete = useCallback(
+    async (file: CloudFileForDelete, deleteFromBackup: boolean) => {
+      try {
+        // Delete from the file's provider
+        const provider = cloudStorage.getProvider(file.provider);
+        if (!provider) return;
+        await provider.deleteFile(file.cloudId);
+
+        // If deleteFromBackup is true and there's a backup provider, delete from it too
+        if (deleteFromBackup && strategy.secondaryEnabled && strategy.secondaryProvider) {
+          const backupProvider = cloudStorage.getProvider(strategy.secondaryProvider);
+          if (backupProvider) {
+            try {
+              const backupFiles = await backupProvider.listFiles("/Pawkit");
+              const backupFile = backupFiles.find(f => f.name === file.name && !f.isFolder);
+              if (backupFile) {
+                await backupProvider.deleteFile(backupFile.cloudId);
+              }
+            } catch (backupError) {
+              console.warn("[CloudDrivesControls] Failed to delete from backup:", backupError);
+            }
+          }
+        }
+
+        toast.success(`Deleted ${file.name}`);
+        clearSelection();
+      } catch (error) {
+        console.error("[CloudDrivesControls] Delete failed:", error);
+        toast.error("Delete failed");
+      }
+    },
+    [strategy, toast, clearSelection]
+  );
+
+  const {
+    showModal: showDeleteModal,
+    pendingFile,
+    secondaryProvider,
+    primaryProvider,
+    initiateDelete,
+    closeModal: closeDeleteModal,
+    confirmDelete,
+  } = useCloudDelete(handleActualDelete);
 
   // Get connector states
   const filenState = useConnectorStore((state) => state.filen);
@@ -254,7 +309,14 @@ export function CloudDrivesControls() {
                 </GlowButton>
                 <GlowButton
                   onClick={() => {
-                    // TODO: Implement delete
+                    if (selectedFile) {
+                      const fileForDelete: CloudFileForDelete = {
+                        name: selectedFile.name,
+                        cloudId: selectedFile.cloudId,
+                        provider: selectedFile.provider,
+                      };
+                      initiateDelete(fileForDelete);
+                    }
                   }}
                   variant="primary"
                   size="sm"
@@ -291,6 +353,18 @@ export function CloudDrivesControls() {
             Connect Provider
           </GlowButton>
         </div>
+      )}
+
+      {/* Delete confirmation modal for independent backup mode */}
+      {showDeleteModal && pendingFile && primaryProvider && (
+        <CloudDeleteModal
+          isOpen={showDeleteModal}
+          onClose={closeDeleteModal}
+          fileName={pendingFile.name}
+          primaryProvider={primaryProvider}
+          secondaryProvider={secondaryProvider}
+          onConfirm={confirmDelete}
+        />
       )}
     </>
   );
