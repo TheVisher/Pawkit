@@ -87,8 +87,8 @@ export function CloudDrivesControls() {
   // Note: lastSync might be a string (from localStorage) so we convert to Date
   const lastSyncDate = connectedProviders
     .map((p) => p.lastSync)
-    .filter((d): d is Date | string => d !== null)
-    .map((d) => (d instanceof Date ? d : new Date(d)))
+    .filter((d): d is Date => d !== null)
+    .map((d) => (d instanceof Date ? d : new Date(d as unknown as string)))
     .filter((d) => !isNaN(d.getTime()))
     .sort((a, b) => b.getTime() - a.getTime())[0];
 
