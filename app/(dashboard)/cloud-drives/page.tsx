@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Cloud, RefreshCw, SplitSquareHorizontal, FileText, Image as ImageIcon, Music, Film, File, Loader2, ShieldCheck, Triangle, Box } from "lucide-react";
+import { Cloud, RefreshCw, SplitSquareHorizontal, FileText, Image as ImageIcon, Music, Film, File, Loader2, ShieldCheck, Triangle, Box, Settings } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import { CloudDrivesSplitView } from "@/components/cloud-drives";
 import { useConnectorStore } from "@/lib/stores/connector-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useCloudDrivesStore } from "@/lib/stores/cloud-drives-store";
+import { useStorageStrategyStore } from "@/lib/stores/storage-strategy-store";
 import { formatFileSize } from "@/lib/utils/file-utils";
 import type { CloudProviderId } from "@/lib/services/cloud-storage/types";
 
@@ -82,6 +83,10 @@ export default function CloudDrivesPage() {
 
   const openCloudDrivesControls = usePanelStore((state) => state.openCloudDrivesControls);
   const setSelectedFile = useCloudDrivesStore((state) => state.setSelectedFile);
+
+  // Storage strategy
+  const primaryProvider = useStorageStrategyStore((state) => state.strategy.primaryProvider);
+  const setPrimaryProvider = useStorageStrategyStore((state) => state.setPrimaryProvider);
 
   const cards = useDataStore((state) => state.cards);
 
@@ -212,6 +217,43 @@ export default function CloudDrivesPage() {
           </GlowButton>
         </div>
       </div>
+
+      {/* First-Time Setup Prompt */}
+      {connectedProviders.length > 0 && !primaryProvider && (
+        <div className="mb-8 p-4 rounded-2xl bg-purple-500/10 border border-purple-500/30">
+          <div className="flex items-start gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/20 shrink-0">
+              <Settings className="h-5 w-5 text-purple-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-medium text-white mb-1">Configure Your Storage</h3>
+              <p className="text-sm text-gray-400 mb-3">
+                You have {connectedProviders.length} cloud {connectedProviders.length === 1 ? "provider" : "providers"} connected.
+                Choose where your files should be stored by default.
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {connectedProviders.map((provider) => (
+                  <GlowButton
+                    key={provider.id}
+                    onClick={() => setPrimaryProvider(provider.id)}
+                    variant="primary"
+                    size="sm"
+                  >
+                    <provider.icon className={`h-4 w-4 mr-2 ${provider.color}`} />
+                    Use {provider.name}
+                  </GlowButton>
+                ))}
+                <button
+                  onClick={() => router.push("/settings")}
+                  className="px-3 py-1.5 text-xs text-gray-400 hover:text-white transition-colors"
+                >
+                  Advanced Settings
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Recent Files Section */}
       {connectedProviders.length > 0 && (
