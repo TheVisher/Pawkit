@@ -222,27 +222,39 @@ export default function CloudDrivesPage() {
           </h2>
 
           {recentSyncedFiles.length > 0 ? (
-            <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
-              {/* Table Header */}
-              <div className="grid grid-cols-[1fr_100px_100px_120px_100px] gap-4 px-4 py-3 border-b border-white/10 text-xs font-medium text-gray-400 uppercase tracking-wider">
+            <div className="bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden overflow-x-auto">
+              {/* Table Header - dynamic columns based on connected providers */}
+              <div
+                className="grid gap-4 px-4 py-3 border-b border-white/10 text-xs font-medium text-gray-400 uppercase tracking-wider min-w-fit"
+                style={{
+                  gridTemplateColumns: `1fr 80px 80px ${connectedProviders.map(() => '60px').join(' ')} 90px`
+                }}
+              >
                 <div>Name</div>
                 <div>Type</div>
                 <div>Size</div>
-                <div>Provider</div>
+                {connectedProviders.map((provider) => {
+                  const ProviderIcon = provider.icon;
+                  return (
+                    <div key={provider.id} className="flex items-center justify-center" title={provider.name}>
+                      <ProviderIcon className={`h-4 w-4 ${provider.color}`} />
+                    </div>
+                  );
+                })}
                 <div>Synced</div>
               </div>
 
               {/* Table Body */}
               <div className="divide-y divide-white/5">
                 {recentSyncedFiles.map((file) => {
-                  const providerInfo = getProviderInfo(file.cloudProvider || "");
-                  const ProviderIcon = providerInfo?.icon || Cloud;
-
                   return (
                     <div
                       key={file.id}
                       onClick={() => handleFileClick(file)}
-                      className="grid grid-cols-[1fr_100px_100px_120px_100px] gap-4 px-4 py-3 hover:bg-white/5 cursor-pointer transition-colors"
+                      className="grid gap-4 px-4 py-3 hover:bg-white/5 cursor-pointer transition-colors min-w-fit"
+                      style={{
+                        gridTemplateColumns: `1fr 80px 80px ${connectedProviders.map(() => '60px').join(' ')} 90px`
+                      }}
                     >
                       {/* Name */}
                       <div className="flex items-center gap-3 min-w-0">
@@ -262,13 +274,19 @@ export default function CloudDrivesPage() {
                         {formatFileSize(file.content?.length || 0)}
                       </div>
 
-                      {/* Provider */}
-                      <div className="flex items-center gap-2">
-                        <ProviderIcon className={`h-4 w-4 ${providerInfo?.color || "text-gray-400"}`} />
-                        <span className="text-sm text-muted-foreground">
-                          {providerInfo?.name || file.cloudProvider}
-                        </span>
-                      </div>
+                      {/* Per-provider sync status */}
+                      {connectedProviders.map((provider) => {
+                        const isSynced = file.cloudProvider === provider.id;
+                        return (
+                          <div key={provider.id} className="flex items-center justify-center">
+                            {isSynced ? (
+                              <span className={`text-lg ${provider.color}`} title={`Synced to ${provider.name}`}>●</span>
+                            ) : (
+                              <span className="text-lg text-white/20" title={`Not synced to ${provider.name}`}>○</span>
+                            )}
+                          </div>
+                        );
+                      })}
 
                       {/* Synced */}
                       <div className="text-sm text-muted-foreground">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { X, GripVertical } from "lucide-react";
+import { X, GripVertical, SplitSquareHorizontal } from "lucide-react";
 import { CloudSplitPane } from "./cloud-split-pane";
 import { transferFile } from "@/lib/services/cloud-storage/transfer-service";
 import { useConnectorStore } from "@/lib/stores/connector-store";
@@ -148,7 +148,7 @@ export function CloudDrivesSplitView({
         sourceFile: draggedFile,
         targetProvider,
         targetPath,
-        onProgress: (percent, status) => {
+        onProgress: () => {
           // Could update toast here
         },
       });
@@ -170,8 +170,8 @@ export function CloudDrivesSplitView({
   // Not enough providers connected
   if (connectedProviders.length < 2) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-        <div className="bg-surface-90 border border-white/10 rounded-2xl p-8 max-w-md text-center">
+      <div className="flex flex-col h-full items-center justify-center p-8">
+        <div className="bg-white/[0.02] border border-white/10 rounded-2xl p-8 max-w-md text-center">
           <h2 className="text-xl font-semibold text-white mb-4">
             Connect More Providers
           </h2>
@@ -192,14 +192,19 @@ export function CloudDrivesSplitView({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-background">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex-shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/10">
-        <div>
-          <h2 className="text-lg font-semibold text-white">Split View</h2>
-          <p className="text-sm text-muted-foreground">
-            Drag files between providers to copy them
-          </p>
+      <div className="flex-shrink-0 flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/20 border border-purple-500/30">
+            <SplitSquareHorizontal className="h-5 w-5 text-purple-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-white">Split View</h1>
+            <p className="text-sm text-muted-foreground">
+              Drag files between providers to copy them
+            </p>
+          </div>
         </div>
         <button
           onClick={onClose}
@@ -210,54 +215,56 @@ export function CloudDrivesSplitView({
         </button>
       </div>
 
-      {/* Split Panes */}
-      <div
-        ref={containerRef}
-        className={`flex-1 flex overflow-hidden ${isDragging ? "cursor-col-resize select-none" : ""}`}
-      >
-        {/* Left Pane */}
-        <div style={{ width: `${dividerPosition}%` }} className="relative h-full">
-          <CloudSplitPane
-            providerId={leftProvider}
-            onProviderChange={setLeftProvider}
-            connectedProviders={connectedProviders}
-            currentPath={leftPath}
-            onNavigate={setLeftPath}
-            onFileDragStart={handleFileDragStart}
-            onFileDrop={(path) => handleFileDrop("left", path)}
-            isDragTarget={dragTargetPane === "left"}
-          />
-        </div>
-
-        {/* Divider */}
+      {/* Split Panes Container */}
+      <div className="flex-1 bg-white/[0.02] border border-white/10 rounded-2xl overflow-hidden">
         <div
-          onMouseDown={handleDividerMouseDown}
-          onDoubleClick={handleDividerDoubleClick}
-          className={`flex-shrink-0 w-2 bg-white/5 hover:bg-purple-500/20
-                     transition-colors cursor-col-resize
-                     flex items-center justify-center
-                     ${isDragging ? "bg-purple-500/30" : ""}`}
+          ref={containerRef}
+          className={`flex h-full ${isDragging ? "cursor-col-resize select-none" : ""}`}
         >
-          <GripVertical className="h-6 w-6 text-muted-foreground/50" />
-        </div>
+          {/* Left Pane */}
+          <div style={{ width: `${dividerPosition}%` }} className="relative h-full">
+            <CloudSplitPane
+              providerId={leftProvider}
+              onProviderChange={setLeftProvider}
+              connectedProviders={connectedProviders}
+              currentPath={leftPath}
+              onNavigate={setLeftPath}
+              onFileDragStart={handleFileDragStart}
+              onFileDrop={(path) => handleFileDrop("left", path)}
+              isDragTarget={dragTargetPane === "left"}
+            />
+          </div>
 
-        {/* Right Pane */}
-        <div style={{ width: `${100 - dividerPosition}%` }} className="relative h-full">
-          <CloudSplitPane
-            providerId={rightProvider}
-            onProviderChange={setRightProvider}
-            connectedProviders={connectedProviders}
-            currentPath={rightPath}
-            onNavigate={setRightPath}
-            onFileDragStart={handleFileDragStart}
-            onFileDrop={(path) => handleFileDrop("right", path)}
-            isDragTarget={dragTargetPane === "right"}
-          />
+          {/* Divider */}
+          <div
+            onMouseDown={handleDividerMouseDown}
+            onDoubleClick={handleDividerDoubleClick}
+            className={`flex-shrink-0 w-2 bg-white/5 hover:bg-purple-500/20
+                       transition-colors cursor-col-resize
+                       flex items-center justify-center
+                       ${isDragging ? "bg-purple-500/30" : ""}`}
+          >
+            <GripVertical className="h-6 w-6 text-muted-foreground/50" />
+          </div>
+
+          {/* Right Pane */}
+          <div style={{ width: `${100 - dividerPosition}%` }} className="relative h-full">
+            <CloudSplitPane
+              providerId={rightProvider}
+              onProviderChange={setRightProvider}
+              connectedProviders={connectedProviders}
+              currentPath={rightPath}
+              onNavigate={setRightPath}
+              onFileDragStart={handleFileDragStart}
+              onFileDrop={(path) => handleFileDrop("right", path)}
+              isDragTarget={dragTargetPane === "right"}
+            />
+          </div>
         </div>
       </div>
 
       {/* Status Bar */}
-      <div className="flex-shrink-0 px-6 py-3 border-t border-white/10 bg-white/[0.02]">
+      <div className="flex-shrink-0 mt-4 px-4 py-3 bg-white/[0.02] border border-white/10 rounded-xl">
         <p className="text-xs text-muted-foreground text-center">
           {draggedFile
             ? `Dragging: ${draggedFile.name}`

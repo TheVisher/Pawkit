@@ -7,3 +7,4 @@ export { CloudFilePreview } from "./cloud-file-preview";
 export { CloudUploadButton } from "./cloud-upload-button";
 export { CloudSplitPane } from "./cloud-split-pane";
 export { CloudDrivesSplitView } from "./cloud-drives-split-view";
+export { CloudFolderTree } from "./cloud-folder-tree";
