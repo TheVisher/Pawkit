@@ -963,9 +963,28 @@ export function LeftNavigationPanel({
           {rediscoverStore.isActive ? (
             // Rediscover Queue View
             <div className="flex flex-col h-full">
-              {/* Header - Fixed */}
+              {/* Header - Fixed with exit button */}
               <div className="space-y-4 flex-shrink-0">
-                <h2 className="text-lg font-semibold text-foreground">Queue</h2>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-foreground">Rediscover Queue</h2>
+                  {/* Exit button - closes sidebar on mobile, navigates away from Rediscover */}
+                  <button
+                    onClick={() => {
+                      // Reset rediscover state
+                      rediscoverStore.reset();
+                      // Close the sidebar on mobile
+                      if (isMobile) {
+                        onClose();
+                      }
+                      // Navigate to library without mode param
+                      router.push("/library");
+                    }}
+                    className="p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+                    title="Exit Rediscover"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
 
                 {/* Filter Dropdown */}
                 <div className="relative">

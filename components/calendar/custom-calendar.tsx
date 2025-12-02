@@ -9,6 +9,7 @@ import { useEventStore } from "@/lib/hooks/use-event-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { getHolidaysInRange, ResolvedHoliday } from "@/lib/data/us-holidays";
 import { ChevronLeft, ChevronRight, Plus, FileText, Clock, Flag } from "lucide-react";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
 // Helper to format time in 12-hour format
 function formatTime12h(time24: string): string {
@@ -41,6 +42,9 @@ export function CustomCalendar({
   // Holiday settings
   const showHolidays = useCalendarStore((state) => state.showHolidays);
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
+
+  // Mobile detection - use agenda view on mobile
+  const isMobile = useIsMobile();
 
   // Mark as client-side after mount to prevent hydration issues
   // This ensures the calendar uses the OS date/time consistently
@@ -149,6 +153,136 @@ export function CustomCalendar({
     return map;
   }, [showHolidays, holidayFilter, calendarDays]);
 
+  // Mobile Agenda View - list format for better readability on small screens
+  if (isMobile) {
+    // Get only days with content in the current month
+    const daysWithContent = calendarDays
+      .filter((day) => isSameMonth(day, currentMonth))
+      .filter((day) => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        const dayCards = cardsByDate.get(dateStr) || [];
+        const dayEvents = eventsByDate.get(dateStr) || [];
+        const dailyNote = dailyNotesByDate.get(dateStr);
+        const holiday = holidaysByDate.get(dateStr);
+        return dayCards.length > 0 || dayEvents.length > 0 || dailyNote || holiday;
+      });
+
+    return (
+      <div className="space-y-2">
+        {daysWithContent.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8">
+            No events this month
+          </div>
+        ) : (
+          daysWithContent.map((day) => {
+            const dateStr = format(day, 'yyyy-MM-dd');
+            const dayCards = cardsByDate.get(dateStr) || [];
+            const dayEvents = eventsByDate.get(dateStr) || [];
+            const dailyNote = dailyNotesByDate.get(dateStr);
+            const holiday = holidaysByDate.get(dateStr);
+            const isCurrentDay = isClient ? isSameDay(day, new Date()) : false;
+
+            return (
+              <div
+                key={dateStr}
+                className={`rounded-xl border p-3 ${
+                  isCurrentDay
+                    ? 'border-accent bg-accent/5'
+                    : 'border-subtle bg-surface'
+                }`}
+              >
+                {/* Date header */}
+                <button
+                  onClick={() => onDayClick?.(day)}
+                  className="w-full text-left mb-2 pb-2 border-b border-subtle/50"
+                >
+                  <span className={`text-sm font-semibold ${isCurrentDay ? 'text-accent' : 'text-foreground'}`}>
+                    {format(day, 'EEEE, MMM d')}
+                    {isCurrentDay && <span className="ml-2 text-xs text-accent">(Today)</span>}
+                  </span>
+                </button>
+
+                {/* Items */}
+                <div className="space-y-2">
+                  {/* Daily Note */}
+                  {dailyNote && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCardClick?.(dailyNote);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg bg-purple-500/20 border border-purple-400/30 hover:bg-purple-500/30 transition-colors flex items-center gap-2"
+                    >
+                      <FileText size={14} className="text-purple-300 flex-shrink-0" />
+                      <span className="text-sm text-purple-200">Daily Note</span>
+                    </button>
+                  )}
+
+                  {/* Holiday */}
+                  {holiday && (
+                    <div className="px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-400/30 flex items-center gap-2">
+                      <Flag size={14} className="text-amber-400 flex-shrink-0" />
+                      <span className="text-sm text-amber-300">{holiday.name}</span>
+                    </div>
+                  )}
+
+                  {/* Events */}
+                  {dayEvents.map((event) => (
+                    <button
+                      key={event.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEventClick?.(event);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg bg-surface-soft hover:bg-surface transition-colors flex items-center gap-2"
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: event.color || EVENT_COLORS.purple }}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm text-foreground">{event.title}</span>
+                        {!event.isAllDay && event.startTime && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {formatTime12h(event.startTime)}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+
+                  {/* Scheduled cards */}
+                  {dayCards.map((card) => (
+                    <button
+                      key={card.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onCardClick?.(card);
+                      }}
+                      className="w-full text-left px-3 py-2 rounded-lg bg-surface-soft hover:bg-surface transition-colors flex items-center gap-2"
+                    >
+                      {card.image && (
+                        <img
+                          src={card.image}
+                          alt=""
+                          className="w-6 h-6 rounded object-cover flex-shrink-0"
+                        />
+                      )}
+                      <span className="text-sm text-foreground truncate">
+                        {card.title || card.domain || card.url}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    );
+  }
+
+  // Desktop Grid View
   return (
     <div className="space-y-6">
       {/* Weekday headers */}

@@ -34,6 +34,7 @@ import {
   GripVertical,
   Save,
 } from "lucide-react";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
 // Storage key for divider position
 const DIVIDER_POSITION_KEY = "pawkit-dual-pane-divider-pos";
@@ -85,15 +86,27 @@ interface DualPaneEditorProps {
 }
 
 export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEditorProps) {
+  // Mobile detection - on mobile, split view is disabled
+  const isMobile = useIsMobile();
+
   // State
   const [content, setContent] = useState(card.content || "");
   const [title, setTitle] = useState(card.title || "");
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     if (typeof window !== "undefined") {
-      return (localStorage.getItem(VIEW_MODE_KEY) as ViewMode) || "split";
+      const saved = localStorage.getItem(VIEW_MODE_KEY) as ViewMode;
+      // Default to edit mode, don't use split as default
+      return saved || "edit";
     }
-    return "split";
+    return "edit";
   });
+
+  // Force to edit mode on mobile if split is selected
+  useEffect(() => {
+    if (isMobile && viewMode === "split") {
+      setViewMode("edit");
+    }
+  }, [isMobile, viewMode]);
   const [dividerPosition, setDividerPosition] = useState(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(DIVIDER_POSITION_KEY);
@@ -364,10 +377,15 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
         return;
       }
 
-      // Cmd+\ to toggle split mode
+      // Cmd+\ to toggle split mode (desktop only)
       if ((e.metaKey || e.ctrlKey) && e.key === "\\") {
         e.preventDefault();
-        setViewMode((prev) => (prev === "split" ? "edit" : "split"));
+        // On mobile, toggle between edit and preview instead
+        if (isMobile) {
+          setViewMode((prev) => (prev === "edit" ? "preview" : "edit"));
+        } else {
+          setViewMode((prev) => (prev === "split" ? "edit" : "split"));
+        }
         return;
       }
 
@@ -430,7 +448,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
 
     document.addEventListener("keydown", handleKeyDown, true);
     return () => document.removeEventListener("keydown", handleKeyDown, true);
-  }, [autocompleteOpen, autocompleteSuggestions, selectedIndex, insertMarkdown, insertAutocompleteSuggestion, handleClose, saveChanges]);
+  }, [autocompleteOpen, autocompleteSuggestions, selectedIndex, insertMarkdown, insertAutocompleteSuggestion, handleClose, saveChanges, isMobile]);
 
   // Detect [[ for autocomplete
   useEffect(() => {
@@ -691,16 +709,19 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
 
           {/* View Mode Toggles */}
           <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode("split")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                viewMode === "split" ? "bg-purple-500/30 text-purple-300" : "text-white/60 hover:text-white hover:bg-white/10"
-              }`}
-              title="Split view (Cmd+\)"
-            >
-              <Columns size={14} />
-              Split
-            </button>
+            {/* Split button hidden on mobile */}
+            {!isMobile && (
+              <button
+                onClick={() => setViewMode("split")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                  viewMode === "split" ? "bg-purple-500/30 text-purple-300" : "text-white/60 hover:text-white hover:bg-white/10"
+                }`}
+                title="Split view (Cmd+\)"
+              >
+                <Columns size={14} />
+                <span className="hidden sm:inline">Split</span>
+              </button>
+            )}
             <button
               onClick={() => setViewMode("edit")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
@@ -709,7 +730,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
               title="Edit only"
             >
               <Edit3 size={14} />
-              Edit
+              <span className="hidden sm:inline">Edit</span>
             </button>
             <button
               onClick={() => setViewMode("preview")}
@@ -719,7 +740,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
               title="Preview only"
             >
               <Eye size={14} />
-              Preview
+              <span className="hidden sm:inline">Preview</span>
             </button>
           </div>
 
