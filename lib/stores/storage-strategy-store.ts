@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 
 export type ContentType = "notes" | "bookmarks" | "images" | "documents" | "audio" | "video" | "other";
 export type StorageProviderId = "filen" | "google-drive" | "dropbox" | "onedrive";
+export type BackupBehavior = "mirror" | "independent";
 
 export interface StorageStrategy {
   // Primary provider - required, all content goes here by default
@@ -11,6 +12,11 @@ export interface StorageStrategy {
   // Secondary provider - optional backup
   secondaryEnabled: boolean;
   secondaryProvider: StorageProviderId | null;
+
+  // Backup behavior (only relevant when secondaryEnabled is true)
+  // mirror = deletes remove from both primary and backup
+  // independent = deletes only remove from primary, backup preserved
+  backupBehavior: BackupBehavior;
 
   // Custom routing - optional per-type destinations
   routingEnabled: boolean;
@@ -23,6 +29,7 @@ interface StorageStrategyStore {
   setPrimaryProvider: (provider: StorageProviderId | null) => void;
   setSecondaryProvider: (provider: StorageProviderId | null) => void;
   setSecondaryEnabled: (enabled: boolean) => void;
+  setBackupBehavior: (behavior: BackupBehavior) => void;
   setRoutingEnabled: (enabled: boolean) => void;
   setRouteForType: (type: ContentType, provider: StorageProviderId | null) => void;
   resetStrategy: () => void;
@@ -35,6 +42,7 @@ const defaultStrategy: StorageStrategy = {
   primaryProvider: null,
   secondaryEnabled: false,
   secondaryProvider: null,
+  backupBehavior: "mirror",
   routingEnabled: false,
   routing: {
     notes: null, // null = use primary
@@ -65,6 +73,11 @@ export const useStorageStrategyStore = create<StorageStrategyStore>()(
       setSecondaryEnabled: (enabled) =>
         set((state) => ({
           strategy: { ...state.strategy, secondaryEnabled: enabled },
+        })),
+
+      setBackupBehavior: (behavior) =>
+        set((state) => ({
+          strategy: { ...state.strategy, backupBehavior: behavior },
         })),
 
       setRoutingEnabled: (enabled) =>

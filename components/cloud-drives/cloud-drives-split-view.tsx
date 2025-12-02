@@ -156,7 +156,9 @@ export function CloudDrivesSplitView({
       toast.dismissToast(loadingToast);
 
       if (result.success) {
-        toast.success(`Copied ${draggedFile.name}`);
+        // Find target provider name
+        const targetProviderName = connectedProviders.find(p => p.id === targetProvider)?.name || targetProvider;
+        toast.success(`Copied "${draggedFile.name}" to ${targetProviderName}. This copy is managed independently.`);
       } else {
         toast.error(result.error || "Transfer failed");
       }

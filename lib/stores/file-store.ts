@@ -37,8 +37,8 @@ interface FileStoreState {
     userId: string,
     cardId?: string
   ) => Promise<StoredFile[]>;
-  deleteFile: (fileId: string) => Promise<void>;
-  permanentlyDeleteFile: (fileId: string) => Promise<void>;
+  deleteFile: (fileId: string, deleteFromBackup?: boolean) => Promise<void>;
+  permanentlyDeleteFile: (fileId: string, deleteFromBackup?: boolean) => Promise<void>;
   getFilesByCardId: (cardId: string) => StoredFile[];
   getStandaloneFiles: () => StoredFile[];
   getFilesByCategory: (category: FileCategory) => StoredFile[];
@@ -476,35 +476,63 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
     return uploadedFiles;
   },
 
-  deleteFile: async (fileId: string) => {
+  deleteFile: async (fileId: string, deleteFromBackup?: boolean) => {
     try {
       const file = get().files.find((f) => f.id === fileId);
-
-      console.warn("[FileStore] Deleting file:", fileId, "filenUuid:", file?.filenUuid || "none");
-
-      // Also delete from Filen if synced
-      if (file?.filenUuid) {
-        try {
-          console.warn("[FileStore] Attempting Filen delete for UUID:", file.filenUuid);
-          await filenService.deleteFile(file.filenUuid);
-          console.warn("[FileStore] Filen delete successful");
-        } catch (error) {
-          console.error("[FileStore] Failed to delete from Filen:", error);
-          // Continue with local deletion anyway
-        }
-      } else {
-        console.warn("[FileStore] No filenUuid - skipping Filen delete");
+      if (!file) {
+        console.warn("[FileStore] File not found for deletion:", fileId);
+        return;
       }
 
-      // Also delete from Google Drive if connected
-      if (file) {
-        try {
-          const { googleDrive } = useConnectorStore.getState();
-          if (googleDrive.connected) {
+      console.warn("[FileStore] Deleting file:", fileId, "filenUuid:", file.filenUuid || "none");
+
+      // Get storage strategy to determine delete behavior
+      const { strategy } = useStorageStrategyStore.getState();
+      const { getDestinations } = useStorageStrategyStore.getState();
+      const contentType = getContentTypeFromCard("file", file.mimeType);
+      const destinations = getDestinations(contentType);
+
+      // Determine if we should delete from backup
+      const shouldDeleteFromBackup =
+        strategy.backupBehavior === "mirror" || // Mirror mode always deletes both
+        deleteFromBackup === true; // User explicitly chose to delete backup
+
+      // Helper to check if a provider is primary or backup
+      const isPrimaryDestination = (providerId: string) => {
+        if (destinations.length === 0) return true; // No strategy, delete from all
+        return destinations[0] === providerId;
+      };
+
+      const isBackupDestination = (providerId: string) => {
+        if (destinations.length < 2) return false;
+        return destinations[1] === providerId;
+      };
+
+      // Delete from Filen if synced
+      if (file.filenUuid) {
+        const shouldDelete = isPrimaryDestination("filen") || (isBackupDestination("filen") && shouldDeleteFromBackup);
+        if (shouldDelete) {
+          try {
+            console.warn("[FileStore] Attempting Filen delete for UUID:", file.filenUuid);
+            await filenService.deleteFile(file.filenUuid);
+            console.warn("[FileStore] Filen delete successful");
+          } catch (error) {
+            console.error("[FileStore] Failed to delete from Filen:", error);
+          }
+        } else {
+          console.warn("[FileStore] Skipping Filen delete (backup preserved)");
+        }
+      }
+
+      // Delete from Google Drive if connected and should delete
+      const { googleDrive } = useConnectorStore.getState();
+      if (googleDrive.connected) {
+        const shouldDelete = isPrimaryDestination("google-drive") || (isBackupDestination("google-drive") && shouldDeleteFromBackup);
+        if (shouldDelete) {
+          try {
             const { gdriveProvider } = await import("@/lib/services/google-drive/gdrive-provider");
             const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
 
-            // Find the file in the appropriate folder
             const targetFolder = getTargetFolder(file.filename, file.mimeType);
             const files = await gdriveProvider.listFiles(targetFolder.path);
             const matchingFile = files.find(f => f.name === file.filename);
@@ -514,22 +542,23 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
               await gdriveProvider.deleteFile(matchingFile.cloudId);
               console.warn("[FileStore] Google Drive delete successful");
             }
+          } catch (error) {
+            console.error("[FileStore] Failed to delete from Google Drive:", error);
           }
-        } catch (error) {
-          console.error("[FileStore] Failed to delete from Google Drive:", error);
-          // Continue with local deletion anyway
+        } else {
+          console.warn("[FileStore] Skipping Google Drive delete (backup preserved)");
         }
       }
 
-      // Also delete from Dropbox if connected
-      if (file) {
-        try {
-          const { dropbox } = useConnectorStore.getState();
-          if (dropbox.connected) {
+      // Delete from Dropbox if connected and should delete
+      const { dropbox } = useConnectorStore.getState();
+      if (dropbox.connected) {
+        const shouldDelete = isPrimaryDestination("dropbox") || (isBackupDestination("dropbox") && shouldDeleteFromBackup);
+        if (shouldDelete) {
+          try {
             const { dropboxProvider } = await import("@/lib/services/dropbox/dropbox-provider");
             const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
 
-            // Find the file in the appropriate folder
             const targetFolder = getTargetFolder(file.filename, file.mimeType);
             const files = await dropboxProvider.listFiles(targetFolder.path);
             const matchingFile = files.find(f => f.name === file.filename);
@@ -539,22 +568,23 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
               await dropboxProvider.deleteFile(matchingFile.cloudId);
               console.warn("[FileStore] Dropbox delete successful");
             }
+          } catch (error) {
+            console.error("[FileStore] Failed to delete from Dropbox:", error);
           }
-        } catch (error) {
-          console.error("[FileStore] Failed to delete from Dropbox:", error);
-          // Continue with local deletion anyway
+        } else {
+          console.warn("[FileStore] Skipping Dropbox delete (backup preserved)");
         }
       }
 
-      // Also delete from OneDrive if connected
-      if (file) {
-        try {
-          const { onedrive } = useConnectorStore.getState();
-          if (onedrive.connected) {
+      // Delete from OneDrive if connected and should delete
+      const { onedrive } = useConnectorStore.getState();
+      if (onedrive.connected) {
+        const shouldDelete = isPrimaryDestination("onedrive") || (isBackupDestination("onedrive") && shouldDeleteFromBackup);
+        if (shouldDelete) {
+          try {
             const { onedriveProvider } = await import("@/lib/services/onedrive/onedrive-provider");
             const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
 
-            // Find the file in the appropriate folder
             const targetFolder = getTargetFolder(file.filename, file.mimeType);
             const files = await onedriveProvider.listFiles(targetFolder.path);
             const matchingFile = files.find(f => f.name === file.filename);
@@ -564,10 +594,11 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
               await onedriveProvider.deleteFile(matchingFile.cloudId);
               console.warn("[FileStore] OneDrive delete successful");
             }
+          } catch (error) {
+            console.error("[FileStore] Failed to delete from OneDrive:", error);
           }
-        } catch (error) {
-          console.error("[FileStore] Failed to delete from OneDrive:", error);
-          // Continue with local deletion anyway
+        } else {
+          console.warn("[FileStore] Skipping OneDrive delete (backup preserved)");
         }
       }
 
@@ -580,7 +611,7 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
 
       set((state) => ({
         files: state.files.filter((f) => f.id !== fileId),
-        totalSize: file ? state.totalSize - file.size : state.totalSize,
+        totalSize: state.totalSize - file.size,
       }));
     } catch (error) {
       console.error("[FileStore] Error deleting file:", error);
@@ -588,34 +619,62 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
     }
   },
 
-  permanentlyDeleteFile: async (fileId: string) => {
+  permanentlyDeleteFile: async (fileId: string, deleteFromBackup: boolean = true) => {
     try {
       const file = get().files.find((f) => f.id === fileId);
-
-      console.warn("[FileStore] Permanently deleting file:", fileId, "filenUuid:", file?.filenUuid || "none");
-
-      // Also delete from Filen if synced
-      if (file?.filenUuid) {
-        try {
-          console.warn("[FileStore] Attempting Filen delete for UUID:", file.filenUuid);
-          await filenService.deleteFile(file.filenUuid);
-          console.warn("[FileStore] Filen delete successful");
-        } catch (error) {
-          console.error("[FileStore] Failed to delete from Filen:", error);
-        }
-      } else {
-        console.warn("[FileStore] No filenUuid - skipping Filen delete");
+      if (!file) {
+        console.warn("[FileStore] File not found for permanent deletion:", fileId);
+        return;
       }
 
-      // Also delete from Google Drive if connected
-      if (file) {
-        try {
-          const { googleDrive } = useConnectorStore.getState();
-          if (googleDrive.connected) {
+      console.warn("[FileStore] Permanently deleting file:", fileId, "filenUuid:", file.filenUuid || "none");
+
+      // Get storage strategy to determine delete behavior
+      const { strategy } = useStorageStrategyStore.getState();
+      const { getDestinations } = useStorageStrategyStore.getState();
+      const contentType = getContentTypeFromCard("file", file.mimeType);
+      const destinations = getDestinations(contentType);
+
+      // For permanent delete, respect the deleteFromBackup parameter
+      // (defaults to true for trash emptying)
+      const shouldDeleteFromBackup =
+        strategy.backupBehavior === "mirror" ||
+        deleteFromBackup === true;
+
+      // Helper to check if a provider is primary or backup
+      const isPrimaryDestination = (providerId: string) => {
+        if (destinations.length === 0) return true;
+        return destinations[0] === providerId;
+      };
+
+      const isBackupDestination = (providerId: string) => {
+        if (destinations.length < 2) return false;
+        return destinations[1] === providerId;
+      };
+
+      // Delete from Filen if synced
+      if (file.filenUuid) {
+        const shouldDelete = isPrimaryDestination("filen") || (isBackupDestination("filen") && shouldDeleteFromBackup);
+        if (shouldDelete) {
+          try {
+            console.warn("[FileStore] Attempting Filen delete for UUID:", file.filenUuid);
+            await filenService.deleteFile(file.filenUuid);
+            console.warn("[FileStore] Filen delete successful");
+          } catch (error) {
+            console.error("[FileStore] Failed to delete from Filen:", error);
+          }
+        }
+      }
+
+      // Delete from Google Drive if connected
+      const { googleDrive } = useConnectorStore.getState();
+      if (googleDrive.connected) {
+        const shouldDelete = isPrimaryDestination("google-drive") || (isBackupDestination("google-drive") && shouldDeleteFromBackup);
+        if (shouldDelete) {
+          try {
             const { gdriveProvider } = await import("@/lib/services/google-drive/gdrive-provider");
             const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
 
-            // Find the file in the appropriate folder
             const targetFolder = getTargetFolder(file.filename, file.mimeType);
             const files = await gdriveProvider.listFiles(targetFolder.path);
             const matchingFile = files.find(f => f.name === file.filename);
@@ -625,21 +684,21 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
               await gdriveProvider.deleteFile(matchingFile.cloudId);
               console.warn("[FileStore] Google Drive delete successful");
             }
+          } catch (error) {
+            console.error("[FileStore] Failed to delete from Google Drive:", error);
           }
-        } catch (error) {
-          console.error("[FileStore] Failed to delete from Google Drive:", error);
         }
       }
 
-      // Also delete from Dropbox if connected
-      if (file) {
-        try {
-          const { dropbox } = useConnectorStore.getState();
-          if (dropbox.connected) {
+      // Delete from Dropbox if connected
+      const { dropbox } = useConnectorStore.getState();
+      if (dropbox.connected) {
+        const shouldDelete = isPrimaryDestination("dropbox") || (isBackupDestination("dropbox") && shouldDeleteFromBackup);
+        if (shouldDelete) {
+          try {
             const { dropboxProvider } = await import("@/lib/services/dropbox/dropbox-provider");
             const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
 
-            // Find the file in the appropriate folder
             const targetFolder = getTargetFolder(file.filename, file.mimeType);
             const files = await dropboxProvider.listFiles(targetFolder.path);
             const matchingFile = files.find(f => f.name === file.filename);
@@ -649,21 +708,21 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
               await dropboxProvider.deleteFile(matchingFile.cloudId);
               console.warn("[FileStore] Dropbox delete successful");
             }
+          } catch (error) {
+            console.error("[FileStore] Failed to delete from Dropbox:", error);
           }
-        } catch (error) {
-          console.error("[FileStore] Failed to delete from Dropbox:", error);
         }
       }
 
-      // Also delete from OneDrive if connected
-      if (file) {
-        try {
-          const { onedrive } = useConnectorStore.getState();
-          if (onedrive.connected) {
+      // Delete from OneDrive if connected
+      const { onedrive } = useConnectorStore.getState();
+      if (onedrive.connected) {
+        const shouldDelete = isPrimaryDestination("onedrive") || (isBackupDestination("onedrive") && shouldDeleteFromBackup);
+        if (shouldDelete) {
+          try {
             const { onedriveProvider } = await import("@/lib/services/onedrive/onedrive-provider");
             const { getTargetFolder } = await import("@/lib/services/cloud-storage/folder-config");
 
-            // Find the file in the appropriate folder
             const targetFolder = getTargetFolder(file.filename, file.mimeType);
             const files = await onedriveProvider.listFiles(targetFolder.path);
             const matchingFile = files.find(f => f.name === file.filename);
@@ -673,9 +732,9 @@ export const useFileStore = create<FileStoreState>((set, get) => ({
               await onedriveProvider.deleteFile(matchingFile.cloudId);
               console.warn("[FileStore] OneDrive delete successful");
             }
+          } catch (error) {
+            console.error("[FileStore] Failed to delete from OneDrive:", error);
           }
-        } catch (error) {
-          console.error("[FileStore] Failed to delete from OneDrive:", error);
         }
       }
 
