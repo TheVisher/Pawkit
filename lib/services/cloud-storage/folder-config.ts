@@ -65,7 +65,7 @@ export const PAWKIT_FOLDERS: Record<PawkitFolderKey, PawkitFolder> = {
     path: "/Pawkit/_Images",
     description: "Image files",
     extensions: [
-      "jpg", "jpeg", "png", "gif", "webp", "svg", "ico", "bmp",
+      "jpg", "jpeg", "jfif", "png", "gif", "webp", "svg", "ico", "bmp",
       "tiff", "tif", "heic", "heif", "avif", "raw"
     ],
     storeUuid: true,
