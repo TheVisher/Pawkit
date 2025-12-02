@@ -1,25 +1,50 @@
 "use client";
 
 import { CardModel } from "@/lib/types";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import Image from "next/image";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
 type RediscoverLeftSidebarProps = {
   queue: CardModel[];
   currentIndex: number;
   filter: "uncategorized" | "all" | "untagged" | "never-opened";
   onFilterChange: (filter: "uncategorized" | "all" | "untagged" | "never-opened") => void;
+  onClose?: () => void;
 };
 
-export function RediscoverLeftSidebar({ queue, currentIndex, filter, onFilterChange }: RediscoverLeftSidebarProps) {
+export function RediscoverLeftSidebar({ queue, currentIndex, filter, onFilterChange, onClose }: RediscoverLeftSidebarProps) {
   const remainingCards = queue.slice(currentIndex + 1);
   const remainingCount = remainingCards.length;
+  const isMobile = useIsMobile();
 
   return (
-    <div className="fixed left-0 top-0 bottom-0 w-64 bg-black/40 backdrop-blur-xl border-r border-white/10 flex flex-col z-50">
-      {/* Header */}
-      <div className="p-4 border-b border-white/10">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Queue</h2>
+    <>
+      {/* Mobile backdrop */}
+      {isMobile && (
+        <div
+          className="fixed inset-0 bg-black/50 z-[49]"
+          onClick={onClose}
+        />
+      )}
+      <div className={`fixed left-0 top-0 bottom-0 bg-black/40 backdrop-blur-xl border-r border-white/10 flex flex-col z-50 ${
+        isMobile ? 'w-[85vw] max-w-[280px]' : 'w-64'
+      }`}>
+        {/* Header */}
+        <div className="p-4 border-b border-white/10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-foreground">Queue</h2>
+            {/* Close button - always visible on mobile */}
+            {onClose && (
+              <button
+                onClick={onClose}
+                className="p-2 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label="Close queue"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
 
         {/* Filter Dropdown */}
         <div className="relative">
@@ -89,5 +114,6 @@ export function RediscoverLeftSidebar({ queue, currentIndex, filter, onFilterCha
         )}
       </div>
     </div>
+    </>
   );
 }
