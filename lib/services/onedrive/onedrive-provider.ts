@@ -397,22 +397,23 @@ export class OneDriveProvider implements CloudStorageProvider {
       const data = await response.json();
 
       return (data.value || [])
-        .filter((item: { folder?: object }) => !item.folder) // Only files, not folders
-        .map((file: {
+        .map((item: {
           id: string;
           name: string;
           parentReference: { path: string };
-          size: number;
+          size?: number;
           lastModifiedDateTime: string;
           file?: { mimeType: string };
+          folder?: object;
         }) => ({
-          cloudId: file.id,
-          name: file.name,
-          path: file.parentReference?.path + "/" + file.name,
-          size: file.size || 0,
-          mimeType: file.file?.mimeType || this.getMimeType(file.name),
-          modifiedAt: new Date(file.lastModifiedDateTime),
+          cloudId: item.id,
+          name: item.name,
+          path: item.parentReference?.path + "/" + item.name,
+          size: item.size || 0,
+          mimeType: item.folder ? "folder" : (item.file?.mimeType || this.getMimeType(item.name)),
+          modifiedAt: new Date(item.lastModifiedDateTime),
           provider: this.id,
+          isFolder: !!item.folder,
         }));
     } catch (error) {
       console.error("[OneDriveProvider] List files failed:", error);

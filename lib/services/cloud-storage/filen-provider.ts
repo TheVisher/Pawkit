@@ -94,22 +94,53 @@ export class FilenProvider implements CloudStorageProvider {
   }
 
   async listFiles(path?: string): Promise<CloudFile[]> {
-    const files = await filenService.listFiles();
+    // Use the folder API for proper folder browsing with decryption
+    const targetPath = path || "/Pawkit";
 
-    // Filter by path if provided
-    const filtered = path
-      ? files.filter((f) => f.path.startsWith(path))
-      : files;
+    try {
+      const response = await fetch(`/api/filen/folder?path=${encodeURIComponent(targetPath)}`);
 
-    return filtered.map((f) => ({
-      cloudId: f.uuid,
-      name: f.name,
-      path: f.path,
-      size: f.size,
-      mimeType: f.mime,
-      modifiedAt: new Date(f.modified),
-      provider: this.id,
-    }));
+      if (!response.ok) {
+        // Fall back to the old recursive listing if folder API fails
+        console.warn("[FilenProvider] Folder API failed, falling back to recursive listing");
+        const files = await filenService.listFiles();
+        const filtered = path ? files.filter((f) => f.path.startsWith(path)) : files;
+        return filtered.map((f) => ({
+          cloudId: f.uuid,
+          name: f.name,
+          path: f.path,
+          size: f.size,
+          mimeType: f.mime,
+          modifiedAt: new Date(f.modified),
+          provider: this.id,
+          isFolder: false, // Old API only returns files
+        }));
+      }
+
+      const data = await response.json();
+
+      return (data.items || []).map((item: {
+        uuid: string;
+        name: string;
+        path: string;
+        size: number;
+        mime: string;
+        modified: number;
+        isFolder: boolean;
+      }) => ({
+        cloudId: item.uuid,
+        name: item.name,
+        path: item.path,
+        size: item.size,
+        mimeType: item.mime,
+        modifiedAt: new Date(item.modified),
+        provider: this.id,
+        isFolder: item.isFolder,
+      }));
+    } catch (error) {
+      console.error("[FilenProvider] List files failed:", error);
+      return [];
+    }
   }
 
   async uploadNote(

@@ -15,6 +15,7 @@ export interface CloudFile {
   mimeType: string;
   modifiedAt: Date;
   provider: CloudProviderId;
+  isFolder: boolean;      // Distinguish files from folders for file explorer
 }
 
 export interface CloudUploadResult {
