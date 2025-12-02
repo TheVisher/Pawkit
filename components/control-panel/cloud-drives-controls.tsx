@@ -84,9 +84,12 @@ export function CloudDrivesControls() {
   };
 
   // Get most recent sync across all providers
+  // Note: lastSync might be a string (from localStorage) so we convert to Date
   const lastSyncDate = connectedProviders
     .map((p) => p.lastSync)
-    .filter((d): d is Date => d !== null)
+    .filter((d): d is Date | string => d !== null)
+    .map((d) => (d instanceof Date ? d : new Date(d)))
+    .filter((d) => !isNaN(d.getTime()))
     .sort((a, b) => b.getTime() - a.getTime())[0];
 
   const isSyncing = connectedProviders.some((p) => p.status === "syncing");
@@ -293,9 +296,10 @@ export function CloudDrivesControls() {
   );
 }
 
-function formatRelativeTime(date: Date): string {
+function formatRelativeTime(date: Date | string): string {
   const now = new Date();
-  const diff = now.getTime() - date.getTime();
+  const dateObj = date instanceof Date ? date : new Date(date);
+  const diff = now.getTime() - dateObj.getTime();
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
@@ -304,5 +308,5 @@ function formatRelativeTime(date: Date): string {
   if (minutes < 60) return `${minutes}m ago`;
   if (hours < 24) return `${hours}h ago`;
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString();
+  return dateObj.toLocaleDateString();
 }
