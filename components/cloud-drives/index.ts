@@ -5,3 +5,5 @@ export { CloudFileList } from "./cloud-file-list";
 export { CloudFileItem } from "./cloud-file-item";
 export { CloudFilePreview } from "./cloud-file-preview";
 export { CloudUploadButton } from "./cloud-upload-button";
+export { CloudSplitPane } from "./cloud-split-pane";
+export { CloudDrivesSplitView } from "./cloud-drives-split-view";

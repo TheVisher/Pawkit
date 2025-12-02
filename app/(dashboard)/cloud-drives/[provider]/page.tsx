@@ -6,6 +6,8 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { CloudFileExplorer } from "@/components/cloud-drives";
 import { GlowButton } from "@/components/ui/glow-button";
 import { useConnectorStore } from "@/lib/stores/connector-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { useCloudDrivesStore } from "@/lib/stores/cloud-drives-store";
 import type { CloudProviderId } from "@/lib/services/cloud-storage/types";
 
 interface ProviderConfig {
@@ -33,9 +35,23 @@ export default function CloudDriveExplorerPage() {
   const dropboxState = useConnectorStore((state) => state.dropbox);
   const onedriveState = useConnectorStore((state) => state.onedrive);
 
+  const openCloudDrivesControls = usePanelStore((state) => state.openCloudDrivesControls);
+  const setCurrentProvider = useCloudDrivesStore((state) => state.setCurrentProvider);
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Open the cloud drives sidebar when this page loads
+  useEffect(() => {
+    openCloudDrivesControls();
+    if (providerConfig) {
+      setCurrentProvider(providerConfig.id);
+    }
+    return () => {
+      setCurrentProvider(null);
+    };
+  }, [openCloudDrivesControls, setCurrentProvider, providerConfig]);
 
   const isConnected = () => {
     if (!providerConfig) return false;

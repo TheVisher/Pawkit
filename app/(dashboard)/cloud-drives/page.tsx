@@ -6,6 +6,7 @@ import { Cloud, Plus } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import { CloudDriveCard } from "@/components/cloud-drives";
 import { useConnectorStore } from "@/lib/stores/connector-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 interface ProviderInfo {
   id: "filen" | "google-drive" | "dropbox" | "onedrive";
@@ -29,9 +30,16 @@ export default function CloudDrivesPage() {
   const dropboxState = useConnectorStore((state) => state.dropbox);
   const onedriveState = useConnectorStore((state) => state.onedrive);
 
+  const openCloudDrivesControls = usePanelStore((state) => state.openCloudDrivesControls);
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Open the cloud drives sidebar when this page loads
+  useEffect(() => {
+    openCloudDrivesControls();
+  }, [openCloudDrivesControls]);
 
   const getProviderState = (id: string) => {
     switch (id) {

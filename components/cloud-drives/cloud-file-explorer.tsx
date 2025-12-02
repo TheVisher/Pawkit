@@ -10,6 +10,7 @@ import { CloudFilePreview } from "./cloud-file-preview";
 import { CloudUploadButton } from "./cloud-upload-button";
 import { cloudStorage } from "@/lib/services/cloud-storage";
 import { useToastStore } from "@/lib/stores/toast-store";
+import { useCloudDrivesStore } from "@/lib/stores/cloud-drives-store";
 import type { CloudFile, CloudProviderId } from "@/lib/services/cloud-storage/types";
 
 interface CloudFileExplorerProps {
@@ -26,6 +27,10 @@ export function CloudFileExplorer({ providerId, providerName }: CloudFileExplore
   const [selectedFile, setSelectedFile] = useState<CloudFile | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const toast = useToastStore();
+
+  // Cloud drives store for sidebar selection
+  const setStoreSelectedFile = useCloudDrivesStore((state) => state.setSelectedFile);
+  const clearStoreSelection = useCloudDrivesStore((state) => state.clearSelection);
 
   const loadFolder = useCallback(async (path: string) => {
     setLoading(true);
@@ -53,6 +58,8 @@ export function CloudFileExplorer({ providerId, providerName }: CloudFileExplore
 
   const handleNavigate = (path: string) => {
     setCurrentPath(path || "/Pawkit");
+    // Clear file selection when navigating to a new folder
+    clearStoreSelection();
   };
 
   const handleRefresh = async () => {
@@ -107,6 +114,9 @@ export function CloudFileExplorer({ providerId, providerName }: CloudFileExplore
   };
 
   const handlePreview = (file: CloudFile) => {
+    // Update store for sidebar selection (single click)
+    setStoreSelectedFile(file);
+    // Also set local state and open preview modal
     setSelectedFile(file);
     setShowPreview(true);
   };

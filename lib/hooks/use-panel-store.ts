@@ -13,6 +13,7 @@ export type PanelContentType =
   | "calendar-controls"
   | "day-details"
   | "bulk-operations"
+  | "cloud-drives-controls"
   | "closed";
 
 export type PanelState = {
@@ -64,6 +65,7 @@ export type PanelState = {
   openCalendarControls: () => void;
   openDayDetails: () => void;
   openBulkOperations: () => void;
+  openCloudDrivesControls: () => void;
   restorePreviousContent: () => void;
 };
 
@@ -229,6 +231,10 @@ export const usePanelStore = create<PanelState>()(
           previousContentType,
           wasAutoOpened: false
         });
+      },
+
+      openCloudDrivesControls: () => {
+        set({ isOpen: true, contentType: "cloud-drives-controls", activeCardId: null, wasAutoOpened: false });
       },
 
       restorePreviousContent: () => {
