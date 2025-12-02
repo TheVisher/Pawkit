@@ -1,7 +1,6 @@
 "use client";
 
-import { Cloud, CheckCircle2, XCircle, Loader2, FolderOpen, Plus } from "lucide-react";
-import Image from "next/image";
+import { Cloud, CheckCircle2, XCircle, Loader2, FolderOpen, Plus, ShieldCheck, Triangle, Box } from "lucide-react";
 import type { CloudProviderId } from "@/lib/services/cloud-storage/types";
 
 interface ProviderInfo {
@@ -20,12 +19,12 @@ interface CloudProviderItemProps {
   onConnect?: () => void;
 }
 
-// Provider icons/logos
-const PROVIDER_ICONS: Record<CloudProviderId, string> = {
-  filen: "/icons/filen.svg",
-  "google-drive": "/icons/google-drive.svg",
-  dropbox: "/icons/dropbox.svg",
-  onedrive: "/icons/onedrive.svg",
+// Provider icons with Lucide icons and colors
+const PROVIDER_CONFIG: Record<CloudProviderId, { icon: typeof Cloud; color: string; bgColor: string }> = {
+  filen: { icon: ShieldCheck, color: "text-emerald-400", bgColor: "bg-emerald-500/20" },
+  "google-drive": { icon: Triangle, color: "text-yellow-400", bgColor: "bg-yellow-500/20" },
+  dropbox: { icon: Box, color: "text-blue-400", bgColor: "bg-blue-500/20" },
+  onedrive: { icon: Cloud, color: "text-sky-400", bgColor: "bg-sky-500/20" },
 };
 
 export function CloudProviderItem({ provider, onBrowse, onConnect }: CloudProviderItemProps) {
@@ -34,7 +33,8 @@ export function CloudProviderItem({ provider, onBrowse, onConnect }: CloudProvid
   const isConnecting = provider.status === "connecting";
   const hasError = provider.status === "error";
 
-  const iconSrc = PROVIDER_ICONS[provider.id];
+  const config = PROVIDER_CONFIG[provider.id] || { icon: Cloud, color: "text-muted-foreground", bgColor: "bg-white/5" };
+  const Icon = config.icon;
 
   return (
     <div
@@ -47,18 +47,8 @@ export function CloudProviderItem({ provider, onBrowse, onConnect }: CloudProvid
       `}
     >
       {/* Provider Icon */}
-      <div className="relative flex-shrink-0 w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center overflow-hidden">
-        {iconSrc ? (
-          <Image
-            src={iconSrc}
-            alt={provider.name}
-            width={20}
-            height={20}
-            className="object-contain"
-          />
-        ) : (
-          <Cloud className="h-4 w-4 text-muted-foreground" />
-        )}
+      <div className={`relative flex-shrink-0 w-8 h-8 rounded-lg ${isConnected ? config.bgColor : "bg-white/5"} flex items-center justify-center`}>
+        <Icon className={`h-4 w-4 ${isConnected ? config.color : "text-muted-foreground"}`} />
 
         {/* Status indicator overlay */}
         {isConnected && (

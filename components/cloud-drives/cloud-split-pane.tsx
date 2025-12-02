@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, ChevronRight, Folder, FileText, Loader2, Home } from "lucide-react";
-import Image from "next/image";
+import { ChevronDown, ChevronRight, Folder, FileText, Loader2, Home, Cloud, ShieldCheck, Triangle, Box } from "lucide-react";
 import type { CloudFile, CloudProviderId } from "@/lib/services/cloud-storage/types";
 
 interface ProviderOption {
@@ -22,12 +21,12 @@ interface CloudSplitPaneProps {
   isDragTarget?: boolean;
 }
 
-// Provider icons
-const PROVIDER_ICONS: Record<CloudProviderId, string> = {
-  filen: "/icons/filen.svg",
-  "google-drive": "/icons/google-drive.svg",
-  dropbox: "/icons/dropbox.svg",
-  onedrive: "/icons/onedrive.svg",
+// Provider icons with Lucide icons and colors
+const PROVIDER_CONFIG: Record<CloudProviderId, { icon: typeof Cloud; color: string }> = {
+  filen: { icon: ShieldCheck, color: "text-emerald-400" },
+  "google-drive": { icon: Triangle, color: "text-yellow-400" },
+  dropbox: { icon: Box, color: "text-blue-400" },
+  onedrive: { icon: Cloud, color: "text-sky-400" },
 };
 
 export function CloudSplitPane({
@@ -162,15 +161,11 @@ export function CloudSplitPane({
                        bg-white/5 border border-white/10 hover:border-white/20
                        transition-colors"
           >
-            {currentProvider && (
-              <Image
-                src={PROVIDER_ICONS[currentProvider.id]}
-                alt={currentProvider.name}
-                width={16}
-                height={16}
-                className="flex-shrink-0"
-              />
-            )}
+            {currentProvider && (() => {
+              const config = PROVIDER_CONFIG[currentProvider.id] || { icon: Cloud, color: "text-muted-foreground" };
+              const ProviderIcon = config.icon;
+              return <ProviderIcon className={`h-4 w-4 flex-shrink-0 ${config.color}`} />;
+            })()}
             <span className="flex-1 text-left text-sm text-foreground truncate">
               {currentProvider?.name || "Select Provider"}
             </span>
@@ -198,12 +193,11 @@ export function CloudSplitPane({
                              hover:bg-white/5 transition-colors
                              ${provider.id === providerId ? "bg-white/5 text-accent" : "text-foreground"}`}
                 >
-                  <Image
-                    src={PROVIDER_ICONS[provider.id]}
-                    alt={provider.name}
-                    width={16}
-                    height={16}
-                  />
+                  {(() => {
+                    const config = PROVIDER_CONFIG[provider.id] || { icon: Cloud, color: "text-muted-foreground" };
+                    const ProviderIcon = config.icon;
+                    return <ProviderIcon className={`h-4 w-4 ${config.color}`} />;
+                  })()}
                   <span>{provider.name}</span>
                 </button>
               ))}
