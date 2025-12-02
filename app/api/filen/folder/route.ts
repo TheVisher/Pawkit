@@ -250,58 +250,127 @@ async function hashFolderName(name: string): Promise<string> {
 }
 
 /**
- * Decrypt metadata (version 2 format)
+ * Decrypt metadata - handles multiple Filen encryption versions
  */
 async function decryptMetadata(encrypted: string, masterKeys: string[]): Promise<string | null> {
+  const version = encrypted.substring(0, 3);
+  console.log(`[Filen Decrypt] Version: ${version}, encrypted length: ${encrypted.length}`);
+
   // Try each master key
-  for (const masterKey of masterKeys) {
+  for (let keyIndex = 0; keyIndex < masterKeys.length; keyIndex++) {
+    const masterKey = masterKeys[keyIndex];
     try {
-      // Version 2 format: "002" + 12-char IV + base64 ciphertext
-      if (!encrypted.startsWith("002")) {
-        continue;
-      }
-
-      const ivString = encrypted.substring(3, 15);
-      const ciphertextBase64 = encrypted.substring(15);
-
       const encoder = new TextEncoder();
-      const ivBytes = encoder.encode(ivString);
-      const ciphertext = Buffer.from(ciphertextBase64, "base64");
 
-      // Derive key using PBKDF2
-      const keyMaterial = await crypto.subtle.importKey(
-        "raw",
-        encoder.encode(masterKey),
-        "PBKDF2",
-        false,
-        ["deriveBits", "deriveKey"]
-      );
+      if (version === "002") {
+        // Version 2 format: "002" + 12-char IV string + base64 ciphertext
+        const ivString = encrypted.substring(3, 15);
+        const ciphertextBase64 = encrypted.substring(15);
+        const ivBytes = encoder.encode(ivString);
+        const ciphertext = Buffer.from(ciphertextBase64, "base64");
 
-      const key = await crypto.subtle.deriveKey(
-        {
-          name: "PBKDF2",
-          salt: encoder.encode(masterKey),
-          iterations: 1,
-          hash: "SHA-512",
-        },
-        keyMaterial,
-        { name: "AES-GCM", length: 256 },
-        false,
-        ["decrypt"]
-      );
+        // Derive key using PBKDF2
+        const keyMaterial = await crypto.subtle.importKey(
+          "raw",
+          encoder.encode(masterKey),
+          "PBKDF2",
+          false,
+          ["deriveBits", "deriveKey"]
+        );
 
-      const decrypted = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv: ivBytes },
-        key,
-        ciphertext
-      );
+        const key = await crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt: encoder.encode(masterKey),
+            iterations: 1,
+            hash: "SHA-512",
+          },
+          keyMaterial,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["decrypt"]
+        );
 
-      return new TextDecoder().decode(decrypted);
-    } catch {
+        const decrypted = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: ivBytes },
+          key,
+          ciphertext
+        );
+
+        return new TextDecoder().decode(decrypted);
+      } else if (version === "001") {
+        // Version 1 format: "001" + base64(IV + ciphertext)
+        // IV is 12 bytes, rest is ciphertext with auth tag
+        const combined = Buffer.from(encrypted.substring(3), "base64");
+        const ivBytes = combined.slice(0, 12);
+        const ciphertext = combined.slice(12);
+
+        // Import raw key (master key is used directly, not derived)
+        // Filen v1 uses first 32 chars of master key as raw key
+        const rawKey = encoder.encode(masterKey.substring(0, 32));
+
+        const key = await crypto.subtle.importKey(
+          "raw",
+          rawKey,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["decrypt"]
+        );
+
+        const decrypted = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: ivBytes },
+          key,
+          ciphertext
+        );
+
+        return new TextDecoder().decode(decrypted);
+      } else if (version === "003") {
+        // Version 3: Similar to v2 but uses different key derivation
+        // "003" + 12-char IV + base64 ciphertext
+        const ivString = encrypted.substring(3, 15);
+        const ciphertextBase64 = encrypted.substring(15);
+        const ivBytes = encoder.encode(ivString);
+        const ciphertext = Buffer.from(ciphertextBase64, "base64");
+
+        // v3 uses PBKDF2 with 200000 iterations
+        const keyMaterial = await crypto.subtle.importKey(
+          "raw",
+          encoder.encode(masterKey),
+          "PBKDF2",
+          false,
+          ["deriveBits", "deriveKey"]
+        );
+
+        const key = await crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt: encoder.encode(masterKey),
+            iterations: 200000,
+            hash: "SHA-512",
+          },
+          keyMaterial,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["decrypt"]
+        );
+
+        const decrypted = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: ivBytes },
+          key,
+          ciphertext
+        );
+
+        return new TextDecoder().decode(decrypted);
+      } else {
+        console.log(`[Filen Decrypt] Unknown version: ${version}`);
+      }
+    } catch (err) {
       // Try next key
+      console.log(`[Filen Decrypt] Key ${keyIndex} failed for version ${version}:`, err instanceof Error ? err.message : err);
       continue;
     }
   }
+  console.log(`[Filen Decrypt] All keys failed`);
   return null;
 }
 
@@ -309,9 +378,12 @@ async function decryptMetadata(encrypted: string, masterKeys: string[]): Promise
  * GET /api/filen/folder?path=/Pawkit/_Notes
  *
  * List contents of a folder (files AND subfolders, non-recursive).
- * Used by the Cloud Drives file explorer.
+ * Uses the Filen SDK which handles decryption internally.
  */
 export async function GET(request: NextRequest) {
+  // Import here to avoid circular dependency issues
+  const { getFilenClient } = await import("@/lib/services/filen-server");
+
   try {
     // 1. Verify authentication
     const supabase = await createClient();
@@ -321,131 +393,64 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    // 2. Get Filen session
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get(FILEN_COOKIE_NAME);
-
-    if (!sessionCookie?.value) {
+    // 2. Get Filen SDK client (handles session and decryption)
+    const filen = await getFilenClient();
+    if (!filen) {
       return NextResponse.json({ error: "Filen not connected" }, { status: 401 });
-    }
-
-    let session: FilenSession;
-    try {
-      session = JSON.parse(decrypt(sessionCookie.value)) as FilenSession;
-    } catch {
-      return NextResponse.json({ error: "Invalid Filen session" }, { status: 401 });
     }
 
     // 3. Get requested path
     const searchParams = request.nextUrl.searchParams;
     const path = searchParams.get("path") || "/Pawkit";
 
-    // 4. Navigate to the folder to get its UUID
-    const segments = path.split("/").filter(Boolean);
-    let currentUUID = session.baseFolderUUID;
-    let currentPath = "";
+    console.log(`[Filen Folder GET] Listing path: ${path}`);
 
-    for (const folderName of segments) {
-      currentPath += "/" + folderName;
-
-      const listResponse = await fetch(`${FILEN_API_URL}/v3/dir/content`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.apiKey}`,
-        },
-        body: JSON.stringify({ uuid: currentUUID }),
-      });
-
-      if (!listResponse.ok) {
-        return NextResponse.json({ error: "Failed to navigate to folder" }, { status: 500 });
-      }
-
-      const listResult = await listResponse.json();
-      if (!listResult.status) {
-        return NextResponse.json({ error: listResult.message }, { status: 500 });
-      }
-
-      const content: FolderContent = listResult.data;
-      const targetHash = await hashFolderName(folderName);
-
-      interface FolderWithHash { uuid: string; name: string; nameHashed?: string }
-      const folders = (content.folders || []) as FolderWithHash[];
-      const existingFolder = folders.find(f => f.nameHashed === targetHash);
-
-      if (!existingFolder) {
-        return NextResponse.json({
-          items: [],
-          path,
-          error: `Folder not found: ${currentPath}`
-        });
-      }
-
-      currentUUID = existingFolder.uuid;
-    }
-
-    // 5. List the final folder contents
-    const finalResponse = await fetch(`${FILEN_API_URL}/v3/dir/content`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${session.apiKey}`,
-      },
-      body: JSON.stringify({ uuid: currentUUID }),
-    });
-
-    if (!finalResponse.ok) {
-      return NextResponse.json({ error: "Failed to list folder" }, { status: 500 });
-    }
-
-    const finalResult = await finalResponse.json();
-    if (!finalResult.status) {
-      return NextResponse.json({ error: finalResult.message }, { status: 500 });
-    }
-
-    const content: FolderContent = finalResult.data;
+    // 4. Use SDK's fs.readdir to list folder contents
+    const fs = filen.fs();
     const items: FilenFolderItem[] = [];
 
-    // Add folders
-    for (const folder of (content.folders || [])) {
-      const decryptedName = await decryptMetadata(folder.name, session.masterKeys);
-      if (decryptedName) {
-        items.push({
-          uuid: folder.uuid,
-          name: decryptedName,
-          path: `${path}/${decryptedName}`,
-          size: 0,
-          mime: "folder",
-          modified: Date.now(),
-          isFolder: true,
-        });
+    try {
+      const entries = await fs.readdir({ path });
+      console.log(`[Filen Folder GET] Found ${entries.length} entries in ${path}`);
+
+      for (const entry of entries) {
+        const entryPath = `${path}/${entry}`;
+
+        try {
+          const stat = await fs.stat({ path: entryPath });
+
+          if (stat.type === "directory") {
+            items.push({
+              uuid: stat.uuid,
+              name: stat.name,
+              path: entryPath,
+              size: 0,
+              mime: "folder",
+              modified: stat.mtimeMs || Date.now(),
+              isFolder: true,
+            });
+          } else if (stat.type === "file") {
+            items.push({
+              uuid: stat.uuid,
+              name: stat.name,
+              path: entryPath,
+              size: stat.size || 0,
+              mime: stat.mime || "application/octet-stream",
+              modified: stat.mtimeMs || Date.now(),
+              isFolder: false,
+            });
+          }
+        } catch (statErr) {
+          console.error(`[Filen Folder GET] Error stat'ing ${entryPath}:`, statErr);
+        }
       }
+    } catch (readdirErr) {
+      // Folder doesn't exist or other error
+      console.log(`[Filen Folder GET] Folder not found or error: ${path}`, readdirErr);
+      return NextResponse.json({ items: [], path, error: `Folder not found: ${path}` });
     }
 
-    // Add files
-    interface FilenUpload {
-      uuid: string;
-      name: string;
-      size: number;
-      mime: string;
-      timestamp: number;
-      metadata?: string;
-    }
-    for (const file of ((content.uploads || []) as FilenUpload[])) {
-      const decryptedName = await decryptMetadata(file.name, session.masterKeys);
-      if (decryptedName) {
-        items.push({
-          uuid: file.uuid,
-          name: decryptedName,
-          path: `${path}/${decryptedName}`,
-          size: file.size || 0,
-          mime: file.mime || "application/octet-stream",
-          modified: file.timestamp || Date.now(),
-          isFolder: false,
-        });
-      }
-    }
-
+    console.log(`[Filen Folder GET] Returning ${items.length} items`);
     return NextResponse.json({ items, path });
   } catch (error) {
     console.error("[Filen Folder GET] Error:", error);
