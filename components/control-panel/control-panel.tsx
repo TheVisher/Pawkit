@@ -13,6 +13,7 @@ import {
 import { ProfileModal } from "@/components/modals/profile-modal";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { SyncStatus } from "@/components/sync/sync-status";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
 export type ControlPanelMode = "floating" | "anchored";
 
@@ -54,7 +55,11 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
   // Note: Escape key handling is done globally in layout.tsx to ensure
   // proper priority (modals close before panels)
 
-  if (!open) return null;
+  // Mobile detection - hide right panel on mobile (modal is full-screen)
+  const isMobile = useIsMobile();
+
+  // Don't render on mobile or when closed
+  if (!open || isMobile) return null;
 
   // When embedded, the panel is positioned within the content panel
   // Otherwise it's fixed to the viewport

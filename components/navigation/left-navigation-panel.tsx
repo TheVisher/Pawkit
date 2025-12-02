@@ -39,6 +39,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
 type NavItem = {
   id: string;
@@ -104,6 +105,9 @@ export function LeftNavigationPanel({
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const collapsedSections = usePanelStore((state) => state.collapsedSections);
   const toggleSection = usePanelStore((state) => state.toggleSection);
+
+  // Mobile detection - on mobile, panel is always a full-height overlay
+  const isMobile = useIsMobile();
 
   // PERFORMANCE: Selective subscription - only get cards we actually need for the sidebar
   // This prevents re-renders when unrelated cards change
@@ -862,25 +866,33 @@ export function LeftNavigationPanel({
 
   return (
     <>
-      {/* Subtle backdrop - only in floating mode */}
-      {mode === "floating" && (
-        <div className="fixed inset-0 bg-black/10 z-40 pointer-events-none" />
+      {/* Backdrop - clickable on mobile to close, subtle on desktop floating mode */}
+      {(isMobile || mode === "floating") && (
+        <div
+          className={`fixed inset-0 z-[101] ${
+            isMobile ? "bg-black/50 backdrop-blur-sm" : "bg-black/10 pointer-events-none"
+          }`}
+          onClick={isMobile ? onClose : undefined}
+        />
       )}
 
       {/* Left Navigation Panel */}
       <div
         className={`
-          fixed top-0 left-0 bottom-0 w-[325px] z-[102]
+          fixed top-0 left-0 bottom-0 z-[102]
           bg-white/5 backdrop-blur-lg
           flex flex-col
           animate-slide-in-left
-          ${mode === "floating"
-            ? "m-4 rounded-2xl shadow-2xl border border-white/10"
-            : "border-r border-white/10"
+          ${isMobile
+            ? "w-[85vw] max-w-[325px] border-r border-white/10"
+            : `w-[325px] ${mode === "floating"
+              ? "m-4 rounded-2xl shadow-2xl border border-white/10"
+              : "border-r border-white/10"
+            }`
           }
         `}
         style={{
-          boxShadow: mode === "floating"
+          boxShadow: mode === "floating" && !isMobile
             ? "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
             : "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
         }}

@@ -4,7 +4,8 @@ import { JSDOM } from "jsdom";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { handleApiError } from "@/lib/utils/api-error";
-import { unauthorized, notFound, validationError, success } from "@/lib/utils/api-responses";
+import { unauthorized, notFound, validationError, success, rateLimited } from "@/lib/utils/api-responses";
+import { rateLimit, getRateLimitHeaders } from "@/lib/utils/rate-limit";
 
 export async function POST(
   request: NextRequest,
@@ -15,6 +16,21 @@ export async function POST(
     user = await getCurrentUser();
     if (!user) {
       return unauthorized();
+    }
+
+    // Rate limiting: 20 article extractions per minute per user (CPU-intensive)
+    const rateLimitResult = rateLimit({
+      identifier: `extract-article:${user.id}`,
+      limit: 20,
+      windowMs: 60000, // 1 minute
+    });
+
+    if (!rateLimitResult.allowed) {
+      const response = rateLimited('Too many article extraction requests. Please try again later.');
+      Object.entries(getRateLimitHeaders(rateLimitResult)).forEach(([key, value]) => {
+        response.headers.set(key, value as string);
+      });
+      return response;
     }
 
     const { id } = await params;

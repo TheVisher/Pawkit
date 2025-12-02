@@ -48,6 +48,7 @@ import { useOnboarding } from "@/lib/hooks/use-onboarding";
 import { useCloudSync } from "@/lib/hooks/use-cloud-sync";
 import { TourProvider } from "@/components/onboarding/tour-provider";
 import { CardDTO } from "@/lib/server/cards";
+import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
 // Wrapper component that provides bulk operation handlers with access to selection store
 function BulkOperationsPanelWithHandlers({
@@ -138,6 +139,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const closeLeft = usePanelStore((state) => state.closeLeft);
   const setLeftMode = usePanelStore((state) => state.setLeftMode);
   const toggleLeft = usePanelStore((state) => state.toggleLeft);
+
+  // Mobile detection - panels are hidden by default on mobile
+  const isMobile = useIsMobile();
+
+  // Close panels on mobile when component mounts or screen resizes to mobile
+  useEffect(() => {
+    if (isMobile) {
+      closeLeft();
+      closePanel();
+    }
+  }, [isMobile, closeLeft, closePanel]);
 
   // Track content type changes for animation
   const [animatingContentType, setAnimatingContentType] = useState(contentType);
@@ -437,10 +449,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <PawkitActionsProvider>
           <SidebarProvider>
           <SidebarInset className="bg-transparent">
-            {/* Mobile-only OmniBar - Shows on screens smaller than lg (1024px) */}
+            {/* Mobile-only Header - Shows on screens smaller than lg (1024px) */}
             <div className="sticky top-0 z-30 lg:hidden border-b border-white/10 bg-surface-80/95 backdrop-blur-xl">
-              <div className="px-4 py-3">
-                <OmniBar />
+              <div className="flex items-center gap-3 px-4 py-3">
+                {/* Hamburger menu to open left sidebar */}
+                <button
+                  onClick={toggleLeft}
+                  className="p-2 -ml-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground flex-shrink-0"
+                  aria-label="Open navigation menu"
+                >
+                  <Menu size={20} />
+                </button>
+                {/* OmniBar takes remaining space */}
+                <div className="flex-1 min-w-0">
+                  <OmniBar />
+                </div>
               </div>
             </div>
 
@@ -564,8 +587,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             onConfirm={handleBulkMoveToPawkit}
           />
 
-          {/* Left Panel Toggle Button - Only show when closed */}
-          {!isLeftOpen && (
+          {/* Left Panel Toggle Button - Only show when closed on desktop (mobile uses hamburger menu in header) */}
+          {!isLeftOpen && !isMobile && (
             <button
               onClick={toggleLeft}
               className="fixed left-4 top-1/2 -translate-y-1/2 z-[101]
@@ -582,8 +605,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             </button>
           )}
 
-          {/* Right Panel Toggle Button - Only show when closed */}
-          {!isPanelOpen && (
+          {/* Right Panel Toggle Button - Only show when closed on desktop (hidden on mobile) */}
+          {!isPanelOpen && !isMobile && (
             <button
               onClick={togglePanel}
               className="fixed right-4 top-1/2 -translate-y-1/2 z-[101]

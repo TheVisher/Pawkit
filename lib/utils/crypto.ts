@@ -15,9 +15,10 @@ const ALGORITHM = "aes-256-gcm";
 function getSecretKey(): Buffer {
   const key = process.env.FILEN_ENCRYPTION_KEY;
   if (!key) {
-    console.warn(
-      "[Crypto] FILEN_ENCRYPTION_KEY not set, using fallback. Set this in production!"
-    );
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('FILEN_ENCRYPTION_KEY is required in production');
+    }
+    console.warn("[Crypto] FILEN_ENCRYPTION_KEY not set, using dev fallback");
     return Buffer.from("pawkit-dev-encryption-key-32ch!"); // Exactly 32 chars
   }
   // Ensure exactly 32 bytes

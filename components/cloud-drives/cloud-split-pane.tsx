@@ -1,9 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, ChevronRight, Folder, FileText, Loader2, Home, Cloud, ShieldCheck, Triangle, Box, List, FolderTree } from "lucide-react";
+import { ChevronDown, ChevronRight, Folder, FileText, Loader2, Home, Cloud, ShieldCheck, Triangle, Box, List, FolderTree, Trash2 } from "lucide-react";
 import { cloudStorage } from "@/lib/services/cloud-storage";
 import { CloudFolderTree } from "./cloud-folder-tree";
+import { CloudDeleteModal } from "./cloud-delete-modal";
+import { useStorageStrategyStore } from "@/lib/stores/storage-strategy-store";
+import { useToastStore } from "@/lib/stores/toast-store";
+import { useCloudDelete, type CloudFileForDelete } from "@/lib/hooks/use-cloud-delete";
 import type { CloudFile, CloudProviderId } from "@/lib/services/cloud-storage/types";
 
 interface ProviderOption {
@@ -50,6 +54,61 @@ export function CloudSplitPane({
   const [selectedFileId, setSelectedFileId] = useState<string | undefined>();
 
   const currentProvider = connectedProviders.find((p) => p.id === providerId);
+  const toast = useToastStore();
+  const strategy = useStorageStrategyStore((state) => state.strategy);
+
+  // Cloud delete handler
+  const handleActualDelete = useCallback(
+    async (file: CloudFileForDelete, deleteFromBackup: boolean) => {
+      try {
+        const provider = cloudStorage.getProvider(file.provider);
+        if (!provider) return;
+        await provider.deleteFile(file.cloudId);
+
+        // If deleteFromBackup and there's a backup, delete from backup too
+        if (deleteFromBackup && strategy.secondaryEnabled && strategy.secondaryProvider) {
+          const backupProvider = cloudStorage.getProvider(strategy.secondaryProvider);
+          if (backupProvider) {
+            try {
+              const backupFiles = await backupProvider.listFiles("/Pawkit");
+              const backupFile = backupFiles.find(f => f.name === file.name && !f.isFolder);
+              if (backupFile) {
+                await backupProvider.deleteFile(backupFile.cloudId);
+              }
+            } catch (backupError) {
+              console.warn("[CloudSplitPane] Failed to delete from backup:", backupError);
+            }
+          }
+        }
+
+        toast.success(`Deleted ${file.name}`);
+        fetchContents(); // Refresh the list
+      } catch (error) {
+        console.error("[CloudSplitPane] Delete failed:", error);
+        toast.error("Delete failed");
+      }
+    },
+    [strategy, toast]
+  );
+
+  const {
+    showModal: showDeleteModal,
+    pendingFile,
+    secondaryProvider,
+    primaryProvider,
+    initiateDelete,
+    closeModal: closeDeleteModal,
+    confirmDelete,
+  } = useCloudDelete(handleActualDelete);
+
+  const handleDeleteFile = useCallback((file: CloudFile) => {
+    const fileForDelete: CloudFileForDelete = {
+      name: file.name,
+      cloudId: file.cloudId,
+      provider: providerId,
+    };
+    initiateDelete(fileForDelete);
+  }, [providerId, initiateDelete]);
 
   // Fetch folder contents using the provider's listFiles method directly
   const fetchContents = useCallback(async () => {
@@ -288,7 +347,7 @@ export function CloudSplitPane({
                     onDragStart={(e) => !item.isFolder && onFileDragStart(item, e)}
                     onClick={() => item.isFolder && onNavigate(item.path)}
                     className={`flex items-center gap-2 w-full px-3 py-2
-                               hover:bg-white/5 transition-colors
+                               hover:bg-white/5 transition-colors group
                                ${item.isFolder ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`}
                   >
                     {item.isFolder ? (
@@ -299,6 +358,19 @@ export function CloudSplitPane({
                     <span className="text-sm text-foreground truncate flex-1" title={item.name}>
                       {item.name}
                     </span>
+                    {/* Delete button for files */}
+                    {!item.isFolder && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteFile(item);
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 transition-all"
+                        title="Delete file"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-red-400" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -312,6 +384,18 @@ export function CloudSplitPane({
         <div className="absolute inset-0 bg-purple-500/20 border-2 border-dashed border-purple-500/50 rounded-lg flex items-center justify-center pointer-events-none">
           <p className="text-purple-300 text-sm font-medium">Drop to copy here</p>
         </div>
+      )}
+
+      {/* Delete confirmation modal for independent backup mode */}
+      {showDeleteModal && pendingFile && primaryProvider && (
+        <CloudDeleteModal
+          isOpen={showDeleteModal}
+          onClose={closeDeleteModal}
+          fileName={pendingFile.name}
+          primaryProvider={primaryProvider}
+          secondaryProvider={secondaryProvider}
+          onConfirm={confirmDelete}
+        />
       )}
     </div>
   );

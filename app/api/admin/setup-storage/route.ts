@@ -14,11 +14,20 @@ import { getCurrentUser } from '@/lib/auth/get-user';
 export async function POST() {
   let user;
   try {
+    // Block in production - admin endpoints should only run in development
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { error: 'Admin endpoints disabled in production', code: 'FORBIDDEN' },
+        { status: 403 }
+      );
+    }
+
     // Require authentication for admin endpoints
     user = await getCurrentUser();
     if (!user) {
       return unauthorized();
     }
+
     // Use service role key if available for admin operations
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
