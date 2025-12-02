@@ -186,7 +186,7 @@ type DataStore = {
   sync: () => Promise<void>;
   addCard: (cardData: Partial<CardDTO>) => Promise<void>;
   updateCard: (id: string, updates: Partial<CardDTO>) => Promise<void>;
-  deleteCard: (id: string, options?: { deleteLinkedEvents?: boolean; skipEventCheck?: boolean }) => Promise<void>;
+  deleteCard: (id: string, options?: { deleteLinkedEvents?: boolean; skipEventCheck?: boolean; deleteFromBackup?: boolean }) => Promise<void>;
   addCollection: (collectionData: { name: string; parentId?: string | null }) => Promise<void>;
   updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; isPrivate?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; coverImage?: string | null; coverImagePosition?: number | null }) => Promise<void>;
   deleteCollection: (id: string, deleteCards?: boolean, deleteSubPawkits?: boolean) => Promise<void>;
@@ -723,7 +723,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
    * Delete card: Soft delete locally first, then sync to server via queue
    * If card has linked calendar events, shows a prompt to delete those too
    */
-  deleteCard: async (id: string, options?: { deleteLinkedEvents?: boolean; skipEventCheck?: boolean }) => {
+  deleteCard: async (id: string, options?: { deleteLinkedEvents?: boolean; skipEventCheck?: boolean; deleteFromBackup?: boolean }) => {
     // Mark device as active
     markDeviceActive();
 
@@ -791,96 +791,119 @@ export const useDataStore = create<DataStore>((set, get) => ({
       // STEP 0.6: Delete synced note from cloud providers
       // If this is a note with a cloudId, delete the .md file from cloud storage
       if (cardToDelete?.cloudId && (cardToDelete.type === 'md-note' || cardToDelete.type === 'text-note')) {
-        // Delete from Filen if connected
-        try {
-          const { filen } = useConnectorStore.getState();
-          if (filen.connected) {
-            const { filenService } = await import('@/lib/services/filen-service');
-            console.warn(`[DataStore] Deleting synced note from Filen: ${cardToDelete.cloudId}`);
-            await filenService.deleteFile(cardToDelete.cloudId);
-            console.warn(`[DataStore] Successfully deleted note from Filen`);
+        // Get storage strategy to determine delete behavior
+        const { useStorageStrategyStore, getContentTypeFromCard } = await import('@/lib/stores/storage-strategy-store');
+        const { strategy, getDestinations } = useStorageStrategyStore.getState();
+        const contentType = getContentTypeFromCard(cardToDelete.type);
+        const destinations = getDestinations(contentType);
+
+        // Determine if we should delete from backup
+        const shouldDeleteFromBackup =
+          strategy.backupBehavior === "mirror" || // Mirror mode always deletes both
+          options?.deleteFromBackup === true; // User explicitly chose to delete backup
+
+        // Helper to check if a provider is primary or backup
+        const isPrimaryDestination = (providerId: string) => {
+          if (destinations.length === 0) return true; // No strategy, delete from all
+          return destinations[0] === providerId;
+        };
+
+        const isBackupDestination = (providerId: string) => {
+          if (destinations.length < 2) return false;
+          return destinations[1] === providerId;
+        };
+
+        // Generate the filename used for sync
+        const safeTitle = (cardToDelete.title || "Untitled")
+          .replace(/[/\\:*?"<>|]/g, "_")
+          .substring(0, 100);
+        const filename = `${safeTitle}.md`;
+
+        // Delete from Filen if connected and should delete
+        const { filen } = useConnectorStore.getState();
+        if (filen.connected) {
+          const shouldDelete = isPrimaryDestination("filen") || (isBackupDestination("filen") && shouldDeleteFromBackup);
+          if (shouldDelete) {
+            try {
+              const { filenService } = await import('@/lib/services/filen-service');
+              console.warn(`[DataStore] Deleting synced note from Filen: ${cardToDelete.cloudId}`);
+              await filenService.deleteFile(cardToDelete.cloudId);
+              console.warn(`[DataStore] Successfully deleted note from Filen`);
+            } catch (error) {
+              console.error(`[DataStore] Failed to delete note from Filen:`, error);
+            }
+          } else {
+            console.warn(`[DataStore] Skipping Filen delete (backup preserved)`);
           }
-        } catch (error) {
-          // Don't block local deletion if Filen delete fails
-          console.error(`[DataStore] Failed to delete note from Filen:`, error);
         }
 
-        // Delete from Google Drive if connected
-        try {
-          const { googleDrive } = useConnectorStore.getState();
-          if (googleDrive.connected) {
-            const { gdriveProvider } = await import('@/lib/services/google-drive/gdrive-provider');
-            // Generate the same filename used for sync
-            const safeTitle = (cardToDelete.title || "Untitled")
-              .replace(/[/\\:*?"<>|]/g, "_")
-              .substring(0, 100);
-            const filename = `${safeTitle}.md`;
+        // Delete from Google Drive if connected and should delete
+        const { googleDrive } = useConnectorStore.getState();
+        if (googleDrive.connected) {
+          const shouldDelete = isPrimaryDestination("google-drive") || (isBackupDestination("google-drive") && shouldDeleteFromBackup);
+          if (shouldDelete) {
+            try {
+              const { gdriveProvider } = await import('@/lib/services/google-drive/gdrive-provider');
+              const files = await gdriveProvider.listFiles("/Pawkit/_Notes");
+              const matchingFile = files.find(f => f.name === filename);
 
-            // List files in _Notes folder and find matching file
-            const files = await gdriveProvider.listFiles("/Pawkit/_Notes");
-            const matchingFile = files.find(f => f.name === filename);
-
-            if (matchingFile) {
-              console.warn(`[DataStore] Deleting synced note from Google Drive: ${matchingFile.cloudId}`);
-              await gdriveProvider.deleteFile(matchingFile.cloudId);
-              console.warn(`[DataStore] Successfully deleted note from Google Drive`);
+              if (matchingFile) {
+                console.warn(`[DataStore] Deleting synced note from Google Drive: ${matchingFile.cloudId}`);
+                await gdriveProvider.deleteFile(matchingFile.cloudId);
+                console.warn(`[DataStore] Successfully deleted note from Google Drive`);
+              }
+            } catch (error) {
+              console.error(`[DataStore] Failed to delete note from Google Drive:`, error);
             }
+          } else {
+            console.warn(`[DataStore] Skipping Google Drive delete (backup preserved)`);
           }
-        } catch (error) {
-          // Don't block local deletion if Google Drive delete fails
-          console.error(`[DataStore] Failed to delete note from Google Drive:`, error);
         }
 
-        // Delete from Dropbox if connected
-        try {
-          const { dropbox } = useConnectorStore.getState();
-          if (dropbox.connected) {
-            const { dropboxProvider } = await import('@/lib/services/dropbox/dropbox-provider');
-            // Generate the same filename used for sync
-            const safeTitle = (cardToDelete.title || "Untitled")
-              .replace(/[/\\:*?"<>|]/g, "_")
-              .substring(0, 100);
-            const filename = `${safeTitle}.md`;
+        // Delete from Dropbox if connected and should delete
+        const { dropbox } = useConnectorStore.getState();
+        if (dropbox.connected) {
+          const shouldDelete = isPrimaryDestination("dropbox") || (isBackupDestination("dropbox") && shouldDeleteFromBackup);
+          if (shouldDelete) {
+            try {
+              const { dropboxProvider } = await import('@/lib/services/dropbox/dropbox-provider');
+              const files = await dropboxProvider.listFiles("/Pawkit/_Notes");
+              const matchingFile = files.find(f => f.name === filename);
 
-            // List files in _Notes folder and find matching file
-            const files = await dropboxProvider.listFiles("/Pawkit/_Notes");
-            const matchingFile = files.find(f => f.name === filename);
-
-            if (matchingFile) {
-              console.warn(`[DataStore] Deleting synced note from Dropbox: ${matchingFile.cloudId}`);
-              await dropboxProvider.deleteFile(matchingFile.cloudId);
-              console.warn(`[DataStore] Successfully deleted note from Dropbox`);
+              if (matchingFile) {
+                console.warn(`[DataStore] Deleting synced note from Dropbox: ${matchingFile.cloudId}`);
+                await dropboxProvider.deleteFile(matchingFile.cloudId);
+                console.warn(`[DataStore] Successfully deleted note from Dropbox`);
+              }
+            } catch (error) {
+              console.error(`[DataStore] Failed to delete note from Dropbox:`, error);
             }
+          } else {
+            console.warn(`[DataStore] Skipping Dropbox delete (backup preserved)`);
           }
-        } catch (error) {
-          // Don't block local deletion if Dropbox delete fails
-          console.error(`[DataStore] Failed to delete note from Dropbox:`, error);
         }
 
-        // Delete from OneDrive if connected
-        try {
-          const { onedrive } = useConnectorStore.getState();
-          if (onedrive.connected) {
-            const { onedriveProvider } = await import('@/lib/services/onedrive/onedrive-provider');
-            // Generate the same filename used for sync
-            const safeTitle = (cardToDelete.title || "Untitled")
-              .replace(/[/\\:*?"<>|]/g, "_")
-              .substring(0, 100);
-            const filename = `${safeTitle}.md`;
+        // Delete from OneDrive if connected and should delete
+        const { onedrive } = useConnectorStore.getState();
+        if (onedrive.connected) {
+          const shouldDelete = isPrimaryDestination("onedrive") || (isBackupDestination("onedrive") && shouldDeleteFromBackup);
+          if (shouldDelete) {
+            try {
+              const { onedriveProvider } = await import('@/lib/services/onedrive/onedrive-provider');
+              const files = await onedriveProvider.listFiles("/Pawkit/_Notes");
+              const matchingFile = files.find(f => f.name === filename);
 
-            // List files in _Notes folder and find matching file
-            const files = await onedriveProvider.listFiles("/Pawkit/_Notes");
-            const matchingFile = files.find(f => f.name === filename);
-
-            if (matchingFile) {
-              console.warn(`[DataStore] Deleting synced note from OneDrive: ${matchingFile.cloudId}`);
-              await onedriveProvider.deleteFile(matchingFile.cloudId);
-              console.warn(`[DataStore] Successfully deleted note from OneDrive`);
+              if (matchingFile) {
+                console.warn(`[DataStore] Deleting synced note from OneDrive: ${matchingFile.cloudId}`);
+                await onedriveProvider.deleteFile(matchingFile.cloudId);
+                console.warn(`[DataStore] Successfully deleted note from OneDrive`);
+              }
+            } catch (error) {
+              console.error(`[DataStore] Failed to delete note from OneDrive:`, error);
             }
+          } else {
+            console.warn(`[DataStore] Skipping OneDrive delete (backup preserved)`);
           }
-        } catch (error) {
-          // Don't block local deletion if OneDrive delete fails
-          console.error(`[DataStore] Failed to delete note from OneDrive:`, error);
         }
       }
 

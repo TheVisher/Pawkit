@@ -10,6 +10,7 @@ import {
   CONTENT_TYPE_CONFIG,
   type StorageProviderId,
   type ContentType,
+  type BackupBehavior,
 } from "@/lib/stores/storage-strategy-store";
 import { useToastStore } from "@/lib/stores/toast-store";
 
@@ -142,6 +143,7 @@ export function StorageStrategySettings() {
   const setPrimaryProvider = useStorageStrategyStore((state) => state.setPrimaryProvider);
   const setSecondaryProvider = useStorageStrategyStore((state) => state.setSecondaryProvider);
   const setSecondaryEnabled = useStorageStrategyStore((state) => state.setSecondaryEnabled);
+  const setBackupBehavior = useStorageStrategyStore((state) => state.setBackupBehavior);
   const setRoutingEnabled = useStorageStrategyStore((state) => state.setRoutingEnabled);
   const setRouteForType = useStorageStrategyStore((state) => state.setRouteForType);
 
@@ -248,16 +250,60 @@ export function StorageStrategySettings() {
         </div>
 
         {strategy.secondaryEnabled && (
-          <div className="pt-2 border-t border-white/5">
-            <Label className="text-gray-400 text-xs mb-2 block">Secondary Provider</Label>
-            <ProviderDropdown
-              value={strategy.secondaryProvider}
-              onChange={setSecondaryProvider}
-              connectedProviders={connectedProviders}
-              allowNull
-              nullLabel="Select secondary provider..."
-              excludeProvider={strategy.primaryProvider}
-            />
+          <div className="pt-2 border-t border-white/5 space-y-4">
+            <div>
+              <Label className="text-gray-400 text-xs mb-2 block">Secondary Provider</Label>
+              <ProviderDropdown
+                value={strategy.secondaryProvider}
+                onChange={setSecondaryProvider}
+                connectedProviders={connectedProviders}
+                allowNull
+                nullLabel="Select secondary provider..."
+                excludeProvider={strategy.primaryProvider}
+              />
+            </div>
+
+            {/* Backup Behavior */}
+            {strategy.secondaryProvider && (
+              <div>
+                <Label className="text-gray-400 text-xs mb-2 block">Backup Behavior</Label>
+                <div className="space-y-2">
+                  <label className="flex items-start gap-3 p-3 rounded-lg border border-white/10 hover:bg-white/5 cursor-pointer transition-colors">
+                    <input
+                      type="radio"
+                      name="backupBehavior"
+                      value="mirror"
+                      checked={strategy.backupBehavior === "mirror"}
+                      onChange={() => setBackupBehavior("mirror")}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Mirror</div>
+                      <div className="text-xs text-muted-foreground">
+                        Deleting a file removes it from both primary and backup
+                      </div>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start gap-3 p-3 rounded-lg border border-white/10 hover:bg-white/5 cursor-pointer transition-colors">
+                    <input
+                      type="radio"
+                      name="backupBehavior"
+                      value="independent"
+                      checked={strategy.backupBehavior === "independent"}
+                      onChange={() => setBackupBehavior("independent")}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <div className="text-sm font-medium text-foreground">Independent backup</div>
+                      <div className="text-xs text-muted-foreground">
+                        Deleting a file only removes from primary. Backup copy is preserved until manually deleted.
+                      </div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
