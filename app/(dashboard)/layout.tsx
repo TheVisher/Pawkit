@@ -35,6 +35,7 @@ import { CalendarControls } from "@/components/control-panel/calendar-controls";
 import { DayDetailsPanel } from "@/components/control-panel/day-details-panel";
 import { CardDetailsPanel } from "@/components/control-panel/card-details-panel";
 import { BulkOperationsPanel } from "@/components/control-panel/bulk-operations-panel";
+import { CloudDrivesControls } from "@/components/control-panel/cloud-drives-controls";
 import { LeftNavigationPanel } from "@/components/navigation/left-navigation-panel";
 import { ContentPanel } from "@/components/layout/content-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -643,6 +644,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               )}
               {animatingContentType === "calendar-controls" && <CalendarControls />}
               {animatingContentType === "day-details" && <DayDetailsPanel />}
+              {animatingContentType === "cloud-drives-controls" && <CloudDrivesControls />}
             </div>
           </ControlPanel>
 
