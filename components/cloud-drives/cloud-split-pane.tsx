@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { ChevronDown, ChevronRight, Folder, FileText, Loader2, Home, Cloud, ShieldCheck, Triangle, Box } from "lucide-react";
+import { ChevronDown, ChevronRight, Folder, FileText, Loader2, Home, Cloud, ShieldCheck, Triangle, Box, List, FolderTree } from "lucide-react";
+import { cloudStorage } from "@/lib/services/cloud-storage";
+import { CloudFolderTree } from "./cloud-folder-tree";
 import type { CloudFile, CloudProviderId } from "@/lib/services/cloud-storage/types";
 
 interface ProviderOption {
@@ -44,10 +46,12 @@ export function CloudSplitPane({
   const [error, setError] = useState<string | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "tree">("tree"); // Default to tree view
+  const [selectedFileId, setSelectedFileId] = useState<string | undefined>();
 
   const currentProvider = connectedProviders.find((p) => p.id === providerId);
 
-  // Fetch folder contents
+  // Fetch folder contents using the provider's listFiles method directly
   const fetchContents = useCallback(async () => {
     if (!providerId) return;
 
@@ -55,53 +59,23 @@ export function CloudSplitPane({
     setError(null);
 
     try {
-      // Build API URL based on provider
-      let apiUrl = "";
-      if (providerId === "filen") {
-        apiUrl = `/api/filen/folder?path=${encodeURIComponent(currentPath)}`;
-      } else if (providerId === "google-drive") {
-        apiUrl = `/api/gdrive/folder?path=${encodeURIComponent(currentPath)}`;
-      } else if (providerId === "dropbox") {
-        apiUrl = `/api/dropbox/folder?path=${encodeURIComponent(currentPath)}`;
-      } else if (providerId === "onedrive") {
-        apiUrl = `/api/onedrive/folder?path=${encodeURIComponent(currentPath)}`;
+      const provider = cloudStorage.getProvider(providerId);
+      if (!provider) {
+        throw new Error(`Provider ${providerId} not found`);
       }
 
-      const response = await fetch(apiUrl);
-      if (!response.ok) {
-        throw new Error("Failed to fetch folder contents");
-      }
-
-      const data = await response.json();
-      const fetchedItems = (data.items || []).map((item: {
-        uuid: string;
-        name: string;
-        path: string;
-        size: number;
-        mime?: string;
-        mimeType?: string;
-        modified?: number;
-        modifiedAt?: string;
-        isFolder: boolean;
-      }) => ({
-        cloudId: item.uuid,
-        name: item.name,
-        path: item.path,
-        size: item.size || 0,
-        mimeType: item.mime || item.mimeType || "application/octet-stream",
-        modifiedAt: new Date(item.modified || item.modifiedAt || Date.now()),
-        provider: providerId,
-        isFolder: item.isFolder,
-      }));
+      // Use the provider's listFiles method directly
+      const files = await provider.listFiles(currentPath);
 
       // Sort: folders first, then by name
-      fetchedItems.sort((a: CloudFile, b: CloudFile) => {
+      const sortedFiles = [...files].sort((a: CloudFile, b: CloudFile) => {
         if (a.isFolder !== b.isFolder) return a.isFolder ? -1 : 1;
         return a.name.localeCompare(b.name);
       });
 
-      setItems(fetchedItems);
+      setItems(sortedFiles);
     } catch (err) {
+      console.error(`[CloudSplitPane] Error fetching ${providerId}:`, err);
       setError(err instanceof Error ? err.message : "Failed to load contents");
       setItems([]);
     } finally {
@@ -205,79 +179,131 @@ export function CloudSplitPane({
           )}
         </div>
 
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground overflow-x-auto">
-          <button
-            onClick={() => onNavigate("/Pawkit")}
-            className="hover:text-foreground transition-colors flex items-center gap-1 flex-shrink-0"
-          >
-            <Home className="h-3 w-3" />
-          </button>
-          {pathSegments.map((segment, i) => (
-            <div key={i} className="flex items-center gap-1 flex-shrink-0">
-              <ChevronRight className="h-3 w-3" />
+        {/* Breadcrumb and View Toggle */}
+        <div className="flex items-center justify-between gap-2 mt-2">
+          {/* Breadcrumb - only show in list view */}
+          {viewMode === "list" ? (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground overflow-x-auto flex-1">
               <button
-                onClick={() => {
-                  const targetPath = "/" + pathSegments.slice(0, i + 1).join("/");
-                  onNavigate(targetPath);
-                }}
-                className="hover:text-foreground transition-colors truncate max-w-[100px]"
-                title={segment}
+                onClick={() => onNavigate("/Pawkit")}
+                className="hover:text-foreground transition-colors flex items-center gap-1 flex-shrink-0"
               >
-                {segment}
+                <Home className="h-3 w-3" />
               </button>
+              {pathSegments.map((segment, i) => (
+                <div key={i} className="flex items-center gap-1 flex-shrink-0">
+                  <ChevronRight className="h-3 w-3" />
+                  <button
+                    onClick={() => {
+                      const targetPath = "/" + pathSegments.slice(0, i + 1).join("/");
+                      onNavigate(targetPath);
+                    }}
+                    className="hover:text-foreground transition-colors truncate max-w-[100px]"
+                    title={segment}
+                  >
+                    {segment}
+                  </button>
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            <div className="text-xs text-muted-foreground">Tree View</div>
+          )}
+
+          {/* View Toggle */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`p-1 rounded transition-colors ${
+                viewMode === "list"
+                  ? "bg-purple-500/20 text-purple-400"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+              }`}
+              title="List View"
+            >
+              <List className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setViewMode("tree")}
+              className={`p-1 rounded transition-colors ${
+                viewMode === "tree"
+                  ? "bg-purple-500/20 text-purple-400"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+              }`}
+              title="Tree View"
+            >
+              <FolderTree className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Content: File List */}
+      {/* Content: Tree or List View */}
       <div className="flex-1 overflow-y-auto">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-32">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : error ? (
-          <div className="p-4 text-center text-red-400 text-sm">{error}</div>
-        ) : items.length === 0 ? (
-          <div className="p-4 text-center text-muted-foreground text-sm">
-            Empty folder
+        {viewMode === "tree" ? (
+          /* Tree View */
+          <div className="p-2">
+            <CloudFolderTree
+              providerId={providerId}
+              onFileSelect={(file) => {
+                setSelectedFileId(file.cloudId);
+              }}
+              onFileDragStart={onFileDragStart}
+              onFileDrop={onFileDrop}
+              selectedFileId={selectedFileId}
+              rootPath="/Pawkit"
+            />
           </div>
         ) : (
-          <div className="divide-y divide-white/5">
-            {/* Parent folder link */}
-            {currentPath !== "/Pawkit" && (
-              <button
-                onClick={handleNavigateUp}
-                className="flex items-center gap-2 w-full px-3 py-2 hover:bg-white/5 transition-colors text-left"
-              >
-                <Folder className="h-4 w-4 text-yellow-500" />
-                <span className="text-sm text-muted-foreground">..</span>
-              </button>
-            )}
-
-            {/* Items */}
-            {items.map((item) => (
-              <div
-                key={item.cloudId}
-                draggable={!item.isFolder}
-                onDragStart={(e) => !item.isFolder && onFileDragStart(item, e)}
-                onClick={() => item.isFolder && onNavigate(item.path)}
-                className={`flex items-center gap-2 w-full px-3 py-2
-                           hover:bg-white/5 transition-colors
-                           ${item.isFolder ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`}
-              >
-                {item.isFolder ? (
-                  <Folder className="h-4 w-4 text-yellow-500 flex-shrink-0" />
-                ) : (
-                  <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                )}
-                <span className="text-sm text-foreground truncate flex-1" title={item.name}>
-                  {item.name}
-                </span>
+          /* List View */
+          <>
+            {isLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
-            ))}
-          </div>
+            ) : error ? (
+              <div className="p-4 text-center text-red-400 text-sm">{error}</div>
+            ) : items.length === 0 ? (
+              <div className="p-4 text-center text-muted-foreground text-sm">
+                Empty folder
+              </div>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {/* Parent folder link */}
+                {currentPath !== "/Pawkit" && (
+                  <button
+                    onClick={handleNavigateUp}
+                    className="flex items-center gap-2 w-full px-3 py-2 hover:bg-white/5 transition-colors text-left"
+                  >
+                    <Folder className="h-4 w-4 text-yellow-500" />
+                    <span className="text-sm text-muted-foreground">..</span>
+                  </button>
+                )}
+
+                {/* Items */}
+                {items.map((item) => (
+                  <div
+                    key={item.cloudId}
+                    draggable={!item.isFolder}
+                    onDragStart={(e) => !item.isFolder && onFileDragStart(item, e)}
+                    onClick={() => item.isFolder && onNavigate(item.path)}
+                    className={`flex items-center gap-2 w-full px-3 py-2
+                               hover:bg-white/5 transition-colors
+                               ${item.isFolder ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"}`}
+                  >
+                    {item.isFolder ? (
+                      <Folder className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                    ) : (
+                      <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                    )}
+                    <span className="text-sm text-foreground truncate flex-1" title={item.name}>
+                      {item.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
