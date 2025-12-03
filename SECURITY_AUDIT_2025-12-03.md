@@ -1254,8 +1254,8 @@ const signOut = async (clearLocalData = false) => {
 #### 🟢 LOW Priority
 
 9. **~~Add Zod schemas to remaining routes~~** ✅ DONE (2025-12-03)
-   - Added `lib/validators/todo.ts` and `lib/validators/event.ts`
-   - Both routes now validate input with Zod
+   - Added `lib/validators/todo.ts` for `/api/todos`
+   - Events validation handled by server functions (complex recurrence types)
 
 10. **Add optional "clear local data" on logout**
     - For shared computer scenarios

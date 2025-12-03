@@ -8,8 +8,7 @@ import {
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { rateLimit, getRateLimitHeaders } from "@/lib/utils/rate-limit";
-import { unauthorized, rateLimited, success, created, validationError } from "@/lib/utils/api-responses";
-import { eventCreateSchema, eventBulkUpsertSchema } from "@/lib/validators/event";
+import { unauthorized, rateLimited, success, created } from "@/lib/utils/api-responses";
 
 // Force Node.js runtime for Prisma compatibility
 export const runtime = 'nodejs';
@@ -102,26 +101,15 @@ export async function POST(request: NextRequest) {
 
     // Handle bulk upsert for sync operations
     if (body.bulk && Array.isArray(body.events)) {
-      const bulkParseResult = eventBulkUpsertSchema.safeParse(body);
-      if (!bulkParseResult.success) {
-        const message = bulkParseResult.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
-        return validationError(message);
-      }
-      const events = await bulkUpsertEvents(user.id, bulkParseResult.data.events);
+      const events = await bulkUpsertEvents(user.id, body.events);
       return NextResponse.json(
         { items: events, synced: events.length },
         { status: 200, headers: rateLimitHeaders }
       );
     }
 
-    // Single event creation - validate with Zod
-    const parseResult = eventCreateSchema.safeParse(body);
-    if (!parseResult.success) {
-      const message = parseResult.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
-      return validationError(message);
-    }
-
-    const event = await createEvent(user.id, parseResult.data);
+    // Single event creation
+    const event = await createEvent(user.id, body);
     return created(event);
   } catch (error) {
     return handleApiError(error, { route: '/api/events', userId: user?.id });
