@@ -35,8 +35,9 @@ async function validateFileType(buffer: Buffer, filename: string): Promise<{ val
   }
 
   // For files where file-type returns undefined (text files), allow if extension is safe
-  const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
-  if (SAFE_TEXT_EXTENSIONS.includes(ext)) {
+  const dotIndex = filename.lastIndexOf('.');
+  const ext = dotIndex !== -1 ? filename.toLowerCase().slice(dotIndex) : '';
+  if (ext && SAFE_TEXT_EXTENSIONS.includes(ext)) {
     return { valid: true, detectedType: 'text/plain' };
   }
 
