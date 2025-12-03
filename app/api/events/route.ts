@@ -104,7 +104,8 @@ export async function POST(request: NextRequest) {
     if (body.bulk && Array.isArray(body.events)) {
       const bulkParseResult = eventBulkUpsertSchema.safeParse(body);
       if (!bulkParseResult.success) {
-        return validationError(bulkParseResult.error.issues);
+        const message = bulkParseResult.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
+        return validationError(message);
       }
       const events = await bulkUpsertEvents(user.id, bulkParseResult.data.events);
       return NextResponse.json(
@@ -116,7 +117,8 @@ export async function POST(request: NextRequest) {
     // Single event creation - validate with Zod
     const parseResult = eventCreateSchema.safeParse(body);
     if (!parseResult.success) {
-      return validationError(parseResult.error.issues);
+      const message = parseResult.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
+      return validationError(message);
     }
 
     const event = await createEvent(user.id, parseResult.data);
