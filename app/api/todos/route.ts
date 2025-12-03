@@ -66,7 +66,8 @@ export async function POST(request: Request) {
     // Validate with Zod schema
     const parseResult = todoCreateSchema.safeParse(body);
     if (!parseResult.success) {
-      return validationError(parseResult.error.issues);
+      const message = parseResult.error.issues.map(i => `${i.path.join('.')}: ${i.message}`).join(', ');
+      return validationError(message);
     }
 
     const validated = parseResult.data;
