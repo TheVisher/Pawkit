@@ -1201,7 +1201,7 @@ const signOut = async (clearLocalData = false) => {
 |----------|--------|----------------|
 | **Environment Variables** | ✅ Good | Fixed stale credential |
 | **API Authentication** | ✅ Good | All routes protected |
-| **Supabase RLS** | ⚠️ Partial | 4 tables missing policies |
+| **Supabase RLS** | ✅ Good | All tables now have RLS policies |
 | **Rate Limiting** | ✅ Good | All endpoints now rate limited |
 | **Input Validation** | ✅ Good | XSS/SSRF protected |
 | **Security Headers** | ✅ Good | All headers configured |
@@ -1230,9 +1230,9 @@ const signOut = async (clearLocalData = false) => {
 
 #### 🟡 MEDIUM Priority
 
-4. **Add RLS policies to 4 tables**
+4. **~~Add RLS policies to 4 tables~~** ✅ DONE (2025-12-03)
    - UserViewSettings, DeviceSession, Todo, CalendarEvent
-   - SQL provided in Section 3
+   - Applied via Supabase SQL Editor
 
 5. **~~Add rate limiting to GET endpoints~~** ✅ DONE (2025-12-03)
    - `/api/cards` (100/min), `/api/events` (100/min), `/api/sync/check` (120/min)
