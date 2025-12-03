@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import FilenSDK from "@filen/sdk";
 import { encrypt, decrypt } from "@/lib/utils/crypto";
 import { rateLimit, getRateLimitHeaders } from "@/lib/utils/rate-limit";
+import { logger } from "@/lib/utils/logger";
 import {
   getAllFolderPaths,
   getFoldersWithUuids,
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
   });
 
   if (!rateLimitResult.allowed) {
-    console.warn(`[Filen] Rate limit exceeded for IP: ${ip}`);
+    logger.warn(`[Filen] Rate limit exceeded for IP: ${ip}`);
     const response = NextResponse.json(
       { success: false, error: "Too many login attempts", code: "RATE_LIMITED" },
       { status: 429 }
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
         } catch {
           // Folder doesn't exist, create it
           await fs.mkdir({ path: folderPath });
-          console.log("[Filen] Created folder:", folderPath);
+          logger.debug("[Filen] Created folder:", folderPath);
           // Get the stat after creation
           stat = await fs.stat({ path: folderPath });
         }
@@ -111,14 +112,14 @@ export async function POST(request: NextRequest) {
         const folderConfig = foldersToResolve.find((f) => f.path === folderPath);
         if (folderConfig && stat?.uuid) {
           pawkitFolderUUIDs[folderConfig.key] = stat.uuid;
-          console.log(`[Filen] ${folderConfig.key} folder UUID:`, stat.uuid);
+          logger.debug(`[Filen] ${folderConfig.key} folder UUID:`, stat.uuid);
         }
       } catch (error) {
-        console.error(`[Filen] Error processing folder ${folderPath}:`, error);
+        logger.error(`[Filen] Error processing folder ${folderPath}:`, error);
       }
     }
 
-    console.log("[Filen] Collected folder UUIDs:", Object.keys(pawkitFolderUUIDs));
+    logger.debug("[Filen] Collected folder UUIDs:", Object.keys(pawkitFolderUUIDs));
 
     // Extract session data (includes privateKey for HMAC, excludes publicKey)
     // NOTE: pawkitFolderUUIDs NOT included - stored in client localStorage instead
@@ -135,29 +136,29 @@ export async function POST(request: NextRequest) {
     };
 
     // Debug: Log individual field sizes
-    console.log("[Filen] Session field sizes:");
-    console.log("  email:", session.email?.length || 0, "bytes");
-    console.log("  apiKey:", session.apiKey?.length || 0, "bytes");
-    console.log("  masterKeys[0]:", (session.masterKeys[0] || "").length, "bytes");
-    console.log("  privateKey:", session.privateKey?.length || 0, "bytes");
-    console.log("  userId:", String(session.userId).length, "bytes");
-    console.log("  baseFolderUUID:", (session.baseFolderUUID || "").length, "bytes");
+    logger.debug("[Filen] Session field sizes:");
+    logger.debug("  email:", session.email?.length || 0, "bytes");
+    logger.debug("  apiKey:", session.apiKey?.length || 0, "bytes");
+    logger.debug("  masterKeys[0]:", (session.masterKeys[0] || "").length, "bytes");
+    logger.debug("  privateKey:", session.privateKey?.length || 0, "bytes");
+    logger.debug("  userId:", String(session.userId).length, "bytes");
+    logger.debug("  baseFolderUUID:", (session.baseFolderUUID || "").length, "bytes");
 
     const sessionJson = JSON.stringify(session);
-    console.log("[Filen] Total minimal session:", sessionJson.length, "bytes");
+    logger.debug("[Filen] Total minimal session:", sessionJson.length, "bytes");
 
     const encryptedSession = encrypt(sessionJson);
-    console.log("[Filen] Compressed+encrypted size:", encryptedSession.length, "bytes");
+    logger.debug("[Filen] Compressed+encrypted size:", encryptedSession.length, "bytes");
 
     if (encryptedSession.length > 4096) {
-      console.error("[Filen] ERROR: Still too large after compression!");
+      logger.error("[Filen] ERROR: Still too large after compression!");
       return NextResponse.json(
         { success: false, error: "Session data too large. Please contact support." },
         { status: 500 }
       );
     }
 
-    console.log("[Filen] Login successful for:", email);
+    logger.debug("[Filen] Login successful for:", email);
 
     // Use NextResponse to set cookie
     // folderUUIDs returned in body (stored in client localStorage, not cookie)
@@ -189,17 +190,17 @@ export async function POST(request: NextRequest) {
         maxAge: COOKIE_MAX_AGE,
         path: "/",
       });
-      console.log("[Filen] Folders cookie set, size:", foldersJson.length, "bytes");
+      logger.debug("[Filen] Folders cookie set, size:", foldersJson.length, "bytes");
     }
 
-    console.log("[Filen] Session cookie set, size:", encryptedSession.length, "bytes");
+    logger.debug("[Filen] Session cookie set, size:", encryptedSession.length, "bytes");
 
     return response;
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Failed to connect to Filen";
 
-    console.error("[Filen] Login error:", errorMessage);
+    logger.error("[Filen] Login error:", errorMessage);
 
     // Handle common errors
     const lowerError = errorMessage.toLowerCase();
@@ -261,7 +262,7 @@ export async function GET() {
       email: session.email,
     });
   } catch (error) {
-    console.error("[Filen] Auth check error:", error);
+    logger.error("[Filen] Auth check error:", error);
     return NextResponse.json({ authenticated: false, email: null });
   }
 }

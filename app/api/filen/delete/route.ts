@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { decrypt } from "@/lib/utils/crypto";
+import { logger } from "@/lib/utils/logger";
 
 // Note: api.filen.io doesn't exist (NXDOMAIN), use gateway.filen.io instead
 const FILEN_API_URL = "https://gateway.filen.io";
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     try {
       session = JSON.parse(decrypt(sessionCookie.value)) as FilenSession;
     } catch (decryptError) {
-      console.error("[Filen Delete] Failed to decrypt session:", decryptError);
+      logger.error("[Filen Delete] Failed to decrypt session:", decryptError);
       return NextResponse.json(
         { status: false, message: "Invalid Filen session" },
         { status: 401 }
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("[Filen Delete] Trashing file:", uuid);
+    logger.debug("[Filen Delete] Trashing file:", uuid);
 
     // 5. Call Filen's trash endpoint directly
     const response = await fetch(`${FILEN_API_URL}/v3/file/trash`, {
@@ -94,15 +95,15 @@ export async function POST(request: Request) {
     });
 
     // Log response
-    console.log("[Filen Delete] Filen response status:", response.status);
+    logger.debug("[Filen Delete] Filen response status:", response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[Filen Delete] Filen API error:", response.status, errorText);
+      logger.error("[Filen Delete] Filen API error:", response.status, errorText);
 
       // 404 might mean file already deleted - treat as success
       if (response.status === 404) {
-        console.log("[Filen Delete] File not found (may already be deleted)");
+        logger.debug("[Filen Delete] File not found (may already be deleted)");
         return NextResponse.json({ status: true, message: "File not found (may already be deleted)" });
       }
 
@@ -113,24 +114,24 @@ export async function POST(request: Request) {
     }
 
     const result = await response.json();
-    console.log("[Filen Delete] Filen response:", result);
+    logger.debug("[Filen Delete] Filen response:", result);
 
     // Check if Filen returned an error in the response body
     if (result.status === false) {
       // "file_not_found" or similar errors - treat as success (already deleted)
       if (result.message?.toLowerCase().includes("not found") ||
           result.code === "file_not_found") {
-        console.log("[Filen Delete] File not found in Filen (may already be deleted)");
+        logger.debug("[Filen Delete] File not found in Filen (may already be deleted)");
         return NextResponse.json({ status: true, message: "File already deleted" });
       }
 
-      console.error("[Filen Delete] Filen returned error:", result);
+      logger.error("[Filen Delete] Filen returned error:", result);
       return NextResponse.json(result, { status: 400 });
     }
 
     return NextResponse.json({ status: true, message: "File trashed successfully" });
   } catch (error) {
-    console.error("[Filen Delete] Unexpected error:", error);
+    logger.error("[Filen Delete] Unexpected error:", error);
     return NextResponse.json(
       { status: false, message: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }

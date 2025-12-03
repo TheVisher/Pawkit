@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { refreshAccessToken, getUserInfo } from "@/lib/services/onedrive/oauth";
+import { logger } from "@/lib/utils/logger";
 
 export async function GET() {
   try {
@@ -52,7 +53,7 @@ export async function GET() {
           email: userInfo.email,
         });
       } catch (refreshError) {
-        console.error("[OneDrive Status] Token refresh failed:", refreshError);
+        logger.error("[OneDrive Status] Token refresh failed:", refreshError);
         // Clear invalid tokens
         cookieStore.delete("onedrive_tokens");
         return NextResponse.json({ connected: false });
@@ -65,7 +66,7 @@ export async function GET() {
       email: tokenData.email,
     });
   } catch (error) {
-    console.error("[OneDrive Status] Error:", error);
+    logger.error("[OneDrive Status] Error:", error);
     return NextResponse.json({ connected: false });
   }
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { decrypt } from "@/lib/utils/crypto";
+import { logger } from "@/lib/utils/logger";
 
 const FILEN_API_URL = "https://gateway.filen.io";
 const FILEN_COOKIE_NAME = "filen_session";
@@ -71,8 +72,8 @@ export async function POST(request: Request) {
 
     // 4. Split path into segments (e.g., "/Pawkit/_Library" -> ["Pawkit", "_Library"])
     const segments = path.split("/").filter(Boolean);
-    console.log(`[Filen Folder] Path: "${path}", segments:`, segments);
-    console.log(`[Filen Folder] Base folder UUID: ${session.baseFolderUUID}`);
+    logger.debug(`[Filen Folder] Path: "${path}", segments:`, segments);
+    logger.debug(`[Filen Folder] Base folder UUID: ${session.baseFolderUUID}`);
 
     if (segments.length === 0) {
       return NextResponse.json({ uuid: session.baseFolderUUID });
@@ -83,9 +84,9 @@ export async function POST(request: Request) {
 
     for (const folderName of segments) {
       // List current folder contents
-      console.log(`[Filen Folder] Listing folder UUID: ${currentUUID}`);
+      logger.debug(`[Filen Folder] Listing folder UUID: ${currentUUID}`);
       const requestBody = { uuid: currentUUID };
-      console.log(`[Filen Folder] Request body:`, JSON.stringify(requestBody));
+      logger.debug(`[Filen Folder] Request body:`, JSON.stringify(requestBody));
 
       const listResponse = await fetch(`${FILEN_API_URL}/v3/dir/content`, {
         method: "POST",
@@ -96,34 +97,34 @@ export async function POST(request: Request) {
         body: JSON.stringify(requestBody),
       });
 
-      console.log(`[Filen Folder] Response status: ${listResponse.status}`);
+      logger.debug(`[Filen Folder] Response status: ${listResponse.status}`);
 
       if (!listResponse.ok) {
         const errorText = await listResponse.text();
-        console.error("[Filen Folder] Failed to list folder:", listResponse.status, errorText);
+        logger.error("[Filen Folder] Failed to list folder:", listResponse.status, errorText);
         return NextResponse.json({ error: "Failed to list folder" }, { status: 500 });
       }
 
       const listResult = await listResponse.json();
-      console.log("[Filen Folder] List response:", JSON.stringify(listResult).substring(0, 1000));
+      logger.debug("[Filen Folder] List response:", JSON.stringify(listResult).substring(0, 1000));
 
       if (!listResult.status) {
-        console.error("[Filen Folder] API error:", listResult.message);
+        logger.error("[Filen Folder] API error:", listResult.message);
         return NextResponse.json({ error: listResult.message }, { status: 500 });
       }
 
       const content: FolderContent = listResult.data;
-      console.log(`[Filen Folder] Listing ${currentUUID}, found ${content?.folders?.length || 0} folders`);
+      logger.debug(`[Filen Folder] Listing ${currentUUID}, found ${content?.folders?.length || 0} folders`);
 
       if (!content) {
-        console.error("[Filen Folder] No data in response");
+        logger.error("[Filen Folder] No data in response");
         return NextResponse.json({ error: "No folder data returned" }, { status: 500 });
       }
 
       // Look for existing folder by nameHashed (more reliable than decrypting)
       const targetHash = await hashFolderName(folderName);
       const folders = content.folders || [];
-      console.log(`[Filen Folder] Looking for "${folderName}" (hash: ${targetHash.substring(0, 12)}...) among ${folders.length} folders`);
+      logger.debug(`[Filen Folder] Looking for "${folderName}" (hash: ${targetHash.substring(0, 12)}...) among ${folders.length} folders`);
 
       // Filen returns folders with a 'name' field that's encrypted, but may also have 'nameHashed'
       // If nameHashed isn't available, we need to check by trying to create and handling conflicts
@@ -133,7 +134,7 @@ export async function POST(request: Request) {
       const existingFolder = foldersWithHash.find(f => f.nameHashed === targetHash);
 
       if (existingFolder) {
-        console.log(`[Filen Folder] Found existing folder by hash: ${existingFolder.uuid}`);
+        logger.debug(`[Filen Folder] Found existing folder by hash: ${existingFolder.uuid}`);
         currentUUID = existingFolder.uuid;
       } else {
         // Create the folder
@@ -157,26 +158,26 @@ export async function POST(request: Request) {
         });
 
         if (!createResponse.ok) {
-          console.error("[Filen Folder] Failed to create folder:", createResponse.status);
+          logger.error("[Filen Folder] Failed to create folder:", createResponse.status);
           return NextResponse.json({ error: "Failed to create folder" }, { status: 500 });
         }
 
         const createResult = await createResponse.json();
         if (!createResult.status) {
-          console.error("[Filen Folder] Create error:", createResult.message);
+          logger.error("[Filen Folder] Create error:", createResult.message);
           return NextResponse.json({ error: createResult.message }, { status: 500 });
         }
 
         currentUUID = newUUID;
-        console.log(`[Filen Folder] Created folder: ${folderName} (${newUUID})`);
+        logger.debug(`[Filen Folder] Created folder: ${folderName} (${newUUID})`);
       }
     }
 
-    console.log(`[Filen Folder] Success! Final UUID: ${currentUUID}`);
+    logger.debug(`[Filen Folder] Success! Final UUID: ${currentUUID}`);
     return NextResponse.json({ uuid: currentUUID });
   } catch (error) {
-    console.error("[Filen Folder] Caught error:", error);
-    console.error("[Filen Folder] Error stack:", error instanceof Error ? error.stack : "no stack");
+    logger.error("[Filen Folder] Caught error:", error);
+    logger.error("[Filen Folder] Error stack:", error instanceof Error ? error.stack : "no stack");
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
@@ -254,7 +255,7 @@ async function hashFolderName(name: string): Promise<string> {
  */
 async function decryptMetadata(encrypted: string, masterKeys: string[]): Promise<string | null> {
   const version = encrypted.substring(0, 3);
-  console.log(`[Filen Decrypt] Version: ${version}, encrypted length: ${encrypted.length}`);
+  logger.debug(`[Filen Decrypt] Version: ${version}, encrypted length: ${encrypted.length}`);
 
   // Try each master key
   for (let keyIndex = 0; keyIndex < masterKeys.length; keyIndex++) {
@@ -362,15 +363,15 @@ async function decryptMetadata(encrypted: string, masterKeys: string[]): Promise
 
         return new TextDecoder().decode(decrypted);
       } else {
-        console.log(`[Filen Decrypt] Unknown version: ${version}`);
+        logger.debug(`[Filen Decrypt] Unknown version: ${version}`);
       }
     } catch (err) {
       // Try next key
-      console.log(`[Filen Decrypt] Key ${keyIndex} failed for version ${version}:`, err instanceof Error ? err.message : err);
+      logger.debug(`[Filen Decrypt] Key ${keyIndex} failed for version ${version}:`, err instanceof Error ? err.message : err);
       continue;
     }
   }
-  console.log(`[Filen Decrypt] All keys failed`);
+  logger.debug(`[Filen Decrypt] All keys failed`);
   return null;
 }
 
@@ -403,7 +404,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const path = searchParams.get("path") || "/Pawkit";
 
-    console.log(`[Filen Folder GET] Listing path: ${path}`);
+    logger.debug(`[Filen Folder GET] Listing path: ${path}`);
 
     // 4. Use SDK's fs.readdir to list folder contents
     const fs = filen.fs();
@@ -411,7 +412,7 @@ export async function GET(request: NextRequest) {
 
     try {
       const entries = await fs.readdir({ path });
-      console.log(`[Filen Folder GET] Found ${entries.length} entries in ${path}`);
+      logger.debug(`[Filen Folder GET] Found ${entries.length} entries in ${path}`);
 
       for (const entry of entries) {
         const entryPath = `${path}/${entry}`;
@@ -441,19 +442,19 @@ export async function GET(request: NextRequest) {
             });
           }
         } catch (statErr) {
-          console.error(`[Filen Folder GET] Error stat'ing ${entryPath}:`, statErr);
+          logger.error(`[Filen Folder GET] Error stat'ing ${entryPath}:`, statErr);
         }
       }
     } catch (readdirErr) {
       // Folder doesn't exist or other error
-      console.log(`[Filen Folder GET] Folder not found or error: ${path}`, readdirErr);
+      logger.debug(`[Filen Folder GET] Folder not found or error: ${path}`, readdirErr);
       return NextResponse.json({ items: [], path, error: `Folder not found: ${path}` });
     }
 
-    console.log(`[Filen Folder GET] Returning ${items.length} items`);
+    logger.debug(`[Filen Folder GET] Returning ${items.length} items`);
     return NextResponse.json({ items, path });
   } catch (error) {
-    console.error("[Filen Folder GET] Error:", error);
+    logger.error("[Filen Folder GET] Error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to list folder" },
       { status: 500 }

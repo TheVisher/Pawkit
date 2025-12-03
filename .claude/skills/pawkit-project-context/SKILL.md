@@ -3244,3 +3244,47 @@ content: {
 
 **Last Updated**: November 23, 2025
 
+---
+
+## Future Features / Roadmap Ideas
+
+### Tab Session Saving (Extension Feature)
+**Status**: 📝 Concept / Future
+**Priority**: Medium
+**Type**: Browser Extension Feature
+
+**Overview**: Capture all open tabs in browser window(s) with one click, similar to OneTab or Session Buddy, but integrated into the Pawkit ecosystem.
+
+**Core Functionality**:
+- Capture: URLs, titles, favicons, tab order, window groupings, tab groups
+- Store as a "Session" card type OR as a collection with individual tab cards
+- Options:
+  - "Save & Close" (OneTab-style) - saves tabs and closes them
+  - "Save Only" - saves snapshot without closing tabs
+  - "Auto-save periodic snapshots" - background auto-save every X minutes
+
+**Restore Options**:
+- Open all tabs at once
+- Open in new window
+- Open individual tabs selectively
+- Preview before restoring
+
+**Integration Points**:
+- Sessions backup to cloud storage like everything else (Filen, Google Drive, Dropbox, OneDrive)
+- Sessions visible in web app Library
+- Search across saved sessions
+- Tags and collections for organization
+
+**Competitive Advantage**:
+- Unlike OneTab/Session Buddy: Full backup to multiple cloud providers
+- Unlike browser sync: Cross-browser session restore
+- Part of unified Pawkit ecosystem (notes, bookmarks, files, sessions)
+
+**Technical Considerations**:
+- New card type: `session` with `tabs: Tab[]` array
+- Or: Collection with `isSession: true` flag containing individual tab cards
+- Extension API: `chrome.tabs.query()` to capture current tabs
+- Tab group support: `chrome.tabGroups` API (Chrome 89+)
+
+**Competes With**: OneTab, Session Buddy, Toby, but integrated into Pawkit ecosystem
+

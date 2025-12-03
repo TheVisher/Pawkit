@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { exchangeCodeForTokens, getUserInfo } from "@/lib/services/dropbox/oauth";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/utils/logger";
 
 export const runtime = "nodejs";
 
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
     const errorDescription = searchParams.get("error_description");
 
     if (error) {
-      console.error("[Dropbox OAuth] Error from Dropbox:", error, errorDescription);
+      logger.error("[Dropbox OAuth] Error from Dropbox:", error, errorDescription);
       return NextResponse.redirect(`${baseUrl}/settings?dropbox=error&message=${encodeURIComponent(errorDescription || "Authorization denied")}`);
     }
 
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
       `${baseUrl}/settings?dropbox=connected&email=${encodeURIComponent(userInfo.email)}`
     );
   } catch (error) {
-    console.error("[Dropbox OAuth] Callback error:", error);
+    logger.error("[Dropbox OAuth] Callback error:", error);
     return NextResponse.redirect(`${baseUrl}/settings?dropbox=error&message=Connection failed`);
   }
 }

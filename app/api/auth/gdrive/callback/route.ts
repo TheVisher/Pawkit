@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { exchangeCodeForTokens, getUserInfo } from "@/lib/services/google-drive/oauth";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/utils/logger";
 
 export const runtime = "nodejs";
 
@@ -71,7 +72,7 @@ export async function GET(request: NextRequest) {
       `${baseUrl}/settings?gdrive=connected&email=${encodeURIComponent(userInfo.email)}`
     );
   } catch (error) {
-    console.error("[GDrive OAuth] Callback error:", error);
+    logger.error("[GDrive OAuth] Callback error:", error);
     return NextResponse.redirect(`${baseUrl}/settings?gdrive=error&message=Connection failed`);
   }
 }

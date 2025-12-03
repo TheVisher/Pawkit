@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
 import { unauthorized, success, rateLimited } from "@/lib/utils/api-responses";
 import { rateLimit } from "@/lib/utils/rate-limit";
+import { logger } from "@/lib/utils/logger";
 
 // Recent history item type for user settings
 interface RecentHistoryItem {
@@ -47,7 +48,7 @@ export async function GET() {
       where: { userId: user.id }
     });
 
-    console.log('[API GET /api/user/settings] Settings from DB:', {
+    logger.debug('[API GET /api/user/settings] Settings from DB:', {
       exists: !!settings,
       pinnedNoteIds: settings?.pinnedNoteIds,
       recentHistory: settings?.recentHistory
@@ -87,7 +88,7 @@ export async function GET() {
       recentHistory = [];
     }
 
-    console.log('[API GET /api/user/settings] Parsed data:', {
+    logger.debug('[API GET /api/user/settings] Parsed data:', {
       pinnedNoteIds,
       pinnedNotesCount: pinnedNoteIds.length,
       recentHistoryCount: recentHistory.length
@@ -200,7 +201,7 @@ export async function PATCH(request: Request) {
       // Validate and limit to max 3 items
       const notes = Array.isArray(body.pinnedNoteIds) ? body.pinnedNoteIds.slice(0, 3) : [];
       updateData.pinnedNoteIds = JSON.stringify(notes);
-      console.log('[API PATCH /api/user/settings] Updating pinnedNoteIds:', notes);
+      logger.debug('[API PATCH /api/user/settings] Updating pinnedNoteIds:', notes);
     }
     if (body.recentHistory !== undefined) {
       // Validate and limit to max 20 items
