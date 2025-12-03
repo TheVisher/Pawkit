@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import FilenSDK from "@filen/sdk";
 import { encrypt, decrypt } from "@/lib/utils/crypto";
+import { rateLimit, getRateLimitHeaders } from "@/lib/utils/rate-limit";
 import {
   getAllFolderPaths,
   getFoldersWithUuids,
@@ -39,6 +40,27 @@ interface FilenSession {
  * POST /api/filen/auth - Authenticate with Filen
  */
 export async function POST(request: NextRequest) {
+  // Rate limiting: 5 attempts per minute per IP (prevent brute force)
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const rateLimitResult = rateLimit({
+    identifier: `filen-auth:${ip}`,
+    limit: 5,
+    windowMs: 60 * 1000, // 1 minute
+  });
+
+  if (!rateLimitResult.allowed) {
+    console.warn(`[Filen] Rate limit exceeded for IP: ${ip}`);
+    const response = NextResponse.json(
+      { success: false, error: "Too many login attempts", code: "RATE_LIMITED" },
+      { status: 429 }
+    );
+    const headers = getRateLimitHeaders(rateLimitResult);
+    Object.entries(headers).forEach(([key, value]) => {
+      response.headers.set(key, value as string);
+    });
+    return response;
+  }
+
   try {
     const { email, password, twoFactorCode } = await request.json();
 

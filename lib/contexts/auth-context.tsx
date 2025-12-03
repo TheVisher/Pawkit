@@ -62,6 +62,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // This allows useUserStorage to detect user switches on next login
       localStorage.removeItem('pawkit_last_user_id');
 
+      // Revoke extension token if one exists (prevents stale token use)
+      try {
+        await fetch('/api/extension/token', { method: 'DELETE' });
+      } catch {
+        // Non-critical - continue with logout anyway
+      }
+
       // Sign out from Supabase
       await supabase.auth.signOut();
 

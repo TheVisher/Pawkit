@@ -1,6 +1,58 @@
 import { NextRequest, NextResponse } from "next/server";
 import FilenSDK from "@filen/sdk";
+import { fileTypeFromBuffer } from "file-type";
 import { getFilenClient } from "@/lib/services/filen-server";
+
+// Maximum file size: 50MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
+
+// Allowed MIME type patterns
+const ALLOWED_MIME_PATTERNS = [
+  /^image\//,
+  /^audio\//,
+  /^video\//,
+  /^text\/plain$/,
+  /^text\/markdown$/,
+  /^application\/pdf$/,
+  /^application\/msword$/,
+  /^application\/vnd\.openxmlformats-/,
+  /^application\/vnd\.ms-/,
+];
+
+// Safe text extensions (file-type returns undefined for these)
+const SAFE_TEXT_EXTENSIONS = ['.txt', '.md', '.csv'];
+
+/**
+ * Validate file type using magic bytes
+ */
+async function validateFileType(buffer: Buffer, filename: string): Promise<{ valid: boolean; detectedType?: string }> {
+  const detected = await fileTypeFromBuffer(buffer);
+
+  // If file-type can detect it, check against allowed patterns
+  if (detected) {
+    const isAllowed = ALLOWED_MIME_PATTERNS.some(pattern => pattern.test(detected.mime));
+    return { valid: isAllowed, detectedType: detected.mime };
+  }
+
+  // For files where file-type returns undefined (text files), allow if extension is safe
+  const ext = filename.toLowerCase().slice(filename.lastIndexOf('.'));
+  if (SAFE_TEXT_EXTENSIONS.includes(ext)) {
+    return { valid: true, detectedType: 'text/plain' };
+  }
+
+  // Unknown file type - reject for safety
+  return { valid: false, detectedType: 'unknown' };
+}
+
+/**
+ * Sanitize filename to prevent path traversal and dangerous characters
+ */
+function sanitizeFilename(filename: string): string {
+  return filename
+    .replace(/\.\.+/g, '_')           // Remove path traversal
+    .replace(/[/\\:*?"<>|]/g, '_')    // Remove dangerous characters
+    .slice(0, 255);                    // Limit length
+}
 
 export interface FilenFileInfo {
   uuid: string;
@@ -119,6 +171,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Server-side size limit
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB` },
+        { status: 413 }
+      );
+    }
+
+    // Get buffer for validation
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    // Magic byte validation
+    const typeValidation = await validateFileType(buffer, file.name);
+    if (!typeValidation.valid) {
+      console.warn(`[Filen] Rejected file upload: ${file.name} (detected: ${typeValidation.detectedType})`);
+      return NextResponse.json(
+        { error: "Invalid file type" },
+        { status: 400 }
+      );
+    }
+
+    // Sanitize filename
+    const safeFilename = sanitizeFilename(file.name);
+
     // Determine target folder based on file type
     let targetFolder = "/Pawkit/_Library";
     if (isAttachment) {
@@ -132,10 +208,9 @@ export async function POST(request: NextRequest) {
     // Ensure folder exists
     await ensureFolderExists(filen, targetFolder);
 
-    // Upload file
+    // Upload file with sanitized name
     const fs = filen.fs();
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const filePath = `${targetFolder}/${file.name}`;
+    const filePath = `${targetFolder}/${safeFilename}`;
 
     await fs.writeFile({
       path: filePath,
