@@ -8,7 +8,8 @@ import {
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { rateLimit, getRateLimitHeaders } from "@/lib/utils/rate-limit";
-import { unauthorized, rateLimited, success, created } from "@/lib/utils/api-responses";
+import { unauthorized, rateLimited, success, created, validationError } from "@/lib/utils/api-responses";
+import { eventCreateSchema, eventBulkUpsertSchema } from "@/lib/validators/event";
 
 // Force Node.js runtime for Prisma compatibility
 export const runtime = 'nodejs';
@@ -29,6 +30,22 @@ export async function GET(request: NextRequest) {
     user = await getCurrentUser();
     if (!user) {
       return unauthorized();
+    }
+
+    // Rate limiting: 100 list requests per minute per user
+    const rateLimitResult = rateLimit({
+      identifier: `events-list:${user.id}`,
+      limit: 100,
+      windowMs: 60000, // 1 minute
+    });
+
+    if (!rateLimitResult.allowed) {
+      const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
+      const response = rateLimited('Too many requests. Please try again later.');
+      Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value as string);
+      });
+      return response;
     }
 
     const { searchParams } = new URL(request.url);
@@ -85,15 +102,24 @@ export async function POST(request: NextRequest) {
 
     // Handle bulk upsert for sync operations
     if (body.bulk && Array.isArray(body.events)) {
-      const events = await bulkUpsertEvents(user.id, body.events);
+      const bulkParseResult = eventBulkUpsertSchema.safeParse(body);
+      if (!bulkParseResult.success) {
+        return validationError(bulkParseResult.error.issues);
+      }
+      const events = await bulkUpsertEvents(user.id, bulkParseResult.data.events);
       return NextResponse.json(
         { items: events, synced: events.length },
         { status: 200, headers: rateLimitHeaders }
       );
     }
 
-    // Single event creation
-    const event = await createEvent(user.id, body);
+    // Single event creation - validate with Zod
+    const parseResult = eventCreateSchema.safeParse(body);
+    if (!parseResult.success) {
+      return validationError(parseResult.error.issues);
+    }
+
+    const event = await createEvent(user.id, parseResult.data);
     return created(event);
   } catch (error) {
     return handleApiError(error, { route: '/api/events', userId: user?.id });

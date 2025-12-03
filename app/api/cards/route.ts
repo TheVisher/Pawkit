@@ -88,6 +88,21 @@ export async function GET(request: NextRequest) {
       return withCorsHeaders(unauthorized(), corsHeaders);
     }
 
+    // Rate limiting: 100 list requests per minute per user
+    const rateLimitResult = rateLimit({
+      identifier: `cards-list:${user.id}`,
+      limit: 100,
+      windowMs: 60000, // 1 minute
+    });
+
+    if (!rateLimitResult.allowed) {
+      const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
+      return withCorsHeaders(
+        rateLimited('Too many requests. Please try again later.'),
+        { ...corsHeaders, ...rateLimitHeaders }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const query = Object.fromEntries(searchParams.entries());
     const statusParam = query.status;
