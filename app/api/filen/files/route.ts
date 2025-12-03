@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import FilenSDK from "@filen/sdk";
 import { fileTypeFromBuffer } from "file-type";
 import { getFilenClient } from "@/lib/services/filen-server";
+import { logger } from "@/lib/utils/logger";
 
 // Maximum file size: 50MB
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -136,11 +137,11 @@ async function listFilesRecursive(
           });
         }
       } catch (error) {
-        console.error(`[Filen] Error stat'ing ${entryPath}:`, error);
+        logger.error(`[Filen] Error stat'ing ${entryPath}:`, error);
       }
     }
   } catch (error) {
-    console.error(`[Filen] Error reading directory ${currentPath}:`, error);
+    logger.error(`[Filen] Error reading directory ${currentPath}:`, error);
   }
 
   return results;
@@ -186,7 +187,7 @@ export async function POST(request: NextRequest) {
     // Magic byte validation
     const typeValidation = await validateFileType(buffer, file.name);
     if (!typeValidation.valid) {
-      console.warn(`[Filen] Rejected file upload: ${file.name} (detected: ${typeValidation.detectedType})`);
+      logger.warn(`[Filen] Rejected file upload: ${file.name} (detected: ${typeValidation.detectedType})`);
       return NextResponse.json(
         { error: "Invalid file type" },
         { status: 400 }
@@ -232,7 +233,7 @@ export async function POST(request: NextRequest) {
       fileId,
     });
   } catch (error) {
-    console.error("[Filen] Upload error:", error);
+    logger.error("[Filen] Upload error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Upload failed" },
       { status: 500 }
@@ -257,7 +258,7 @@ export async function GET() {
 
     return NextResponse.json({ files });
   } catch (error) {
-    console.error("[Filen] List error:", error);
+    logger.error("[Filen] List error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "List failed" },
       { status: 500 }

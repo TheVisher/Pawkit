@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/utils/api-error';
 import { success, rateLimited } from '@/lib/utils/api-responses';
 import { rateLimit, getRateLimitHeaders } from '@/lib/utils/rate-limit';
+import { logger } from '@/lib/utils/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,8 +25,8 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Log CSP violations to console in production
-    console.error('[CSP Violation]', {
+    // Log CSP violations (always log these even in production)
+    logger.error('[CSP Violation]', {
       timestamp: new Date().toISOString(),
       userAgent: request.headers.get('user-agent'),
       violation: body['csp-report'] || body,

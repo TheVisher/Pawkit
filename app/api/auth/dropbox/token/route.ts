@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { refreshAccessToken, isDropboxOAuthConfigured } from "@/lib/services/dropbox/oauth";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/utils/logger";
 
 export const runtime = "nodejs";
 
@@ -61,7 +62,7 @@ export async function GET() {
       return NextResponse.json({ error: "Token expired" }, { status: 401 });
     }
   } catch (error) {
-    console.error("[Dropbox] Token error:", error);
+    logger.error("[Dropbox] Token error:", error);
     return NextResponse.json({ error: "Failed to get token" }, { status: 500 });
   }
 }

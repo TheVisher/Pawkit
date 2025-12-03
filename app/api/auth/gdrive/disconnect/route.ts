@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { revokeToken } from "@/lib/services/google-drive/oauth";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/utils/logger";
 
 export const runtime = "nodejs";
 
@@ -36,7 +37,7 @@ export async function POST() {
     cookieStore.delete(GDRIVE_TOKEN_COOKIE);
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[GDrive] Disconnect error:", error);
+    logger.error("[GDrive] Disconnect error:", error);
     return NextResponse.json({ error: "Disconnect failed" }, { status: 500 });
   }
 }

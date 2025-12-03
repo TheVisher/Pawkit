@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { refreshAccessToken, isGoogleOAuthConfigured } from "@/lib/services/google-drive/oauth";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/utils/logger";
 
 export const runtime = "nodejs";
 
@@ -61,7 +62,7 @@ export async function GET() {
       return NextResponse.json({ error: "Token expired" }, { status: 401 });
     }
   } catch (error) {
-    console.error("[GDrive] Token error:", error);
+    logger.error("[GDrive] Token error:", error);
     return NextResponse.json({ error: "Failed to get token" }, { status: 500 });
   }
 }

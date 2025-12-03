@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { decrypt } from "@/lib/utils/crypto";
+import { logger } from "@/lib/utils/logger";
 
 // Note: api.filen.io doesn't exist (NXDOMAIN), use gateway.filen.io instead
 const FILEN_API_URL = "https://gateway.filen.io";
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     try {
       session = JSON.parse(decrypt(sessionCookie.value)) as FilenSession;
     } catch (decryptError) {
-      console.error("[Filen Upload Done] Failed to decrypt session:", decryptError);
+      logger.error("[Filen Upload Done] Failed to decrypt session:", decryptError);
       return NextResponse.json(
         { status: false, message: "Invalid Filen session" },
         { status: 401 }
@@ -70,15 +71,15 @@ export async function POST(request: Request) {
     // 4. Get the request body
     const body = await request.json();
 
-    console.log("[Filen Upload Done] Forwarding request to Filen API");
-    console.log("[Filen Upload Done] Request body keys:", Object.keys(body));
+    logger.debug("[Filen Upload Done] Forwarding request to Filen API");
+    logger.debug("[Filen Upload Done] Request body keys:", Object.keys(body));
 
     // 5. Forward to Filen API
     let response: Response;
     const requestBody = JSON.stringify(body);
 
-    console.log("[Filen Upload Done] Making request to:", `${FILEN_API_URL}/v3/upload/done`);
-    console.log("[Filen Upload Done] Body length:", requestBody.length);
+    logger.debug("[Filen Upload Done] Making request to:", `${FILEN_API_URL}/v3/upload/done`);
+    logger.debug("[Filen Upload Done] Body length:", requestBody.length);
 
     try {
       response = await fetch(`${FILEN_API_URL}/v3/upload/done`, {
@@ -96,9 +97,9 @@ export async function POST(request: Request) {
     } catch (fetchError) {
       const errorMessage = fetchError instanceof Error ? fetchError.message : 'Unknown';
       const errorCause = fetchError instanceof Error && 'cause' in fetchError ? String(fetchError.cause) : 'no cause';
-      console.error("[Filen Upload Done] Fetch to Filen failed:", errorMessage);
-      console.error("[Filen Upload Done] Error cause:", errorCause);
-      console.error("[Filen Upload Done] Full error:", fetchError);
+      logger.error("[Filen Upload Done] Fetch to Filen failed:", errorMessage);
+      logger.error("[Filen Upload Done] Error cause:", errorCause);
+      logger.error("[Filen Upload Done] Full error:", fetchError);
 
       // Build detailed error message
       let detailedMessage = errorMessage;
@@ -116,12 +117,12 @@ export async function POST(request: Request) {
     }
 
     // Log response status
-    console.log("[Filen Upload Done] Filen response status:", response.status);
+    logger.debug("[Filen Upload Done] Filen response status:", response.status);
 
     // Handle non-OK responses
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[Filen Upload Done] Filen API error:", response.status, errorText);
+      logger.error("[Filen Upload Done] Filen API error:", response.status, errorText);
       return NextResponse.json(
         { status: false, message: `Filen API error: ${response.status}` },
         { status: response.status }
@@ -129,12 +130,12 @@ export async function POST(request: Request) {
     }
 
     const result = await response.json();
-    console.log("[Filen Upload Done] Filen response:", result);
+    logger.debug("[Filen Upload Done] Filen response:", result);
 
     // 6. Return Filen's response
     return NextResponse.json(result);
   } catch (error) {
-    console.error("[Filen Upload Done] Unexpected error:", error);
+    logger.error("[Filen Upload Done] Unexpected error:", error);
     return NextResponse.json(
       { status: false, message: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }

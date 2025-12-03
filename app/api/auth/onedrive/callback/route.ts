@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { exchangeCodeForTokens, getUserInfo } from "@/lib/services/onedrive/oauth";
+import { logger } from "@/lib/utils/logger";
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
 
   // Handle OAuth errors
   if (error) {
-    console.error("[OneDrive OAuth] Error:", error, errorDescription);
+    logger.error("[OneDrive OAuth] Error:", error, errorDescription);
     return NextResponse.redirect(
       new URL(`/home?onedrive=error&message=${encodeURIComponent(errorDescription || error)}`, baseUrl)
     );
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
       new URL(`/home?onedrive=connected&email=${encodeURIComponent(userInfo.email)}`, baseUrl)
     );
   } catch (error) {
-    console.error("[OneDrive OAuth] Token exchange failed:", error);
+    logger.error("[OneDrive OAuth] Token exchange failed:", error);
     const message = error instanceof Error ? error.message : "Token exchange failed";
     return NextResponse.redirect(
       new URL(`/home?onedrive=error&message=${encodeURIComponent(message)}`, baseUrl)

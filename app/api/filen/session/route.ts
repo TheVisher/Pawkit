@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { decrypt } from "@/lib/utils/crypto";
+import { logger } from "@/lib/utils/logger";
 import type { PawkitFolderKey } from "@/lib/services/cloud-storage/folder-config";
 
 const FILEN_COOKIE_NAME = "filen_session";
@@ -62,7 +63,7 @@ export async function GET() {
     try {
       session = JSON.parse(decrypt(sessionCookie.value)) as FilenSession;
     } catch (decryptError) {
-      console.error("[Filen Session] Failed to decrypt session:", decryptError);
+      logger.error("[Filen Session] Failed to decrypt session:", decryptError);
       return NextResponse.json(
         { success: false, error: "Invalid Filen session" },
         { status: 401 }
@@ -71,7 +72,7 @@ export async function GET() {
 
     // 4. Validate session has required fields
     if (!session.apiKey || !session.masterKeys?.length) {
-      console.error("[Filen Session] Session missing required fields");
+      logger.error("[Filen Session] Session missing required fields");
       return NextResponse.json(
         { success: false, error: "Incomplete Filen session" },
         { status: 401 }
@@ -84,9 +85,9 @@ export async function GET() {
     if (foldersCookie?.value) {
       try {
         folderUUIDs = JSON.parse(foldersCookie.value) as PawkitFolderUUIDs;
-        console.log("[Filen Session] Folder UUIDs from cookie:", Object.keys(folderUUIDs));
+        logger.debug("[Filen Session] Folder UUIDs from cookie:", Object.keys(folderUUIDs));
       } catch (e) {
-        console.error("[Filen Session] Failed to parse folders cookie:", e);
+        logger.error("[Filen Session] Failed to parse folders cookie:", e);
       }
     }
 
@@ -106,7 +107,7 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("[Filen Session] Error:", error);
+    logger.error("[Filen Session] Error:", error);
     return NextResponse.json(
       { success: false, error: "Failed to get session" },
       { status: 500 }

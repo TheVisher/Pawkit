@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { getUserInfo, refreshAccessToken, isGoogleOAuthConfigured } from "@/lib/services/google-drive/oauth";
 import { cookies } from "next/headers";
+import { logger } from "@/lib/utils/logger";
 
 export const runtime = "nodejs";
 
@@ -72,7 +73,7 @@ export async function GET() {
       });
     }
   } catch (error) {
-    console.error("[GDrive] Status error:", error);
+    logger.error("[GDrive] Status error:", error);
     return NextResponse.json({ error: "Status check failed" }, { status: 500 });
   }
 }

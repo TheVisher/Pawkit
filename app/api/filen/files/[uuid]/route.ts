@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFilenClient } from "@/lib/services/filen-server";
+import { logger } from "@/lib/utils/logger";
 
 type RouteParams = {
   params: Promise<{ uuid: string }>;
@@ -51,7 +52,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error("[Filen] Download error:", error);
+    logger.error("[Filen] Download error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Download failed" },
       { status: 500 }
@@ -91,7 +92,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[Filen] Delete error:", error);
+    logger.error("[Filen] Delete error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Delete failed" },
       { status: 500 }
