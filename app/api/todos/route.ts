@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
-import { unauthorized, success, rateLimited } from "@/lib/utils/api-responses";
+import { unauthorized, success, rateLimited, validationError } from "@/lib/utils/api-responses";
 import { rateLimit } from "@/lib/utils/rate-limit";
+import { todoCreateSchema } from "@/lib/validators/todo";
 
 // GET /api/todos - Get all todos for current user
 export async function GET() {
@@ -62,27 +63,19 @@ export async function POST(request: Request) {
 
     body = await request.json();
 
-    // Validate required fields
-    if (!body.text || typeof body.text !== 'string') {
-      return NextResponse.json(
-        { error: 'Text is required and must be a string' },
-        { status: 400 }
-      );
+    // Validate with Zod schema
+    const parseResult = todoCreateSchema.safeParse(body);
+    if (!parseResult.success) {
+      return validationError(parseResult.error.issues);
     }
 
-    // Validate length (max 500 characters)
-    if (body.text.trim().length > 500) {
-      return NextResponse.json(
-        { error: 'Text must be 500 characters or less' },
-        { status: 400 }
-      );
-    }
+    const validated = parseResult.data;
 
     const todo = await prisma.todo.create({
       data: {
         userId: user.id,
-        text: body.text.trim(),
-        completed: body.completed || false
+        text: validated.text,
+        completed: validated.completed
       }
     });
 

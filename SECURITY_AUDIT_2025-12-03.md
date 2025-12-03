@@ -1202,7 +1202,7 @@ const signOut = async (clearLocalData = false) => {
 | **Environment Variables** | ✅ Good | Fixed stale credential |
 | **API Authentication** | ✅ Good | All routes protected |
 | **Supabase RLS** | ⚠️ Partial | 4 tables missing policies |
-| **Rate Limiting** | 🟡 Improved | Filen auth protected, GET endpoints pending |
+| **Rate Limiting** | ✅ Good | All endpoints now rate limited |
 | **Input Validation** | ✅ Good | XSS/SSRF protected |
 | **Security Headers** | ✅ Good | All headers configured |
 | **Sessions** | ✅ Good | Extension token now revoked on logout |
@@ -1234,9 +1234,9 @@ const signOut = async (clearLocalData = false) => {
    - UserViewSettings, DeviceSession, Todo, CalendarEvent
    - SQL provided in Section 3
 
-5. **Add rate limiting to GET endpoints**
-   - `/api/cards`, `/api/events`, `/api/sync/check`
-   - 100 requests per minute per user
+5. **~~Add rate limiting to GET endpoints~~** ✅ DONE (2025-12-03)
+   - `/api/cards` (100/min), `/api/events` (100/min), `/api/sync/check` (120/min)
+   - All GET endpoints now rate limited
 
 6. **~~Invalidate extension token on logout~~** ✅ DONE (2025-12-03)
    - Added `DELETE /api/extension/token` call in signOut function
@@ -1253,8 +1253,9 @@ const signOut = async (clearLocalData = false) => {
 
 #### 🟢 LOW Priority
 
-9. **Add Zod schemas to remaining routes**
-   - `/api/todos`, `/api/events`
+9. **~~Add Zod schemas to remaining routes~~** ✅ DONE (2025-12-03)
+   - Added `lib/validators/todo.ts` and `lib/validators/event.ts`
+   - Both routes now validate input with Zod
 
 10. **Add optional "clear local data" on logout**
     - For shared computer scenarios

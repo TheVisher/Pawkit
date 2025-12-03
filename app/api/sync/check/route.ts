@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth/get-user';
 import { prisma } from '@/lib/server/prisma';
+import { rateLimit, getRateLimitHeaders } from '@/lib/utils/rate-limit';
 
 /**
  * Lightweight sync check endpoint
@@ -13,6 +14,21 @@ export async function GET(request: Request) {
 
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limiting: 120 sync checks per minute per user (polling-friendly)
+    const rateLimitResult = rateLimit({
+      identifier: `sync-check:${user.id}`,
+      limit: 120,
+      windowMs: 60000, // 1 minute
+    });
+
+    if (!rateLimitResult.allowed) {
+      const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
+      return NextResponse.json(
+        { error: 'Too many requests', code: 'RATE_LIMITED' },
+        { status: 429, headers: rateLimitHeaders }
+      );
     }
 
     const { searchParams } = new URL(request.url);
