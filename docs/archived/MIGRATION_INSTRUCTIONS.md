@@ -29,7 +29,8 @@ If you have `psql` installed:
 
 ```bash
 # Use the direct connection (port 5432) instead of pooler (port 6543)
-psql "postgresql://postgres.jaasnsfhfrmbqnnghogt:GB8x8yIDLQBvBiQp@aws-1-us-west-1.pooler.supabase.com:5432/postgres" <<SQL
+# Get your connection string from Supabase Dashboard > Settings > Database
+psql "$DATABASE_URL" <<SQL
 ALTER TABLE "Collection" ADD COLUMN IF NOT EXISTS "hidePreview" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "Collection" ADD COLUMN IF NOT EXISTS "useCoverAsBackground" BOOLEAN NOT NULL DEFAULT false;
 SQL
