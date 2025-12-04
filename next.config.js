@@ -101,10 +101,10 @@ const nextConfig = {
               allowVercelScripts
                 ? "connect-src 'self' https: http: blob: data: wss: ws: https://vercel.live wss://ws-us3.pusher.com"
                 : "connect-src 'self' https: blob: data: wss: wss://ws-us3.pusher.com",
-              // Frames for embeds - allow Vercel live on dev and preview, Turnstile for CAPTCHA
+              // Frames for embeds - allow Vercel live on dev and preview, Turnstile for CAPTCHA, blob for PDF preview
               allowVercelScripts
-                ? "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://vercel.live https://challenges.cloudflare.com"
-                : "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com",
+                ? "frame-src 'self' blob: https://www.youtube.com https://www.youtube-nocookie.com https://vercel.live https://challenges.cloudflare.com"
+                : "frame-src 'self' blob: https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com",
               // Workers
               "worker-src 'self' blob:",
               // Objects
