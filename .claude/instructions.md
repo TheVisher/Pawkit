@@ -1,5 +1,16 @@
 # Claude Code Instructions for Pawkit Project
 
+## 📦 PACKAGE MANAGER: PNPM
+
+**This project uses pnpm, NOT npm.** Always use:
+- `pnpm install` (not npm install)
+- `pnpm add <package>` (not npm install <package>)
+- `pnpm run <script>` (not npm run <script>)
+
+The lockfile is `pnpm-lock.yaml`. Never create or use `package-lock.json`.
+
+---
+
 ## 🚨 CRITICAL: DATABASE SAFETY RULES
 
 **THIS PROJECT HAS EXPERIENCED CATASTROPHIC DATA LOSS IN THE PAST.**
