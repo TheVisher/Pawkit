@@ -331,7 +331,7 @@ class SyncQueue {
         // Skip file cards - they're local-only and should never be synced
         if (operation.type === 'CREATE_CARD' || operation.type === 'UPDATE_CARD') {
           const payload = operation.payload as CreateCardPayload | UpdateCardPayload;
-          const isFileCard = payload.type === 'file' || (payload as any).isFileCard;
+          const isFileCard = payload.type === 'file' || payload.isFileCard === true;
           if (isFileCard) {
             console.log('[SyncQueue] Skipping file card operation:', operation.id);
             await this.remove(operation.id);

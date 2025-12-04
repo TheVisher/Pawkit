@@ -10,6 +10,7 @@ import { useConnectorStore } from "@/lib/stores/connector-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { cloudStorage, syncScheduler, SyncItem } from "@/lib/services/cloud-storage";
 import { gdriveProvider } from "@/lib/services/google-drive/gdrive-provider";
+import type { CardDTO } from "@/lib/server/cards";
 
 export interface CloudSyncConfig {
   enabled?: boolean;
@@ -96,11 +97,12 @@ export function useCloudSync(config: CloudSyncConfig = {}) {
     cloudId: string,
     cloudProvider: string
   ) => {
-    await useDataStore.getState().updateCard(itemId, {
+    const updates: Partial<CardDTO> = {
       cloudId,
       cloudProvider,
       cloudSyncedAt: new Date().toISOString(),
-    } as any);
+    };
+    await useDataStore.getState().updateCard(itemId, updates);
 
     console.warn(`[CloudSync] Updated card ${itemId} with cloud info`);
   }, []);
