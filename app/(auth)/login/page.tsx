@@ -6,6 +6,10 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Turnstile } from '@marsidev/react-turnstile'
 
+// Skip captcha on Vercel preview deployments (domain not in Turnstile allowlist)
+const isPreview = process.env.NEXT_PUBLIC_VERCEL_ENV === 'preview'
+const showTurnstile = !isPreview && !!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY
+
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -108,10 +112,10 @@ function LoginForm() {
           />
         </div>
 
-        {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+        {showTurnstile && (
           <div className="flex justify-center">
             <Turnstile
-              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
               onSuccess={(token) => setCaptchaToken(token)}
               onError={() => setCaptchaToken(null)}
               onExpire={() => setCaptchaToken(null)}
@@ -124,7 +128,7 @@ function LoginForm() {
 
         <button
           type="submit"
-          disabled={loading || (!!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !captchaToken)}
+          disabled={loading || (showTurnstile && !captchaToken)}
           className="w-full rounded-lg bg-accent px-4 py-2 font-medium text-gray-900 hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? 'Signing in...' : 'Sign in'}
