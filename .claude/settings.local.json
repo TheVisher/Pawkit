@@ -56,7 +56,9 @@
       "Skill(pawkit-performance)",
       "Bash(mkdir:*)",
       "Bash(npm search:*)",
-      "Skill(pawkit-cloud-providers)"
+      "Skill(pawkit-cloud-providers)",
+      "WebSearch",
+      "Bash(npm view:*)"
     ],
     "deny": [],
     "ask": []
