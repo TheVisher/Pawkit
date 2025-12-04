@@ -288,16 +288,15 @@ export function PdfReaderView({
           </div>
 
           {/* PDF Pages */}
-          <div className={`space-y-8 ${isExpanded ? "space-y-12" : ""}`}>
+          <div className="flex flex-col items-center" style={{ gap: isExpanded ? `${32 * zoom}px` : '32px' }}>
             {pages.map((dataUrl, index) => (
               <div
                 key={index}
                 id={`reader-page-${index + 1}`}
                 className="relative"
                 style={isExpanded ? {
-                  transform: `scale(${zoom})`,
-                  transformOrigin: 'top center',
-                  marginBottom: zoom > 1 ? `${(zoom - 1) * 100}%` : undefined,
+                  width: `${zoom * 100}%`,
+                  maxWidth: `${zoom * 100}%`,
                 } : undefined}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
