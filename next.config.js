@@ -36,10 +36,9 @@ const nextConfig = {
     ],
   },
 
-  // Turbopack configuration (moved from experimental.turbo)
-  // Note: SVGR webpack loader is not supported in Turbopack
+  // Note: Turbopack config removed - use default settings
+  // SVGR webpack loader is not supported in Turbopack
   // SVGs can be imported as URLs directly in Turbopack
-  turbopack: {},
 
   // Development optimizations
   ...(process.env.NODE_ENV === 'development' && {
