@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Turnstile } from '@marsidev/react-turnstile'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -11,6 +12,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const { signIn } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -35,7 +37,7 @@ function LoginForm() {
     setSuccess(null)
     setLoading(true)
 
-    const { error } = await signIn(email, password)
+    const { error } = await signIn(email, password, captchaToken || undefined)
 
     if (error) {
       setError(error.message)
@@ -106,9 +108,23 @@ function LoginForm() {
           />
         </div>
 
+        {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+          <div className="flex justify-center">
+            <Turnstile
+              siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+              onSuccess={(token) => setCaptchaToken(token)}
+              onError={() => setCaptchaToken(null)}
+              onExpire={() => setCaptchaToken(null)}
+              options={{
+                theme: 'dark',
+              }}
+            />
+          </div>
+        )}
+
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || (!!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !captchaToken)}
           className="w-full rounded-lg bg-accent px-4 py-2 font-medium text-gray-900 hover:bg-accent/90 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? 'Signing in...' : 'Sign in'}
