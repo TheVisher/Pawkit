@@ -82,12 +82,13 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               // Script sources - Next.js requires 'unsafe-eval' and 'unsafe-inline' even in production
+              // Cloudflare Turnstile requires challenges.cloudflare.com
               allowVercelScripts
-                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://vercel.live https://vercel.live"
-                : "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:",
+                ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://vercel.live https://challenges.cloudflare.com"
+                : "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://challenges.cloudflare.com",
               allowVercelScripts
-                ? "script-src-elem 'self' 'unsafe-inline' blob: https://vercel.live https://*.vercel-scripts.com"
-                : "script-src-elem 'self' 'unsafe-inline' blob:",
+                ? "script-src-elem 'self' 'unsafe-inline' blob: https://vercel.live https://*.vercel-scripts.com https://challenges.cloudflare.com"
+                : "script-src-elem 'self' 'unsafe-inline' blob: https://challenges.cloudflare.com",
               // Styles
               "style-src 'self' 'unsafe-inline' blob:",
               "style-src-elem 'self' 'unsafe-inline'",
@@ -101,10 +102,10 @@ const nextConfig = {
               allowVercelScripts
                 ? "connect-src 'self' https: http: blob: data: wss: ws: https://vercel.live wss://ws-us3.pusher.com"
                 : "connect-src 'self' https: blob: data: wss: wss://ws-us3.pusher.com",
-              // Frames for embeds - allow Vercel live on dev and preview
+              // Frames for embeds - allow Vercel live on dev and preview, Turnstile for CAPTCHA
               allowVercelScripts
-                ? "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://vercel.live"
-                : "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+                ? "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://vercel.live https://challenges.cloudflare.com"
+                : "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com",
               // Workers
               "worker-src 'self' blob:",
               // Objects
