@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, type LucideIcon } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, HelpCircle, type LucideIcon } from "lucide-react";
 import { shallow } from "zustand/shallow";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -1328,14 +1328,11 @@ export function LeftNavigationPanel({
                 <kbd className="px-2 py-0.5 rounded font-mono text-xs" style={{ background: 'var(--bg-surface-2)' }}>Cmd/Ctrl + P</kbd>
               </div>
               <button
-                onClick={() => {
-                  // Trigger the help modal
-                  const helpEvent = new KeyboardEvent('keydown', { key: '?' });
-                  document.dispatchEvent(helpEvent);
-                }}
-                className="text-accent hover:underline text-xs mt-1"
+                onClick={() => router.push('/help')}
+                className="flex items-center gap-1.5 text-accent hover:underline text-xs mt-1"
               >
-                View all shortcuts →
+                <HelpCircle size={12} />
+                View shortcuts & help
               </button>
             </div>
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useState } from "react";
-import { X, HelpCircle, Trash2, BookOpen, ArrowUpRight, ArrowDownLeft, ChevronDown } from "lucide-react";
+import { X, Sun, Moon, Trash2, BookOpen, ArrowUpRight, ArrowDownLeft, ChevronDown } from "lucide-react";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useRouter } from "next/navigation";
 import {
@@ -39,6 +39,34 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
   // Get display name from settings store (local-only)
   const storedDisplayName = useSettingsStore((state) => state.displayName);
   const effectiveDisplayName = storedDisplayName || displayName || username;
+
+  // Theme toggle
+  const theme = useSettingsStore((state) => state.theme);
+  const setTheme = useSettingsStore((state) => state.setTheme);
+
+  // Determine effective theme for icon display (accounting for 'auto' mode)
+  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>('dark');
+
+  useEffect(() => {
+    if (theme === 'auto') {
+      // Check system preference
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      setEffectiveTheme(mediaQuery.matches ? 'dark' : 'light');
+
+      const handler = (e: MediaQueryListEvent) => setEffectiveTheme(e.matches ? 'dark' : 'light');
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
+    } else {
+      setEffectiveTheme(theme);
+    }
+  }, [theme]);
+
+  const handleThemeToggle = () => {
+    // Cycle: dark -> light -> auto -> dark
+    if (theme === 'dark') setTheme('light');
+    else if (theme === 'light') setTheme('auto');
+    else setTheme('dark');
+  };
 
   // Get sidebar visibility settings
   const showSyncStatusInSidebar = useSettingsStore((state) => state.showSyncStatusInSidebar);
@@ -129,18 +157,20 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
               <TooltipContent side="bottom" className="z-[200]">{mode === "floating" ? "Anchor" : "Float"}</TooltipContent>
             </Tooltip>
 
-            {/* Help */}
+            {/* Theme Toggle */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => router.push('/help')}
+                  onClick={handleThemeToggle}
                   className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                  aria-label="Help"
+                  aria-label={`Theme: ${theme} (click to change)`}
                 >
-                  <HelpCircle size={18} />
+                  {effectiveTheme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="z-[200]">Help</TooltipContent>
+              <TooltipContent side="bottom" className="z-[200]">
+                {theme === 'dark' ? 'Dark mode' : theme === 'light' ? 'Light mode' : 'Auto (system)'}
+              </TooltipContent>
             </Tooltip>
 
             {/* Trash */}
