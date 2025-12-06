@@ -873,6 +873,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           </MuuriGridComponent>
         ) : (
           /* CSS Grid for grid/compact layouts */
+          <div className="w-full" style={{ padding: '0 16px' }}>
           <div className={layoutConfig.className} style={layoutConfig.style} data-masonry-gallery>
             {filteredAndSortedCards.map((card) => (
               <CardCell
@@ -900,6 +901,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 cardPadding={viewSettings.cardPadding}
               />
             ))}
+          </div>
           </div>
         )}
       {nextCursor && (
