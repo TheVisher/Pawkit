@@ -803,9 +803,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           </div>
         ) : layout === "masonry" ? (
           /* Muuri-powered masonry grid with drag-and-drop */
-          /* Key forces remount when filtered cards change to avoid Muuri sync issues */
+          /* Key based on filter settings - only remount when filters change, not when cards added */
           <MuuriGridComponent
-            key={`muuri-${filteredAndSortedCards.length}-${filteredAndSortedCards[0]?.id || 'empty'}-${filteredAndSortedCards[filteredAndSortedCards.length - 1]?.id || 'empty'}`}
+            key={`muuri-${viewSettings.sortBy}-${viewSettings.sortOrder}-${(viewSettings.contentTypeFilter || []).join(',')}`}
             ref={muuriRef}
             className="w-full"
             style={{ minHeight: 200 }}
