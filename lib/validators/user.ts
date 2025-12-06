@@ -18,22 +18,31 @@ export const userUpdateSchema = z
     message: "At least one field must be provided",
   });
 
+// Static view types
+const staticViewTypes = z.enum([
+  "library",
+  "notes",
+  "den",
+  "timeline",
+  "pawkits",
+  "home",
+  "favorites",
+  "trash",
+  "tags",
+]);
+
+// Dynamic pawkit-specific view keys (e.g., "pawkit-arc-raiders")
+const pawkitViewKey = z.string().regex(/^pawkit-[a-z0-9-]+$/, {
+  message: "Pawkit view key must match pattern 'pawkit-{slug}'",
+});
+
 /**
  * View settings validation schema
  * Used for PATCH /api/user/view-settings
+ * Supports both static view types and dynamic pawkit-specific keys
  */
 export const viewSettingsUpdateSchema = z.object({
-  view: z.enum([
-    "library",
-    "notes",
-    "den",
-    "timeline",
-    "pawkits",
-    "home",
-    "favorites",
-    "trash",
-    "tags",
-  ], {
+  view: z.union([staticViewTypes, pawkitViewKey], {
     errorMap: () => ({ message: "Invalid view type" }),
   }),
   settings: z.object({
