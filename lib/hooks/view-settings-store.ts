@@ -277,33 +277,34 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
           }
 
           const data = await response.json();
-          
-          if (data.settings && Array.isArray(data.settings)) {
-            const loadedSettings = createDefaultSettings();
-            
-            // Merge server settings with defaults
-            (data.settings as ServerViewSettingsItem[]).forEach((item) => {
-              const view = item.view as ViewType;
-              if (view in loadedSettings) {
-                // Scale server values (1-5, 0-4) to client values (1-100)
-                const scaledCardSize = Math.round(((item.cardSize - 1) / 4) * 99 + 1);
-                const scaledCardPadding = Math.round((item.cardPadding / 4) * 100);
 
-                loadedSettings[view] = {
-                  layout: item.layout as LayoutMode,
-                  cardSize: scaledCardSize,
-                  cardSpacing: item.cardSpacing || 16,
-                  showLabels: item.showLabels ?? (item.showTitles || item.showUrls) ?? true, // Migrate old settings
-                  showMetadata: item.showMetadata ?? item.showTitles ?? true, // Migrate old settings
-                  showTags: item.showTags,
-                  showPreview: item.showPreview ?? true,
-                  cardPadding: scaledCardPadding,
-                  contentTypeFilter: item.contentTypeFilter || [],
-                  sortBy: item.sortBy as SortBy,
-                  sortOrder: item.sortOrder as SortOrder,
-                  viewSpecific: item.viewSpecific ? JSON.parse(item.viewSpecific) : {},
-                };
-              }
+          if (data.settings && Array.isArray(data.settings)) {
+            // Start with defaults for static views
+            const loadedSettings: Record<string, ViewSettings> = createDefaultSettings();
+
+            // Merge server settings (both static and pawkit-specific)
+            (data.settings as ServerViewSettingsItem[]).forEach((item) => {
+              const view = item.view;
+
+              // Scale server values (1-5, 0-4) to client values (1-100)
+              const scaledCardSize = Math.round(((item.cardSize - 1) / 4) * 99 + 1);
+              const scaledCardPadding = Math.round((item.cardPadding / 4) * 100);
+
+              // Load all views - both static ViewType and dynamic pawkit-* keys
+              loadedSettings[view] = {
+                layout: item.layout as LayoutMode,
+                cardSize: scaledCardSize,
+                cardSpacing: item.cardSpacing || 16,
+                showLabels: item.showLabels ?? (item.showTitles || item.showUrls) ?? true, // Migrate old settings
+                showMetadata: item.showMetadata ?? item.showTitles ?? true, // Migrate old settings
+                showTags: item.showTags,
+                showPreview: item.showPreview ?? true,
+                cardPadding: scaledCardPadding,
+                contentTypeFilter: item.contentTypeFilter || [],
+                sortBy: item.sortBy as SortBy,
+                sortOrder: item.sortOrder as SortOrder,
+                viewSpecific: item.viewSpecific ? JSON.parse(item.viewSpecific) : {},
+              };
             });
 
             set({ settings: loadedSettings });
