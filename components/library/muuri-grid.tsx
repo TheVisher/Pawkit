@@ -369,15 +369,18 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
     }));
 
     return (
-      <div
-        ref={containerRef}
-        className={`muuri-grid ${className}`}
-        style={{
-          position: "relative",
-          ...style,
-        }}
-      >
-        {children}
+      <div className="flex justify-center w-full">
+        <div
+          ref={containerRef}
+          className={`muuri-grid ${className}`}
+          style={{
+            position: "relative",
+            display: "inline-block", // Shrink-wrap to content for centering
+            ...style,
+          }}
+        >
+          {children}
+        </div>
       </div>
     );
   }
@@ -388,10 +391,14 @@ export type MuuriItemProps = {
   children: ReactNode;
   cardId: string;
   className?: string;
-  width: number; // Width in pixels
+  width: number; // Width in pixels (content width)
+  spacing: number; // Gap between items in pixels
 };
 
-export function MuuriItem({ children, cardId, className = "", width }: MuuriItemProps) {
+export function MuuriItem({ children, cardId, className = "", width, spacing }: MuuriItemProps) {
+  // Half spacing on each side creates the gap between items
+  const margin = spacing / 2;
+
   return (
     <div
       className={`muuri-item ${className}`}
@@ -399,9 +406,11 @@ export function MuuriItem({ children, cardId, className = "", width }: MuuriItem
       style={{
         width: `${width}px`,
         position: "absolute",
+        padding: `${margin}px`, // Padding creates the visual gap
+        boxSizing: "border-box",
       }}
     >
-      <div className="muuri-item-content">
+      <div className="muuri-item-content" style={{ width: "100%", height: "100%" }}>
         {children}
       </div>
     </div>

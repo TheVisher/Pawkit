@@ -812,14 +812,16 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             }}
           >
             {filteredAndSortedCards.map((card) => {
-              // Calculate card width based on cardSize slider (includes spacing)
+              // Calculate card width based on cardSize slider
+              // Width includes the spacing so Muuri can calculate columns correctly
               const baseWidth = 150 + ((cardSize - 1) / 99) * 300; // 150px to 450px
-              const itemWidth = baseWidth + cardSpacing;
+              const itemWidth = baseWidth + cardSpacing; // Include spacing in total width for layout calculation
               return (
               <MuuriItem
                 key={card.id}
                 cardId={card.id}
                 width={itemWidth}
+                spacing={cardSpacing}
               >
                 <CardCell
                   card={card}
