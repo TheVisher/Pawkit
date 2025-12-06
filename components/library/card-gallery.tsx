@@ -803,18 +803,15 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           </div>
         ) : layout === "masonry" ? (
           /* Muuri-powered masonry grid with drag-and-drop */
-          (() => {
-            // Calculate item width for centering
-            // Range: 200px (small) to 600px (XL) - shifted up from original 150-450
-            const baseWidth = 200 + ((cardSize - 1) / 99) * 400;
-            const muuriItemWidth = baseWidth + cardSpacing;
-            return (
           <MuuriGridComponent
             ref={muuriRef}
             className="w-full"
             style={{ minHeight: 200 }}
             itemCount={filteredAndSortedCards.length}
-            itemWidth={muuriItemWidth}
+            // Minimum item width based on slider (200px small to 600px XL)
+            minItemWidth={200 + ((cardSize - 1) / 99) * 400 + cardSpacing}
+            // Consistent edge padding
+            edgePadding={16}
             fillGaps={true}
             dragEnabled={true}
             dragHandle=".muuri-item-content"
@@ -826,53 +823,54 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 muuriRef.current?.refreshItems();
               }, 100);
             }}
+            onItemWidthCalculated={(width) => {
+              // Trigger relayout when calculated width changes
+              setTimeout(() => {
+                muuriRef.current?.refreshItems();
+              }, 50);
+            }}
           >
-            {filteredAndSortedCards.map((card) => {
-              // Calculate card width based on cardSize slider
-              // Width includes the spacing so Muuri can calculate columns correctly
-              // Range: 200px (small) to 600px (XL) - shifted up from original 150-450
-              const baseWidth = 200 + ((cardSize - 1) / 99) * 400; // 200px to 600px
-              const itemWidth = baseWidth + cardSpacing; // Include spacing in total width for layout calculation
-              return (
-              <MuuriItem
-                key={card.id}
-                cardId={card.id}
-                width={itemWidth}
-                spacing={cardSpacing}
-              >
-                <CardCell
-                  card={card}
-                  selected={selectedIds.includes(card.id)}
-                  showThumbnail={showThumbnails}
-                  layout={layout}
-                  area={area}
-                  onClick={handleCardClick}
-                  onImageLoad={() => {
-                    handleImageLoad();
-                    // Trigger Muuri relayout when images load
-                    muuriRef.current?.refreshItems();
-                  }}
-                  onAddToPawkit={(slug) => handleAddToPawkit(card.id, slug)}
-                  onDeleteCard={() => handleDeleteCard(card.id)}
-                  onRemoveFromPawkit={(slug) => handleRemoveFromPawkit(card.id, slug)}
-                  onRemoveFromAllPawkits={() => handleRemoveFromAllPawkits(card.id)}
-                  onFetchMetadata={handleFetchMetadata}
-                  isPinned={pinnedNoteIds.includes(card.id)}
-                  onPinToSidebar={() => handlePinToSidebar(card.id)}
-                  onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
-                  onSetThumbnail={() => handleOpenThumbnailModal(card.id)}
-                  hasAttachments={cardsWithAttachments.has(card.id)}
-                  showLabels={viewSettings.showLabels}
-                  showMetadata={viewSettings.showMetadata}
-                  showPreview={viewSettings.showPreview}
-                  cardPadding={viewSettings.cardPadding}
-                />
-              </MuuriItem>
-              );
-            })}
+            {(calculatedWidth: number) => (
+              <>
+                {filteredAndSortedCards.map((card) => (
+                  <MuuriItem
+                    key={card.id}
+                    cardId={card.id}
+                    width={calculatedWidth}
+                    spacing={cardSpacing}
+                  >
+                    <CardCell
+                      card={card}
+                      selected={selectedIds.includes(card.id)}
+                      showThumbnail={showThumbnails}
+                      layout={layout}
+                      area={area}
+                      onClick={handleCardClick}
+                      onImageLoad={() => {
+                        handleImageLoad();
+                        // Trigger Muuri relayout when images load
+                        muuriRef.current?.refreshItems();
+                      }}
+                      onAddToPawkit={(slug) => handleAddToPawkit(card.id, slug)}
+                      onDeleteCard={() => handleDeleteCard(card.id)}
+                      onRemoveFromPawkit={(slug) => handleRemoveFromPawkit(card.id, slug)}
+                      onRemoveFromAllPawkits={() => handleRemoveFromAllPawkits(card.id)}
+                      onFetchMetadata={handleFetchMetadata}
+                      isPinned={pinnedNoteIds.includes(card.id)}
+                      onPinToSidebar={() => handlePinToSidebar(card.id)}
+                      onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
+                      onSetThumbnail={() => handleOpenThumbnailModal(card.id)}
+                      hasAttachments={cardsWithAttachments.has(card.id)}
+                      showLabels={viewSettings.showLabels}
+                      showMetadata={viewSettings.showMetadata}
+                      showPreview={viewSettings.showPreview}
+                      cardPadding={viewSettings.cardPadding}
+                    />
+                  </MuuriItem>
+                ))}
+              </>
+            )}
           </MuuriGridComponent>
-            );
-          })()
         ) : (
           /* CSS Grid for grid/compact layouts */
           <div className={layoutConfig.className} style={layoutConfig.style} data-masonry-gallery>
