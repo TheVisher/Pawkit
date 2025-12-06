@@ -796,7 +796,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           /* Muuri-powered masonry grid with drag-and-drop */
           (() => {
             // Calculate item width for centering
-            const baseWidth = 150 + ((cardSize - 1) / 99) * 300;
+            // Range: 200px (small) to 600px (XL) - shifted up from original 150-450
+            const baseWidth = 200 + ((cardSize - 1) / 99) * 400;
             const muuriItemWidth = baseWidth + cardSpacing;
             return (
           <MuuriGridComponent
@@ -820,7 +821,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             {filteredAndSortedCards.map((card) => {
               // Calculate card width based on cardSize slider
               // Width includes the spacing so Muuri can calculate columns correctly
-              const baseWidth = 150 + ((cardSize - 1) / 99) * 300; // 150px to 450px
+              // Range: 200px (small) to 600px (XL) - shifted up from original 150-450
+              const baseWidth = 200 + ((cardSize - 1) / 99) * 400; // 200px to 600px
               const itemWidth = baseWidth + cardSpacing; // Include spacing in total width for layout calculation
               return (
               <MuuriItem
@@ -1616,14 +1618,14 @@ const CardCell = memo(CardCellInner, (prevProps, nextProps) => {
 
 function getLayoutConfig(layout: LayoutMode, cardSize: number = 50, cardSpacing: number = 16): { className: string; style: React.CSSProperties } {
   // Calculate minimum card width based on cardSize (1-100 scale)
-  // 1 = 150px (smallest), 100 = 500px (largest)
+  // Range: 200px (small) to 600px (XL) - shifted up from original 150-500
   // Smaller range makes transitions smoother as grid recalculates columns
-  const minCardWidth = 150 + ((cardSize - 1) / 99) * 350; // Ranges from 150px to 500px
+  const minCardWidth = 200 + ((cardSize - 1) / 99) * 400; // Ranges from 200px to 600px
 
   // Maximum card width to prevent cards from becoming too wide on ultrawide monitors
   // This ensures cards maintain proper aspect ratios and image rendering
   // Using 1.5x the min width as max prevents excessive stretching
-  const maxCardWidth = Math.min(minCardWidth * 1.5, 600);
+  const maxCardWidth = Math.min(minCardWidth * 1.5, 800);
 
   // Gap in pixels - use the cardSpacing value directly for smooth scaling
   const gapPx = cardSpacing;
