@@ -2,19 +2,185 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========================================
+   PAWKIT DESIGN SYSTEM v2.0 - TOKENS
+   ======================================== */
+
 :root {
   color-scheme: dark;
+
+  /* === CORE HSL VALUES === */
+  --hue-neutral: 0;
+  --hue-purple: 270;
+
+  /* === PURPLE ACCENT SCALE === */
+  --purple-sat: 60%;
+  --ds-accent: hsl(var(--hue-purple) var(--purple-sat) 55%);
+  --ds-accent-hover: hsl(var(--hue-purple) var(--purple-sat) 65%);
+  --ds-accent-active: hsl(var(--hue-purple) var(--purple-sat) 45%);
+  --ds-accent-muted: hsl(var(--hue-purple) var(--purple-sat) 35%);
+  --ds-accent-subtle: hsl(var(--hue-purple) var(--purple-sat) 20%);
+
+  /* === SPACING SYSTEM (4px grid) === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* === BORDER RADIUS SYSTEM === */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* === TYPOGRAPHY === */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-lg: 16px;
+  --text-xl: 18px;
+  --text-2xl: 24px;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* === TRANSITIONS === */
+  --transition-fast: 0.1s ease;
+  --transition-base: 0.15s ease;
+  --transition-slow: 0.25s ease;
 }
+
+/* === DARK MODE (Default) === */
+:root, [data-theme="dark"] {
+  /* Backgrounds - 5% steps for visible layering */
+  --bg-base: hsl(0 0% 4%);
+  --bg-surface-1: hsl(0 0% 9%);
+  --bg-surface-2: hsl(0 0% 14%);
+  --bg-surface-3: hsl(0 0% 19%);
+  --bg-surface-4: hsl(0 0% 24%);
+
+  /* Text */
+  --text-primary: hsl(var(--hue-neutral) 0% 95%);
+  --text-secondary: hsl(var(--hue-neutral) 0% 70%);
+  --text-muted: hsl(var(--hue-neutral) 0% 50%);
+  --text-disabled: hsl(var(--hue-neutral) 0% 35%);
+
+  /* Borders - neumorphism-lite highlights */
+  --border-subtle: hsl(0 0% 100% / 0.06);
+  --border-default: hsl(0 0% 100% / 0.08);
+  --border-strong: hsl(0 0% 100% / 0.12);
+  --border-divider: hsl(0 0% 100% / 0.08);
+  --border-highlight-top: hsl(0 0% 100% / 0.1);
+  --border-highlight-left: hsl(0 0% 100% / 0.08);
+  --content-top-shadow: transparent;
+
+  /* Shadows - Two-part: dark shadow + light edge highlight */
+  --shadow-1:
+    0 2px 4px hsl(0 0% 0% / 0.5),
+    0 0 0 1px hsl(0 0% 100% / 0.05);
+  --shadow-2:
+    0 4px 8px hsl(0 0% 0% / 0.5),
+    0 8px 16px hsl(0 0% 0% / 0.3),
+    0 0 0 1px hsl(0 0% 100% / 0.05);
+  --shadow-3:
+    0 8px 16px hsl(0 0% 0% / 0.5),
+    0 16px 32px hsl(0 0% 0% / 0.3),
+    0 0 0 1px hsl(0 0% 100% / 0.08);
+  --shadow-4:
+    0 16px 32px hsl(0 0% 0% / 0.5),
+    0 32px 64px hsl(0 0% 0% / 0.3),
+    0 0 0 1px hsl(0 0% 100% / 0.1);
+
+  /* Glow effects - more visible purple glow */
+  --glow-hover:
+    0 0 20px hsl(270 60% 50% / 0.4),
+    0 4px 12px hsl(0 0% 0% / 0.4);
+  --glow-focus: 0 0 0 3px hsl(var(--hue-purple) var(--purple-sat) 50% / 0.4);
+  --glow-active:
+    0 0 30px hsl(270 60% 50% / 0.5),
+    0 8px 24px hsl(0 0% 0% / 0.5);
+
+  /* Neumorphic effects - Dark mode */
+  --inset-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.4), inset 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+  --inset-border: 1px solid rgba(0, 0, 0, 0.3);
+  --inset-border-bottom: rgba(255, 255, 255, 0.12);
+  --inset-border-right: rgba(255, 255, 255, 0.06);
+  --raised-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --raised-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --raised-border-top: rgba(255, 255, 255, 0.12);
+  --slider-inset: inset 0 2px 4px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(0, 0, 0, 0.3);
+  --slider-inset-border-bottom: rgba(255, 255, 255, 0.1);
+}
+
+/* === LIGHT MODE === */
+[data-theme="light"], :root.light {
+  /* Backgrounds - light mode: shadows create depth, colors stay similar */
+  --bg-base: hsl(var(--hue-neutral) 0% 90%);
+  --bg-surface-1: hsl(var(--hue-neutral) 0% 88%);  /* Inset areas - slightly darker */
+  --bg-surface-2: hsl(var(--hue-neutral) 0% 93%);  /* Panels/cards - lighter */
+  --bg-surface-3: hsl(var(--hue-neutral) 0% 97%);  /* Raised buttons - near white */
+  --bg-surface-4: hsl(var(--hue-neutral) 0% 100%); /* Most raised - white */
+
+  /* Text */
+  --text-primary: hsl(var(--hue-neutral) 0% 5%);
+  --text-secondary: hsl(var(--hue-neutral) 0% 30%);
+  --text-muted: hsl(var(--hue-neutral) 0% 50%);
+  --text-disabled: hsl(var(--hue-neutral) 0% 65%);
+
+  /* Borders */
+  --border-subtle: hsl(var(--hue-neutral) 0% 0% / 0.10);
+  --border-default: hsl(var(--hue-neutral) 0% 0% / 0.15);
+  --border-strong: hsl(var(--hue-neutral) 0% 0% / 0.20);
+  --border-divider: hsl(var(--hue-neutral) 0% 0% / 0.12);
+
+  /* Shadows - soft dark shadows only in light mode */
+  --shadow-color: var(--hue-neutral) 0% 0%;
+  --shadow-1: 0 2px 4px hsl(var(--shadow-color) / 0.08), 0 1px 2px hsl(var(--shadow-color) / 0.06);
+  --shadow-2: 0 4px 8px hsl(var(--shadow-color) / 0.10), 0 2px 4px hsl(var(--shadow-color) / 0.08);
+  --shadow-3: 0 8px 16px hsl(var(--shadow-color) / 0.12), 0 4px 8px hsl(var(--shadow-color) / 0.10);
+  --shadow-4: 0 12px 24px hsl(var(--shadow-color) / 0.14), 0 6px 12px hsl(var(--shadow-color) / 0.12);
+
+  /* Glow effects - softer in light mode */
+  --glow-hover: 0 0 20px hsl(var(--hue-purple) var(--purple-sat) 50% / 0.2);
+  --glow-focus: 0 0 0 3px hsl(var(--hue-purple) var(--purple-sat) 50% / 0.2);
+  --glow-active: 0 0 30px hsl(var(--hue-purple) var(--purple-sat) 50% / 0.3);
+
+  /* Neumorphic effects - Light mode (dark shadows only for depth) */
+  --border-highlight-top: transparent;
+  --border-highlight-left: transparent;
+  --content-top-shadow: rgba(100, 80, 150, 0.08);
+  --inset-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.08);
+  --inset-border: 1px solid rgba(0, 0, 0, 0.08);
+  --inset-border-bottom: rgba(0, 0, 0, 0.04);
+  --inset-border-right: rgba(0, 0, 0, 0.04);
+  --raised-shadow: 0 2px 6px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --raised-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --raised-border-top: rgba(255, 255, 255, 0.5);
+  --slider-inset: inset 0 2px 4px rgba(0, 0, 0, 0.10), inset 0 1px 2px rgba(0, 0, 0, 0.06);
+  --slider-inset-border-bottom: rgba(0, 0, 0, 0.04);
+}
+
+/* ========================================
+   END DESIGN SYSTEM TOKENS
+   ======================================== */
 
 body {
   @apply min-h-screen antialiased text-gray-900;
   background-attachment: fixed;
-  background-color: #fafafa;
+  background-color: #e6e6e6;
   background-image:
-    radial-gradient(1200px circle at 12% 0%, rgba(122, 92, 250, 0.08), rgba(250, 250, 250, 0)),
-    radial-gradient(900px circle at 88% 8%, rgba(122, 92, 250, 0.05), rgba(250, 250, 250, 0)),
-    radial-gradient(600px circle at 25% 90%, rgba(122, 92, 250, 0.04), rgba(250, 250, 250, 0)),
-    linear-gradient(160deg, rgba(250, 250, 250, 0.98), rgba(245, 245, 245, 1));
+    radial-gradient(1200px circle at 12% 0%, rgba(122, 92, 250, 0.25), rgba(230, 230, 230, 0)),
+    radial-gradient(900px circle at 88% 8%, rgba(122, 92, 250, 0.20), rgba(230, 230, 230, 0)),
+    radial-gradient(600px circle at 25% 90%, rgba(122, 92, 250, 0.18), rgba(230, 230, 230, 0)),
+    linear-gradient(160deg, rgba(232, 232, 232, 1), rgba(226, 226, 226, 1));
 }
 
 .dark body {
@@ -317,10 +483,95 @@ textarea:focus-visible {
     box-shadow: 0 24px 60px rgba(5, 5, 12, 0.45);
   }
 
+  /* === DESIGN SYSTEM v2.0 UTILITIES === */
+
+  /* Elevation utilities */
+  .elevation-0 { box-shadow: none; }
+  .elevation-1 { box-shadow: var(--shadow-1); }
+  .elevation-2 { box-shadow: var(--shadow-2); }
+  .elevation-3 { box-shadow: var(--shadow-2); transform: translateY(-1px); }
+  .elevation-4 { box-shadow: var(--shadow-3); }
+  .elevation-5 { box-shadow: var(--shadow-4); }
+
+  /* Surface backgrounds (design system) */
+  .surface-base { background: var(--bg-base); }
+  .surface-1 { background: var(--bg-surface-1); }
+  .surface-2 { background: var(--bg-surface-2); }
+  .surface-3 { background: var(--bg-surface-3); }
+  .surface-4 { background: var(--bg-surface-4); }
+
+  /* Text colors (design system) */
+  .text-ds-primary { color: var(--text-primary); }
+  .text-ds-secondary { color: var(--text-secondary); }
+  .text-ds-muted { color: var(--text-muted); }
+  .text-ds-disabled { color: var(--text-disabled); }
+
+  /* Border colors (design system) */
+  .border-ds-subtle { border-color: var(--border-subtle); }
+  .border-ds-default { border-color: var(--border-default); }
+  .border-ds-strong { border-color: var(--border-strong); }
+
+  /* Glow utilities */
+  .glow-hover { box-shadow: var(--glow-hover); }
+  .glow-focus { box-shadow: var(--glow-focus); }
+  .glow-active { box-shadow: var(--glow-active); }
+
+  /* Transition utilities */
+  .transition-fast { transition: all var(--transition-fast); }
+  .transition-base { transition: all var(--transition-base); }
+  .transition-slow { transition: all var(--transition-slow); }
+
+  /* Note card with paper fold effect (like MyMind) */
+  .note-card-fold {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Triangle that "cuts out" the corner - matches page background */
+  .note-card-fold::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 28px 28px 0;
+    border-color: transparent var(--bg-base) transparent transparent;
+    z-index: 20;
+  }
+
+  /* The fold shadow underneath */
+  .note-card-fold::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 28px;
+    height: 28px;
+    background: linear-gradient(135deg, var(--bg-surface-3) 50%, transparent 50%);
+    z-index: 19;
+  }
+
+  /* === END DESIGN SYSTEM v2.0 UTILITIES === */
+
+  /* Neumorphism-lite elevated surface styling */
+  .elevated {
+    border: 1px solid var(--border-subtle);
+    border-top-color: var(--border-highlight-top);
+    border-left-color: var(--border-highlight-left);
+  }
+
   .card-hover {
     position: relative;
     overflow: hidden;
-    transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease, background-color 0.28s ease;
+    background: var(--bg-surface-2);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-2);
+    border: 1px solid var(--border-subtle);
+    border-top-color: var(--border-highlight-top);
+    border-left-color: var(--border-highlight-left);
+    transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
   }
 
   .card-hover::after {
@@ -331,17 +582,22 @@ textarea:focus-visible {
     pointer-events: none;
     background: linear-gradient(180deg, hsla(var(--accent) / 0) 0%, hsla(var(--accent) / 0.12) 55%, hsla(var(--accent) / 0.42) 100%);
     opacity: 0;
-    transition: opacity 0.28s ease;
+    transition: opacity var(--transition-base);
   }
 
   .card-hover:hover {
-    transform: translateY(-6px);
-    border-color: hsla(var(--accent) / 0.55);
-    box-shadow: 0 32px 60px -18px hsla(var(--accent) / 0.45);
+    transform: translateY(-4px);
+    box-shadow: var(--glow-hover), var(--shadow-3);
+    border-color: hsl(0 0% 100% / 0.1);
   }
 
   .card-hover:hover::after {
     opacity: 1;
+  }
+
+  .card-hover:active {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-1);
   }
 
   .card-hover.is-selected::after,
@@ -350,8 +606,8 @@ textarea:focus-visible {
   }
 
   .card-hover.is-selected {
-    border-color: hsla(var(--accent) / 0.65);
-    box-shadow: 0 30px 60px -16px hsla(var(--accent) / 0.5);
+    border-color: var(--ds-accent);
+    box-shadow: var(--glow-hover), var(--shadow-2);
   }
 
   /* Hide scrollbars but keep functionality */
@@ -362,6 +618,37 @@ textarea:focus-visible {
 
   .scrollbar-hide::-webkit-scrollbar {
     display: none;  /* Chrome, Safari and Opera */
+  }
+
+  /* Sidebar scrollbar - overlay mode, doesn't shift content */
+  .sidebar-scroll {
+    overflow-y: overlay;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  }
+
+  /* Fallback for browsers that don't support overlay */
+  @supports not (overflow-y: overlay) {
+    .sidebar-scroll {
+      overflow-y: auto;
+    }
+  }
+
+  .sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.25);
   }
 
   /* Landing page animations */
@@ -684,4 +971,278 @@ textarea:focus-visible {
 .ticker-container {
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
   mask-image: linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%);
+}
+
+/* ========================================
+   NOTE CARD PREVIEW - Rendered Markdown
+   ======================================== */
+.note-card-preview {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow: hidden;
+}
+
+.note-card-preview p {
+  margin: 0 0 0.5em 0;
+}
+
+.note-card-preview p:last-child {
+  margin-bottom: 0;
+}
+
+/* Headings */
+.note-card-preview h1,
+.note-card-preview h2,
+.note-card-preview h3,
+.note-card-preview h4,
+.note-card-preview h5,
+.note-card-preview h6 {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin: 0 0 0.4em 0;
+  line-height: 1.3;
+}
+
+.note-card-preview h1 { font-size: 1.1em; }
+.note-card-preview h2 { font-size: 1.05em; }
+.note-card-preview h3,
+.note-card-preview h4,
+.note-card-preview h5,
+.note-card-preview h6 { font-size: 1em; }
+
+/* Links */
+.note-card-preview a {
+  color: var(--ds-accent);
+  text-decoration: none;
+}
+
+.note-card-preview a:hover {
+  text-decoration: underline;
+}
+
+/* Lists */
+.note-card-preview ul,
+.note-card-preview ol {
+  margin: 0.3em 0;
+  padding-left: 1.2em;
+}
+
+.note-card-preview li {
+  margin-bottom: 0.15em;
+}
+
+/* Task list checkboxes (GFM) */
+.note-card-preview ul.contains-task-list {
+  list-style: none;
+  padding-left: 0;
+}
+
+.note-card-preview li.task-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4em;
+}
+
+.note-card-preview input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  min-width: 14px;
+  border: 2px solid var(--text-muted);
+  border-radius: 3px;
+  background: transparent;
+  margin-top: 2px;
+  cursor: default;
+  position: relative;
+}
+
+.note-card-preview input[type="checkbox"]:checked {
+  background: var(--ds-accent);
+  border-color: var(--ds-accent);
+}
+
+.note-card-preview input[type="checkbox"]:checked::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 0px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* Strikethrough for completed tasks */
+.note-card-preview li.task-list-item:has(input:checked) > *:not(input) {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* Code */
+.note-card-preview code {
+  background: var(--bg-surface-3);
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+  font-size: 0.9em;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+.note-card-preview pre {
+  background: var(--bg-surface-3);
+  padding: 0.5em;
+  border-radius: 4px;
+  overflow-x: auto;
+  margin: 0.4em 0;
+}
+
+.note-card-preview pre code {
+  background: transparent;
+  padding: 0;
+}
+
+/* Blockquotes */
+.note-card-preview blockquote {
+  border-left: 3px solid var(--ds-accent-muted);
+  padding-left: 0.6em;
+  margin: 0.4em 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Bold and italic */
+.note-card-preview strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.note-card-preview em {
+  font-style: italic;
+}
+
+/* Horizontal rule */
+.note-card-preview hr {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 0.6em 0;
+}
+
+/* Tables (basic support) */
+.note-card-preview table {
+  border-collapse: collapse;
+  font-size: 0.9em;
+  margin: 0.4em 0;
+}
+
+.note-card-preview th,
+.note-card-preview td {
+  border: 1px solid var(--border-subtle);
+  padding: 0.2em 0.4em;
+}
+
+.note-card-preview th {
+  background: var(--bg-surface-3);
+  font-weight: 600;
+}
+
+/* ========================================
+   DROPDOWN MENU ITEMS - Design System
+   ======================================== */
+.dropdown-menu-item {
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.dropdown-menu-item:hover,
+.dropdown-menu-item:focus {
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+}
+
+.dropdown-menu-item[data-highlighted] {
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+}
+
+.dropdown-menu-item[data-state="checked"],
+.dropdown-menu-item[aria-checked="true"] {
+  background: var(--ds-accent-subtle);
+  color: var(--ds-accent);
+}
+
+/* ========================================
+   FORM INPUTS - Design System
+   ======================================== */
+.ds-input {
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  transition: border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+.ds-input::placeholder {
+  color: var(--text-muted);
+}
+
+.ds-input:focus {
+  border-color: var(--ds-accent);
+  box-shadow: var(--glow-focus);
+  outline: none;
+}
+
+.ds-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========================================
+   BUTTONS - Design System
+   ======================================== */
+.ds-btn-primary {
+  background: var(--ds-accent);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
+  transition: all var(--transition-base);
+}
+
+.ds-btn-primary:hover {
+  background: var(--ds-accent-hover);
+  box-shadow: var(--glow-hover), var(--shadow-2);
+}
+
+.ds-btn-primary:active {
+  background: var(--ds-accent-active);
+  box-shadow: var(--shadow-1);
+}
+
+.ds-btn-secondary {
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.ds-btn-secondary:hover {
+  background: var(--bg-surface-3);
+  border-color: var(--border-default);
+}
+
+.ds-btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  border-radius: var(--radius-md);
+  transition: all var(--transition-base);
+}
+
+.ds-btn-ghost:hover {
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
 }

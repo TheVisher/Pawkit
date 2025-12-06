@@ -170,7 +170,7 @@ export function CustomCalendar({
     return (
       <div className="space-y-2">
         {daysWithContent.length === 0 ? (
-          <div className="text-center text-muted-foreground py-8">
+          <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
             No events this month
           </div>
         ) : (
@@ -185,21 +185,41 @@ export function CustomCalendar({
             return (
               <div
                 key={dateStr}
-                className={`rounded-xl border p-3 ${
-                  isCurrentDay
-                    ? 'border-accent bg-accent/5'
-                    : 'border-subtle bg-surface'
-                }`}
+                className="rounded-xl p-3"
+                style={{
+                  /* ===== TODAY STYLING - OPTION 2: Purple pill on day number ===== */
+                  background: 'var(--bg-surface-2)',
+                  border: '1px solid var(--border-subtle)',
+                }}
               >
                 {/* Date header */}
                 <button
                   onClick={() => onDayClick?.(day)}
-                  className="w-full text-left mb-2 pb-2 border-b border-subtle/50"
+                  className="w-full text-left mb-2 pb-2 flex items-center gap-2"
+                  style={{ borderBottom: '1px solid var(--border-subtle)' }}
                 >
-                  <span className={`text-sm font-semibold ${isCurrentDay ? 'text-accent' : 'text-foreground'}`}>
-                    {format(day, 'EEEE, MMM d')}
-                    {isCurrentDay && <span className="ml-2 text-xs text-accent">(Today)</span>}
+                  <span
+                    className="text-sm font-semibold"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {format(day, 'EEEE, MMM')}
                   </span>
+                  <span
+                    className={`text-sm font-semibold ${isCurrentDay ? 'inline-flex items-center justify-center' : ''}`}
+                    style={isCurrentDay ? {
+                      background: 'var(--ds-accent)',
+                      color: 'white',
+                      borderRadius: '9999px',
+                      minWidth: '24px',
+                      height: '24px',
+                      padding: '0 6px',
+                    } : {
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    {format(day, 'd')}
+                  </span>
+                  {isCurrentDay && <span className="text-xs" style={{ color: 'var(--ds-accent)' }}>(Today)</span>}
                 </button>
 
                 {/* Items */}
@@ -211,18 +231,28 @@ export function CustomCalendar({
                         e.stopPropagation();
                         onCardClick?.(dailyNote);
                       }}
-                      className="w-full text-left px-3 py-2 rounded-lg bg-purple-500/20 border border-purple-400/30 hover:bg-purple-500/30 transition-colors flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
+                      style={{
+                        background: 'var(--ds-accent-subtle)',
+                        border: '1px solid var(--ds-accent-muted)',
+                      }}
                     >
-                      <FileText size={14} className="text-purple-300 flex-shrink-0" />
-                      <span className="text-sm text-purple-200">Daily Note</span>
+                      <FileText size={14} className="flex-shrink-0" style={{ color: 'var(--ds-accent)' }} />
+                      <span className="text-sm" style={{ color: 'var(--ds-accent)' }}>Daily Note</span>
                     </button>
                   )}
 
                   {/* Holiday */}
                   {holiday && (
-                    <div className="px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-400/30 flex items-center gap-2">
-                      <Flag size={14} className="text-amber-400 flex-shrink-0" />
-                      <span className="text-sm text-amber-300">{holiday.name}</span>
+                    <div
+                      className="px-3 py-2 rounded-lg flex items-center gap-2"
+                      style={{
+                        background: 'var(--ds-accent-subtle)',
+                        border: '1px solid var(--ds-accent-muted)',
+                      }}
+                    >
+                      <Flag size={14} className="flex-shrink-0" style={{ color: 'var(--ds-accent)' }} />
+                      <span className="text-sm" style={{ color: 'var(--ds-accent)' }}>{holiday.name}</span>
                     </div>
                   )}
 
@@ -234,16 +264,17 @@ export function CustomCalendar({
                         e.stopPropagation();
                         onEventClick?.(event);
                       }}
-                      className="w-full text-left px-3 py-2 rounded-lg bg-surface-soft hover:bg-surface transition-colors flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
+                      style={{ background: 'var(--bg-surface-3)' }}
                     >
                       <span
                         className="w-3 h-3 rounded-full flex-shrink-0"
                         style={{ backgroundColor: event.color || EVENT_COLORS.purple }}
                       />
                       <div className="flex-1 min-w-0">
-                        <span className="text-sm text-foreground">{event.title}</span>
+                        <span className="text-sm" style={{ color: 'var(--text-primary)' }}>{event.title}</span>
                         {!event.isAllDay && event.startTime && (
-                          <span className="ml-2 text-xs text-muted-foreground">
+                          <span className="ml-2 text-xs" style={{ color: 'var(--text-muted)' }}>
                             {formatTime12h(event.startTime)}
                           </span>
                         )}
@@ -259,7 +290,8 @@ export function CustomCalendar({
                         e.stopPropagation();
                         onCardClick?.(card);
                       }}
-                      className="w-full text-left px-3 py-2 rounded-lg bg-surface-soft hover:bg-surface transition-colors flex items-center gap-2"
+                      className="w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
+                      style={{ background: 'var(--bg-surface-3)' }}
                     >
                       {card.image && (
                         <img
@@ -268,7 +300,7 @@ export function CustomCalendar({
                           className="w-6 h-6 rounded object-cover flex-shrink-0"
                         />
                       )}
-                      <span className="text-sm text-foreground truncate">
+                      <span className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>
                         {card.title || card.domain || card.url}
                       </span>
                     </button>
@@ -284,18 +316,30 @@ export function CustomCalendar({
 
   // Desktop Grid View
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Weekday headers */}
-      <div className="grid grid-cols-7 gap-3">
+      <div
+        className="grid grid-cols-7 rounded-xl"
+        style={{
+          gap: 'var(--space-3)',
+        }}
+      >
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-          <div key={day} className="text-center text-sm font-semibold text-muted-foreground py-2">
+          <div
+            key={day}
+            className="text-center text-sm font-semibold py-2"
+            style={{ color: 'var(--text-muted)' }}
+          >
             {day}
           </div>
         ))}
       </div>
 
       {/* Calendar grid */}
-      <div className="grid grid-cols-7 gap-3">
+      <div
+        className="grid grid-cols-7"
+        style={{ gap: 'var(--space-3)' }}
+      >
         {calendarDays.map((day, index) => {
           const dateStr = format(day, 'yyyy-MM-dd');
           const dayCards = cardsByDate.get(dateStr) || [];
@@ -313,25 +357,48 @@ export function CustomCalendar({
           return (
             <div
               key={index}
-              className={`card-hover relative min-h-[180px] rounded-2xl border transition-all cursor-pointer ${
-                isCurrentDay
-                  ? 'border-accent bg-accent/5'
-                  : isCurrentMonth
-                  ? 'border-subtle bg-surface'
-                  : 'border-subtle/40 bg-surface-muted/50'
-              }`}
+              className="relative min-h-[180px] rounded-xl transition-all cursor-pointer"
+              style={{
+                /* ===== TODAY STYLING - OPTION 2: Purple pill on day number ===== */
+                background: isCurrentMonth
+                  ? 'var(--bg-surface-3)'
+                  : 'var(--bg-surface-2)',
+                boxShadow: isCurrentMonth ? 'var(--raised-shadow-sm)' : 'var(--shadow-1)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                borderColor: isCurrentMonth
+                  ? 'var(--border-default)'
+                  : 'var(--border-subtle)',
+                borderTopColor: isCurrentMonth
+                  ? 'var(--raised-border-top)'
+                  : 'var(--border-subtle)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = 'var(--raised-shadow)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = isCurrentMonth ? 'var(--raised-shadow-sm)' : 'var(--shadow-1)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
               onClick={() => onDayClick?.(day)}
             >
-              {/* Date number */}
+              {/* Date number - with purple pill for today */}
               <div className="p-3">
                 <span
-                  className={`text-sm font-semibold ${
-                    isCurrentDay
-                      ? 'text-accent'
-                      : isCurrentMonth
-                      ? 'text-foreground'
-                      : 'text-muted-foreground'
-                  }`}
+                  className={`text-sm ${isCurrentMonth ? 'font-semibold' : 'font-medium'} ${isCurrentDay ? 'inline-flex items-center justify-center' : ''}`}
+                  style={isCurrentDay ? {
+                    background: 'var(--ds-accent)',
+                    color: 'white',
+                    borderRadius: '9999px',
+                    minWidth: '28px',
+                    height: '28px',
+                    padding: '0 8px',
+                  } : {
+                    color: isCurrentMonth
+                      ? 'var(--text-primary)'
+                      : 'var(--text-secondary)',
+                  }}
                 >
                   {format(day, 'd')}
                 </span>
@@ -347,15 +414,27 @@ export function CustomCalendar({
                       e.stopPropagation();
                       onEventClick?.(event);
                     }}
-                    className="w-full text-left px-2 py-1 rounded-lg bg-surface-soft hover:bg-surface transition-colors flex items-center gap-2"
+                    className="w-full text-left px-2 py-1 rounded-lg transition-all flex items-center gap-2"
+                    style={{
+                      background: 'var(--bg-surface-2)',
+                      border: '1px solid var(--border-subtle)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-surface-1)';
+                      e.currentTarget.style.borderColor = 'var(--border-default)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-surface-2)';
+                      e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                    }}
                   >
                     <span
                       className="w-2 h-2 rounded-full flex-shrink-0"
                       style={{ backgroundColor: event.color || EVENT_COLORS.purple }}
                     />
-                    <span className="text-xs text-foreground truncate flex-1">
+                    <span className="text-xs truncate flex-1" style={{ color: 'var(--text-primary)' }}>
                       {!event.isAllDay && event.startTime && (
-                        <span className="text-muted-foreground mr-1">
+                        <span style={{ color: 'var(--text-muted)', marginRight: '4px' }}>
                           {formatTime12h(event.startTime)}
                         </span>
                       )}
@@ -372,7 +451,19 @@ export function CustomCalendar({
                       e.stopPropagation();
                       onCardClick?.(card);
                     }}
-                    className="w-full text-left px-2 py-1 rounded-lg bg-surface-soft hover:bg-surface transition-colors flex items-center gap-2"
+                    className="w-full text-left px-2 py-1 rounded-lg transition-all flex items-center gap-2"
+                    style={{
+                      background: 'var(--bg-surface-2)',
+                      border: '1px solid var(--border-subtle)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-surface-1)';
+                      e.currentTarget.style.borderColor = 'var(--border-default)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-surface-2)';
+                      e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                    }}
                   >
                     {card.image && (
                       <img
@@ -381,7 +472,7 @@ export function CustomCalendar({
                         className="w-4 h-4 rounded object-cover flex-shrink-0"
                       />
                     )}
-                    <span className="text-xs text-foreground truncate">
+                    <span className="text-xs truncate" style={{ color: 'var(--text-primary)' }}>
                       {card.title || card.domain || card.url}
                     </span>
                   </button>
@@ -389,7 +480,7 @@ export function CustomCalendar({
 
                 {/* More indicator */}
                 {totalItems > maxVisible && (
-                  <div className="text-xs text-muted-foreground px-2">
+                  <div className="text-xs px-2" style={{ color: 'var(--text-muted)' }}>
                     +{totalItems - maxVisible} more
                   </div>
                 )}
@@ -397,8 +488,8 @@ export function CustomCalendar({
                 {/* Holiday (shown below events) */}
                 {holiday && (
                   <div className="px-2 py-1 flex items-center gap-1.5">
-                    <Flag size={10} className="text-amber-400 flex-shrink-0" />
-                    <span className="text-xs text-amber-400 truncate">
+                    <Flag size={10} className="flex-shrink-0" style={{ color: 'var(--ds-accent)' }} />
+                    <span className="text-xs truncate" style={{ color: 'var(--ds-accent)' }}>
                       {holiday.name}
                     </span>
                   </div>
@@ -413,7 +504,24 @@ export function CustomCalendar({
                       e.stopPropagation();
                       onCardClick?.(dailyNote);
                     }}
-                    className="px-3 py-1.5 rounded-full bg-purple-500/20 backdrop-blur-md border border-purple-400/30 text-xs text-purple-200 hover:bg-purple-500/30 transition-colors flex items-center gap-1.5"
+                    className="px-3 py-1.5 rounded-full text-xs transition-all flex items-center gap-1.5"
+                    style={{
+                      background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                      boxShadow: 'var(--raised-shadow-sm)',
+                      borderWidth: '1px',
+                      borderStyle: 'solid',
+                      borderColor: 'var(--border-subtle)',
+                      borderTopColor: 'var(--raised-border-top)',
+                      color: 'var(--ds-accent)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = 'var(--raised-shadow)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = 'var(--raised-shadow-sm)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
                   >
                     <FileText size={12} />
                     <span className="font-medium">Daily Note</span>

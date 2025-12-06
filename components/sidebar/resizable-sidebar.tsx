@@ -154,21 +154,37 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
 
   return (
     <aside
-      className="sticky top-0 z-30 flex h-screen min-h-0 shrink-0 flex-col overflow-hidden border-r border-subtle bg-surface text-foreground"
-      style={{ width }}
+      className="sticky top-0 z-30 flex h-screen min-h-0 shrink-0 flex-col overflow-hidden border-r text-foreground"
+      style={{
+        width,
+        background: 'var(--bg-surface-1)',
+        borderColor: 'var(--border-subtle)'
+      }}
     >
-      <div className={`flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto ${collapsed ? "px-2 py-4" : "p-4"}`}>
-        <div className={`${collapsed ? "w-full" : ""} space-y-1`}>
+      <div className={`flex flex-1 min-h-0 flex-col gap-3 overflow-y-auto scrollbar-hide ${collapsed ? "px-2 py-4" : "p-4"}`}>
+        {/* Navigation Section Container */}
+        <div
+          className={`${collapsed ? "w-full" : ""} space-y-1 rounded-xl p-3`}
+          style={{
+            background: 'var(--bg-surface-2)',
+            boxShadow: 'var(--shadow-2)',
+            border: '1px solid var(--border-subtle)',
+            borderTopColor: 'var(--border-highlight-top)',
+            borderLeftColor: 'var(--border-highlight-left)'
+          }}
+        >
           {primaryLinks.map((link) => {
             if (link.href === "/pawkits") {
               return (
                 <div key={link.href}>
                   <div
-                    className={`flex w-full items-center justify-between rounded-lg border border-transparent px-3 py-2 text-sm transition-colors ${
-                      isActive(link.href)
-                        ? "bg-surface-muted text-foreground"
-                        : "text-muted-foreground hover:bg-surface-80 hover:text-foreground"
-                    }`}
+                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-sm transition-all"
+                    style={{
+                      background: isActive(link.href) ? 'var(--bg-surface-3)' : 'transparent',
+                      color: isActive(link.href) ? 'var(--text-primary)' : 'var(--text-secondary)',
+                      boxShadow: isActive(link.href) ? 'var(--shadow-2)' : 'none',
+                      borderLeft: isActive(link.href) ? '3px solid var(--ds-accent)' : '3px solid transparent'
+                    }}
                   >
                     <button
                       onClick={() => router.push(link.href)}
@@ -204,11 +220,14 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
 
                         return (
                           <div key={collection.id}>
-                            <div className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm transition-colors ${
-                              pathname === `/pawkits/${collection.slug}`
-                                ? "bg-surface-muted text-foreground"
-                                : "text-muted-foreground hover:bg-surface-80 hover:text-foreground"
-                            }`}>
+                            <div
+                              className="flex items-center justify-between rounded-lg px-3 py-1.5 text-sm transition-all"
+                              style={{
+                                background: pathname === `/pawkits/${collection.slug}` ? 'var(--bg-surface-3)' : 'transparent',
+                                color: pathname === `/pawkits/${collection.slug}` ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                borderLeft: pathname === `/pawkits/${collection.slug}` ? '3px solid var(--ds-accent)' : '3px solid transparent'
+                              }}
+                            >
                               <button
                                 onClick={() => router.push(`/pawkits/${collection.slug}`)}
                                 className="flex-1 text-left"
@@ -247,11 +266,12 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
                                   <button
                                     key={child.id}
                                     onClick={() => router.push(`/pawkits/${child.slug}`)}
-                                    className={`w-full rounded-lg px-3 py-1.5 text-left text-sm transition-colors ${
-                                      pathname === `/pawkits/${child.slug}`
-                                        ? "bg-surface-muted text-foreground"
-                                        : "text-muted-foreground hover:bg-surface-80 hover:text-foreground"
-                                    }`}
+                                    className="w-full rounded-lg px-3 py-1.5 text-left text-sm transition-all"
+                                    style={{
+                                      background: pathname === `/pawkits/${child.slug}` ? 'var(--bg-surface-3)' : 'transparent',
+                                      color: pathname === `/pawkits/${child.slug}` ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                      borderLeft: pathname === `/pawkits/${child.slug}` ? '3px solid var(--ds-accent)' : '3px solid transparent'
+                                    }}
                                   >
                                     {child.name}
                                   </button>
@@ -269,15 +289,30 @@ export function ResizableSidebar({ username, collections }: ResizableSidebarProp
             return <SidebarLink key={link.href} config={link} active={isActive(link.href)} collapsed={collapsed} />;
           })}
         </div>
-        <Separator />
-        <SidebarLink config={favoritesLink} active={isActive(favoritesLink.href)} collapsed={collapsed} />
+
+        {/* Favorites Section Container */}
+        <div
+          className={`${collapsed ? "w-full" : ""} space-y-1 rounded-xl p-3`}
+          style={{
+            background: 'var(--bg-surface-2)',
+            boxShadow: 'var(--shadow-2)',
+            border: '1px solid var(--border-subtle)',
+            borderTopColor: 'var(--border-highlight-top)',
+            borderLeftColor: 'var(--border-highlight-left)'
+          }}
+        >
+          <SidebarLink config={favoritesLink} active={isActive(favoritesLink.href)} collapsed={collapsed} />
+        </div>
       </div>
       <div className={`${collapsed ? "px-2 pb-4" : "px-4 pb-4"} shrink-0`}>
         <div className={`mb-3 flex items-center ${collapsed ? "justify-center" : "gap-2"}`}>
-          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-surface-muted text-foreground">
+          <span
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full"
+            style={{ background: 'var(--bg-surface-3)', color: 'var(--text-primary)' }}
+          >
             <IconUser className="h-4 w-4" />
           </span>
-          {!collapsed && <span className="truncate text-sm text-muted-foreground">{username}</span>}
+          {!collapsed && <span className="truncate text-sm" style={{ color: 'var(--text-secondary)' }}>{username}</span>}
         </div>
         <Separator />
         {/* Storage usage indicator */}
@@ -317,15 +352,30 @@ type SidebarLinkProps = {
 
 function SidebarLink({ config, active, collapsed }: SidebarLinkProps) {
   const { href, label, icon: Icon } = config;
-  const stateClasses = active
-    ? "bg-surface-muted text-foreground"
-    : "text-muted-foreground hover:bg-surface-80 hover:text-foreground";
   const layoutClasses = collapsed ? "justify-center gap-0" : "gap-3";
 
   return (
     <Link
       href={href}
-      className={`flex w-full items-center rounded-lg px-3 py-2 text-sm transition-colors ${layoutClasses} ${stateClasses}`}
+      className={`flex w-full items-center rounded-lg px-3 py-2 text-sm transition-all ${layoutClasses}`}
+      style={{
+        background: active ? 'var(--bg-surface-3)' : 'transparent',
+        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+        boxShadow: active ? 'var(--shadow-2)' : 'none',
+        borderLeft: active ? '3px solid var(--ds-accent)' : '3px solid transparent'
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = 'var(--bg-surface-3)';
+          e.currentTarget.style.color = 'var(--text-primary)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = 'var(--text-secondary)';
+        }
+      }}
       title={collapsed ? label : undefined}
     >
       <Icon className="h-5 w-5" />
@@ -341,14 +391,28 @@ type SidebarIconButtonProps = {
 
 function SidebarIconButton({ config, active }: SidebarIconButtonProps) {
   const { href, label, icon: Icon } = config;
-  const stateClasses = active
-    ? "bg-surface-muted text-foreground"
-    : "text-muted-foreground hover:bg-surface-80 hover:text-foreground";
 
   return (
     <Link
       href={href}
-      className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${stateClasses}`}
+      className="flex h-9 w-9 items-center justify-center rounded-lg transition-all"
+      style={{
+        background: active ? 'var(--bg-surface-3)' : 'transparent',
+        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+        boxShadow: active ? 'var(--shadow-1)' : 'none'
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = 'var(--bg-surface-3)';
+          e.currentTarget.style.color = 'var(--text-primary)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = 'var(--text-secondary)';
+        }
+      }}
       title={label}
     >
       <Icon className="h-5 w-5" />
@@ -358,7 +422,7 @@ function SidebarIconButton({ config, active }: SidebarIconButtonProps) {
 }
 
 function Separator() {
-  return <div className="h-px w-full bg-surface-soft" aria-hidden="true" />;
+  return <div className="h-px w-full" style={{ background: 'var(--border-subtle)' }} aria-hidden="true" />;
 }
 
 function clampWidth(next: number) {

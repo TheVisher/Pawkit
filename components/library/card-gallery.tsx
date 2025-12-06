@@ -12,6 +12,9 @@ import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
 import { FileText, Bookmark, Pin, MoreVertical, Trash2, FolderPlus, Eye, PinOff, ImageIcon, X, Calendar, Paperclip } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import { CardImage, useCardImageUrl } from "@/components/cards/card-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1048,9 +1051,12 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         style={{
           ...style,
           padding: `${cardPaddingPx}px`,
+          borderWidth: '1px',
+          borderStyle: 'solid',
+          borderColor: selected ? 'var(--ds-accent)' : 'var(--border-subtle)'
         }}
-        className={`card-hover group relative cursor-pointer break-inside-avoid-column rounded-2xl border bg-surface transition-all select-none ${
-          selected ? "is-selected ring-2 ring-accent border-transparent" : "border-subtle"
+        className={`card-hover group relative cursor-pointer break-inside-avoid-column select-none ${
+          selected ? "is-selected ring-2 ring-accent" : ""
         } ${isDragging ? "opacity-50" : ""}`}
         onClick={(event) => onClick(event, card)}
         data-id={card.id}
@@ -1060,7 +1066,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
 
       {showThumbnail && layout !== "compact" && !isNote && (
         <div
-          className={`relative ${hasTextSection && showMetadata ? "mb-3" : ""} w-full rounded-xl bg-surface-soft ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip`}
+          className={`relative ${hasTextSection && showMetadata ? "mb-3" : ""} w-full rounded-xl ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip`}
+          style={{ background: 'var(--bg-surface-1)' }}
         >
           {/* Film sprocket holes for movie cards */}
           {isMovie && (
@@ -1210,85 +1217,87 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           ) : null}
         </div>
       )}
-      {/* Notes: Full document-style when preview is on, minimal when off */}
+      {/* Notes: Clean document-style with rendered markdown preview */}
       {isNote && showPreview && (
         <div
           className="relative w-full group/note flex-1"
           style={layout !== "grid" ? { aspectRatio: '3 / 2' } : undefined}
         >
-          {/* Document-styled container with binder hole aesthetic */}
-          <div className={`flex flex-col p-4 pl-8 bg-surface-soft rounded-lg border border-purple-500/20 shadow-lg shadow-purple-900/10 overflow-hidden ${layout === "grid" ? "h-full" : "absolute inset-0"}`}>
-
-            {/* Ring binder holes on the left side */}
-            <div className="absolute left-2 top-0 bottom-0 flex flex-col justify-evenly items-center py-2 pointer-events-none z-[5]">
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className="w-3 h-3 rounded-full bg-background border border-gray-400/35"
-                  style={{
-                    boxShadow: 'inset 0 1px 2px rgba(0, 0, 0, 0.3)'
-                  }}
-                ></div>
-              ))}
-            </div>
-
-            {/* Margin line to the right of binder holes - with gradient fade at top and bottom */}
-            <div className="absolute left-[27px] top-0 bottom-0 w-[1px] pointer-events-none z-[15]"
-                 style={{
-                   background: 'linear-gradient(to bottom, transparent 0%, rgba(156, 163, 175, 0.15) 15px, rgba(156, 163, 175, 0.15) calc(100% - 15px), transparent 100%)'
-                 }}>
-            </div>
-
-            {/* Glass pill title overlay at top - slightly narrower for note cards to avoid binder holes */}
-            {showLabels && (
-              <div className="absolute top-2 left-8 right-8 z-20">
-                <div
-                  className="px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center"
-                  style={{
-                    // Chromium rendering optimization for backdrop-blur during transitions
-                    willChange: 'width',
-                    transform: 'translateZ(0)',
-                  }}
-                >
-                  <span className="truncate max-w-full text-xs text-white">
-                    {displayTitle}
-                  </span>
+          {/* Document-styled container */}
+          <div
+            className={`flex flex-col ${layout === "grid" ? "h-full" : "absolute inset-0"}`}
+            style={{
+              background: 'var(--bg-surface-2)',
+              borderRadius: 'var(--radius-lg)',
+              minHeight: '180px'
+            }}
+          >
+            {/* Rendered markdown preview - fades out at bottom */}
+            <div
+              className="flex-1 overflow-hidden p-4"
+              style={{
+                maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)'
+              }}
+            >
+              {card.content ? (
+                <div className="prose prose-sm prose-invert max-w-none note-card-preview">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm, remarkBreaks]}
+                  >
+                    {card.content.slice(0, 600)}
+                  </ReactMarkdown>
                 </div>
-              </div>
-            )}
-
-            {/* Content layer - preview text with proper formatting */}
-            <div className="relative z-10 w-full h-full flex flex-col">
-              {/* Preview text area - plain text only (fast and performant) */}
-              {card.content && (
-                <div className="flex-1 overflow-hidden pt-10 pb-2">
-                  <div className="text-xs text-muted-foreground/70 leading-relaxed whitespace-pre-wrap line-clamp-[14]">
-                    {excerptText}
-                  </div>
+              ) : (
+                <div
+                  className="flex items-center justify-center h-full"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <FileText size={32} />
                 </div>
               )}
-
-              {/* Spacer when no content */}
-              {!card.content && <div className="flex-1"></div>}
             </div>
+
+            {/* Title at bottom */}
+            {showLabels && (
+              <div
+                className="px-4 pb-4 pt-2"
+                style={{
+                  background: 'linear-gradient(to top, var(--bg-surface-2) 80%, transparent)'
+                }}
+              >
+                <h4
+                  className="font-medium text-sm truncate"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  {displayTitle}
+                </h4>
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* Notes: Minimal card when preview is off - fills Grid container */}
       {isNote && !showPreview && (
-        <div className={`flex flex-col p-4 bg-surface-soft rounded-lg border border-purple-500/20 ${layout === "grid" ? "flex-1 h-full justify-center" : ""}`}>
+        <div
+          className={`flex flex-col p-4 ${layout === "grid" ? "flex-1 h-full justify-center" : ""}`}
+          style={{
+            background: 'var(--bg-surface-2)',
+            borderRadius: 'var(--radius-lg)'
+          }}
+        >
           {/* Title */}
           {showLabels && (
             <div className="flex items-center gap-2">
-              <FileText size={16} className="text-purple-400 flex-shrink-0" />
-              <span className="text-sm font-medium text-foreground truncate">{displayTitle}</span>
+              <FileText size={16} style={{ color: 'var(--ds-accent)' }} className="flex-shrink-0" />
+              <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{displayTitle}</span>
             </div>
           )}
           {/* Minimal fallback when no labels */}
           {!showLabels && (
             <div className="flex items-center justify-center flex-1">
-              <FileText size={32} className="text-purple-400" />
+              <FileText size={32} style={{ color: 'var(--ds-accent)' }} />
             </div>
           )}
         </div>
@@ -1314,41 +1323,48 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
 
       {/* Show metadata section for notes - separate from card content */}
       {isNote && showMetadata && (
-        <div className="space-y-1 text-sm">
+        <div className="space-y-1 text-sm mt-2">
           <div className="flex items-center gap-2">
-            <span className="text-purple-400">
+            <span style={{ color: 'var(--ds-accent)' }}>
               <FileText size={16} />
             </span>
-            <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
+            <h3 className="flex-1 font-semibold transition-colors line-clamp-2" style={{ color: 'var(--text-primary)' }}>{displayTitle}</h3>
             {hasCalendarEvents && (
-              <span className="text-purple-400 flex-shrink-0" title="On your calendar">
+              <span style={{ color: 'var(--ds-accent)' }} className="flex-shrink-0" title="On your calendar">
                 <Calendar size={14} />
               </span>
             )}
             {isPinned && (
-              <span className="text-purple-400 flex-shrink-0">
+              <span style={{ color: 'var(--ds-accent)' }} className="flex-shrink-0">
                 <Pin size={14} />
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
-            <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-purple-500/20 text-purple-200 border border-purple-500/20">
+            <span
+              className="inline-block rounded px-2 py-0.5 text-[10px]"
+              style={{
+                background: 'var(--ds-accent-subtle)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--ds-accent-muted)'
+              }}
+            >
               {card.type === "md-note" ? "Markdown" : "Text"}
             </span>
           </div>
           {card.collections && card.collections.length > 0 && layout !== "compact" && (
-            <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+            <div className="flex flex-wrap gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
               {card.collections
                 .filter((collection) =>
                   !collection.startsWith('den-')
                 )
                 .map((collection) => (
-                  <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
+                  <span key={collection} className="rounded px-2 py-0.5" style={{ background: 'var(--bg-surface-3)' }}>
                     {collection}
                   </span>
                 ))}
               {card.collections?.includes('the-den') && (
-                <span className="rounded bg-surface-soft px-2 py-0.5">
+                <span className="rounded px-2 py-0.5" style={{ background: 'var(--bg-surface-3)' }}>
                   The Den
                 </span>
               )}
@@ -1359,36 +1375,36 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
 
       {/* Show text section for non-notes */}
       {!isNote && (showMetadata || isPending || isError) && (
-        <div className="space-y-1 text-sm">
+        <div className="space-y-1 text-sm mt-2">
           {showMetadata && (
             <div className="flex items-center gap-2">
-              <span className="text-gray-500">
+              <span style={{ color: 'var(--text-muted)' }}>
                 <Bookmark size={16} />
               </span>
-              <h3 className="flex-1 font-semibold text-foreground transition-colors line-clamp-2">{displayTitle}</h3>
+              <h3 className="flex-1 font-semibold transition-colors line-clamp-2" style={{ color: 'var(--text-primary)' }}>{displayTitle}</h3>
               {hasCalendarEvents && (
-                <span className="text-purple-400 flex-shrink-0" title="On your calendar">
+                <span style={{ color: 'var(--ds-accent)' }} className="flex-shrink-0" title="On your calendar">
                   <Calendar size={14} />
                 </span>
               )}
             </div>
           )}
           {displaySubtext && showMetadata && (
-            <p className="text-xs text-muted-foreground/80 line-clamp-2">{displaySubtext}</p>
+            <p className="text-xs line-clamp-2" style={{ color: 'var(--text-muted)' }}>{displaySubtext}</p>
           )}
           {showMetadata && card.collections && card.collections.length > 0 && layout !== "compact" && (
-            <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+            <div className="flex flex-wrap gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
               {card.collections
                 .filter((collection) =>
                   !collection.startsWith('den-')
                 )
                 .map((collection) => (
-                  <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">
+                  <span key={collection} className="rounded px-2 py-0.5" style={{ background: 'var(--bg-surface-3)' }}>
                     {collection}
                   </span>
                 ))}
               {card.collections?.includes('the-den') && (
-                <span className="rounded bg-surface-soft px-2 py-0.5">
+                <span className="rounded px-2 py-0.5" style={{ background: 'var(--bg-surface-3)' }}>
                   The Den
                 </span>
               )}
@@ -1397,7 +1413,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           {(isPending || isError) && (
             <div className="flex items-center gap-2">
               {isPending && (
-                <span className="inline-block rounded px-2 py-0.5 text-[10px] bg-surface-soft text-blue-300">
+                <span className="inline-block rounded px-2 py-0.5 text-[10px]" style={{ background: 'var(--bg-surface-3)', color: 'var(--text-secondary)' }}>
                   Kit is Fetching
                 </span>
               )}

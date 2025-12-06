@@ -75,38 +75,32 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
 
   return (
     <>
-      {/* Subtle backdrop - only in floating mode and not embedded */}
-      {mode === "floating" && !embedded && (
-        <div
-          className="fixed inset-0 bg-black/10 z-40 pointer-events-none"
-        />
-      )}
-
       {/* Control Panel */}
       <div
         className={`
           ${positionClasses}
-          ${floatingOverContent
-            ? "bg-black/40 backdrop-blur-xl backdrop-saturate-150"
-            : "bg-white/5 backdrop-blur-lg"
-          }
           flex flex-col
           animate-slide-in-right
           ${styleClasses}
         `}
         style={{
+          // Use consistent background - same surface level as other panels
+          background: 'var(--bg-surface-1)',
           boxShadow: embedded
-            ? "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
+            ? "var(--shadow-2)"
             : mode === "floating"
-              ? "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
-              : "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)",
+              ? "var(--shadow-4)"
+              : "var(--shadow-2)",
+          border: '1px solid var(--border-subtle)',
+          borderTopColor: 'var(--border-highlight-top)',
+          borderLeftColor: 'var(--border-highlight-left)',
           transition: "top 0.3s ease-out, right 0.3s ease-out, bottom 0.3s ease-out, margin 0.3s ease-out, border-radius 0.3s ease-out, box-shadow 0.3s ease-out"
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header - Icon-only controls */}
         <TooltipProvider>
-          <div className="flex items-center justify-evenly p-3 border-b border-white/10">
+          <div className="flex items-center justify-evenly p-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             {/* Close Button */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -201,8 +195,11 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
         </TooltipProvider>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
+        <div className="flex-1 overflow-y-auto px-4 py-6 scrollbar-hide"
           style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-4)',
             maskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
             WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)"
           }}
@@ -235,9 +232,10 @@ export type PanelSectionProps = {
   action?: ReactNode; // Optional action button (like +)
   onClick?: () => void; // Optional click handler for title (e.g., navigation)
   active?: boolean; // Whether this section is currently active/selected
+  glowSide?: 'left' | 'right'; // Which side the accent glow appears on when active (default: 'right' for left sidebar)
 };
 
-export function PanelSection({ id, title, children, icon, action, onClick, active }: PanelSectionProps) {
+export function PanelSection({ id, title, children, icon, action, onClick, active, glowSide = 'right' }: PanelSectionProps) {
   const collapsedSections = usePanelStore((state) => state.collapsedSections);
   const toggleSection = usePanelStore((state) => state.toggleSection);
 
@@ -251,23 +249,46 @@ export function PanelSection({ id, title, children, icon, action, onClick, activ
     }
   };
 
+  // Glow on right for left sidebar (points toward center), left for right sidebar
+  const glowBoxShadow = glowSide === 'right'
+    ? 'inset -3px 0 0 var(--ds-accent), var(--shadow-1)'
+    : 'inset 3px 0 0 var(--ds-accent), var(--shadow-1)';
+
   return (
-    <div className="space-y-3 pb-3">
-      <div className={`w-full flex items-center gap-2 group relative ${active ? "pb-2" : ""}`}>
+    <div
+      className="rounded-xl p-4"
+      style={{
+        background: 'var(--bg-surface-2)',
+        boxShadow: 'var(--shadow-2)',
+        border: '1px solid var(--border-subtle)',
+        borderTopColor: 'var(--border-highlight-top)',
+        borderLeftColor: 'var(--border-highlight-left)'
+      }}
+    >
+      <div className="w-full flex items-center gap-2 group">
         <button
           onClick={handleTitleClick}
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1"
+          className="flex items-center gap-3 transition-all flex-1 px-3 py-2 rounded-lg text-sm"
+          style={active ? {
+            background: 'var(--bg-surface-3)',
+            boxShadow: glowBoxShadow,
+            border: '1px solid var(--border-subtle)',
+            borderTopColor: 'var(--border-highlight-top)',
+            borderLeftColor: 'var(--border-highlight-left)',
+          } : undefined}
         >
           {icon}
-          <h3 className={`text-sm font-semibold uppercase tracking-wide transition-all ${
-            active ? "text-accent-foreground drop-shadow-glow-accent" : "text-foreground"
-          }`}>
+          <span
+            className="font-semibold uppercase tracking-wide transition-all"
+            style={{
+              color: 'var(--text-primary)',
+              letterSpacing: '0.5px',
+              fontSize: '0.8125rem',
+            }}
+          >
             {title}
-          </h3>
+          </span>
         </button>
-        {active && (
-          <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
-        )}
         {action && (
           <div className="flex-shrink-0">
             {action}
@@ -278,10 +299,13 @@ export function PanelSection({ id, title, children, icon, action, onClick, activ
             e.stopPropagation();
             toggleSection(id);
           }}
-          className="p-1 rounded hover:bg-white/10 transition-colors flex-shrink-0"
+          className="p-1 rounded transition-colors flex-shrink-0"
+          style={{ color: 'var(--ds-accent)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface-3)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
         >
           <ChevronDown
-            className={`h-4 w-4 text-accent transition-transform duration-200 ${
+            className={`h-4 w-4 transition-transform duration-200 ${
               isCollapsed ? "-rotate-90" : ""
             }`}
           />
@@ -289,7 +313,7 @@ export function PanelSection({ id, title, children, icon, action, onClick, activ
       </div>
       <div
         className={`space-y-2 transition-all duration-200 overflow-hidden ${
-          isCollapsed ? "max-h-0 opacity-0" : "max-h-[2000px] opacity-100"
+          isCollapsed ? "max-h-0 opacity-0 mt-0" : "max-h-[2000px] opacity-100 mt-3"
         }`}
       >
         {children}
@@ -310,13 +334,28 @@ export function PanelButton({ children, active, onClick, icon }: PanelButtonProp
   return (
     <button
       onClick={onClick}
-      className={`
-        w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
-        ${active
-          ? "bg-accent text-accent-foreground font-medium"
-          : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all"
+      style={{
+        background: active ? 'var(--bg-surface-3)' : 'transparent',
+        color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+        boxShadow: active ? 'var(--shadow-1)' : 'none',
+        border: active ? '1px solid var(--border-subtle)' : '1px solid transparent',
+        borderLeft: active ? '3px solid var(--ds-accent)' : '3px solid transparent',
+        borderTopColor: active ? 'var(--border-highlight-top)' : 'transparent',
+        fontWeight: active ? 500 : 400
+      }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = 'var(--bg-surface-3)';
+          e.currentTarget.style.color = 'var(--text-primary)';
         }
-      `}
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = 'var(--text-secondary)';
+        }
+      }}
     >
       {icon && <span className="flex-shrink-0">{icon}</span>}
       <span className="flex-1 text-left">{children}</span>
@@ -336,20 +375,36 @@ export function PanelToggle({ label, checked, onChange, icon }: PanelToggleProps
   return (
     <button
       onClick={() => onChange(!checked)}
-      className={`
-        w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
-        ${checked
-          ? "bg-accent/20 text-accent-foreground border border-accent/50"
-          : "text-muted-foreground hover:text-foreground hover:bg-white/5 border border-transparent"
+      className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all"
+      style={{
+        background: checked ? 'var(--ds-accent-subtle)' : 'transparent',
+        color: checked ? 'var(--text-primary)' : 'var(--text-secondary)',
+        border: checked ? '1px solid var(--ds-accent-muted)' : '1px solid transparent'
+      }}
+      onMouseEnter={(e) => {
+        if (!checked) {
+          e.currentTarget.style.background = 'var(--bg-surface-3)';
+          e.currentTarget.style.color = 'var(--text-primary)';
         }
-      `}
+      }}
+      onMouseLeave={(e) => {
+        if (!checked) {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = 'var(--text-secondary)';
+        }
+      }}
     >
       {icon && <span className="flex-shrink-0">{icon}</span>}
       <span className="flex-1 text-left">{label}</span>
-      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all
-        ${checked ? "bg-accent border-accent" : "border-muted-foreground"}`}>
+      <div
+        className="w-4 h-4 rounded border-2 flex items-center justify-center transition-all"
+        style={{
+          background: checked ? 'var(--ds-accent)' : 'transparent',
+          borderColor: checked ? 'var(--ds-accent)' : 'var(--text-muted)'
+        }}
+      >
         {checked && (
-          <svg className="w-3 h-3 text-accent-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="white">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
           </svg>
         )}

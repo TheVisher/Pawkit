@@ -62,15 +62,13 @@ export function ContentPanel({
   // Mobile: no borders (full screen)
   // When content is anchored, remove all borders
   // When content is floating, show borders except where anchored/embedded panels are
+  // Border classes - now handled via inline style with design tokens
+  // Only need to control which borders are visible
   const borderClasses = isMobile
-    ? "border-0"
+    ? ""
     : (contentIsAnchored
-      ? "border-0"
-      : `
-        ${hasAnchoredLeft ? "border-l-0" : "border-l"}
-        ${hasAnchoredRight || isRightEmbedded ? "border-r-0" : "border-r"}
-        border-t border-b border-white/10
-      `);
+      ? ""
+      : "");
 
   // Border radius - only rounded when content is floating on desktop
   // Mobile: no rounding (full screen)
@@ -106,7 +104,6 @@ export function ContentPanel({
       className={`
         absolute
         ${verticalClasses}
-        bg-white/5
         flex flex-col
         z-10
         transition-all duration-300
@@ -116,12 +113,19 @@ export function ContentPanel({
       style={{
         left: leftPosition,
         right: rightPosition,
-        boxShadow: "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)",
+        // Match sidebars: use same surface level (surface-1 is the main panel background)
+        background: 'var(--bg-surface-1)',
+        // Use shadow-4 for floating mode (same as sidebars), shadow-2 for anchored
+        // Add subtle top inset shadow to separate from gradient background
+        boxShadow: contentIsAnchored
+          ? 'var(--shadow-2), inset 0 1px 3px var(--content-top-shadow)'
+          : 'var(--shadow-4), inset 0 1px 3px var(--content-top-shadow)',
+        border: '1px solid var(--border-subtle)',
+        // Use CSS variables for border highlights
+        borderTopColor: 'var(--border-highlight-top)',
+        borderLeftColor: 'var(--border-highlight-left)',
         // Smooth transitions for panel position changes
         transition: "left 0.3s ease-out, right 0.3s ease-out",
-        // Only apply backdrop-blur when not in embedded mode to avoid Chrome rendering bug
-        backdropFilter: isRightEmbedded ? 'none' : 'blur(16px)',
-        WebkitBackdropFilter: isRightEmbedded ? 'none' : 'blur(16px)',
       }}
       data-content-panel
       data-right-embedded={isRightEmbedded}

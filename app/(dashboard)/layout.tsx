@@ -649,6 +649,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               className={`${animatingContentType === "card-details" ? "relative h-full" : ""} transition-all duration-300 ${
                 isTransitioning ? "translate-y-full opacity-0" : "translate-y-0 opacity-100"
               }`}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 'var(--space-4)',
+              }}
             >
               {animatingContentType === "home-controls" && <HomeControls />}
               {animatingContentType === "library-controls" && <LibraryControls />}

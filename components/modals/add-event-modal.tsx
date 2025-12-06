@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Calendar, ChevronDown, ChevronRight, MapPin, Link2, Palette, Repeat, Clock } from "lucide-react";
+import { X, Calendar, ChevronDown, ChevronRight, MapPin, Link2, Palette, Repeat, Clock, Check } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { GlowButton } from "@/components/ui/glow-button";
 import {
@@ -61,8 +67,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
   const [location, setLocation] = useState("");
   const [color, setColor] = useState<EventColorKey>("purple");
 
-  // Recurrence (collapsible)
-  const [recurrenceOpen, setRecurrenceOpen] = useState(false);
+  // Recurrence
   const [recurrenceFrequency, setRecurrenceFrequency] = useState<RecurrenceFrequency | 'never'>('never');
   const [recurrenceDaysOfWeek, setRecurrenceDaysOfWeek] = useState<number[]>([]);
   const [recurrenceMonthlyType, setRecurrenceMonthlyType] = useState<'day' | 'weekday'>('day');
@@ -104,12 +109,10 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
           } else {
             setRecurrenceEndType('never');
           }
-          setRecurrenceOpen(true);
         } else {
           setRecurrenceFrequency('never');
           setRecurrenceDaysOfWeek([]);
           setRecurrenceEndType('never');
-          setRecurrenceOpen(false);
         }
 
         // Open details if there's content
@@ -138,7 +141,6 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
         setRecurrenceEndDate("");
         setRecurrenceEndCount(10);
         setDetailsOpen(false);
-        setRecurrenceOpen(false);
       }
       setIsLoading(false);
     }
@@ -212,11 +214,17 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-[200] flex items-center justify-center"
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}
       onClick={onClose}
     >
       <div
-        className="rounded-3xl border border-white/10 bg-white/5 backdrop-blur-lg p-6 w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto"
+        className="rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto"
+        style={{
+          background: 'var(--bg-surface-2)',
+          boxShadow: 'var(--shadow-4)',
+          border: '1px solid var(--border-subtle)',
+        }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
@@ -227,10 +235,10 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
               <Calendar className="h-5 w-5 text-accent" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-foreground">
+              <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                 {isEditing ? 'Edit Event' : 'Add Event'}
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
                 {scheduledDate.toLocaleDateString('en-US', {
                   weekday: 'short',
                   month: 'short',
@@ -242,7 +250,13 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+            className="p-2 rounded-xl transition-all"
+            style={{
+              background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+              boxShadow: 'var(--raised-shadow-sm)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-muted)',
+            }}
           >
             <X size={20} />
           </button>
@@ -254,7 +268,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
           <div className="space-y-4">
             {/* Title Input */}
             <div>
-              <label htmlFor="event-title" className="block text-sm font-medium text-foreground mb-2">
+              <label htmlFor="event-title" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                 Event Title *
               </label>
               <input
@@ -263,10 +277,13 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Concert, Movie Release, Deadline..."
-                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
-                  text-foreground placeholder:text-muted-foreground
-                  focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
-                  transition-all"
+                className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                style={{
+                  background: 'var(--bg-surface-1)',
+                  boxShadow: 'var(--inset-shadow)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-primary)',
+                }}
                 autoFocus
                 required
               />
@@ -274,7 +291,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
 
             {/* Date Input */}
             <div>
-              <label htmlFor="event-date" className="block text-sm font-medium text-foreground mb-2">
+              <label htmlFor="event-date" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                 {isMultiDay ? 'Start Date *' : 'Date *'}
               </label>
               <input
@@ -288,10 +305,13 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                     setEndDate(e.target.value);
                   }
                 }}
-                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
-                  text-foreground
-                  focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
-                  transition-all [color-scheme:dark]"
+                className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                style={{
+                  background: 'var(--bg-surface-1)',
+                  boxShadow: 'var(--inset-shadow)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-primary)',
+                }}
                 required
               />
             </div>
@@ -307,25 +327,32 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                     setEndDate(date);
                   }
                 }}
-                className={cn(
-                  "relative w-11 h-6 rounded-full transition-colors",
-                  isMultiDay ? "bg-accent" : "bg-white/10"
-                )}
+                className="relative w-11 h-6 rounded-full transition-all flex items-center"
+                style={{
+                  background: isMultiDay ? 'var(--ds-accent)' : 'var(--bg-surface-1)',
+                  boxShadow: isMultiDay ? 'var(--raised-shadow-sm)' : 'var(--inset-shadow)',
+                  border: '1px solid var(--border-subtle)',
+                  padding: '2px',
+                }}
               >
                 <span
                   className={cn(
-                    "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform",
+                    "w-4 h-4 rounded-full transition-transform",
                     isMultiDay && "translate-x-5"
                   )}
+                  style={{
+                    background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                    boxShadow: 'var(--raised-shadow-sm)',
+                  }}
                 />
               </button>
-              <label className="text-sm text-foreground">Multi-day event</label>
+              <label className="text-sm" style={{ color: 'var(--text-primary)' }}>Multi-day event</label>
             </div>
 
             {/* End Date (shown when multi-day is enabled) */}
             {isMultiDay && (
               <div>
-                <label htmlFor="event-end-date" className="block text-sm font-medium text-foreground mb-2">
+                <label htmlFor="event-end-date" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                   End Date *
                 </label>
                 <input
@@ -334,10 +361,13 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                   value={endDate}
                   min={date}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
-                    text-foreground
-                    focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
-                    transition-all [color-scheme:dark]"
+                  className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  style={{
+                    background: 'var(--bg-surface-1)',
+                    boxShadow: 'var(--inset-shadow)',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                  }}
                   required
                 />
               </div>
@@ -348,26 +378,33 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
               <button
                 type="button"
                 onClick={() => setIsAllDay(!isAllDay)}
-                className={cn(
-                  "relative w-11 h-6 rounded-full transition-colors",
-                  isAllDay ? "bg-accent" : "bg-white/10"
-                )}
+                className="relative w-11 h-6 rounded-full transition-all flex items-center"
+                style={{
+                  background: isAllDay ? 'var(--ds-accent)' : 'var(--bg-surface-1)',
+                  boxShadow: isAllDay ? 'var(--raised-shadow-sm)' : 'var(--inset-shadow)',
+                  border: '1px solid var(--border-subtle)',
+                  padding: '2px',
+                }}
               >
                 <span
                   className={cn(
-                    "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform",
+                    "w-4 h-4 rounded-full transition-transform",
                     isAllDay && "translate-x-5"
                   )}
+                  style={{
+                    background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                    boxShadow: 'var(--raised-shadow-sm)',
+                  }}
                 />
               </button>
-              <label className="text-sm text-foreground">All day event</label>
+              <label className="text-sm" style={{ color: 'var(--text-primary)' }}>All day event</label>
             </div>
 
             {/* Time Inputs (shown when not all day) */}
             {!isAllDay && (
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label htmlFor="start-time" className="block text-sm font-medium text-foreground mb-2">
+                  <label htmlFor="start-time" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                     <Clock className="inline h-4 w-4 mr-1" />
                     Start Time
                   </label>
@@ -376,14 +413,17 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
-                      text-foreground
-                      focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
-                      transition-all [color-scheme:dark]"
+                    className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    style={{
+                      background: 'var(--bg-surface-1)',
+                      boxShadow: 'var(--inset-shadow)',
+                      border: '1px solid var(--border-subtle)',
+                      color: 'var(--text-primary)',
+                    }}
                   />
                 </div>
                 <div className="flex-1">
-                  <label htmlFor="end-time" className="block text-sm font-medium text-foreground mb-2">
+                  <label htmlFor="end-time" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                     End Time
                   </label>
                   <input
@@ -391,10 +431,13 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                     type="time"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
-                      text-foreground
-                      focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
-                      transition-all [color-scheme:dark]"
+                    className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    style={{
+                      background: 'var(--bg-surface-1)',
+                      boxShadow: 'var(--inset-shadow)',
+                      border: '1px solid var(--border-subtle)',
+                      color: 'var(--text-primary)',
+                    }}
                   />
                 </div>
               </div>
@@ -402,7 +445,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
 
             {/* URL Input */}
             <div>
-              <label htmlFor="event-url" className="block text-sm font-medium text-foreground mb-2">
+              <label htmlFor="event-url" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                 <Link2 className="inline h-4 w-4 mr-1" />
                 URL (optional)
               </label>
@@ -412,36 +455,47 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
-                  text-foreground placeholder:text-muted-foreground
-                  focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
-                  transition-all"
+                className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                style={{
+                  background: 'var(--bg-surface-1)',
+                  boxShadow: 'var(--inset-shadow)',
+                  border: '1px solid var(--border-subtle)',
+                  color: 'var(--text-primary)',
+                }}
               />
             </div>
           </div>
 
           {/* Section 2: Details (Collapsible) */}
-          <div className="border border-white/10 rounded-lg overflow-hidden">
+          <div
+            className="rounded-xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+              boxShadow: 'var(--raised-shadow-sm)',
+              border: '1px solid var(--border-subtle)',
+            }}
+          >
             <button
               type="button"
               onClick={() => setDetailsOpen(!detailsOpen)}
-              className="w-full px-4 py-3 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors"
+              className="w-full px-4 py-3 flex items-center justify-between transition-colors"
+              style={{ color: 'var(--text-primary)' }}
             >
-              <span className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Palette className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium flex items-center gap-2">
+                <Palette className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
                 Details
               </span>
               {detailsOpen ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
               ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                <ChevronRight className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
               )}
             </button>
             {detailsOpen && (
-              <div className="p-4 space-y-4 border-t border-white/10">
+              <div className="p-4 space-y-4" style={{ borderTop: '1px solid var(--border-subtle)' }}>
                 {/* Description */}
                 <div>
-                  <label htmlFor="event-description" className="block text-sm font-medium text-foreground mb-2">
+                  <label htmlFor="event-description" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                     Description
                   </label>
                   <textarea
@@ -450,16 +504,19 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Add notes or details..."
                     rows={3}
-                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
-                      text-foreground placeholder:text-muted-foreground
-                      focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
-                      transition-all resize-none"
+                    className="w-full px-4 py-3 rounded-xl transition-all resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    style={{
+                      background: 'var(--bg-surface-1)',
+                      boxShadow: 'var(--inset-shadow)',
+                      border: '1px solid var(--border-subtle)',
+                      color: 'var(--text-primary)',
+                    }}
                   />
                 </div>
 
                 {/* Location */}
                 <div>
-                  <label htmlFor="event-location" className="block text-sm font-medium text-foreground mb-2">
+                  <label htmlFor="event-location" className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                     <MapPin className="inline h-4 w-4 mr-1" />
                     Location
                   </label>
@@ -469,16 +526,19 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="Add a location..."
-                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
-                      text-foreground placeholder:text-muted-foreground
-                      focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
-                      transition-all"
+                    className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    style={{
+                      background: 'var(--bg-surface-1)',
+                      boxShadow: 'var(--inset-shadow)',
+                      border: '1px solid var(--border-subtle)',
+                      color: 'var(--text-primary)',
+                    }}
                   />
                 </div>
 
                 {/* Color Picker */}
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                     Color
                   </label>
                   <div className="flex gap-2 flex-wrap">
@@ -487,11 +547,11 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                         key={colorKey}
                         type="button"
                         onClick={() => setColor(colorKey)}
-                        className={cn(
-                          "w-8 h-8 rounded-full transition-all",
-                          color === colorKey && "ring-2 ring-white ring-offset-2 ring-offset-transparent"
-                        )}
-                        style={{ backgroundColor: EVENT_COLORS[colorKey] }}
+                        className="w-8 h-8 rounded-full transition-all"
+                        style={{
+                          backgroundColor: EVENT_COLORS[colorKey],
+                          boxShadow: color === colorKey ? '0 0 0 2px var(--bg-surface-2), 0 0 0 4px var(--ds-accent)' : 'var(--raised-shadow-sm)',
+                        }}
                         title={colorKey.charAt(0).toUpperCase() + colorKey.slice(1)}
                       />
                     ))}
@@ -501,56 +561,61 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
             )}
           </div>
 
-          {/* Section 3: Recurrence (Collapsible) */}
-          <div className="border border-white/10 rounded-lg overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setRecurrenceOpen(!recurrenceOpen)}
-              className="w-full px-4 py-3 flex items-center justify-between bg-white/5 hover:bg-white/10 transition-colors"
-            >
-              <span className="text-sm font-medium text-foreground flex items-center gap-2">
-                <Repeat className="h-4 w-4 text-muted-foreground" />
-                Recurrence
-                {recurrenceFrequency !== 'never' && (
-                  <span className="text-xs text-accent bg-accent/10 px-2 py-0.5 rounded-full">
-                    {RECURRENCE_OPTIONS.find(o => o.value === recurrenceFrequency)?.label}
-                  </span>
-                )}
-              </span>
-              {recurrenceOpen ? (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              ) : (
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
-              )}
-            </button>
-            {recurrenceOpen && (
-              <div className="p-4 space-y-4 border-t border-white/10">
-                {/* Repeat Dropdown */}
-                <div>
-                  <label htmlFor="recurrence-frequency" className="block text-sm font-medium text-foreground mb-2">
-                    Repeat
-                  </label>
-                  <select
-                    id="recurrence-frequency"
-                    value={recurrenceFrequency}
-                    onChange={(e) => setRecurrenceFrequency(e.target.value as RecurrenceFrequency | 'never')}
-                    className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
-                      text-foreground
-                      focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
-                      transition-all [color-scheme:dark]"
+          {/* Section 3: Recurrence - Inline Dropdown */}
+          <div className="space-y-3">
+            {/* Recurrence Row */}
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <Repeat className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                Repeat
+              </label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all"
+                    style={{
+                      background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                      boxShadow: 'var(--raised-shadow-sm)',
+                      border: '1px solid var(--border-subtle)',
+                      color: 'var(--text-primary)',
+                    }}
                   >
-                    {RECURRENCE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    {RECURRENCE_OPTIONS.find(o => o.value === recurrenceFrequency)?.label || 'Never'}
+                    <ChevronDown className="h-4 w-4" style={{ color: 'var(--text-muted)' }} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[140px] z-[250]">
+                  {RECURRENCE_OPTIONS.map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      onClick={() => setRecurrenceFrequency(option.value as RecurrenceFrequency | 'never')}
+                      className="cursor-pointer relative pl-8"
+                    >
+                      {recurrenceFrequency === option.value && (
+                        <Check className="absolute left-2 h-4 w-4" style={{ color: 'var(--ds-accent)' }} />
+                      )}
+                      {option.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
+            {/* Additional options shown when recurrence is enabled */}
+            {recurrenceFrequency !== 'never' && (
+              <div
+                className="rounded-xl p-4 space-y-4"
+                style={{
+                  background: 'var(--bg-surface-1)',
+                  boxShadow: 'var(--inset-shadow)',
+                  border: '1px solid var(--border-subtle)',
+                }}
+              >
                 {/* Weekly: Day of week checkboxes */}
                 {recurrenceFrequency === 'weekly' && (
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                       Repeat on
                     </label>
                     <div className="flex gap-2">
@@ -559,12 +624,15 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                           key={day.value}
                           type="button"
                           onClick={() => toggleDayOfWeek(day.value)}
-                          className={cn(
-                            "w-9 h-9 rounded-full text-sm font-medium transition-all",
-                            recurrenceDaysOfWeek.includes(day.value)
-                              ? "bg-accent text-white"
-                              : "bg-white/5 text-muted-foreground hover:bg-white/10"
-                          )}
+                          className="w-9 h-9 rounded-full text-sm font-medium transition-all"
+                          style={{
+                            background: recurrenceDaysOfWeek.includes(day.value)
+                              ? 'var(--ds-accent)'
+                              : 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                            boxShadow: 'var(--raised-shadow-sm)',
+                            border: '1px solid var(--border-subtle)',
+                            color: recurrenceDaysOfWeek.includes(day.value) ? 'white' : 'var(--text-muted)',
+                          }}
                         >
                           {day.label}
                         </button>
@@ -576,7 +644,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                 {/* Monthly: Day vs Weekday */}
                 {recurrenceFrequency === 'monthly' && (
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
+                    <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
                       Repeat by
                     </label>
                     <div className="space-y-2">
@@ -586,9 +654,9 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                           name="monthly-type"
                           checked={recurrenceMonthlyType === 'day'}
                           onChange={() => setRecurrenceMonthlyType('day')}
-                          className="w-4 h-4 text-accent"
+                          className="w-4 h-4 accent-purple-500"
                         />
-                        <span className="text-sm text-foreground">
+                        <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                           On day {new Date(date || scheduledDate).getDate()}
                         </span>
                       </label>
@@ -598,9 +666,9 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                           name="monthly-type"
                           checked={recurrenceMonthlyType === 'weekday'}
                           onChange={() => setRecurrenceMonthlyType('weekday')}
-                          className="w-4 h-4 text-accent"
+                          className="w-4 h-4 accent-purple-500"
                         />
-                        <span className="text-sm text-foreground">
+                        <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                           On the {getOrdinal(Math.ceil(new Date(date || scheduledDate).getDate() / 7))}{' '}
                           {format(new Date(date || scheduledDate), 'EEEE')}
                         </span>
@@ -610,72 +678,76 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                 )}
 
                 {/* Ends options */}
-                {recurrenceFrequency !== 'never' && (
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Ends
+                <div>
+                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-primary)' }}>
+                    Ends
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="recurrence-end"
+                        checked={recurrenceEndType === 'never'}
+                        onChange={() => setRecurrenceEndType('never')}
+                        className="w-4 h-4 accent-purple-500"
+                      />
+                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>Never</span>
                     </label>
-                    <div className="space-y-2">
-                      <label className="flex items-center gap-2 cursor-pointer">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="recurrence-end"
+                        checked={recurrenceEndType === 'on_date'}
+                        onChange={() => setRecurrenceEndType('on_date')}
+                        className="w-4 h-4 accent-purple-500"
+                      />
+                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>On date</span>
+                      {recurrenceEndType === 'on_date' && (
                         <input
-                          type="radio"
-                          name="recurrence-end"
-                          checked={recurrenceEndType === 'never'}
-                          onChange={() => setRecurrenceEndType('never')}
-                          className="w-4 h-4 text-accent"
+                          type="date"
+                          value={recurrenceEndDate}
+                          onChange={(e) => setRecurrenceEndDate(e.target.value)}
+                          className="ml-2 px-3 py-1.5 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          style={{
+                            background: 'var(--bg-surface-1)',
+                            boxShadow: 'var(--inset-shadow)',
+                            border: '1px solid var(--border-subtle)',
+                            color: 'var(--text-primary)',
+                          }}
                         />
-                        <span className="text-sm text-foreground">Never</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="recurrence-end"
-                          checked={recurrenceEndType === 'on_date'}
-                          onChange={() => setRecurrenceEndType('on_date')}
-                          className="w-4 h-4 text-accent"
-                        />
-                        <span className="text-sm text-foreground">On date</span>
-                        {recurrenceEndType === 'on_date' && (
+                      )}
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="recurrence-end"
+                        checked={recurrenceEndType === 'after_count'}
+                        onChange={() => setRecurrenceEndType('after_count')}
+                        className="w-4 h-4 accent-purple-500"
+                      />
+                      <span className="text-sm" style={{ color: 'var(--text-primary)' }}>After</span>
+                      {recurrenceEndType === 'after_count' && (
+                        <>
                           <input
-                            type="date"
-                            value={recurrenceEndDate}
-                            onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                            className="ml-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10
-                              text-foreground text-sm
-                              focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
-                              transition-all [color-scheme:dark]"
+                            type="number"
+                            min="1"
+                            max="999"
+                            value={recurrenceEndCount}
+                            onChange={(e) => setRecurrenceEndCount(parseInt(e.target.value) || 1)}
+                            className="ml-2 w-20 px-3 py-1.5 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            style={{
+                              background: 'var(--bg-surface-1)',
+                              boxShadow: 'var(--inset-shadow)',
+                              border: '1px solid var(--border-subtle)',
+                              color: 'var(--text-primary)',
+                            }}
                           />
-                        )}
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="recurrence-end"
-                          checked={recurrenceEndType === 'after_count'}
-                          onChange={() => setRecurrenceEndType('after_count')}
-                          className="w-4 h-4 text-accent"
-                        />
-                        <span className="text-sm text-foreground">After</span>
-                        {recurrenceEndType === 'after_count' && (
-                          <>
-                            <input
-                              type="number"
-                              min="1"
-                              max="999"
-                              value={recurrenceEndCount}
-                              onChange={(e) => setRecurrenceEndCount(parseInt(e.target.value) || 1)}
-                              className="ml-2 w-20 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10
-                                text-foreground text-sm
-                                focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent
-                                transition-all"
-                            />
-                            <span className="text-sm text-foreground">occurrences</span>
-                          </>
-                        )}
-                      </label>
-                    </div>
+                          <span className="text-sm" style={{ color: 'var(--text-primary)' }}>occurrences</span>
+                        </>
+                      )}
+                    </label>
                   </div>
-                )}
+                </div>
               </div>
             )}
           </div>
@@ -685,8 +757,13 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 px-4 py-3 rounded-lg bg-white/5 border border-white/10
-                hover:bg-white/10 transition-colors text-foreground font-medium"
+              className="flex-1 px-4 py-3 rounded-xl font-medium transition-all"
+              style={{
+                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                boxShadow: 'var(--raised-shadow-sm)',
+                border: '1px solid var(--border-subtle)',
+                color: 'var(--text-primary)',
+              }}
             >
               Cancel
             </button>

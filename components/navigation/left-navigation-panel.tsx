@@ -723,16 +723,21 @@ export function LeftNavigationPanel({
             <button
               onClick={() => handleNavigate(pawkitHref)}
               className={`
-                w-full flex items-center gap-2 ${padding} rounded-lg ${textSize} transition-all relative overflow-hidden
+                w-full flex items-center gap-2 ${padding} rounded-lg ${textSize} transition-all overflow-hidden
                 ${isCollectionActive
-                  ? "text-accent-foreground font-medium shadow-glow-accent-sm"
+                  ? "font-medium"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                 }
               `}
+              style={isCollectionActive ? {
+                background: 'var(--bg-surface-3)',
+                color: 'var(--text-primary)',
+                boxShadow: 'inset -3px 0 0 var(--ds-accent), var(--shadow-1)',
+                border: '1px solid var(--border-subtle)',
+                borderTopColor: 'var(--border-highlight-top)',
+                borderLeftColor: 'var(--border-highlight-left)',
+              } : undefined}
             >
-              {isCollectionActive && (
-                <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
-              )}
               <FolderOpen size={iconSize} className="flex-shrink-0" />
               <span className="flex-1 text-left truncate">{collection.name}</span>
 
@@ -866,13 +871,11 @@ export function LeftNavigationPanel({
 
   return (
     <>
-      {/* Backdrop - clickable on mobile to close, subtle on desktop floating mode */}
-      {(isMobile || mode === "floating") && (
+      {/* Backdrop - only on mobile for closing overlay */}
+      {isMobile && (
         <div
-          className={`fixed inset-0 z-[101] ${
-            isMobile ? "bg-black/50 backdrop-blur-sm" : "bg-black/10 pointer-events-none"
-          }`}
-          onClick={isMobile ? onClose : undefined}
+          className="fixed inset-0 z-[101] bg-black/50 backdrop-blur-sm"
+          onClick={onClose}
         />
       )}
 
@@ -880,32 +883,39 @@ export function LeftNavigationPanel({
       <div
         className={`
           fixed top-0 left-0 bottom-0 z-[102]
-          bg-white/5 backdrop-blur-lg
           flex flex-col
           animate-slide-in-left
           ${isMobile
-            ? "w-[85vw] max-w-[325px] border-r border-white/10"
+            ? "w-[85vw] max-w-[325px]"
             : `w-[325px] ${mode === "floating"
-              ? "m-4 rounded-2xl shadow-2xl border border-white/10"
-              : "border-r border-white/10"
+              ? "m-4 rounded-2xl"
+              : ""
             }`
           }
         `}
         style={{
-          boxShadow: mode === "floating" && !isMobile
-            ? "0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
-            : "inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)"
+          background: 'var(--bg-surface-1)',
+          boxShadow: mode === "floating" && !isMobile ? 'var(--shadow-4)' : 'var(--shadow-2)',
+          border: '1px solid var(--border-subtle)',
+          borderTopColor: 'var(--border-highlight-top)',
+          borderLeftColor: 'var(--border-highlight-left)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header - Icon-only controls */}
         <TooltipProvider>
-          <div className="flex items-center justify-between gap-2 p-3 border-b border-white/10">
+          <div className="flex items-center justify-between gap-2 p-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
             {/* Workspace Selector - Pill Shape */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  className="flex items-center gap-2 px-4 h-10 rounded-full bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
+                  className="flex items-center gap-2 px-4 h-10 rounded-full transition-colors"
+                  style={{
+                    background: 'var(--bg-surface-2)',
+                    border: '1px solid var(--border-subtle)',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface-3)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-surface-2)'; }}
                   aria-label="Workspace"
                 >
                   <Briefcase size={16} className="text-muted-foreground" />
@@ -954,8 +964,11 @@ export function LeftNavigationPanel({
         </TooltipProvider>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
+        <div className="flex-1 overflow-y-auto px-4 py-6 scrollbar-hide"
           style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-4)',
             maskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
             WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)"
           }}
@@ -991,7 +1004,11 @@ export function LeftNavigationPanel({
                   <select
                     value={rediscoverStore.filter}
                     onChange={(e) => rediscoverStore.setFilter(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-foreground appearance-none cursor-pointer hover:bg-white/10 transition-colors"
+                    className="w-full px-3 py-2 rounded-lg text-sm text-foreground appearance-none cursor-pointer transition-colors"
+                    style={{
+                      background: 'var(--bg-surface-2)',
+                      border: '1px solid var(--border-subtle)',
+                    }}
                   >
                     <option value="uncategorized">Uncategorized</option>
                     <option value="all">All Bookmarks</option>
@@ -1008,7 +1025,7 @@ export function LeftNavigationPanel({
               </div>
 
               {/* Queue List - Scrollable, fills remaining height */}
-              <div className="flex-1 overflow-y-auto mt-6">
+              <div className="flex-1 overflow-y-auto mt-6 scrollbar-hide">
                 <div className="space-y-3">
                   {rediscoverStore.queue.slice(rediscoverStore.currentIndex + 1).length === 0 ? (
                     <div className="text-center text-muted-foreground text-sm py-8">
@@ -1018,10 +1035,14 @@ export function LeftNavigationPanel({
                     rediscoverStore.queue.slice(rediscoverStore.currentIndex + 1).map((card, index) => (
                       <div
                         key={card.id}
-                        className="flex gap-3 p-2 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                        className="flex gap-3 p-2 rounded-lg transition-colors"
+                        style={{
+                          background: 'var(--bg-surface-2)',
+                          border: '1px solid var(--border-subtle)',
+                        }}
                       >
                         {/* Thumbnail */}
-                        <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden bg-white/5">
+                        <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden" style={{ background: 'var(--bg-surface-3)' }}>
                           {card.image ? (
                             <Image
                               src={card.image}
@@ -1078,18 +1099,23 @@ export function LeftNavigationPanel({
                     data-tour={`${item.id}-link`}
                     onClick={() => handleNavigate(item.path)}
                     className={`
-                      w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all relative
+                      w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
                       ${isActive
-                        ? "text-accent-foreground font-medium shadow-glow-accent-sm"
+                        ? "font-medium"
                         : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                       }
                     `}
+                    style={isActive ? {
+                      background: 'var(--bg-surface-3)',
+                      color: 'var(--text-primary)',
+                      boxShadow: 'inset -3px 0 0 var(--ds-accent), var(--shadow-1)',
+                      border: '1px solid var(--border-subtle)',
+                      borderTopColor: 'var(--border-highlight-top)',
+                      borderLeftColor: 'var(--border-highlight-left)',
+                    } : undefined}
                   >
                     <Icon size={16} className="flex-shrink-0" />
                     <span className="flex-1 text-left">{item.label}</span>
-                    {isActive && (
-                      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
-                    )}
                   </button>
                 );
               })}
@@ -1098,20 +1124,25 @@ export function LeftNavigationPanel({
               <button
                 onClick={() => handleNavigate("/library?mode=rediscover")}
                 className={`
-                  w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all relative
+                  w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
                   ${rediscoverStore.isActive
-                    ? "text-accent-foreground font-medium shadow-glow-accent-sm"
+                    ? "font-medium"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                   }
                 `}
+                style={rediscoverStore.isActive ? {
+                  background: 'var(--bg-surface-3)',
+                  color: 'var(--text-primary)',
+                  boxShadow: 'inset -3px 0 0 var(--ds-accent), var(--shadow-1)',
+                  border: '1px solid var(--border-subtle)',
+                  borderTopColor: 'var(--border-highlight-top)',
+                  borderLeftColor: 'var(--border-highlight-left)',
+                } : undefined}
               >
                 <Sparkles size={16} className="flex-shrink-0" />
                 <span className="flex-1 text-left">Rediscover</span>
                 {uncategorizedCount > 0 && (
                   <span className="text-xs text-muted-foreground">({uncategorizedCount})</span>
-                )}
-                {rediscoverStore.isActive && (
-                  <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
                 )}
               </button>
             </div>
@@ -1119,72 +1150,34 @@ export function LeftNavigationPanel({
 
           {/* Pawkits Section */}
           {collections.length > 0 && (
-            <div className="space-y-3 pb-3" data-tour="pawkits-link">
-              <div className={`w-full flex items-center gap-2 group relative ${pathname === "/pawkits" ? "pb-2" : ""}`}>
-                <GenericContextMenu
-                  items={[
-                    {
-                      label: "View All Pawkits",
-                      icon: FolderOpen,
-                      onClick: () => handleNavigate("/pawkits"),
-                    },
-                    {
-                      label: "Create New Pawkit",
-                      icon: Plus,
-                      onClick: () => setShowCreatePawkitModal(true),
-                    },
-                  ]}
-                >
-                  <button
-                    onClick={() => {
-                      handleNavigate("/pawkits");
-                      // Ensure section is expanded when clicking header
-                      if (collapsedSections["left-pawkits"]) {
-                        toggleSection("left-pawkits");
-                      }
-                    }}
-                    className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1"
-                  >
-                    <FolderOpen className={`h-4 w-4 ${pathname === "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />
-                    <h3 className={`text-sm font-semibold uppercase tracking-wide transition-all ${
-                      pathname === "/pawkits" ? "text-accent-foreground drop-shadow-glow-accent" : "text-foreground"
-                    }`}>
-                      Pawkits
-                    </h3>
-                  </button>
-                </GenericContextMenu>
-                {pathname === "/pawkits" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
-                )}
+            <PanelSection
+              id="left-pawkits"
+              title="Pawkits"
+              icon={<FolderOpen className={`h-4 w-4 ${pathname === "/pawkits" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
+              active={pathname === "/pawkits"}
+              onClick={() => {
+                handleNavigate("/pawkits");
+                if (collapsedSections["left-pawkits"]) {
+                  toggleSection("left-pawkits");
+                }
+              }}
+              action={
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setShowCreatePawkitModal(true);
                   }}
-                  className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100 flex-shrink-0"
+                  className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100"
                   title="Create new pawkit"
                 >
                   <Plus size={16} />
                 </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleSection("left-pawkits");
-                  }}
-                  className="p-1 rounded transition-colors hover:bg-white/10 text-muted-foreground hover:text-foreground"
-                >
-                  <ChevronRight
-                    size={14}
-                    className={`transition-transform ${collapsedSections["left-pawkits"] ? "" : "rotate-90"}`}
-                  />
-                </button>
+              }
+            >
+              <div className="space-y-1" data-tour="pawkits-link">
+                {collections.filter(p => !p.deleted).map((collection) => renderCollectionTree(collection, 0))}
               </div>
-              {!collapsedSections["left-pawkits"] && (
-                <div className="space-y-1">
-                  {collections.filter(p => !p.deleted).map((collection) => renderCollectionTree(collection, 0))}
-                </div>
-              )}
-            </div>
+            </PanelSection>
           )}
 
           {/* Notes Section */}
@@ -1273,18 +1266,23 @@ export function LeftNavigationPanel({
                       key={provider.id}
                       onClick={() => handleNavigate(providerPath)}
                       className={`
-                        w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all relative
+                        w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
                         ${isActive
-                          ? "text-accent-foreground font-medium shadow-glow-accent-sm"
+                          ? "font-medium"
                           : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                         }
                       `}
+                      style={isActive ? {
+                        background: 'var(--bg-surface-3)',
+                        color: 'var(--text-primary)',
+                        boxShadow: 'inset -3px 0 0 var(--ds-accent), var(--shadow-1)',
+                        border: '1px solid var(--border-subtle)',
+                        borderTopColor: 'var(--border-highlight-top)',
+                        borderLeftColor: 'var(--border-highlight-left)',
+                      } : undefined}
                     >
                       <FolderOpen size={16} className="flex-shrink-0" />
                       <span className="flex-1 text-left">{provider.name}</span>
-                      {isActive && (
-                        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent to-transparent opacity-75" />
-                      )}
                     </button>
                   );
                 })}
@@ -1315,19 +1313,19 @@ export function LeftNavigationPanel({
 
         {/* Keyboard Shortcuts Footer - Fixed at bottom - Conditional based on settings */}
         {showKeyboardShortcutsInSidebar && (
-          <div className="px-4 py-3 border-t border-white/5">
+          <div className="px-4 py-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
             <div className="text-xs text-muted-foreground space-y-2">
               <div className="flex items-center justify-between">
                 <span>Quick search</span>
-                <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">/</kbd>
+                <kbd className="px-2 py-0.5 rounded font-mono text-xs" style={{ background: 'var(--bg-surface-2)' }}>/</kbd>
               </div>
               <div className="flex items-center justify-between">
                 <span>Paste URL</span>
-                <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">Cmd/Ctrl + V</kbd>
+                <kbd className="px-2 py-0.5 rounded font-mono text-xs" style={{ background: 'var(--bg-surface-2)' }}>Cmd/Ctrl + V</kbd>
               </div>
               <div className="flex items-center justify-between">
                 <span>Add card</span>
-                <kbd className="px-2 py-0.5 rounded bg-white/10 font-mono text-xs">Cmd/Ctrl + P</kbd>
+                <kbd className="px-2 py-0.5 rounded font-mono text-xs" style={{ background: 'var(--bg-surface-2)' }}>Cmd/Ctrl + P</kbd>
               </div>
               <button
                 onClick={() => {
@@ -1357,7 +1355,14 @@ export function LeftNavigationPanel({
           }}
         >
           <div
-            className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 shadow-glow-accent p-6 w-full max-w-md mx-4"
+            className="rounded-2xl p-6 w-full max-w-md mx-4"
+            style={{
+              background: 'var(--bg-surface-1)',
+              boxShadow: 'var(--shadow-4)',
+              border: '1px solid var(--border-subtle)',
+              borderTopColor: 'var(--border-highlight-top)',
+              borderLeftColor: 'var(--border-highlight-left)',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-foreground mb-4">
@@ -1379,7 +1384,11 @@ export function LeftNavigationPanel({
                 }
               }}
               placeholder="Pawkit name"
-              className="w-full rounded-lg bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-foreground placeholder-muted-foreground border border-white/10 focus:border-accent focus:outline-none transition-colors"
+              className="w-full rounded-lg px-4 py-2 text-sm text-foreground placeholder-muted-foreground focus:outline-none transition-colors"
+              style={{
+                background: 'var(--bg-surface-2)',
+                border: '1px solid var(--border-subtle)',
+              }}
               autoFocus
               disabled={creatingPawkit}
             />
@@ -1392,7 +1401,10 @@ export function LeftNavigationPanel({
                     setParentPawkitId(null);
                   }
                 }}
-                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                style={{ background: 'var(--bg-surface-2)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface-3)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-surface-2)'; }}
                 disabled={creatingPawkit}
               >
                 Esc to Cancel
@@ -1423,7 +1435,14 @@ export function LeftNavigationPanel({
           }}
         >
           <div
-            className="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 shadow-glow-accent p-6 w-full max-w-md mx-4"
+            className="rounded-2xl p-6 w-full max-w-md mx-4"
+            style={{
+              background: 'var(--bg-surface-1)',
+              boxShadow: 'var(--shadow-4)',
+              border: '1px solid var(--border-subtle)',
+              borderTopColor: 'var(--border-highlight-top)',
+              borderLeftColor: 'var(--border-highlight-left)',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-foreground mb-4">
@@ -1446,7 +1465,11 @@ export function LeftNavigationPanel({
                 }
               }}
               placeholder="Pawkit name"
-              className="w-full rounded-lg bg-white/5 backdrop-blur-sm px-4 py-2 text-sm text-foreground placeholder-muted-foreground border border-white/10 focus:border-accent focus:outline-none transition-colors"
+              className="w-full rounded-lg px-4 py-2 text-sm text-foreground placeholder-muted-foreground focus:outline-none transition-colors"
+              style={{
+                background: 'var(--bg-surface-2)',
+                border: '1px solid var(--border-subtle)',
+              }}
               autoFocus
               disabled={renamingCollection}
             />
@@ -1460,7 +1483,10 @@ export function LeftNavigationPanel({
                     setRenameCollectionName("");
                   }
                 }}
-                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                style={{ background: 'var(--bg-surface-2)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface-3)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-surface-2)'; }}
                 disabled={renamingCollection}
               >
                 Esc to Cancel

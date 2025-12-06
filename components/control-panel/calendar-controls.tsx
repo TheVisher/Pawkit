@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useEffect } from "react";
-import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Calendar, Clock, CalendarDays, CalendarCheck, CalendarRange, ChevronRight, ChevronLeft, Bookmark, Flag } from "lucide-react";
+import { PanelSection } from "./control-panel";
+import { Calendar, Clock, CalendarCheck, CalendarRange, ChevronRight, ChevronLeft, Bookmark, Flag } from "lucide-react";
 import { format, setMonth, setYear, isAfter, startOfToday, startOfWeek, endOfWeek, addYears, subYears } from "date-fns";
-import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
+import { useCalendarStore, type HolidayCountry, type HolidayFilter } from "@/lib/hooks/use-calendar-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -68,8 +68,9 @@ export function CalendarControls() {
   // Holiday settings
   const showHolidays = useCalendarStore((state) => state.showHolidays);
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
-  const setShowHolidays = useCalendarStore((state) => state.setShowHolidays);
+  const enabledCountries = useCalendarStore((state) => state.enabledCountries);
   const setHolidayFilter = useCalendarStore((state) => state.setHolidayFilter);
+  const toggleCountry = useCalendarStore((state) => state.toggleCountry);
 
   // Get cards from data store
   const { cards } = useDataStore();
@@ -207,7 +208,10 @@ export function CalendarControls() {
         <div className="flex items-center justify-center gap-4 mb-4">
           <button
             onClick={() => setCurrentMonth(subYears(currentMonth, 1))}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-all"
+            style={{ background: 'transparent' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface-3)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             aria-label="Previous year"
           >
             <ChevronLeft size={18} />
@@ -217,7 +221,10 @@ export function CalendarControls() {
           </span>
           <button
             onClick={() => setCurrentMonth(addYears(currentMonth, 1))}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-all"
+            style={{ background: 'transparent' }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface-3)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
             aria-label="Next year"
           >
             <ChevronRight size={18} />
@@ -230,110 +237,174 @@ export function CalendarControls() {
             <button
               key={month.value}
               onClick={() => handleMonthClick(month.value)}
-              className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                month.value === currentMonthValue
-                  ? "bg-purple-500/20 border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)] text-purple-200"
-                  : "bg-white/5 border border-white/10 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] text-muted-foreground hover:text-foreground"
-              }`}
+              className="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200"
+              style={month.value === currentMonthValue ? {
+                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                color: 'var(--text-primary)',
+                boxShadow: 'var(--raised-shadow)',
+                border: '1px solid transparent',
+                borderTopColor: 'var(--raised-border-top)',
+              } : {
+                background: 'transparent',
+                color: 'var(--text-muted)',
+                border: '1px solid var(--border-subtle)',
+              }}
             >
               {month.name}
             </button>
           ))}
         </div>
 
-        {/* Current month indicator */}
-        <div className="mt-3 pt-3 border-t border-white/5">
-          <div className="text-xs text-muted-foreground text-center">
-            Viewing: <span className="text-foreground font-medium">{format(currentMonth, 'MMMM yyyy')}</span>
-          </div>
+        {/* Quick Navigation Buttons */}
+        <div
+          className="grid grid-cols-2 mt-3 pt-3 pb-1 border-t"
+          style={{ borderColor: 'var(--border-divider)', gap: 'var(--space-3)' }}
+        >
+          <button
+            onClick={handleJumpToToday}
+            className="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
+            style={{
+              background: 'var(--bg-surface-3)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-secondary)',
+              boxShadow: 'var(--raised-shadow-sm)',
+            }}
+          >
+            <CalendarCheck size={14} />
+            Today
+          </button>
+          <button
+            onClick={handleToggleView}
+            className="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
+            style={{
+              background: 'var(--bg-surface-3)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-secondary)',
+              boxShadow: 'var(--raised-shadow-sm)',
+            }}
+          >
+            <CalendarRange size={14} />
+            Week
+          </button>
         </div>
       </PanelSection>
 
       {/* Holidays Section */}
       <PanelSection
         id="calendar-holidays"
-        title="US Holidays"
+        title="Holidays"
         icon={<Flag className="h-4 w-4 text-accent" />}
       >
-        <div className="space-y-3">
-          <PanelToggle
-            label="Show Holidays"
-            icon={<Flag size={14} />}
-            checked={showHolidays}
-            onChange={() => setShowHolidays(!showHolidays)}
-          />
+        {/* Country Selection - Inset Grid */}
+        <div
+          className="rounded-xl p-4"
+          style={{
+            background: 'var(--bg-surface-1)',
+            boxShadow: 'var(--inset-shadow)',
+            border: 'var(--inset-border)',
+            borderBottomColor: 'var(--inset-border-bottom)',
+            borderRightColor: 'var(--inset-border-right)',
+          }}
+        >
+          <div
+            className="grid grid-cols-2"
+            style={{ gap: 'var(--space-4)' }}
+          >
+            {/* US Button */}
+            <button
+              onClick={() => toggleCountry("us")}
+              className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium transition-all"
+              style={enabledCountries.includes("us") ? {
+                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                color: 'var(--text-primary)',
+                boxShadow: 'var(--raised-shadow)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                borderColor: 'transparent',
+                borderTopColor: 'var(--raised-border-top)',
+              } : {
+                background: 'transparent',
+                color: 'var(--text-muted)',
+              }}
+            >
+              <span>🇺🇸</span>
+              <span>US</span>
+            </button>
 
-          {/* Holiday filter options - only show when holidays are enabled */}
-          {showHolidays && (
-            <div className="pl-6 space-y-2">
-              <div className="text-xs text-muted-foreground mb-2">Show:</div>
-              <label className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="holiday-filter"
-                  checked={holidayFilter === "major"}
-                  onChange={() => setHolidayFilter("major")}
-                  className="w-3.5 h-3.5 accent-purple-500"
-                />
-                <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                  Major holidays only
-                </span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer group">
-                <input
-                  type="radio"
-                  name="holiday-filter"
-                  checked={holidayFilter === "all"}
-                  onChange={() => setHolidayFilter("all")}
-                  className="w-3.5 h-3.5 accent-purple-500"
-                />
-                <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                  All holidays
-                </span>
-              </label>
+            {/* Canada Button */}
+            <button
+              onClick={() => toggleCountry("ca")}
+              className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium transition-all"
+              style={enabledCountries.includes("ca") ? {
+                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                color: 'var(--text-primary)',
+                boxShadow: 'var(--raised-shadow)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                borderColor: 'transparent',
+                borderTopColor: 'var(--raised-border-top)',
+              } : {
+                background: 'transparent',
+                color: 'var(--text-muted)',
+              }}
+            >
+              <span>🇨🇦</span>
+              <span>Canada</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Major/All Holidays Pill Slider - only show when at least one country enabled */}
+        {enabledCountries.length > 0 && (
+          <div
+            className="relative rounded-full mt-3"
+            style={{
+              background: 'var(--bg-surface-1)',
+              boxShadow: 'var(--slider-inset)',
+              border: 'var(--inset-border)',
+              borderBottomColor: 'var(--slider-inset-border-bottom)',
+              padding: '4px',
+            }}
+          >
+            {/* Sliding indicator */}
+            <div
+              className="absolute rounded-full transition-all duration-300 ease-out pointer-events-none"
+              style={{
+                width: 'calc((100% - 8px) / 2)',
+                height: 'calc(100% - 8px)',
+                top: '4px',
+                left: holidayFilter === "major" ? '4px' : 'calc(4px + ((100% - 8px) / 2))',
+                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                boxShadow: 'var(--raised-shadow-sm)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                borderColor: 'transparent',
+                borderTopColor: 'var(--raised-border-top)',
+              }}
+            />
+            {/* Buttons */}
+            <div className="relative flex">
+              <button
+                onClick={() => setHolidayFilter("major")}
+                className="flex-1 flex items-center justify-center py-2 rounded-full transition-colors duration-200 z-10 text-xs font-medium"
+                style={{
+                  color: holidayFilter === "major" ? 'var(--text-primary)' : 'var(--text-muted)',
+                }}
+              >
+                Major
+              </button>
+              <button
+                onClick={() => setHolidayFilter("all")}
+                className="flex-1 flex items-center justify-center py-2 rounded-full transition-colors duration-200 z-10 text-xs font-medium"
+                style={{
+                  color: holidayFilter === "all" ? 'var(--text-primary)' : 'var(--text-muted)',
+                }}
+              >
+                All
+              </button>
             </div>
-          )}
-        </div>
-      </PanelSection>
-
-      {/* Quick Actions */}
-      <PanelSection
-        id="calendar-quick-actions"
-        title="Quick Actions"
-        icon={<CalendarCheck className="h-4 w-4 text-accent" />}
-      >
-        <div className="space-y-2">
-          <button
-            onClick={handleJumpToToday}
-            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10
-              hover:bg-white/10 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]
-              transition-all duration-200 flex items-center justify-center gap-2
-              text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            <CalendarCheck size={16} />
-            Jump to Today
-          </button>
-
-          <button
-            onClick={handleToggleView}
-            className="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10
-              hover:bg-white/10 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]
-              transition-all duration-200 flex items-center justify-center gap-2
-              text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            {viewMode === "week" ? (
-              <>
-                <Calendar size={16} />
-                View This Month
-              </>
-            ) : (
-              <>
-                <CalendarRange size={16} />
-                View This Week
-              </>
-            )}
-          </button>
-        </div>
+          </div>
+        )}
       </PanelSection>
 
       {/* Upcoming Events */}
@@ -343,7 +414,7 @@ export function CalendarControls() {
         icon={<Clock className="h-4 w-4 text-accent" />}
       >
         {upcomingItems.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-3 pb-1">
             {upcomingItems.map((item) => (
               <button
                 key={`${item.type}-${item.id}`}
@@ -358,9 +429,15 @@ export function CalendarControls() {
                     openDayDetails();
                   }
                 }}
-                className="w-full text-left p-3 rounded-lg bg-white/5 hover:bg-white/10
-                  transition-colors border border-white/10 hover:border-white/20
-                  flex items-start gap-3"
+                className="w-full text-left p-3 rounded-lg transition-all flex items-start gap-3"
+                style={{
+                  background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                  boxShadow: 'var(--raised-shadow-sm)',
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  borderColor: 'var(--border-subtle)',
+                  borderTopColor: 'var(--raised-border-top)',
+                }}
               >
                 {/* Type indicator */}
                 {item.type === 'event' ? (
@@ -369,39 +446,39 @@ export function CalendarControls() {
                     style={{ backgroundColor: item.color || EVENT_COLORS.purple }}
                   />
                 ) : item.type === 'holiday' ? (
-                  <Flag size={12} className="text-amber-400 flex-shrink-0 mt-1.5" />
+                  <Flag size={12} className="flex-shrink-0 mt-1.5" style={{ color: 'var(--ds-accent)' }} />
                 ) : (
-                  <Bookmark size={12} className="text-muted-foreground flex-shrink-0 mt-1.5" />
+                  <Bookmark size={12} className="flex-shrink-0 mt-1.5" style={{ color: 'var(--text-muted)' }} />
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className={`text-xs font-medium mb-1 flex items-center gap-1.5 ${
-                    item.type === 'holiday' ? 'text-amber-400' : 'text-accent'
-                  }`}>
+                  <div className="text-xs font-medium mb-1 flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}>
                     {format(new Date(item.date + 'T00:00:00'), 'MMM d, yyyy')}
                     {item.type === 'event' && item.time && !item.isAllDay && (
-                      <span className="text-muted-foreground">at {formatTime12h(item.time)}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>at {formatTime12h(item.time)}</span>
                     )}
                   </div>
-                  <div className={`text-sm truncate ${
-                    item.type === 'holiday' ? 'text-amber-300' : 'text-foreground'
-                  }`}>
+                  <div className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>
                     {item.title}
                   </div>
                 </div>
-                <ChevronRight size={16} className="text-muted-foreground flex-shrink-0 mt-1" />
+                <ChevronRight size={16} className="flex-shrink-0 mt-1" style={{ color: 'var(--text-muted)' }} />
               </button>
             ))}
 
             {totalUpcomingItems > 5 && (
               <button
-                className="w-full mt-2 text-xs text-accent hover:text-accent/80 transition-colors text-center py-2"
+                className="w-full mt-2 text-xs transition-colors text-center py-2"
+                style={{ color: 'var(--text-accent)' }}
               >
                 View all ({totalUpcomingItems} items)
               </button>
             )}
           </div>
         ) : (
-          <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-white/10 rounded-lg">
+          <div
+            className="text-sm text-muted-foreground text-center py-8 border border-dashed rounded-lg"
+            style={{ borderColor: 'var(--border-subtle)' }}
+          >
             No upcoming events
           </div>
         )}

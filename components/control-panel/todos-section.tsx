@@ -56,8 +56,18 @@ export function TodosSection() {
       }
     >
         <div className="space-y-3">
-          {/* Add Todo Form */}
-          <form onSubmit={handleAddTodo} className="flex gap-2">
+          {/* Add Todo Form - Inset container */}
+          <form
+            onSubmit={handleAddTodo}
+            className="flex gap-2 p-2 rounded-xl"
+            style={{
+              background: 'var(--bg-surface-1)',
+              boxShadow: 'var(--inset-shadow)',
+              border: 'var(--inset-border)',
+              borderBottomColor: 'var(--inset-border-bottom)',
+              borderRightColor: 'var(--inset-border-right)',
+            }}
+          >
             <input
               ref={inputRef}
               type="text"
@@ -65,18 +75,28 @@ export function TodosSection() {
               onChange={(e) => setNewTodoText(e.target.value)}
               placeholder="Add a task..."
               maxLength={500}
-              className="flex-1 px-3 py-2 text-sm bg-white/5 border border-white/10 rounded-lg
-                       text-foreground placeholder:text-muted-foreground
-                       focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50
-                       transition-all"
+              className="flex-1 px-3 py-2 text-sm rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none transition-all"
+              style={{
+                background: 'transparent',
+                border: 'none',
+              }}
             />
             <button
               type="submit"
               disabled={!newTodoText.trim()}
-              className="px-3 py-2 bg-purple-500/20 text-purple-300 rounded-lg
-                       hover:bg-purple-500/30 transition-colors
-                       disabled:opacity-50 disabled:cursor-not-allowed
-                       flex items-center gap-1.5"
+              className="px-3 py-2 rounded-lg flex items-center gap-1.5 transition-all duration-200"
+              style={newTodoText.trim() ? {
+                background: 'var(--bg-surface-3)',
+                boxShadow: 'var(--shadow-1)',
+                border: '1px solid var(--border-subtle)',
+                borderTopColor: 'var(--border-highlight-top)',
+                color: 'var(--text-primary)',
+              } : {
+                background: 'transparent',
+                boxShadow: 'none',
+                border: '1px solid transparent',
+                color: 'var(--text-muted)',
+              }}
             >
               <Plus size={16} />
             </button>

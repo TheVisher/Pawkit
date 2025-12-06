@@ -6,6 +6,7 @@ import type { CalendarContentFilter } from "@/components/control-panel/calendar-
 
 export type CalendarViewMode = "month" | "week";
 export type HolidayFilter = "all" | "major";
+export type HolidayCountry = "us" | "ca"; // Extensible for EU, China, etc.
 
 type CalendarState = {
   // Current month being viewed
@@ -21,8 +22,9 @@ type CalendarState = {
   contentFilters: CalendarContentFilter[];
 
   // Holiday settings
-  showHolidays: boolean;
+  showHolidays: boolean; // Legacy - kept for backwards compatibility
   holidayFilter: HolidayFilter;
+  enabledCountries: HolidayCountry[]; // Which country holidays to show
 
   // Actions
   setCurrentMonth: (date: Date) => void;
@@ -32,6 +34,7 @@ type CalendarState = {
   clearContentFilters: () => void;
   setShowHolidays: (show: boolean) => void;
   setHolidayFilter: (filter: HolidayFilter) => void;
+  toggleCountry: (country: HolidayCountry) => void;
 };
 
 export const useCalendarStore = create<CalendarState>()(
@@ -41,8 +44,9 @@ export const useCalendarStore = create<CalendarState>()(
       viewMode: "month",
       selectedDay: null,
       contentFilters: [],
-      showHolidays: true,  // Default to showing holidays
+      showHolidays: true,  // Legacy - kept for backwards compatibility
       holidayFilter: "major",  // Default to major holidays only
+      enabledCountries: ["us"] as HolidayCountry[],  // Default to US holidays
 
       setCurrentMonth: (date: Date) => set({ currentMonth: date }),
       setViewMode: (mode: CalendarViewMode) => set({ viewMode: mode }),
@@ -58,6 +62,16 @@ export const useCalendarStore = create<CalendarState>()(
       clearContentFilters: () => set({ contentFilters: [] }),
       setShowHolidays: (show: boolean) => set({ showHolidays: show }),
       setHolidayFilter: (filter: HolidayFilter) => set({ holidayFilter: filter }),
+      toggleCountry: (country: HolidayCountry) =>
+        set((state) => ({
+          enabledCountries: state.enabledCountries.includes(country)
+            ? state.enabledCountries.filter((c) => c !== country)
+            : [...state.enabledCountries, country],
+          // Also update showHolidays based on whether any countries are enabled
+          showHolidays: state.enabledCountries.includes(country)
+            ? state.enabledCountries.length > 1  // Will have at least one after toggle
+            : true,  // Adding a country means holidays are shown
+        })),
     }),
     {
       name: "pawkit-calendar-settings",
@@ -66,6 +80,7 @@ export const useCalendarStore = create<CalendarState>()(
         showHolidays: state.showHolidays,
         holidayFilter: state.holidayFilter,
         viewMode: state.viewMode,
+        enabledCountries: state.enabledCountries,
       }),
     }
   )
