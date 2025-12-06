@@ -794,11 +794,17 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           </div>
         ) : layout === "masonry" ? (
           /* Muuri-powered masonry grid with drag-and-drop */
+          (() => {
+            // Calculate item width for centering
+            const baseWidth = 150 + ((cardSize - 1) / 99) * 300;
+            const muuriItemWidth = baseWidth + cardSpacing;
+            return (
           <MuuriGridComponent
             ref={muuriRef}
             className="w-full"
             style={{ minHeight: 200 }}
             itemCount={filteredAndSortedCards.length}
+            itemWidth={muuriItemWidth}
             fillGaps={true}
             dragEnabled={true}
             dragHandle=".muuri-item-content"
@@ -854,6 +860,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               );
             })}
           </MuuriGridComponent>
+            );
+          })()
         ) : (
           /* CSS Grid for grid/compact layouts */
           <div className={layoutConfig.className} style={layoutConfig.style} data-masonry-gallery>
