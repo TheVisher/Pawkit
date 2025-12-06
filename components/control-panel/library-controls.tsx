@@ -456,7 +456,9 @@ export function LibraryControls() {
   const setShowThumbnails = useSettingsStore((state) => state.setShowThumbnails);
 
   // Extract current values
-  const layout = viewSettings.layout;
+  // Fallback: If user had "compact" selected, default to "grid" (compact removed from ViewDropdown)
+  const rawLayout = viewSettings.layout;
+  const layout: "grid" | "masonry" | "list" = (rawLayout === "grid" || rawLayout === "masonry" || rawLayout === "list") ? rawLayout : "grid";
   const cardSizeValue = viewSettings.cardSize;
   const cardSpacingValue = viewSettings.cardSpacing;
   const cardPaddingValue = viewSettings.cardPadding;
