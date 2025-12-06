@@ -10,7 +10,7 @@ import { CardModel, CollectionNode } from "@/lib/types";
 import { LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
-import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
+import { useViewSettingsStore, type ViewKey } from "@/lib/hooks/view-settings-store";
 import { FileText, Bookmark, Pin, MoreVertical, Trash2, FolderPlus, Eye, PinOff, ImageIcon, X, Calendar, Paperclip } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -269,9 +269,12 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     return cardIdSet;
   }, [files]);
 
-  // Map area to view type for settings
-  const viewType: ViewType = area === "pawkit" ? "pawkits" : (area as ViewType);
-  const viewSettings = useViewSettingsStore((state) => state.getSettings(viewType));
+  // Map area to view key for settings
+  // For pawkits, use pawkit-specific key (e.g., "pawkit-my-collection") if slug provided
+  const viewKey: ViewKey = area === "pawkit" && currentPawkitSlug
+    ? `pawkit-${currentPawkitSlug}`
+    : (area === "pawkit" ? "pawkits" : area);
+  const viewSettings = useViewSettingsStore((state) => state.getSettings(viewKey));
   // Use a state to ensure consistent SSR and prevent hydration mismatches
   const [cardSize, setCardSize] = useState(50);
   const [cardSpacing, setCardSpacing] = useState(16);
