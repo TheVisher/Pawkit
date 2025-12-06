@@ -284,7 +284,79 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     setCardSpacing(viewSettings.cardSpacing || 16);
   }, [viewSettings.cardSize, viewSettings.cardSpacing]);
 
-  const orderedIds = useMemo(() => cards.map((card) => card.id), [cards]);
+  // Apply content type filtering and sorting from viewSettings
+  const filteredAndSortedCards = useMemo(() => {
+    let result = [...cards];
+
+    // Apply content type filter
+    const contentTypeFilter = viewSettings.contentTypeFilter || [];
+    if (contentTypeFilter.length > 0) {
+      result = result.filter((card) => {
+        // Map card type to filter type
+        const cardType = card.type || "url";
+        const isNote = cardType === "md-note" || cardType === "text-note";
+        const isFileCard = card.isFileCard;
+        const fileCategory = card.metadata?.fileCategory as string | undefined;
+
+        // Check if card matches any of the selected content types
+        return contentTypeFilter.some((filterType) => {
+          switch (filterType) {
+            case "url":
+              return !isNote && !isFileCard;
+            case "md-note":
+              return isNote;
+            case "image":
+              return isFileCard && fileCategory === "image";
+            case "video":
+              return isFileCard && fileCategory === "video";
+            case "audio":
+              return isFileCard && fileCategory === "audio";
+            case "document":
+              return isFileCard && (fileCategory === "document" || fileCategory === "pdf" || fileCategory === "spreadsheet");
+            case "other":
+              return isFileCard && !["image", "video", "audio", "document", "pdf", "spreadsheet"].includes(fileCategory || "");
+            default:
+              return false;
+          }
+        });
+      });
+    }
+
+    // Apply sorting
+    const sortBy = viewSettings.sortBy || "updatedAt";
+    const sortOrder = viewSettings.sortOrder || "desc";
+
+    result.sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortBy) {
+        case "createdAt":
+          comparison = new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+          break;
+        case "updatedAt":
+          comparison = new Date(a.updatedAt || 0).getTime() - new Date(b.updatedAt || 0).getTime();
+          break;
+        case "title":
+          const titleA = (a.title || a.url || "").toLowerCase();
+          const titleB = (b.title || b.url || "").toLowerCase();
+          comparison = titleA.localeCompare(titleB);
+          break;
+        case "url":
+          const domainA = (a.domain || a.url || "").toLowerCase();
+          const domainB = (b.domain || b.url || "").toLowerCase();
+          comparison = domainA.localeCompare(domainB);
+          break;
+        default:
+          comparison = new Date(a.updatedAt || 0).getTime() - new Date(b.updatedAt || 0).getTime();
+      }
+
+      return sortOrder === "asc" ? comparison : -comparison;
+    });
+
+    return result;
+  }, [cards, viewSettings.contentTypeFilter, viewSettings.sortBy, viewSettings.sortOrder]);
+
+  const orderedIds = useMemo(() => filteredAndSortedCards.map((card) => card.id), [filteredAndSortedCards]);
 
   // Open bulk operations panel when 2+ cards are selected
   useEffect(() => {
@@ -557,7 +629,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     }
   }, [handlePinToSidebar, handleUnpinFromSidebar]);
 
-  // Empty state for new users
+  // Empty state for new users (check original cards, not filtered)
   if (cards.length === 0) {
     return (
       <div className="space-y-4">
@@ -589,7 +661,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     <div className="space-y-4">
       {!hideControls && (
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-xs text-muted-foreground">{cards.length} card(s)</span>
+          <span className="text-xs text-muted-foreground">{filteredAndSortedCards.length} card(s)</span>
           {selectedIds.length > 0 && (
             <span className="text-xs text-accent font-medium">
               {selectedIds.length} selected
@@ -613,7 +685,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 </tr>
               </thead>
               <tbody>
-                {cards.map((card) => {
+                {filteredAndSortedCards.map((card) => {
                   const selected = selectedIds.includes(card.id);
                   const isNote = card.type === "md-note" || card.type === "text-note";
                   const isPinned = pinnedNoteIds.includes(card.id);
@@ -704,7 +776,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           </div>
         ) : (
           <div className={layoutConfig.className} style={layoutConfig.style} data-masonry-gallery>
-            {cards.map((card) => (
+            {filteredAndSortedCards.map((card) => (
               <CardCell
                 key={card.id}
                 card={card}
