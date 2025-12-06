@@ -291,16 +291,25 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     setCardSpacing(viewSettings.cardSpacing || 16);
   }, [viewSettings.cardSize, viewSettings.cardSpacing]);
 
-  // Trigger Muuri relayout when card dimensions change
+  // Trigger Muuri relayout when card dimensions or display settings change
   useEffect(() => {
     if (layout === "masonry" && muuriRef.current) {
-      // Small delay to let React update the DOM
+      // Small delay to let React update the DOM after toggle changes
       const timeoutId = setTimeout(() => {
         muuriRef.current?.refreshItems();
-      }, 100);
+      }, 150);
       return () => clearTimeout(timeoutId);
     }
-  }, [cardSize, cardSpacing, viewSettings.cardPadding, layout]);
+  }, [
+    cardSize,
+    cardSpacing,
+    viewSettings.cardPadding,
+    viewSettings.showLabels,
+    viewSettings.showMetadata,
+    viewSettings.showPreview,
+    showThumbnails,
+    layout,
+  ]);
 
   // Apply content type filtering and sorting from viewSettings
   const filteredAndSortedCards = useMemo(() => {
