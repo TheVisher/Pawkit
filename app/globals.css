@@ -1253,3 +1253,47 @@ textarea:focus-visible {
   background: var(--bg-surface-2);
   color: var(--text-primary);
 }
+
+/* ========================================
+   MUURI GRID - Masonry Layout
+   ======================================== */
+.muuri-grid {
+  position: relative;
+}
+
+.muuri-item {
+  display: block;
+  position: absolute;
+  z-index: 1;
+  margin: 0;
+  will-change: transform;
+}
+
+.muuri-item.muuri-item-dragging {
+  z-index: 3;
+  cursor: grabbing;
+}
+
+.muuri-item.muuri-item-releasing {
+  z-index: 2;
+}
+
+.muuri-item.muuri-item-hidden {
+  z-index: 0;
+  pointer-events: none;
+}
+
+.muuri-item-content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.muuri-item-content:active {
+  cursor: grabbing;
+}
+
+.muuri-item-placeholder {
+  opacity: 0.7;
+}
