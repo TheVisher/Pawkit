@@ -201,7 +201,8 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<MuuriGrid | null>(null);
-    const lastItemCountRef = useRef<number>(0);
+    const trackedCardIdsRef = useRef<Set<string>>(new Set());
+    const isInitializedRef = useRef(false);
     const [calculatedItemWidth, setCalculatedItemWidth] = useState<number>(minItemWidth);
     const [isReady, setIsReady] = useState(false);
 
@@ -243,37 +244,26 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       };
     }, [minItemWidth, itemCount, edgePadding, onItemWidthCalculated]);
 
-    // Initialize Muuri only once on mount, or when itemCount changes significantly
+    // Initialize Muuri once on mount
     useEffect(() => {
-      if (!containerRef.current || !Muuri) return;
+      if (!containerRef.current || !Muuri || isInitializedRef.current) return;
 
-      // Only reinitialize if item count actually changed (cards added/removed)
-      const shouldReinit = !gridRef.current || lastItemCountRef.current !== itemCount;
-
-      if (!shouldReinit) return;
-
-      // Hide grid while reinitializing to prevent flash of stacked cards
+      // Hide grid until first layout completes
       setIsReady(false);
 
       // Small delay to ensure React has rendered children
       const timeoutId = setTimeout(() => {
-        if (!containerRef.current) return;
-
-        // Destroy existing grid
-        if (gridRef.current) {
-          try {
-            gridRef.current.destroy(false);
-          } catch {
-            // Grid might already be destroyed
-          }
-          gridRef.current = null;
-        }
+        if (!containerRef.current || isInitializedRef.current) return;
 
         // Check if there are items
         const items = containerRef.current.querySelectorAll(".muuri-item");
         if (items.length === 0) return;
 
-        lastItemCountRef.current = itemCount;
+        // Track initial card IDs
+        items.forEach((item) => {
+          const cardId = (item as HTMLElement).dataset.cardId;
+          if (cardId) trackedCardIdsRef.current.add(cardId);
+        });
 
         const grid = new Muuri(containerRef.current, {
           items: ".muuri-item",
@@ -335,6 +325,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
         });
 
         gridRef.current = grid;
+        isInitializedRef.current = true;
 
         // Event listeners
         if (onDragStart) {
@@ -363,7 +354,6 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
         }
 
         // Mark grid as ready after first layout completes
-        // Use a one-time listener to show the grid
         const markReady = () => {
           setIsReady(true);
           grid.off("layoutEnd", markReady);
@@ -377,22 +367,74 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       return () => {
         clearTimeout(timeoutId);
       };
-    }, [
-      itemCount,
-      fillGaps,
-      horizontal,
-      alignRight,
-      alignBottom,
-      dragEnabled,
-      dragHandle,
-      layoutDuration,
-      layoutEasing,
-      onDragStart,
-      onDragEnd,
-      onDragMove,
-      onLayoutEnd,
-      onOrderChange,
-    ]);
+    // Only run on mount - dependencies are intentionally limited
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Sync Muuri with DOM when items change (add/remove cards)
+    useEffect(() => {
+      if (!gridRef.current || !containerRef.current || !isInitializedRef.current) return;
+
+      const syncTimeoutId = setTimeout(() => {
+        if (!gridRef.current || !containerRef.current) return;
+
+        const grid = gridRef.current;
+        const domItems = containerRef.current.querySelectorAll(".muuri-item");
+
+        // Get current DOM card IDs
+        const domCardIds = new Set<string>();
+        const domElementsByCardId = new Map<string, HTMLElement>();
+        domItems.forEach((item) => {
+          const cardId = (item as HTMLElement).dataset.cardId;
+          if (cardId) {
+            domCardIds.add(cardId);
+            domElementsByCardId.set(cardId, item as HTMLElement);
+          }
+        });
+
+        // Find items to remove (in Muuri but not in DOM)
+        const itemsToRemove: MuuriItem[] = [];
+        grid.getItems().forEach((muuriItem) => {
+          const cardId = muuriItem.getElement().dataset.cardId;
+          if (cardId && !domCardIds.has(cardId)) {
+            itemsToRemove.push(muuriItem);
+            trackedCardIdsRef.current.delete(cardId);
+          }
+        });
+
+        // Find elements to add (in DOM but not tracked)
+        const elementsToAdd: HTMLElement[] = [];
+        domCardIds.forEach((cardId) => {
+          if (!trackedCardIdsRef.current.has(cardId)) {
+            const element = domElementsByCardId.get(cardId);
+            if (element) {
+              elementsToAdd.push(element);
+              trackedCardIdsRef.current.add(cardId);
+            }
+          }
+        });
+
+        // Remove items that no longer exist
+        if (itemsToRemove.length > 0) {
+          grid.remove(itemsToRemove, { removeElements: false, layout: false });
+        }
+
+        // Add new items
+        if (elementsToAdd.length > 0) {
+          grid.add(elementsToAdd, { index: 0, layout: false });
+        }
+
+        // Trigger layout if anything changed
+        if (itemsToRemove.length > 0 || elementsToAdd.length > 0) {
+          grid.refreshItems();
+          grid.layout();
+        }
+      }, 50);
+
+      return () => {
+        clearTimeout(syncTimeoutId);
+      };
+    }, [itemCount]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -405,6 +447,8 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
           }
           gridRef.current = null;
         }
+        isInitializedRef.current = false;
+        trackedCardIdsRef.current.clear();
       };
     }, []);
 
