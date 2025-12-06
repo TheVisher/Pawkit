@@ -411,53 +411,24 @@ function TagsSection({
               </button>
             );
           })}
-
-          {/* "+X more" expansion chip */}
-          {hasMoreTags && !isExpanded && (
-            <button
-              onClick={() => setIsExpanded(true)}
-              className="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-200"
-              style={{
-                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
-                boxShadow: 'var(--raised-shadow-sm)',
-                border: '1px solid var(--border-subtle)',
-                borderTopColor: 'var(--raised-border-top)',
-                color: 'var(--text-muted)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--text-muted)';
-              }}
-            >
-              +{hiddenTags.length} more
-            </button>
-          )}
-
-          {/* "Show less" chip when expanded */}
-          {isExpanded && hasMoreTags && (
-            <button
-              onClick={() => setIsExpanded(false)}
-              className="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-200"
-              style={{
-                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
-                boxShadow: 'var(--raised-shadow-sm)',
-                border: '1px solid var(--border-subtle)',
-                borderTopColor: 'var(--raised-border-top)',
-                color: 'var(--text-muted)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = 'var(--text-primary)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = 'var(--text-muted)';
-              }}
-            >
-              Show less
-            </button>
-          )}
         </div>
+
+        {/* Expand/Collapse button - anchored on its own row */}
+        {hasMoreTags && (
+          <button
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="text-xs font-medium transition-all duration-200"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--text-muted)';
+            }}
+          >
+            {isExpanded ? 'Show less' : `+${hiddenTags.length} more`}
+          </button>
+        )}
 
         {/* Clear all button */}
         {selectedTags.length > 0 && (
