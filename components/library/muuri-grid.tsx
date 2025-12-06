@@ -129,7 +129,9 @@ interface MuuriOptions {
 let Muuri: typeof MuuriGrid | null = null;
 if (typeof window !== "undefined") {
   // eslint-disable-next-line
-  Muuri = require("muuri") as typeof MuuriGrid;
+  const muuriModule = require("muuri");
+  // Handle both CommonJS and ES module exports
+  Muuri = (muuriModule.default || muuriModule) as typeof MuuriGrid;
 }
 
 export type MuuriGridProps = {
