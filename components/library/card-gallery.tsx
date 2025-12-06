@@ -803,7 +803,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           </div>
         ) : layout === "masonry" ? (
           /* Muuri-powered masonry grid with drag-and-drop */
+          /* Key forces remount when filtered cards change to avoid Muuri sync issues */
           <MuuriGridComponent
+            key={`muuri-${filteredAndSortedCards.length}-${filteredAndSortedCards[0]?.id || 'empty'}-${filteredAndSortedCards[filteredAndSortedCards.length - 1]?.id || 'empty'}`}
             ref={muuriRef}
             className="w-full"
             style={{ minHeight: 200 }}
