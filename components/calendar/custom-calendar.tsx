@@ -42,6 +42,7 @@ export function CustomCalendar({
   // Holiday settings
   const showHolidays = useCalendarStore((state) => state.showHolidays);
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
+  const enabledCountries = useCalendarStore((state) => state.enabledCountries);
 
   // Mobile detection - use agenda view on mobile
   const isMobile = useIsMobile();
@@ -139,7 +140,7 @@ export function CustomCalendar({
   const holidaysByDate = useMemo(() => {
     const map = new Map<string, ResolvedHoliday>();
 
-    if (!showHolidays || calendarDays.length === 0) return map;
+    if (!showHolidays || enabledCountries.length === 0 || calendarDays.length === 0) return map;
 
     const rangeStart = format(calendarDays[0], 'yyyy-MM-dd');
     const rangeEnd = format(calendarDays[calendarDays.length - 1], 'yyyy-MM-dd');
@@ -151,7 +152,7 @@ export function CustomCalendar({
     });
 
     return map;
-  }, [showHolidays, holidayFilter, calendarDays]);
+  }, [showHolidays, holidayFilter, enabledCountries, calendarDays]);
 
   // Mobile Agenda View - list format for better readability on small screens
   if (isMobile) {

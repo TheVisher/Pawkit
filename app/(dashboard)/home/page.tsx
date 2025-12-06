@@ -68,6 +68,7 @@ export default function HomePage() {
   // Calendar store for holiday settings
   const showHolidays = useCalendarStore((state) => state.showHolidays);
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
+  const enabledCountries = useCalendarStore((state) => state.enabledCountries);
 
   // Initialize event store
   useEffect(() => {
@@ -235,7 +236,7 @@ export default function HomePage() {
   const holidaysByDate = useMemo(() => {
     const map = new Map<string, ResolvedHoliday>();
 
-    if (!showHolidays || weekDays.length === 0) return map;
+    if (!showHolidays || enabledCountries.length === 0 || weekDays.length === 0) return map;
 
     const rangeStart = format(weekDays[0], 'yyyy-MM-dd');
     const rangeEnd = format(weekDays[weekDays.length - 1], 'yyyy-MM-dd');
@@ -247,7 +248,7 @@ export default function HomePage() {
     });
 
     return map;
-  }, [showHolidays, holidayFilter, weekDays]);
+  }, [showHolidays, holidayFilter, enabledCountries, weekDays]);
 
   const recentIds = new Set(recent.map(card => card.id));
   let quickAccessUnique = quickAccess.filter(item => !recentIds.has(item.id));
