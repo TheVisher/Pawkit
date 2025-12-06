@@ -126,7 +126,7 @@ interface MuuriOptions {
 // Import Muuri dynamically to avoid SSR issues
 let Muuri: typeof MuuriGrid | null = null;
 if (typeof window !== "undefined") {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   Muuri = require("muuri") as typeof MuuriGrid;
 }
 
