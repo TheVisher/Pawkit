@@ -1,7 +1,7 @@
 "use client";
 
-import { ReactNode, useEffect, useState } from "react";
-import { X, Sun, Moon, Trash2, BookOpen, ArrowUpRight, ArrowDownLeft, ChevronDown } from "lucide-react";
+import { ReactNode, useState } from "react";
+import { X, Sun, Moon, SunMoon, Trash2, BookOpen, ArrowUpRight, ArrowDownLeft, ChevronDown } from "lucide-react";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useRouter } from "next/navigation";
 import {
@@ -43,23 +43,6 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
   // Theme toggle
   const theme = useSettingsStore((state) => state.theme);
   const setTheme = useSettingsStore((state) => state.setTheme);
-
-  // Determine effective theme for icon display (accounting for 'auto' mode)
-  const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>('dark');
-
-  useEffect(() => {
-    if (theme === 'auto') {
-      // Check system preference
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      setEffectiveTheme(mediaQuery.matches ? 'dark' : 'light');
-
-      const handler = (e: MediaQueryListEvent) => setEffectiveTheme(e.matches ? 'dark' : 'light');
-      mediaQuery.addEventListener('change', handler);
-      return () => mediaQuery.removeEventListener('change', handler);
-    } else {
-      setEffectiveTheme(theme);
-    }
-  }, [theme]);
 
   const handleThemeToggle = () => {
     // Cycle: dark -> light -> auto -> dark
@@ -165,7 +148,7 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
                   className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
                   aria-label={`Theme: ${theme} (click to change)`}
                 >
-                  {effectiveTheme === 'dark' ? <Moon size={18} /> : <Sun size={18} />}
+                  {theme === 'dark' ? <Moon size={18} /> : theme === 'light' ? <Sun size={18} /> : <SunMoon size={18} />}
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="z-[200]">
