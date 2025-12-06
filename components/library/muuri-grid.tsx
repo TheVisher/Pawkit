@@ -197,6 +197,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
     const gridRef = useRef<MuuriGrid | null>(null);
     const lastItemCountRef = useRef<number>(0);
     const [calculatedWidth, setCalculatedWidth] = useState<number | null>(null);
+    const [isReady, setIsReady] = useState(false);
 
     // Calculate centered grid width based on available space and item width
     useEffect(() => {
@@ -238,6 +239,9 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       const shouldReinit = !gridRef.current || lastItemCountRef.current !== itemCount;
 
       if (!shouldReinit) return;
+
+      // Hide grid while reinitializing to prevent flash of stacked cards
+      setIsReady(false);
 
       // Small delay to ensure React has rendered children
       const timeoutId = setTimeout(() => {
@@ -345,6 +349,17 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
         if (onLayoutEnd) {
           grid.on("layoutEnd", () => onLayoutEnd());
         }
+
+        // Mark grid as ready after first layout completes
+        // Use a one-time listener to show the grid
+        const markReady = () => {
+          setIsReady(true);
+          grid.off("layoutEnd", markReady);
+        };
+        grid.on("layoutEnd", markReady);
+
+        // Trigger layout to position items and fire layoutEnd
+        grid.layout();
       }, 100);
 
       return () => {
@@ -415,6 +430,9 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
             position: "relative",
             width: calculatedWidth ? `${calculatedWidth}px` : "100%",
             maxWidth: "100%",
+            // Hide grid until Muuri has positioned items to prevent stacking flash
+            opacity: isReady ? 1 : 0,
+            transition: "opacity 0.15s ease-out",
             ...style,
           }}
         >
