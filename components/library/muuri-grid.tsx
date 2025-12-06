@@ -134,13 +134,15 @@ if (typeof window !== "undefined") {
 }
 
 export type MuuriGridProps = {
-  children: ReactNode;
+  children: ReactNode | ((calculatedWidth: number) => ReactNode);
   className?: string;
   style?: React.CSSProperties;
   // Pass item count explicitly to control when to reinitialize
   itemCount: number;
-  // Item width for centering calculation
-  itemWidth?: number;
+  // Minimum item width - cards will stretch to fill available space
+  minItemWidth?: number;
+  // Edge padding on left/right of grid
+  edgePadding?: number;
   // Layout options
   fillGaps?: boolean;
   horizontal?: boolean;
@@ -158,6 +160,8 @@ export type MuuriGridProps = {
   onDragMove?: (item: MuuriItem) => void;
   onLayoutEnd?: () => void;
   onOrderChange?: (newOrder: string[]) => void;
+  // Callback to notify parent of calculated item width
+  onItemWidthCalculated?: (width: number) => void;
 };
 
 export type MuuriGridRef = {
@@ -175,7 +179,8 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       className = "",
       style,
       itemCount,
-      itemWidth = 200,
+      minItemWidth = 200,
+      edgePadding = 0,
       fillGaps = true,
       horizontal = false,
       alignRight = false,
@@ -189,6 +194,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       onDragMove,
       onLayoutEnd,
       onOrderChange,
+      onItemWidthCalculated,
     },
     ref
   ) {
@@ -196,25 +202,31 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
     const wrapperRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<MuuriGrid | null>(null);
     const lastItemCountRef = useRef<number>(0);
-    const [calculatedWidth, setCalculatedWidth] = useState<number | null>(null);
+    const [calculatedItemWidth, setCalculatedItemWidth] = useState<number>(minItemWidth);
     const [isReady, setIsReady] = useState(false);
 
-    // Calculate centered grid width based on available space and item width
+    // Calculate stretched item width to fill available space with consistent edge padding
     useEffect(() => {
       if (!wrapperRef.current || itemCount === 0) {
-        setCalculatedWidth(null);
+        setCalculatedItemWidth(minItemWidth);
         return;
       }
 
       const calculateWidth = () => {
         if (!wrapperRef.current) return;
 
-        const availableWidth = wrapperRef.current.offsetWidth;
-        // Calculate how many columns fit
-        const numColumns = Math.max(1, Math.floor(availableWidth / itemWidth));
-        // Calculate exact width for those columns
-        const gridWidth = numColumns * itemWidth;
-        setCalculatedWidth(gridWidth);
+        const totalWidth = wrapperRef.current.offsetWidth;
+        // Available width after edge padding
+        const availableWidth = totalWidth - (edgePadding * 2);
+
+        // Calculate how many columns fit at minimum width
+        const numColumns = Math.max(1, Math.floor(availableWidth / minItemWidth));
+
+        // Stretch items to fill available width evenly
+        const stretchedWidth = Math.floor(availableWidth / numColumns);
+
+        setCalculatedItemWidth(stretchedWidth);
+        onItemWidthCalculated?.(stretchedWidth);
       };
 
       // Initial calculation
@@ -229,7 +241,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       return () => {
         resizeObserver.disconnect();
       };
-    }, [itemWidth, itemCount]);
+    }, [minItemWidth, itemCount, edgePadding, onItemWidthCalculated]);
 
     // Initialize Muuri only once on mount, or when itemCount changes significantly
     useEffect(() => {
@@ -422,21 +434,26 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
     }));
 
     return (
-      <div ref={wrapperRef} className="w-full flex justify-center">
+      <div
+        ref={wrapperRef}
+        className="w-full"
+        style={{ padding: `0 ${edgePadding}px` }}
+      >
         <div
           ref={containerRef}
           className={`muuri-grid ${className}`}
           style={{
             position: "relative",
-            width: calculatedWidth ? `${calculatedWidth}px` : "100%",
-            maxWidth: "100%",
+            width: "100%",
             // Hide grid until Muuri has positioned items to prevent stacking flash
             opacity: isReady ? 1 : 0,
             transition: "opacity 0.15s ease-out",
             ...style,
           }}
         >
-          {children}
+          {typeof children === "function"
+            ? (children as (width: number) => ReactNode)(calculatedItemWidth)
+            : children}
         </div>
       </div>
     );
