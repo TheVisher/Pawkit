@@ -1775,74 +1775,136 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           >
             <div className="flex items-center justify-center gap-2 p-4">
               {isNote ? (
-                // Note mode buttons
-                <>
-                  <Button
-                    onClick={() => setNoteMode('preview')}
-                    variant={noteMode === 'preview' ? 'default' : 'ghost'}
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <Eye size={16} />
-                    Preview
-                  </Button>
-                  <Button
-                    onClick={() => setIsNoteExpanded(true)}
-                    variant="ghost"
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <Edit size={16} />
-                    Edit
-                  </Button>
-                </>
+                // Note mode buttons - segmented pill control
+                (() => {
+                  const noteTabOptions = [
+                    { value: 'preview' as const, label: 'Preview', icon: Eye },
+                    { value: 'edit' as const, label: 'Edit', icon: Edit },
+                  ];
+                  const numOptions = noteTabOptions.length;
+                  const selectedIndex = noteMode === 'preview' ? 0 : -1; // Edit opens expanded view
+
+                  return (
+                    <div
+                      className="relative rounded-full"
+                      style={{
+                        background: 'var(--bg-surface-1)',
+                        boxShadow: 'var(--slider-inset)',
+                        border: 'var(--inset-border)',
+                        borderBottomColor: 'var(--slider-inset-border-bottom)',
+                        padding: '4px',
+                      }}
+                    >
+                      {/* Sliding indicator - only show when preview is selected */}
+                      {selectedIndex >= 0 && (
+                        <div
+                          className="absolute rounded-full transition-all duration-300 ease-out pointer-events-none"
+                          style={{
+                            width: `calc((100% - 8px) / ${numOptions})`,
+                            height: 'calc(100% - 8px)',
+                            top: '4px',
+                            left: `calc(4px + (${selectedIndex} * ((100% - 8px) / ${numOptions})))`,
+                            background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                            boxShadow: 'var(--raised-shadow-sm)',
+                            border: '1px solid transparent',
+                            borderTopColor: 'var(--raised-border-top)',
+                          }}
+                        />
+                      )}
+                      {/* Tab buttons */}
+                      <div className="relative flex">
+                        {noteTabOptions.map((option, index) => {
+                          const Icon = option.icon;
+                          const isSelected = index === selectedIndex;
+                          return (
+                            <button
+                              key={option.value}
+                              onClick={() => {
+                                if (option.value === 'edit') {
+                                  setIsNoteExpanded(true);
+                                } else {
+                                  setNoteMode(option.value);
+                                }
+                              }}
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-full transition-colors duration-200 z-10 text-sm font-medium"
+                              style={{
+                                color: isSelected ? 'var(--text-primary)' : 'var(--text-muted)',
+                              }}
+                            >
+                              <Icon size={14} />
+                              <span>{option.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()
               ) : isYouTubeUrl(card.url) ? (
                 // YouTube-specific info
                 <div className="text-sm text-gray-400">
                   Video Player
                 </div>
               ) : (
-                // URL cards with tabs
-                <>
-                  <Button
-                    onClick={() => setBottomTabMode('preview')}
-                    variant={bottomTabMode === 'preview' ? 'default' : 'ghost'}
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <Globe size={16} />
-                    Preview
-                  </Button>
-                  <Button
-                    onClick={() => setBottomTabMode('reader')}
-                    variant={bottomTabMode === 'reader' ? 'default' : 'ghost'}
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <BookOpen size={16} />
-                    Reader
-                  </Button>
-                  <Button
-                    onClick={() => setBottomTabMode('metadata')}
-                    variant={bottomTabMode === 'metadata' ? 'default' : 'ghost'}
-                    size="sm"
-                    className="flex items-center gap-2"
-                  >
-                    <Tag size={16} />
-                    Metadata
-                  </Button>
-                  {hasAttachments && (
-                    <Button
-                      onClick={() => setBottomTabMode('attachments')}
-                      variant={bottomTabMode === 'attachments' ? 'default' : 'ghost'}
-                      size="sm"
-                      className="flex items-center gap-2"
+                // URL cards with tabs - segmented pill control with sliding indicator
+                (() => {
+                  const tabOptions = [
+                    { value: 'preview' as const, label: 'Preview', icon: Globe },
+                    { value: 'reader' as const, label: 'Reader', icon: BookOpen },
+                    { value: 'metadata' as const, label: 'Metadata', icon: Tag },
+                    ...(hasAttachments ? [{ value: 'attachments' as const, label: `Files (${attachments.length})`, icon: Paperclip }] : []),
+                  ];
+                  const numOptions = tabOptions.length;
+                  const selectedIndex = tabOptions.findIndex(opt => opt.value === bottomTabMode);
+
+                  return (
+                    <div
+                      className="relative rounded-full"
+                      style={{
+                        background: 'var(--bg-surface-1)',
+                        boxShadow: 'var(--slider-inset)',
+                        border: 'var(--inset-border)',
+                        borderBottomColor: 'var(--slider-inset-border-bottom)',
+                        padding: '4px',
+                      }}
                     >
-                      <Paperclip size={16} />
-                      Attachments ({attachments.length})
-                    </Button>
-                  )}
-                </>
+                      {/* Sliding indicator */}
+                      <div
+                        className="absolute rounded-full transition-all duration-300 ease-out pointer-events-none"
+                        style={{
+                          width: `calc((100% - 8px) / ${numOptions})`,
+                          height: 'calc(100% - 8px)',
+                          top: '4px',
+                          left: `calc(4px + (${selectedIndex} * ((100% - 8px) / ${numOptions})))`,
+                          background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                          boxShadow: 'var(--raised-shadow-sm)',
+                          border: '1px solid transparent',
+                          borderTopColor: 'var(--raised-border-top)',
+                        }}
+                      />
+                      {/* Tab buttons */}
+                      <div className="relative flex">
+                        {tabOptions.map((option) => {
+                          const Icon = option.icon;
+                          const isSelected = bottomTabMode === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              onClick={() => setBottomTabMode(option.value)}
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-full transition-colors duration-200 z-10 text-sm font-medium"
+                              style={{
+                                color: isSelected ? 'var(--text-primary)' : 'var(--text-muted)',
+                              }}
+                            >
+                              <Icon size={14} />
+                              <span>{option.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()
               )}
             </div>
           </div>
