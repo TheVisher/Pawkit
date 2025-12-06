@@ -3,12 +3,9 @@
 import {
   useEffect,
   useRef,
-  useState,
-  useCallback,
   ReactNode,
   forwardRef,
   useImperativeHandle,
-  useLayoutEffect,
 } from "react";
 
 // Muuri type declarations (library doesn't include types)
@@ -139,6 +136,8 @@ export type MuuriGridProps = {
   children: ReactNode;
   className?: string;
   style?: React.CSSProperties;
+  // Pass item count explicitly to control when to reinitialize
+  itemCount: number;
   // Layout options
   fillGaps?: boolean;
   horizontal?: boolean;
@@ -172,6 +171,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       children,
       className = "",
       style,
+      itemCount,
       fillGaps = true,
       horizontal = false,
       alignRight = false,
@@ -190,59 +190,36 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<MuuriGrid | null>(null);
-    const [childCount, setChildCount] = useState(0);
+    const lastItemCountRef = useRef<number>(0);
 
-    // Extract order from current grid state
-    const getOrderFromGrid = useCallback(() => {
-      if (!gridRef.current) return [];
-      const items = gridRef.current.getItems();
-      return items
-        .map((item) => {
-          const el = item.getElement();
-          return el.dataset.cardId || "";
-        })
-        .filter(Boolean);
-    }, []);
-
-    // Count children to detect changes
-    useLayoutEffect(() => {
-      const count = containerRef.current?.querySelectorAll(".muuri-item").length || 0;
-      setChildCount(count);
-    }, [children]);
-
-    // Initialize/reinitialize Muuri when children change
+    // Initialize Muuri only once on mount, or when itemCount changes significantly
     useEffect(() => {
       if (!containerRef.current || !Muuri) return;
 
-      // Small delay to ensure DOM is fully updated
+      // Only reinitialize if item count actually changed (cards added/removed)
+      const shouldReinit = !gridRef.current || lastItemCountRef.current !== itemCount;
+
+      if (!shouldReinit) return;
+
+      // Small delay to ensure React has rendered children
       const timeoutId = setTimeout(() => {
         if (!containerRef.current) return;
 
-        // Destroy existing grid and clean up inline styles
+        // Destroy existing grid
         if (gridRef.current) {
-          const oldItems = gridRef.current.getItems();
-          gridRef.current.destroy(false);
+          try {
+            gridRef.current.destroy(false);
+          } catch {
+            // Grid might already be destroyed
+          }
           gridRef.current = null;
-
-          // Clean up inline styles from old items
-          oldItems.forEach((item) => {
-            try {
-              const el = item.getElement();
-              if (el) {
-                el.style.transform = "";
-                el.style.position = "";
-                el.style.left = "";
-                el.style.top = "";
-              }
-            } catch {
-              // Item may already be destroyed
-            }
-          });
         }
 
-        // Check if there are items to initialize with
+        // Check if there are items
         const items = containerRef.current.querySelectorAll(".muuri-item");
         if (items.length === 0) return;
+
+        lastItemCountRef.current = itemCount;
 
         const grid = new Muuri(containerRef.current, {
           items: ".muuri-item",
@@ -253,7 +230,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
             alignBottom,
             rounding: true,
           },
-          layoutOnResize: 150,
+          layoutOnResize: 100,
           layoutOnInit: true,
           layoutDuration,
           layoutEasing,
@@ -313,9 +290,11 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
         if (onDragEnd) {
           grid.on("dragEnd", (item: MuuriItem) => {
             onDragEnd(item);
-            // Notify about order change after drag
             if (onOrderChange) {
-              const newOrder = getOrderFromGrid();
+              const items = grid.getItems();
+              const newOrder = items
+                .map((i) => i.getElement().dataset.cardId || "")
+                .filter(Boolean);
               onOrderChange(newOrder);
             }
           });
@@ -328,17 +307,13 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
         if (onLayoutEnd) {
           grid.on("layoutEnd", () => onLayoutEnd());
         }
-
-        // Force a layout after initialization
-        grid.refreshItems();
-        grid.layout();
-      }, 50);
+      }, 100);
 
       return () => {
         clearTimeout(timeoutId);
       };
     }, [
-      childCount,
+      itemCount,
       fillGaps,
       horizontal,
       alignRight,
@@ -352,34 +327,18 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       onDragMove,
       onLayoutEnd,
       onOrderChange,
-      getOrderFromGrid,
     ]);
 
     // Cleanup on unmount
     useEffect(() => {
       return () => {
         if (gridRef.current) {
-          // Get all items before destroying
-          const items = gridRef.current.getItems();
-
-          // Destroy the grid
-          gridRef.current.destroy(false);
+          try {
+            gridRef.current.destroy(false);
+          } catch {
+            // Ignore
+          }
           gridRef.current = null;
-
-          // Clean up inline styles from items to prevent stacking issues
-          items.forEach((item) => {
-            try {
-              const el = item.getElement();
-              if (el) {
-                el.style.transform = "";
-                el.style.position = "";
-                el.style.left = "";
-                el.style.top = "";
-              }
-            } catch {
-              // Item may already be destroyed
-            }
-          });
         }
       };
     }, []);
@@ -387,12 +346,16 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
     // Expose methods via ref
     useImperativeHandle(ref, () => ({
       layout: (instant = false) => {
-        gridRef.current?.refreshItems();
-        gridRef.current?.layout(instant);
+        if (gridRef.current) {
+          gridRef.current.refreshItems();
+          gridRef.current.layout(instant);
+        }
       },
       refreshItems: () => {
-        gridRef.current?.refreshItems();
-        gridRef.current?.layout();
+        if (gridRef.current) {
+          gridRef.current.refreshItems();
+          gridRef.current.layout();
+        }
       },
       getItems: () => {
         return gridRef.current?.getItems() || [];
@@ -420,28 +383,25 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
   }
 );
 
-// Wrapper for individual items
+// Wrapper for individual items - uses CSS width, Muuri handles positioning
 export type MuuriItemProps = {
   children: ReactNode;
   cardId: string;
   className?: string;
-  style?: React.CSSProperties;
+  width: number; // Width in pixels
 };
 
-export function MuuriItem({ children, cardId, className = "", style }: MuuriItemProps) {
+export function MuuriItem({ children, cardId, className = "", width }: MuuriItemProps) {
   return (
     <div
       className={`muuri-item ${className}`}
       data-card-id={cardId}
       style={{
+        width: `${width}px`,
         position: "absolute",
-        display: "block",
-        margin: 0,
-        zIndex: 1,
-        ...style,
       }}
     >
-      <div className="muuri-item-content" style={{ position: "relative", width: "100%", height: "100%" }}>
+      <div className="muuri-item-content">
         {children}
       </div>
     </div>
