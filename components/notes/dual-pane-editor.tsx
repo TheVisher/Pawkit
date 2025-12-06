@@ -508,12 +508,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
       if (isInline) {
         return (
           <code
-            className="px-2 py-1 rounded font-mono text-sm border"
-            style={{
-              backgroundColor: "rgba(139, 92, 246, 0.1)",
-              borderColor: "rgba(139, 92, 246, 0.3)",
-              color: "#c4b5fd",
-            }}
+            className="px-2 py-1 rounded font-mono text-sm border bg-accent/10 border-accent/30 text-accent"
             {...props}
           >
             {children}
@@ -592,48 +587,48 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
 
   // Memoized toolbar JSX to prevent re-renders
   const toolbarElement = useMemo(() => (
-    <div className="flex items-center gap-1 px-3 py-2 bg-white/5 border-b border-white/10 flex-wrap">
-      <button onClick={() => insertMarkdown("**", "**")} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Bold (Cmd+B)">
+    <div className="flex items-center gap-1 px-3 py-2 bg-muted/50 border-b border-border flex-wrap">
+      <button onClick={() => insertMarkdown("**", "**")} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Bold (Cmd+B)">
         <Bold size={16} />
       </button>
-      <button onClick={() => insertMarkdown("*", "*")} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Italic (Cmd+I)">
+      <button onClick={() => insertMarkdown("*", "*")} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Italic (Cmd+I)">
         <Italic size={16} />
       </button>
-      <button onClick={() => insertMarkdown("~~", "~~")} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Strikethrough">
+      <button onClick={() => insertMarkdown("~~", "~~")} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Strikethrough">
         <Strikethrough size={16} />
       </button>
-      <div className="w-px h-6 bg-white/10 mx-1" />
-      <button onClick={() => insertMarkdown("# ", "")} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Header 1">
+      <div className="w-px h-6 bg-border mx-1" />
+      <button onClick={() => insertMarkdown("# ", "")} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Header 1">
         <Heading1 size={16} />
       </button>
-      <button onClick={() => insertMarkdown("## ", "")} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Header 2">
+      <button onClick={() => insertMarkdown("## ", "")} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Header 2">
         <Heading2 size={16} />
       </button>
-      <button onClick={() => insertMarkdown("### ", "")} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Header 3">
+      <button onClick={() => insertMarkdown("### ", "")} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Header 3">
         <Heading3 size={16} />
       </button>
-      <div className="w-px h-6 bg-white/10 mx-1" />
-      <button onClick={() => insertMarkdown("`", "`")} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Code (Cmd+E)">
+      <div className="w-px h-6 bg-border mx-1" />
+      <button onClick={() => insertMarkdown("`", "`")} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Code (Cmd+E)">
         <Code size={16} />
       </button>
-      <button onClick={() => insertMarkdown("[", "](url)")} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Link">
+      <button onClick={() => insertMarkdown("[", "](url)")} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Link">
         <Link size={16} />
       </button>
-      <button onClick={() => insertMarkdown("[[", "]]", true)} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Wiki Link (Cmd+K)">
+      <button onClick={() => insertMarkdown("[[", "]]", true)} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Wiki Link (Cmd+K)">
         <FileText size={16} />
       </button>
-      <div className="w-px h-6 bg-white/10 mx-1" />
-      <button onClick={() => insertMarkdown("\n- ", "")} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Bullet List">
+      <div className="w-px h-6 bg-border mx-1" />
+      <button onClick={() => insertMarkdown("\n- ", "")} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Bullet List">
         <List size={16} />
       </button>
-      <button onClick={() => insertMarkdown("\n1. ", "")} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Numbered List">
+      <button onClick={() => insertMarkdown("\n1. ", "")} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Numbered List">
         <ListOrdered size={16} />
       </button>
-      <button onClick={() => insertMarkdown("\n> ", "")} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Quote">
+      <button onClick={() => insertMarkdown("\n> ", "")} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Quote">
         <Quote size={16} />
       </button>
-      <div className="w-px h-6 bg-white/10 mx-1" />
-      <button onClick={() => setShowTemplates(!showTemplates)} className="p-2 rounded hover:bg-white/10 text-white/80 transition-colors" title="Templates (Cmd+Shift+T)">
+      <div className="w-px h-6 bg-border mx-1" />
+      <button onClick={() => setShowTemplates(!showTemplates)} className="p-2 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Templates (Cmd+Shift+T)">
         <Layout size={16} />
       </button>
     </div>
@@ -646,7 +641,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
     return createPortal(
       <div
         ref={autocompleteRef}
-        className="fixed z-[200] bg-gray-900 border border-purple-500/50 shadow-lg flex flex-col overflow-hidden rounded-lg"
+        className="fixed z-[200] bg-popover border border-accent/50 shadow-lg flex flex-col overflow-hidden rounded-lg"
         style={{
           top: `${autocompletePosition.top}px`,
           left: `${autocompletePosition.left}px`,
@@ -655,7 +650,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
           maxHeight: "256px",
         }}
       >
-        <div className="border-b border-white/10 px-3 py-2 bg-white/5 text-xs text-white/60 flex-shrink-0">
+        <div className="border-b border-border px-3 py-2 bg-muted/50 text-xs text-muted-foreground flex-shrink-0">
           {autocompleteQuery ? `Search: "${autocompleteQuery}"` : "Recent cards"}
         </div>
         <div className="p-2 overflow-y-auto flex-1">
@@ -664,7 +659,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
               key={note.id}
               onClick={() => note.title && insertAutocompleteSuggestion(note.title)}
               className={`w-full text-left px-3 py-2 rounded transition-colors ${
-                index === selectedIndex ? "bg-purple-500/30 text-white" : "hover:bg-white/10 text-white/80"
+                index === selectedIndex ? "bg-accent/30 text-foreground" : "hover:bg-muted text-foreground/80"
               }`}
             >
               <div className="flex items-center gap-2">
@@ -672,16 +667,16 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm truncate">{note.title}</div>
                   {note.type === "url" ? (
-                    <div className="text-xs text-white/50 truncate mt-0.5">{note.domain || note.url}</div>
+                    <div className="text-xs text-muted-foreground truncate mt-0.5">{note.domain || note.url}</div>
                   ) : note.content ? (
-                    <div className="text-xs text-white/50 truncate mt-0.5">{note.content.substring(0, 60)}...</div>
+                    <div className="text-xs text-muted-foreground truncate mt-0.5">{note.content.substring(0, 60)}...</div>
                   ) : null}
                 </div>
               </div>
             </button>
           ))}
         </div>
-        <div className="border-t border-white/10 px-3 py-2 bg-white/5 text-xs text-white/60 flex-shrink-0">
+        <div className="border-t border-border px-3 py-2 bg-muted/50 text-xs text-muted-foreground flex-shrink-0">
           <div className="flex items-center justify-between">
             <span>↑↓ navigate</span>
             <span>Enter to select</span>
@@ -695,26 +690,26 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="w-full h-full bg-gray-900 overflow-hidden flex flex-col">
+      <div className="w-full h-full bg-background overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-white/5">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/50">
           {/* Title (editable) */}
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="text-lg font-semibold text-white bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 rounded px-2 py-1 flex-1 max-w-md"
+            className="text-lg font-semibold text-foreground bg-transparent border-none focus:outline-none focus:ring-2 focus:ring-accent/50 rounded px-2 py-1 flex-1 max-w-md"
             placeholder="Note title..."
           />
 
           {/* View Mode Toggles */}
-          <div className="flex items-center gap-1 bg-white/5 rounded-lg p-1">
+          <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
             {/* Split button hidden on mobile */}
             {!isMobile && (
               <button
                 onClick={() => setViewMode("split")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                  viewMode === "split" ? "bg-purple-500/30 text-purple-300" : "text-white/60 hover:text-white hover:bg-white/10"
+                  viewMode === "split" ? "bg-accent/30 text-accent" : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 }`}
                 title="Split view (Cmd+\)"
               >
@@ -725,7 +720,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
             <button
               onClick={() => setViewMode("edit")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                viewMode === "edit" ? "bg-purple-500/30 text-purple-300" : "text-white/60 hover:text-white hover:bg-white/10"
+                viewMode === "edit" ? "bg-accent/30 text-accent" : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
               title="Edit only"
             >
@@ -735,7 +730,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
             <button
               onClick={() => setViewMode("preview")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                viewMode === "preview" ? "bg-purple-500/30 text-purple-300" : "text-white/60 hover:text-white hover:bg-white/10"
+                viewMode === "preview" ? "bg-accent/30 text-accent" : "text-muted-foreground hover:text-foreground hover:bg-muted"
               }`}
               title="Preview only"
             >
@@ -747,7 +742,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
           {/* Close button */}
           <button
             onClick={handleClose}
-            className="p-2 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+            className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             title="Close (Esc)"
           >
             <X size={20} />
@@ -759,19 +754,19 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
           {/* Editor Pane - inlined to prevent remounting */}
           {(viewMode === "split" || viewMode === "edit") && (
             <div
-              className="h-full overflow-hidden border-r border-white/10 flex flex-col"
+              className="h-full overflow-hidden border-r border-border flex flex-col"
               style={{ width: viewMode === "split" ? `${dividerPosition}%` : "100%" }}
             >
               {toolbarElement}
               {/* Metadata + Save bar */}
-              <div className="flex items-center justify-between px-3 py-1.5 bg-white/[0.02] border-b border-white/10 text-xs">
-                <div className="flex items-center gap-3 text-white/50">
+              <div className="flex items-center justify-between px-3 py-1.5 bg-muted/30 border-b border-border text-xs">
+                <div className="flex items-center gap-3 text-muted-foreground">
                   <span>{metadata.words} words</span>
                   <span>{metadata.characters} chars</span>
                   <span>{metadata.linkCount} links</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1 text-white/50">
+                  <div className="flex items-center gap-1 text-muted-foreground">
                     {saveStatus === "saving" && <><RefreshCw size={12} className="animate-spin" /> Saving...</>}
                     {saveStatus === "saved" && <><Check size={12} className="text-green-500" /> Saved</>}
                     {saveStatus === "unsaved" && <><Clock size={12} className="text-yellow-500" /> Unsaved</>}
@@ -781,8 +776,8 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
                     disabled={saveStatus === "saved" || saveStatus === "saving"}
                     className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
                       saveStatus === "unsaved"
-                        ? "bg-purple-500/20 text-purple-300 hover:bg-purple-500/30"
-                        : "text-white/30 cursor-not-allowed"
+                        ? "bg-accent/20 text-accent hover:bg-accent/30"
+                        : "text-muted-foreground/30 cursor-not-allowed"
                     }`}
                     title="Save (Cmd+S)"
                   >
@@ -792,18 +787,18 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
                 </div>
               </div>
               {showTemplates && (
-                <div className="border-b border-white/10 bg-white/5 p-3">
+                <div className="border-b border-border bg-muted/50 p-3">
                   <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-white">Choose a Template</h4>
+                    <h4 className="text-sm font-medium text-foreground">Choose a Template</h4>
                     <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
                       {noteTemplates.map((template) => (
                         <button
                           key={template.id}
                           onClick={() => insertTemplate(template)}
-                          className="text-left p-2 rounded border border-white/10 hover:bg-white/10 transition-colors"
+                          className="text-left p-2 rounded border border-border hover:bg-muted transition-colors"
                         >
-                          <div className="font-medium text-sm text-white">{template.name}</div>
-                          <div className="text-xs text-white/60">{template.description}</div>
+                          <div className="font-medium text-sm text-foreground">{template.name}</div>
+                          <div className="text-xs text-muted-foreground">{template.description}</div>
                         </button>
                       ))}
                     </div>
@@ -816,7 +811,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Start writing in Markdown...&#10;&#10;Use [[Note Title]] to link to other notes.&#10;Use #tag for hashtags.&#10;Use **bold** and *italic* for formatting."
-                  className="w-full h-full p-4 bg-transparent text-white font-mono text-sm resize-none focus:outline-none"
+                  className="w-full h-full p-4 bg-transparent text-foreground font-mono text-sm resize-none focus:outline-none"
                   style={{ lineHeight: "1.6" }}
                   autoFocus
                 />
@@ -827,19 +822,19 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
           {/* Draggable Divider */}
           {viewMode === "split" && (
             <div
-              className="w-2 h-full bg-white/5 hover:bg-purple-500/30 cursor-col-resize flex items-center justify-center transition-colors group"
+              className="w-2 h-full bg-muted/50 hover:bg-accent/30 cursor-col-resize flex items-center justify-center transition-colors group"
               onMouseDown={handleDividerMouseDown}
               onDoubleClick={handleDividerDoubleClick}
               title="Drag to resize. Double-click to reset."
             >
-              <GripVertical size={12} className="text-white/30 group-hover:text-purple-400 transition-colors" />
+              <GripVertical size={12} className="text-muted-foreground/30 group-hover:text-accent transition-colors" />
             </div>
           )}
 
           {/* Preview Pane - inlined to prevent remounting */}
           {(viewMode === "split" || viewMode === "preview") && (
             <div
-              className="h-full overflow-hidden bg-black/20"
+              className="h-full overflow-hidden bg-muted/20"
               style={{ width: viewMode === "split" ? `${100 - dividerPosition}%` : "100%" }}
             >
               <div className="h-full overflow-y-auto p-6 prose dark:prose-invert max-w-none">
