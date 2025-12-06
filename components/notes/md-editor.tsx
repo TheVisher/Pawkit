@@ -820,7 +820,7 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
         </>
       ) : (
         /* Preview */
-        <div className="flex-1 overflow-y-auto p-4 prose prose-invert max-w-none">
+        <div className="flex-1 overflow-y-auto p-4 prose dark:prose-invert max-w-none">
           <ReactMarkdown
             remarkPlugins={[
               remarkGfm,
