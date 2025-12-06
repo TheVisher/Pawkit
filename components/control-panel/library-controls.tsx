@@ -314,6 +314,172 @@ function CardSizeSelector({ value, onChange }: CardSizeSelectorProps) {
   );
 }
 
+// Tags Section - Option 3: Inline chips with "+X more" expansion
+type TagsSectionProps = {
+  allTags: { name: string; count: number }[];
+  selectedTags: string[];
+  onTagToggle: (tagName: string) => void;
+  onClearTags: () => void;
+  pathname: string;
+  onNavigate: () => void;
+  collapsedSections: Record<string, boolean>;
+  toggleSection: (id: string) => void;
+  sectionId: string;
+};
+
+const VISIBLE_TAGS_COUNT = 4; // Number of tags to show before "+X more"
+
+function TagsSection({
+  allTags,
+  selectedTags,
+  onTagToggle,
+  onClearTags,
+  pathname,
+  onNavigate,
+  collapsedSections,
+  toggleSection,
+  sectionId,
+}: TagsSectionProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const isActive = pathname === "/tags";
+  const isCollapsed = collapsedSections[sectionId];
+
+  // Split tags into visible and hidden
+  const visibleTags = allTags.slice(0, VISIBLE_TAGS_COUNT);
+  const hiddenTags = allTags.slice(VISIBLE_TAGS_COUNT);
+  const hasMoreTags = hiddenTags.length > 0;
+
+  // Show all tags when expanded, otherwise just visible ones
+  const displayedTags = isExpanded ? allTags : visibleTags;
+
+  const handleHeaderClick = () => {
+    onNavigate();
+    // Ensure section is expanded when clicking header
+    if (isCollapsed) {
+      toggleSection(sectionId);
+    }
+  };
+
+  return (
+    <PanelSection
+      id={sectionId}
+      title="Tags"
+      icon={<Tag className={`h-4 w-4 ${isActive ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
+      active={isActive}
+      onClick={handleHeaderClick}
+    >
+      <div className="space-y-2">
+        {/* Tags flow container */}
+        <div className="flex flex-wrap gap-1.5">
+          {displayedTags.map((tag) => {
+            const isSelected = selectedTags.includes(tag.name);
+            return (
+              <button
+                key={tag.name}
+                onClick={() => onTagToggle(tag.name)}
+                className="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-200"
+                style={isSelected ? {
+                  background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                  boxShadow: 'var(--raised-shadow-sm), 0 0 12px rgba(168, 85, 247, 0.3)',
+                  border: '1px solid var(--ds-accent)',
+                  borderTopColor: 'var(--raised-border-top)',
+                  color: 'var(--ds-accent)',
+                } : {
+                  background: 'var(--bg-surface-1)',
+                  boxShadow: 'var(--inset-shadow-sm)',
+                  border: 'var(--inset-border)',
+                  borderBottomColor: 'var(--inset-border-bottom)',
+                  color: 'var(--text-secondary)',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.borderColor = 'var(--ds-accent)';
+                    e.currentTarget.style.boxShadow = 'var(--inset-shadow-sm), 0 0 8px rgba(168, 85, 247, 0.2)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.borderColor = '';
+                    e.currentTarget.style.boxShadow = 'var(--inset-shadow-sm)';
+                  }
+                }}
+              >
+                #{tag.name}
+                <span style={{ color: 'var(--text-muted)', marginLeft: '4px' }}>
+                  {tag.count}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* "+X more" expansion chip */}
+          {hasMoreTags && !isExpanded && (
+            <button
+              onClick={() => setIsExpanded(true)}
+              className="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-200"
+              style={{
+                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                boxShadow: 'var(--raised-shadow-sm)',
+                border: '1px solid var(--border-subtle)',
+                borderTopColor: 'var(--raised-border-top)',
+                color: 'var(--text-muted)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--text-muted)';
+              }}
+            >
+              +{hiddenTags.length} more
+            </button>
+          )}
+
+          {/* "Show less" chip when expanded */}
+          {isExpanded && hasMoreTags && (
+            <button
+              onClick={() => setIsExpanded(false)}
+              className="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-200"
+              style={{
+                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                boxShadow: 'var(--raised-shadow-sm)',
+                border: '1px solid var(--border-subtle)',
+                borderTopColor: 'var(--raised-border-top)',
+                color: 'var(--text-muted)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--text-muted)';
+              }}
+            >
+              Show less
+            </button>
+          )}
+        </div>
+
+        {/* Clear all button */}
+        {selectedTags.length > 0 && (
+          <button
+            onClick={onClearTags}
+            className="text-xs transition-colors"
+            style={{ color: 'var(--ds-accent)' }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
+          >
+            Clear all ({selectedTags.length})
+          </button>
+        )}
+      </div>
+    </PanelSection>
+  );
+}
+
 // Custom Inset Slider with popup value display
 type InsetSliderProps = {
   value: number;
@@ -705,48 +871,20 @@ export function LibraryControls() {
           {/* Todos Section - Always at top */}
           <TodosSection />
 
-          {/* Tags Filter Section */}
+          {/* Tags Filter Section - Option 3: Inline chips with expansion */}
           {allTags.length > 0 && (
-        <PanelSection
-          id="library-tags"
-          title="Tags"
-          icon={<Tag className={`h-4 w-4 ${pathname === "/tags" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
-          active={pathname === "/tags"}
-          onClick={() => {
-            router.push("/tags");
-            // Ensure section is expanded when clicking header
-            if (collapsedSections["library-tags"]) {
-              toggleSection("library-tags");
-            }
-          }}
-        >
-          <div className="space-y-2">
-            <div className="flex flex-wrap gap-2">
-              {allTags.map((tag) => (
-                <button
-                  key={tag.name}
-                  onClick={() => handleTagToggle(tag.name)}
-                  className={`rounded-full backdrop-blur-md px-3 py-1 text-xs font-medium transition-all duration-200 ${
-                    selectedTags.includes(tag.name)
-                      ? "bg-purple-500/20 border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.3)] text-purple-200"
-                      : "bg-white/5 border border-white/10 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] text-muted-foreground"
-                  }`}
-                >
-                  #{tag.name} ({tag.count})
-                </button>
-              ))}
-            </div>
-            {selectedTags.length > 0 && (
-              <button
-                onClick={handleClearTags}
-                className="text-xs text-accent hover:text-accent/80 transition-colors"
-              >
-                Clear all
-              </button>
-            )}
-          </div>
-        </PanelSection>
-      )}
+            <TagsSection
+              allTags={allTags}
+              selectedTags={selectedTags}
+              onTagToggle={handleTagToggle}
+              onClearTags={handleClearTags}
+              pathname={pathname}
+              onNavigate={() => router.push("/tags")}
+              collapsedSections={collapsedSections}
+              toggleSection={toggleSection}
+              sectionId="library-tags"
+            />
+          )}
 
       {/* Content Type Filter Section */}
       <PanelSection
