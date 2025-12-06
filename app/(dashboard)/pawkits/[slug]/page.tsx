@@ -340,7 +340,7 @@ function CollectionPageContent() {
       <div className="space-y-4">
         {/* Cover Image Banner */}
         {currentCollection.coverImage ? (
-          <div className="relative w-[calc(100%+3rem)] h-96 -mx-6 -mt-6 mb-0 overflow-hidden group">
+          <div className="relative w-[calc(100%+3rem)] h-96 -mx-6 -mt-6 mb-0 overflow-hidden group rounded-t-2xl">
             <div
               className="w-full h-full"
               style={{
