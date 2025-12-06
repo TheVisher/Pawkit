@@ -3,6 +3,7 @@
 import {
   useEffect,
   useRef,
+  useState,
   ReactNode,
   forwardRef,
   useImperativeHandle,
@@ -138,6 +139,8 @@ export type MuuriGridProps = {
   style?: React.CSSProperties;
   // Pass item count explicitly to control when to reinitialize
   itemCount: number;
+  // Item width for centering calculation
+  itemWidth?: number;
   // Layout options
   fillGaps?: boolean;
   horizontal?: boolean;
@@ -172,6 +175,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       className = "",
       style,
       itemCount,
+      itemWidth = 200,
       fillGaps = true,
       horizontal = false,
       alignRight = false,
@@ -189,8 +193,42 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
     ref
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
+    const wrapperRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<MuuriGrid | null>(null);
     const lastItemCountRef = useRef<number>(0);
+    const [calculatedWidth, setCalculatedWidth] = useState<number | null>(null);
+
+    // Calculate centered grid width based on available space and item width
+    useEffect(() => {
+      if (!wrapperRef.current || itemCount === 0) {
+        setCalculatedWidth(null);
+        return;
+      }
+
+      const calculateWidth = () => {
+        if (!wrapperRef.current) return;
+
+        const availableWidth = wrapperRef.current.offsetWidth;
+        // Calculate how many columns fit
+        const numColumns = Math.max(1, Math.floor(availableWidth / itemWidth));
+        // Calculate exact width for those columns
+        const gridWidth = numColumns * itemWidth;
+        setCalculatedWidth(gridWidth);
+      };
+
+      // Initial calculation
+      calculateWidth();
+
+      // Recalculate on resize
+      const resizeObserver = new ResizeObserver(() => {
+        calculateWidth();
+      });
+      resizeObserver.observe(wrapperRef.current);
+
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }, [itemWidth, itemCount]);
 
     // Initialize Muuri only once on mount, or when itemCount changes significantly
     useEffect(() => {
@@ -369,13 +407,14 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
     }));
 
     return (
-      <div className="flex justify-center w-full">
+      <div ref={wrapperRef} className="w-full flex justify-center">
         <div
           ref={containerRef}
           className={`muuri-grid ${className}`}
           style={{
             position: "relative",
-            display: "inline-block", // Shrink-wrap to content for centering
+            width: calculatedWidth ? `${calculatedWidth}px` : "100%",
+            maxWidth: "100%",
             ...style,
           }}
         >
