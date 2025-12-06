@@ -798,6 +798,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             ref={muuriRef}
             className="w-full"
             style={{ minHeight: 200 }}
+            itemCount={filteredAndSortedCards.length}
             fillGaps={true}
             dragEnabled={true}
             dragHandle=".muuri-item-content"
@@ -805,23 +806,20 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             layoutEasing="ease-out"
             onDragEnd={() => {
               // Trigger relayout after drag to fix empty columns
-              // Use multiple delays to ensure layout is correct
               setTimeout(() => {
                 muuriRef.current?.refreshItems();
-              }, 50);
-              setTimeout(() => {
-                muuriRef.current?.refreshItems();
-              }, 300);
+              }, 100);
             }}
           >
-            {filteredAndSortedCards.map((card) => (
+            {filteredAndSortedCards.map((card) => {
+              // Calculate card width based on cardSize slider (includes spacing)
+              const baseWidth = 150 + ((cardSize - 1) / 99) * 300; // 150px to 450px
+              const itemWidth = baseWidth + cardSpacing;
+              return (
               <MuuriItem
                 key={card.id}
                 cardId={card.id}
-                style={{
-                  width: `${cardSize < 30 ? 180 : cardSize < 60 ? 260 : cardSize < 85 ? 340 : 420}px`,
-                  padding: `${cardSpacing / 2}px`,
-                }}
+                width={itemWidth}
               >
                 <CardCell
                   card={card}
@@ -851,7 +849,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                   cardPadding={viewSettings.cardPadding}
                 />
               </MuuriItem>
-            ))}
+              );
+            })}
           </MuuriGridComponent>
         ) : (
           /* CSS Grid for grid/compact layouts */
