@@ -12,6 +12,12 @@ import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/da
 import { getHolidayForDate } from "@/lib/data/us-holidays";
 import { CalendarIcon, X, Plus, Clock, MapPin, Trash2, Flag } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import Image from "next/image";
 import { AddEventModal } from "@/components/modals/add-event-modal";
 import { DeleteEventModal } from "@/components/modals/delete-event-modal";
@@ -27,6 +33,23 @@ function formatTime12h(time24: string): string {
   const period = hours >= 12 ? 'PM' : 'AM';
   const hours12 = hours % 12 || 12;
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
+}
+
+// Helper to strip markdown syntax for preview text
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/^#+\s+/gm, '')           // Remove headings
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // Remove bold
+    .replace(/\*([^*]+)\*/g, '$1')     // Remove italic
+    .replace(/`([^`]+)`/g, '$1')       // Remove inline code
+    .replace(/^[-*]\s+\[\s*[x ]?\s*\]\s*/gm, '') // Remove checkbox markers
+    .replace(/^[-*]\s+/gm, '')         // Remove list markers
+    .replace(/^>\s+/gm, '')            // Remove blockquotes
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remove links, keep text
+    .replace(/#\w+/g, '')              // Remove hashtags
+    .replace(/\n{2,}/g, ' ')           // Collapse multiple newlines
+    .replace(/\n/g, ' ')               // Replace newlines with spaces
+    .trim();
 }
 
 // Helper to get multi-day event info for the current date
@@ -292,104 +315,132 @@ export function DayDetailsPanel() {
   }
 
   return (
-    <div className="flex flex-col h-full -my-6">
-      {/* Close Button at Top - Centered Pill */}
-      <div className="flex justify-center py-4 border-b border-white/10">
-        <button
-          onClick={handleClose}
-          className="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10
-            border border-white/10 hover:border-white/20
-            transition-all duration-200 flex items-center gap-2
-            text-sm font-medium text-muted-foreground hover:text-foreground"
-        >
-          <X size={16} />
-          Close Daily View
-        </button>
-      </div>
-
+    <div className="flex flex-col h-full">
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
-        {/* Date Header */}
-        <div>
-          <h2 className="text-xl font-semibold text-foreground mb-1">
-            {selectedDay.toLocaleDateString('en-US', {
-              weekday: 'long',
-              month: 'long',
-              day: 'numeric',
-              year: 'numeric'
-            })}
-          </h2>
-          <p className="text-sm text-muted-foreground">
+      <div className="flex-1 overflow-y-auto pt-0 pb-10 space-y-4">
+        {/* Box 1: Date Header, Holiday, Add Event, Events */}
+        <div
+          className="p-4 rounded-xl"
+          style={{
+            background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+            boxShadow: 'var(--raised-shadow-sm)',
+            borderWidth: '1px',
+            borderStyle: 'solid',
+            borderColor: 'var(--border-subtle)',
+            borderTopColor: 'var(--raised-border-top)',
+          }}
+        >
+          {/* Date Header with Close Button */}
+          <div className="flex items-start gap-3 mb-1">
+            <CalendarIcon size={20} className="flex-shrink-0 mt-0.5" style={{ color: 'var(--ds-accent)' }} />
+            <h2 className="text-lg font-semibold flex-1" style={{ color: 'var(--text-primary)' }}>
+              {selectedDay.toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+              })}
+            </h2>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={handleClose}
+                    className="p-1.5 rounded-lg transition-all duration-200 flex-shrink-0"
+                    style={{
+                      background: 'var(--bg-surface-2)',
+                      color: 'var(--text-muted)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-surface-3)';
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-surface-2)';
+                      e.currentTarget.style.color = 'var(--text-muted)';
+                    }}
+                  >
+                    <X size={16} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Close daily view</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <p className="text-sm ml-8 mb-3" style={{ color: 'var(--text-muted)' }}>
             {dayEvents.length + scheduledCards.length + (dailyNote ? 1 : 0)} item(s) for this day
           </p>
-        </div>
 
-        {/* Holiday Section */}
-        {holiday && (
-          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
-            <div className="flex items-center gap-3">
-              <Flag size={20} className="text-amber-400 flex-shrink-0" />
-              <div>
-                <div className="font-medium text-amber-400">{holiday.name}</div>
-                <div className="text-sm text-amber-300/70 mt-0.5">
-                  {holiday.type === 'major' ? 'US Federal Holiday' : 'US Observance'}
+          {/* Events container with consistent gap spacing */}
+          <div className="flex flex-col gap-3">
+            {/* Add Event Button - Always at top */}
+            <button
+              onClick={handleAddEvent}
+              className="w-full px-4 py-2.5 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm font-medium"
+              style={{
+                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                boxShadow: 'var(--raised-shadow-sm)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                borderColor: 'var(--border-subtle)',
+                borderTopColor: 'var(--raised-border-top)',
+                color: 'var(--text-secondary)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = 'var(--raised-shadow)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'var(--raised-shadow-sm)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <Plus size={16} />
+              Add Event
+            </button>
+
+            {/* Holiday - nested raised card */}
+            {holiday && (
+              <div
+                className="p-3 rounded-lg transition-all"
+              style={{
+                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                boxShadow: 'var(--raised-shadow-sm)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                borderColor: 'var(--border-subtle)',
+                borderTopColor: 'var(--raised-border-top)',
+              }}
+            >
+              <div className="flex items-center gap-3">
+                <Flag size={18} className="flex-shrink-0" style={{ color: 'var(--ds-accent)' }} />
+                <div>
+                  <div className="font-medium text-sm" style={{ color: 'var(--text-primary)' }}>{holiday.name}</div>
+                  <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    {holiday.type === 'major' ? 'US Federal Holiday' : 'US Observance'}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Daily Note Section */}
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <CalendarIcon size={16} className="text-accent" />
-            Daily Note
-          </h3>
-          {dailyNote ? (
-            <button
-              onClick={() => openCardDetails(dailyNote.id)}
-              className="w-full text-left p-4 rounded-xl bg-purple-500/10 border border-purple-500/30
-                hover:bg-purple-500/20 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]
-                transition-all duration-200"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-purple-200 truncate">{dailyNote.title}</div>
-                  <div className="text-sm text-purple-300/70 mt-1 line-clamp-2">
-                    {dailyNote.content?.substring(0, 100)}...
-                  </div>
-                </div>
-                <div className="text-purple-300 ml-2">→</div>
-              </div>
-            </button>
-          ) : (
-            <button
-              onClick={handleCreateDailyNote}
-              className="w-full text-left p-4 rounded-xl bg-white/5 border border-white/10
-                hover:bg-white/10 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]
-                transition-all duration-200 flex items-center gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <Plus size={16} />
-              <span>Create daily note for this day</span>
-            </button>
           )}
-        </div>
 
-        {/* Calendar Events Section */}
-        {dayEvents.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-              <CalendarIcon size={16} className="text-accent" />
-              Events ({dayEvents.length})
-            </h3>
+          {/* Events List */}
+          {dayEvents.length > 0 && (
             <div className="space-y-2">
               {dayEvents.map((event) => {
                 const multiDayInfo = selectedDay ? getMultiDayInfo(event, selectedDay) : null;
                 return (
                 <div
                   key={event.id}
-                  className="p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10
-                    transition-colors group"
+                  className="p-3 rounded-lg transition-all duration-200 group"
+                  style={{
+                    background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                    boxShadow: 'var(--raised-shadow-sm)',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: 'var(--border-subtle)',
+                    borderTopColor: 'var(--raised-border-top)',
+                  }}
                 >
                   <div className="flex items-start gap-3">
                     <span
@@ -401,31 +452,31 @@ export function DayDetailsPanel() {
                         onClick={() => handleEventClick(event)}
                         className="text-left w-full"
                       >
-                        <div className="font-medium text-foreground truncate">
+                        <div className="font-medium truncate" style={{ color: 'var(--text-primary)' }}>
                           {event.title}
                         </div>
                         {/* Multi-day event indicator */}
                         {multiDayInfo && (
-                          <div className="text-xs text-accent flex items-center gap-1 mt-1">
+                          <div className="text-xs flex items-center gap-1 mt-1" style={{ color: 'var(--ds-accent)' }}>
                             <CalendarRange size={10} />
                             Day {multiDayInfo.dayNumber} of {multiDayInfo.totalDays}
                           </div>
                         )}
                         {!event.isAllDay && event.startTime && (
-                          <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                          <div className="text-sm flex items-center gap-1 mt-1" style={{ color: 'var(--text-muted)' }}>
                             <Clock size={12} />
                             {formatTime12h(event.startTime)}
                             {event.endTime && ` - ${formatTime12h(event.endTime)}`}
                           </div>
                         )}
                         {event.location && (
-                          <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                          <div className="text-sm flex items-center gap-1 mt-1" style={{ color: 'var(--text-muted)' }}>
                             <MapPin size={12} />
                             {event.location}
                           </div>
                         )}
                         {event.description && (
-                          <div className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                          <div className="text-sm mt-1 line-clamp-2" style={{ color: 'var(--text-muted)' }}>
                             {event.description}
                           </div>
                         )}
@@ -433,8 +484,16 @@ export function DayDetailsPanel() {
                     </div>
                     <button
                       onClick={() => handleDeleteEvent(event)}
-                      className="p-1.5 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-400
-                        opacity-0 group-hover:opacity-100 transition-all"
+                      className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                      style={{ color: 'var(--text-muted)' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
+                        e.currentTarget.style.color = 'rgb(248, 113, 113)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = 'var(--text-muted)';
+                      }}
                       title="Delete event"
                     >
                       <Trash2 size={14} />
@@ -444,12 +503,98 @@ export function DayDetailsPanel() {
               );
               })}
             </div>
+          )}
           </div>
-        )}
+        </div>
 
-        {/* Scheduled Cards Section */}
-        <div>
-          <h3 className="text-sm font-semibold text-foreground mb-3">
+        {/* Box 2: Daily Note */}
+        <div
+          className="p-4 rounded-xl"
+          style={{
+            background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+            boxShadow: 'var(--raised-shadow-sm)',
+            borderWidth: '1px',
+            borderStyle: 'solid',
+            borderColor: 'var(--border-subtle)',
+            borderTopColor: 'var(--raised-border-top)',
+          }}
+        >
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+            <CalendarIcon size={16} style={{ color: 'var(--ds-accent)' }} />
+            Daily Note
+          </h3>
+          {dailyNote ? (
+            <button
+              onClick={() => openCardDetails(dailyNote.id)}
+              className="w-full text-left p-3 rounded-lg transition-all duration-200"
+              style={{
+                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                boxShadow: 'var(--raised-shadow-sm)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                borderColor: 'var(--border-subtle)',
+                borderTopColor: 'var(--raised-border-top)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = 'var(--raised-shadow)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'var(--raised-shadow-sm)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>{dailyNote.title}</div>
+                  <div className="text-xs mt-1 line-clamp-2" style={{ color: 'var(--text-muted)' }}>
+                    {dailyNote.content ? stripMarkdown(dailyNote.content).substring(0, 100) : 'No content yet'}
+                  </div>
+                </div>
+                <div className="ml-2" style={{ color: 'var(--text-muted)' }}>→</div>
+              </div>
+            </button>
+          ) : (
+            <button
+              onClick={handleCreateDailyNote}
+              className="w-full text-left p-3 rounded-lg transition-all duration-200 flex items-center gap-2"
+              style={{
+                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                boxShadow: 'var(--raised-shadow-sm)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                borderColor: 'var(--border-subtle)',
+                borderTopColor: 'var(--raised-border-top)',
+                color: 'var(--text-secondary)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.boxShadow = 'var(--raised-shadow)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.boxShadow = 'var(--raised-shadow-sm)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <Plus size={16} />
+              <span className="text-sm">Create daily note for this day</span>
+            </button>
+          )}
+        </div>
+
+        {/* Box 2: Scheduled Cards */}
+        <div
+          className="p-4 rounded-xl"
+          style={{
+            background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+            boxShadow: 'var(--raised-shadow-sm)',
+            borderWidth: '1px',
+            borderStyle: 'solid',
+            borderColor: 'var(--border-subtle)',
+            borderTopColor: 'var(--raised-border-top)',
+          }}
+        >
+          <h3 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-primary)' }}>
             Scheduled Cards ({scheduledCards.length})
           </h3>
           {scheduledCards.length > 0 ? (
@@ -458,12 +603,26 @@ export function DayDetailsPanel() {
                 <button
                   key={card.id}
                   onClick={() => openCardDetails(card.id)}
-                  className="w-full text-left p-3 rounded-lg bg-white/5 hover:bg-white/10
-                    transition-colors border border-white/10 hover:border-white/20
-                    flex items-center gap-3"
+                  className="w-full text-left p-3 rounded-lg transition-all duration-200 flex items-center gap-3"
+                  style={{
+                    background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                    boxShadow: 'var(--raised-shadow-sm)',
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: 'var(--border-subtle)',
+                    borderTopColor: 'var(--raised-border-top)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = 'var(--raised-shadow)';
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = 'var(--raised-shadow-sm)';
+                    e.currentTarget.style.transform = 'translateY(0)';
+                  }}
                 >
                   {card.image && (
-                    <div className="relative w-12 h-12 flex-shrink-0 rounded overflow-hidden">
+                    <div className="relative w-10 h-10 flex-shrink-0 rounded-lg overflow-hidden">
                       <Image
                         src={card.image}
                         alt=""
@@ -474,36 +633,30 @@ export function DayDetailsPanel() {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-foreground truncate">
+                    <div className="font-medium text-sm truncate" style={{ color: 'var(--text-primary)' }}>
                       {card.title || card.domain || card.url}
                     </div>
-                    <div className="text-sm text-muted-foreground truncate">
+                    <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
                       {card.domain || card.url}
                     </div>
                   </div>
-                  <div className="text-muted-foreground">→</div>
+                  <div style={{ color: 'var(--text-muted)' }}>→</div>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground text-center py-8 border border-dashed border-white/10 rounded-lg">
+            <div
+              className="text-sm text-center py-6 rounded-lg"
+              style={{
+                color: 'var(--text-muted)',
+                background: 'var(--bg-surface-1)',
+                boxShadow: 'var(--inset-shadow)',
+                border: '1px solid var(--border-subtle)',
+              }}
+            >
               No cards scheduled for this day
             </div>
           )}
-        </div>
-
-        {/* Add Event Button */}
-        <div className="pt-4 border-t border-white/10">
-          <button
-            onClick={handleAddEvent}
-            className="w-full px-4 py-3 rounded-lg bg-white/5 border border-white/10
-              hover:bg-white/10 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]
-              transition-all duration-200 flex items-center justify-center gap-2
-              text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            <Plus size={16} />
-            Add Event
-          </button>
         </div>
       </div>
 

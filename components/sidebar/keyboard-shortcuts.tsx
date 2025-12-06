@@ -21,9 +21,9 @@ export function KeyboardShortcuts() {
   ];
 
   return (
-    <div className="px-4 py-3 border-t border-white/5">
+    <div className="px-4 py-3 border-t" style={{ borderColor: 'var(--border-divider)' }}>
       <div className="text-xs text-muted-foreground space-y-2">
-        <div className="flex items-center justify-between pb-2 border-b border-white/5">
+        <div className="flex items-center justify-between pb-2 border-b" style={{ borderColor: 'var(--border-divider)' }}>
           <span className="font-semibold text-foreground">Quick Actions</span>
         </div>
 

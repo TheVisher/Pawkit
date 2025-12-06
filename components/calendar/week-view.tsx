@@ -167,23 +167,41 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
           return (
             <div
               key={index}
-              className={`card-hover rounded-2xl border transition-all cursor-pointer flex flex-col ${
-                isCurrentDay
-                  ? 'border-accent bg-accent/5'
-                  : 'border-subtle bg-surface'
-              }`}
+              className="rounded-2xl transition-all cursor-pointer flex flex-col"
+              style={{
+                /* ===== TODAY STYLING - OPTION 2: Purple pill on day number ===== */
+                background: 'var(--bg-surface-3)',
+                boxShadow: 'var(--raised-shadow-sm)',
+                borderWidth: '1px',
+                borderStyle: 'solid',
+                borderColor: 'var(--border-default)',
+                borderTopColor: 'var(--raised-border-top)',
+              }}
               onClick={() => onDayClick?.(day)}
             >
               {/* Day header */}
-              <div className="p-3 border-b border-white/5">
-                <div className={`text-sm font-semibold text-center ${
-                  isCurrentDay ? 'text-accent' : 'text-foreground'
-                }`}>
+              <div className="p-3 flex flex-col items-center" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                <div
+                  className="text-sm font-semibold text-center"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {format(day, 'EEE')}
                 </div>
-                <div className="text-xs text-muted-foreground text-center mt-0.5">
-                  {format(day, 'MMM d')}
-                </div>
+                <span
+                  className={`text-xs mt-0.5 ${isCurrentDay ? 'inline-flex items-center justify-center' : ''}`}
+                  style={isCurrentDay ? {
+                    background: 'var(--ds-accent)',
+                    color: 'white',
+                    borderRadius: '9999px',
+                    minWidth: '24px',
+                    height: '24px',
+                    padding: '0 6px',
+                  } : {
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  {format(day, 'd')}
+                </span>
               </div>
 
               {/* Events container - scrollable */}

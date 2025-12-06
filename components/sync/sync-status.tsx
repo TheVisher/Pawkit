@@ -235,7 +235,7 @@ export function SyncStatus() {
   const isSyncing = syncState.status === "syncing";
 
   return (
-    <div className="px-3 py-3 border-t border-white/5 space-y-3">
+    <div className="px-3 py-3 border-t space-y-3" style={{ borderColor: 'var(--border-divider)' }}>
       {/* Storage Bar */}
       <div className="flex items-center gap-2">
         <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
