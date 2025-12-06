@@ -71,6 +71,7 @@ export function DayDetailsPanel() {
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
   const showHolidays = useCalendarStore((state) => state.showHolidays);
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
+  const enabledCountries = useCalendarStore((state) => state.enabledCountries);
   const openCalendarControls = usePanelStore((state) => state.openCalendarControls);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const setActiveCardId = usePanelStore((state) => state.setActiveCardId);
@@ -116,10 +117,10 @@ export function DayDetailsPanel() {
 
   // Get holiday for the selected date
   const holiday = useMemo(() => {
-    if (!selectedDay || !showHolidays) return null;
+    if (!selectedDay || !showHolidays || enabledCountries.length === 0) return null;
     const dateStr = format(selectedDay, 'yyyy-MM-dd');
     return getHolidayForDate(dateStr, holidayFilter);
-  }, [selectedDay, showHolidays, holidayFilter]);
+  }, [selectedDay, showHolidays, holidayFilter, enabledCountries]);
 
   // Get events for the selected date (including recurring event instances)
   const dayEvents = useMemo(() => {

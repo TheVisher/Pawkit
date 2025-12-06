@@ -129,9 +129,9 @@ export function CalendarControls() {
         });
       });
 
-    // Add upcoming holidays (only major holidays within cutoff)
-    if (showHolidays) {
-      const upcomingHolidayList = getUpcomingHolidays(10, 'major'); // Only major holidays in upcoming
+    // Add upcoming holidays (respects holidayFilter and enabledCountries settings)
+    if (showHolidays && enabledCountries.length > 0) {
+      const upcomingHolidayList = getUpcomingHolidays(10, holidayFilter);
       upcomingHolidayList
         .filter(holiday => holiday.date <= cutoffStr)
         .forEach(holiday => {
@@ -163,7 +163,7 @@ export function CalendarControls() {
     });
 
     return items.slice(0, 5);
-  }, [cards, events, showHolidays]);
+  }, [cards, events, showHolidays, holidayFilter, enabledCountries]);
 
   const totalUpcomingItems = useMemo(() => {
     const today = format(startOfToday(), 'yyyy-MM-dd');
