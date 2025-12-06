@@ -1415,7 +1415,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               }}
             >
               {card.content ? (
-                <div className="prose prose-sm prose-invert max-w-none note-card-preview">
+                <div className="prose prose-sm dark:prose-invert max-w-none note-card-preview">
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkBreaks]}
                   >

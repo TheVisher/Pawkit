@@ -842,7 +842,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
               className="h-full overflow-hidden bg-black/20"
               style={{ width: viewMode === "split" ? `${100 - dividerPosition}%` : "100%" }}
             >
-              <div className="h-full overflow-y-auto p-6 prose prose-invert max-w-none">
+              <div className="h-full overflow-y-auto p-6 prose dark:prose-invert max-w-none">
                 <ReactMarkdown
                   remarkPlugins={[
                     remarkGfm,
