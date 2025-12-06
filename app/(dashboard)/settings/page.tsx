@@ -770,7 +770,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex items-center gap-4">
         <div
@@ -792,419 +792,349 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Appearance Section */}
-      <SettingsSection
-        id="appearance"
-        icon={Palette}
-        title="Appearance"
-        description="Customize how Pawkit looks"
-      >
-        {/* Theme Selection */}
-        <div className="mb-6">
-          <Label className="text-sm mb-3 block" style={{ color: 'var(--text-secondary)' }}>
-            Theme
-          </Label>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { value: 'dark' as Theme, label: 'Dark', icon: Moon },
-              { value: 'light' as Theme, label: 'Light', icon: Sun },
-              { value: 'auto' as Theme, label: 'Auto', icon: SunMoon },
-            ].map(({ value, label, icon: Icon }) => (
-              <button
-                key={value}
-                onClick={() => setTheme(value)}
-                className="p-4 rounded-xl transition-all relative"
-                style={{
-                  background: theme === value
-                    ? 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)'
-                    : 'var(--bg-surface-1)',
-                  boxShadow: theme === value ? 'var(--raised-shadow)' : 'var(--inset-shadow)',
-                  border: theme === value ? '1px solid var(--ds-accent)' : 'var(--inset-border)',
-                }}
-              >
-                <Icon className="h-5 w-5 mx-auto mb-2" style={{ color: theme === value ? 'var(--ds-accent)' : 'var(--text-muted)' }} />
-                <div className="text-sm font-medium" style={{ color: theme === value ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                  {label}
-                </div>
-                {theme === value && (
-                  <Check className="absolute top-2 right-2 h-4 w-4" style={{ color: 'var(--ds-accent)' }} />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Accent Color */}
-        <div>
-          <Label className="text-sm mb-3 block" style={{ color: 'var(--text-secondary)' }}>
-            Accent Color
-          </Label>
-          <div className="flex gap-3">
-            {ACCENT_COLORS.map((color) => (
-              <button
-                key={color.name}
-                onClick={() => setAccentColor(color.name)}
-                className={`h-10 w-10 rounded-full ${color.value} transition-all relative`}
-                style={{
-                  boxShadow: accentColor === color.name ? '0 0 0 3px var(--bg-surface-2), 0 0 0 5px var(--ds-accent)' : 'var(--raised-shadow-sm)',
-                }}
-                title={color.label}
-              >
-                {accentColor === color.name && (
-                  <Check className="absolute inset-0 m-auto h-5 w-5 text-white" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </SettingsSection>
-
-      {/* Preferences Section */}
-      <SettingsSection
-        id="preferences"
-        icon={Sliders}
-        title="Preferences"
-        description="Control how Pawkit behaves"
-      >
-        <div className="space-y-3">
-          <ToggleSwitch
-            checked={notifications}
-            onChange={setNotifications}
-            label="Notifications"
-            description="Receive notifications for important updates"
-          />
-          <ToggleSwitch
-            checked={autoSave}
-            onChange={setAutoSave}
-            label="Auto-save"
-            description="Automatically save changes as you type"
-          />
-          <ToggleSwitch
-            checked={autoFetchMetadata}
-            onChange={setAutoFetchMetadata}
-            label="Auto-fetch Metadata"
-            description="Automatically fetch metadata from preview service"
-          />
-          <ToggleSwitch
-            checked={showThumbnails}
-            onChange={setShowThumbnails}
-            label="Show Thumbnails"
-            description="Display thumbnail images on bookmark cards"
-          />
-          <ToggleSwitch
-            checked={showSyncStatusInSidebar}
-            onChange={setShowSyncStatusInSidebar}
-            label="Show Sync Status in Sidebar"
-            description="Display sync status panel at bottom of right sidebar"
-          />
-          <ToggleSwitch
-            checked={showKeyboardShortcutsInSidebar}
-            onChange={setShowKeyboardShortcutsInSidebar}
-            label="Show Keyboard Shortcuts in Sidebar"
-            description="Display keyboard shortcuts panel in left sidebar"
-          />
-        </div>
-
-        {/* Default View & Sort */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-          <div>
-            <Label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>
-              Default View
-            </Label>
-            <select
-              value={defaultView}
-              onChange={(e) => setDefaultView(e.target.value as "grid" | "masonry" | "list")}
-              className="w-full rounded-xl px-4 py-3 text-sm transition-colors"
-              style={{
-                background: 'var(--bg-surface-1)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <option value="grid">Grid</option>
-              <option value="masonry">Masonry</option>
-              <option value="list">List</option>
-            </select>
-          </div>
-          <div>
-            <Label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>
-              Default Sort
-            </Label>
-            <select
-              value={defaultSort}
-              onChange={(e) => setDefaultSort(e.target.value as "dateAdded" | "recentlyModified" | "title" | "domain")}
-              className="w-full rounded-xl px-4 py-3 text-sm transition-colors"
-              style={{
-                background: 'var(--bg-surface-1)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              <option value="dateAdded">Date Added</option>
-              <option value="recentlyModified">Recently Modified</option>
-              <option value="title">Title</option>
-              <option value="domain">Domain</option>
-            </select>
-          </div>
-        </div>
-      </SettingsSection>
-
-      {/* Connectors Section */}
-      <SettingsSection
-        id="connectors"
-        icon={Cloud}
-        title="Connectors"
-        description="Connect external services for sync and backup"
-      >
-        <div className="space-y-3">
-          <ConnectorCard
-            name="Filen"
-            description="End-to-end encrypted cloud storage for file sync"
-            icon={<Cloud className="h-6 w-6" style={{ color: 'var(--ds-accent)' }} />}
-            status={getFilenStatus()}
-            category="Storage"
-            lastSync={filenState.lastSync}
-            onConnect={() => setShowFilenModal(true)}
-            onDisconnect={handleFilenDisconnect}
-          />
-          <ConnectorCard
-            name="Google Drive"
-            description="Sync files with Google Drive"
-            icon={<HardDrive className="h-6 w-6" style={{ color: 'rgb(34, 197, 94)' }} />}
-            status={getGDriveStatus()}
-            category="Storage"
-            lastSync={gdriveState.lastSync}
-            onConnect={handleGDriveConnect}
-            onDisconnect={handleGDriveDisconnect}
-          />
-          <ConnectorCard
-            name="Dropbox"
-            description="Sync files with Dropbox"
-            icon={<Cloudy className="h-6 w-6" style={{ color: 'rgb(59, 130, 246)' }} />}
-            status={getDropboxStatus()}
-            category="Storage"
-            lastSync={dropboxState.lastSync}
-            onConnect={handleDropboxConnect}
-            onDisconnect={handleDropboxDisconnect}
-          />
-          <ConnectorCard
-            name="OneDrive"
-            description="Sync files with Microsoft OneDrive"
-            icon={<Cloud className="h-6 w-6" style={{ color: 'rgb(14, 165, 233)' }} />}
-            status={getOneDriveStatus()}
-            category="Storage"
-            lastSync={onedriveState.lastSync}
-            onConnect={handleOneDriveConnect}
-            onDisconnect={handleOneDriveDisconnect}
-          />
-          <ConnectorCard
-            name="Google Calendar"
-            description="Sync events with Google Calendar"
-            icon={<Calendar className="h-6 w-6" style={{ color: 'rgb(59, 130, 246)' }} />}
-            status="coming_soon"
-            category="Calendar"
-          />
-        </div>
-      </SettingsSection>
-
-      {/* Sync & Data Section */}
-      <SettingsSection
-        id="sync-data"
-        icon={Database}
-        title="Sync & Data"
-        description="Manage your data and sync settings"
-      >
-        {/* Storage Strategy */}
-        <div className="mb-6">
-          <StorageStrategySettings />
-        </div>
-
-        {/* Sync Settings */}
-        <div className="mb-6">
-          <Label className="text-sm mb-3 block" style={{ color: 'var(--text-secondary)' }}>
-            Sync Settings
-          </Label>
-          <div className="space-y-3">
-            <ToggleSwitch
-              checked={serverSync}
-              onChange={setServerSync}
-              label="Server Sync"
-              description="Keep data local-only or sync with server"
-            />
-            {!serverSync && (
-              <ToggleSwitch
-                checked={autoSyncOnReconnect}
-                onChange={setAutoSyncOnReconnect}
-                label="Auto-sync when re-enabled"
-                description="Sync pending local changes when you turn server sync back on"
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Import & Export */}
-        <div className="mb-6">
-          <Label className="text-sm mb-3 block" style={{ color: 'var(--text-secondary)' }}>
-            Import & Export
-          </Label>
-          <ToggleSwitch
-            checked={includeDenInExport}
-            onChange={setIncludeDenInExport}
-            label="Include Private Pawkits in Export"
-            description="Include private cards and collections when exporting"
-          />
-          <div className="flex flex-wrap gap-3 mt-4">
-            <GlowButton onClick={handleExport} variant="primary" size="md">
-              <Download className="h-4 w-4 mr-2" />
-              Export JSON
-            </GlowButton>
-            <GlowButton
-              variant="primary"
-              size="md"
-              onClick={() => importFileInputRef.current?.click()}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Import JSON
-            </GlowButton>
-            <input
-              ref={importFileInputRef}
-              type="file"
-              accept="application/json"
-              className="hidden"
-              onChange={handleImport}
-            />
-          </div>
-          {dataMessage && (
-            <p
-              className="text-sm mt-3 p-3 rounded-xl"
-              style={{
-                background: 'var(--bg-surface-1)',
-                color: 'var(--text-muted)',
-              }}
-            >
-              {dataMessage}
-            </p>
-          )}
-        </div>
-
-        {/* Storage Cleanup */}
-        <div className="mb-6">
-          <StorageCleanupSection />
-        </div>
-
-        {/* Sample Data */}
-        {hasSampleData && (
+      {/* Main Two-Column Layout */}
+      <div className="flex flex-col xl:flex-row gap-6">
+        {/* Left Column - Appearance & Preferences */}
+        <div className="xl:w-[55%] flex flex-col gap-6">
+          {/* Combined Appearance & Preferences Section */}
           <div
-            className="p-4 rounded-xl mb-6"
+            className="rounded-2xl p-6"
             style={{
-              background: 'rgba(245, 158, 11, 0.1)',
-              border: '1px solid rgba(245, 158, 11, 0.2)',
+              background: 'var(--bg-surface-2)',
+              boxShadow: 'var(--shadow-2)',
+              border: '1px solid var(--border-subtle)',
+              borderTopColor: 'var(--border-highlight-top)',
             }}
           >
-            {showDeleteConfirm ? (
-              <div className="space-y-3">
-                <p className="text-sm" style={{ color: 'rgb(253, 224, 71)' }}>
-                  Are you sure? This will delete all sample content.
+            <div className="flex items-center gap-3 mb-5">
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl"
+                style={{ background: 'var(--ds-accent-muted)' }}
+              >
+                <Palette className="h-5 w-5" style={{ color: 'var(--ds-accent)' }} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Look & Feel
+                </h2>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                  Customize appearance and behavior
                 </p>
-                <div className="flex gap-2">
-                  <GlowButton
-                    variant="danger"
-                    size="sm"
-                    onClick={handleDeleteSampleData}
-                    disabled={deletingSampleData}
-                  >
-                    {deletingSampleData ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        Deleting...
-                      </>
-                    ) : (
-                      "Yes, Delete"
-                    )}
-                  </GlowButton>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowDeleteConfirm(false)}
-                  >
-                    Cancel
-                  </Button>
+              </div>
+            </div>
+
+            {/* Theme & Accent in a row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Theme Selection */}
+              <div>
+                <Label className="text-sm mb-3 block" style={{ color: 'var(--text-secondary)' }}>
+                  Theme
+                </Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'dark' as Theme, label: 'Dark', icon: Moon },
+                    { value: 'light' as Theme, label: 'Light', icon: Sun },
+                    { value: 'auto' as Theme, label: 'Auto', icon: SunMoon },
+                  ].map(({ value, label, icon: Icon }) => (
+                    <button
+                      key={value}
+                      onClick={() => setTheme(value)}
+                      className="p-3 rounded-xl transition-all relative"
+                      style={{
+                        background: theme === value
+                          ? 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)'
+                          : 'var(--bg-surface-1)',
+                        boxShadow: theme === value ? 'var(--raised-shadow)' : 'var(--inset-shadow)',
+                        border: theme === value ? '1px solid var(--ds-accent)' : 'var(--inset-border)',
+                      }}
+                    >
+                      <Icon className="h-4 w-4 mx-auto mb-1" style={{ color: theme === value ? 'var(--ds-accent)' : 'var(--text-muted)' }} />
+                      <div className="text-xs font-medium" style={{ color: theme === value ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                        {label}
+                      </div>
+                      {theme === value && (
+                        <Check className="absolute top-1.5 right-1.5 h-3 w-3" style={{ color: 'var(--ds-accent)' }} />
+                      )}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ) : (
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-sm font-medium flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                    <Trash2 className="h-4 w-4" style={{ color: 'rgb(245, 158, 11)' }} />
-                    Delete Sample Data
-                  </div>
-                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                    Remove sample bookmarks, notes, and pawkits
-                  </p>
+
+              {/* Accent Color */}
+              <div>
+                <Label className="text-sm mb-3 block" style={{ color: 'var(--text-secondary)' }}>
+                  Accent Color
+                </Label>
+                <div className="flex gap-2 flex-wrap">
+                  {ACCENT_COLORS.map((color) => (
+                    <button
+                      key={color.name}
+                      onClick={() => setAccentColor(color.name)}
+                      className={`h-9 w-9 rounded-full ${color.value} transition-all relative`}
+                      style={{
+                        boxShadow: accentColor === color.name ? '0 0 0 2px var(--bg-surface-2), 0 0 0 4px var(--ds-accent)' : 'var(--raised-shadow-sm)',
+                      }}
+                      title={color.label}
+                    >
+                      {accentColor === color.name && (
+                        <Check className="absolute inset-0 m-auto h-4 w-4 text-white" />
+                      )}
+                    </button>
+                  ))}
                 </div>
-                <GlowButton
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setShowDeleteConfirm(true)}
+              </div>
+            </div>
+
+            {/* Preferences - Grid of toggles */}
+            <div
+              className="rounded-xl p-4"
+              style={{
+                background: 'var(--bg-surface-1)',
+                boxShadow: 'var(--inset-shadow)',
+                border: 'var(--inset-border)',
+                borderBottomColor: 'var(--inset-border-bottom)',
+              }}
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  { checked: notifications, onChange: setNotifications, label: "Notifications", desc: "Important updates" },
+                  { checked: autoSave, onChange: setAutoSave, label: "Auto-save", desc: "Save as you type" },
+                  { checked: autoFetchMetadata, onChange: setAutoFetchMetadata, label: "Auto-fetch Metadata", desc: "Fetch link previews" },
+                  { checked: showThumbnails, onChange: setShowThumbnails, label: "Show Thumbnails", desc: "Card images" },
+                  { checked: showSyncStatusInSidebar, onChange: setShowSyncStatusInSidebar, label: "Sync Status", desc: "In right sidebar" },
+                  { checked: showKeyboardShortcutsInSidebar, onChange: setShowKeyboardShortcutsInSidebar, label: "Shortcuts Panel", desc: "In left sidebar" },
+                ].map(({ checked, onChange, label, desc }) => (
+                  <div
+                    key={label}
+                    className="flex items-center justify-between p-3 rounded-lg"
+                    style={{
+                      background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                      boxShadow: 'var(--raised-shadow-sm)',
+                      border: '1px solid var(--border-subtle)',
+                      borderTopColor: 'var(--raised-border-top)',
+                    }}
+                  >
+                    <div>
+                      <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{label}</div>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{desc}</p>
+                    </div>
+                    <button
+                      onClick={() => onChange(!checked)}
+                      className="relative w-10 h-5 rounded-full transition-colors flex-shrink-0"
+                      style={{
+                        background: checked ? 'var(--ds-accent)' : 'var(--bg-surface-1)',
+                        boxShadow: checked ? 'none' : 'var(--inset-shadow)',
+                      }}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`}
+                        style={{ background: 'var(--bg-surface-3)', boxShadow: 'var(--raised-shadow-sm)' }}
+                      />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Default View & Sort */}
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div>
+                <Label className="text-xs mb-2 block" style={{ color: 'var(--text-muted)' }}>Default View</Label>
+                <select
+                  value={defaultView}
+                  onChange={(e) => setDefaultView(e.target.value as "grid" | "masonry" | "list")}
+                  className="w-full rounded-lg px-3 py-2 text-sm"
+                  style={{ background: 'var(--bg-surface-1)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}
                 >
-                  Delete
-                </GlowButton>
+                  <option value="grid">Grid</option>
+                  <option value="masonry">Masonry</option>
+                  <option value="list">List</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs mb-2 block" style={{ color: 'var(--text-muted)' }}>Default Sort</Label>
+                <select
+                  value={defaultSort}
+                  onChange={(e) => setDefaultSort(e.target.value as "dateAdded" | "recentlyModified" | "title" | "domain")}
+                  className="w-full rounded-lg px-3 py-2 text-sm"
+                  style={{ background: 'var(--bg-surface-1)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)' }}
+                >
+                  <option value="dateAdded">Date Added</option>
+                  <option value="recentlyModified">Recently Modified</option>
+                  <option value="title">Title</option>
+                  <option value="domain">Domain</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Sync & Data Section */}
+          <SettingsSection id="sync-data" icon={Database} title="Sync & Data" description="Manage your data and sync settings">
+            <StorageStrategySettings />
+
+            <div className="mt-5 space-y-3">
+              <ToggleSwitch checked={serverSync} onChange={setServerSync} label="Server Sync" description="Keep data local-only or sync with server" />
+              {!serverSync && (
+                <ToggleSwitch checked={autoSyncOnReconnect} onChange={setAutoSyncOnReconnect} label="Auto-sync when re-enabled" description="Sync pending local changes when you turn server sync back on" />
+              )}
+            </div>
+
+            {/* Import/Export - Compact */}
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <GlowButton onClick={handleExport} variant="primary" size="sm">
+                <Download className="h-4 w-4 mr-1" /> Export
+              </GlowButton>
+              <GlowButton variant="primary" size="sm" onClick={() => importFileInputRef.current?.click()}>
+                <Upload className="h-4 w-4 mr-1" /> Import
+              </GlowButton>
+              <input ref={importFileInputRef} type="file" accept="application/json" className="hidden" onChange={handleImport} />
+              <label className="flex items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                <input type="checkbox" checked={includeDenInExport} onChange={(e) => setIncludeDenInExport(e.target.checked)} className="rounded" />
+                Include Private
+              </label>
+            </div>
+            {dataMessage && (
+              <p className="text-xs mt-3 p-2 rounded-lg" style={{ background: 'var(--bg-surface-1)', color: 'var(--text-muted)' }}>{dataMessage}</p>
+            )}
+
+            {/* Storage Cleanup */}
+            <div className="mt-5">
+              <StorageCleanupSection />
+            </div>
+          </SettingsSection>
+        </div>
+
+        {/* Right Column - Connectors, Advanced, Danger Zone */}
+        <div className="xl:w-[45%] flex flex-col gap-6">
+          {/* Connectors Section */}
+          <SettingsSection id="connectors" icon={Cloud} title="Connectors" description="Connect external services for sync and backup">
+            <div className="space-y-3">
+              <ConnectorCard
+                name="Filen"
+                description="End-to-end encrypted cloud storage"
+                icon={<Cloud className="h-6 w-6" style={{ color: 'var(--ds-accent)' }} />}
+                status={getFilenStatus()}
+                category="Storage"
+                lastSync={filenState.lastSync}
+                onConnect={() => setShowFilenModal(true)}
+                onDisconnect={handleFilenDisconnect}
+              />
+              <ConnectorCard
+                name="Google Drive"
+                description="Sync with Google Drive"
+                icon={<HardDrive className="h-6 w-6" style={{ color: 'rgb(34, 197, 94)' }} />}
+                status={getGDriveStatus()}
+                category="Storage"
+                lastSync={gdriveState.lastSync}
+                onConnect={handleGDriveConnect}
+                onDisconnect={handleGDriveDisconnect}
+              />
+              <ConnectorCard
+                name="Dropbox"
+                description="Sync with Dropbox"
+                icon={<Cloudy className="h-6 w-6" style={{ color: 'rgb(59, 130, 246)' }} />}
+                status={getDropboxStatus()}
+                category="Storage"
+                lastSync={dropboxState.lastSync}
+                onConnect={handleDropboxConnect}
+                onDisconnect={handleDropboxDisconnect}
+              />
+              <ConnectorCard
+                name="OneDrive"
+                description="Sync with Microsoft OneDrive"
+                icon={<Cloud className="h-6 w-6" style={{ color: 'rgb(14, 165, 233)' }} />}
+                status={getOneDriveStatus()}
+                category="Storage"
+                lastSync={onedriveState.lastSync}
+                onConnect={handleOneDriveConnect}
+                onDisconnect={handleOneDriveDisconnect}
+              />
+              <ConnectorCard
+                name="Google Calendar"
+                description="Sync events with Google Calendar"
+                icon={<Calendar className="h-6 w-6" style={{ color: 'rgb(59, 130, 246)' }} />}
+                status="coming_soon"
+                category="Calendar"
+              />
+            </div>
+          </SettingsSection>
+
+          {/* Advanced Section - Compact */}
+          <SettingsSection id="advanced" icon={Code} title="Advanced" description="Developer options">
+            <div>
+              <Label className="text-xs mb-2 block" style={{ color: 'var(--text-muted)' }}>
+                Preview Service URL (must contain {`{{url}}`})
+              </Label>
+              <Input
+                value={previewServiceUrl}
+                onChange={(e) => setPreviewServiceUrl(e.target.value)}
+                placeholder="https://example.com/preview?url={{url}}"
+              />
+            </div>
+          </SettingsSection>
+
+          {/* Sample Data & Danger Zone - Combined */}
+          <div
+            className="rounded-2xl p-6"
+            style={{
+              background: 'var(--bg-surface-2)',
+              boxShadow: 'var(--shadow-2)',
+              border: '1px solid var(--border-subtle)',
+              borderTopColor: 'var(--border-highlight-top)',
+            }}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle className="h-5 w-5" style={{ color: 'rgb(248, 113, 113)' }} />
+              <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>Danger Zone</h2>
+            </div>
+
+            {/* Sample Data */}
+            {hasSampleData && (
+              <div
+                className="p-4 rounded-xl mb-4"
+                style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)' }}
+              >
+                {showDeleteConfirm ? (
+                  <div className="space-y-3">
+                    <p className="text-sm" style={{ color: 'rgb(253, 224, 71)' }}>Delete all sample content?</p>
+                    <div className="flex gap-2">
+                      <GlowButton variant="danger" size="sm" onClick={handleDeleteSampleData} disabled={deletingSampleData}>
+                        {deletingSampleData ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Deleting...</> : "Yes, Delete"}
+                      </GlowButton>
+                      <Button variant="ghost" size="sm" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm font-medium flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                        <Trash2 className="h-4 w-4" style={{ color: 'rgb(245, 158, 11)' }} />
+                        Delete Sample Data
+                      </div>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Remove onboarding content</p>
+                    </div>
+                    <GlowButton variant="primary" size="sm" onClick={() => setShowDeleteConfirm(true)}>Delete</GlowButton>
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Danger Zone */}
-        <div
-          className="p-4 rounded-xl"
-          style={{
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.2)',
-          }}
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <AlertTriangle className="h-4 w-4" style={{ color: 'rgb(248, 113, 113)' }} />
-            <Label className="text-sm" style={{ color: 'rgb(248, 113, 113)' }}>
-              Danger Zone
-            </Label>
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                Clear All Data
+            {/* Clear All Data */}
+            <div
+              className="p-4 rounded-xl"
+              style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>Clear All Data</div>
+                  <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Delete all cards and collections</p>
+                </div>
+                <GlowButton variant="danger" size="sm" onClick={handleClear}>Clear Data</GlowButton>
               </div>
-              <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                Delete all cards and collections permanently
-              </p>
             </div>
-            <GlowButton variant="danger" size="sm" onClick={handleClear}>
-              Clear Data
-            </GlowButton>
           </div>
         </div>
-      </SettingsSection>
-
-      {/* Advanced Section */}
-      <SettingsSection
-        id="advanced"
-        icon={Code}
-        title="Advanced"
-        description="Developer options and advanced settings"
-      >
-        <div>
-          <Label className="text-sm mb-2 block" style={{ color: 'var(--text-secondary)' }}>
-            Preview Service URL
-          </Label>
-          <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
-            Must contain {`{{url}}`} token
-          </p>
-          <Input
-            value={previewServiceUrl}
-            onChange={(e) => setPreviewServiceUrl(e.target.value)}
-            placeholder="https://example.com/preview?url={{url}}"
-          />
-        </div>
-      </SettingsSection>
+      </div>
 
       {/* Footer */}
       <div
