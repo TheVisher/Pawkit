@@ -166,6 +166,13 @@
   --raised-border-top: rgba(255, 255, 255, 0.5);
   --slider-inset: inset 0 2px 4px rgba(0, 0, 0, 0.10), inset 0 1px 2px rgba(0, 0, 0, 0.06);
   --slider-inset-border-bottom: rgba(0, 0, 0, 0.04);
+
+  /* Accent colors - darker for light mode contrast */
+  --ds-accent: hsl(var(--hue-purple) var(--purple-sat) 45%);
+  --ds-accent-hover: hsl(var(--hue-purple) var(--purple-sat) 40%);
+  --ds-accent-active: hsl(var(--hue-purple) var(--purple-sat) 35%);
+  --ds-accent-muted: hsl(var(--hue-purple) var(--purple-sat) 90%);  /* Light purple background */
+  --ds-accent-subtle: hsl(var(--hue-purple) var(--purple-sat) 95%); /* Very light purple bg */
 }
 
 /* ========================================

@@ -49,7 +49,13 @@ export function TodosSection() {
       icon={<ListTodo className="h-4 w-4 text-accent" />}
       action={
         incompleteTodos.length > 0 ? (
-          <span className="text-xs bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full">
+          <span
+            className="text-xs px-2 py-0.5 rounded-full font-medium"
+            style={{
+              background: 'var(--ds-accent-muted)',
+              color: 'var(--ds-accent)',
+            }}
+          >
             {incompleteTodos.length}
           </span>
         ) : undefined
@@ -119,10 +125,11 @@ export function TodosSection() {
                   {/* Checkbox */}
                   <button
                     onClick={() => handleToggleTodo(todo.id)}
-                    className="flex-shrink-0 mt-0.5 text-muted-foreground hover:text-purple-400 transition-colors"
+                    className="flex-shrink-0 mt-0.5 transition-colors"
+                    style={{ color: todo.completed ? 'var(--ds-accent)' : 'var(--text-muted)' }}
                   >
                     {todo.completed ? (
-                      <CheckSquare size={18} className="text-purple-400" />
+                      <CheckSquare size={18} />
                     ) : (
                       <Square size={18} />
                     )}
@@ -155,9 +162,15 @@ export function TodosSection() {
 
           {/* Summary */}
           {todos.length > 0 && (
-            <div className="text-xs text-muted-foreground pt-2 border-t border-white/5">
+            <div
+              className="text-xs pt-2"
+              style={{
+                color: 'var(--text-muted)',
+                borderTop: '1px solid var(--border-subtle)',
+              }}
+            >
               {incompleteTodos.length === 0 ? (
-                <span className="text-green-400">All tasks completed!</span>
+                <span>All tasks completed!</span>
               ) : (
                 <span>
                   {incompleteTodos.length} of {todos.length} remaining
