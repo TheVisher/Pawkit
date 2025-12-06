@@ -233,13 +233,17 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       // Initial calculation
       calculateWidth();
 
-      // Recalculate on resize
+      // Recalculate on resize - debounced to wait for sidebar animations to complete
+      // Sidebar transitions are 300ms, so wait 350ms before recalculating
+      let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
       const resizeObserver = new ResizeObserver(() => {
-        calculateWidth();
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(calculateWidth, 350);
       });
       resizeObserver.observe(wrapperRef.current);
 
       return () => {
+        if (resizeTimeout) clearTimeout(resizeTimeout);
         resizeObserver.disconnect();
       };
     }, [minItemWidth, itemCount, edgePadding, onItemWidthCalculated]);
@@ -274,7 +278,8 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
             alignBottom,
             rounding: true,
           },
-          layoutOnResize: 100,
+          // Debounce resize layouts to wait for sidebar animations (300ms) to complete
+          layoutOnResize: 350,
           layoutOnInit: true,
           layoutDuration,
           layoutEasing,
