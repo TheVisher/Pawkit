@@ -29,6 +29,7 @@ import { useFileStore } from "@/lib/stores/file-store";
 import { createPortal } from "react-dom";
 import { useRef } from "react";
 import { addCollectionWithHierarchy, removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
+import { MuuriGridComponent, MuuriItem, type MuuriGridRef } from "@/components/library/muuri-grid";
 
 // Helper to get display type for a card (Note, PDF, Image, Bookmark, etc.)
 function getCardDisplayType(card: CardModel): string {
@@ -256,6 +257,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const selectRange = useSelection((state) => state.selectRange);
   const clearSelection = useSelection((state) => state.clear);
   const showThumbnails = useSettingsStore((state) => state.showThumbnails);
+
+  // Muuri grid ref for masonry layout
+  const muuriRef = useRef<MuuriGridRef>(null);
 
   // Get files from file store to check for attachments
   const files = useFileStore((state) => state.files);
@@ -777,7 +781,62 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               </tbody>
             </table>
           </div>
+        ) : layout === "masonry" ? (
+          /* Muuri-powered masonry grid with drag-and-drop */
+          <MuuriGridComponent
+            ref={muuriRef}
+            className="w-full"
+            style={{ minHeight: 200 }}
+            fillGaps={true}
+            dragEnabled={true}
+            dragHandle=".muuri-item-content"
+            layoutDuration={300}
+            layoutEasing="ease-out"
+            onDragEnd={() => {
+              // Could persist order here in the future
+            }}
+          >
+            {filteredAndSortedCards.map((card) => (
+              <MuuriItem
+                key={card.id}
+                cardId={card.id}
+                style={{
+                  width: `${cardSize < 30 ? 180 : cardSize < 60 ? 260 : cardSize < 85 ? 340 : 420}px`,
+                  padding: `${cardSpacing / 2}px`,
+                }}
+              >
+                <CardCell
+                  card={card}
+                  selected={selectedIds.includes(card.id)}
+                  showThumbnail={showThumbnails}
+                  layout={layout}
+                  area={area}
+                  onClick={handleCardClick}
+                  onImageLoad={() => {
+                    handleImageLoad();
+                    // Trigger Muuri relayout when images load
+                    muuriRef.current?.refreshItems();
+                  }}
+                  onAddToPawkit={(slug) => handleAddToPawkit(card.id, slug)}
+                  onDeleteCard={() => handleDeleteCard(card.id)}
+                  onRemoveFromPawkit={(slug) => handleRemoveFromPawkit(card.id, slug)}
+                  onRemoveFromAllPawkits={() => handleRemoveFromAllPawkits(card.id)}
+                  onFetchMetadata={handleFetchMetadata}
+                  isPinned={pinnedNoteIds.includes(card.id)}
+                  onPinToSidebar={() => handlePinToSidebar(card.id)}
+                  onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
+                  onSetThumbnail={() => handleOpenThumbnailModal(card.id)}
+                  hasAttachments={cardsWithAttachments.has(card.id)}
+                  showLabels={viewSettings.showLabels}
+                  showMetadata={viewSettings.showMetadata}
+                  showPreview={viewSettings.showPreview}
+                  cardPadding={viewSettings.cardPadding}
+                />
+              </MuuriItem>
+            ))}
+          </MuuriGridComponent>
         ) : (
+          /* CSS Grid for grid/compact layouts */
           <div className={layoutConfig.className} style={layoutConfig.style} data-masonry-gallery>
             {filteredAndSortedCards.map((card) => (
               <CardCell
