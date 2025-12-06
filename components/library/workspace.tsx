@@ -38,7 +38,8 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
   const clearSelection = useSelection((state) => state.clear);
 
   // Get view settings from the store
-  const viewType = area as ViewType;
+  // Map "pawkit" to "pawkits" to match the sidebar controls key
+  const viewType: ViewType = area === "pawkit" ? "pawkits" : (area as ViewType);
   const viewSettings = useViewSettingsStore((state) => state.getSettings(viewType));
   const setViewLayout = useViewSettingsStore((state) => state.setLayout);
 
