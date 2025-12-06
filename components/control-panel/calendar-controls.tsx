@@ -468,7 +468,7 @@ export function CalendarControls() {
             {totalUpcomingItems > 5 && (
               <button
                 className="w-full mt-2 text-xs transition-colors text-center py-2"
-                style={{ color: 'var(--text-accent)' }}
+                style={{ color: 'var(--ds-accent)' }}
               >
                 View all ({totalUpcomingItems} items)
               </button>
