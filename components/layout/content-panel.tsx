@@ -106,7 +106,6 @@ export function ContentPanel({
         ${verticalClasses}
         flex flex-col
         z-10
-        transition-all duration-300
         ${borderClasses}
         ${roundedClasses}
       `}
@@ -124,8 +123,11 @@ export function ContentPanel({
         // Use CSS variables for border highlights
         borderTopColor: 'var(--border-highlight-top)',
         borderLeftColor: 'var(--border-highlight-left)',
-        // Smooth transitions for panel position changes
+        // ONLY transition position properties - transition-all causes major lag
         transition: "left 0.3s ease-out, right 0.3s ease-out",
+        // Force GPU acceleration for smoother animations
+        willChange: "left, right",
+        transform: "translateZ(0)",
       }}
       data-content-panel
       data-right-embedded={isRightEmbedded}
