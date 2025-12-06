@@ -26,8 +26,10 @@ declare class MuuriGrid {
   synchronize(): this;
   getItems(targets?: HTMLElement | HTMLElement[] | MuuriItem | MuuriItem[] | number | number[]): MuuriItem[];
   getElement(): HTMLElement;
-  on(event: string, listener: (...args: unknown[]) => void): this;
-  off(event: string, listener: (...args: unknown[]) => void): this;
+  // eslint-disable-next-line
+  on(event: string, listener: (...args: any[]) => void): this;
+  // eslint-disable-next-line
+  off(event: string, listener: (...args: any[]) => void): this;
   destroy(removeElements?: boolean): this;
 }
 
