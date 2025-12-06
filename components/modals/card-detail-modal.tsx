@@ -1059,7 +1059,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[100] bg-black/70"
         onClick={handleClose}
       />
 
@@ -1075,7 +1075,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         }}
       >
         <div
-          className={`${isMobile ? "rounded-none" : "rounded-3xl"} border border-white/10 bg-white/5 backdrop-blur-lg shadow-2xl overflow-hidden pointer-events-auto relative flex flex-col ${
+          className={`${isMobile ? "rounded-none" : "rounded-2xl"} overflow-hidden pointer-events-auto relative flex flex-col ${
             isMobile || isReaderExpanded || isModalExpanded
               ? "w-full h-full"
               : isYouTubeUrl(card.url)
@@ -1084,10 +1084,21 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   ? "w-full max-w-3xl h-[80vh]"
                   : "w-full max-w-4xl max-h-[90vh]"
           }`}
+          style={{
+            background: 'var(--bg-surface-1)',
+            border: '1px solid var(--border-subtle)',
+            boxShadow: 'var(--shadow-3)',
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Top Bar - For all card types */}
-          <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm px-6 py-4 flex items-center justify-between flex-shrink-0 relative z-10">
+          <div
+            className="px-6 py-4 flex items-center justify-between flex-shrink-0 relative z-10"
+            style={{
+              background: 'var(--bg-surface-2)',
+              borderBottom: '1px solid var(--border-subtle)',
+            }}
+          >
             <div className="flex-1 min-w-0">
               {isEditingTitle ? (
                 // Edit mode for title
@@ -1255,7 +1266,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
           {/* Formatting Toolbar - Only for notes in edit mode */}
           {isNote && noteMode === 'edit' && showNoteToolbar && (
-            <div className="border-b border-white/10 bg-white/5 backdrop-blur-sm px-6 py-3 flex items-center gap-1 flex-wrap flex-shrink-0">
+            <div
+              className="px-6 py-3 flex items-center gap-1 flex-wrap flex-shrink-0"
+              style={{
+                background: 'var(--bg-surface-2)',
+                borderBottom: '1px solid var(--border-subtle)',
+              }}
+            >
               <button
                 onClick={() => insertMarkdown('**', '**')}
                 className="p-2 rounded hover:bg-white/10 transition-colors"
@@ -1749,7 +1766,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           </div>
 
           {/* Bottom Bar - For all card types */}
-          <div className="border-t border-white/10 bg-white/5 backdrop-blur-sm flex-shrink-0">
+          <div
+            className="flex-shrink-0"
+            style={{
+              background: 'var(--bg-surface-2)',
+              borderTop: '1px solid var(--border-subtle)',
+            }}
+          >
             <div className="flex items-center justify-center gap-2 p-4">
               {isNote ? (
                 // Note mode buttons
