@@ -8,6 +8,7 @@ import {
   ReactNode,
   forwardRef,
   useImperativeHandle,
+  useLayoutEffect,
 } from "react";
 
 // Muuri type declarations (library doesn't include types)
@@ -189,8 +190,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<MuuriGrid | null>(null);
-    const [isInitialized, setIsInitialized] = useState(false);
-    const itemsRef = useRef<Map<string, HTMLElement>>(new Map());
+    const [childCount, setChildCount] = useState(0);
 
     // Extract order from current grid state
     const getOrderFromGrid = useCallback(() => {
@@ -204,104 +204,125 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
         .filter(Boolean);
     }, []);
 
-    // Initialize Muuri
+    // Count children to detect changes
+    useLayoutEffect(() => {
+      const count = containerRef.current?.querySelectorAll(".muuri-item").length || 0;
+      setChildCount(count);
+    }, [children]);
+
+    // Initialize/reinitialize Muuri when children change
     useEffect(() => {
-      if (!containerRef.current || !Muuri || isInitialized) return;
+      if (!containerRef.current || !Muuri) return;
 
-      const grid = new Muuri(containerRef.current, {
-        items: ".muuri-item",
-        layout: {
-          fillGaps,
-          horizontal,
-          alignRight,
-          alignBottom,
-          rounding: true,
-        },
-        layoutOnResize: 150,
-        layoutOnInit: true,
-        layoutDuration,
-        layoutEasing,
-        dragEnabled,
-        dragHandle: dragHandle || null,
-        dragStartPredicate: {
-          distance: 10,
-          delay: 0,
-        },
-        dragSort: true,
-        dragSortHeuristics: {
-          sortInterval: 100,
-          minDragDistance: 10,
-          minBounceBackAngle: 1,
-        },
-        dragSortPredicate: {
-          threshold: 50,
-          action: "move",
-        },
-        dragRelease: {
-          duration: 300,
-          easing: "ease-out",
-          useDragContainer: true,
-        },
-        dragPlaceholder: {
-          enabled: true,
-          createElement: (item) => {
-            const el = item.getElement();
-            const placeholder = document.createElement("div");
-            placeholder.style.width = el.offsetWidth + "px";
-            placeholder.style.height = el.offsetHeight + "px";
-            placeholder.style.background = "var(--ds-accent-muted, rgba(168, 85, 247, 0.2))";
-            placeholder.style.borderRadius = "16px";
-            placeholder.style.border = "2px dashed var(--ds-accent, #a855f7)";
-            return placeholder;
-          },
-        },
-        showDuration: 200,
-        hideDuration: 200,
-        visibleStyles: {
-          opacity: 1,
-          transform: "scale(1)",
-        },
-        hiddenStyles: {
-          opacity: 0,
-          transform: "scale(0.8)",
-        },
-      });
+      // Small delay to ensure DOM is fully updated
+      const timeoutId = setTimeout(() => {
+        if (!containerRef.current) return;
 
-      gridRef.current = grid;
-
-      // Event listeners
-      if (onDragStart) {
-        grid.on("dragStart", (item: MuuriItem) => onDragStart(item));
-      }
-
-      if (onDragEnd) {
-        grid.on("dragEnd", (item: MuuriItem) => {
-          onDragEnd(item);
-          // Notify about order change after drag
-          if (onOrderChange) {
-            const newOrder = getOrderFromGrid();
-            onOrderChange(newOrder);
-          }
-        });
-      }
-
-      if (onDragMove) {
-        grid.on("dragMove", (item: MuuriItem) => onDragMove(item));
-      }
-
-      if (onLayoutEnd) {
-        grid.on("layoutEnd", () => onLayoutEnd());
-      }
-
-      setIsInitialized(true);
-
-      return () => {
+        // Destroy existing grid
         if (gridRef.current) {
-          gridRef.current.destroy();
+          gridRef.current.destroy(false);
           gridRef.current = null;
         }
+
+        // Check if there are items to initialize with
+        const items = containerRef.current.querySelectorAll(".muuri-item");
+        if (items.length === 0) return;
+
+        const grid = new Muuri(containerRef.current, {
+          items: ".muuri-item",
+          layout: {
+            fillGaps,
+            horizontal,
+            alignRight,
+            alignBottom,
+            rounding: true,
+          },
+          layoutOnResize: 150,
+          layoutOnInit: true,
+          layoutDuration,
+          layoutEasing,
+          dragEnabled,
+          dragHandle: dragHandle || null,
+          dragStartPredicate: {
+            distance: 10,
+            delay: 100,
+          },
+          dragSort: true,
+          dragSortHeuristics: {
+            sortInterval: 100,
+            minDragDistance: 10,
+            minBounceBackAngle: 1,
+          },
+          dragSortPredicate: {
+            threshold: 50,
+            action: "move",
+          },
+          dragRelease: {
+            duration: 300,
+            easing: "ease-out",
+            useDragContainer: true,
+          },
+          dragPlaceholder: {
+            enabled: true,
+            createElement: (item) => {
+              const el = item.getElement();
+              const placeholder = document.createElement("div");
+              placeholder.style.width = el.offsetWidth + "px";
+              placeholder.style.height = el.offsetHeight + "px";
+              placeholder.style.background = "var(--ds-accent-muted, rgba(168, 85, 247, 0.2))";
+              placeholder.style.borderRadius = "16px";
+              placeholder.style.border = "2px dashed var(--ds-accent, #a855f7)";
+              return placeholder;
+            },
+          },
+          showDuration: 200,
+          hideDuration: 200,
+          visibleStyles: {
+            opacity: 1,
+            transform: "scale(1)",
+          },
+          hiddenStyles: {
+            opacity: 0,
+            transform: "scale(0.8)",
+          },
+        });
+
+        gridRef.current = grid;
+
+        // Event listeners
+        if (onDragStart) {
+          grid.on("dragStart", (item: MuuriItem) => onDragStart(item));
+        }
+
+        if (onDragEnd) {
+          grid.on("dragEnd", (item: MuuriItem) => {
+            onDragEnd(item);
+            // Notify about order change after drag
+            if (onOrderChange) {
+              const newOrder = getOrderFromGrid();
+              onOrderChange(newOrder);
+            }
+          });
+        }
+
+        if (onDragMove) {
+          grid.on("dragMove", (item: MuuriItem) => onDragMove(item));
+        }
+
+        if (onLayoutEnd) {
+          grid.on("layoutEnd", () => onLayoutEnd());
+        }
+
+        // Force a layout after initialization
+        grid.refreshItems();
+        grid.layout();
+      }, 50);
+
+      return () => {
+        clearTimeout(timeoutId);
       };
     }, [
+      childCount,
       fillGaps,
       horizontal,
       alignRight,
@@ -316,12 +337,22 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       onLayoutEnd,
       onOrderChange,
       getOrderFromGrid,
-      isInitialized,
     ]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+      return () => {
+        if (gridRef.current) {
+          gridRef.current.destroy(false);
+          gridRef.current = null;
+        }
+      };
+    }, []);
 
     // Expose methods via ref
     useImperativeHandle(ref, () => ({
       layout: (instant = false) => {
+        gridRef.current?.refreshItems();
         gridRef.current?.layout(instant);
       },
       refreshItems: () => {
@@ -338,43 +369,6 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
         gridRef.current?.sort(comparer);
       },
     }));
-
-    // Handle children changes - add/remove items
-    useEffect(() => {
-      if (!gridRef.current || !containerRef.current || !isInitialized) return;
-
-      // Get current items in the DOM
-      const currentElements = Array.from(
-        containerRef.current.querySelectorAll(".muuri-item")
-      ) as HTMLElement[];
-
-      // Get items Muuri knows about
-      const muuriItems = gridRef.current.getItems();
-      const muuriElements = new Set(muuriItems.map((item) => item.getElement()));
-
-      // Find new elements (in DOM but not in Muuri)
-      const newElements = currentElements.filter((el) => !muuriElements.has(el));
-
-      // Find removed elements (in Muuri but not in DOM)
-      const removedItems = muuriItems.filter(
-        (item) => !currentElements.includes(item.getElement())
-      );
-
-      // Add new elements
-      if (newElements.length > 0) {
-        gridRef.current.add(newElements, { index: 0, layout: false });
-      }
-
-      // Remove old items
-      if (removedItems.length > 0) {
-        gridRef.current.remove(removedItems, { removeElements: false, layout: false });
-      }
-
-      // Re-layout if changes were made
-      if (newElements.length > 0 || removedItems.length > 0) {
-        gridRef.current.layout();
-      }
-    }, [children, isInitialized]);
 
     return (
       <div
@@ -412,7 +406,9 @@ export function MuuriItem({ children, cardId, className = "", style }: MuuriItem
         ...style,
       }}
     >
-      <div className="muuri-item-content">{children}</div>
+      <div className="muuri-item-content" style={{ position: "relative", width: "100%", height: "100%" }}>
+        {children}
+      </div>
     </div>
   );
 }
