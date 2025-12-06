@@ -218,10 +218,26 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       const timeoutId = setTimeout(() => {
         if (!containerRef.current) return;
 
-        // Destroy existing grid
+        // Destroy existing grid and clean up inline styles
         if (gridRef.current) {
+          const oldItems = gridRef.current.getItems();
           gridRef.current.destroy(false);
           gridRef.current = null;
+
+          // Clean up inline styles from old items
+          oldItems.forEach((item) => {
+            try {
+              const el = item.getElement();
+              if (el) {
+                el.style.transform = "";
+                el.style.position = "";
+                el.style.left = "";
+                el.style.top = "";
+              }
+            } catch {
+              // Item may already be destroyed
+            }
+          });
         }
 
         // Check if there are items to initialize with
@@ -343,8 +359,27 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
     useEffect(() => {
       return () => {
         if (gridRef.current) {
+          // Get all items before destroying
+          const items = gridRef.current.getItems();
+
+          // Destroy the grid
           gridRef.current.destroy(false);
           gridRef.current = null;
+
+          // Clean up inline styles from items to prevent stacking issues
+          items.forEach((item) => {
+            try {
+              const el = item.getElement();
+              if (el) {
+                el.style.transform = "";
+                el.style.position = "";
+                el.style.left = "";
+                el.style.top = "";
+              }
+            } catch {
+              // Item may already be destroyed
+            }
+          });
         }
       };
     }, []);

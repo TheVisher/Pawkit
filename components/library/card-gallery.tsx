@@ -793,7 +793,10 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             layoutDuration={300}
             layoutEasing="ease-out"
             onDragEnd={() => {
-              // Could persist order here in the future
+              // Trigger relayout after drag to fix empty columns
+              setTimeout(() => {
+                muuriRef.current?.layout();
+              }, 50);
             }}
           >
             {filteredAndSortedCards.map((card) => (
