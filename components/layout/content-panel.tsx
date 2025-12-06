@@ -132,8 +132,8 @@ export function ContentPanel({
       data-content-panel
       data-right-embedded={isRightEmbedded}
     >
-      {/* Content container with scrolling */}
-      <div className="flex-1 overflow-y-auto px-6 py-6">
+      {/* Content container with scrolling - scrollbar hidden for cleaner look */}
+      <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6">
         {children}
       </div>
     </div>
