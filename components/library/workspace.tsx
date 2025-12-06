@@ -7,7 +7,7 @@ import { CardModel, CollectionNode } from "@/lib/types";
 import { useSelection } from "@/lib/hooks/selection-store";
 import { CardGallery } from "@/components/library/card-gallery";
 import { LayoutMode } from "@/lib/constants";
-import { useViewSettingsStore, type ViewType } from "@/lib/hooks/view-settings-store";
+import { useViewSettingsStore, type ViewKey } from "@/lib/hooks/view-settings-store";
 
 export type LibraryWorkspaceProps = {
   initialCards: CardModel[];
@@ -38,9 +38,11 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
   const clearSelection = useSelection((state) => state.clear);
 
   // Get view settings from the store
-  // Map "pawkit" to "pawkits" to match the sidebar controls key
-  const viewType: ViewType = area === "pawkit" ? "pawkits" : (area as ViewType);
-  const viewSettings = useViewSettingsStore((state) => state.getSettings(viewType));
+  // For pawkits, use pawkit-specific key (e.g., "pawkit-my-collection") if slug provided
+  const viewKey: ViewKey = area === "pawkit" && initialQuery.collection
+    ? `pawkit-${initialQuery.collection}`
+    : (area === "pawkit" ? "pawkits" : area);
+  const viewSettings = useViewSettingsStore((state) => state.getSettings(viewKey));
   const setViewLayout = useViewSettingsStore((state) => state.setLayout);
 
   const selectedCollection = useMemo(() => searchParams?.get("collection") ?? null, [searchParams]);
@@ -75,7 +77,7 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
   const handleLayoutChange = (nextLayout: LayoutMode) => {
     setLayout(nextLayout);
     // Save to view settings store instead of localStorage
-    setViewLayout(viewType, nextLayout);
+    setViewLayout(viewKey, nextLayout);
     const params = new URLSearchParams(searchParams?.toString());
     params.set("layout", nextLayout);
     const currentPath = window.location.pathname;

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { usePathname } from "next/navigation";
 import { PanelSection, PanelButton } from "./control-panel";
 import { Grid, List, SortAsc, Eye, Maximize2, Grid3X3, Grid2X2, LayoutGrid, Square, File, Link, FileText, ImageIcon, Music, Video, FileBox, Tag, X, ArrowUp, ArrowDown, ChevronDown, Check } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useViewSettingsStore, type SortBy, type ContentType } from "@/lib/hooks/view-settings-store";
+import { useViewSettingsStore, type SortBy, type ContentType, type ViewKey } from "@/lib/hooks/view-settings-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { TodosSection } from "./todos-section";
 
@@ -365,9 +366,26 @@ const mapControlToSortBy = (sort: "date" | "modified" | "title" | "domain"): Sor
   }
 };
 
-export function PawkitsControls() {
-  // Get view settings from store - using "pawkits" key
-  const viewSettings = useViewSettingsStore((state) => state.getSettings("pawkits"));
+type PawkitsControlsProps = {
+  slug?: string; // Optional pawkit slug for per-pawkit settings
+};
+
+export function PawkitsControls({ slug: propSlug }: PawkitsControlsProps) {
+  // Get current pathname to extract slug if not provided via props
+  const pathname = usePathname();
+
+  // Extract slug from URL path (e.g., /pawkits/my-collection -> my-collection)
+  const slug = useMemo(() => {
+    if (propSlug) return propSlug;
+    const match = pathname?.match(/^\/pawkits\/([^/]+)/);
+    return match ? match[1] : undefined;
+  }, [propSlug, pathname]);
+
+  // Compute view key - use pawkit-specific key if slug found, otherwise fallback to global "pawkits"
+  const viewKey: ViewKey = slug ? `pawkit-${slug}` : "pawkits";
+
+  // Get view settings from store
+  const viewSettings = useViewSettingsStore((state) => state.getSettings(viewKey));
   const setLayout = useViewSettingsStore((state) => state.setLayout);
   const setCardSize = useViewSettingsStore((state) => state.setCardSize);
   const setCardSpacing = useViewSettingsStore((state) => state.setCardSpacing);
@@ -397,23 +415,23 @@ export function PawkitsControls() {
   const sortOrder = viewSettings.sortOrder;
 
   const handleLayoutChange = (newLayout: "grid" | "masonry" | "list") => {
-    setLayout("pawkits", newLayout);
+    setLayout(viewKey, newLayout);
   };
 
   const handleSortChange = (newSort: "date" | "modified" | "title" | "domain") => {
-    setSortBy("pawkits", mapControlToSortBy(newSort));
+    setSortBy(viewKey, mapControlToSortBy(newSort));
   };
 
   const handleCardSizeChange = (size: number) => {
-    setCardSize("pawkits", size);
+    setCardSize(viewKey, size);
   };
 
   const handleCardSpacingChange = (spacing: number) => {
-    setCardSpacing("pawkits", spacing);
+    setCardSpacing(viewKey, spacing);
   };
 
   const handleCardPaddingChange = (padding: number) => {
-    setCardPadding("pawkits", padding);
+    setCardPadding(viewKey, padding);
   };
 
   const handleShowThumbnailsChange = (show: boolean) => {
@@ -421,15 +439,15 @@ export function PawkitsControls() {
   };
 
   const handleShowLabelsChange = (show: boolean) => {
-    setShowLabels("pawkits", show);
+    setShowLabels(viewKey, show);
   };
 
   const handleShowMetadataChange = (show: boolean) => {
-    setShowMetadata("pawkits", show);
+    setShowMetadata(viewKey, show);
   };
 
   const handleShowPreviewChange = (show: boolean) => {
-    setShowPreview("pawkits", show);
+    setShowPreview(viewKey, show);
   };
 
   const handleContentTypeToggle = (type: ContentType) => {
@@ -437,15 +455,15 @@ export function PawkitsControls() {
     const newTypes = currentTypes.includes(type)
       ? currentTypes.filter((t) => t !== type)
       : [...currentTypes, type];
-    setContentTypeFilter("pawkits", newTypes);
+    setContentTypeFilter(viewKey, newTypes);
   };
 
   const handleClearContentTypes = () => {
-    setContentTypeFilter("pawkits", []);
+    setContentTypeFilter(viewKey, []);
   };
 
   const handleToggleSortOrder = () => {
-    setSortOrder("pawkits", sortOrder === "asc" ? "desc" : "asc");
+    setSortOrder(viewKey, sortOrder === "asc" ? "desc" : "asc");
   };
 
   return (

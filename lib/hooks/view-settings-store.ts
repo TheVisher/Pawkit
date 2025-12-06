@@ -54,32 +54,35 @@ interface ServerViewSettingsItem {
   viewSpecific?: string; // JSON string
 }
 
+// ViewKey can be a static ViewType or a dynamic key like "pawkit-my-collection"
+export type ViewKey = ViewType | `pawkit-${string}`;
+
 export type ViewSettingsState = {
-  // Settings per view
-  settings: Record<ViewType, ViewSettings>;
-  
+  // Settings per view (supports both static ViewType and dynamic pawkit keys)
+  settings: Record<string, ViewSettings>;
+
   // Loading states
   isLoading: boolean;
   isSyncing: boolean;
-  
-  // Actions
-  getSettings: (view: ViewType) => ViewSettings;
-  updateSettings: (view: ViewType, updates: Partial<ViewSettings>) => Promise<void>;
-  setLayout: (view: ViewType, layout: LayoutMode) => Promise<void>;
-  setCardSize: (view: ViewType, size: number) => Promise<void>;
-  setCardSpacing: (view: ViewType, spacing: number) => Promise<void>;
-  setShowLabels: (view: ViewType, show: boolean) => Promise<void>;
-  setShowMetadata: (view: ViewType, show: boolean) => Promise<void>;
-  setShowTags: (view: ViewType, show: boolean) => Promise<void>;
-  setShowPreview: (view: ViewType, show: boolean) => Promise<void>;
-  setCardPadding: (view: ViewType, padding: number) => Promise<void>;
-  setContentTypeFilter: (view: ViewType, contentTypes: ContentType[]) => Promise<void>;
-  setSortBy: (view: ViewType, sortBy: SortBy) => Promise<void>;
-  setSortOrder: (view: ViewType, sortOrder: SortOrder) => Promise<void>;
-  setViewSpecific: (view: ViewType, data: Record<string, unknown>) => Promise<void>;
-  
+
+  // Actions - accept ViewKey (ViewType | pawkit-slug) for flexibility
+  getSettings: (view: ViewKey) => ViewSettings;
+  updateSettings: (view: ViewKey, updates: Partial<ViewSettings>) => Promise<void>;
+  setLayout: (view: ViewKey, layout: LayoutMode) => Promise<void>;
+  setCardSize: (view: ViewKey, size: number) => Promise<void>;
+  setCardSpacing: (view: ViewKey, spacing: number) => Promise<void>;
+  setShowLabels: (view: ViewKey, show: boolean) => Promise<void>;
+  setShowMetadata: (view: ViewKey, show: boolean) => Promise<void>;
+  setShowTags: (view: ViewKey, show: boolean) => Promise<void>;
+  setShowPreview: (view: ViewKey, show: boolean) => Promise<void>;
+  setCardPadding: (view: ViewKey, padding: number) => Promise<void>;
+  setContentTypeFilter: (view: ViewKey, contentTypes: ContentType[]) => Promise<void>;
+  setSortBy: (view: ViewKey, sortBy: SortBy) => Promise<void>;
+  setSortOrder: (view: ViewKey, sortOrder: SortOrder) => Promise<void>;
+  setViewSpecific: (view: ViewKey, data: Record<string, unknown>) => Promise<void>;
+
   // Sync with server
-  syncToServer: (view: ViewType) => Promise<void>;
+  syncToServer: (view: ViewKey) => Promise<void>;
   loadFromServer: () => Promise<void>;
 };
 
@@ -98,7 +101,7 @@ const defaultSettings: ViewSettings = {
   viewSpecific: {},
 };
 
-const createDefaultSettings = (): Record<ViewType, ViewSettings> => ({
+const createDefaultSettings = (): Record<string, ViewSettings> => ({
   library: { ...defaultSettings },
   notes: { ...defaultSettings, sortBy: "createdAt" },
   timeline: { ...defaultSettings, layout: "grid" },
