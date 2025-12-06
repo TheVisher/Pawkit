@@ -5,7 +5,7 @@ import { persist } from "zustand/middleware";
 import { LayoutMode as LayoutModeType } from "@/lib/constants";
 
 export type LayoutMode = LayoutModeType; // Re-export for convenience
-export type ViewType = "library" | "notes" | "timeline" | "pawkits" | "home" | "favorites" | "trash" | "tags";
+export type ViewType = "library" | "notes" | "timeline" | "pawkits" | "home" | "favorites" | "trash" | "tags" | "den";
 export type SortBy = "createdAt" | "title" | "url" | "updatedAt" | "pawkit";
 export type SortOrder = "asc" | "desc";
 
@@ -110,6 +110,7 @@ const createDefaultSettings = (): Record<string, ViewSettings> => ({
   favorites: { ...defaultSettings },
   trash: { ...defaultSettings },
   tags: { ...defaultSettings },
+  den: { ...defaultSettings },
 });
 
 export const useViewSettingsStore = create<ViewSettingsState>()(
