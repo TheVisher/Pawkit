@@ -247,7 +247,7 @@ export default function HelpPage() {
                   }}
                 >
                   <div className="flex items-center gap-2 mb-3">
-                    <Icon className="h-4 w-4" style={{ color: 'var(--ds-accent)' }} />
+                    <Keyboard className="h-4 w-4" style={{ color: 'var(--ds-accent)' }} />
                     <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                       {group.title}
                     </span>
@@ -322,12 +322,7 @@ export default function HelpPage() {
                     borderTopColor: 'var(--raised-border-top)',
                   }}
                 >
-                  <div
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                    style={{ background: 'var(--ds-accent-muted)' }}
-                  >
-                    <Icon className="h-4 w-4" style={{ color: 'var(--ds-accent)' }} />
-                  </div>
+                  <Icon className="h-4 w-4 shrink-0 mt-0.5" style={{ color: 'var(--ds-accent)' }} />
                   <div className="min-w-0">
                     <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                       {title}
@@ -424,12 +419,7 @@ export default function HelpPage() {
                   minWidth: '200px',
                 }}
               >
-                <div
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
-                  style={{ background: 'var(--ds-accent-muted)' }}
-                >
-                  <Icon className="h-4 w-4" style={{ color: 'var(--ds-accent)' }} />
-                </div>
+                <Icon className="h-4 w-4 shrink-0 mt-0.5" style={{ color: 'var(--ds-accent)' }} />
                 <div className="min-w-0">
                   <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                     {title}
