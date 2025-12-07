@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Menu } from "lucide-react";
 import { CardModel } from "@/lib/types";
-import Image from "next/image";
 import { AnimatedBackground } from "./animated-background";
 import { OrbitingCards } from "./orbiting-cards";
 import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
@@ -324,25 +323,23 @@ export function RediscoverSerendipity({
               : "scale-100 opacity-100"
           }`}
         >
-          {/* Card Image - flexes to fit thumbnail, no height restriction */}
+          {/* Card Image - shows at natural aspect ratio */}
           <div
-            className="relative rounded-2xl overflow-hidden"
+            className="rounded-2xl overflow-hidden"
             style={{
-              maxWidth: "min(600px, 80vw)",
               background: "var(--bg-surface-2)",
               boxShadow: "var(--shadow-3)",
               border: "1px solid var(--border-subtle)",
             }}
           >
             {thumbnail ? (
-              <Image
+              // Use native img for natural aspect ratio
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={thumbnail}
                 alt={cardTitle}
-                width={600}
-                height={900}
-                className="w-auto h-auto max-w-[80vw] max-h-[calc(100vh-250px)]"
+                className="block max-w-[min(600px,80vw)] max-h-[calc(100vh-280px)] w-auto h-auto"
                 style={{ objectFit: "contain" }}
-                unoptimized
               />
             ) : (
               <div
