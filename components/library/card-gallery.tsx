@@ -840,6 +840,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               if (cardId) {
                 useDragStore.getState().startDrag(cardId);
               }
+              // Add class to body for z-index handling
+              document.body.classList.add('muuri-dragging');
             }}
             onDragEnd={(item) => {
               // Check if we should drop into a pawkit
@@ -875,6 +877,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               }
               // Clear global drag state
               useDragStore.getState().endDrag();
+              // Remove body class for z-index handling
+              document.body.classList.remove('muuri-dragging');
               // Trigger relayout after drag to fix empty columns
               setTimeout(() => {
                 muuriRef.current?.refreshItems();

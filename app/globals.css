@@ -1279,7 +1279,7 @@ textarea:focus-visible {
 }
 
 /* Raise content panel z-index when a card is being dragged */
-[data-content-panel]:has(.muuri-item-dragging) {
+body.muuri-dragging [data-content-panel] {
   z-index: 200 !important;
 }
 
