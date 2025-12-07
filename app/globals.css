@@ -1278,6 +1278,11 @@ textarea:focus-visible {
   opacity: 0.8;
 }
 
+/* When dragged to body via dragContainer, ensure it's above everything */
+body > .muuri-item.muuri-item-dragging {
+  z-index: 99999 !important;
+}
+
 /* Raise content panel z-index when a card is being dragged */
 body.muuri-dragging [data-content-panel] {
   z-index: 200 !important;
