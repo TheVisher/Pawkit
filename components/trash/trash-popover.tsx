@@ -29,6 +29,7 @@ export function TrashPopover({ children }: TrashPopoverProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [confirmingEmpty, setConfirmingEmpty] = useState(false);
 
   const router = useRouter();
   const toast = useToastStore();
@@ -87,11 +88,14 @@ export function TrashPopover({ children }: TrashPopoverProps) {
     }
   }, []);
 
-  // Load items when popover opens
+  // Load items when popover opens, reset state when closes
   useEffect(() => {
     if (open) {
       loadTrashItems();
       setSelectedIds(new Set());
+    } else {
+      // Reset confirmation state when popover closes
+      setConfirmingEmpty(false);
     }
   }, [open, loadTrashItems]);
 
@@ -157,15 +161,20 @@ export function TrashPopover({ children }: TrashPopoverProps) {
     }
   };
 
-  // Empty trash
+  // Empty trash - first click shows confirmation, second click executes
   const handleEmptyTrash = async () => {
     if (items.length === 0) return;
 
-    const confirmed = window.confirm(
-      `Permanently delete all ${items.length} items? This cannot be undone.`
-    );
-    if (!confirmed) return;
+    // First click - show confirmation state
+    if (!confirmingEmpty) {
+      setConfirmingEmpty(true);
+      // Auto-reset after 3 seconds if not confirmed
+      setTimeout(() => setConfirmingEmpty(false), 3000);
+      return;
+    }
 
+    // Second click - execute
+    setConfirmingEmpty(false);
     setRestoring(true);
     try {
       // Call API to empty trash
@@ -294,10 +303,14 @@ export function TrashPopover({ children }: TrashPopoverProps) {
             <button
               onClick={handleEmptyTrash}
               disabled={items.length === 0 || restoring}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                confirmingEmpty
+                  ? "bg-rose-500 text-white hover:bg-rose-600"
+                  : "text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+              }`}
             >
               <Trash2 size={14} />
-              <span>Empty</span>
+              <span>{confirmingEmpty ? "Confirm?" : "Empty"}</span>
             </button>
           </div>
 
