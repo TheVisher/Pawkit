@@ -1274,6 +1274,8 @@ textarea:focus-visible {
   cursor: grabbing;
   /* Allow mouse events to pass through to elements beneath (e.g., pawkits for drop) */
   pointer-events: none;
+  /* Ghost effect */
+  opacity: 0.8;
 }
 
 /* Raise content panel z-index when a card is being dragged */
