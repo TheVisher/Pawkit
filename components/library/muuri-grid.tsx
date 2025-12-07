@@ -284,6 +284,8 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
           layoutDuration,
           layoutEasing,
           dragEnabled,
+          // Set dragContainer to the scroll container for proper coordinate calculation
+          dragContainer: containerRef.current?.closest('.overflow-y-auto') as HTMLElement || null,
           dragHandle: dragHandle || null,
           dragStartPredicate: {
             distance: 10,
@@ -303,6 +305,20 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
             duration: 300,
             easing: "ease-out",
             useDragContainer: true,
+          },
+          dragAutoScroll: {
+            targets: [
+              { element: window, priority: 0 },
+              // Find the scroll container (parent with overflow)
+              ...(containerRef.current?.closest('.overflow-y-auto')
+                ? [{ element: containerRef.current.closest('.overflow-y-auto') as HTMLElement, priority: 1 }]
+                : []),
+            ],
+            threshold: 50,
+            safeZone: 0.2,
+            speed: 500,
+            sortDuringScroll: true,
+            smoothStop: true,
           },
           dragPlaceholder: {
             enabled: true,
