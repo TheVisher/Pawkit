@@ -18,11 +18,12 @@ type OrbitPosition = {
   blur: number;
   zIndex: number;
   delay: number;
+  duration: number; // Varied orbit duration for each card
 };
 
 export function OrbitingCards({ cards }: OrbitingCardsProps) {
-  // Take up to 6 cards for the orbit
-  const orbitCards = useMemo(() => cards.slice(0, 6), [cards]);
+  // Take up to 10 cards for the orbit (more cards for fuller effect)
+  const orbitCards = useMemo(() => cards.slice(0, 10), [cards]);
 
   // Calculate positions for each card on an elliptical orbit
   const positions = useMemo(() => {
@@ -34,8 +35,8 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
       const angle = (i / count) * 2 * Math.PI;
 
       // Elliptical orbit - wider horizontally, larger to fit bigger cards
-      const radiusX = 500; // horizontal radius (increased)
-      const radiusY = 350; // vertical radius (increased)
+      const radiusX = 550; // horizontal radius (increased)
+      const radiusY = 380; // vertical radius (increased)
 
       const x = Math.cos(angle) * radiusX;
       const y = Math.sin(angle) * radiusY;
@@ -44,16 +45,20 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
       // Cards at sides (x extreme) are "closer" - larger and less blurred
       const depth = Math.abs(Math.sin(angle)); // 0 = sides, 1 = top/bottom
 
-      // MUCH bigger cards: 0.9 at sides, 0.6 at top/bottom
-      const scale = 0.9 - depth * 0.3;
+      // Even bigger cards: 1.0 at sides, 0.7 at top/bottom
+      const scale = 1.0 - depth * 0.3;
       // More blur: base 4px + up to 10px more based on depth
       const blur = 4 + depth * 10;
       const zIndex = Math.round((1 - depth) * 10); // Higher z at sides
 
       // Stagger animation start times (longer stagger for slower feel)
-      const delay = i * 10; // 10 second stagger between cards
+      const delay = i * 8; // 8 second stagger between cards
 
-      positions.push({ x, y, scale, blur, zIndex, delay });
+      // Varied orbit duration: 80-100 seconds (some cards slightly faster/slower)
+      // This creates the overtaking effect where cards pass each other
+      const duration = 85 + (i % 3) * 8 - (i % 2) * 5; // Varies between ~80-96s
+
+      positions.push({ x, y, scale, blur, zIndex, delay, duration });
     }
 
     return positions;
@@ -85,15 +90,15 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
                 // Depth effects
                 filter: pos.blur > 0 ? `blur(${pos.blur}px)` : undefined,
                 zIndex: pos.zIndex,
-                // Animation - SLOW 90 second orbit
-                animation: `orbit 90s linear infinite`,
+                // Animation - varied duration for overtaking effect
+                animation: `orbit ${pos.duration}s linear infinite`,
                 animationDelay: `-${pos.delay}s`,
                 // Smooth transitions
                 willChange: "transform",
               }}
             >
               <div
-                className="w-72 h-48 rounded-2xl overflow-hidden"
+                className="w-96 h-64 rounded-2xl overflow-hidden"
                 style={{
                   background: "var(--bg-surface-2)",
                   boxShadow: "var(--shadow-3)",
@@ -106,7 +111,7 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
                     alt={card.title || "Card"}
                     fill
                     className="object-cover"
-                    sizes="288px"
+                    sizes="384px"
                   />
                 ) : (
                   <div
