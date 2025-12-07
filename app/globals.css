@@ -1311,3 +1311,50 @@ body.muuri-dragging [data-content-panel] {
 .muuri-item-placeholder {
   opacity: 0.7;
 }
+
+/* ===========================================
+   REDISCOVER SERENDIPITY MODE - ORBIT ANIMATION
+   =========================================== */
+
+/* Orbit animation for floating cards */
+@keyframes orbit {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg) translateX(var(--orbit-radius, 350px)) rotate(0deg) scale(var(--orbit-scale, 0.4));
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg) translateX(var(--orbit-radius, 350px)) rotate(-360deg) scale(var(--orbit-scale, 0.4));
+  }
+}
+
+/* Alternative: gentler floating/drifting animation */
+@keyframes float-drift {
+  0%, 100% {
+    transform: translate(-50%, -50%) translateY(0px) scale(var(--card-scale, 0.4));
+  }
+  50% {
+    transform: translate(-50%, -50%) translateY(-20px) scale(var(--card-scale, 0.4));
+  }
+}
+
+/* Orbit card base styles */
+.orbit-card {
+  transition: filter 0.5s ease, opacity 0.5s ease;
+  opacity: 0.7;
+}
+
+.orbit-card:hover {
+  opacity: 1;
+}
+
+/* Serendipity action buttons */
+.serendipity-action-btn {
+  transition: all 0.2s ease;
+}
+
+.serendipity-action-btn:hover {
+  transform: scale(1.05);
+}
+
+.serendipity-action-btn:active {
+  transform: scale(0.98);
+}

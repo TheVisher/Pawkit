@@ -8,7 +8,8 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { AnimatedBackground } from "@/components/rediscover/animated-background";
-import { RediscoverMode, RediscoverAction } from "@/components/rediscover/rediscover-mode";
+import { RediscoverMode, RediscoverAction } from "@/components/rediscover/rediscover-mode-classic";
+import { RediscoverSerendipity } from "@/components/rediscover/rediscover-serendipity";
 import { useRediscoverStore, RediscoverFilter } from "@/lib/hooks/rediscover-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardModel, CollectionNode } from "@/lib/types";
@@ -373,8 +374,37 @@ function LibraryPageContent() {
     : null;
   const remainingCount = rediscoverStore.queue.length - rediscoverStore.currentIndex;
 
+  // Get cards for orbiting display (next 6 cards after current)
+  const orbitCards = rediscoverStore.queue.slice(
+    rediscoverStore.currentIndex + 1,
+    rediscoverStore.currentIndex + 7
+  );
+
   // Render Rediscover mode or normal Library view
   if (isRediscoverMode) {
+    // Check which style to render
+    const isSerendipityMode = rediscoverStore.style === "serendipity";
+
+    if (isSerendipityMode) {
+      return (
+        <>
+          <RediscoverSerendipity
+            currentCard={currentCard}
+            onAction={handleRediscoverAction}
+            onExit={handleExitRediscover}
+            remainingCount={remainingCount}
+            orbitCards={orbitCards}
+          />
+          <MoveToPawkitModal
+            open={showPawkitModal}
+            onClose={handlePawkitModalClose}
+            onConfirm={handlePawkitSelected}
+          />
+        </>
+      );
+    }
+
+    // Classic mode
     return (
       <>
         <AnimatedBackground />
