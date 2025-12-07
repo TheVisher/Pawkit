@@ -308,8 +308,8 @@ export function RediscoverSerendipity({
         </>
       )}
 
-      {/* Main Content - Centered Card */}
-      <div className="relative z-10 flex flex-col items-center justify-center h-full px-4">
+      {/* Main Content - Centered Card (not constrained by buttons) */}
+      <div className="relative z-10 flex items-center justify-center h-full px-4 pb-40">
         {/* Card Container */}
         <div
           className={`flex flex-col items-center space-y-3 transition-all duration-300 ease-out ${
@@ -324,12 +324,12 @@ export function RediscoverSerendipity({
               : "scale-100 opacity-100"
           }`}
         >
-          {/* Card Image - flexes to fit thumbnail */}
+          {/* Card Image - flexes to fit thumbnail with more room */}
           <div
             className="relative rounded-2xl overflow-hidden"
             style={{
-              maxWidth: "min(600px, 80vw)",
-              maxHeight: "min(500px, 60vh)",
+              maxWidth: "min(700px, 85vw)",
+              maxHeight: "min(700px, 70vh)",
               background: "var(--bg-surface-2)",
               boxShadow: "var(--shadow-3)",
               border: "1px solid var(--border-subtle)",
@@ -339,9 +339,9 @@ export function RediscoverSerendipity({
               <Image
                 src={thumbnail}
                 alt={cardTitle}
-                width={600}
-                height={500}
-                className="object-contain w-auto h-auto max-w-full max-h-[60vh]"
+                width={700}
+                height={700}
+                className="object-contain w-auto h-auto max-w-full max-h-[70vh]"
                 unoptimized
               />
             ) : (
@@ -367,50 +367,50 @@ export function RediscoverSerendipity({
             {cardTitle}
           </p>
         </div>
+      </div>
 
-        {/* Action Buttons */}
-        <div className="mt-10 flex flex-col items-center gap-3">
-          {/* Main Actions */}
-          <div className="flex items-center gap-6">
-            {/* Forget Button - subtle red tint on hover */}
-            <button
-              onClick={() => handleAction("delete")}
-              disabled={isProcessing}
-              className="px-8 py-4 rounded-full font-medium text-lg transition-all serendipity-action-btn hover:bg-red-500/20"
-              style={{
-                background: "var(--accent)",
-                color: "white",
-                boxShadow: "var(--glow-hover)",
-              }}
-            >
-              Forget
-            </button>
-
-            {/* Keep Button */}
-            <button
-              onClick={() => handleAction("keep")}
-              disabled={isProcessing}
-              className="px-8 py-4 rounded-full font-medium text-lg transition-all serendipity-action-btn"
-              style={{
-                background: "var(--accent)",
-                color: "white",
-                boxShadow: "var(--glow-hover)",
-              }}
-            >
-              Keep
-            </button>
-          </div>
-
-          {/* Subtle Add to Pawkit link */}
+      {/* Action Buttons - anchored to bottom */}
+      <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-4">
+        {/* Main Actions - 2x larger */}
+        <div className="flex items-center gap-8">
+          {/* Forget Button - subtle red tint on hover */}
           <button
-            onClick={() => handleAction("add-to-pawkit")}
+            onClick={() => handleAction("delete")}
             disabled={isProcessing}
-            className="text-xs transition-all hover:underline opacity-50 hover:opacity-70"
-            style={{ color: "var(--text-muted)" }}
+            className="px-12 py-6 rounded-full font-semibold text-2xl transition-all serendipity-action-btn hover:bg-red-500/20"
+            style={{
+              background: "var(--accent)",
+              color: "white",
+              boxShadow: "var(--glow-hover)",
+            }}
           >
-            + Add to Pawkit
+            Forget
+          </button>
+
+          {/* Keep Button */}
+          <button
+            onClick={() => handleAction("keep")}
+            disabled={isProcessing}
+            className="px-12 py-6 rounded-full font-semibold text-2xl transition-all serendipity-action-btn"
+            style={{
+              background: "var(--accent)",
+              color: "white",
+              boxShadow: "var(--glow-hover)",
+            }}
+          >
+            Keep
           </button>
         </div>
+
+        {/* Subtle Add to Pawkit link */}
+        <button
+          onClick={() => handleAction("add-to-pawkit")}
+          disabled={isProcessing}
+          className="text-sm transition-all hover:underline opacity-50 hover:opacity-70"
+          style={{ color: "var(--text-muted)" }}
+        >
+          + Add to Pawkit
+        </button>
       </div>
 
       {/* Keyboard hints - anchored to bottom left */}
