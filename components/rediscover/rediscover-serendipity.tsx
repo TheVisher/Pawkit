@@ -312,7 +312,7 @@ export function RediscoverSerendipity({
       <div className="relative z-10 flex flex-col items-center justify-center h-full px-4">
         {/* Card Container */}
         <div
-          className={`w-full max-w-lg space-y-6 transition-all duration-300 ease-out ${
+          className={`flex flex-col items-center space-y-3 transition-all duration-300 ease-out ${
             cardTransition === "entering"
               ? "scale-90 opacity-0"
               : cardTransition === "exiting-keep"
@@ -324,10 +324,12 @@ export function RediscoverSerendipity({
               : "scale-100 opacity-100"
           }`}
         >
-          {/* Card Image */}
+          {/* Card Image - flexes to fit thumbnail */}
           <div
-            className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden"
+            className="relative rounded-2xl overflow-hidden"
             style={{
+              maxWidth: "min(600px, 80vw)",
+              maxHeight: "min(500px, 60vh)",
               background: "var(--bg-surface-2)",
               boxShadow: "var(--shadow-3)",
               border: "1px solid var(--border-subtle)",
@@ -337,13 +339,14 @@ export function RediscoverSerendipity({
               <Image
                 src={thumbnail}
                 alt={cardTitle}
-                fill
-                className="object-cover"
+                width={600}
+                height={500}
+                className="object-contain w-auto h-auto max-w-full max-h-[60vh]"
                 unoptimized
               />
             ) : (
               <div
-                className="w-full h-full flex items-center justify-center"
+                className="w-[400px] h-[300px] flex items-center justify-center"
                 style={{ background: "var(--bg-surface-3)" }}
               >
                 <span
@@ -356,29 +359,24 @@ export function RediscoverSerendipity({
             )}
           </div>
 
-          {/* Card Title */}
-          <div className="text-center space-y-2">
-            <h2
-              className="text-2xl font-semibold line-clamp-2"
-              style={{ color: "var(--text-primary)" }}
-            >
-              {cardTitle}
-            </h2>
-            <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-              {domain}
-            </p>
-          </div>
+          {/* Card Title - smaller, single line, dimmer */}
+          <p
+            className="text-sm font-medium line-clamp-1 max-w-md text-center"
+            style={{ color: "rgba(255, 255, 255, 0.6)" }}
+          >
+            {cardTitle}
+          </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="mt-12 flex flex-col items-center gap-4">
+        <div className="mt-10 flex flex-col items-center gap-3">
           {/* Main Actions */}
           <div className="flex items-center gap-6">
-            {/* Forget Button - exact same style as Keep */}
+            {/* Forget Button - subtle red tint on hover */}
             <button
               onClick={() => handleAction("delete")}
               disabled={isProcessing}
-              className="px-8 py-4 rounded-full font-medium text-lg transition-all serendipity-action-btn"
+              className="px-8 py-4 rounded-full font-medium text-lg transition-all serendipity-action-btn hover:bg-red-500/20"
               style={{
                 background: "var(--accent)",
                 color: "white",
@@ -407,31 +405,31 @@ export function RediscoverSerendipity({
           <button
             onClick={() => handleAction("add-to-pawkit")}
             disabled={isProcessing}
-            className="text-sm transition-all hover:underline"
+            className="text-xs transition-all hover:underline opacity-50 hover:opacity-70"
             style={{ color: "var(--text-muted)" }}
           >
             + Add to Pawkit
           </button>
-
-          {/* Keyboard hints */}
-          <div
-            className="flex items-center gap-4 mt-4 text-xs"
-            style={{ color: "var(--text-disabled)" }}
-          >
-            <span>
-              <kbd className="px-2 py-1 rounded bg-white/10 font-mono">F</kbd>{" "}
-              Forget
-            </span>
-            <span>
-              <kbd className="px-2 py-1 rounded bg-white/10 font-mono">K</kbd>{" "}
-              Keep
-            </span>
-            <span>
-              <kbd className="px-2 py-1 rounded bg-white/10 font-mono">A</kbd>{" "}
-              Add to Pawkit
-            </span>
-          </div>
         </div>
+      </div>
+
+      {/* Keyboard hints - anchored to bottom left */}
+      <div
+        className="absolute bottom-6 left-6 z-20 flex flex-col gap-2 text-xs"
+        style={{ color: "var(--text-disabled)" }}
+      >
+        <span>
+          <kbd className="px-2 py-1 rounded bg-white/10 font-mono">F</kbd>{" "}
+          Forget
+        </span>
+        <span>
+          <kbd className="px-2 py-1 rounded bg-white/10 font-mono">K</kbd>{" "}
+          Keep
+        </span>
+        <span>
+          <kbd className="px-2 py-1 rounded bg-white/10 font-mono">A</kbd>{" "}
+          Add to Pawkit
+        </span>
       </div>
     </div>
   );

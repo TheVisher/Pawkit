@@ -34,9 +34,9 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
       // Distribute cards evenly around the orbit
       const angle = (i / count) * 2 * Math.PI;
 
-      // Elliptical orbit - wider horizontally, larger to fit bigger cards
-      const radiusX = 650; // horizontal radius (increased for huge cards)
-      const radiusY = 450; // vertical radius (increased for huge cards)
+      // Elliptical orbit - very wide to accommodate huge cards
+      const radiusX = 750; // horizontal radius (massive)
+      const radiusY = 500; // vertical radius (massive)
 
       const x = Math.cos(angle) * radiusX;
       const y = Math.sin(angle) * radiusY;
@@ -45,10 +45,10 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
       // Cards at sides (x extreme) are "closer" - larger and less blurred
       const depth = Math.abs(Math.sin(angle)); // 0 = sides, 1 = top/bottom
 
-      // Even bigger cards: 1.0 at sides, 0.7 at top/bottom
-      const scale = 1.0 - depth * 0.3;
-      // More blur: base 4px + up to 10px more based on depth
-      const blur = 4 + depth * 10;
+      // Huge cards: 1.1 at sides, 0.8 at top/bottom
+      const scale = 1.1 - depth * 0.3;
+      // Heavy blur like MyMind: base 12px + up to 16px more based on depth
+      const blur = 12 + depth * 16;
       const zIndex = Math.round((1 - depth) * 10); // Higher z at sides
 
       // Stagger animation start times (longer stagger for slower feel)
@@ -100,8 +100,8 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
               <div
                 className="rounded-2xl overflow-hidden"
                 style={{
-                  width: "480px",
-                  height: "320px",
+                  width: "550px",
+                  height: "380px",
                   background: "var(--bg-surface-2)",
                   boxShadow: "var(--shadow-3)",
                   border: "1px solid var(--border-subtle)",
@@ -113,7 +113,7 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
                     alt={card.title || "Card"}
                     fill
                     className="object-cover"
-                    sizes="480px"
+                    sizes="550px"
                   />
                 ) : (
                   <div
