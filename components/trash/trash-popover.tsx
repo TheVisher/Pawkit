@@ -200,7 +200,7 @@ export function TrashPopover({ children }: TrashPopoverProps) {
       <PopoverContent
         align="end"
         sideOffset={8}
-        className="w-[340px] p-0"
+        className="w-[340px] p-0 z-[200]"
       >
         {/* Header */}
         <div
