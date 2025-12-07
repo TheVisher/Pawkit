@@ -35,8 +35,8 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
       const angle = (i / count) * 2 * Math.PI;
 
       // Elliptical orbit - wider horizontally, larger to fit bigger cards
-      const radiusX = 550; // horizontal radius (increased)
-      const radiusY = 380; // vertical radius (increased)
+      const radiusX = 650; // horizontal radius (increased for huge cards)
+      const radiusY = 450; // vertical radius (increased for huge cards)
 
       const x = Math.cos(angle) * radiusX;
       const y = Math.sin(angle) * radiusY;
@@ -98,8 +98,10 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
               }}
             >
               <div
-                className="w-96 h-64 rounded-2xl overflow-hidden"
+                className="rounded-2xl overflow-hidden"
                 style={{
+                  width: "480px",
+                  height: "320px",
                   background: "var(--bg-surface-2)",
                   boxShadow: "var(--shadow-3)",
                   border: "1px solid var(--border-subtle)",
@@ -111,7 +113,7 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
                     alt={card.title || "Card"}
                     fill
                     className="object-cover"
-                    sizes="384px"
+                    sizes="480px"
                   />
                 ) : (
                   <div

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Heart, Trash2, FolderPlus } from "lucide-react";
+import { X, Heart, Trash2, FolderPlus, Sparkles } from "lucide-react";
 import { CardModel } from "@/lib/types";
 import Image from "next/image";
+import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
 
 export type RediscoverAction = "keep" | "delete" | "add-to-pawkit";
 
@@ -18,6 +19,7 @@ export function RediscoverMode({ currentCard, onAction, onExit, remainingCount }
   const [isExiting, setIsExiting] = useState(false);
   const [cardTransition, setCardTransition] = useState<"entering" | "exiting-keep" | "exiting-delete" | "exiting-add-to-pawkit" | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { setStyle } = useRediscoverStore();
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -124,8 +126,18 @@ export function RediscoverMode({ currentCard, onAction, onExit, remainingCount }
 
   return (
     <div className={`fixed inset-0 flex items-center justify-center transition-opacity duration-300 ${isExiting ? "opacity-0" : "opacity-100"}`}>
-      {/* Exit Button */}
-      <div className="absolute top-6 right-6 z-10">
+      {/* Top Right Controls */}
+      <div className="absolute top-6 right-6 z-10 flex items-center gap-2">
+        {/* Switch to Serendipity */}
+        <button
+          onClick={() => setStyle("serendipity")}
+          className="p-2 rounded-lg bg-white/5 backdrop-blur-lg border border-white/10 hover:bg-white/10 transition-all hover:border-white/20 text-muted-foreground hover:text-foreground"
+          aria-label="Switch to Serendipity mode"
+          title="Switch to Serendipity mode"
+        >
+          <Sparkles size={20} />
+        </button>
+        {/* Exit Button */}
         <button
           onClick={handleExit}
           className="p-2 rounded-lg bg-white/5 backdrop-blur-lg border border-white/10 hover:bg-white/10 transition-all hover:border-white/20 text-muted-foreground hover:text-foreground"
