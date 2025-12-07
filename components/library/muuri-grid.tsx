@@ -284,6 +284,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
           layoutDuration,
           layoutEasing,
           dragEnabled,
+          dragContainer: document.body, // Move to body during drag to escape overflow clipping
           dragHandle: dragHandle || null,
           dragStartPredicate: {
             distance: 10,
@@ -302,7 +303,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
           dragRelease: {
             duration: 300,
             easing: "ease-out",
-            useDragContainer: true,
+            useDragContainer: false, // Re-parent to grid BEFORE release animation to fix positioning
           },
           dragPlaceholder: {
             enabled: true,
