@@ -110,9 +110,8 @@ export function LeftNavigationPanel({
   // Mobile detection - on mobile, panel is always a full-height overlay
   const isMobile = useIsMobile();
 
-  // Drag state for drop-to-pawkit feature
+  // Drag state for drop-to-pawkit feature (hover detection and visual highlight)
   const isDraggingCard = useDragStore((state) => state.isDragging);
-  const draggedCardId = useDragStore((state) => state.draggedCardId);
   const dragHoveredPawkit = useDragStore((state) => state.hoveredPawkitSlug);
   const setDragHoveredPawkit = useDragStore((state) => state.setHoveredPawkit);
 
@@ -434,53 +433,6 @@ export function LeftNavigationPanel({
       setAnimatingPawkit(null);
     }, 1500);
   };
-
-  // Handle dropping a dragged card onto a pawkit
-  const handleDropToPawkit = useCallback(async (collectionSlug: string, collectionName: string, cardId: string) => {
-    // Get the card from the store
-    const card = store.cards.find(c => c.id === cardId);
-    if (!card) return;
-
-    // Add collection to card if not already in it
-    const currentCollections = card.collections || [];
-    if (!currentCollections.includes(collectionSlug)) {
-      const newCollections = [...currentCollections, collectionSlug];
-      await updateCard(cardId, { collections: newCollections });
-      useToastStore.getState().success(`Added to ${collectionName}`);
-
-      // Trigger animation
-      setAnimatingPawkit(collectionSlug);
-      setTimeout(() => setAnimatingPawkit(null), 1500);
-    }
-  }, [store.cards, updateCard]);
-
-  // Listen for mouseup during drag to handle drop
-  useEffect(() => {
-    if (!isDraggingCard) return;
-
-    const handleMouseUp = () => {
-      if (dragHoveredPawkit && draggedCardId) {
-        // Find the collection name from slug
-        const findCollection = (cols: CollectionNode[]): CollectionNode | null => {
-          for (const col of cols) {
-            if (col.slug === dragHoveredPawkit) return col;
-            if (col.children) {
-              const found = findCollection(col.children);
-              if (found) return found;
-            }
-          }
-          return null;
-        };
-        const collection = findCollection(collections);
-        if (collection) {
-          handleDropToPawkit(dragHoveredPawkit, collection.name, draggedCardId);
-        }
-      }
-    };
-
-    document.addEventListener('mouseup', handleMouseUp);
-    return () => document.removeEventListener('mouseup', handleMouseUp);
-  }, [isDraggingCard, dragHoveredPawkit, draggedCardId, collections, handleDropToPawkit]);
 
   // Remove card from collection
   const removeFromCollection = async (collectionSlug: string, collectionName: string) => {

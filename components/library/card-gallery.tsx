@@ -831,8 +831,33 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               // Check if we should drop into a pawkit
               const dragState = useDragStore.getState();
               if (dragState.hoveredPawkitSlug && dragState.draggedCardId) {
-                // Card will be added to pawkit via left-navigation-panel
-                // Just clear drag state here
+                // Find the card and add it to the collection
+                const card = cards.find((c) => c.id === dragState.draggedCardId);
+                if (card) {
+                  const currentCollections = card.collections || [];
+                  if (!currentCollections.includes(dragState.hoveredPawkitSlug)) {
+                    // Find collection name for toast
+                    const findCollectionName = (cols: CollectionNode[]): string | null => {
+                      for (const col of cols) {
+                        if (col.slug === dragState.hoveredPawkitSlug) return col.name;
+                        if (col.children) {
+                          const found = findCollectionName(col.children);
+                          if (found) return found;
+                        }
+                      }
+                      return null;
+                    };
+                    const collectionName = findCollectionName(allCollections) || dragState.hoveredPawkitSlug;
+
+                    // Add to collection
+                    const newCollections = [...currentCollections, dragState.hoveredPawkitSlug];
+                    updateCardInStore(dragState.draggedCardId, { collections: newCollections });
+                    setCards((prev) =>
+                      prev.map((c) => (c.id === dragState.draggedCardId ? { ...c, collections: newCollections } : c))
+                    );
+                    useToastStore.getState().success(`Added to ${collectionName}`);
+                  }
+                }
               }
               // Clear global drag state
               useDragStore.getState().endDrag();
