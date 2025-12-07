@@ -33,9 +33,9 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
 
   if (orbitCards.length === 0) return null;
 
-  // Orbit parameters
-  const radiusX = 900;
-  const radiusY = 600;
+  // Orbit parameters - large radius to accommodate bigger cards
+  const radiusX = 1200;
+  const radiusY = 800;
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -86,8 +86,8 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
               <div
                 className="rounded-2xl overflow-hidden"
                 style={{
-                  width: "700px",
-                  height: "480px",
+                  width: "1400px",
+                  height: "960px",
                   background: "var(--bg-surface-2)",
                   boxShadow: "var(--shadow-3)",
                   border: "1px solid var(--border-subtle)",
@@ -99,7 +99,7 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
                     alt={card.title || "Card"}
                     fill
                     className="object-cover"
-                    sizes="700px"
+                    sizes="1400px"
                   />
                 ) : (
                   <div
