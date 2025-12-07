@@ -1154,8 +1154,14 @@ type CardCellProps = {
 };
 
 function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar, onSetThumbnail, hasAttachments, showLabels, showMetadata, showPreview, cardPadding }: CardCellProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: card.id, data: { cardId: card.id } });
-  const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined;
+  // Only use dnd-kit draggable for non-masonry layouts (masonry uses Muuri's built-in drag)
+  const isMasonry = layout === "masonry";
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: card.id,
+    data: { cardId: card.id },
+    disabled: isMasonry, // Disable dnd-kit drag for masonry - Muuri handles it
+  });
+  const style = transform && !isMasonry ? { transform: CSS.Translate.toString(transform) } : undefined;
   const isPending = card.status === "PENDING";
   const isError = card.status === "ERROR";
   const isNote = card.type === "md-note" || card.type === "text-note";
