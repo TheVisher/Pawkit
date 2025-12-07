@@ -1276,6 +1276,8 @@ textarea:focus-visible {
   pointer-events: none;
   /* Ghost effect */
   opacity: 0.8;
+  /* Break out of overflow containers */
+  position: fixed !important;
 }
 
 /* Raise content panel z-index when a card is being dragged */
