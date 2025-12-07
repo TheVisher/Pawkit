@@ -280,6 +280,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     ? `pawkit-${currentPawkitSlug}`
     : (area === "pawkit" ? "pawkits" : area);
   const viewSettings = useViewSettingsStore((state) => state.getSettings(viewKey));
+  const setViewSpecific = useViewSettingsStore((state) => state.setViewSpecific);
+  const setSortBy = useViewSettingsStore((state) => state.setSortBy);
   // Use a state to ensure consistent SSR and prevent hydration mismatches
   const [cardSize, setCardSize] = useState(50);
   const [cardSpacing, setCardSpacing] = useState(16);
@@ -353,6 +355,18 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     // Apply sorting
     const sortBy = viewSettings.sortBy || "updatedAt";
     const sortOrder = viewSettings.sortOrder || "desc";
+    const customOrder = (viewSettings.viewSpecific?.customOrder as string[] | undefined) || [];
+
+    // For custom sort, use the saved order
+    if (sortBy === "custom" && customOrder.length > 0) {
+      const orderMap = new Map(customOrder.map((id, index) => [id, index]));
+      result.sort((a, b) => {
+        const indexA = orderMap.get(a.id) ?? Infinity;
+        const indexB = orderMap.get(b.id) ?? Infinity;
+        return indexA - indexB;
+      });
+      return result;
+    }
 
     result.sort((a, b) => {
       let comparison = 0;
@@ -382,7 +396,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     });
 
     return result;
-  }, [cards, viewSettings.contentTypeFilter, viewSettings.sortBy, viewSettings.sortOrder]);
+  }, [cards, viewSettings.contentTypeFilter, viewSettings.sortBy, viewSettings.sortOrder, viewSettings.viewSpecific?.customOrder]);
 
   const orderedIds = useMemo(() => filteredAndSortedCards.map((card) => card.id), [filteredAndSortedCards]);
 
@@ -865,6 +879,14 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               setTimeout(() => {
                 muuriRef.current?.refreshItems();
               }, 100);
+            }}
+            onOrderChange={(newOrder) => {
+              // Save custom order and switch to custom sort
+              setViewSpecific(viewKey, {
+                ...viewSettings.viewSpecific,
+                customOrder: newOrder,
+              });
+              setSortBy(viewKey, "custom");
             }}
             onItemWidthCalculated={(width) => {
               // Trigger relayout when calculated width changes

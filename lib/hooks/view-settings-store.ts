@@ -6,7 +6,7 @@ import { LayoutMode as LayoutModeType } from "@/lib/constants";
 
 export type LayoutMode = LayoutModeType; // Re-export for convenience
 export type ViewType = "library" | "notes" | "timeline" | "pawkits" | "home" | "favorites" | "trash" | "tags" | "den";
-export type SortBy = "createdAt" | "title" | "url" | "updatedAt" | "pawkit";
+export type SortBy = "createdAt" | "title" | "url" | "updatedAt" | "pawkit" | "custom";
 export type SortOrder = "asc" | "desc";
 
 export type ContentType = "url" | "md-note" | "text-note" | "file" | "image" | "pdf" | "document" | "audio" | "video" | "email" | "bookmark" | "highlight" | "folder" | "other";
