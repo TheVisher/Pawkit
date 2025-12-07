@@ -7,11 +7,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { localDb } from "@/lib/services/local-storage";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useToastStore } from "@/lib/stores/toast-store";
-import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import { CardDTO } from "@/lib/server/cards";
-import { CollectionNode } from "@/lib/services/local-storage";
+import { CollectionNode } from "@/lib/types";
 
 type TrashItem = {
   id: string;
@@ -35,7 +33,6 @@ export function TrashPopover({ children }: TrashPopoverProps) {
   const router = useRouter();
   const toast = useToastStore();
   const refreshDataStore = useDataStore((state) => state.refresh);
-  const serverSync = useSettingsStore((state) => state.serverSync);
 
   // Load trash items when popover opens
   const loadTrashItems = useCallback(async () => {
