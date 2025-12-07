@@ -2,6 +2,7 @@
 
 import { ReactNode, useState } from "react";
 import { X, Sun, Moon, SunMoon, Trash2, BookOpen, ArrowUpRight, ArrowDownLeft, ChevronDown } from "lucide-react";
+import { TrashPopover } from "@/components/trash/trash-popover";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useRouter } from "next/navigation";
 import {
@@ -157,18 +158,14 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
             </Tooltip>
 
             {/* Trash */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => router.push('/trash')}
-                  className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                  aria-label="Trash"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="z-[200]">Trash</TooltipContent>
-            </Tooltip>
+            <TrashPopover>
+              <button
+                className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                aria-label="Trash"
+              >
+                <Trash2 size={18} />
+              </button>
+            </TrashPopover>
 
             {/* Changelog */}
             <Tooltip>
