@@ -30,6 +30,7 @@ import { createPortal } from "react-dom";
 import { useRef } from "react";
 import { addCollectionWithHierarchy, removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
 import { MuuriGridComponent, MuuriItem, type MuuriGridRef } from "@/components/library/muuri-grid";
+import { useDragStore } from "@/lib/stores/drag-store";
 
 // Helper to get display type for a card (Note, PDF, Image, Bookmark, etc.)
 function getCardDisplayType(card: CardModel): string {
@@ -819,7 +820,22 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             dragHandle=".muuri-item-content"
             layoutDuration={300}
             layoutEasing="ease-out"
-            onDragEnd={() => {
+            onDragStart={(item) => {
+              // Set global drag state for cross-component communication
+              const cardId = item.getElement().dataset.cardId;
+              if (cardId) {
+                useDragStore.getState().startDrag(cardId);
+              }
+            }}
+            onDragEnd={(item) => {
+              // Check if we should drop into a pawkit
+              const dragState = useDragStore.getState();
+              if (dragState.hoveredPawkitSlug && dragState.draggedCardId) {
+                // Card will be added to pawkit via left-navigation-panel
+                // Just clear drag state here
+              }
+              // Clear global drag state
+              useDragStore.getState().endDrag();
               // Trigger relayout after drag to fix empty columns
               setTimeout(() => {
                 muuriRef.current?.refreshItems();

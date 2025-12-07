@@ -1272,6 +1272,8 @@ textarea:focus-visible {
 .muuri-item.muuri-item-dragging {
   z-index: 3;
   cursor: grabbing;
+  /* Allow mouse events to pass through to elements beneath (e.g., pawkits for drop) */
+  pointer-events: none;
 }
 
 .muuri-item.muuri-item-releasing {
