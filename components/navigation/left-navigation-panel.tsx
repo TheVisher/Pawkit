@@ -40,6 +40,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { useDragStore } from "@/lib/stores/drag-store";
 
 type NavItem = {
   id: string;
@@ -108,6 +109,12 @@ export function LeftNavigationPanel({
 
   // Mobile detection - on mobile, panel is always a full-height overlay
   const isMobile = useIsMobile();
+
+  // Drag state for drop-to-pawkit feature
+  const isDraggingCard = useDragStore((state) => state.isDragging);
+  const draggedCardId = useDragStore((state) => state.draggedCardId);
+  const dragHoveredPawkit = useDragStore((state) => state.hoveredPawkitSlug);
+  const setDragHoveredPawkit = useDragStore((state) => state.setHoveredPawkit);
 
   // PERFORMANCE: Selective subscription - only get cards we actually need for the sidebar
   // This prevents re-renders when unrelated cards change
@@ -428,6 +435,53 @@ export function LeftNavigationPanel({
     }, 1500);
   };
 
+  // Handle dropping a dragged card onto a pawkit
+  const handleDropToPawkit = useCallback(async (collectionSlug: string, collectionName: string, cardId: string) => {
+    // Get the card from the store
+    const card = store.cards.find(c => c.id === cardId);
+    if (!card) return;
+
+    // Add collection to card if not already in it
+    const currentCollections = card.collections || [];
+    if (!currentCollections.includes(collectionSlug)) {
+      const newCollections = [...currentCollections, collectionSlug];
+      await updateCard(cardId, { collections: newCollections });
+      useToastStore.getState().success(`Added to ${collectionName}`);
+
+      // Trigger animation
+      setAnimatingPawkit(collectionSlug);
+      setTimeout(() => setAnimatingPawkit(null), 1500);
+    }
+  }, [store.cards, updateCard]);
+
+  // Listen for mouseup during drag to handle drop
+  useEffect(() => {
+    if (!isDraggingCard) return;
+
+    const handleMouseUp = () => {
+      if (dragHoveredPawkit && draggedCardId) {
+        // Find the collection name from slug
+        const findCollection = (cols: CollectionNode[]): CollectionNode | null => {
+          for (const col of cols) {
+            if (col.slug === dragHoveredPawkit) return col;
+            if (col.children) {
+              const found = findCollection(col.children);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+        const collection = findCollection(collections);
+        if (collection) {
+          handleDropToPawkit(dragHoveredPawkit, collection.name, draggedCardId);
+        }
+      }
+    };
+
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => document.removeEventListener('mouseup', handleMouseUp);
+  }, [isDraggingCard, dragHoveredPawkit, draggedCardId, collections, handleDropToPawkit]);
+
   // Remove card from collection
   const removeFromCollection = async (collectionSlug: string, collectionName: string) => {
     if (!activeCard) return;
@@ -580,6 +634,7 @@ export function LeftNavigationPanel({
     const isHovered = hoveredPawkit === collection.slug;
     const isAnimating = animatingPawkit === collection.slug;
     const isCreateHovered = hoveredCreatePawkit === collection.id;
+    const isDragHovered = isDraggingCard && dragHoveredPawkit === collection.slug;
 
     // Determine size and spacing based on depth
     const iconSize = depth === 0 ? 14 : 12;
@@ -712,8 +767,16 @@ export function LeftNavigationPanel({
       <div key={collection.id}>
         <div
           className="flex items-center gap-1 group/pawkit"
-          onMouseEnter={() => !activeCard && setHoveredCreatePawkit(collection.id)}
-          onMouseLeave={() => setHoveredCreatePawkit(null)}
+          onMouseEnter={() => {
+            if (!activeCard) setHoveredCreatePawkit(collection.id);
+            // Track hover during card drag for drop-to-pawkit
+            if (isDraggingCard) setDragHoveredPawkit(collection.slug);
+          }}
+          onMouseLeave={() => {
+            setHoveredCreatePawkit(null);
+            // Clear drag hover when leaving
+            if (isDraggingCard) setDragHoveredPawkit(null);
+          }}
         >
           <div
             className="relative flex-1"
@@ -726,7 +789,9 @@ export function LeftNavigationPanel({
                 w-full flex items-center gap-2 ${padding} rounded-lg ${textSize} transition-all overflow-hidden
                 ${isCollectionActive
                   ? "font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  : isDragHovered
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                 }
               `}
               style={isCollectionActive ? {
@@ -736,6 +801,10 @@ export function LeftNavigationPanel({
                 border: '1px solid var(--border-subtle)',
                 borderTopColor: 'var(--border-highlight-top)',
                 borderLeftColor: 'var(--border-highlight-left)',
+              } : isDragHovered ? {
+                background: 'var(--ds-accent-subtle)',
+                border: '2px dashed var(--ds-accent)',
+                boxShadow: '0 0 12px var(--ds-accent-muted)',
               } : undefined}
             >
               <FolderOpen size={iconSize} className="flex-shrink-0" />

@@ -284,6 +284,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
           layoutDuration,
           layoutEasing,
           dragEnabled,
+          dragContainer: document.body, // Move dragged item to body to prevent position drift
           dragHandle: dragHandle || null,
           dragStartPredicate: {
             distance: 10,
