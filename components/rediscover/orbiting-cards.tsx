@@ -33,23 +33,25 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
       // Distribute cards evenly around the orbit
       const angle = (i / count) * 2 * Math.PI;
 
-      // Elliptical orbit - wider horizontally
-      const radiusX = 380; // horizontal radius
-      const radiusY = 280; // vertical radius
+      // Elliptical orbit - wider horizontally, larger to fit bigger cards
+      const radiusX = 500; // horizontal radius (increased)
+      const radiusY = 350; // vertical radius (increased)
 
       const x = Math.cos(angle) * radiusX;
       const y = Math.sin(angle) * radiusY;
 
-      // Cards at top/bottom (y extreme) are "further" - smaller and blurred
-      // Cards at sides (x extreme) are "closer" - larger and sharper
+      // Cards at top/bottom (y extreme) are "further" - smaller and more blurred
+      // Cards at sides (x extreme) are "closer" - larger and less blurred
       const depth = Math.abs(Math.sin(angle)); // 0 = sides, 1 = top/bottom
 
-      const scale = 0.5 - depth * 0.2; // 0.5 at sides, 0.3 at top/bottom
-      const blur = depth * 4; // 0 at sides, 4px at top/bottom
+      // MUCH bigger cards: 0.9 at sides, 0.6 at top/bottom
+      const scale = 0.9 - depth * 0.3;
+      // More blur: base 4px + up to 10px more based on depth
+      const blur = 4 + depth * 10;
       const zIndex = Math.round((1 - depth) * 10); // Higher z at sides
 
-      // Stagger animation start times
-      const delay = i * 4; // 4 second stagger between cards
+      // Stagger animation start times (longer stagger for slower feel)
+      const delay = i * 10; // 10 second stagger between cards
 
       positions.push({ x, y, scale, blur, zIndex, delay });
     }
@@ -83,18 +85,18 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
                 // Depth effects
                 filter: pos.blur > 0 ? `blur(${pos.blur}px)` : undefined,
                 zIndex: pos.zIndex,
-                // Animation
-                animation: `orbit 30s linear infinite`,
+                // Animation - SLOW 90 second orbit
+                animation: `orbit 90s linear infinite`,
                 animationDelay: `-${pos.delay}s`,
                 // Smooth transitions
                 willChange: "transform",
               }}
             >
               <div
-                className="w-40 h-28 rounded-xl overflow-hidden"
+                className="w-72 h-48 rounded-2xl overflow-hidden"
                 style={{
                   background: "var(--bg-surface-2)",
-                  boxShadow: "var(--shadow-2)",
+                  boxShadow: "var(--shadow-3)",
                   border: "1px solid var(--border-subtle)",
                 }}
               >
@@ -104,7 +106,7 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
                     alt={card.title || "Card"}
                     fill
                     className="object-cover"
-                    sizes="160px"
+                    sizes="288px"
                   />
                 ) : (
                   <div

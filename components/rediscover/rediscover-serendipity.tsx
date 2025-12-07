@@ -1,12 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Menu } from "lucide-react";
 import { CardModel } from "@/lib/types";
 import Image from "next/image";
 import { AnimatedBackground } from "./animated-background";
 import { OrbitingCards } from "./orbiting-cards";
 import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 export type RediscoverAction = "keep" | "delete" | "add-to-pawkit";
 
@@ -32,6 +33,42 @@ export function RediscoverSerendipity({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const { setStyle } = useRediscoverStore();
+
+  // Panel state management - hide sidebars in serendipity mode
+  const closeLeft = usePanelStore((state) => state.closeLeft);
+  const closePanel = usePanelStore((state) => state.close);
+  const openLeft = usePanelStore((state) => state.openLeft);
+  const open = usePanelStore((state) => state.open);
+  const isLeftOpen = usePanelStore((state) => state.isLeftOpen);
+  const isRightOpen = usePanelStore((state) => state.isOpen);
+
+  // Store previous panel state to restore on exit
+  const prevPanelState = useRef({ leftOpen: true, rightOpen: false });
+
+  // Hide sidebars on mount, restore on unmount
+  useEffect(() => {
+    // Save current state
+    prevPanelState.current = {
+      leftOpen: isLeftOpen,
+      rightOpen: isRightOpen,
+    };
+
+    // Close both panels for immersive mode
+    closeLeft();
+    closePanel();
+
+    return () => {
+      // Restore previous state when exiting
+      if (prevPanelState.current.leftOpen) {
+        openLeft();
+      }
+      if (prevPanelState.current.rightOpen) {
+        open();
+      }
+    };
+    // Only run on mount/unmount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -331,15 +368,15 @@ export function RediscoverSerendipity({
         <div className="mt-12 flex flex-col items-center gap-4">
           {/* Main Actions */}
           <div className="flex items-center gap-6">
-            {/* Forget Button */}
+            {/* Forget Button - solid pill matching Keep style */}
             <button
               onClick={() => handleAction("delete")}
               disabled={isProcessing}
               className="px-8 py-4 rounded-full font-medium text-lg transition-all serendipity-action-btn"
               style={{
-                background: "var(--bg-surface-2)",
-                color: "var(--text-secondary)",
-                border: "1px solid var(--border-subtle)",
+                background: "var(--bg-surface-3)",
+                color: "white",
+                boxShadow: "var(--shadow-2)",
               }}
             >
               Forget
