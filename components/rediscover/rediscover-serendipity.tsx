@@ -324,12 +324,11 @@ export function RediscoverSerendipity({
               : "scale-100 opacity-100"
           }`}
         >
-          {/* Card Image - flexes to fit thumbnail with more room */}
+          {/* Card Image - flexes to fit thumbnail, no height restriction */}
           <div
             className="relative rounded-2xl overflow-hidden"
             style={{
-              maxWidth: "min(700px, 85vw)",
-              maxHeight: "min(700px, 70vh)",
+              maxWidth: "min(600px, 80vw)",
               background: "var(--bg-surface-2)",
               boxShadow: "var(--shadow-3)",
               border: "1px solid var(--border-subtle)",
@@ -339,9 +338,10 @@ export function RediscoverSerendipity({
               <Image
                 src={thumbnail}
                 alt={cardTitle}
-                width={700}
-                height={700}
-                className="object-contain w-auto h-auto max-w-full max-h-[70vh]"
+                width={600}
+                height={900}
+                className="w-auto h-auto max-w-[80vw] max-h-[calc(100vh-250px)]"
+                style={{ objectFit: "contain" }}
                 unoptimized
               />
             ) : (

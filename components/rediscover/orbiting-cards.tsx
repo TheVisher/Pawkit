@@ -1,70 +1,41 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef, useEffect } from "react";
 import Image from "next/image";
 import { CardModel } from "@/lib/types";
 
 type OrbitingCardsProps = {
   cards: CardModel[];
-  centerX?: number;
-  centerY?: number;
 };
 
-// Each card position in the orbit
-type OrbitPosition = {
-  x: number;
-  y: number;
-  scale: number;
-  blur: number;
-  zIndex: number;
-  delay: number;
-  duration: number; // Varied orbit duration for each card
-};
+// Simple hash function to get a stable number from card ID
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+}
 
 export function OrbitingCards({ cards }: OrbitingCardsProps) {
-  // Take up to 10 cards for the orbit (more cards for fuller effect)
+  // Take up to 10 cards for the orbit
   const orbitCards = useMemo(() => cards.slice(0, 10), [cards]);
 
-  // Calculate positions for each card on an elliptical orbit
-  const positions = useMemo(() => {
-    const positions: OrbitPosition[] = [];
-    const count = orbitCards.length;
+  // Track animation start time for continuous animation
+  const startTimeRef = useRef<number>(Date.now());
 
-    for (let i = 0; i < count; i++) {
-      // Distribute cards evenly around the orbit
-      const angle = (i / count) * 2 * Math.PI;
-
-      // Elliptical orbit - massive to accommodate huge cards
-      const radiusX = 900; // horizontal radius (massive)
-      const radiusY = 600; // vertical radius (massive)
-
-      const x = Math.cos(angle) * radiusX;
-      const y = Math.sin(angle) * radiusY;
-
-      // Cards at top/bottom (y extreme) are "further" - smaller and more blurred
-      // Cards at sides (x extreme) are "closer" - larger and less blurred
-      const depth = Math.abs(Math.sin(angle)); // 0 = sides, 1 = top/bottom
-
-      // Massive cards: 1.2 at sides, 0.9 at top/bottom
-      const scale = 1.2 - depth * 0.3;
-      // Heavy blur like MyMind: base 12px + up to 16px more based on depth
-      const blur = 12 + depth * 16;
-      const zIndex = Math.round((1 - depth) * 10); // Higher z at sides
-
-      // Stagger animation start times (longer stagger for slower feel)
-      const delay = i * 8; // 8 second stagger between cards
-
-      // Varied orbit duration: 80-100 seconds (some cards slightly faster/slower)
-      // This creates the overtaking effect where cards pass each other
-      const duration = 85 + (i % 3) * 8 - (i % 2) * 5; // Varies between ~80-96s
-
-      positions.push({ x, y, scale, blur, zIndex, delay, duration });
-    }
-
-    return positions;
-  }, [orbitCards.length]);
+  // Reset start time only on mount
+  useEffect(() => {
+    startTimeRef.current = Date.now();
+  }, []);
 
   if (orbitCards.length === 0) return null;
+
+  // Orbit parameters
+  const radiusX = 900;
+  const radiusY = 600;
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -73,28 +44,43 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
         style={{ width: 0, height: 0 }}
       >
-        {orbitCards.map((card, index) => {
-          const pos = positions[index];
+        {orbitCards.map((card) => {
           const thumbnail = card.image;
+
+          // Use card ID hash for stable positioning
+          const hash = hashCode(card.id);
+
+          // Stable starting angle based on card ID (0 to 2π)
+          const startAngle = (hash % 1000) / 1000 * Math.PI * 2;
+
+          // Stable duration based on card ID (80-100 seconds)
+          const duration = 80 + (hash % 20);
+
+          // Calculate initial position for CSS custom properties
+          const initialX = Math.cos(startAngle) * radiusX;
+          const initialY = Math.sin(startAngle) * radiusY;
+          const depth = Math.abs(Math.sin(startAngle));
+          const scale = 1.2 - depth * 0.3;
+          const blur = 12 + depth * 16;
+          const zIndex = Math.round((1 - depth) * 10);
 
           return (
             <div
               key={card.id}
-              className="orbit-card absolute"
+              className="orbit-card absolute transition-opacity duration-500"
               style={{
-                // Position relative to center
-                left: pos.x,
-                top: pos.y,
-                // Transform for centering the card on its position
-                transform: `translate(-50%, -50%) scale(${pos.scale})`,
-                // Depth effects
-                filter: pos.blur > 0 ? `blur(${pos.blur}px)` : undefined,
-                zIndex: pos.zIndex,
-                // Animation - varied duration for overtaking effect
-                animation: `orbit ${pos.duration}s linear infinite`,
-                animationDelay: `-${pos.delay}s`,
-                // Smooth transitions
+                // Initial position
+                left: initialX,
+                top: initialY,
+                transform: `translate(-50%, -50%) scale(${scale})`,
+                filter: `blur(${blur}px)`,
+                zIndex: zIndex,
+                // Animation with stable duration per card
+                animation: `orbit ${duration}s linear infinite`,
+                // Use negative delay based on start angle to maintain position
+                animationDelay: `-${(startAngle / (Math.PI * 2)) * duration}s`,
                 willChange: "transform",
+                opacity: 0.8,
               }}
             >
               <div
