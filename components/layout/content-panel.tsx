@@ -127,7 +127,7 @@ export function ContentPanel({
         transition: "left 0.3s ease-out, right 0.3s ease-out",
         // Force GPU acceleration for smoother animations
         willChange: "left, right",
-        transform: "translateZ(0)",
+        // Note: Removed transform: translateZ(0) as it causes coordinate issues with drag-and-drop
       }}
       data-content-panel
       data-right-embedded={isRightEmbedded}
