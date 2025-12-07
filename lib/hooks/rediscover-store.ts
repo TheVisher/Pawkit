@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { CardModel } from "@/lib/types";
 
 export type RediscoverFilter = "uncategorized" | "all" | "untagged" | "never-opened";
+export type RediscoverStyle = "serendipity" | "classic";
 
 export type SessionStats = {
   kept: number;
@@ -20,6 +21,7 @@ type RediscoverState = {
   keptCards: CardModel[];
   filter: RediscoverFilter;
   stats: SessionStats;
+  style: RediscoverStyle;
 
   // Actions
   setActive: (active: boolean) => void;
@@ -28,6 +30,7 @@ type RediscoverState = {
   addKeptCard: (card: CardModel) => void;
   setFilter: (filter: RediscoverFilter) => void;
   updateStats: (stat: keyof SessionStats) => void;
+  setStyle: (style: RediscoverStyle) => void;
   reset: () => void;
 };
 
@@ -46,6 +49,7 @@ export const useRediscoverStore = create<RediscoverState>()((set) => ({
   keptCards: [],
   filter: "uncategorized",
   stats: initialStats,
+  style: "serendipity", // Default to new serendipity mode
 
   setActive: (active) => set({ isActive: active }),
 
@@ -73,6 +77,8 @@ export const useRediscoverStore = create<RediscoverState>()((set) => ({
     },
   })),
 
+  setStyle: (style) => set({ style }),
+
   reset: () => set({
     isActive: false,
     queue: [],
@@ -80,5 +86,6 @@ export const useRediscoverStore = create<RediscoverState>()((set) => ({
     keptCards: [],
     filter: "uncategorized",
     stats: initialStats,
+    // Note: style is NOT reset - user preference persists
   }),
 }));
