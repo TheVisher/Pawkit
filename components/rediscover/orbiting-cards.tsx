@@ -68,7 +68,7 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
       >
         {orbitCards.map((card, index) => {
           const pos = positions[index];
-          const thumbnail = card.thumbnail || card.favicon;
+          const thumbnail = card.image;
 
           return (
             <div

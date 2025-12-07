@@ -151,7 +151,7 @@ export function RediscoverSerendipity({
     );
   }
 
-  const thumbnail = currentCard.image || currentCard.thumbnail;
+  const thumbnail = currentCard.image;
   const cardTitle = currentCard.title || "Untitled";
   const cardUrl = currentCard.url || "";
   const domain =
