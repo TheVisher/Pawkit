@@ -368,15 +368,15 @@ export function RediscoverSerendipity({
         <div className="mt-12 flex flex-col items-center gap-4">
           {/* Main Actions */}
           <div className="flex items-center gap-6">
-            {/* Forget Button - solid pill matching Keep style */}
+            {/* Forget Button - similar accent style, slightly muted */}
             <button
               onClick={() => handleAction("delete")}
               disabled={isProcessing}
               className="px-8 py-4 rounded-full font-medium text-lg transition-all serendipity-action-btn"
               style={{
-                background: "var(--bg-surface-3)",
+                background: "rgba(139, 92, 246, 0.5)", // Muted purple accent
                 color: "white",
-                boxShadow: "var(--shadow-2)",
+                boxShadow: "0 0 20px rgba(139, 92, 246, 0.3)",
               }}
             >
               Forget

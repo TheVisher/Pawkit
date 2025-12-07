@@ -374,10 +374,10 @@ function LibraryPageContent() {
     : null;
   const remainingCount = rediscoverStore.queue.length - rediscoverStore.currentIndex;
 
-  // Get cards for orbiting display (next 6 cards after current)
+  // Get cards for orbiting display (next 12 cards after current)
   const orbitCards = rediscoverStore.queue.slice(
     rediscoverStore.currentIndex + 1,
-    rediscoverStore.currentIndex + 7
+    rediscoverStore.currentIndex + 13
   );
 
   // Render Rediscover mode or normal Library view
