@@ -1,12 +1,37 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Menu } from "lucide-react";
+import { X, Menu, Sparkles } from "lucide-react";
 import { CardModel } from "@/lib/types";
 import { AnimatedBackground } from "./animated-background";
 import { OrbitingCards } from "./orbiting-cards";
 import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
+
+// Hash function for stable card positioning (same as orbiting-cards.tsx)
+function hashCode(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+// Calculate orbit position for a card ID
+function getOrbitPosition(cardId: string) {
+  const hash = hashCode(cardId);
+  const startAngle = (hash % 1000) / 1000 * Math.PI * 2;
+  // Match orbit radius from OrbitingCards
+  const radiusX = 1200;
+  const radiusY = 800;
+  const x = Math.cos(startAngle) * radiusX;
+  const y = Math.sin(startAngle) * radiusY;
+  const depth = Math.abs(Math.sin(startAngle));
+  const scale = 1.2 - depth * 0.3;
+  return { x, y, scale };
+}
 
 // Module-level storage for panel state (persists across component lifecycle)
 let savedPanelState: { leftOpen: boolean; rightOpen: boolean } | null = null;
@@ -34,6 +59,7 @@ export function RediscoverSerendipity({
   >(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [enteringFromOrbit, setEnteringFromOrbit] = useState<{ x: number; y: number; scale: number } | null>(null);
   const { setStyle } = useRediscoverStore();
 
   // Panel state management - hide sidebars in serendipity mode
@@ -124,13 +150,28 @@ export function RediscoverSerendipity({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCard, isProcessing, showMenu]);
 
-  // Card entering animation
+  // Card entering animation - from orbit position to center
   useEffect(() => {
     if (currentCard) {
+      // Calculate where this card was in the orbit
+      const orbitPos = getOrbitPosition(currentCard.id);
+      setEnteringFromOrbit(orbitPos);
       setCardTransition("entering");
       setIsProcessing(false);
-      const timer = setTimeout(() => setCardTransition(null), 300);
-      return () => clearTimeout(timer);
+
+      // After animation starts, clear the orbit position to animate to center
+      const clearOrbitTimer = setTimeout(() => {
+        setEnteringFromOrbit(null);
+      }, 50); // Small delay to ensure initial position is applied
+
+      const clearTransitionTimer = setTimeout(() => {
+        setCardTransition(null);
+      }, 500); // Longer transition for orbit-to-center
+
+      return () => {
+        clearTimeout(clearOrbitTimer);
+        clearTimeout(clearTransitionTimer);
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentCard?.id]);
@@ -166,7 +207,7 @@ export function RediscoverSerendipity({
         <AnimatedBackground />
         <div className="relative z-10 flex items-center justify-center h-full">
           <div className="text-center space-y-6">
-            <div className="text-7xl">✨</div>
+            <Sparkles size={72} style={{ color: "var(--accent)" }} />
             <h2
               className="text-3xl font-semibold"
               style={{ color: "var(--text-primary)" }}
@@ -311,17 +352,36 @@ export function RediscoverSerendipity({
       <div className="relative z-10 flex items-center justify-center h-full px-4 pb-40">
         {/* Card Container */}
         <div
-          className={`flex flex-col items-center space-y-3 transition-all duration-300 ease-out ${
-            cardTransition === "entering"
-              ? "scale-90 opacity-0"
-              : cardTransition === "exiting-keep"
-              ? "scale-110 opacity-0"
+          className={`flex flex-col items-center space-y-3 transition-all ease-out ${
+            cardTransition === "exiting-keep"
+              ? "scale-110 opacity-0 duration-300"
               : cardTransition === "exiting-forget"
-              ? "scale-75 opacity-0 rotate-2"
+              ? "scale-75 opacity-0 rotate-2 duration-300"
               : cardTransition === "exiting-add"
-              ? "-translate-y-16 scale-105 opacity-0"
-              : "scale-100 opacity-100"
+              ? "-translate-y-16 scale-105 opacity-0 duration-300"
+              : enteringFromOrbit
+              ? "opacity-60 duration-0" // Starting position - no transition
+              : cardTransition === "entering"
+              ? "opacity-100 duration-500" // Animate to center
+              : "scale-100 opacity-100 duration-300"
           }`}
+          style={
+            enteringFromOrbit
+              ? {
+                  transform: `translate(${enteringFromOrbit.x}px, ${enteringFromOrbit.y}px) scale(${enteringFromOrbit.scale * 0.5})`,
+                  filter: "blur(8px)",
+                  transitionProperty: "none",
+                }
+              : cardTransition === "entering"
+              ? {
+                  transform: "translate(0, 0) scale(1)",
+                  filter: "blur(0px)",
+                  transitionProperty: "transform, filter, opacity",
+                  transitionDuration: "500ms",
+                  transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
+                }
+              : undefined
+          }
         >
           {/* Card Image - shows at natural aspect ratio */}
           <div
@@ -338,7 +398,7 @@ export function RediscoverSerendipity({
               <img
                 src={thumbnail}
                 alt={cardTitle}
-                className="block max-w-[min(600px,80vw)] max-h-[calc(100vh-280px)] w-auto h-auto"
+                className="block max-w-[min(600px,80vw)] max-h-[calc(100vh-280px)] w-auto h-auto min-w-[300px] min-h-[200px]"
                 style={{ objectFit: "contain" }}
               />
             ) : (
