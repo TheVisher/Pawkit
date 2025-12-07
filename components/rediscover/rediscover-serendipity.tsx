@@ -9,6 +9,9 @@ import { OrbitingCards } from "./orbiting-cards";
 import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
+// Module-level storage for panel state (persists across component lifecycle)
+let savedPanelState: { leftOpen: boolean; rightOpen: boolean } | null = null;
+
 export type RediscoverAction = "keep" | "delete" | "add-to-pawkit";
 
 export type RediscoverSerendipityProps = {
@@ -39,19 +42,18 @@ export function RediscoverSerendipity({
   const closePanel = usePanelStore((state) => state.close);
   const openLeft = usePanelStore((state) => state.openLeft);
   const open = usePanelStore((state) => state.open);
-  const isLeftOpen = usePanelStore((state) => state.isLeftOpen);
-  const isRightOpen = usePanelStore((state) => state.isOpen);
-
-  // Store previous panel state to restore on exit
-  const prevPanelState = useRef({ leftOpen: true, rightOpen: false });
 
   // Hide sidebars on mount, restore on unmount
   useEffect(() => {
-    // Save current state
-    prevPanelState.current = {
-      leftOpen: isLeftOpen,
-      rightOpen: isRightOpen,
-    };
+    // Save current state to module-level variable (only if not already saved)
+    // This prevents overwriting when the component re-renders
+    if (savedPanelState === null) {
+      const store = usePanelStore.getState();
+      savedPanelState = {
+        leftOpen: store.isLeftOpen,
+        rightOpen: store.isOpen,
+      };
+    }
 
     // Close both panels for immersive mode
     closeLeft();
@@ -59,11 +61,15 @@ export function RediscoverSerendipity({
 
     return () => {
       // Restore previous state when exiting
-      if (prevPanelState.current.leftOpen) {
-        openLeft();
-      }
-      if (prevPanelState.current.rightOpen) {
-        open();
+      if (savedPanelState) {
+        if (savedPanelState.leftOpen) {
+          openLeft();
+        }
+        if (savedPanelState.rightOpen) {
+          open();
+        }
+        // Clear saved state after restoring
+        savedPanelState = null;
       }
     };
     // Only run on mount/unmount
@@ -368,15 +374,15 @@ export function RediscoverSerendipity({
         <div className="mt-12 flex flex-col items-center gap-4">
           {/* Main Actions */}
           <div className="flex items-center gap-6">
-            {/* Forget Button - similar accent style, slightly muted */}
+            {/* Forget Button - exact same style as Keep */}
             <button
               onClick={() => handleAction("delete")}
               disabled={isProcessing}
               className="px-8 py-4 rounded-full font-medium text-lg transition-all serendipity-action-btn"
               style={{
-                background: "rgba(139, 92, 246, 0.5)", // Muted purple accent
+                background: "var(--accent)",
                 color: "white",
-                boxShadow: "0 0 20px rgba(139, 92, 246, 0.3)",
+                boxShadow: "var(--glow-hover)",
               }}
             >
               Forget
