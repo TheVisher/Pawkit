@@ -26,7 +26,7 @@ import { GlowButton } from "@/components/ui/glow-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useSettingsStore, type Theme, type AccentColor } from "@/lib/hooks/settings-store";
+import { useSettingsStore, type Theme, type AccentColor, type SurfaceTint } from "@/lib/hooks/settings-store";
 import { useConnectorStore } from "@/lib/stores/connector-store";
 import { filenService } from "@/lib/services/filen-service";
 import { gdriveProvider } from "@/lib/services/google-drive/gdrive-provider";
@@ -503,7 +503,9 @@ export default function SettingsPage() {
   const theme = useSettingsStore((state) => state.theme);
   const accentColor = useSettingsStore((state) => state.accentColor);
   const uiStyle = useSettingsStore((state) => state.uiStyle);
+  const surfaceTint = useSettingsStore((state) => state.surfaceTint);
   const setUiStyle = useSettingsStore((state) => state.setUiStyle);
+  const setSurfaceTint = useSettingsStore((state) => state.setSurfaceTint);
   const notifications = useSettingsStore((state) => state.notifications);
   const autoSave = useSettingsStore((state) => state.autoSave);
   const autoFetchMetadata = useSettingsStore((state) => state.autoFetchMetadata);
@@ -825,12 +827,12 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Theme & Accent in a row */}
+            {/* Appearance, Accent, UI Style, Theme in a grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              {/* Theme Selection */}
+              {/* Appearance (Dark/Light/Auto) */}
               <div>
                 <Label className="text-sm mb-3 block" style={{ color: 'var(--text-secondary)' }}>
-                  Theme
+                  Appearance
                 </Label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -893,8 +895,8 @@ export default function SettingsPage() {
                 </Label>
                 <div className="flex gap-2">
                   {[
-                    { value: "modern" as const, label: "Modern", desc: "Neutral surfaces" },
-                    { value: "classic" as const, label: "Classic", desc: "Purple-tinted" },
+                    { value: "modern" as const, label: "Modern", desc: "Solid surfaces" },
+                    { value: "glass" as const, label: "Glass", desc: "Transparent + blur" },
                   ].map((style) => (
                     <button
                       key={style.value}
@@ -908,6 +910,33 @@ export default function SettingsPage() {
                     >
                       <span className="font-medium">{style.label}</span>
                       <span className="block text-xs opacity-70">{style.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Theme (Surface Tint) */}
+              <div>
+                <Label className="text-sm mb-3 block" style={{ color: 'var(--text-secondary)' }}>
+                  Theme
+                </Label>
+                <div className="flex gap-2">
+                  {[
+                    { value: "none" as SurfaceTint, label: "None", desc: "Neutral" },
+                    { value: "purple" as SurfaceTint, label: "Purple", desc: "Purple tint" },
+                  ].map((tint) => (
+                    <button
+                      key={tint.value}
+                      onClick={() => setSurfaceTint(tint.value)}
+                      className="px-4 py-2 rounded-lg text-sm transition-all"
+                      style={{
+                        background: surfaceTint === tint.value ? 'var(--ds-accent)' : 'var(--bg-surface-2)',
+                        color: surfaceTint === tint.value ? 'white' : 'var(--text-secondary)',
+                        boxShadow: surfaceTint === tint.value ? 'var(--glow-hover)' : 'var(--raised-shadow-sm)',
+                      }}
+                    >
+                      <span className="font-medium">{tint.label}</span>
+                      <span className="block text-xs opacity-70">{tint.desc}</span>
                     </button>
                   ))}
                 </div>
