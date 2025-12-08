@@ -1,27 +1,15 @@
 "use client";
 
 import { useMemo, useRef, useEffect } from "react";
-import Image from "next/image";
 import { CardModel } from "@/lib/types";
 
 type OrbitingCardsProps = {
   cards: CardModel[];
 };
 
-// Simple hash function to get a stable number from card ID
-function hashCode(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash);
-}
-
 export function OrbitingCards({ cards }: OrbitingCardsProps) {
-  // Take up to 10 cards for the orbit
-  const orbitCards = useMemo(() => cards.slice(0, 10), [cards]);
+  // Take up to 8 cards for the orbit (reduced to prevent overcrowding)
+  const orbitCards = useMemo(() => cards.slice(0, 8), [cards]);
 
   // Track animation start time for continuous animation
   const startTimeRef = useRef<number>(Date.now());
@@ -37,6 +25,9 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
   const radiusX = 1200;
   const radiusY = 800;
 
+  // Distribute cards evenly around the orbit based on their index
+  const angleStep = (Math.PI * 2) / orbitCards.length;
+
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {/* Center point for orbiting cards */}
@@ -44,17 +35,14 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
         style={{ width: 0, height: 0 }}
       >
-        {orbitCards.map((card) => {
+        {orbitCards.map((card, index) => {
           const thumbnail = card.image;
 
-          // Use card ID hash for stable positioning
-          const hash = hashCode(card.id);
+          // Evenly distribute cards around the orbit
+          const startAngle = index * angleStep;
 
-          // Stable starting angle based on card ID (0 to 2π)
-          const startAngle = (hash % 1000) / 1000 * Math.PI * 2;
-
-          // Stable duration based on card ID (80-100 seconds)
-          const duration = 80 + (hash % 20);
+          // Vary duration slightly per card (80-95 seconds)
+          const duration = 80 + (index * 2);
 
           // Calculate initial position for CSS custom properties
           const initialX = Math.cos(startAngle) * radiusX;
@@ -67,7 +55,7 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
           return (
             <div
               key={card.id}
-              className="orbit-card absolute transition-opacity duration-500"
+              className="orbit-card absolute"
               style={{
                 // Initial position
                 left: initialX,
@@ -80,7 +68,6 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
                 // Use negative delay based on start angle to maintain position
                 animationDelay: `-${(startAngle / (Math.PI * 2)) * duration}s`,
                 willChange: "transform",
-                opacity: 0.8,
               }}
             >
               <div
@@ -94,12 +81,11 @@ export function OrbitingCards({ cards }: OrbitingCardsProps) {
                 }}
               >
                 {thumbnail ? (
-                  <Image
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
                     src={thumbnail}
                     alt={card.title || "Card"}
-                    fill
-                    className="object-cover"
-                    sizes="1400px"
+                    className="w-full h-full object-cover"
                   />
                 ) : (
                   <div
