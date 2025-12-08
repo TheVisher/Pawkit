@@ -94,7 +94,7 @@ export type SettingsState = {
   cardSize: number; // 1-5 scale
   // Per-area display settings
   displaySettings: Record<Area, DisplaySettings>;
-  // Pinned notes (max 3)
+  // Pinned notes (max 10)
   pinnedNoteIds: string[];
   // Recently viewed items (max 10)
   recentHistory: RecentItem[];
@@ -123,7 +123,7 @@ export type SettingsState = {
   setShowCardTags: (area: Area, value: boolean) => void;
   setCardPadding: (area: Area, value: number) => void;
   // Pinned notes management
-  pinNote: (noteId: string) => boolean; // Returns false if already at max (3)
+  pinNote: (noteId: string) => boolean; // Returns false if already at max (10)
   unpinNote: (noteId: string) => void;
   reorderPinnedNotes: (noteIds: string[]) => void;
   // Recent history management
@@ -286,8 +286,8 @@ export const useSettingsStore = create<SettingsState>()(
           return true;
         }
 
-        // Check if at max limit (3)
-        if (currentPinned.length >= 3) {
+        // Check if at max limit (10)
+        if (currentPinned.length >= 10) {
           return false;
         }
 
@@ -303,9 +303,9 @@ export const useSettingsStore = create<SettingsState>()(
         debouncedSync(get());
       },
       reorderPinnedNotes: (noteIds) => {
-        // Validate that all IDs are currently pinned and max 3
+        // Validate that all IDs are currently pinned and max 10
         const currentPinned = get().pinnedNoteIds;
-        const validIds = noteIds.filter(id => currentPinned.includes(id)).slice(0, 3);
+        const validIds = noteIds.filter(id => currentPinned.includes(id)).slice(0, 10);
         set({ pinnedNoteIds: validIds });
         debouncedSync(get());
       },
