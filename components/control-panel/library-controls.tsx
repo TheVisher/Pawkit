@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Grid, List, LayoutGrid, Tag, SortAsc, Eye, Maximize2, File, ArrowUpDown, ArrowUp, ArrowDown, Heart, Trash2, Link, FileText, ImageIcon, Music, Video, FileBox, ChevronDown, Check, X, Grid3X3, Grid2X2, Square, RectangleHorizontal, Moon, Sun } from "lucide-react";
+import { Grid, List, LayoutGrid, Tag, SortAsc, Eye, Maximize2, File, ArrowUpDown, ArrowUp, ArrowDown, Heart, Trash2, Link, FileText, ImageIcon, Music, Video, FileBox, ChevronDown, Check, X, Grid3X3, Grid2X2, Square, RectangleHorizontal } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import Image from "next/image";
 import { useViewSettingsStore, type SortBy, type ContentType } from "@/lib/hooks/view-settings-store";
@@ -41,44 +41,6 @@ const mapControlToSortBy = (sort: "date" | "modified" | "title" | "domain"): Sor
       return "url";
   }
 };
-
-// Theme Toggle Component
-function ThemeToggle() {
-  const theme = useSettingsStore((state) => state.theme);
-  const setTheme = useSettingsStore((state) => state.setTheme);
-
-  const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
-  };
-
-  const isDark = theme === "dark" || (theme === "auto" && typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          onClick={toggleTheme}
-          className="p-1.5 rounded-lg transition-all"
-          style={{
-            background: 'var(--bg-surface-3)',
-            boxShadow: 'var(--shadow-1)',
-            border: '1px solid var(--border-subtle)',
-            borderTopColor: 'var(--border-highlight-top)',
-          }}
-        >
-          {isDark ? (
-            <Moon size={12} style={{ color: 'var(--text-primary)' }} />
-          ) : (
-            <Sun size={12} style={{ color: 'var(--text-primary)' }} />
-          )}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="z-[200]">
-        {isDark ? "Switch to light mode" : "Switch to dark mode"}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
 
 // View Dropdown Component
 type ViewDropdownProps = {
@@ -137,23 +99,19 @@ function ViewDropdown({ layout, onLayoutChange }: ViewDropdownProps) {
       }}
     >
       <div className="flex items-center justify-between">
-        {/* Title and Theme Toggle */}
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-3 px-3 py-2">
-            <Eye className="h-4 w-4 text-accent" />
-            <span
-              className="font-semibold uppercase tracking-wide"
-              style={{
-                color: 'var(--text-primary)',
-                letterSpacing: '0.5px',
-                fontSize: '0.8125rem',
-              }}
-            >
-              View
-            </span>
-          </div>
-          {/* Theme Toggle */}
-          <ThemeToggle />
+        {/* Title */}
+        <div className="flex items-center gap-3 px-3 py-2">
+          <Eye className="h-4 w-4 text-accent" />
+          <span
+            className="font-semibold uppercase tracking-wide"
+            style={{
+              color: 'var(--text-primary)',
+              letterSpacing: '0.5px',
+              fontSize: '0.8125rem',
+            }}
+          >
+            View
+          </span>
         </div>
 
         {/* Dropdown Button */}

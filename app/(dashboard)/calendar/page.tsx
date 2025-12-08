@@ -16,7 +16,7 @@ export default function CalendarPage() {
   const { cards, addCard } = useDataStore();
   const setActiveCardId = usePanelStore((state) => state.setActiveCardId);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
-  const openCalendarControls = usePanelStore((state) => state.openCalendarControls);
+  const setCalendarControls = usePanelStore((state) => state.setCalendarControls);
   const openDayDetails = usePanelStore((state) => state.openDayDetails);
   const activeCardId = usePanelStore((state) => state.activeCardId);
 
@@ -27,10 +27,10 @@ export default function CalendarPage() {
   const selectedDay = useCalendarStore((state) => state.selectedDay);
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
 
-  // Open calendar controls on mount
+  // Set calendar controls when this page loads (doesn't force panel open)
   useEffect(() => {
-    openCalendarControls();
-  }, [openCalendarControls]);
+    setCalendarControls();
+  }, [setCalendarControls]);
 
   // Handle day click
   const handleDayClick = (date: Date) => {

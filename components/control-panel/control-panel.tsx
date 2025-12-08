@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { X, Sun, Moon, SunMoon, Trash2, Sliders, ArrowUpRight, ArrowDownLeft, ChevronDown } from "lucide-react";
+import { X, Sun, Moon, SunMoon, Trash2, Settings, ArrowUpRight, ArrowDownLeft, ChevronDown } from "lucide-react";
 import { TrashPopover } from "@/components/trash/trash-popover";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useRouter } from "next/navigation";
@@ -176,7 +176,7 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
                   className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
                   aria-label="Settings"
                 >
-                  <Sliders size={18} />
+                  <Settings size={18} />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="bottom" className="z-[200]">Settings</TooltipContent>

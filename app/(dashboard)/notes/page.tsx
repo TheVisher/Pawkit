@@ -10,15 +10,15 @@ import { CollectionNode } from "@/lib/types";
 function NotesPageContent() {
   const searchParams = useSearchParams();
   const q = searchParams.get("q") || undefined;
-  const openNotesControls = usePanelStore((state) => state.openNotesControls);
+  const setNotesControls = usePanelStore((state) => state.setNotesControls);
 
   // Read from global store - instant, no API calls
   const { cards, collections } = useDataStore();
 
-  // Set the right panel content to show notes controls
+  // Set notes controls when this page loads (doesn't force panel open)
   useEffect(() => {
-    openNotesControls();
-  }, [openNotesControls]);
+    setNotesControls();
+  }, [setNotesControls]);
 
   // Filter to only notes (md-note or text-note) and exclude Den cards and private pawkit cards
   const allNotes = useMemo(() => {

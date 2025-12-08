@@ -42,7 +42,7 @@ function formatTime12h(time24: string): string {
 
 export default function HomePage() {
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
-  const openHomeControls = usePanelStore((state) => state.openHomeControls);
+  const setHomeControls = usePanelStore((state) => state.setHomeControls);
   const activeCardId = usePanelStore((state) => state.activeCardId);
 
   const [displayName, setDisplayName] = useState<string | null>(null);
@@ -77,10 +77,10 @@ export default function HomePage() {
     }
   }, [eventsInitialized, initializeEvents]);
 
-  // Open Home control panel when this page loads
+  // Set Home controls when this page loads (doesn't force panel open)
   useEffect(() => {
-    openHomeControls();
-  }, [openHomeControls]);
+    setHomeControls();
+  }, [setHomeControls]);
 
   // Fetch user profile
   useEffect(() => {
