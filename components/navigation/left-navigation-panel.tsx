@@ -234,6 +234,24 @@ export function LeftNavigationPanel({
       .filter((note): note is NonNullable<typeof note> => note != null && note.deleted !== true); // Filter out deleted or non-existent notes
   }, [pinnedNoteIds, cards]);
 
+  // Cleanup stale pinned note IDs (cards that no longer exist or are deleted)
+  // Check against full data store, not filtered cards
+  const allCards = useDataStore((state) => state.cards);
+  useEffect(() => {
+    if (pinnedNoteIds.length === 0) return;
+
+    // Find IDs that don't have a valid (non-deleted) card in the store
+    const staleIds = pinnedNoteIds.filter(id => {
+      const card = allCards.find(c => c.id === id);
+      return !card || card.deleted === true;
+    });
+
+    // Remove stale IDs from pinned notes
+    if (staleIds.length > 0) {
+      staleIds.forEach(id => unpinNote(id));
+    }
+  }, [pinnedNoteIds, allCards, unpinNote]);
+
   // Drag and drop for pinned notes
   const sensors = useSensors(
     useSensor(PointerSensor, {
