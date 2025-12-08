@@ -920,6 +920,7 @@ export function LeftNavigationPanel({
 
       {/* Left Navigation Panel */}
       <div
+        data-panel="left"
         className={`
           fixed top-0 left-0 bottom-0 z-[102]
           flex flex-col

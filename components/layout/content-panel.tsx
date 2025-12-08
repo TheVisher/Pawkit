@@ -129,6 +129,7 @@ export function ContentPanel({
         willChange: "left, right",
         // Note: Removed transform: translateZ(0) as it causes coordinate issues with drag-and-drop
       }}
+      data-panel="content"
       data-content-panel
       data-right-embedded={isRightEmbedded}
     >
