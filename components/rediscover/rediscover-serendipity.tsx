@@ -231,17 +231,23 @@ export function RediscoverSerendipity({
       setCardTransition("entering");
       setIsProcessing(false);
 
-      // After animation starts, clear the orbit position to animate to center
-      const clearOrbitTimer = setTimeout(() => {
-        setEnteringFromOrbit(null);
-      }, 50); // Small delay to ensure initial position is applied
+      // Use double requestAnimationFrame for proper browser paint sync
+      // This ensures the initial position is painted before starting the transition
+      let rafId1: number;
+      let rafId2: number;
+      rafId1 = requestAnimationFrame(() => {
+        rafId2 = requestAnimationFrame(() => {
+          setEnteringFromOrbit(null);
+        });
+      });
 
       const clearTransitionTimer = setTimeout(() => {
         setCardTransition(null);
-      }, 500); // Longer transition for orbit-to-center
+      }, 500);
 
       return () => {
-        clearTimeout(clearOrbitTimer);
+        cancelAnimationFrame(rafId1);
+        cancelAnimationFrame(rafId2);
         clearTimeout(clearTransitionTimer);
       };
     }
@@ -530,34 +536,26 @@ export function RediscoverSerendipity({
       <div className="relative z-10 flex items-center justify-center h-full px-4 pb-40">
         {/* Card Container */}
         <div
-          className={`flex flex-col items-center space-y-3 transition-all ease-out ${
+          className={`flex flex-col items-center space-y-3 ${
             cardTransition === "exiting-keep"
-              ? "scale-110 opacity-0 duration-300"
+              ? "scale-110 opacity-0"
               : cardTransition === "exiting-forget"
-              ? "scale-75 opacity-0 rotate-2 duration-300"
-              : enteringFromOrbit
-              ? "opacity-60 duration-0" // Starting position - no transition
-              : cardTransition === "entering"
-              ? "opacity-100 duration-500" // Animate to center
-              : "scale-100 opacity-100 duration-300"
+              ? "scale-75 opacity-0 rotate-2"
+              : "scale-100 opacity-100"
           }`}
-          style={
-            enteringFromOrbit
-              ? {
-                  transform: `translate(${enteringFromOrbit.x}px, ${enteringFromOrbit.y}px) scale(${enteringFromOrbit.scale * 0.5})`,
-                  filter: "blur(8px)",
-                  transitionProperty: "none",
-                }
-              : cardTransition === "entering"
-              ? {
-                  transform: "translate(0, 0) scale(1)",
-                  filter: "blur(0px)",
-                  transitionProperty: "transform, filter, opacity",
-                  transitionDuration: "500ms",
-                  transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
-                }
-              : undefined
-          }
+          style={{
+            // Use inline styles for all transitions to avoid Tailwind class conflicts
+            transform: enteringFromOrbit
+              ? `translate(${enteringFromOrbit.x}px, ${enteringFromOrbit.y}px) scale(${enteringFromOrbit.scale * 0.5})`
+              : undefined,
+            filter: enteringFromOrbit ? "blur(8px)" : "blur(0px)",
+            opacity: enteringFromOrbit ? 0.6 : undefined,
+            // Only apply transition when NOT in initial orbit position
+            // Include all properties that might animate (enter: transform/filter, exit: scale/opacity/rotate)
+            transition: enteringFromOrbit
+              ? "none"
+              : "all 300ms ease-out, transform 500ms cubic-bezier(0.4, 0, 0.2, 1), filter 500ms cubic-bezier(0.4, 0, 0.2, 1)",
+          }}
         >
           {/* Card Image - shows at natural aspect ratio */}
           <div
