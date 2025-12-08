@@ -49,6 +49,7 @@ export type RediscoverSerendipityProps = {
   totalBatches: number;
   hasMoreBatches: boolean;
   onNextBatch: () => void;
+  onStartOver: () => void;
 };
 
 export function RediscoverSerendipity({
@@ -61,6 +62,7 @@ export function RediscoverSerendipity({
   totalBatches,
   hasMoreBatches,
   onNextBatch,
+  onStartOver,
 }: RediscoverSerendipityProps) {
   const [isExiting, setIsExiting] = useState(false);
   const [cardTransition, setCardTransition] = useState<
@@ -222,7 +224,7 @@ export function RediscoverSerendipity({
                 : "You've reviewed all available cards."}
             </p>
             <div className="flex items-center justify-center gap-4">
-              {hasMoreBatches && (
+              {hasMoreBatches ? (
                 <button
                   onClick={onNextBatch}
                   className="px-8 py-3 rounded-full font-medium transition-all serendipity-action-btn"
@@ -234,18 +236,29 @@ export function RediscoverSerendipity({
                 >
                   Next Batch
                 </button>
+              ) : (
+                <button
+                  onClick={onStartOver}
+                  className="px-8 py-3 rounded-full font-medium transition-all serendipity-action-btn"
+                  style={{
+                    background: "var(--accent)",
+                    color: "white",
+                    boxShadow: "var(--glow-hover)",
+                  }}
+                >
+                  Start Over
+                </button>
               )}
               <button
                 onClick={handleExit}
                 className="px-8 py-3 rounded-full font-medium transition-all"
                 style={{
-                  background: hasMoreBatches ? "rgba(255, 255, 255, 0.1)" : "var(--accent)",
-                  color: hasMoreBatches ? "var(--text-secondary)" : "white",
-                  border: hasMoreBatches ? "1px solid rgba(255, 255, 255, 0.1)" : "none",
-                  boxShadow: hasMoreBatches ? "none" : "var(--glow-hover)",
+                  background: "rgba(255, 255, 255, 0.1)",
+                  color: "var(--text-secondary)",
+                  border: "1px solid rgba(255, 255, 255, 0.1)",
                 }}
               >
-                {hasMoreBatches ? "Exit" : "Back to Library"}
+                Exit
               </button>
             </div>
           </div>
