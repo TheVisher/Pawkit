@@ -502,6 +502,8 @@ export default function SettingsPage() {
   // Settings from store
   const theme = useSettingsStore((state) => state.theme);
   const accentColor = useSettingsStore((state) => state.accentColor);
+  const uiStyle = useSettingsStore((state) => state.uiStyle);
+  const setUiStyle = useSettingsStore((state) => state.setUiStyle);
   const notifications = useSettingsStore((state) => state.notifications);
   const autoSave = useSettingsStore((state) => state.autoSave);
   const autoFetchMetadata = useSettingsStore((state) => state.autoFetchMetadata);
@@ -879,6 +881,33 @@ export default function SettingsPage() {
                       {accentColor === color.name && (
                         <Check className="absolute inset-0 m-auto h-4 w-4 text-white" />
                       )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* UI Style */}
+              <div>
+                <Label className="text-sm mb-3 block" style={{ color: 'var(--text-secondary)' }}>
+                  UI Style
+                </Label>
+                <div className="flex gap-2">
+                  {[
+                    { value: "modern" as const, label: "Modern", desc: "Neutral surfaces" },
+                    { value: "classic" as const, label: "Classic", desc: "Purple-tinted" },
+                  ].map((style) => (
+                    <button
+                      key={style.value}
+                      onClick={() => setUiStyle(style.value)}
+                      className="px-4 py-2 rounded-lg text-sm transition-all"
+                      style={{
+                        background: uiStyle === style.value ? 'var(--ds-accent)' : 'var(--bg-surface-2)',
+                        color: uiStyle === style.value ? 'white' : 'var(--text-secondary)',
+                        boxShadow: uiStyle === style.value ? 'var(--glow-hover)' : 'var(--raised-shadow-sm)',
+                      }}
+                    >
+                      <span className="font-medium">{style.label}</span>
+                      <span className="block text-xs opacity-70">{style.desc}</span>
                     </button>
                   ))}
                 </div>

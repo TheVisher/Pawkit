@@ -120,6 +120,34 @@
   --slider-inset-border-bottom: rgba(255, 255, 255, 0.1);
 }
 
+/* === CLASSIC PURPLE THEME (Dark + Purple Tint) === */
+[data-ui-style="classic"] {
+  /* Base with purple undertone */
+  --bg-base: hsl(270 30% 6%);
+
+  /* Purple-tinted surfaces - keeping the depth layering */
+  --bg-surface-1: hsl(270 25% 11%);
+  --bg-surface-2: hsl(270 20% 16%);
+  --bg-surface-3: hsl(270 18% 21%);
+  --bg-surface-4: hsl(270 15% 26%);
+
+  /* Slightly purple-tinted borders */
+  --border-subtle: hsl(270 30% 100% / 0.08);
+  --border-default: hsl(270 30% 100% / 0.10);
+  --border-strong: hsl(270 30% 100% / 0.14);
+  --border-divider: hsl(270 30% 100% / 0.10);
+  --border-highlight-top: hsl(270 40% 100% / 0.12);
+  --border-highlight-left: hsl(270 40% 100% / 0.10);
+
+  /* Enhanced purple glow */
+  --glow-hover:
+    0 0 24px hsl(270 70% 55% / 0.5),
+    0 4px 12px hsl(0 0% 0% / 0.4);
+  --glow-active:
+    0 0 36px hsl(270 70% 55% / 0.6),
+    0 8px 24px hsl(0 0% 0% / 0.5);
+}
+
 /* === LIGHT MODE === */
 [data-theme="light"], :root.light {
   /* Backgrounds - light mode: shadows create depth, colors stay similar */
