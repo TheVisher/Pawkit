@@ -227,10 +227,15 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
           const apiSettings = {
             layout: settings.layout,
             cardSize: scaledCardSize,
+            cardSpacing: settings.cardSpacing,  // Send spacing directly (no scaling needed)
             showTitles: settings.showMetadata,  // showMetadata -> showTitles (server field name)
             showUrls: settings.showLabels,      // showLabels -> showUrls (server field name)
+            showMetadata: settings.showMetadata,
+            showLabels: settings.showLabels,
             showTags: settings.showTags,
+            showPreview: settings.showPreview,
             cardPadding: scaledCardPadding,
+            contentTypeFilter: settings.contentTypeFilter,
             sortBy: settings.sortBy,
             sortOrder: settings.sortOrder,
             viewSpecific: settings.viewSpecific ? JSON.stringify(settings.viewSpecific) : null,

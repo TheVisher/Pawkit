@@ -67,6 +67,14 @@ export type PanelState = {
   openBulkOperations: () => void;
   openCloudDrivesControls: () => void;
   restorePreviousContent: () => void;
+
+  // Set content type without forcing panel open (respects user's open/closed preference)
+  setHomeControls: () => void;
+  setLibraryControls: () => void;
+  setNotesControls: () => void;
+  setCalendarControls: () => void;
+  setPawkitsControls: () => void;
+  setCloudDrivesControls: () => void;
 };
 
 export const usePanelStore = create<PanelState>()(
@@ -235,6 +243,31 @@ export const usePanelStore = create<PanelState>()(
 
       openCloudDrivesControls: () => {
         set({ isOpen: true, contentType: "cloud-drives-controls", activeCardId: null, wasAutoOpened: false });
+      },
+
+      // Set content type without forcing panel open (respects user's open/closed preference)
+      setHomeControls: () => {
+        set({ contentType: "home-controls", activeCardId: null });
+      },
+
+      setLibraryControls: () => {
+        set({ contentType: "library-controls", activeCardId: null });
+      },
+
+      setNotesControls: () => {
+        set({ contentType: "notes-controls", activeCardId: null });
+      },
+
+      setCalendarControls: () => {
+        set({ contentType: "calendar-controls", activeCardId: null });
+      },
+
+      setPawkitsControls: () => {
+        set({ contentType: "pawkits-controls", activeCardId: null });
+      },
+
+      setCloudDrivesControls: () => {
+        set({ contentType: "cloud-drives-controls", activeCardId: null });
       },
 
       restorePreviousContent: () => {
