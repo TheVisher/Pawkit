@@ -40,8 +40,8 @@ const statusConfig: Record<
   "cloud-only": {
     icon: Cloud,
     label: "Cloud only",
-    color: "text-purple-400",
-    bgColor: "bg-purple-500/20",
+    color: "text-accent",
+    bgColor: "bg-accent/20",
   },
   error: {
     icon: AlertCircle,

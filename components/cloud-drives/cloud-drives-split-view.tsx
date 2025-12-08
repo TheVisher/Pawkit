@@ -183,8 +183,8 @@ export function CloudDrivesSplitView({
           </p>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-purple-500/20 text-purple-300 rounded-lg
-                       hover:bg-purple-500/30 transition-colors"
+            className="px-4 py-2 bg-accent/20 text-accent rounded-lg
+                       hover:bg-accent/30 transition-colors"
           >
             Close
           </button>
@@ -198,8 +198,8 @@ export function CloudDrivesSplitView({
       {/* Header */}
       <div className="flex-shrink-0 flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/20 border border-purple-500/30">
-            <SplitSquareHorizontal className="h-5 w-5 text-purple-400" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20 border border-accent/30">
+            <SplitSquareHorizontal className="h-5 w-5 text-accent" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-white">Split View</h1>
@@ -241,10 +241,10 @@ export function CloudDrivesSplitView({
           <div
             onMouseDown={handleDividerMouseDown}
             onDoubleClick={handleDividerDoubleClick}
-            className={`flex-shrink-0 w-2 bg-white/5 hover:bg-purple-500/20
+            className={`flex-shrink-0 w-2 bg-white/5 hover:bg-accent/20
                        transition-colors cursor-col-resize
                        flex items-center justify-center
-                       ${isDragging ? "bg-purple-500/30" : ""}`}
+                       ${isDragging ? "bg-accent/30" : ""}`}
           >
             <GripVertical className="h-6 w-6 text-muted-foreground/50" />
           </div>

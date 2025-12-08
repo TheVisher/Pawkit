@@ -367,8 +367,14 @@ export function StorageStrategySettings() {
       </div>
 
       {/* Current Strategy Summary */}
-      <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
-        <p className="text-xs text-purple-300">
+      <div
+        className="p-3 rounded-lg"
+        style={{
+          background: 'hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.1)',
+          border: '1px solid hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.2)',
+        }}
+      >
+        <p className="text-xs" style={{ color: 'var(--ds-accent)' }}>
           <span className="font-medium">Current strategy:</span>{" "}
           {strategy.primaryProvider ? (
             <>

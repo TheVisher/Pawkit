@@ -13,13 +13,12 @@
   --hue-neutral: 0;
   --hue-purple: 270;
 
-  /* === PURPLE ACCENT SCALE === */
-  --purple-sat: 60%;
-  --ds-accent: hsl(var(--hue-purple) var(--purple-sat) 55%);
-  --ds-accent-hover: hsl(var(--hue-purple) var(--purple-sat) 65%);
-  --ds-accent-active: hsl(var(--hue-purple) var(--purple-sat) 45%);
-  --ds-accent-muted: hsl(var(--hue-purple) var(--purple-sat) 35%);
-  --ds-accent-subtle: hsl(var(--hue-purple) var(--purple-sat) 20%);
+  /* === DYNAMIC ACCENT SCALE (uses --accent-h/s/l from theme provider) === */
+  --ds-accent: hsl(var(--accent-h) var(--accent-s) var(--accent-l));
+  --ds-accent-hover: hsl(var(--accent-h) var(--accent-s) calc(var(--accent-l) + 10%));
+  --ds-accent-active: hsl(var(--accent-h) var(--accent-s) calc(var(--accent-l) - 10%));
+  --ds-accent-muted: hsl(var(--accent-h) var(--accent-s) 35%);
+  --ds-accent-subtle: hsl(var(--accent-h) var(--accent-s) 20%);
 
   /* === SPACING SYSTEM (4px grid) === */
   --space-1: 4px;
@@ -99,13 +98,13 @@
     0 32px 64px hsl(0 0% 0% / 0.3),
     0 0 0 1px hsl(0 0% 100% / 0.1);
 
-  /* Glow effects - more visible purple glow */
+  /* Glow effects - uses dynamic accent color */
   --glow-hover:
-    0 0 20px hsl(270 60% 50% / 0.4),
+    0 0 20px hsl(var(--accent-h) var(--accent-s) 50% / 0.4),
     0 4px 12px hsl(0 0% 0% / 0.4);
-  --glow-focus: 0 0 0 3px hsl(var(--hue-purple) var(--purple-sat) 50% / 0.4);
+  --glow-focus: 0 0 0 3px hsl(var(--accent-h) var(--accent-s) 50% / 0.4);
   --glow-active:
-    0 0 30px hsl(270 60% 50% / 0.5),
+    0 0 30px hsl(var(--accent-h) var(--accent-s) 50% / 0.5),
     0 8px 24px hsl(0 0% 0% / 0.5);
 
   /* Neumorphic effects - Dark mode */
@@ -221,9 +220,9 @@
   --shadow-4: 0 12px 24px hsl(var(--shadow-color) / 0.14), 0 6px 12px hsl(var(--shadow-color) / 0.12);
 
   /* Glow effects - softer in light mode */
-  --glow-hover: 0 0 20px hsl(var(--hue-purple) var(--purple-sat) 50% / 0.2);
-  --glow-focus: 0 0 0 3px hsl(var(--hue-purple) var(--purple-sat) 50% / 0.2);
-  --glow-active: 0 0 30px hsl(var(--hue-purple) var(--purple-sat) 50% / 0.3);
+  --glow-hover: 0 0 20px hsl(var(--accent-h) var(--accent-s) 50% / 0.2);
+  --glow-focus: 0 0 0 3px hsl(var(--accent-h) var(--accent-s) 50% / 0.2);
+  --glow-active: 0 0 30px hsl(var(--accent-h) var(--accent-s) 50% / 0.3);
 
   /* Neumorphic effects - Light mode (dark shadows only for depth) */
   --border-highlight-top: transparent;
@@ -240,11 +239,11 @@
   --slider-inset-border-bottom: rgba(0, 0, 0, 0.04);
 
   /* Accent colors - darker for light mode contrast */
-  --ds-accent: hsl(var(--hue-purple) var(--purple-sat) 45%);
-  --ds-accent-hover: hsl(var(--hue-purple) var(--purple-sat) 40%);
-  --ds-accent-active: hsl(var(--hue-purple) var(--purple-sat) 35%);
-  --ds-accent-muted: hsl(var(--hue-purple) var(--purple-sat) 90%);  /* Light purple background */
-  --ds-accent-subtle: hsl(var(--hue-purple) var(--purple-sat) 95%); /* Very light purple bg */
+  --ds-accent: hsl(var(--accent-h) var(--accent-s) 45%);
+  --ds-accent-hover: hsl(var(--accent-h) var(--accent-s) 40%);
+  --ds-accent-active: hsl(var(--accent-h) var(--accent-s) 35%);
+  --ds-accent-muted: hsl(var(--accent-h) var(--accent-s) 90%);  /* Light accent background */
+  --ds-accent-subtle: hsl(var(--accent-h) var(--accent-s) 95%); /* Very light accent bg */
 }
 
 /* === LIGHT MODE + GLASS === */
@@ -503,7 +502,7 @@ textarea:focus-visible {
     --card-foreground: 0 0% 95%;
     --popover: 0 0% 11%;
     --popover-foreground: 0 0% 95%;
-    --primary: 270 60% 55%;
+    --primary: var(--accent-h) var(--accent-s) var(--accent-l);
     --primary-foreground: 0 0% 100%;
     --secondary: 0 0% 15%;
     --secondary-foreground: 0 0% 95%;

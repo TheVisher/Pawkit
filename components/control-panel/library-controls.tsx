@@ -338,7 +338,7 @@ function TagsSection({
                 className="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-200"
                 style={isSelected ? {
                   background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
-                  boxShadow: 'var(--raised-shadow-sm), 0 0 12px rgba(168, 85, 247, 0.3)',
+                  boxShadow: 'var(--raised-shadow-sm), 0 0 12px var(--ds-accent-subtle)',
                   border: '1px solid var(--ds-accent)',
                   borderTopColor: 'var(--raised-border-top)',
                   color: 'var(--ds-accent)',
@@ -352,7 +352,7 @@ function TagsSection({
                 onMouseEnter={(e) => {
                   if (!isSelected) {
                     e.currentTarget.style.borderColor = 'var(--ds-accent)';
-                    e.currentTarget.style.boxShadow = 'var(--inset-shadow-sm), 0 0 8px rgba(168, 85, 247, 0.2)';
+                    e.currentTarget.style.boxShadow = 'var(--inset-shadow-sm), 0 0 8px var(--ds-accent-subtle)';
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -707,7 +707,7 @@ export function LibraryControls() {
                           unoptimized
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-pink-500/20" />
+                        <div className="w-full h-full bg-gradient-to-br from-accent/20 to-pink-500/20" />
                       )}
                     </div>
 

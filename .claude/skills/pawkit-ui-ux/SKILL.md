@@ -3773,4 +3773,158 @@ function MetadataRow({ label, value }: { label: string; value?: string }) {
 
 ---
 
-**Last Updated**: November 26, 2025
+## Neumorphic-Lite Design System (December 2025)
+
+### Overview
+
+The UI was overhauled with a "neumorphic-lite" design system that uses CSS variables for consistent theming across all components.
+
+### CSS Variable System
+
+All colors, shadows, and spacing are now defined via CSS variables in `app/globals.css`:
+
+```css
+/* Surface hierarchy - darker = more recessed */
+--bg-base: hsl(0 0% 7%);
+--bg-surface-1: hsl(0 0% 11%);
+--bg-surface-2: hsl(0 0% 15%);
+--bg-surface-3: hsl(0 0% 19%);
+--bg-surface-4: hsl(0 0% 23%);
+
+/* Text hierarchy */
+--text-primary: hsl(0 0% 98%);
+--text-secondary: hsl(0 0% 70%);
+--text-muted: hsl(0 0% 50%);
+
+/* Border styles with top/left highlights */
+--border-subtle: hsl(0 0% 20%);
+--border-highlight-top: hsl(0 0% 25%);
+--border-highlight-left: hsl(0 0% 22%);
+
+/* Shadow hierarchy */
+--shadow-1: 0 1px 2px rgba(0,0,0,0.3);
+--shadow-2: 0 2px 8px rgba(0,0,0,0.4);
+--shadow-3: 0 4px 16px rgba(0,0,0,0.5);
+--shadow-4: 0 8px 32px rgba(0,0,0,0.6);
+
+/* Accent color (dynamic via ThemeProvider) */
+--ds-accent: hsl(var(--accent-h) var(--accent-s) var(--accent-l));
+```
+
+### Glass UI Style (Optional)
+
+Glass mode adds transparency and backdrop blur via `data-ui-style="glass"`:
+
+```css
+[data-ui-style="glass"] {
+  --bg-surface-1: hsl(0 0% 12% / 0.70);
+  --bg-surface-2: hsl(0 0% 18% / 0.75);
+  --bg-surface-3: hsl(0 0% 24% / 0.80);
+  --glass-blur: 12px;
+}
+
+[data-ui-style="glass"] [data-panel="left"],
+[data-ui-style="glass"] [data-panel="right"],
+[data-ui-style="glass"] [data-panel="content"] {
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+```
+
+### Surface Tint (Optional)
+
+Purple tint option via `data-surface-tint="purple"`:
+
+```css
+[data-surface-tint="purple"] {
+  --bg-base: hsl(270 30% 6%);
+  --bg-surface-1: hsl(270 25% 11%);
+  --bg-surface-2: hsl(270 20% 16%);
+}
+```
+
+### Combined Glass + Tint
+
+```css
+[data-ui-style="glass"][data-surface-tint="purple"] {
+  --bg-surface-1: hsl(270 30% 12% / 0.70);
+  --bg-surface-2: hsl(270 25% 17% / 0.75);
+}
+```
+
+### Light Mode Support
+
+All glass and tint styles have light mode variants:
+
+```css
+.light[data-ui-style="glass"] {
+  --bg-surface-1: hsl(0 0% 100% / 0.65);
+  --bg-surface-2: hsl(0 0% 100% / 0.75);
+}
+
+.light[data-surface-tint="purple"] {
+  --bg-base: hsl(270 30% 98%);
+  --bg-surface-1: hsl(270 40% 95%);
+}
+```
+
+### Panel Data Attributes
+
+Panels must have `data-panel` attributes for glass targeting:
+
+```tsx
+// Left sidebar
+<div data-panel="left" ...>
+
+// Right sidebar (control panel)
+<div data-panel="right" ...>
+
+// Main content area
+<div data-panel="content" ...>
+```
+
+### Settings Structure
+
+Settings page has 4 independent sections:
+
+1. **Appearance**: Dark / Light / Auto (theme mode)
+2. **Accent Color**: Purple / Blue / Green / Red / Orange
+3. **UI Style**: Modern (solid) / Glass (transparent + blur)
+4. **Theme**: None / Purple (surface tint)
+
+### ThemeProvider Implementation
+
+`components/theme-provider.tsx` applies data attributes:
+
+```typescript
+// Apply UI style
+useEffect(() => {
+  if (uiStyle === "glass") {
+    document.documentElement.setAttribute("data-ui-style", "glass");
+  } else {
+    document.documentElement.removeAttribute("data-ui-style");
+  }
+}, [uiStyle]);
+
+// Apply surface tint
+useEffect(() => {
+  if (surfaceTint && surfaceTint !== "none") {
+    document.documentElement.setAttribute("data-surface-tint", surfaceTint);
+  } else {
+    document.documentElement.removeAttribute("data-surface-tint");
+  }
+}, [surfaceTint]);
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `app/globals.css` | CSS variables and style definitions |
+| `components/theme-provider.tsx` | Applies data attributes |
+| `lib/hooks/settings-store.ts` | Stores uiStyle and surfaceTint |
+| `app/(dashboard)/settings/page.tsx` | Settings UI |
+| `docs/PAWKIT_UI_DESIGN_SYSTEM.md` | Full documentation |
+
+---
+
+**Last Updated**: December 7, 2025

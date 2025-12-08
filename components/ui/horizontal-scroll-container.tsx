@@ -153,7 +153,7 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
           <button
             onClick={handleScrollLeft}
             onMouseDown={(e) => e.stopPropagation()}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity hover:text-purple-400 text-muted-foreground"
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity hover:text-accent text-muted-foreground"
             aria-label="Scroll left"
           >
             <ChevronLeft size={28} strokeWidth={2.5} />
@@ -165,7 +165,7 @@ export function HorizontalScrollContainer({ children, className = "" }: Horizont
           <button
             onClick={handleScrollRight}
             onMouseDown={(e) => e.stopPropagation()}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity hover:text-purple-400 text-muted-foreground"
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 opacity-0 group-hover:opacity-100 transition-opacity hover:text-accent text-muted-foreground"
             aria-label="Scroll right"
           >
             <ChevronRight size={28} strokeWidth={2.5} />

@@ -106,7 +106,7 @@ export default function ExtensionAuthPage() {
       <div className="max-w-md w-full bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-xl">
         {status === 'loading' && (
           <div className="text-center space-y-4">
-            <Loader2 className="h-12 w-12 animate-spin text-purple-500 mx-auto" />
+            <Loader2 className="h-12 w-12 animate-spin text-accent mx-auto" />
             <h1 className="text-xl font-semibold text-gray-100">Authorizing...</h1>
             <p className="text-sm text-gray-400">
               Generating secure token for the extension

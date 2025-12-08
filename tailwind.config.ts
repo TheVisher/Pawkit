@@ -12,7 +12,10 @@ const config: Config = {
   		colors: {
   			accent: {
   				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
+  				foreground: 'hsl(var(--accent-foreground))',
+  				muted: 'hsl(var(--accent-h) var(--accent-s) 35%)',
+  				subtle: 'hsl(var(--accent-h) var(--accent-s) 20%)',
+  				hover: 'hsl(var(--accent-h) var(--accent-s) calc(var(--accent-l) + 10%))',
   			},
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',

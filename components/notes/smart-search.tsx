@@ -194,7 +194,7 @@ export function SmartSearch({ onSelectCard, placeholder = "Search notes, cards, 
 
   const getIcon = (card: CardModel) => {
     if (card.type === 'md-note' || card.type === 'text-note') {
-      return <FileText size={16} className="text-purple-400" />;
+      return <FileText size={16} className="text-accent" />;
     } else if (card.type === 'url') {
       return <Bookmark size={16} className="text-blue-400" />;
     } else {
@@ -205,7 +205,7 @@ export function SmartSearch({ onSelectCard, placeholder = "Search notes, cards, 
   const getMatchTypeIcon = (matchType: SearchResult['matchType']) => {
     switch (matchType) {
       case 'tags':
-        return <Hash size={12} className="text-purple-400" />;
+        return <Hash size={12} className="text-accent" />;
       case 'title':
         return <FileText size={12} className="text-blue-400" />;
       case 'content':

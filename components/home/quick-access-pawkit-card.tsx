@@ -79,7 +79,7 @@ export function QuickAccessPawkitCard({ pawkit }: QuickAccessPawkitCardProps) {
       <div className="relative z-10 flex items-center justify-between pb-4 text-sm text-muted-foreground">
         <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/20 text-accent">
-            <Folder className="h-5 w-5 text-purple-400" />
+            <Folder className="h-5 w-5 text-accent" />
           </span>
           {pawkit.name}
         </span>

@@ -90,7 +90,7 @@ export function RediscoverLeftSidebar({ queue, currentIndex, filter, onFilterCha
                     unoptimized
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-pink-500/20" />
+                  <div className="w-full h-full bg-gradient-to-br from-accent/20 to-pink-500/20" />
                 )}
               </div>
 

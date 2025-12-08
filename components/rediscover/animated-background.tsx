@@ -6,11 +6,10 @@ export function AnimatedBackground() {
       {/* Base dark layer */}
       <div className="absolute inset-0 bg-[#0A0A0F]" />
 
-      {/* Flowing Gradient Layer 1 */}
+      {/* Flowing Gradient Layer 1 - uses CSS variable for accent color */}
       <div
-        className="absolute inset-0 opacity-60"
+        className="absolute inset-0 opacity-60 animated-bg-layer-1"
         style={{
-          background: 'linear-gradient(45deg, #7C3AED, #1A1A2E, #9333EA, #0A0A0F)',
           backgroundSize: '400% 400%',
           animation: 'gradient-flow-1 20s ease infinite',
           filter: 'blur(60px)',
@@ -19,9 +18,8 @@ export function AnimatedBackground() {
 
       {/* Flowing Gradient Layer 2 */}
       <div
-        className="absolute inset-0 opacity-40"
+        className="absolute inset-0 opacity-40 animated-bg-layer-2"
         style={{
-          background: 'linear-gradient(135deg, #9333EA, #0A0A0F, #7C3AED, #1A1A2E)',
           backgroundSize: '400% 400%',
           animation: 'gradient-flow-2 25s ease infinite',
           filter: 'blur(80px)',
@@ -30,9 +28,8 @@ export function AnimatedBackground() {
 
       {/* Flowing Gradient Layer 3 */}
       <div
-        className="absolute inset-0 opacity-30"
+        className="absolute inset-0 opacity-30 animated-bg-layer-3"
         style={{
-          background: 'linear-gradient(225deg, #1A1A2E, #7C3AED, #0A0A0F, #9333EA)',
           backgroundSize: '400% 400%',
           animation: 'gradient-flow-3 30s ease infinite',
           filter: 'blur(100px)',
@@ -41,14 +38,23 @@ export function AnimatedBackground() {
 
       {/* Subtle radial glow overlay */}
       <div
-        className="absolute inset-0 opacity-20"
-        style={{
-          background: 'radial-gradient(ellipse at center, rgba(124, 58, 237, 0.3) 0%, transparent 70%)',
-        }}
+        className="absolute inset-0 opacity-20 animated-bg-glow"
       />
 
       {/* Global animation keyframes */}
       <style jsx>{`
+        .animated-bg-layer-1 {
+          background: linear-gradient(45deg, hsl(var(--accent-h) var(--accent-s) 45%), #1A1A2E, hsl(var(--accent-h) var(--accent-s) 55%), #0A0A0F);
+        }
+        .animated-bg-layer-2 {
+          background: linear-gradient(135deg, hsl(var(--accent-h) var(--accent-s) 55%), #0A0A0F, hsl(var(--accent-h) var(--accent-s) 45%), #1A1A2E);
+        }
+        .animated-bg-layer-3 {
+          background: linear-gradient(225deg, #1A1A2E, hsl(var(--accent-h) var(--accent-s) 45%), #0A0A0F, hsl(var(--accent-h) var(--accent-s) 55%));
+        }
+        .animated-bg-glow {
+          background: radial-gradient(ellipse at center, hsl(var(--accent-h) var(--accent-s) 45% / 0.3) 0%, transparent 70%);
+        }
         @keyframes gradient-flow-1 {
           0%, 100% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }

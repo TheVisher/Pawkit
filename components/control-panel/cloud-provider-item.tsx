@@ -41,7 +41,7 @@ export function CloudProviderItem({ provider, onBrowse, onConnect }: CloudProvid
       className={`
         flex items-center gap-3 p-2.5 rounded-lg transition-all
         ${isConnected
-          ? "bg-white/5 border border-white/10 hover:border-purple-500/30"
+          ? "bg-white/5 border border-white/10 hover:border-accent/30"
           : "bg-white/[0.02] border border-white/5 hover:border-white/10"
         }
       `}
@@ -93,7 +93,7 @@ export function CloudProviderItem({ provider, onBrowse, onConnect }: CloudProvid
           onClick={onBrowse}
           disabled={isConnecting || isSyncing}
           className="flex-shrink-0 p-1.5 rounded-md text-muted-foreground
-                     hover:text-accent hover:bg-purple-500/10
+                     hover:text-accent hover:bg-accent/10
                      transition-colors disabled:opacity-50"
           title={`Browse ${provider.name}`}
         >
@@ -103,7 +103,7 @@ export function CloudProviderItem({ provider, onBrowse, onConnect }: CloudProvid
         <button
           onClick={onConnect}
           className="flex-shrink-0 p-1.5 rounded-md text-muted-foreground
-                     hover:text-accent hover:bg-purple-500/10
+                     hover:text-accent hover:bg-accent/10
                      transition-colors"
           title={`Connect ${provider.name}`}
         >

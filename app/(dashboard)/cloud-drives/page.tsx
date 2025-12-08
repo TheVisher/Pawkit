@@ -32,7 +32,7 @@ function getFileIcon(type: string) {
   switch (type) {
     case "md-note":
     case "text-note":
-      return <FileText className="h-4 w-4 text-purple-400" />;
+      return <FileText className="h-4 w-4 text-accent" />;
     case "image":
       return <ImageIcon className="h-4 w-4 text-pink-400" />;
     case "audio":
@@ -188,8 +188,8 @@ export default function CloudDrivesPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-purple-500/20 border border-purple-500/30">
-            <Cloud className="h-6 w-6 text-purple-400" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/20 border border-accent/30">
+            <Cloud className="h-6 w-6 text-accent" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-white">Cloud Drives</h1>
@@ -220,10 +220,10 @@ export default function CloudDrivesPage() {
 
       {/* First-Time Setup Prompt */}
       {connectedProviders.length > 0 && !primaryProvider && (
-        <div className="mb-8 p-4 rounded-2xl bg-purple-500/10 border border-purple-500/30">
+        <div className="mb-8 p-4 rounded-2xl bg-accent/10 border border-accent/30">
           <div className="flex items-start gap-4">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/20 shrink-0">
-              <Settings className="h-5 w-5 text-purple-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent/20 shrink-0">
+              <Settings className="h-5 w-5 text-accent" />
             </div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-medium text-white mb-1">Configure Your Storage</h3>
@@ -353,8 +353,8 @@ export default function CloudDrivesPage() {
       {connectedProviders.length >= 1 && (
         <div className="mt-8 space-y-3">
           {connectedProviders.length >= 2 && (
-            <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-xl">
-              <p className="text-sm text-purple-300">
+            <div className="p-4 bg-accent/10 border border-accent/20 rounded-xl">
+              <p className="text-sm text-accent">
                 <span className="font-medium">Tip:</span> Use Split View to copy files between providers by dragging and dropping.
               </p>
             </div>

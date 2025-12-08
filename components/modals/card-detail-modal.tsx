@@ -80,7 +80,7 @@ function TagsTab({ content }: TagsTabProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Tag size={16} className="text-purple-400" />
+        <Tag size={16} className="text-accent" />
         <h3 className="text-sm font-semibold text-gray-300">Tags</h3>
         <span className="text-xs text-gray-500">({tags.length})</span>
       </div>
@@ -92,7 +92,7 @@ function TagsTab({ content }: TagsTabProps) {
       ) : (
         <div className="flex flex-wrap gap-2">
           {tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="bg-purple-900/30 text-purple-300 border-purple-700/50">
+            <Badge key={tag} variant="secondary" className="bg-accent/30 text-accent border-accent/50">
               #{tag}
             </Badge>
           ))}
@@ -292,9 +292,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
           <code
             className="px-2 py-1 rounded font-mono text-sm border"
             style={{
-              backgroundColor: 'rgba(139, 92, 246, 0.1)', // Purple tint
-              borderColor: 'rgba(139, 92, 246, 0.3)',
-              color: '#c4b5fd', // Light purple
+              backgroundColor: 'var(--ds-accent-muted)', // Accent tint
+              borderColor: 'var(--ds-accent)',
+              color: 'var(--ds-accent)', // Accent color
             }}
             {...props}
           >
@@ -396,7 +396,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   e.stopPropagation();
                   onNavigateToCard(noteId);
                 }}
-                className="!text-purple-400 hover:!text-purple-300 !underline !decoration-purple-400/50 hover:!decoration-purple-300 cursor-pointer !font-bold transition-colors"
+                className="!text-accent hover:!text-accent !underline !decoration-accent/50 hover:!decoration-accent cursor-pointer !font-bold transition-colors"
                 style={{ color: '#c084fc', textDecoration: 'underline', textDecorationColor: '#c084fc80' }}
               >
                 <FileText size={14} className="inline mr-1" />
@@ -1109,7 +1109,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   onKeyDown={handleTitleKeyDown}
                   onBlur={handleSaveTitle}
                   autoFocus
-                  className="w-full text-lg font-semibold text-gray-100 bg-gray-800/50 border border-purple-500/50 rounded px-2 py-1 focus:outline-none focus:border-purple-400"
+                  className="w-full text-lg font-semibold text-gray-100 bg-gray-800/50 border border-accent/50 rounded px-2 py-1 focus:outline-none focus:border-accent"
                   placeholder="Enter title..."
                 />
               ) : (
@@ -1120,7 +1120,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   </h2>
                   <button
                     onClick={() => setIsEditingTitle(true)}
-                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-purple-400 transition-all flex-shrink-0 p-1"
+                    className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-accent transition-all flex-shrink-0 p-1"
                     title="Edit title"
                   >
                     <Edit size={16} />
@@ -1141,7 +1141,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   href={card.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-gray-400 hover:text-purple-400 hover:underline transition-colors truncate block mt-1"
+                  className="text-sm text-gray-400 hover:text-accent hover:underline transition-colors truncate block mt-1"
                   title={card.url}
                 >
                   {getShortDomain(card.url)}
@@ -1371,10 +1371,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 group z-10"
                 title={showNoteToolbar ? "Hide toolbar" : "Show toolbar"}
               >
-                <div className="w-12 h-1.5 bg-white/10 group-hover:bg-purple-500/50 rounded-full transition-all duration-200 flex items-center justify-center">
+                <div className="w-12 h-1.5 bg-white/10 group-hover:bg-accent/50 rounded-full transition-all duration-200 flex items-center justify-center">
                   <ChevronDown
                     size={16}
-                    className={`text-gray-400 group-hover:text-purple-400 transition-all duration-200 ${showNoteToolbar ? '' : 'rotate-180'}`}
+                    className={`text-gray-400 group-hover:text-accent transition-all duration-200 ${showNoteToolbar ? '' : 'rotate-180'}`}
                   />
                 </div>
               </button>
@@ -1713,11 +1713,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
                         {/* Release Date / Calendar Section */}
                         {(linkedCalendarEvent || extractedReleaseDate) && (
-                          <div className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30">
+                          <div className="p-4 rounded-xl bg-accent/10 border border-accent/30">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                                  <Calendar size={20} className="text-purple-400" />
+                                <div className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center">
+                                  <Calendar size={20} className="text-accent" />
                                 </div>
                                 <div>
                                   <span className="text-sm text-gray-400">
@@ -1733,7 +1733,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                               {linkedCalendarEvent ? (
                                 <button
                                   onClick={() => router.push(`/calendar?date=${linkedCalendarEvent.date}`)}
-                                  className="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 hover:text-purple-200 transition-colors text-sm font-medium flex items-center gap-2"
+                                  className="px-4 py-2 rounded-lg bg-accent/20 text-accent hover:bg-accent/30 hover:text-accent-hover transition-colors text-sm font-medium flex items-center gap-2"
                                 >
                                   View on Calendar
                                   <ChevronRight size={16} />
@@ -1742,7 +1742,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                                 <button
                                   onClick={handleAddToCalendar}
                                   disabled={isAddingToCalendar}
-                                  className="px-4 py-2 rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
+                                  className="px-4 py-2 rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-2"
                                 >
                                   <Plus size={16} />
                                   {isAddingToCalendar ? 'Adding...' : 'Add to Calendar'}
@@ -2315,7 +2315,7 @@ function PawkitTreeItem({ node, depth, currentCollections, onSelect }: PawkitTre
         style={{ paddingLeft: `${paddingLeft + 16}px` }}
       >
         <span className="flex items-center gap-2">
-          <Folder className="h-4 w-4 text-purple-400" />
+          <Folder className="h-4 w-4 text-accent" />
           {node.name}
         </span>
         {isActive && <span className="text-lg">✓</span>}
@@ -2516,13 +2516,13 @@ function getColorForDateType(type: ExtractedDate['type']): string {
     case 'release':
       return '#f97316'; // Orange for releases
     case 'event':
-      return '#8b5cf6'; // Purple for events
+      return 'var(--ds-accent)'; // Accent for events
     case 'deadline':
       return '#ef4444'; // Red for deadlines
     case 'published':
       return '#3b82f6'; // Blue for published
     default:
-      return '#8b5cf6'; // Default purple
+      return 'var(--ds-accent)'; // Default accent
   }
 }
 
@@ -2672,7 +2672,7 @@ function MetadataSection({ card }: { card: CardModel }) {
           <div className="flex flex-wrap gap-2">
             {card.collections.map((collection) => (
               <Badge key={collection} variant="secondary" className="flex items-center gap-1.5">
-                <Folder className="h-3 w-3 text-purple-400" />
+                <Folder className="h-3 w-3 text-accent" />
                 {collection}
               </Badge>
             ))}
@@ -2695,10 +2695,10 @@ function MetadataSection({ card }: { card: CardModel }) {
 
       {/* Release Date / Calendar Event Section */}
       {(linkedEvent || relevantDate) && (
-        <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
+        <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Calendar size={14} className="text-purple-400" />
+              <Calendar size={14} className="text-accent" />
               <span className="text-xs text-gray-400">
                 {linkedEvent ? 'On Calendar' : (relevantDate?.label || 'Release Date')}
               </span>
@@ -2706,10 +2706,10 @@ function MetadataSection({ card }: { card: CardModel }) {
             {linkedEvent ? (
               <button
                 onClick={() => handleViewOnCalendar(linkedEvent.date)}
-                className="flex items-center gap-1.5 text-xs text-purple-300 hover:text-purple-200 transition-colors"
+                className="flex items-center gap-1.5 text-xs text-accent hover:text-accent-hover transition-colors"
               >
                 <span>{formatDateForDisplay(linkedEvent.date)}</span>
-                <span className="text-purple-400">→</span>
+                <span className="text-accent">→</span>
               </button>
             ) : relevantDate ? (
               <div className="flex items-center gap-2">
@@ -2717,7 +2717,7 @@ function MetadataSection({ card }: { card: CardModel }) {
                 <button
                   onClick={handleAddToCalendar}
                   disabled={isAddingToCalendar}
-                  className="px-2 py-0.5 text-xs font-medium rounded bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 hover:text-purple-200 transition-colors border border-purple-500/30 disabled:opacity-50"
+                  className="px-2 py-0.5 text-xs font-medium rounded bg-accent/20 text-accent hover:bg-accent/30 hover:text-accent-hover transition-colors border border-accent/30 disabled:opacity-50"
                 >
                   {isAddingToCalendar ? '...' : '+ Add'}
                 </button>
@@ -2811,10 +2811,10 @@ function ScheduleTab({ cardId, scheduledDate, onSave }: ScheduleTabProps) {
     <div className="space-y-4">
       {/* Calendar Events Section - Show if card has been added to calendar */}
       {calendarEvents.length > 0 && (
-        <div className="p-3 rounded-lg bg-purple-500/10 border border-purple-500/30">
+        <div className="p-3 rounded-lg bg-accent/10 border border-accent/30">
           <div className="flex items-center gap-2 mb-2">
-            <Calendar size={16} className="text-purple-400" />
-            <h4 className="text-sm font-medium text-purple-300">On Your Calendar</h4>
+            <Calendar size={16} className="text-accent" />
+            <h4 className="text-sm font-medium text-accent">On Your Calendar</h4>
           </div>
           <div className="space-y-2">
             {calendarEvents.map((event) => (
@@ -2825,7 +2825,7 @@ function ScheduleTab({ cardId, scheduledDate, onSave }: ScheduleTabProps) {
                 <span className="text-gray-300">{event.title}</span>
                 <button
                   onClick={() => handleViewEventOnCalendar(event.date)}
-                  className="text-purple-400 hover:text-purple-300 hover:underline"
+                  className="text-accent hover:text-accent hover:underline"
                 >
                   {formatEventDate(event.date)}
                 </button>

@@ -579,7 +579,7 @@ export function LeftNavigationPanel({
             onClick={() => openCardDetails(note.id)}
             className="flex-1 flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-white/5"
           >
-            <Pin size={16} className="flex-shrink-0 text-purple-400" />
+            <Pin size={16} className="flex-shrink-0 text-accent" />
             <span className="flex-1 text-left truncate">{note.title}</span>
           </button>
           <div
@@ -834,7 +834,7 @@ export function LeftNavigationPanel({
                       className="p-1 rounded transition-colors relative cursor-pointer"
                       title="Add to pawkit"
                     >
-                      <Plus size={iconSize} className="text-purple-400" />
+                      <Plus size={iconSize} className="text-accent" />
                       {isAnimating && (
                         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pointer-events-none z-10">
                           <div
@@ -861,7 +861,7 @@ export function LeftNavigationPanel({
                 setParentPawkitId(collection.id);
                 setShowCreatePawkitModal(true);
               }}
-              className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400"
+              className="p-1 rounded transition-colors hover:bg-white/10 text-accent"
               title="Create sub-pawkit"
             >
               <Plus size={iconSize} />
@@ -1075,7 +1075,7 @@ export function LeftNavigationPanel({
                               unoptimized
                             />
                           ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-purple-500/20 to-pink-500/20" />
+                            <div className="w-full h-full bg-gradient-to-br from-accent/20 to-pink-500/20" />
                           )}
                         </div>
 
@@ -1190,7 +1190,7 @@ export function LeftNavigationPanel({
                     e.stopPropagation();
                     setShowCreatePawkitModal(true);
                   }}
-                  className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100"
+                  className="p-1 rounded transition-colors hover:bg-white/10 text-accent opacity-0 group-hover:opacity-100"
                   title="Create new pawkit"
                 >
                   <Plus size={16} />
@@ -1222,7 +1222,7 @@ export function LeftNavigationPanel({
                   e.stopPropagation();
                   setShowCreateNoteModal(true);
                 }}
-                className="p-1 rounded transition-colors hover:bg-white/10 text-purple-400 opacity-0 group-hover:opacity-100"
+                className="p-1 rounded transition-colors hover:bg-white/10 text-accent opacity-0 group-hover:opacity-100"
                 title="Create new note"
               >
                 <Plus size={16} />

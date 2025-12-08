@@ -191,7 +191,7 @@ export function CreateNoteModal({ open, onClose, onConfirm, dailyNoteExists = fa
                   }}
                   className={`w-full text-left p-3 rounded border transition-colors ${
                     selectedTemplate === null
-                      ? 'border-purple-500 bg-purple-500/20'
+                      ? 'border-accent bg-accent/20'
                       : 'border-gray-700 hover:bg-gray-800/50'
                   }`}
                 >
@@ -209,7 +209,7 @@ export function CreateNoteModal({ open, onClose, onConfirm, dailyNoteExists = fa
                     }}
                     className={`w-full text-left p-3 rounded border transition-colors ${
                       selectedTemplate?.id === template.id
-                        ? 'border-purple-500 bg-purple-500/20'
+                        ? 'border-accent bg-accent/20'
                         : 'border-gray-700 hover:bg-gray-800/50'
                     }`}
                   >

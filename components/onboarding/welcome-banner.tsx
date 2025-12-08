@@ -109,19 +109,19 @@ export function WelcomeBanner({ className }: WelcomeBannerProps) {
       className={cn(
         "relative overflow-hidden rounded-2xl",
         "backdrop-blur-md bg-white/5 border border-white/10",
-        "shadow-[0_0_30px_rgba(168,85,247,0.15)]",
+        "shadow-[0_0_30px_var(--ds-accent-subtle)]",
         "transition-all duration-500 ease-out",
         isDismissing && "opacity-0 translate-y-[-10px]",
         className
       )}
     >
-      {/* Purple accent gradient on left edge */}
-      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-400 via-purple-500 to-purple-600" />
+      {/* Accent gradient on left edge */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-accent via-accent/80 to-accent" />
 
       <div className="flex items-start gap-4 p-5 pl-6">
         {/* Icon */}
-        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500/30">
-          <Sparkles className="w-6 h-6 text-purple-400" />
+        <div className="flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-xl bg-accent/20 border border-accent/30">
+          <Sparkles className="w-6 h-6 text-accent" />
         </div>
 
         {/* Content */}
@@ -141,10 +141,10 @@ export function WelcomeBanner({ className }: WelcomeBannerProps) {
               onClick={handleTakeTour}
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium",
-                "bg-purple-500/20 border border-purple-500/50",
-                "text-purple-200",
-                "shadow-[0_0_15px_rgba(168,85,247,0.3)]",
-                "hover:bg-purple-500/30 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]",
+                "bg-accent/20 border border-accent/50",
+                "text-accent-foreground",
+                "shadow-[0_0_15px_var(--ds-accent-subtle)]",
+                "hover:bg-accent/30 hover:shadow-[0_0_20px_var(--ds-accent-subtle)]",
                 "transition-all duration-200"
               )}
             >
@@ -159,7 +159,7 @@ export function WelcomeBanner({ className }: WelcomeBannerProps) {
                 "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium",
                 "bg-white/5 border border-white/10",
                 "text-gray-300",
-                "hover:border-purple-500/50 hover:shadow-[0_0_15px_rgba(168,85,247,0.2)]",
+                "hover:border-accent/50 hover:shadow-[0_0_15px_var(--ds-accent-subtle)]",
                 "transition-all duration-200",
                 "disabled:opacity-50 disabled:cursor-not-allowed"
               )}

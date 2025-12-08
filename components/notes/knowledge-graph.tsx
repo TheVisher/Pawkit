@@ -86,7 +86,7 @@ export function KnowledgeGraph({ onSelectCard, className = "" }: KnowledgeGraphP
             x: Math.random() * 800 - 400,
             y: Math.random() * 600 - 300,
             size: 20,
-            color: '#a78bfa' // Purple for notes
+            color: 'var(--ds-accent)' // Accent for notes
           };
           graphNodes.push(node);
 
@@ -200,7 +200,7 @@ export function KnowledgeGraph({ onSelectCard, className = "" }: KnowledgeGraphP
   const getLinkColor = (type: GraphLink['type']) => {
     switch (type) {
       case 'note-link':
-        return '#a78bfa';
+        return 'var(--ds-accent)';
       case 'card-reference':
         return '#60a5fa';
       case 'url-reference':
@@ -399,7 +399,7 @@ export function KnowledgeGraph({ onSelectCard, className = "" }: KnowledgeGraphP
       <div className="p-4 border-t border-subtle">
         <div className="flex items-center gap-6 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+            <div className="w-3 h-3 rounded-full bg-accent"></div>
             <span className="text-muted-foreground">Notes</span>
           </div>
           <div className="flex items-center gap-2">

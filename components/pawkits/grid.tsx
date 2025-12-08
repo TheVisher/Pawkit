@@ -107,20 +107,20 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
                     }
                   }}
                   className={`border-b border-subtle hover:bg-white/5 cursor-pointer transition-colors ${
-                    collection.isSystem ? 'bg-purple-950/10' : ''
+                    collection.isSystem ? 'bg-accent/10' : ''
                   }`}
                 >
                   <td className="py-3 px-4 max-w-xs">
                     <div className="flex items-center gap-3 min-w-0">
                       <span className={`flex items-center justify-center h-8 w-8 rounded-lg backdrop-blur-sm flex-shrink-0 ${
                         collection.isSystem
-                          ? 'bg-purple-500/30 text-purple-300'
+                          ? 'bg-accent/30 text-accent'
                           : 'bg-accent/20 text-accent'
                       }`}>
-                        {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : <Folder size={16} className="text-purple-400" />}
+                        {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : <Folder size={16} className="text-accent" />}
                       </span>
                       <span className="text-sm text-foreground font-medium truncate min-w-0 flex-1">{collection.name}</span>
-                      {collection.isPinned && <Pin size={14} className="text-purple-400 flex-shrink-0" />}
+                      {collection.isPinned && <Pin size={14} className="text-accent flex-shrink-0" />}
                     </div>
                   </td>
                   <td className="py-3 px-4">
@@ -177,17 +177,17 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
             }}
             className={`group relative flex flex-col items-center gap-2 p-4 rounded-xl border cursor-pointer transition-all hover:scale-105 ${
               collection.isSystem
-                ? 'border-purple-500/50 bg-purple-950/20 hover:bg-purple-950/30'
-                : 'border-purple-500/30 bg-surface/80 hover:bg-surface'
+                ? 'border-accent/50 bg-accent/20 hover:bg-accent/30'
+                : 'border-accent/30 bg-surface/80 hover:bg-surface'
             }`}
           >
             {/* Icon */}
             <span className={`flex items-center justify-center h-12 w-12 rounded-lg backdrop-blur-sm ${
               collection.isSystem
-                ? 'bg-purple-500/30 text-purple-300'
+                ? 'bg-accent/30 text-accent'
                 : 'bg-accent/20 text-accent'
             }`}>
-              {collection.isSystem ? <Inbox size={24} /> : collection.isPrivate ? '🔒' : <Folder size={24} className="text-purple-400" />}
+              {collection.isSystem ? <Inbox size={24} /> : collection.isPrivate ? '🔒' : <Folder size={24} className="text-accent" />}
             </span>
 
             {/* Name */}
@@ -245,27 +245,30 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
           }}
           className={`card-hover group relative flex h-56 cursor-pointer flex-col overflow-visible rounded-2xl border-2 p-5 text-left ${
             collection.isSystem
-              ? 'border-purple-500/50 bg-purple-950/20 shadow-[0_0_20px_rgba(168,85,247,0.15)] hover:shadow-[0_0_30px_rgba(168,85,247,0.25)]'
-              : 'border-purple-500/30 bg-surface/80'
+              ? 'border-accent/50 bg-accent/20'
+              : 'border-accent/30 bg-surface/80'
           }`}
-          style={
-            collection.useCoverAsBackground && collection.coverImage
+          style={{
+            ...(collection.isSystem ? {
+              boxShadow: '0 0 20px hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.15)'
+            } : {}),
+            ...(collection.useCoverAsBackground && collection.coverImage
               ? {
                   backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.85)), url(${collection.coverImage})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }
-              : undefined
-          }
+              : {})
+          }}
         >
           <div className={`relative z-10 flex items-center justify-between pb-4 text-sm ${collection.useCoverAsBackground && collection.coverImage ? 'backdrop-blur-md bg-black/60 -mx-5 -mt-5 px-5 pt-5 rounded-t-2xl' : ''}`}>
             <span className="inline-flex items-center gap-2 text-sm font-semibold text-foreground">
               <span className={`flex h-8 w-8 items-center justify-center rounded-lg backdrop-blur-sm ${
                 collection.isSystem
-                  ? 'bg-purple-500/30 text-purple-300'
+                  ? 'bg-accent/30 text-accent'
                   : 'bg-accent/20 text-accent'
               }`}>
-                {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : <Folder size={16} className="text-purple-400" />}
+                {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : <Folder size={16} className="text-accent" />}
               </span>
               <span className={collection.useCoverAsBackground && collection.coverImage ? 'text-white font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]' : ''}>
                 {collection.name}

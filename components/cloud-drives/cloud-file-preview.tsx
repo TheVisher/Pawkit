@@ -22,7 +22,7 @@ function getFileTypeInfo(file: CloudFile) {
     return { type: "image", icon: Image, color: "text-green-400" };
   }
   if (mimeType.startsWith("video/")) {
-    return { type: "video", icon: Film, color: "text-purple-400" };
+    return { type: "video", icon: Film, color: "text-accent" };
   }
   if (mimeType.startsWith("audio/")) {
     return { type: "audio", icon: Music, color: "text-pink-400" };

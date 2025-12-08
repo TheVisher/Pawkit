@@ -144,7 +144,7 @@ const pawkitTourStyles = {
     backdropFilter: "blur(12px)",
     borderRadius: "16px",
     border: "1px solid rgba(255, 255, 255, 0.1)",
-    boxShadow: "0 0 30px rgba(139, 92, 246, 0.15), 0 8px 32px rgba(0, 0, 0, 0.4)",
+    boxShadow: "0 0 30px var(--ds-accent-subtle), 0 8px 32px rgba(0, 0, 0, 0.4)",
     padding: "20px",
     maxWidth: "340px",
     zIndex: 100000, // Higher than command palette (z-99999) during tour
@@ -168,9 +168,9 @@ const pawkitTourStyles = {
   }),
   badge: (base: object) => ({
     ...base,
-    backgroundColor: "rgba(139, 92, 246, 0.2)",
-    color: "#a78bfa",
-    border: "1px solid rgba(139, 92, 246, 0.3)",
+    backgroundColor: "var(--ds-accent-muted)",
+    color: "var(--ds-accent)",
+    border: "1px solid var(--ds-accent)",
     borderRadius: "9999px",
     padding: "4px 10px",
     fontSize: "12px",
@@ -240,7 +240,7 @@ function TourNavigation({
         )}
         <button
           onClick={onNext}
-          className="px-4 py-1.5 text-sm rounded-full bg-purple-500/20 border border-purple-500/50 text-purple-200 shadow-[0_0_15px_rgba(139,92,246,0.3)] hover:bg-purple-500/30 transition-all"
+          className="px-4 py-1.5 text-sm rounded-full bg-accent/20 border border-accent/50 text-accent-foreground shadow-[0_0_15px_var(--ds-accent-subtle)] hover:bg-accent/30 transition-all"
         >
           {isLastStep ? "Finish" : "Next"}
         </button>
@@ -296,12 +296,12 @@ function CustomTooltip(props: {
     <div>
       {/* Progress indicator */}
       <div className="flex items-center gap-2 mb-3">
-        <span className="text-xs text-purple-400 font-medium">
+        <span className="text-xs text-accent font-medium">
           Step {currentStep + 1} of {steps.length}
         </span>
         <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
           <div
-            className="h-full bg-purple-500 rounded-full transition-all duration-300"
+            className="h-full bg-accent rounded-full transition-all duration-300"
             style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
           />
         </div>

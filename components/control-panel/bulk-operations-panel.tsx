@@ -77,7 +77,7 @@ export function BulkOperationsPanel({ cards, onBulkDelete, onBulkMove }: BulkOpe
             w-full flex items-center justify-center gap-2
             px-4 py-3 rounded-full
             backdrop-blur-md bg-white/5 border border-white/10
-            hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.4)]
+            hover:border-accent/50 hover:shadow-[0_0_20px_var(--ds-accent-subtle)]
             transition-all duration-200
             text-foreground font-medium text-sm
           "
@@ -120,7 +120,7 @@ function SelectedCardThumbnail({ card, onRemove }: SelectedCardThumbnailProps) {
     <div className="
       group relative flex items-center gap-3 p-2 rounded-xl
       backdrop-blur-md bg-white/5 border border-white/10
-      hover:bg-white/10 hover:border-purple-500/30
+      hover:bg-white/10 hover:border-accent/30
       transition-all duration-200
     ">
       {/* Thumbnail */}
@@ -128,12 +128,12 @@ function SelectedCardThumbnail({ card, onRemove }: SelectedCardThumbnailProps) {
         {isNote ? (
           // Note thumbnail - icon
           <div className="w-full h-full flex items-center justify-center">
-            <FileText size={24} className="text-purple-400" strokeWidth={1.5} />
+            <FileText size={24} className="text-accent" strokeWidth={1.5} />
           </div>
         ) : isPending ? (
           // Loading state
           <div className="w-full h-full flex items-center justify-center">
-            <div className="h-6 w-6 rounded-full border-2 border-gray-600 border-t-purple-500 animate-spin"></div>
+            <div className="h-6 w-6 rounded-full border-2 border-gray-600 border-t-accent animate-spin"></div>
           </div>
         ) : isError ? (
           // Error state
@@ -173,7 +173,7 @@ function SelectedCardThumbnail({ card, onRemove }: SelectedCardThumbnailProps) {
           </p>
         )}
         {isNote && (
-          <p className="text-xs text-purple-400">
+          <p className="text-xs text-accent">
             {card.type === "md-note" ? "Markdown" : "Text Note"}
           </p>
         )}

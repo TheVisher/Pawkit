@@ -291,9 +291,9 @@ export function SyncStatus() {
               className="relative p-1 hover:bg-white/10 rounded transition-colors disabled:opacity-50"
               title={dirtyNotesCount > 0 ? `Sync ${dirtyNotesCount} note(s) to Filen` : "Filen sync (all synced)"}
             >
-              <HardDrive className={`w-3.5 h-3.5 ${dirtyNotesCount > 0 ? "text-purple-400" : "text-muted-foreground"} ${isFilenSyncing ? "animate-pulse" : ""}`} />
+              <HardDrive className={`w-3.5 h-3.5 ${dirtyNotesCount > 0 ? "text-accent" : "text-muted-foreground"} ${isFilenSyncing ? "animate-pulse" : ""}`} />
               {dirtyNotesCount > 0 && !isFilenSyncing && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-purple-500 text-[9px] font-bold text-white rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-accent text-[9px] font-bold text-white rounded-full flex items-center justify-center">
                   {dirtyNotesCount > 9 ? "9+" : dirtyNotesCount}
                 </span>
               )}

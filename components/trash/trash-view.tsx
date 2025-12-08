@@ -365,7 +365,7 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
                 className="flex items-center gap-4 rounded-lg border border-gray-800 bg-gray-900/40 p-4 hover:border-gray-700"
               >
                 {/* Icon */}
-                <div className={`flex h-10 w-10 items-center justify-center rounded ${isCard ? "bg-blue-900/20" : "bg-purple-900/20"}`}>
+                <div className={`flex h-10 w-10 items-center justify-center rounded ${isCard ? "bg-blue-900/20" : "bg-accent/20"}`}>
                   <span className="text-gray-500">
                     {isCard ? <FileText size={20} /> : <Folder size={20} />}
                   </span>

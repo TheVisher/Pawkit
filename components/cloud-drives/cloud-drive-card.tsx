@@ -16,7 +16,7 @@ interface CloudDriveCardProps {
 }
 
 const PROVIDER_ICONS: Record<CloudProviderId, { icon: typeof Cloud; color: string }> = {
-  filen: { icon: Cloud, color: "text-purple-400" },
+  filen: { icon: Cloud, color: "text-accent" },
   "google-drive": { icon: HardDrive, color: "text-green-400" },
   dropbox: { icon: Cloud, color: "text-blue-500" },
   onedrive: { icon: Cloud, color: "text-sky-400" },
@@ -52,7 +52,7 @@ export function CloudDriveCard({
   return (
     <div className={`p-6 rounded-2xl border ${connected ? "border-white/10 bg-white/5" : "border-gray-800/50 bg-gray-900/30"}`}>
       <div className="flex items-start gap-4">
-        <div className={`flex h-14 w-14 items-center justify-center rounded-xl ${connected ? "bg-purple-500/20 border border-purple-500/30" : "bg-gray-800/50 border border-gray-700/50"}`}>
+        <div className={`flex h-14 w-14 items-center justify-center rounded-xl ${connected ? "bg-accent/20 border border-accent/30" : "bg-gray-800/50 border border-gray-700/50"}`}>
           <Icon className={`h-7 w-7 ${connected ? color : "text-gray-500"}`} />
         </div>
 

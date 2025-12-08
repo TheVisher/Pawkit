@@ -44,7 +44,7 @@ export function UnpinNotesModal({ open, onClose, pinnedNotes, onUnpin }: UnpinNo
               className="flex items-center justify-between p-3 rounded-lg bg-gray-900/60 border border-gray-800 hover:bg-gray-900/80 transition-colors"
             >
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Pin size={16} className="flex-shrink-0 text-purple-400" />
+                <Pin size={16} className="flex-shrink-0 text-accent" />
                 <span className="text-sm text-gray-100 truncate">{note.title}</span>
               </div>
               <Button

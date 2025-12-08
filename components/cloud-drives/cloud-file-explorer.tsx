@@ -217,7 +217,7 @@ export function CloudFileExplorer({ providerId, providerName }: CloudFileExplore
               onClick={() => setViewMode("list")}
               className={`p-1.5 rounded transition-colors ${
                 viewMode === "list"
-                  ? "bg-purple-500/20 text-purple-400"
+                  ? "bg-accent/20 text-accent"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5"
               }`}
               title="List View"
@@ -228,7 +228,7 @@ export function CloudFileExplorer({ providerId, providerName }: CloudFileExplore
               onClick={() => setViewMode("tree")}
               className={`p-1.5 rounded transition-colors ${
                 viewMode === "tree"
-                  ? "bg-purple-500/20 text-purple-400"
+                  ? "bg-accent/20 text-accent"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5"
               }`}
               title="Tree View"
