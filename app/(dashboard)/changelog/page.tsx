@@ -3,6 +3,182 @@
 export default function ChangelogPage() {
   const changes = [
     {
+      dateRange: "December 8, 2025",
+      features: [
+        { title: "Dynamic Accent Colors", description: "Accent colors now fully dynamic across the entire app - all UI elements respond to your chosen accent color in real-time." },
+        { title: "Smooth Rediscover Animations", description: "Fixed card transition animations using requestAnimationFrame for proper browser paint sync. Orbiting cards no longer pause when new cards enter." },
+      ],
+    },
+    {
+      dateRange: "December 7, 2025",
+      features: [
+        { title: "Serendipity Mode", description: "MyMind-inspired Rediscover experience with orbiting background cards that float around while you review your bookmarks one by one." },
+        { title: "Glass UI Effect", description: "Classic Purple theme with glass/transparency styling - adds a frosted glass aesthetic to the interface." },
+        { title: "Drag-and-Drop to Pawkits", description: "Drag cards directly from the masonry grid into Pawkits in the sidebar for quick organization." },
+        { title: "Trash Popover", description: "Quick access to recently deleted items from the sidebar without navigating away from your current view." },
+        { title: "Custom Card Order", description: "Drag cards in masonry view to reorder them - your custom order persists across sessions." },
+        { title: "Batch System for Rediscover", description: "Review 25 cards at a time with a Start Over button when you finish a batch." },
+      ],
+    },
+    {
+      dateRange: "December 6, 2025",
+      features: [
+        { title: "Muuri Masonry Layout", description: "Professional masonry grid powered by Muuri with smooth drag-and-drop reordering and automatic layout optimization." },
+        { title: "Responsive Card Widths", description: "Cards adapt to screen size with consistent edge padding for a polished look on any display." },
+        { title: "Modal Redesign", description: "Card modal updated with segmented pill control instead of tabs, plus dark mode colors updated to neutral grays." },
+      ],
+    },
+    {
+      dateRange: "December 5, 2025",
+      features: [
+        { title: "Settings Page Redesign", description: "Dedicated Settings page with a clean two-column layout for easier navigation and configuration." },
+        { title: "Neumorphic-Lite UI", description: "Fresh design system across the app with subtle depth and modern styling." },
+        { title: "Per-Pawkit Settings", description: "Individual view settings for each Pawkit - customize layout, card size, and display options per collection." },
+        { title: "Tags Expansion", description: "Expandable tags section in Library sidebar for better tag management and filtering." },
+      ],
+    },
+    {
+      dateRange: "December 4, 2025",
+      features: [
+        { title: "Security Updates", description: "Updated Next.js to 15.5.7 with fixes for CVE-2025-29927 and CVE-2025-55182 vulnerabilities." },
+        { title: "PDF Improvements", description: "PDF reader zoom no longer causes page overlap, and blob URLs are now properly allowed for PDF preview." },
+      ],
+    },
+    {
+      dateRange: "December 3, 2025",
+      features: [
+        { title: "Rate Limiting", description: "Added rate limiting to all API endpoints to prevent abuse and ensure service stability." },
+        { title: "Cloudflare Turnstile", description: "CAPTCHA protection on authentication forms to prevent bot attacks." },
+        { title: "Input Validation", description: "Zod validation added to API routes for stricter input validation and security." },
+        { title: "File Upload Hardening", description: "Stricter validation for file uploads to prevent malicious file injection." },
+      ],
+    },
+    {
+      dateRange: "December 2, 2025",
+      features: [
+        { title: "Storage Strategy Settings", description: "Configure where your files sync - choose between cloud providers and control routing preferences." },
+        { title: "Backup Behavior Settings", description: "Smart delete flow with configurable behavior for how backups are handled." },
+        { title: "Mobile Responsiveness", description: "Improved mobile layout and touch interactions across the app." },
+      ],
+    },
+    {
+      dateRange: "December 1, 2025",
+      features: [
+        { title: "Dropbox Integration", description: "Full Dropbox cloud storage provider support - sync your files and browse your Dropbox directly from Pawkit." },
+        { title: "OneDrive Integration", description: "Microsoft OneDrive support for cloud storage sync and file management." },
+        { title: "Cloud Drives UI", description: "Browse and manage all your connected cloud storage providers with tree view navigation." },
+        { title: "Drive Explorer Split View", description: "Side-by-side file browsing for easy file management across drives." },
+      ],
+    },
+    {
+      dateRange: "November 30, 2025",
+      features: [
+        { title: "Google Drive Sync", description: "Full Google Drive integration with folder structure sync and deletion support across devices." },
+        { title: "Dual-Pane Markdown Editor", description: "Live preview side-by-side editing for notes - see your formatted output as you type." },
+        { title: "Save Shortcut", description: "Cmd+S keyboard shortcut for quickly saving notes without clicking buttons." },
+      ],
+    },
+    {
+      dateRange: "November 29, 2025",
+      features: [
+        { title: "Direct Filen Uploads", description: "Browser-to-Filen uploads using Web Crypto API for unlimited file sizes without server limits." },
+        { title: "Note Import", description: "Import .txt and .md files as native Pawkit notes with automatic formatting." },
+        { title: "Manual Sync Button", description: "Trigger Filen sync manually with a dirty notes indicator showing unsaved changes." },
+        { title: "Show Metadata Toggle", description: "Control metadata visibility in Notes view for a cleaner reading experience." },
+      ],
+    },
+    {
+      dateRange: "November 28, 2025",
+      features: [
+        { title: "Onboarding Tour", description: "Guided tour for new users with a welcome banner introducing key features step by step." },
+        { title: "Landing Page Ticker", description: "Animated feature showcase on the landing page highlighting Pawkit capabilities." },
+      ],
+    },
+    {
+      dateRange: "November 27, 2025",
+      features: [
+        { title: "Calendar Events in Home", description: "This Week widget now shows calendar events and holidays for better daily planning." },
+        { title: "PDF Filter", description: "Dedicated filter for PDF content type to quickly find all your saved PDFs." },
+      ],
+    },
+    {
+      dateRange: "November 26, 2025",
+      features: [
+        { title: "File Attachments System", description: "Local-first file storage with cloud sync - attach any file to your bookmarks." },
+        { title: "PDF Viewer", description: "Inline PDF preview with zoom controls and full-screen Reader mode for comfortable reading." },
+        { title: "Filen Cloud Integration", description: "Connect your Filen account for encrypted cloud storage sync with full authentication support." },
+        { title: "Release Date Extraction", description: "Automatically extract dates from bookmarks (movies, games, events) with calendar integration." },
+        { title: "Connectors Tab", description: "Manage all your cloud providers from a dedicated Connectors tab in Profile Settings." },
+      ],
+    },
+    {
+      dateRange: "November 25, 2025",
+      features: [
+        { title: "Recurring Events", description: "Full recurring event management with support for daily, weekly, monthly patterns and multi-day events." },
+        { title: "US Federal Holidays", description: "Calendar toggle to display US federal holidays for easy reference." },
+        { title: "Date Extraction", description: "Automatic date extraction from bookmarks - Pawkit detects release dates and event dates." },
+        { title: "Supabase Sync for Events", description: "Calendar events now sync across all your devices through Supabase." },
+      ],
+    },
+    {
+      dateRange: "November 24, 2025",
+      features: [
+        { title: "Manual Thumbnail Override", description: "Set custom thumbnails for any card from the detail modal - perfect for when auto-detection fails." },
+        { title: "JSON-LD Extraction", description: "Better thumbnail detection using structured data from websites for more accurate images." },
+        { title: "Browser Extension OAuth", description: "Secure OAuth authentication flow for the browser extension with improved security." },
+      ],
+    },
+    {
+      dateRange: "November 23, 2025",
+      features: [
+        { title: "Reader Mode", description: "Distraction-free reading experience that hides sidebars and focuses on content." },
+        { title: "Pinned Notes", description: "Pin important notes to the sidebar for quick access to your most-used notes." },
+        { title: "Omnibar Search", description: "Universal search across all content - bookmarks, notes, and files from one search bar." },
+      ],
+    },
+    {
+      dateRange: "November 15, 2025",
+      features: [
+        { title: "Global Toast System", description: "Standardized toast notifications across the entire app with comprehensive feedback for all operations." },
+        { title: "Duplicate URL Detection", description: "Smart detection prevents saving duplicate bookmarks with clear user feedback." },
+      ],
+    },
+    {
+      dateRange: "November 14, 2025",
+      features: [
+        { title: "Security Audit Fixes", description: "Comprehensive security improvements based on thorough audit of the codebase." },
+        { title: "Performance Optimizations", description: "10x query speedup with IndexedDB indexes, optimized sidebar re-renders, and gallery callback improvements." },
+      ],
+    },
+    {
+      dateRange: "November 13, 2025",
+      features: [
+        { title: "Universal Todo List", description: "Todo section in right sidebar for tracking tasks alongside your bookmarks and notes." },
+        { title: "Hierarchical Tag Inheritance", description: "Sub-pawkits automatically inherit tags from parent pawkits for better organization." },
+        { title: "Standardized List Views", description: "Consistent list view columns and sidebar configuration across all views." },
+      ],
+    },
+    {
+      dateRange: "November 12, 2025",
+      features: [
+        { title: "Deletion Sync Fix", description: "Fixed critical issue where deleted items would resurrect during sync - deletions now persist properly across devices." },
+      ],
+    },
+    {
+      dateRange: "November 6, 2025",
+      features: [
+        { title: "React Native Mobile App", description: "Initial Expo-based mobile app for Pawkit - take your bookmarks on the go." },
+      ],
+    },
+    {
+      dateRange: "October 22-31, 2025",
+      features: [
+        { title: "PKM Features", description: "Personal Knowledge Management with wiki-style [[Note Title]] linking, bidirectional backlinks, tag system with #hashtags, and enhanced markdown editing." },
+        { title: "Local-First Architecture Fixes", description: "Fixed critical violations where components were bypassing IndexedDB - all operations now follow local-first pattern for instant updates." },
+        { title: "YouTube & Notes Fixes", description: "Fixed YouTube video embedding in card modals, improved notes modal scrolling, and enhanced note editing experience." },
+      ],
+    },
+    {
       dateRange: "October 21, 2025",
       features: [
         { title: "Unified Frosted Glass Design System", description: "Complete visual redesign with cohesive frosted glass and glow aesthetic throughout the entire app. All modals, buttons, and UI elements now feature a consistent glass-morphism style with purple, green, and red glow effects on hover." },
