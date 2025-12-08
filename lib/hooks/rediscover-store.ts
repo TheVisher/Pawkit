@@ -28,6 +28,7 @@ type RediscoverState = {
   setQueue: (queue: CardModel[]) => void;
   setCurrentIndex: (index: number) => void;
   addKeptCard: (card: CardModel) => void;
+  removeKeptCard: (cardId: string) => void;
   setFilter: (filter: RediscoverFilter) => void;
   updateStats: (stat: keyof SessionStats) => void;
   setStyle: (style: RediscoverStyle) => void;
@@ -67,6 +68,10 @@ export const useRediscoverStore = create<RediscoverState>()((set) => ({
       keptCards: [...state.keptCards, card]
     };
   }),
+
+  removeKeptCard: (cardId) => set((state) => ({
+    keptCards: state.keptCards.filter(card => card.id !== cardId)
+  })),
 
   setFilter: (filter) => set({ filter }),
 
