@@ -8,7 +8,7 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { RediscoverSerendipity, RediscoverAction } from "@/components/rediscover/rediscover-serendipity";
-import { useRediscoverStore, RediscoverFilter } from "@/lib/hooks/rediscover-store";
+import { useRediscoverStore, BATCH_SIZE } from "@/lib/hooks/rediscover-store";
 import { CardModel, CollectionNode } from "@/lib/types";
 
 function LibraryPageContent() {
@@ -217,56 +217,42 @@ function LibraryPageContent() {
     }
   }, [contentTypeFilter, cards.length, items]);
 
-  // Apply filter to get filtered cards
-  const getFilteredCards = (filterType: RediscoverFilter) => {
-    // Start with bookmarks only (exclude notes)
-    let filtered = items.filter(card => card.type === "url");
+  // Sort cards for Rediscover: never-touched first, then least-touched
+  const getSortedCardsForRediscover = () => {
+    // Include all card types from library items (already excludes deleted/private)
+    const allCards = [...items];
 
-    // Exclude cards that have already been reviewed in Rediscover
-    filtered = filtered.filter(card => {
-      const metadata = card.metadata as Record<string, unknown> | undefined;
-      return !metadata?.rediscoverReviewedAt;
+    // Sort: never-touched first (updatedAt === createdAt), then by updatedAt ascending
+    allCards.sort((a, b) => {
+      const aCreated = new Date(a.createdAt).getTime();
+      const aUpdated = new Date(a.updatedAt).getTime();
+      const bCreated = new Date(b.createdAt).getTime();
+      const bUpdated = new Date(b.updatedAt).getTime();
+
+      // Check if cards are "never touched" (created and never modified)
+      const aNeverTouched = aCreated === aUpdated;
+      const bNeverTouched = bCreated === bUpdated;
+
+      // Never-touched cards come first
+      if (aNeverTouched && !bNeverTouched) return -1;
+      if (!aNeverTouched && bNeverTouched) return 1;
+
+      // Within each group, sort by updatedAt ascending (oldest first)
+      return aUpdated - bUpdated;
     });
 
-    switch (filterType) {
-      case "uncategorized":
-        // No tags and no collections
-        filtered = filtered.filter(card =>
-          (!card.tags || card.tags.length === 0) &&
-          (!card.collections || card.collections.length === 0)
-        );
-        break;
-      case "all":
-        // All bookmarks (already filtered above)
-        break;
-      case "untagged":
-        // No tags (but may have collections)
-        filtered = filtered.filter(card => !card.tags || card.tags.length === 0);
-        break;
-      case "never-opened":
-        // TODO: Add lastOpenedAt field to track this
-        // For now, treat as uncategorized
-        filtered = filtered.filter(card =>
-          (!card.tags || card.tags.length === 0) &&
-          (!card.collections || card.collections.length === 0)
-        );
-        break;
-    }
-
-    return filtered;
+    return allCards;
   };
 
-  // Initialize Rediscover queue ONLY when entering mode or changing filter
-  // NOT when items change (that would reset progress when cards are updated)
+  // Initialize Rediscover queue when entering mode
   useEffect(() => {
     if (isRediscoverMode) {
-      // Only initialize if not already active, or if filter changed
+      // Only initialize if not already active
       if (!rediscoverStore.isActive) {
-        const filtered = getFilteredCards(rediscoverStore.filter);
+        const sortedCards = getSortedCardsForRediscover();
         rediscoverStore.reset();
         rediscoverStore.setActive(true);
-        rediscoverStore.setQueue(filtered);
-        rediscoverStore.setCurrentIndex(0);
+        rediscoverStore.initializeQueue(sortedCards);
       }
     } else {
       // Exit Rediscover mode
@@ -276,18 +262,6 @@ function LibraryPageContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRediscoverMode]);
-
-  // Handle filter changes separately - only re-queue if filter actually changes
-  const [lastFilter, setLastFilter] = useState(rediscoverStore.filter);
-  useEffect(() => {
-    if (isRediscoverMode && rediscoverStore.isActive && rediscoverStore.filter !== lastFilter) {
-      const filtered = getFilteredCards(rediscoverStore.filter);
-      rediscoverStore.setQueue(filtered);
-      rediscoverStore.setCurrentIndex(0);
-      setLastFilter(rediscoverStore.filter);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rediscoverStore.filter]);
 
   // Handlers for Rediscover mode
   const handleRediscoverAction = async (action: RediscoverAction, cardId: string) => {
@@ -339,6 +313,11 @@ function LibraryPageContent() {
     rediscoverStore.currentIndex + 13
   );
 
+  // Handle next batch
+  const handleNextBatch = () => {
+    rediscoverStore.loadNextBatch();
+  };
+
   // Render Rediscover mode or normal Library view
   if (isRediscoverMode) {
     return (
@@ -348,6 +327,10 @@ function LibraryPageContent() {
         onExit={handleExitRediscover}
         remainingCount={remainingCount}
         orbitCards={orbitCards}
+        batchNumber={rediscoverStore.batchNumber}
+        totalBatches={rediscoverStore.totalBatches()}
+        hasMoreBatches={rediscoverStore.hasMoreBatches()}
+        onNextBatch={handleNextBatch}
       />
     );
   }
