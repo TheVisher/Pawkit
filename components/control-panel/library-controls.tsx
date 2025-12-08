@@ -1,7 +1,7 @@
 "use client";
 
 import { PanelSection, PanelButton, PanelToggle } from "./control-panel";
-import { Grid, List, LayoutGrid, Tag, SortAsc, Eye, Maximize2, File, ArrowUpDown, ArrowUp, ArrowDown, Heart, Trash2, Clock, FolderPlus, EyeOff, Link, FileText, ImageIcon, Music, Video, FileBox, ChevronDown, Check, X, Grid3X3, Grid2X2, Square, RectangleHorizontal, Moon, Sun } from "lucide-react";
+import { Grid, List, LayoutGrid, Tag, SortAsc, Eye, Maximize2, File, ArrowUpDown, ArrowUp, ArrowDown, Heart, Trash2, Link, FileText, ImageIcon, Music, Video, FileBox, ChevronDown, Check, X, Grid3X3, Grid2X2, Square, RectangleHorizontal, Moon, Sun } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import Image from "next/image";
 import { useViewSettingsStore, type SortBy, type ContentType } from "@/lib/hooks/view-settings-store";
@@ -713,9 +713,7 @@ export function LibraryControls() {
   };
 
   // Calculate total actions for stats
-  const totalActions = rediscoverStore.stats.kept + rediscoverStore.stats.deleted +
-                      rediscoverStore.stats.snoozed + rediscoverStore.stats.addedToPawkit +
-                      rediscoverStore.stats.neverShow;
+  const totalActions = rediscoverStore.stats.kept + rediscoverStore.stats.deleted;
 
   return (
     <>
@@ -782,17 +780,6 @@ export function LibraryControls() {
                 <span className="font-semibold text-accent">{rediscoverStore.stats.kept}</span>
               </div>
 
-              {/* Added to Pawkit */}
-              {rediscoverStore.stats.addedToPawkit > 0 && (
-                <div className="flex items-center justify-between hover:bg-white/5 -mx-1 px-1 py-1 rounded transition-colors">
-                  <div className="flex items-center gap-2">
-                    <FolderPlus className="h-3.5 w-3.5" />
-                    <span>Added to Pawkit</span>
-                  </div>
-                  <span className="font-semibold text-foreground">{rediscoverStore.stats.addedToPawkit}</span>
-                </div>
-              )}
-
               {/* Deleted */}
               {rediscoverStore.stats.deleted > 0 && (
                 <div className="flex items-center justify-between hover:bg-white/5 -mx-1 px-1 py-1 rounded transition-colors">
@@ -801,28 +788,6 @@ export function LibraryControls() {
                     <span className="text-red-400">Deleted</span>
                   </div>
                   <span className="font-semibold text-red-400">{rediscoverStore.stats.deleted}</span>
-                </div>
-              )}
-
-              {/* Snoozed */}
-              {rediscoverStore.stats.snoozed > 0 && (
-                <div className="flex items-center justify-between hover:bg-white/5 -mx-1 px-1 py-1 rounded transition-colors">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-3.5 w-3.5" />
-                    <span>Snoozed</span>
-                  </div>
-                  <span className="font-semibold text-foreground">{rediscoverStore.stats.snoozed}</span>
-                </div>
-              )}
-
-              {/* Never Show */}
-              {rediscoverStore.stats.neverShow > 0 && (
-                <div className="flex items-center justify-between hover:bg-white/5 -mx-1 px-1 py-1 rounded transition-colors">
-                  <div className="flex items-center gap-2">
-                    <EyeOff className="h-3.5 w-3.5" />
-                    <span>Hidden</span>
-                  </div>
-                  <span className="font-semibold text-foreground">{rediscoverStore.stats.neverShow}</span>
                 </div>
               )}
 

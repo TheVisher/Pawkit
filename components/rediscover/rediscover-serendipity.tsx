@@ -44,6 +44,11 @@ export type RediscoverSerendipityProps = {
   onExit: () => void;
   remainingCount: number;
   orbitCards?: CardModel[]; // Cards to show orbiting (next in queue)
+  // Batch info
+  batchNumber: number;
+  totalBatches: number;
+  hasMoreBatches: boolean;
+  onNextBatch: () => void;
 };
 
 export function RediscoverSerendipity({
@@ -52,6 +57,10 @@ export function RediscoverSerendipity({
   onExit,
   remainingCount,
   orbitCards = [],
+  batchNumber,
+  totalBatches,
+  hasMoreBatches,
+  onNextBatch,
 }: RediscoverSerendipityProps) {
   const [isExiting, setIsExiting] = useState(false);
   const [cardTransition, setCardTransition] = useState<
@@ -193,7 +202,7 @@ export function RediscoverSerendipity({
     }, 300);
   };
 
-  // All done state
+  // Batch complete state
   if (!currentCard) {
     return (
       <div className="fixed inset-0 z-50">
@@ -205,22 +214,40 @@ export function RediscoverSerendipity({
               className="text-3xl font-semibold"
               style={{ color: "var(--text-primary)" }}
             >
-              All caught up!
+              {hasMoreBatches ? "Batch complete!" : "All caught up!"}
             </h2>
             <p style={{ color: "var(--text-muted)" }}>
-              You&apos;ve reviewed all available cards.
+              {hasMoreBatches
+                ? `Finished batch ${batchNumber} of ${totalBatches}. Ready for more?`
+                : "You've reviewed all available cards."}
             </p>
-            <button
-              onClick={handleExit}
-              className="px-8 py-3 rounded-full font-medium transition-all serendipity-action-btn"
-              style={{
-                background: "var(--accent)",
-                color: "white",
-                boxShadow: "var(--glow-hover)",
-              }}
-            >
-              Back to Library
-            </button>
+            <div className="flex items-center justify-center gap-4">
+              {hasMoreBatches && (
+                <button
+                  onClick={onNextBatch}
+                  className="px-8 py-3 rounded-full font-medium transition-all serendipity-action-btn"
+                  style={{
+                    background: "var(--accent)",
+                    color: "white",
+                    boxShadow: "var(--glow-hover)",
+                  }}
+                >
+                  Next Batch
+                </button>
+              )}
+              <button
+                onClick={handleExit}
+                className="px-8 py-3 rounded-full font-medium transition-all"
+                style={{
+                  background: hasMoreBatches ? "rgba(255, 255, 255, 0.1)" : "var(--accent)",
+                  color: hasMoreBatches ? "var(--text-secondary)" : "white",
+                  border: hasMoreBatches ? "1px solid rgba(255, 255, 255, 0.1)" : "none",
+                  boxShadow: hasMoreBatches ? "none" : "var(--glow-hover)",
+                }}
+              >
+                {hasMoreBatches ? "Exit" : "Back to Library"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -266,9 +293,9 @@ export function RediscoverSerendipity({
           )}
         </button>
 
-        {/* Remaining Counter */}
+        {/* Batch & Remaining Counter */}
         <div
-          className="px-4 py-2 rounded-full text-sm"
+          className="px-4 py-2 rounded-full text-sm flex items-center gap-2"
           style={{
             background: "rgba(255, 255, 255, 0.05)",
             backdropFilter: "blur(12px)",
@@ -276,7 +303,11 @@ export function RediscoverSerendipity({
             color: "var(--text-muted)",
           }}
         >
-          {remainingCount} remaining
+          <span style={{ color: "var(--text-secondary)" }}>
+            Batch {batchNumber}/{totalBatches}
+          </span>
+          <span style={{ opacity: 0.5 }}>•</span>
+          <span>{remainingCount} left</span>
         </div>
 
         {/* Exit Button */}

@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, ChevronDown, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, HelpCircle, type LucideIcon } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, HelpCircle, type LucideIcon } from "lucide-react";
 import { shallow } from "zustand/shallow";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -1020,28 +1020,11 @@ export function LeftNavigationPanel({
                   </button>
                 </div>
 
-                {/* Filter Dropdown */}
-                <div className="relative">
-                  <select
-                    value={rediscoverStore.filter}
-                    onChange={(e) => rediscoverStore.setFilter(e.target.value as any)}
-                    className="w-full px-3 py-2 rounded-lg text-sm text-foreground appearance-none cursor-pointer transition-colors"
-                    style={{
-                      background: 'var(--bg-surface-2)',
-                      border: '1px solid var(--border-subtle)',
-                    }}
-                  >
-                    <option value="uncategorized">Uncategorized</option>
-                    <option value="all">All Bookmarks</option>
-                    <option value="untagged">Untagged</option>
-                    <option value="never-opened">Never Opened</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                </div>
-
-                {/* Counter */}
+                {/* Batch Counter */}
                 <div className="text-sm text-muted-foreground">
-                  {rediscoverStore.queue.length - rediscoverStore.currentIndex} {rediscoverStore.queue.length - rediscoverStore.currentIndex === 1 ? 'card' : 'cards'} remaining
+                  <span className="text-foreground">Batch {rediscoverStore.batchNumber}/{rediscoverStore.totalBatches()}</span>
+                  <span className="mx-2">•</span>
+                  {rediscoverStore.queue.length - rediscoverStore.currentIndex} {rediscoverStore.queue.length - rediscoverStore.currentIndex === 1 ? 'card' : 'cards'} left
                 </div>
               </div>
 
