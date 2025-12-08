@@ -7,11 +7,8 @@ import { LibraryView } from "@/components/library/library-view";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
-import { AnimatedBackground } from "@/components/rediscover/animated-background";
-import { RediscoverMode, RediscoverAction } from "@/components/rediscover/rediscover-mode-classic";
-import { RediscoverSerendipity } from "@/components/rediscover/rediscover-serendipity";
+import { RediscoverSerendipity, RediscoverAction } from "@/components/rediscover/rediscover-serendipity";
 import { useRediscoverStore, RediscoverFilter } from "@/lib/hooks/rediscover-store";
-import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
 import { CardModel, CollectionNode } from "@/lib/types";
 
 function LibraryPageContent() {
@@ -34,10 +31,6 @@ function LibraryPageContent() {
   // Rediscover mode state from store
   const rediscoverStore = useRediscoverStore();
   const isRediscoverMode = mode === "rediscover";
-
-  // State for Add to Pawkit modal in Rediscover mode
-  const [showPawkitModal, setShowPawkitModal] = useState(false);
-  const [pendingPawkitCard, setPendingPawkitCard] = useState<CardModel | null>(null);
 
   // Read from localStorage first, then URL param, then default
   const savedLayout = typeof window !== 'undefined' ? localStorage.getItem("library-layout") as LayoutMode | null : null;
@@ -301,13 +294,6 @@ function LibraryPageContent() {
     const card = rediscoverStore.queue[rediscoverStore.currentIndex];
     if (!card || card.id !== cardId) return;
 
-    // Handle add-to-pawkit action - show modal and don't advance yet
-    if (action === "add-to-pawkit") {
-      setPendingPawkitCard(card);
-      setShowPawkitModal(true);
-      return;
-    }
-
     // Update session stats - map action to stat key
     const statKey = action === "keep" ? "kept" : "deleted";
     rediscoverStore.updateStats(statKey);
@@ -324,39 +310,12 @@ function LibraryPageContent() {
         }
       });
     } else if (action === "delete") {
-      // Delete the card
+      // Delete the card (soft delete - goes to trash)
       await useDataStore.getState().deleteCard(cardId);
     }
 
     // Move to next card
     rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
-  };
-
-  // Handler for when a Pawkit is selected from the modal
-  const handlePawkitSelected = (slug: string) => {
-    if (!pendingPawkitCard) return;
-
-    // Close modal and advance FIRST (optimistic - don't wait for sync)
-    setShowPawkitModal(false);
-    const cardToUpdate = pendingPawkitCard;
-    setPendingPawkitCard(null);
-    rediscoverStore.updateStats("addedToPawkit");
-    rediscoverStore.setCurrentIndex(rediscoverStore.currentIndex + 1);
-
-    // Then update the card in background (local-first, syncs later)
-    const currentCollections = cardToUpdate.collections || [];
-    if (!currentCollections.includes(slug)) {
-      useDataStore.getState().updateCard(cardToUpdate.id, {
-        collections: [...currentCollections, slug]
-      });
-    }
-  };
-
-  // Handler for closing the Pawkit modal without selecting
-  const handlePawkitModalClose = () => {
-    setShowPawkitModal(false);
-    setPendingPawkitCard(null);
-    // Don't advance - let user try again or choose a different action
   };
 
   const handleExitRediscover = () => {
@@ -382,44 +341,14 @@ function LibraryPageContent() {
 
   // Render Rediscover mode or normal Library view
   if (isRediscoverMode) {
-    // Check which style to render
-    const isSerendipityMode = rediscoverStore.style === "serendipity";
-
-    if (isSerendipityMode) {
-      return (
-        <>
-          <RediscoverSerendipity
-            currentCard={currentCard}
-            onAction={handleRediscoverAction}
-            onExit={handleExitRediscover}
-            remainingCount={remainingCount}
-            orbitCards={orbitCards}
-          />
-          <MoveToPawkitModal
-            open={showPawkitModal}
-            onClose={handlePawkitModalClose}
-            onConfirm={handlePawkitSelected}
-          />
-        </>
-      );
-    }
-
-    // Classic mode
     return (
-      <>
-        <AnimatedBackground />
-        <RediscoverMode
-          currentCard={currentCard}
-          onAction={handleRediscoverAction}
-          onExit={handleExitRediscover}
-          remainingCount={remainingCount}
-        />
-        <MoveToPawkitModal
-          open={showPawkitModal}
-          onClose={handlePawkitModalClose}
-          onConfirm={handlePawkitSelected}
-        />
-      </>
+      <RediscoverSerendipity
+        currentCard={currentCard}
+        onAction={handleRediscoverAction}
+        onExit={handleExitRediscover}
+        remainingCount={remainingCount}
+        orbitCards={orbitCards}
+      />
     );
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Menu, Sparkles } from "lucide-react";
+import { X, Inbox, Sparkles, ArrowLeft, Trash2 } from "lucide-react";
 import { CardModel } from "@/lib/types";
 import { AnimatedBackground } from "./animated-background";
 import { OrbitingCards } from "./orbiting-cards";
@@ -36,7 +36,7 @@ function getOrbitPosition(cardId: string) {
 // Module-level storage for panel state (persists across component lifecycle)
 let savedPanelState: { leftOpen: boolean; rightOpen: boolean } | null = null;
 
-export type RediscoverAction = "keep" | "delete" | "add-to-pawkit";
+export type RediscoverAction = "keep" | "delete";
 
 export type RediscoverSerendipityProps = {
   currentCard: CardModel | null;
@@ -55,12 +55,15 @@ export function RediscoverSerendipity({
 }: RediscoverSerendipityProps) {
   const [isExiting, setIsExiting] = useState(false);
   const [cardTransition, setCardTransition] = useState<
-    "entering" | "exiting-keep" | "exiting-forget" | "exiting-add" | null
+    "entering" | "exiting-keep" | "exiting-forget" | null
   >(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
+  const [showKeptCards, setShowKeptCards] = useState(false);
   const [enteringFromOrbit, setEnteringFromOrbit] = useState<{ x: number; y: number; scale: number } | null>(null);
-  const { setStyle } = useRediscoverStore();
+
+  // Get kept cards from store
+  const keptCards = useRediscoverStore((state) => state.keptCards);
+  const removeKeptCard = useRediscoverStore((state) => state.removeKeptCard);
 
   // Panel state management - hide sidebars in serendipity mode
   const closeLeft = usePanelStore((state) => state.closeLeft);
@@ -126,21 +129,13 @@ export function RediscoverSerendipity({
           e.preventDefault();
           handleAction("delete");
           break;
-        case "a":
-          e.preventDefault();
-          handleAction("add-to-pawkit");
-          break;
         case "escape":
           e.preventDefault();
-          if (showMenu) {
-            setShowMenu(false);
+          if (showKeptCards) {
+            setShowKeptCards(false);
           } else {
             handleExit();
           }
-          break;
-        case "m":
-          e.preventDefault();
-          setShowMenu(!showMenu);
           break;
       }
     };
@@ -148,7 +143,7 @@ export function RediscoverSerendipity({
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentCard, isProcessing, showMenu]);
+  }, [currentCard, isProcessing, showKeptCards]);
 
   // Card entering animation - from orbit position to center
   useEffect(() => {
@@ -184,8 +179,6 @@ export function RediscoverSerendipity({
       setCardTransition("exiting-keep");
     } else if (action === "delete") {
       setCardTransition("exiting-forget");
-    } else if (action === "add-to-pawkit") {
-      setCardTransition("exiting-add");
     }
 
     setTimeout(() => {
@@ -254,18 +247,23 @@ export function RediscoverSerendipity({
 
       {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 z-20 p-6 flex items-center justify-between">
-        {/* Menu Button */}
+        {/* Kept Cards Button */}
         <button
-          onClick={() => setShowMenu(!showMenu)}
-          className="p-3 rounded-xl transition-all"
+          onClick={() => setShowKeptCards(!showKeptCards)}
+          className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all"
           style={{
-            background: "rgba(255, 255, 255, 0.05)",
+            background: keptCards.length > 0 ? "rgba(139, 92, 246, 0.2)" : "rgba(255, 255, 255, 0.05)",
             backdropFilter: "blur(12px)",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
+            border: keptCards.length > 0 ? "1px solid rgba(139, 92, 246, 0.3)" : "1px solid rgba(255, 255, 255, 0.1)",
           }}
-          aria-label="Menu"
+          aria-label="View kept cards"
         >
-          <Menu size={20} style={{ color: "var(--text-secondary)" }} />
+          <Inbox size={18} style={{ color: keptCards.length > 0 ? "var(--accent)" : "var(--text-secondary)" }} />
+          {keptCards.length > 0 && (
+            <span className="text-sm font-medium" style={{ color: "var(--accent)" }}>
+              {keptCards.length}
+            </span>
+          )}
         </button>
 
         {/* Remaining Counter */}
@@ -296,54 +294,124 @@ export function RediscoverSerendipity({
         </button>
       </div>
 
-      {/* Slide-out Menu */}
-      {showMenu && (
+      {/* Kept Cards Panel */}
+      {showKeptCards && (
         <>
           {/* Backdrop */}
           <div
             className="fixed inset-0 z-30 bg-black/50"
-            onClick={() => setShowMenu(false)}
+            onClick={() => setShowKeptCards(false)}
           />
-          {/* Menu Panel */}
+          {/* Panel */}
           <div
-            className="fixed left-0 top-0 bottom-0 z-40 w-80 p-6 space-y-6 animate-in slide-in-from-left"
+            className="fixed left-0 top-0 bottom-0 z-40 w-96 flex flex-col animate-in slide-in-from-left"
             style={{
               background: "var(--bg-surface-1)",
               borderRight: "1px solid var(--border-subtle)",
             }}
           >
-            <h3
-              className="text-lg font-semibold"
-              style={{ color: "var(--text-primary)" }}
-            >
-              Options
-            </h3>
-            <button
-              onClick={() => {
-                setStyle("classic");
-                setShowMenu(false);
-              }}
-              className="w-full px-4 py-3 rounded-lg text-left transition-all"
-              style={{
-                background: "var(--bg-surface-2)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              Switch to Classic View
-            </button>
-            <button
-              onClick={() => {
-                setShowMenu(false);
-                handleExit();
-              }}
-              className="w-full px-4 py-3 rounded-lg text-left transition-all"
-              style={{
-                background: "var(--bg-surface-2)",
-                color: "var(--text-secondary)",
-              }}
-            >
-              Exit Rediscover
-            </button>
+            {/* Header */}
+            <div className="p-4 flex items-center gap-3 border-b" style={{ borderColor: "var(--border-subtle)" }}>
+              <button
+                onClick={() => setShowKeptCards(false)}
+                className="p-2 rounded-lg transition-all hover:bg-white/10"
+              >
+                <ArrowLeft size={20} style={{ color: "var(--text-secondary)" }} />
+              </button>
+              <h3
+                className="text-lg font-semibold flex-1"
+                style={{ color: "var(--text-primary)" }}
+              >
+                Kept Cards ({keptCards.length})
+              </h3>
+            </div>
+
+            {/* Cards List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {keptCards.length === 0 ? (
+                <div className="text-center py-12" style={{ color: "var(--text-muted)" }}>
+                  <Inbox size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>No cards kept yet</p>
+                  <p className="text-sm mt-1">Press K to keep cards</p>
+                </div>
+              ) : (
+                keptCards.map((card) => (
+                  <div
+                    key={card.id}
+                    className="group relative rounded-xl overflow-hidden"
+                    style={{
+                      background: "var(--bg-surface-2)",
+                      border: "1px solid var(--border-subtle)",
+                    }}
+                  >
+                    {/* Card thumbnail */}
+                    {card.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={card.image}
+                        alt={card.title || "Card"}
+                        className="w-full h-24 object-cover"
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-24 flex items-center justify-center"
+                        style={{ background: "var(--bg-surface-3)" }}
+                      >
+                        <span className="text-2xl opacity-30">
+                          {card.title?.[0]?.toUpperCase() || "?"}
+                        </span>
+                      </div>
+                    )}
+                    {/* Card title */}
+                    <div className="p-3">
+                      <p
+                        className="text-sm font-medium line-clamp-1"
+                        style={{ color: "var(--text-primary)" }}
+                      >
+                        {card.title || "Untitled"}
+                      </p>
+                      {card.domain && (
+                        <p
+                          className="text-xs mt-1 line-clamp-1"
+                          style={{ color: "var(--text-muted)" }}
+                        >
+                          {card.domain}
+                        </p>
+                      )}
+                    </div>
+                    {/* Remove button - appears on hover */}
+                    <button
+                      onClick={() => removeKeptCard(card.id)}
+                      className="absolute top-2 right-2 p-2 rounded-lg opacity-0 group-hover:opacity-100 transition-all"
+                      style={{
+                        background: "rgba(0, 0, 0, 0.6)",
+                        backdropFilter: "blur(4px)",
+                      }}
+                      title="Remove from kept"
+                    >
+                      <Trash2 size={14} style={{ color: "var(--text-secondary)" }} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer with exit option */}
+            <div className="p-4 border-t" style={{ borderColor: "var(--border-subtle)" }}>
+              <button
+                onClick={() => {
+                  setShowKeptCards(false);
+                  handleExit();
+                }}
+                className="w-full px-4 py-3 rounded-lg text-center transition-all"
+                style={{
+                  background: "var(--bg-surface-2)",
+                  color: "var(--text-secondary)",
+                }}
+              >
+                Exit Rediscover
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -357,8 +425,6 @@ export function RediscoverSerendipity({
               ? "scale-110 opacity-0 duration-300"
               : cardTransition === "exiting-forget"
               ? "scale-75 opacity-0 rotate-2 duration-300"
-              : cardTransition === "exiting-add"
-              ? "-translate-y-16 scale-105 opacity-0 duration-300"
               : enteringFromOrbit
               ? "opacity-60 duration-0" // Starting position - no transition
               : cardTransition === "entering"
@@ -427,46 +493,33 @@ export function RediscoverSerendipity({
       </div>
 
       {/* Action Buttons - anchored to bottom */}
-      <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-4">
-        {/* Main Actions - 2x larger */}
-        <div className="flex items-center gap-8">
-          {/* Forget Button - subtle red tint on hover */}
-          <button
-            onClick={() => handleAction("delete")}
-            disabled={isProcessing}
-            className="px-12 py-6 rounded-full font-semibold text-2xl transition-all serendipity-action-btn hover:bg-red-500/20"
-            style={{
-              background: "var(--accent)",
-              color: "white",
-              boxShadow: "var(--glow-hover)",
-            }}
-          >
-            Forget
-          </button>
-
-          {/* Keep Button */}
-          <button
-            onClick={() => handleAction("keep")}
-            disabled={isProcessing}
-            className="px-12 py-6 rounded-full font-semibold text-2xl transition-all serendipity-action-btn"
-            style={{
-              background: "var(--accent)",
-              color: "white",
-              boxShadow: "var(--glow-hover)",
-            }}
-          >
-            Keep
-          </button>
-        </div>
-
-        {/* Subtle Add to Pawkit link */}
+      <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 flex items-center gap-8">
+        {/* Forget Button - subtle red tint on hover */}
         <button
-          onClick={() => handleAction("add-to-pawkit")}
+          onClick={() => handleAction("delete")}
           disabled={isProcessing}
-          className="text-sm transition-all hover:underline opacity-50 hover:opacity-70"
-          style={{ color: "var(--text-muted)" }}
+          className="px-12 py-6 rounded-full font-semibold text-2xl transition-all serendipity-action-btn hover:bg-red-500/20"
+          style={{
+            background: "var(--accent)",
+            color: "white",
+            boxShadow: "var(--glow-hover)",
+          }}
         >
-          + Add to Pawkit
+          Forget
+        </button>
+
+        {/* Keep Button */}
+        <button
+          onClick={() => handleAction("keep")}
+          disabled={isProcessing}
+          className="px-12 py-6 rounded-full font-semibold text-2xl transition-all serendipity-action-btn"
+          style={{
+            background: "var(--accent)",
+            color: "white",
+            boxShadow: "var(--glow-hover)",
+          }}
+        >
+          Keep
         </button>
       </div>
 
@@ -482,10 +535,6 @@ export function RediscoverSerendipity({
         <span>
           <kbd className="px-2 py-1 rounded bg-white/10 font-mono">K</kbd>{" "}
           Keep
-        </span>
-        <span>
-          <kbd className="px-2 py-1 rounded bg-white/10 font-mono">A</kbd>{" "}
-          Add to Pawkit
         </span>
       </div>
     </div>
