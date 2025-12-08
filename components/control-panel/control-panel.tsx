@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { X, Sun, Moon, SunMoon, Trash2, BookOpen, ArrowUpRight, ArrowDownLeft, ChevronDown } from "lucide-react";
+import { X, Sun, Moon, SunMoon, Trash2, Sliders, ArrowUpRight, ArrowDownLeft, ChevronDown } from "lucide-react";
 import { TrashPopover } from "@/components/trash/trash-popover";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useRouter } from "next/navigation";
@@ -168,18 +168,18 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
               </button>
             </TrashPopover>
 
-            {/* Changelog */}
+            {/* Settings */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
-                  onClick={() => router.push('/changelog')}
+                  onClick={() => router.push('/settings')}
                   className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
-                  aria-label="Changelog"
+                  aria-label="Settings"
                 >
-                  <BookOpen size={18} />
+                  <Sliders size={18} />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className="z-[200]">Changelog</TooltipContent>
+              <TooltipContent side="bottom" className="z-[200]">Settings</TooltipContent>
             </Tooltip>
 
             {/* Profile */}
