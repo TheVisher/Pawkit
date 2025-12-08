@@ -120,24 +120,28 @@
   --slider-inset-border-bottom: rgba(255, 255, 255, 0.1);
 }
 
-/* === CLASSIC PURPLE THEME (Dark + Purple Tint) === */
+/* === CLASSIC PURPLE THEME (Dark + Purple Tint + Glass) === */
 [data-ui-style="classic"] {
-  /* Base with purple undertone */
+  /* Base - solid purple-tinted background (shows through glass) */
   --bg-base: hsl(270 30% 6%);
 
-  /* Purple-tinted surfaces - keeping the depth layering */
-  --bg-surface-1: hsl(270 25% 11%);
-  --bg-surface-2: hsl(270 20% 16%);
-  --bg-surface-3: hsl(270 18% 21%);
-  --bg-surface-4: hsl(270 15% 26%);
+  /* Glass surfaces - semi-transparent with purple tint */
+  --bg-surface-1: hsl(270 30% 12% / 0.70);
+  --bg-surface-2: hsl(270 25% 18% / 0.75);
+  --bg-surface-3: hsl(270 20% 24% / 0.80);
+  --bg-surface-4: hsl(270 18% 30% / 0.85);
 
-  /* Slightly purple-tinted borders */
-  --border-subtle: hsl(270 30% 100% / 0.08);
-  --border-default: hsl(270 30% 100% / 0.10);
-  --border-strong: hsl(270 30% 100% / 0.14);
-  --border-divider: hsl(270 30% 100% / 0.10);
-  --border-highlight-top: hsl(270 40% 100% / 0.12);
-  --border-highlight-left: hsl(270 40% 100% / 0.10);
+  /* Glass effect properties */
+  --glass-blur: 12px;
+  --glass-saturate: 1.2;
+
+  /* Slightly purple-tinted borders - more visible for glass */
+  --border-subtle: hsl(270 40% 100% / 0.12);
+  --border-default: hsl(270 40% 100% / 0.15);
+  --border-strong: hsl(270 40% 100% / 0.20);
+  --border-divider: hsl(270 40% 100% / 0.12);
+  --border-highlight-top: hsl(270 50% 100% / 0.18);
+  --border-highlight-left: hsl(270 50% 100% / 0.15);
 
   /* Enhanced purple glow */
   --glow-hover:
@@ -146,6 +150,23 @@
   --glow-active:
     0 0 36px hsl(270 70% 55% / 0.6),
     0 8px 24px hsl(0 0% 0% / 0.5);
+}
+
+/* Glass effect for panels in classic mode */
+[data-ui-style="classic"] .surface-1,
+[data-ui-style="classic"] .surface-2,
+[data-ui-style="classic"] .surface-3,
+[data-ui-style="classic"] .surface-4 {
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+/* Apply glass to main layout panels */
+[data-ui-style="classic"] [data-panel="left"],
+[data-ui-style="classic"] [data-panel="right"],
+[data-ui-style="classic"] [data-panel="content"] {
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
 /* === LIGHT MODE === */

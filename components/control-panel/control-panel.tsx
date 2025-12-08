@@ -89,6 +89,7 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
     <>
       {/* Control Panel */}
       <div
+        data-panel="right"
         className={`
           ${positionClasses}
           flex flex-col
