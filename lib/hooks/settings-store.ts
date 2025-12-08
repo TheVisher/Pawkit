@@ -14,6 +14,7 @@ const SYNC_DEBOUNCE_MS = 1000; // Wait 1 second after last change before syncing
 
 export type Theme = "dark" | "light" | "auto";
 export type AccentColor = "purple" | "blue" | "green" | "red" | "orange";
+export type UiStyle = "modern" | "classic";  // modern = neutral, classic = purple-tinted
 export type Area = "library" | "home" | "den" | "pawkit" | "notes";
 
 // Recently viewed item type
@@ -85,6 +86,7 @@ export type SettingsState = {
   previewServiceUrl: string;
   theme: Theme;
   accentColor: AccentColor;
+  uiStyle: UiStyle;  // modern = neutral surfaces, classic = purple-tinted
   notifications: boolean;
   autoSave: boolean;
   compactMode: boolean;
@@ -110,6 +112,7 @@ export type SettingsState = {
   setPreviewServiceUrl: (value: string) => void;
   setTheme: (value: Theme) => void;
   setAccentColor: (value: AccentColor) => void;
+  setUiStyle: (value: UiStyle) => void;
   setNotifications: (value: boolean) => void;
   setAutoSave: (value: boolean) => void;
   setCompactMode: (value: boolean) => void;
@@ -155,6 +158,7 @@ export const useSettingsStore = create<SettingsState>()(
       previewServiceUrl: DEFAULT_PREVIEW_URL,
       theme: "dark",
       accentColor: "purple",
+      uiStyle: "modern",  // Default to new neutral design
       notifications: true,
       autoSave: true,
       compactMode: false,
@@ -202,6 +206,10 @@ export const useSettingsStore = create<SettingsState>()(
       },
       setAccentColor: (value) => {
         set({ accentColor: value });
+        debouncedSync(get());
+      },
+      setUiStyle: (value) => {
+        set({ uiStyle: value });
         debouncedSync(get());
       },
       setNotifications: (value) => {
@@ -418,6 +426,7 @@ export const useSettingsStore = create<SettingsState>()(
           previewServiceUrl: DEFAULT_PREVIEW_URL,
           theme: "dark",
           accentColor: "purple",
+          uiStyle: "modern",
           notifications: true,
           autoSave: true,
           compactMode: false,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSettingsStore, type AccentColor } from "@/lib/hooks/settings-store";
+import { useSettingsStore, type AccentColor, type UiStyle } from "@/lib/hooks/settings-store";
 
 const ACCENT_COLOR_VALUES: Record<AccentColor, { h: number; s: number; l: number }> = {
   purple: { h: 270, s: 70, l: 60 },
@@ -14,6 +14,7 @@ const ACCENT_COLOR_VALUES: Record<AccentColor, { h: number; s: number; l: number
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const accentColor = useSettingsStore((state) => state.accentColor);
   const theme = useSettingsStore((state) => state.theme);
+  const uiStyle = useSettingsStore((state) => state.uiStyle);
   const [systemPreference, setSystemPreference] = useState<"light" | "dark">("dark");
 
   // Listen for system theme changes
@@ -55,6 +56,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       document.documentElement.classList.remove("dark");
     }
   }, [theme, systemPreference]);
+
+  // Apply UI style (modern vs classic purple)
+  useEffect(() => {
+    if (uiStyle === "classic") {
+      document.documentElement.setAttribute("data-ui-style", "classic");
+    } else {
+      document.documentElement.removeAttribute("data-ui-style");
+    }
+  }, [uiStyle]);
 
   return <>{children}</>;
 }
