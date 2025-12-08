@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSettingsStore, type AccentColor, type UiStyle } from "@/lib/hooks/settings-store";
+import { useSettingsStore, type AccentColor } from "@/lib/hooks/settings-store";
 
 const ACCENT_COLOR_VALUES: Record<AccentColor, { h: number; s: number; l: number }> = {
   purple: { h: 270, s: 70, l: 60 },
@@ -15,6 +15,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const accentColor = useSettingsStore((state) => state.accentColor);
   const theme = useSettingsStore((state) => state.theme);
   const uiStyle = useSettingsStore((state) => state.uiStyle);
+  const surfaceTint = useSettingsStore((state) => state.surfaceTint);
   const [systemPreference, setSystemPreference] = useState<"light" | "dark">("dark");
 
   // Listen for system theme changes
@@ -57,14 +58,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [theme, systemPreference]);
 
-  // Apply UI style (modern vs classic purple)
+  // Apply UI style (modern vs glass)
   useEffect(() => {
-    if (uiStyle === "classic") {
-      document.documentElement.setAttribute("data-ui-style", "classic");
+    if (uiStyle === "glass") {
+      document.documentElement.setAttribute("data-ui-style", "glass");
     } else {
       document.documentElement.removeAttribute("data-ui-style");
     }
   }, [uiStyle]);
+
+  // Apply surface tint (none, purple, etc.)
+  useEffect(() => {
+    if (surfaceTint && surfaceTint !== "none") {
+      document.documentElement.setAttribute("data-surface-tint", surfaceTint);
+    } else {
+      document.documentElement.removeAttribute("data-surface-tint");
+    }
+  }, [surfaceTint]);
 
   return <>{children}</>;
 }

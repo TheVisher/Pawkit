@@ -120,28 +120,52 @@
   --slider-inset-border-bottom: rgba(255, 255, 255, 0.1);
 }
 
-/* === CLASSIC PURPLE THEME (Dark + Purple Tint + Glass) === */
-[data-ui-style="classic"] {
-  /* Base - solid purple-tinted background (shows through glass) */
-  --bg-base: hsl(270 30% 6%);
-
-  /* Glass surfaces - semi-transparent with purple tint */
-  --bg-surface-1: hsl(270 30% 12% / 0.70);
-  --bg-surface-2: hsl(270 25% 18% / 0.75);
-  --bg-surface-3: hsl(270 20% 24% / 0.80);
-  --bg-surface-4: hsl(270 18% 30% / 0.85);
+/* === GLASS UI STYLE (Transparent + Blur) === */
+[data-ui-style="glass"] {
+  /* Glass surfaces - semi-transparent (no color tint) */
+  --bg-surface-1: hsl(0 0% 12% / 0.70);
+  --bg-surface-2: hsl(0 0% 18% / 0.75);
+  --bg-surface-3: hsl(0 0% 24% / 0.80);
+  --bg-surface-4: hsl(0 0% 30% / 0.85);
 
   /* Glass effect properties */
   --glass-blur: 12px;
   --glass-saturate: 1.2;
 
-  /* Slightly purple-tinted borders - more visible for glass */
-  --border-subtle: hsl(270 40% 100% / 0.12);
-  --border-default: hsl(270 40% 100% / 0.15);
-  --border-strong: hsl(270 40% 100% / 0.20);
-  --border-divider: hsl(270 40% 100% / 0.12);
-  --border-highlight-top: hsl(270 50% 100% / 0.18);
-  --border-highlight-left: hsl(270 50% 100% / 0.15);
+  /* Slightly more visible borders for glass */
+  --border-subtle: hsl(0 0% 100% / 0.10);
+  --border-default: hsl(0 0% 100% / 0.12);
+  --border-strong: hsl(0 0% 100% / 0.16);
+  --border-highlight-top: hsl(0 0% 100% / 0.14);
+  --border-highlight-left: hsl(0 0% 100% / 0.12);
+}
+
+/* Apply backdrop blur to glass panels */
+[data-ui-style="glass"] [data-panel="left"],
+[data-ui-style="glass"] [data-panel="right"],
+[data-ui-style="glass"] [data-panel="content"] {
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+}
+
+/* === PURPLE SURFACE TINT === */
+[data-surface-tint="purple"] {
+  /* Purple-tinted base */
+  --bg-base: hsl(270 30% 6%);
+
+  /* Purple-tinted surfaces */
+  --bg-surface-1: hsl(270 25% 11%);
+  --bg-surface-2: hsl(270 20% 16%);
+  --bg-surface-3: hsl(270 18% 21%);
+  --bg-surface-4: hsl(270 15% 26%);
+
+  /* Purple-tinted borders */
+  --border-subtle: hsl(270 30% 100% / 0.08);
+  --border-default: hsl(270 30% 100% / 0.10);
+  --border-strong: hsl(270 30% 100% / 0.14);
+  --border-divider: hsl(270 30% 100% / 0.10);
+  --border-highlight-top: hsl(270 40% 100% / 0.12);
+  --border-highlight-left: hsl(270 40% 100% / 0.10);
 
   /* Enhanced purple glow */
   --glow-hover:
@@ -152,21 +176,20 @@
     0 8px 24px hsl(0 0% 0% / 0.5);
 }
 
-/* Glass effect for panels in classic mode */
-[data-ui-style="classic"] .surface-1,
-[data-ui-style="classic"] .surface-2,
-[data-ui-style="classic"] .surface-3,
-[data-ui-style="classic"] .surface-4 {
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-}
+/* Glass + Purple Tint combined (transparent purple surfaces) */
+[data-ui-style="glass"][data-surface-tint="purple"],
+[data-surface-tint="purple"][data-ui-style="glass"] {
+  --bg-surface-1: hsl(270 30% 12% / 0.70);
+  --bg-surface-2: hsl(270 25% 18% / 0.75);
+  --bg-surface-3: hsl(270 20% 24% / 0.80);
+  --bg-surface-4: hsl(270 18% 30% / 0.85);
 
-/* Apply glass to main layout panels */
-[data-ui-style="classic"] [data-panel="left"],
-[data-ui-style="classic"] [data-panel="right"],
-[data-ui-style="classic"] [data-panel="content"] {
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  /* More visible borders for glass */
+  --border-subtle: hsl(270 40% 100% / 0.12);
+  --border-default: hsl(270 40% 100% / 0.15);
+  --border-strong: hsl(270 40% 100% / 0.20);
+  --border-highlight-top: hsl(270 50% 100% / 0.18);
+  --border-highlight-left: hsl(270 50% 100% / 0.15);
 }
 
 /* === LIGHT MODE === */
