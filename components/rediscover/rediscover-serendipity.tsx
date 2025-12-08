@@ -7,6 +7,69 @@ import { AnimatedBackground } from "./animated-background";
 import { OrbitingCards } from "./orbiting-cards";
 import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
+import { useFileStore } from "@/lib/stores/file-store";
+
+// Hook to get image URL for a card, handling both regular and file cards
+function useCardImageUrl(card: CardModel | null): string | null {
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const files = useFileStore((state) => state.files);
+  const isFilesLoaded = useFileStore((state) => state.isLoaded);
+  const loadFiles = useFileStore((state) => state.loadFiles);
+
+  useEffect(() => {
+    if (!isFilesLoaded) {
+      loadFiles();
+    }
+  }, [isFilesLoaded, loadFiles]);
+
+  useEffect(() => {
+    if (!card) {
+      setImageUrl(null);
+      return;
+    }
+
+    const isFileCard = card.type === "file" || card.isFileCard;
+
+    // For regular cards, use the stored image URL
+    if (!isFileCard) {
+      setImageUrl(card.image || null);
+      return;
+    }
+
+    // For file cards, get blob from file store
+    if (!isFilesLoaded) {
+      return;
+    }
+
+    const fileId = card.fileId;
+    if (!fileId) {
+      setImageUrl(null);
+      return;
+    }
+
+    const file = files.find((f) => f.id === fileId);
+    if (!file) {
+      setImageUrl(null);
+      return;
+    }
+
+    // Prefer thumbnail if available, otherwise use main blob for images
+    const blob = file.thumbnailBlob || (file.category === "image" ? file.blob : null);
+
+    if (blob) {
+      const blobUrl = URL.createObjectURL(blob);
+      setImageUrl(blobUrl);
+
+      return () => {
+        URL.revokeObjectURL(blobUrl);
+      };
+    } else {
+      setImageUrl(null);
+    }
+  }, [card, files, isFilesLoaded]);
+
+  return imageUrl;
+}
 
 // Hash function for stable card positioning (same as orbiting-cards.tsx)
 function hashCode(str: string): number {
@@ -75,6 +138,9 @@ export function RediscoverSerendipity({
   // Get kept cards from store
   const keptCards = useRediscoverStore((state) => state.keptCards);
   const removeKeptCard = useRediscoverStore((state) => state.removeKeptCard);
+
+  // Get image URL for current card (handles both regular and file cards)
+  const currentCardImageUrl = useCardImageUrl(currentCard);
 
   // Panel state management - hide sidebars in serendipity mode
   const closeLeft = usePanelStore((state) => state.closeLeft);
@@ -267,7 +333,7 @@ export function RediscoverSerendipity({
     );
   }
 
-  const thumbnail = currentCard.image;
+  const thumbnail = currentCardImageUrl;
   const cardTitle = currentCard.title || "Untitled";
   const cardUrl = currentCard.url || "";
   const domain =
