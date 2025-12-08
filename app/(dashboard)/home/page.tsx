@@ -483,7 +483,7 @@ export default function HomePage() {
                       <div className="flex items-start gap-1.5 md:gap-2">
                         <span
                           className="w-2 h-2 rounded-full flex-shrink-0 mt-1"
-                          style={{ backgroundColor: event.color || EVENT_COLORS.purple }}
+                          style={{ backgroundColor: event.color || 'var(--ds-accent)' }}
                         />
                         <div className="flex-1 min-w-0">
                           {!event.isAllDay && event.startTime && (
@@ -532,7 +532,7 @@ export default function HomePage() {
                         e.stopPropagation();
                         openCardDetails(dailyNote.id);
                       }}
-                      className="px-3 py-1.5 rounded-full bg-purple-500/20 backdrop-blur-md border border-purple-400/30 text-xs text-purple-200 hover:bg-purple-500/30 transition-colors flex items-center gap-1.5"
+                      className="px-3 py-1.5 rounded-full bg-accent/20 backdrop-blur-md border border-accent/30 text-xs text-accent hover:bg-accent/30 transition-colors flex items-center gap-1.5"
                     >
                       <FileText size={12} />
                       <span>Daily Note</span>
@@ -609,12 +609,12 @@ export default function HomePage() {
                   >
                     <div className="flex items-center justify-between w-full">
                       <div>
-                        <div className="font-medium text-purple-200">{dailyNote.title}</div>
-                        <div className="text-sm text-purple-300/70 mt-1">
+                        <div className="font-medium text-accent">{dailyNote.title}</div>
+                        <div className="text-sm text-accent/70 mt-1">
                           {dailyNote.content?.substring(0, 100)}...
                         </div>
                       </div>
-                      <div className="text-purple-300">→</div>
+                      <div className="text-accent">→</div>
                     </div>
                   </GlowButton>
                 ) : (
@@ -645,7 +645,7 @@ export default function HomePage() {
                       >
                         <span
                           className="w-3 h-3 rounded-full flex-shrink-0 mt-1"
-                          style={{ backgroundColor: event.color || EVENT_COLORS.purple }}
+                          style={{ backgroundColor: event.color || 'var(--ds-accent)' }}
                         />
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-foreground">
@@ -774,7 +774,7 @@ function RecentCard({ card, onClick, onAddToPawkit, onDeleteCard, onRemoveFromPa
       {/* Note icon background for notes */}
       {isNote && (
         <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
-          <FileText size={40} strokeWidth={1.5} className="text-purple-400" />
+          <FileText size={40} strokeWidth={1.5} className="text-accent" />
         </div>
       )}
 

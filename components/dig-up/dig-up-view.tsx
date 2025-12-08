@@ -374,7 +374,7 @@ export function DigUpView({
                       key={collection}
                       className="inline-flex items-center gap-1.5 rounded bg-gray-800 px-3 py-1 text-xs text-gray-300"
                     >
-                      <Folder className="h-3 w-3 text-purple-400" />
+                      <Folder className="h-3 w-3 text-accent" />
                       {collection}
                     </span>
                   ))}
@@ -551,7 +551,7 @@ function PawkitTreeItem({ node, depth, onSelect, loading }: PawkitTreeItemProps)
         size="sm"
         className="w-full text-left rounded-full pr-4 py-2.5 text-sm disabled:opacity-50 justify-start flex items-center gap-2"
       >
-        <Folder className="h-4 w-4 text-purple-400" />
+        <Folder className="h-4 w-4 text-accent" />
         {node.name}
       </GlowButton>
       {hasChildren && node.children.map((child) => (

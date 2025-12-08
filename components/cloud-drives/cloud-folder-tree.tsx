@@ -36,7 +36,7 @@ function getFileIcon(mimeType: string, isFolder: boolean) {
     return <Film className="h-4 w-4 text-blue-400" />;
   }
   if (mimeType === "text/markdown" || mimeType === "text/plain") {
-    return <FileText className="h-4 w-4 text-purple-400" />;
+    return <FileText className="h-4 w-4 text-accent" />;
   }
   return <File className="h-4 w-4 text-gray-400" />;
 }
@@ -187,8 +187,8 @@ export function CloudFolderTree({
           className={cn(
             "flex items-center py-1.5 px-2 rounded-md transition-colors",
             "hover:bg-white/5",
-            isSelected && "bg-purple-500/20 border border-purple-500/30",
-            isDragOver && node.file.isFolder && "bg-purple-500/30 border border-purple-500/50",
+            isSelected && "bg-accent/20 border border-accent/30",
+            isDragOver && node.file.isFolder && "bg-accent/30 border border-accent/50",
             node.file.isFolder ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"
           )}
           style={{ paddingLeft: `${depth * 16 + 8}px` }}

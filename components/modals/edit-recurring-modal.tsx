@@ -42,8 +42,8 @@ export function EditRecurringModal({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
-              <Edit3 className="h-5 w-5 text-purple-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
+              <Edit3 className="h-5 w-5 text-accent" />
             </div>
             <div>
               <h2 className="text-xl font-semibold text-foreground">Edit Recurring Event</h2>
@@ -62,11 +62,11 @@ export function EditRecurringModal({
 
         {/* Content */}
         <div className="space-y-4">
-          <div className="flex items-start gap-3 p-4 rounded-lg bg-purple-500/10 border border-purple-500/30">
-            <Repeat className="h-5 w-5 text-purple-400 flex-shrink-0 mt-0.5" />
+          <div className="flex items-start gap-3 p-4 rounded-lg bg-accent/10 border border-accent/30">
+            <Repeat className="h-5 w-5 text-accent flex-shrink-0 mt-0.5" />
             <div className="text-sm">
-              <p className="font-medium text-purple-200">This is a recurring event</p>
-              <p className="text-purple-200/70 mt-1">
+              <p className="font-medium text-accent">This is a recurring event</p>
+              <p className="text-accent/70 mt-1">
                 Choose whether to edit just this occurrence or all events in the series.
               </p>
             </div>
@@ -76,7 +76,7 @@ export function EditRecurringModal({
             <button
               onClick={onEditThis}
               className="w-full p-4 rounded-xl bg-white/5 border border-white/10
-                hover:bg-white/10 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.3)]
+                hover:bg-white/10 hover:border-accent/50 hover:glow-hover
                 transition-all duration-200 text-left group"
             >
               <div className="flex items-center gap-3">
@@ -92,15 +92,15 @@ export function EditRecurringModal({
 
             <button
               onClick={onEditAll}
-              className="w-full p-4 rounded-xl bg-purple-500/10 border border-purple-500/30
-                hover:bg-purple-500/20 hover:border-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.3)]
+              className="w-full p-4 rounded-xl bg-accent/10 border border-accent/30
+                hover:bg-accent/20 hover:border-accent/50 hover:glow-hover
                 transition-all duration-200 text-left group"
             >
               <div className="flex items-center gap-3">
-                <Repeat className="h-5 w-5 text-purple-400" />
+                <Repeat className="h-5 w-5 text-accent" />
                 <div>
-                  <p className="font-medium text-purple-200">Edit all events in series</p>
-                  <p className="text-sm text-purple-200/70">
+                  <p className="font-medium text-accent">Edit all events in series</p>
+                  <p className="text-sm text-accent/70">
                     Changes will apply to all occurrences of this event
                   </p>
                 </div>

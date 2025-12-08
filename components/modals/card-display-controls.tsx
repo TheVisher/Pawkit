@@ -145,7 +145,7 @@ export function CardDisplayControls({ open, onClose, view }: CardDisplayControls
                       key={index}
                       onClick={() => setCardPadding(view, index)}
                       className={`flex-1 h-2 rounded-full transition-colors ${
-                        index <= cardPadding ? "bg-purple-500" : "bg-gray-800"
+                        index <= cardPadding ? "bg-accent" : "bg-gray-800"
                       }`}
                     />
                   ))}

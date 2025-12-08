@@ -1178,6 +1178,66 @@ useEffect(() => {
 
 ---
 
-**Last Updated**: November 26, 2025
-**Reason**: Added PDF viewer architecture and panel store hide/show pattern
+## Sidebar State Persistence Pattern
+
+### CRITICAL: Use setXXXControls, Not openXXXControls
+
+**Problem**: Pages were calling `openXXXControls()` on mount, which forces `isOpen: true` and overrides user's preference to keep sidebar closed.
+
+**Solution**: Use `setXXXControls()` functions that only set `contentType` without forcing `isOpen`.
+
+### Panel Store Functions
+
+**File**: `lib/hooks/use-panel-store.ts`
+
+| Function | Behavior | Use When |
+|----------|----------|----------|
+| `openLibraryControls()` | Sets `isOpen: true` + `contentType` | User clicks to open panel |
+| `setLibraryControls()` | Only sets `contentType` | Page loads (respects open/closed state) |
+
+### Implementation Pattern
+
+```typescript
+// ❌ WRONG: Forces sidebar open on every page load
+const openNotesControls = usePanelStore((state) => state.openNotesControls);
+
+useEffect(() => {
+  openNotesControls();  // Forces isOpen: true!
+}, [openNotesControls]);
+
+// ✅ CORRECT: Respects user's open/closed preference
+const setNotesControls = usePanelStore((state) => state.setNotesControls);
+
+useEffect(() => {
+  setNotesControls();  // Only sets contentType
+}, [setNotesControls]);
+```
+
+### Pages Using This Pattern
+
+- `app/(dashboard)/home/page.tsx` → `setHomeControls()`
+- `app/(dashboard)/notes/page.tsx` → `setNotesControls()`
+- `app/(dashboard)/calendar/page.tsx` → `setCalendarControls()`
+- `app/(dashboard)/library/page.tsx` → `setContentType("library-controls")`
+- `app/(dashboard)/pawkits/page.tsx` → `setContentType("pawkits-controls")`
+
+### Available setXXX Functions
+
+```typescript
+setHomeControls: () => void;
+setLibraryControls: () => void;
+setNotesControls: () => void;
+setCalendarControls: () => void;
+setPawkitsControls: () => void;
+setCloudDrivesControls: () => void;
+```
+
+### Persisted State
+
+The panel store already persists `isOpen` and `isLeftOpen` to localStorage. The fix was ensuring pages don't override this persisted state on navigation.
+
+---
+
+**Last Updated**: December 7, 2025
+**Reason**: Added sidebar state persistence pattern with setXXXControls functions
 

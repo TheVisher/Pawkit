@@ -432,9 +432,9 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
           <code
             className="px-2 py-1 rounded font-mono text-sm border"
             style={{
-              backgroundColor: 'rgba(139, 92, 246, 0.1)', // Purple tint
-              borderColor: 'rgba(139, 92, 246, 0.3)',
-              color: '#c4b5fd', // Light purple
+              backgroundColor: 'var(--ds-accent-subtle)',
+              borderColor: 'var(--ds-accent-muted)',
+              color: 'var(--ds-accent)',
             }}
             {...props}
           >
@@ -504,8 +504,8 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
           return (
             <button
               onClick={() => onNavigate(noteId)}
-              className="!text-purple-400 hover:!text-purple-300 !underline !decoration-purple-400/50 hover:!decoration-purple-300 cursor-pointer !font-bold transition-colors inline-flex items-center gap-1"
-              style={{ color: '#a78bfa', textDecoration: 'underline', textDecorationColor: '#a78bfa80' }}
+              className="!text-accent hover:!text-accent/80 !underline !decoration-accent/50 hover:!decoration-accent/80 cursor-pointer !font-bold transition-colors inline-flex items-center gap-1"
+              style={{ color: 'var(--ds-accent)', textDecoration: 'underline', textDecorationColor: 'var(--ds-accent-muted)' }}
             >
               <FileText size={14} />
               {children}
@@ -683,9 +683,9 @@ export function RichMDEditor({ content, onChange, placeholder, onNavigate, onTog
                 className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 group"
                 title={showToolbar ? "Hide toolbar" : "Show toolbar"}
               >
-                <div className="w-12 h-1.5 bg-white/10 group-hover:bg-purple-500/50 rounded-full transition-all duration-200 flex items-center justify-center">
+                <div className="w-12 h-1.5 bg-white/10 group-hover:bg-accent/50 rounded-full transition-all duration-200 flex items-center justify-center">
                   <svg
-                    className={`w-4 h-4 text-gray-400 group-hover:text-purple-400 transition-all duration-200 ${showToolbar ? 'rotate-180' : ''}`}
+                    className={`w-4 h-4 text-gray-400 group-hover:text-accent transition-all duration-200 ${showToolbar ? 'rotate-180' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

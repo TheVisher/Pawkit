@@ -60,9 +60,9 @@ export function Toast({ message, type = "info", duration, action, secondaryActio
       case "warning":
         return `${glassBase} border-yellow-500/30`;
       case "loading":
-        return `${glassBase} border-purple-500/30`;
+        return `${glassBase} border-accent/30`;
       case "calendar":
-        return `${glassBase} border-purple-500/30`;
+        return `${glassBase} border-accent/30`;
       case "info":
       default:
         return `${glassBase} border-white/10`;
@@ -78,9 +78,9 @@ export function Toast({ message, type = "info", duration, action, secondaryActio
       case "warning":
         return <AlertTriangle className="h-5 w-5 text-yellow-400" />;
       case "loading":
-        return <Loader2 className="h-5 w-5 text-purple-400 animate-spin" />;
+        return <Loader2 className="h-5 w-5 text-accent animate-spin" />;
       case "calendar":
-        return <Calendar className="h-5 w-5 text-purple-400" />;
+        return <Calendar className="h-5 w-5 text-accent" />;
       case "info":
       default:
         return <Info className="h-5 w-5 text-blue-400" />;
@@ -108,7 +108,7 @@ export function Toast({ message, type = "info", duration, action, secondaryActio
           {action && (
             <button
               onClick={() => handleActionClick(action.onClick)}
-              className="px-3 py-1 text-xs font-medium rounded-md bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 hover:text-purple-200 transition-colors border border-purple-500/30"
+              className="px-3 py-1 text-xs font-medium rounded-md bg-accent/20 text-accent hover:bg-accent/30 hover:text-accent transition-colors border border-accent/30"
             >
               {action.label}
             </button>

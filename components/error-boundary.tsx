@@ -49,7 +49,7 @@ export class ErrorBoundary extends Component<Props, State> {
             <div className="space-y-3">
               <button
                 onClick={() => window.location.reload()}
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-3 px-6 rounded-xl transition-colors"
+                className="w-full bg-accent hover:bg-accent/90 text-white font-medium py-3 px-6 rounded-xl transition-colors"
               >
                 Reload Page
               </button>

@@ -189,7 +189,7 @@ function ListRowCardIcon({ card }: { card: CardModel }) {
   const isNote = card.type === "md-note" || card.type === "text-note";
 
   if (isNote) {
-    return <FileText size={16} className="text-purple-400" />;
+    return <FileText size={16} className="text-accent" />;
   }
 
   if (imageUrl) {
@@ -764,7 +764,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                               <ListRowCardIcon card={card} />
                             </span>
                             <span className="text-sm text-foreground font-medium truncate min-w-0 flex-1">{displayTitle}</span>
-                            {isPinned && <Pin size={14} className="text-purple-400 flex-shrink-0" />}
+                            {isPinned && <Pin size={14} className="text-accent flex-shrink-0" />}
                           </div>
                         </td>
                         <td className="py-3 px-4">
@@ -1363,7 +1363,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           )}
           {isPending || (isFileCard && isImageLoading) ? (
             <div className="flex h-full w-full items-center justify-center">
-              <div className="h-16 w-16 rounded-full border-4 border-gray-600 border-t-purple-500 animate-spin"></div>
+              <div className="h-16 w-16 rounded-full border-4 border-gray-600 border-t-accent animate-spin"></div>
             </div>
           ) : isError ? (
             <div className="flex h-full w-full items-center justify-center">

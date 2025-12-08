@@ -23,7 +23,7 @@ function getFileIcon(file: CloudFile) {
     return <ImageIcon className="h-5 w-5 text-green-400" />;
   }
   if (mimeType.startsWith("video/")) {
-    return <Film className="h-5 w-5 text-purple-400" />;
+    return <Film className="h-5 w-5 text-accent" />;
   }
   if (mimeType.startsWith("audio/")) {
     return <Music className="h-5 w-5 text-pink-400" />;

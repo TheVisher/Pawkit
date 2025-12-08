@@ -563,7 +563,7 @@ export function DualPaneEditor({ card, onClose, onSave, onNavigate }: DualPaneEd
           return (
             <button
               onClick={() => onNavigate(noteId)}
-              className="!text-purple-400 hover:!text-purple-300 !underline cursor-pointer !font-bold transition-colors inline-flex items-center gap-1"
+              className="!text-accent hover:!text-accent/80 !underline cursor-pointer !font-bold transition-colors inline-flex items-center gap-1"
             >
               <FileText size={14} />
               {children}

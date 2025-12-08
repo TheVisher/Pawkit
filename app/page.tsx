@@ -71,14 +71,12 @@ export default function PawkitLanding() {
 
           {/* Primary CTAs */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-            <Link href="/home">
-              <Button
-                size="lg"
-                className="bg-[#7c3aed] hover:bg-[#6d2fd9] text-white text-lg px-10 py-7 rounded-xl shadow-lg shadow-[#7c3aed]/25 hover:shadow-[#7c3aed]/40 transition-all duration-300"
-              >
-                Launch Pawkit
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
+            <Link
+              href="/home"
+              className="inline-flex items-center justify-center gap-2 bg-[#7c3aed] hover:bg-[#6d2fd9] text-white text-lg px-10 py-7 rounded-xl shadow-lg shadow-[#7c3aed]/25 hover:shadow-[#7c3aed]/40 transition-all duration-300 font-medium"
+            >
+              Launch Pawkit
+              <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
 
@@ -324,13 +322,11 @@ export default function PawkitLanding() {
 
               {/* CTAs */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-6">
-                <Link href="/home">
-                  <Button
-                    size="lg"
-                    className="bg-white text-[#7c3aed] hover:bg-purple-50 text-lg px-10 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-semibold"
-                  >
-                    Launch Pawkit
-                  </Button>
+                <Link
+                  href="/home"
+                  className="inline-flex items-center justify-center bg-white text-[#7c3aed] hover:bg-purple-50 text-lg px-10 py-7 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 font-semibold"
+                >
+                  Launch Pawkit
                 </Link>
               </div>
 

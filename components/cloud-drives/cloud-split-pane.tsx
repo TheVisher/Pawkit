@@ -176,11 +176,15 @@ export function CloudSplitPane({
 
   return (
     <div
-      className={`flex flex-col h-full ${
-        isDragOver || isDragTarget
-          ? "bg-purple-500/10 border-purple-500/50"
-          : "bg-white/[0.02]"
-      } transition-colors`}
+      className="flex flex-col h-full transition-colors"
+      style={{
+        background: isDragOver || isDragTarget
+          ? 'hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.1)'
+          : 'rgba(255, 255, 255, 0.02)',
+        borderColor: isDragOver || isDragTarget
+          ? 'hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.5)'
+          : undefined,
+      }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -275,7 +279,7 @@ export function CloudSplitPane({
               onClick={() => setViewMode("list")}
               className={`p-1 rounded transition-colors ${
                 viewMode === "list"
-                  ? "bg-purple-500/20 text-purple-400"
+                  ? "bg-accent/20 text-accent"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5"
               }`}
               title="List View"
@@ -286,7 +290,7 @@ export function CloudSplitPane({
               onClick={() => setViewMode("tree")}
               className={`p-1 rounded transition-colors ${
                 viewMode === "tree"
-                  ? "bg-purple-500/20 text-purple-400"
+                  ? "bg-accent/20 text-accent"
                   : "text-muted-foreground hover:text-foreground hover:bg-white/5"
               }`}
               title="Tree View"
@@ -381,8 +385,14 @@ export function CloudSplitPane({
 
       {/* Drop Zone Overlay */}
       {isDragOver && (
-        <div className="absolute inset-0 bg-purple-500/20 border-2 border-dashed border-purple-500/50 rounded-lg flex items-center justify-center pointer-events-none">
-          <p className="text-purple-300 text-sm font-medium">Drop to copy here</p>
+        <div
+          className="absolute inset-0 border-2 border-dashed rounded-lg flex items-center justify-center pointer-events-none"
+          style={{
+            background: 'hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.2)',
+            borderColor: 'hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.5)',
+          }}
+        >
+          <p className="text-accent text-sm font-medium">Drop to copy here</p>
         </div>
       )}
 

@@ -215,7 +215,7 @@ export function FileCard({
       {file.syncStatus === "cloud-only" && !file.blob && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-2xl">
           <div className="flex flex-col items-center gap-2 text-center px-4">
-            <Cloud className="h-8 w-8 text-purple-400" />
+            <Cloud className="h-8 w-8 text-accent" />
             <span className="text-xs text-gray-300">Available in cloud</span>
           </div>
         </div>

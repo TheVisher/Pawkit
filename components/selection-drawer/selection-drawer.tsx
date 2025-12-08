@@ -125,12 +125,12 @@ function SelectedItemThumbnail({ card, onRemove }: SelectedItemThumbnailProps) {
         {isNote ? (
           // Note thumbnail - icon
           <div className="w-full h-full flex items-center justify-center bg-surface-soft">
-            <FileText size={28} className="text-purple-400" strokeWidth={1.5} />
+            <FileText size={28} className="text-accent" strokeWidth={1.5} />
           </div>
         ) : isPending ? (
           // Loading state
           <div className="w-full h-full flex items-center justify-center">
-            <div className="h-8 w-8 rounded-full border-2 border-gray-600 border-t-purple-500 animate-spin"></div>
+            <div className="h-8 w-8 rounded-full border-2 border-gray-600 border-t-accent animate-spin"></div>
           </div>
         ) : isError ? (
           // Error state
@@ -170,7 +170,7 @@ function SelectedItemThumbnail({ card, onRemove }: SelectedItemThumbnailProps) {
           </p>
         )}
         {isNote && (
-          <p className="text-xs text-purple-400">
+          <p className="text-xs text-accent">
             {card.type === "md-note" ? "Markdown" : "Text Note"}
           </p>
         )}

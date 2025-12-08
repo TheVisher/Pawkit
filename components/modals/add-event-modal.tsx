@@ -277,7 +277,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Concert, Movie Release, Deadline..."
-                className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-accent"
                 style={{
                   background: 'var(--bg-surface-1)',
                   boxShadow: 'var(--inset-shadow)',
@@ -305,7 +305,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                     setEndDate(e.target.value);
                   }
                 }}
-                className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-accent"
                 style={{
                   background: 'var(--bg-surface-1)',
                   boxShadow: 'var(--inset-shadow)',
@@ -361,7 +361,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                   value={endDate}
                   min={date}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-accent"
                   style={{
                     background: 'var(--bg-surface-1)',
                     boxShadow: 'var(--inset-shadow)',
@@ -413,7 +413,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                     type="time"
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-accent"
                     style={{
                       background: 'var(--bg-surface-1)',
                       boxShadow: 'var(--inset-shadow)',
@@ -431,7 +431,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                     type="time"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-accent"
                     style={{
                       background: 'var(--bg-surface-1)',
                       boxShadow: 'var(--inset-shadow)',
@@ -455,7 +455,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-accent"
                 style={{
                   background: 'var(--bg-surface-1)',
                   boxShadow: 'var(--inset-shadow)',
@@ -504,7 +504,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Add notes or details..."
                     rows={3}
-                    className="w-full px-4 py-3 rounded-xl transition-all resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-3 rounded-xl transition-all resize-none focus:outline-none focus:ring-2 focus:ring-accent"
                     style={{
                       background: 'var(--bg-surface-1)',
                       boxShadow: 'var(--inset-shadow)',
@@ -526,7 +526,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="Add a location..."
-                    className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full px-4 py-3 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-accent"
                     style={{
                       background: 'var(--bg-surface-1)',
                       boxShadow: 'var(--inset-shadow)',
@@ -654,7 +654,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                           name="monthly-type"
                           checked={recurrenceMonthlyType === 'day'}
                           onChange={() => setRecurrenceMonthlyType('day')}
-                          className="w-4 h-4 accent-purple-500"
+                          className="w-4 h-4 accent-accent"
                         />
                         <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                           On day {new Date(date || scheduledDate).getDate()}
@@ -666,7 +666,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                           name="monthly-type"
                           checked={recurrenceMonthlyType === 'weekday'}
                           onChange={() => setRecurrenceMonthlyType('weekday')}
-                          className="w-4 h-4 accent-purple-500"
+                          className="w-4 h-4 accent-accent"
                         />
                         <span className="text-sm" style={{ color: 'var(--text-primary)' }}>
                           On the {getOrdinal(Math.ceil(new Date(date || scheduledDate).getDate() / 7))}{' '}
@@ -689,7 +689,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                         name="recurrence-end"
                         checked={recurrenceEndType === 'never'}
                         onChange={() => setRecurrenceEndType('never')}
-                        className="w-4 h-4 accent-purple-500"
+                        className="w-4 h-4 accent-accent"
                       />
                       <span className="text-sm" style={{ color: 'var(--text-primary)' }}>Never</span>
                     </label>
@@ -699,7 +699,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                         name="recurrence-end"
                         checked={recurrenceEndType === 'on_date'}
                         onChange={() => setRecurrenceEndType('on_date')}
-                        className="w-4 h-4 accent-purple-500"
+                        className="w-4 h-4 accent-accent"
                       />
                       <span className="text-sm" style={{ color: 'var(--text-primary)' }}>On date</span>
                       {recurrenceEndType === 'on_date' && (
@@ -707,7 +707,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                           type="date"
                           value={recurrenceEndDate}
                           onChange={(e) => setRecurrenceEndDate(e.target.value)}
-                          className="ml-2 px-3 py-1.5 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          className="ml-2 px-3 py-1.5 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-accent"
                           style={{
                             background: 'var(--bg-surface-1)',
                             boxShadow: 'var(--inset-shadow)',
@@ -723,7 +723,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                         name="recurrence-end"
                         checked={recurrenceEndType === 'after_count'}
                         onChange={() => setRecurrenceEndType('after_count')}
-                        className="w-4 h-4 accent-purple-500"
+                        className="w-4 h-4 accent-accent"
                       />
                       <span className="text-sm" style={{ color: 'var(--text-primary)' }}>After</span>
                       {recurrenceEndType === 'after_count' && (
@@ -734,7 +734,7 @@ export function AddEventModal({ open, onClose, scheduledDate, editingEvent }: Ad
                             max="999"
                             value={recurrenceEndCount}
                             onChange={(e) => setRecurrenceEndCount(parseInt(e.target.value) || 1)}
-                            className="ml-2 w-20 px-3 py-1.5 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="ml-2 w-20 px-3 py-1.5 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-accent"
                             style={{
                               background: 'var(--bg-surface-1)',
                               boxShadow: 'var(--inset-shadow)',

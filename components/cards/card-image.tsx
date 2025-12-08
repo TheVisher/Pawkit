@@ -116,7 +116,7 @@ export function CardImage({
   if (isLoading && isFileCard) {
     return (
       <div className={`flex items-center justify-center bg-surface-soft ${fallbackClassName}`}>
-        <div className="h-8 w-8 rounded-full border-2 border-gray-600 border-t-purple-500 animate-spin" />
+        <div className="h-8 w-8 rounded-full border-2 border-gray-600 border-t-accent animate-spin" />
       </div>
     );
   }

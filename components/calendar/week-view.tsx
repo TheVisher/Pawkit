@@ -214,10 +214,10 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
                       e.stopPropagation();
                       onCardClick?.(dailyNote);
                     }}
-                    className="w-full px-2 py-2 rounded-lg bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 transition-colors flex items-center gap-2 text-left"
+                    className="w-full px-2 py-2 rounded-lg bg-accent/10 border border-accent/30 hover:bg-accent/20 transition-colors flex items-center gap-2 text-left"
                   >
-                    <FileText size={12} className="text-purple-300 flex-shrink-0" />
-                    <span className="text-xs font-medium text-purple-200 truncate">
+                    <FileText size={12} className="text-accent flex-shrink-0" />
+                    <span className="text-xs font-medium text-accent truncate">
                       Note
                     </span>
                   </button>
@@ -236,7 +236,7 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
                     <div className="flex items-start gap-2">
                       <span
                         className="w-2 h-2 rounded-full flex-shrink-0 mt-1"
-                        style={{ backgroundColor: event.color || EVENT_COLORS.purple }}
+                        style={{ backgroundColor: event.color || 'var(--ds-accent)' }}
                       />
                       <div className="flex-1 min-w-0">
                         {!event.isAllDay && event.startTime && (

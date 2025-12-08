@@ -292,9 +292,9 @@ export function RediscoverSerendipity({
           onClick={() => setShowKeptCards(!showKeptCards)}
           className="flex items-center gap-2 px-4 py-2 rounded-xl transition-all"
           style={{
-            background: keptCards.length > 0 ? "rgba(139, 92, 246, 0.2)" : "rgba(255, 255, 255, 0.05)",
+            background: keptCards.length > 0 ? "hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.2)" : "rgba(255, 255, 255, 0.05)",
             backdropFilter: "blur(12px)",
-            border: keptCards.length > 0 ? "1px solid rgba(139, 92, 246, 0.3)" : "1px solid rgba(255, 255, 255, 0.1)",
+            border: keptCards.length > 0 ? "1px solid hsl(var(--accent-h) var(--accent-s) var(--accent-l) / 0.3)" : "1px solid rgba(255, 255, 255, 0.1)",
           }}
           aria-label="View kept cards"
         >

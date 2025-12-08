@@ -190,7 +190,7 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
                   className="rounded-full hover:ring-2 hover:ring-white/20 transition-all"
                   aria-label="Profile"
                 >
-                  <div className="flex aspect-square size-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white font-semibold text-base">
+                  <div className="flex aspect-square size-10 items-center justify-center rounded-full bg-gradient-to-br from-accent to-pink-500 text-white font-semibold text-base">
                     {(effectiveDisplayName || "U").charAt(0).toUpperCase()}
                   </div>
                 </button>
