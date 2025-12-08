@@ -318,6 +318,12 @@ function LibraryPageContent() {
     rediscoverStore.loadNextBatch();
   };
 
+  // Handle start over - reinitialize with fresh sorted cards
+  const handleStartOver = () => {
+    const sortedCards = getSortedCardsForRediscover();
+    rediscoverStore.initializeQueue(sortedCards);
+  };
+
   // Render Rediscover mode or normal Library view
   if (isRediscoverMode) {
     return (
@@ -331,6 +337,7 @@ function LibraryPageContent() {
         totalBatches={rediscoverStore.totalBatches()}
         hasMoreBatches={rediscoverStore.hasMoreBatches()}
         onNextBatch={handleNextBatch}
+        onStartOver={handleStartOver}
       />
     );
   }
