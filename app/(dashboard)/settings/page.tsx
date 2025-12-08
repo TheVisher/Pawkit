@@ -1196,16 +1196,34 @@ export default function SettingsPage() {
 
       {/* Footer */}
       <div
-        className="text-center py-6 rounded-2xl"
+        className="py-6 px-8 rounded-2xl"
         style={{
           background: 'var(--bg-surface-1)',
           boxShadow: 'var(--inset-shadow)',
           border: 'var(--inset-border)',
         }}
       >
-        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
-          Need to update your account info? Click your avatar in the top right.
-        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>
+            Need to update your account info? Click your avatar in the top right.
+          </p>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/changelog"
+              className="text-sm transition-colors hover:underline"
+              style={{ color: 'var(--ds-accent)' }}
+            >
+              Changelog
+            </Link>
+            <Link
+              href="/help"
+              className="text-sm transition-colors hover:underline"
+              style={{ color: 'var(--ds-accent)' }}
+            >
+              Help Center
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Filen Modal */}
