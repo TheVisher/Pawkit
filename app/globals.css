@@ -247,6 +247,51 @@
   --ds-accent-subtle: hsl(var(--hue-purple) var(--purple-sat) 95%); /* Very light purple bg */
 }
 
+/* === LIGHT MODE + GLASS === */
+.light[data-ui-style="glass"],
+[data-theme="light"][data-ui-style="glass"] {
+  /* Light glass surfaces - white with transparency */
+  --bg-surface-1: hsl(0 0% 100% / 0.65);
+  --bg-surface-2: hsl(0 0% 100% / 0.75);
+  --bg-surface-3: hsl(0 0% 100% / 0.85);
+  --bg-surface-4: hsl(0 0% 100% / 0.92);
+
+  /* Glass blur for light mode */
+  --glass-blur: 12px;
+  --glass-saturate: 1.2;
+
+  /* More visible borders for light glass */
+  --border-subtle: hsl(0 0% 0% / 0.08);
+  --border-default: hsl(0 0% 0% / 0.12);
+  --border-strong: hsl(0 0% 0% / 0.18);
+}
+
+/* === LIGHT MODE + PURPLE TINT === */
+.light[data-surface-tint="purple"],
+[data-theme="light"][data-surface-tint="purple"] {
+  /* Light purple-tinted surfaces */
+  --bg-base: hsl(270 20% 92%);
+  --bg-surface-1: hsl(270 15% 88%);
+  --bg-surface-2: hsl(270 12% 93%);
+  --bg-surface-3: hsl(270 10% 96%);
+  --bg-surface-4: hsl(270 8% 99%);
+
+  /* Purple-tinted borders for light mode */
+  --border-subtle: hsl(270 20% 0% / 0.08);
+  --border-default: hsl(270 20% 0% / 0.12);
+  --border-strong: hsl(270 20% 0% / 0.18);
+}
+
+/* === LIGHT MODE + GLASS + PURPLE === */
+.light[data-ui-style="glass"][data-surface-tint="purple"],
+[data-theme="light"][data-ui-style="glass"][data-surface-tint="purple"] {
+  /* Light purple glass */
+  --bg-surface-1: hsl(270 30% 98% / 0.65);
+  --bg-surface-2: hsl(270 25% 98% / 0.75);
+  --bg-surface-3: hsl(270 20% 99% / 0.85);
+  --bg-surface-4: hsl(270 15% 100% / 0.92);
+}
+
 /* ========================================
    END DESIGN SYSTEM TOKENS
    ======================================== */
