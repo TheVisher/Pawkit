@@ -11,8 +11,8 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { FolderPlus, Trash2, FolderMinus, RefreshCw, Pin, PinOff, ImageIcon, FolderInput } from "lucide-react";
-import { CollectionNode, CardType } from "@/lib/types";
+import { FolderPlus, Trash2, FolderMinus, RefreshCw, Pin, PinOff, ImageIcon, FolderInput, FileText } from "lucide-react";
+import { CollectionNode, CardType, NoteFolderNode } from "@/lib/types";
 
 type CardContextMenuWrapperProps = {
   children: ReactNode;
@@ -32,7 +32,7 @@ type CardContextMenuWrapperProps = {
   onSetThumbnail?: () => void;
   // Note folder organization (notes only)
   currentFolderId?: string | null;
-  onMoveToFolder?: () => void;
+  onMoveToFolder?: (folderId: string | null) => void;
 };
 
 export function CardContextMenuWrapper({
@@ -53,7 +53,11 @@ export function CardContextMenuWrapper({
   onMoveToFolder,
 }: CardContextMenuWrapperProps) {
   const [collections, setCollections] = useState<CollectionNode[]>([]);
+  const [folders, setFolders] = useState<NoteFolderNode[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingFolders, setLoadingFolders] = useState(false);
+
+  const isNote = cardType === 'md-note' || cardType === 'text-note';
 
   const fetchCollections = async () => {
     setLoading(true);
@@ -66,6 +70,30 @@ export function CardContextMenuWrapper({
     } catch (error) {
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchFolders = async () => {
+    if (!isNote) return;
+    setLoadingFolders(true);
+    try {
+      const response = await fetch("/api/note-folders");
+      if (response.ok) {
+        const data = await response.json();
+        setFolders(data.tree || []);
+      }
+    } catch (error) {
+    } finally {
+      setLoadingFolders(false);
+    }
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (open) {
+      fetchCollections();
+      if (isNote) {
+        fetchFolders();
+      }
     }
   };
 
@@ -109,6 +137,49 @@ export function CardContextMenuWrapper({
     });
   };
 
+  const renderFolderTree = (items: NoteFolderNode[], onClick: (folderId: string | null) => void, depth = 0): React.ReactNode => {
+    return items.map((folder) => {
+      const hasChildren = folder.children && folder.children.length > 0;
+      const isCurrent = currentFolderId === folder.id;
+
+      if (hasChildren) {
+        return (
+          <ContextMenuSub key={folder.id}>
+            <ContextMenuSubTrigger
+              disabled={isCurrent}
+              className={isCurrent ? "opacity-50" : ""}
+            >
+              {folder.name}
+              {isCurrent && <span className="ml-auto text-xs text-muted-foreground">(current)</span>}
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent>
+              <ContextMenuItem
+                onClick={() => onClick(folder.id)}
+                disabled={isCurrent}
+              >
+                Move to {folder.name}
+              </ContextMenuItem>
+              <ContextMenuSeparator />
+              {renderFolderTree(folder.children!, onClick, depth + 1)}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+        );
+      }
+
+      return (
+        <ContextMenuItem
+          key={folder.id}
+          onClick={() => onClick(folder.id)}
+          disabled={isCurrent}
+          className={isCurrent ? "opacity-50" : ""}
+        >
+          {folder.name}
+          {isCurrent && <span className="ml-auto text-xs text-muted-foreground">(current)</span>}
+        </ContextMenuItem>
+      );
+    });
+  };
+
   // Helper to find collection name from slug
   const findCollectionName = (slug: string, items: CollectionNode[]): string | null => {
     for (const item of items) {
@@ -132,12 +203,12 @@ export function CardContextMenuWrapper({
   };
 
   return (
-    <ContextMenu onOpenChange={(open) => open && fetchCollections()}>
+    <ContextMenu onOpenChange={handleOpenChange}>
       <ContextMenuTrigger asChild>
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent className="w-56">
-        {/* Add to Pawkit menu */}
+        {/* 1. Add to Pawkit menu */}
         <ContextMenuSub>
           <ContextMenuSubTrigger>
             <FolderPlus className="mr-2 h-4 w-4" />
@@ -153,6 +224,58 @@ export function CardContextMenuWrapper({
             )}
           </ContextMenuSubContent>
         </ContextMenuSub>
+
+        {/* 2. Move to Folder - only for notes, as submenu tree */}
+        {isNote && onMoveToFolder && (
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <FolderInput className="mr-2 h-4 w-4" />
+              Move to Folder
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent className="max-h-[300px] overflow-y-auto">
+              {loadingFolders ? (
+                <ContextMenuItem disabled className="text-xs text-muted-foreground">
+                  Loading...
+                </ContextMenuItem>
+              ) : folders.length === 0 ? (
+                <ContextMenuItem disabled className="text-xs text-muted-foreground">
+                  No folders yet
+                </ContextMenuItem>
+              ) : (
+                <>
+                  {/* Remove from folder option if currently in a folder */}
+                  {currentFolderId && (
+                    <>
+                      <ContextMenuItem onClick={() => onMoveToFolder(null)}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        Remove from folder
+                      </ContextMenuItem>
+                      <ContextMenuSeparator />
+                    </>
+                  )}
+                  {renderFolderTree(folders, onMoveToFolder)}
+                </>
+              )}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
+        )}
+
+        {/* 3. Pin to Sidebar - only for notes */}
+        {isNote && (
+          <>
+            {isPinned ? (
+              <ContextMenuItem onClick={onUnpinFromSidebar}>
+                <PinOff className="mr-2 h-4 w-4" />
+                Unpin from Sidebar
+              </ContextMenuItem>
+            ) : (
+              <ContextMenuItem onClick={onPinToSidebar}>
+                <Pin className="mr-2 h-4 w-4" />
+                Pin to Sidebar
+              </ContextMenuItem>
+            )}
+          </>
+        )}
 
         {/* Remove from Pawkits submenu */}
         {Array.isArray(cardCollections) && cardCollections.length > 0 && onRemoveFromPawkit && (
@@ -185,43 +308,19 @@ export function CardContextMenuWrapper({
           </ContextMenuSub>
         )}
 
-        {onFetchMetadata && (
-          <ContextMenuItem onClick={onFetchMetadata}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Fetch metadata
-          </ContextMenuItem>
-        )}
-
-        {/* Pin to Sidebar - only for notes */}
-        {(cardType === 'md-note' || cardType === 'text-note') && (
-          <>
-            {isPinned ? (
-              <ContextMenuItem onClick={onUnpinFromSidebar}>
-                <PinOff className="mr-2 h-4 w-4" />
-                Unpin from Sidebar
-              </ContextMenuItem>
-            ) : (
-              <ContextMenuItem onClick={onPinToSidebar}>
-                <Pin className="mr-2 h-4 w-4" />
-                Pin to Sidebar
-              </ContextMenuItem>
-            )}
-          </>
-        )}
-
-        {/* Move to Folder - only for notes */}
-        {(cardType === 'md-note' || cardType === 'text-note') && onMoveToFolder && (
-          <ContextMenuItem onClick={onMoveToFolder}>
-            <FolderInput className="mr-2 h-4 w-4" />
-            {currentFolderId ? 'Move to Different Folder' : 'Move to Folder'}
-          </ContextMenuItem>
-        )}
-
         {/* Set Thumbnail - only for non-notes */}
-        {cardType !== 'md-note' && cardType !== 'text-note' && onSetThumbnail && (
+        {!isNote && onSetThumbnail && (
           <ContextMenuItem onClick={onSetThumbnail}>
             <ImageIcon className="mr-2 h-4 w-4" />
             Set Thumbnail
+          </ContextMenuItem>
+        )}
+
+        {/* Fetch metadata - only for non-notes (bookmarks/links have metadata to fetch) */}
+        {!isNote && onFetchMetadata && (
+          <ContextMenuItem onClick={onFetchMetadata}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Fetch metadata
           </ContextMenuItem>
         )}
 
