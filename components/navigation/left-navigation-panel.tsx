@@ -1482,6 +1482,31 @@ export function LeftNavigationPanel({
                 </div>
               )}
 
+              {/* Unfiled Notes - only show when folders exist */}
+              {getFolderTree().length > 0 && (
+                <button
+                  onClick={() => handleSelectFolder("unfiled")}
+                  className={`
+                    w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
+                    ${selectedFolderId === "unfiled"
+                      ? "font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                    }
+                  `}
+                  style={selectedFolderId === "unfiled" ? {
+                    background: 'var(--bg-surface-3)',
+                    color: 'var(--text-primary)',
+                    boxShadow: 'inset -3px 0 0 var(--ds-accent), var(--shadow-1)',
+                    border: '1px solid var(--border-subtle)',
+                    borderTopColor: 'var(--border-highlight-top)',
+                    borderLeftColor: 'var(--border-highlight-left)',
+                  } : undefined}
+                >
+                  <FileText size={16} className="flex-shrink-0 opacity-50" />
+                  <span className="flex-1 text-left">Unfiled</span>
+                </button>
+              )}
+
               {/* Pinned Notes */}
               {pinnedNotes.length > 0 && (
                 <div className="pt-2 space-y-1">
