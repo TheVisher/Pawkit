@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/context-menu";
 import { FolderPlus, Trash2, FolderMinus, RefreshCw, Pin, PinOff, ImageIcon, FolderInput, FileText } from "lucide-react";
 import { CollectionNode, CardType, NoteFolderNode } from "@/lib/types";
+import { useNoteFolderStore } from "@/lib/stores/note-folder-store";
 
 type CardContextMenuWrapperProps = {
   children: ReactNode;
@@ -53,11 +54,13 @@ export function CardContextMenuWrapper({
   onMoveToFolder,
 }: CardContextMenuWrapperProps) {
   const [collections, setCollections] = useState<CollectionNode[]>([]);
-  const [folders, setFolders] = useState<NoteFolderNode[]>([]);
   const [loading, setLoading] = useState(false);
-  const [loadingFolders, setLoadingFolders] = useState(false);
 
   const isNote = cardType === 'md-note' || cardType === 'text-note';
+
+  // Use the note folder store for reactive folder tree
+  const { getFolderTree, fetchFolders } = useNoteFolderStore();
+  const folders = getFolderTree();
 
   const fetchCollections = async () => {
     setLoading(true);
@@ -73,25 +76,11 @@ export function CardContextMenuWrapper({
     }
   };
 
-  const fetchFolders = async () => {
-    if (!isNote) return;
-    setLoadingFolders(true);
-    try {
-      const response = await fetch("/api/note-folders");
-      if (response.ok) {
-        const data = await response.json();
-        setFolders(data.tree || []);
-      }
-    } catch (error) {
-    } finally {
-      setLoadingFolders(false);
-    }
-  };
-
   const handleOpenChange = (open: boolean) => {
     if (open) {
       fetchCollections();
       if (isNote) {
+        // Refresh folders from API (store will build the tree)
         fetchFolders();
       }
     }
@@ -233,11 +222,7 @@ export function CardContextMenuWrapper({
               Move to Folder
             </ContextMenuSubTrigger>
             <ContextMenuSubContent className="max-h-[300px] overflow-y-auto">
-              {loadingFolders ? (
-                <ContextMenuItem disabled className="text-xs text-muted-foreground">
-                  Loading...
-                </ContextMenuItem>
-              ) : folders.length === 0 ? (
+              {folders.length === 0 ? (
                 <ContextMenuItem disabled className="text-xs text-muted-foreground">
                   No folders yet
                 </ContextMenuItem>
