@@ -139,6 +139,8 @@ export type MuuriGridProps = {
   style?: React.CSSProperties;
   // Pass item count explicitly to control when to reinitialize
   itemCount: number;
+  // Pass card IDs to detect when IDs change (even if count stays same)
+  cardIds?: string;
   // Minimum item width - cards will stretch to fill available space
   minItemWidth?: number;
   // Edge padding on left/right of grid
@@ -179,6 +181,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       className = "",
       style,
       itemCount,
+      cardIds,
       minItemWidth = 200,
       edgePadding = 0,
       fillGaps = true,
@@ -453,7 +456,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       return () => {
         clearTimeout(syncTimeoutId);
       };
-    }, [itemCount]);
+    }, [itemCount, cardIds]);
 
     // Cleanup on unmount
     useEffect(() => {

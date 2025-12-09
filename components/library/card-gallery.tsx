@@ -825,6 +825,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             className="w-full"
             style={{ minHeight: 200 }}
             itemCount={filteredAndSortedCards.length}
+            cardIds={orderedIds.join(',')}
             // Minimum item width based on slider (200px small to 600px XL)
             minItemWidth={200 + ((cardSize - 1) / 99) * 400 + cardSpacing}
             // Consistent edge padding
