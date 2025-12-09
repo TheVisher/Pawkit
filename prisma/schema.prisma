@@ -160,6 +160,14 @@ model UserSettings {
   pinnedNoteIds       String  @default("[]") // JSON: string[]
   recentHistory       String  @default("[]") // JSON: RecentItem[]
 
+  // Sidebar visibility settings
+  showSyncStatusInSidebar       Boolean @default(true)
+  showKeyboardShortcutsInSidebar Boolean @default(true)
+
+  // Default view preferences
+  defaultView         String  @default("masonry")   // grid, masonry, list
+  defaultSort         String  @default("dateAdded") // dateAdded, recentlyModified, title, domain
+
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)

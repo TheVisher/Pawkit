@@ -192,16 +192,21 @@ export async function PATCH(request: Request) {
     if (body.onboardingBannerDismissed !== undefined) updateData.onboardingBannerDismissed = body.onboardingBannerDismissed;
     if (body.onboardingTourCompleted !== undefined) updateData.onboardingTourCompleted = body.onboardingTourCompleted;
 
-    // Note: showSyncStatusInSidebar, showKeyboardShortcutsInSidebar, defaultView, defaultSort
-    // are localStorage-only fields and intentionally not synced to server
+    // Sidebar visibility settings
+    if (body.showSyncStatusInSidebar !== undefined) updateData.showSyncStatusInSidebar = body.showSyncStatusInSidebar;
+    if (body.showKeyboardShortcutsInSidebar !== undefined) updateData.showKeyboardShortcutsInSidebar = body.showKeyboardShortcutsInSidebar;
+
+    // Default view preferences
+    if (body.defaultView !== undefined) updateData.defaultView = body.defaultView;
+    if (body.defaultSort !== undefined) updateData.defaultSort = body.defaultSort;
 
     // JSON fields - stringify them
     if (body.displaySettings !== undefined) {
       updateData.displaySettings = JSON.stringify(body.displaySettings);
     }
     if (body.pinnedNoteIds !== undefined) {
-      // Validate and limit to max 3 items
-      const notes = Array.isArray(body.pinnedNoteIds) ? body.pinnedNoteIds.slice(0, 3) : [];
+      // Validate and limit to max 10 items
+      const notes = Array.isArray(body.pinnedNoteIds) ? body.pinnedNoteIds.slice(0, 10) : [];
       updateData.pinnedNoteIds = JSON.stringify(notes);
       logger.debug('[API PATCH /api/user/settings] Updating pinnedNoteIds:', notes);
     }

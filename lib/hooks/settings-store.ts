@@ -63,8 +63,10 @@ async function syncSettingsToServer(state: SettingsState) {
         displaySettings: state.displaySettings,
         pinnedNoteIds: state.pinnedNoteIds,
         recentHistory: state.recentHistory,
-        // Note: showSyncStatusInSidebar, showKeyboardShortcutsInSidebar,
-        // defaultView, defaultSort are localStorage-only and not synced to server
+        showSyncStatusInSidebar: state.showSyncStatusInSidebar,
+        showKeyboardShortcutsInSidebar: state.showKeyboardShortcutsInSidebar,
+        defaultView: state.defaultView,
+        defaultSort: state.defaultSort,
       })
     });
   } catch (error) {
