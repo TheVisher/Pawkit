@@ -201,7 +201,8 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
     const containerRef = useRef<HTMLDivElement>(null);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<MuuriGrid | null>(null);
-    const trackedCardIdsRef = useRef<Set<string>>(new Set());
+    // Track both cardId AND element reference to detect when React recreates elements
+    const trackedElementsRef = useRef<Map<string, HTMLElement>>(new Map());
     const isInitializedRef = useRef(false);
     const [calculatedItemWidth, setCalculatedItemWidth] = useState<number>(minItemWidth);
     const [isReady, setIsReady] = useState(false);
@@ -263,10 +264,11 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
         const items = containerRef.current.querySelectorAll(".muuri-item");
         if (items.length === 0) return;
 
-        // Track initial card IDs
+        // Track initial card IDs and their element references
         items.forEach((item) => {
-          const cardId = (item as HTMLElement).dataset.cardId;
-          if (cardId) trackedCardIdsRef.current.add(cardId);
+          const element = item as HTMLElement;
+          const cardId = element.dataset.cardId;
+          if (cardId) trackedElementsRef.current.set(cardId, element);
         });
 
         const grid = new Muuri(containerRef.current, {
@@ -398,24 +400,35 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
           }
         });
 
-        // Find items to remove (in Muuri but not in DOM)
+        // Find items to remove (in Muuri but not in DOM, OR element reference changed)
         const itemsToRemove: MuuriItem[] = [];
         grid.getItems().forEach((muuriItem) => {
-          const cardId = muuriItem.getElement().dataset.cardId;
-          if (cardId && !domCardIds.has(cardId)) {
-            itemsToRemove.push(muuriItem);
-            trackedCardIdsRef.current.delete(cardId);
+          const muuriElement = muuriItem.getElement();
+          const cardId = muuriElement.dataset.cardId;
+
+          if (cardId) {
+            const domElement = domElementsByCardId.get(cardId);
+
+            // Remove if: cardId not in DOM, OR the element reference changed
+            // (React recreated the element with same cardId but different DOM node)
+            if (!domElement || domElement !== muuriElement) {
+              itemsToRemove.push(muuriItem);
+              trackedElementsRef.current.delete(cardId);
+            }
           }
         });
 
-        // Find elements to add (in DOM but not tracked)
+        // Find elements to add (in DOM but not tracked, OR element reference changed)
         const elementsToAdd: HTMLElement[] = [];
         domCardIds.forEach((cardId) => {
-          if (!trackedCardIdsRef.current.has(cardId)) {
-            const element = domElementsByCardId.get(cardId);
-            if (element) {
-              elementsToAdd.push(element);
-              trackedCardIdsRef.current.add(cardId);
+          const domElement = domElementsByCardId.get(cardId);
+          const trackedElement = trackedElementsRef.current.get(cardId);
+
+          // Add if: not tracked, OR element reference changed
+          if (!trackedElement || trackedElement !== domElement) {
+            if (domElement) {
+              elementsToAdd.push(domElement);
+              trackedElementsRef.current.set(cardId, domElement);
             }
           }
         });
@@ -454,7 +467,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
           gridRef.current = null;
         }
         isInitializedRef.current = false;
-        trackedCardIdsRef.current.clear();
+        trackedElementsRef.current.clear();
       };
     }, []);
 
