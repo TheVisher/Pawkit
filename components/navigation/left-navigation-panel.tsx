@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, HelpCircle, type LucideIcon } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Briefcase, Folder, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, HelpCircle, type LucideIcon } from "lucide-react";
 import { shallow } from "zustand/shallow";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -21,7 +21,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { findDailyNoteForDate, generateDailyNoteTitle, generateDailyNoteContent, getDailyNotes } from "@/lib/utils/daily-notes";
-import { type CollectionNode, type CardType, type CardModel } from "@/lib/types";
+import { type CollectionNode, type CardType, type CardModel, type NoteFolderNode } from "@/lib/types";
+import { useNoteFolderStore } from "@/lib/stores/note-folder-store";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
 import { ConfirmDeleteModal } from "@/components/modals/confirm-delete-modal";
 import {
@@ -93,6 +94,32 @@ export function LeftNavigationPanel({
   const [renameCollectionName, setRenameCollectionName] = useState("");
   const [renameValue, setRenameValue] = useState("");
   const [renamingCollection, setRenamingCollection] = useState(false);
+
+  // Note folder state
+  const noteFolderStore = useNoteFolderStore();
+  const {
+    folders: noteFolders,
+    selectedFolderId,
+    expandedFolderIds,
+    fetchFolders,
+    createFolder,
+    renameFolder,
+    deleteFolder: deleteFolderFromStore,
+    setSelectedFolder,
+    toggleFolderExpanded,
+    getFolderTree,
+  } = noteFolderStore;
+  const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [parentFolderId, setParentFolderId] = useState<string | null>(null);
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [showRenameFolderModal, setShowRenameFolderModal] = useState(false);
+  const [renameFolderId, setRenameFolderId] = useState<string | null>(null);
+  const [renameFolderName, setRenameFolderName] = useState("");
+  const [renameFolderValue, setRenameFolderValue] = useState("");
+  const [renamingFolder, setRenamingFolder] = useState(false);
+  const [showDeleteFolderConfirm, setShowDeleteFolderConfirm] = useState(false);
+  const [folderToDelete, setFolderToDelete] = useState<NoteFolderNode | null>(null);
 
   // Delete confirmation modal state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -352,6 +379,11 @@ export function LeftNavigationPanel({
     };
   }, [showRenameModal, renamingCollection]);
 
+  // Fetch note folders on mount
+  useEffect(() => {
+    fetchFolders();
+  }, [fetchFolders]);
+
   // Navigate to today's note
   const goToTodaysNote = useCallback(async () => {
     const today = new Date();
@@ -539,6 +571,64 @@ export function LeftNavigationPanel({
       useToastStore.getState().success("Pawkit deleted");
     } catch (error) {
     }
+  };
+
+  // Note folder handlers
+  const handleCreateFolder = async () => {
+    const trimmedName = newFolderName.trim();
+    if (!trimmedName || creatingFolder) return;
+
+    setCreatingFolder(true);
+    try {
+      await createFolder(trimmedName, parentFolderId);
+      useToastStore.getState().success(parentFolderId ? "Sub-folder created" : "Folder created");
+      setNewFolderName("");
+      setShowCreateFolderModal(false);
+      setParentFolderId(null);
+    } catch (error) {
+    } finally {
+      setCreatingFolder(false);
+    }
+  };
+
+  const handleRenameFolder = async () => {
+    const trimmedName = renameFolderValue.trim();
+    if (!trimmedName || !renameFolderId || renamingFolder) return;
+    if (trimmedName === renameFolderName) {
+      setShowRenameFolderModal(false);
+      setRenameFolderValue("");
+      setRenameFolderId(null);
+      setRenameFolderName("");
+      return;
+    }
+
+    setRenamingFolder(true);
+    try {
+      await renameFolder(renameFolderId, trimmedName);
+      useToastStore.getState().success("Folder renamed");
+      setShowRenameFolderModal(false);
+      setRenameFolderValue("");
+      setRenameFolderId(null);
+      setRenameFolderName("");
+    } catch (error) {
+    } finally {
+      setRenamingFolder(false);
+    }
+  };
+
+  const handleConfirmDeleteFolder = async () => {
+    if (!folderToDelete) return;
+    try {
+      await deleteFolderFromStore(folderToDelete.id);
+      useToastStore.getState().success("Folder deleted");
+    } catch (error) {
+    }
+  };
+
+  // Handle clicking on a note folder - navigate to /notes with folder selection
+  const handleSelectFolder = (folderId: string | null) => {
+    setSelectedFolder(folderId);
+    router.push("/notes");
   };
 
   if (!open) return null;
@@ -908,6 +998,133 @@ export function LeftNavigationPanel({
     );
   };
 
+  // Recursive function to render note folder tree
+  const renderNoteFolderTree = (folder: NoteFolderNode, depth: number = 0) => {
+    const hasChildren = folder.children && folder.children.length > 0;
+    const isExpanded = expandedFolderIds.has(folder.id);
+    const isSelected = selectedFolderId === folder.id;
+    const isFolderHovered = hoveredCreatePawkit === `folder-${folder.id}`;
+
+    const iconSize = depth === 0 ? 14 : 12;
+    const textSize = depth === 0 ? "text-sm" : "text-xs";
+    const padding = depth === 0 ? "px-3 py-2" : "px-3 py-1.5";
+
+    const folderContextMenuItems: ContextMenuItemConfig[] = [
+      {
+        label: "Open",
+        icon: FolderOpen,
+        onClick: () => handleSelectFolder(folder.id),
+      },
+      {
+        label: "New sub-folder",
+        icon: FolderPlus,
+        onClick: () => {
+          setParentFolderId(folder.id);
+          setShowCreateFolderModal(true);
+        },
+      },
+      { type: "separator" as const },
+      {
+        label: "Rename",
+        icon: Edit3,
+        onClick: () => {
+          setRenameFolderId(folder.id);
+          setRenameFolderName(folder.name);
+          setRenameFolderValue(folder.name);
+          setShowRenameFolderModal(true);
+        },
+      },
+      { type: "separator" as const },
+      {
+        label: "Delete",
+        icon: Trash2,
+        onClick: () => {
+          setFolderToDelete(folder);
+          setShowDeleteFolderConfirm(true);
+        },
+        destructive: true,
+      },
+    ];
+
+    const folderContent = (
+      <div key={folder.id}>
+        <div
+          className="flex items-center gap-1 group/folder"
+          onMouseEnter={() => setHoveredCreatePawkit(`folder-${folder.id}`)}
+          onMouseLeave={() => setHoveredCreatePawkit(null)}
+        >
+          <div className="relative flex-1">
+            <button
+              onClick={() => handleSelectFolder(folder.id)}
+              className={`
+                w-full flex items-center gap-2 ${padding} rounded-lg ${textSize} transition-all overflow-hidden
+                ${isSelected
+                  ? "font-medium"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                }
+              `}
+              style={isSelected ? {
+                background: 'var(--bg-surface-3)',
+                color: 'var(--text-primary)',
+                boxShadow: 'inset -3px 0 0 var(--ds-accent), var(--shadow-1)',
+                border: '1px solid var(--border-subtle)',
+                borderTopColor: 'var(--border-highlight-top)',
+                borderLeftColor: 'var(--border-highlight-left)',
+              } : undefined}
+            >
+              <Folder size={iconSize} className="flex-shrink-0" />
+              <span className="flex-1 text-left truncate">{folder.name}</span>
+            </button>
+          </div>
+
+          {/* + Button for creating sub-folder */}
+          {isFolderHovered && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setParentFolderId(folder.id);
+                setShowCreateFolderModal(true);
+              }}
+              className="p-1 rounded transition-colors hover:bg-white/10 text-accent"
+              title="Create sub-folder"
+            >
+              <Plus size={iconSize} />
+            </button>
+          )}
+
+          {/* Chevron for expanding/collapsing children */}
+          {hasChildren && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleFolderExpanded(folder.id);
+              }}
+              className="p-2 rounded-lg hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+            >
+              <ChevronRight
+                size={14}
+                className={`transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+              />
+            </button>
+          )}
+        </div>
+
+        {/* Recursively render children */}
+        {hasChildren && isExpanded && folder.children && (
+          <div className="ml-6 mt-1 space-y-1">
+            {folder.children.map((child) => renderNoteFolderTree(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+
+    return (
+      <GenericContextMenu items={folderContextMenuItems}>
+        {folderContent}
+      </GenericContextMenu>
+    );
+  };
+
   return (
     <>
       {/* Backdrop - only on mobile for closing overlay */}
@@ -1208,8 +1425,9 @@ export function LeftNavigationPanel({
             id="left-notes"
             title="Notes"
             icon={<FileText className={`h-4 w-4 ${pathname === "/notes" ? "text-accent drop-shadow-glow-accent" : "text-accent"}`} />}
-            active={pathname === "/notes"}
+            active={pathname === "/notes" && selectedFolderId === null}
             onClick={() => {
+              setSelectedFolder(null); // Clear folder selection to show all notes
               handleNavigate("/notes");
               // Ensure section is expanded when clicking header
               if (collapsedSections["left-notes"]) {
@@ -1217,19 +1435,55 @@ export function LeftNavigationPanel({
               }
             }}
             action={
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowCreateNoteModal(true);
-                }}
-                className="p-1 rounded transition-colors hover:bg-white/10 text-accent opacity-0 group-hover:opacity-100"
-                title="Create new note"
-              >
-                <Plus size={16} />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCreateFolderModal(true);
+                  }}
+                  className="p-1 rounded transition-colors hover:bg-white/10 text-accent opacity-0 group-hover:opacity-100"
+                  title="Create new folder"
+                >
+                  <FolderPlus size={16} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowCreateNoteModal(true);
+                  }}
+                  className="p-1 rounded transition-colors hover:bg-white/10 text-accent opacity-0 group-hover:opacity-100"
+                  title="Create new note"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
             }
           >
             <div className="space-y-1">
+              {/* All Notes option */}
+              <button
+                onClick={() => handleSelectFolder(null)}
+                className={`
+                  w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
+                  ${selectedFolderId === null
+                    ? "font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  }
+                `}
+                style={selectedFolderId === null ? {
+                  background: 'var(--bg-surface-3)',
+                  color: 'var(--text-primary)',
+                  boxShadow: 'inset -3px 0 0 var(--ds-accent), var(--shadow-1)',
+                  border: '1px solid var(--border-subtle)',
+                  borderTopColor: 'var(--border-highlight-top)',
+                  borderLeftColor: 'var(--border-highlight-left)',
+                } : undefined}
+              >
+                <FileText size={16} className="flex-shrink-0" />
+                <span className="flex-1 text-left">All Notes</span>
+              </button>
+
+              {/* Today's Note */}
               <button
                 onClick={goToTodaysNote}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all text-muted-foreground hover:text-foreground hover:bg-white/5"
@@ -1241,6 +1495,13 @@ export function LeftNavigationPanel({
                 <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
                   <Flame size={16} className="text-orange-500" />
                   <span>{dailyNoteStreak} day streak</span>
+                </div>
+              )}
+
+              {/* Note Folders */}
+              {getFolderTree().length > 0 && (
+                <div className="pt-2 space-y-1">
+                  {getFolderTree().map((folder) => renderNoteFolderTree(folder, 0))}
                 </div>
               )}
 
@@ -1542,6 +1803,180 @@ export function LeftNavigationPanel({
         title="Delete Pawkit?"
         message="Are you sure you want to delete this pawkit?"
         itemName={collectionToDelete?.name}
+      />
+
+      {/* Create Folder Modal */}
+      {showCreateFolderModal && (
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => {
+            if (!creatingFolder) {
+              setShowCreateFolderModal(false);
+              setNewFolderName("");
+              setParentFolderId(null);
+            }
+          }}
+        >
+          <div
+            className="rounded-2xl p-6 w-full max-w-md mx-4"
+            style={{
+              background: 'var(--bg-surface-1)',
+              boxShadow: 'var(--shadow-4)',
+              border: '1px solid var(--border-subtle)',
+              borderTopColor: 'var(--border-highlight-top)',
+              borderLeftColor: 'var(--border-highlight-left)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              {parentFolderId ? "Create Sub-Folder" : "Create Folder"}
+            </h3>
+            <input
+              type="text"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleCreateFolder();
+                } else if (e.key === "Escape") {
+                  if (!creatingFolder) {
+                    setShowCreateFolderModal(false);
+                    setNewFolderName("");
+                    setParentFolderId(null);
+                  }
+                }
+              }}
+              placeholder="Folder name"
+              className="w-full rounded-lg px-4 py-2 text-sm text-foreground placeholder-muted-foreground focus:outline-none transition-colors"
+              style={{
+                background: 'var(--bg-surface-2)',
+                border: '1px solid var(--border-subtle)',
+              }}
+              autoFocus
+              disabled={creatingFolder}
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => {
+                  if (!creatingFolder) {
+                    setShowCreateFolderModal(false);
+                    setNewFolderName("");
+                    setParentFolderId(null);
+                  }
+                }}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                style={{ background: 'var(--bg-surface-2)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface-3)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-surface-2)'; }}
+                disabled={creatingFolder}
+              >
+                Esc to Cancel
+              </button>
+              <button
+                onClick={handleCreateFolder}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-50"
+                disabled={creatingFolder || !newFolderName.trim()}
+              >
+                {creatingFolder ? "Creating..." : "Enter to Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename Folder Modal */}
+      {showRenameFolderModal && (
+        <div
+          className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => {
+            if (!renamingFolder) {
+              setShowRenameFolderModal(false);
+              setRenameFolderValue("");
+              setRenameFolderId(null);
+              setRenameFolderName("");
+            }
+          }}
+        >
+          <div
+            className="rounded-2xl p-6 w-full max-w-md mx-4"
+            style={{
+              background: 'var(--bg-surface-1)',
+              boxShadow: 'var(--shadow-4)',
+              border: '1px solid var(--border-subtle)',
+              borderTopColor: 'var(--border-highlight-top)',
+              borderLeftColor: 'var(--border-highlight-left)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-foreground mb-4">
+              Rename Folder
+            </h3>
+            <input
+              type="text"
+              value={renameFolderValue}
+              onChange={(e) => setRenameFolderValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleRenameFolder();
+                } else if (e.key === "Escape") {
+                  if (!renamingFolder) {
+                    setShowRenameFolderModal(false);
+                    setRenameFolderValue("");
+                    setRenameFolderId(null);
+                    setRenameFolderName("");
+                  }
+                }
+              }}
+              placeholder="Folder name"
+              className="w-full rounded-lg px-4 py-2 text-sm text-foreground placeholder-muted-foreground focus:outline-none transition-colors"
+              style={{
+                background: 'var(--bg-surface-2)',
+                border: '1px solid var(--border-subtle)',
+              }}
+              autoFocus
+              disabled={renamingFolder}
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={() => {
+                  if (!renamingFolder) {
+                    setShowRenameFolderModal(false);
+                    setRenameFolderValue("");
+                    setRenameFolderId(null);
+                    setRenameFolderName("");
+                  }
+                }}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                style={{ background: 'var(--bg-surface-2)' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface-3)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-surface-2)'; }}
+                disabled={renamingFolder}
+              >
+                Esc to Cancel
+              </button>
+              <button
+                onClick={handleRenameFolder}
+                className="flex-1 px-4 py-2 rounded-lg text-sm font-medium bg-accent text-accent-foreground hover:bg-accent/90 transition-colors disabled:opacity-50"
+                disabled={renamingFolder || !renameFolderValue.trim()}
+              >
+                {renamingFolder ? "Renaming..." : "Enter to Rename"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Folder Confirmation Modal */}
+      <ConfirmDeleteModal
+        open={showDeleteFolderConfirm}
+        onClose={() => {
+          setShowDeleteFolderConfirm(false);
+          setFolderToDelete(null);
+        }}
+        onConfirm={handleConfirmDeleteFolder}
+        title="Delete Folder?"
+        message="Notes in this folder will become unfiled. This action cannot be undone."
+        itemName={folderToDelete?.name}
       />
     </>
   );
