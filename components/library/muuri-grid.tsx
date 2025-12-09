@@ -438,19 +438,15 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
           grid.remove(itemsToRemove, { removeElements: false, layout: false });
         }
 
-        // Add new items (append naturally, don't force to front)
+        // Add new items
         if (elementsToAdd.length > 0) {
-          grid.add(elementsToAdd, { layout: false });
+          grid.add(elementsToAdd, { index: 0, layout: false });
         }
 
         // Trigger layout if anything changed
-        // Use requestAnimationFrame to ensure DOM is fully rendered before layout
         if (itemsToRemove.length > 0 || elementsToAdd.length > 0) {
-          requestAnimationFrame(() => {
-            if (!gridRef.current) return;
-            gridRef.current.refreshItems();
-            gridRef.current.layout();
-          });
+          grid.refreshItems();
+          grid.layout();
         }
       }, 50);
 
