@@ -141,6 +141,8 @@ model UserSettings {
   previewServiceUrl   String  @default("http://localhost:8787/preview?url={{url}}")
   theme               String  @default("dark")      // dark, light, auto
   accentColor         String  @default("purple")    // purple, blue, green, red, orange
+  uiStyle             String  @default("modern")    // modern, glass
+  surfaceTint         String  @default("none")      // none, purple
   notifications       Boolean @default(true)
   autoSave            Boolean @default(true)
   compactMode         Boolean @default(false)
