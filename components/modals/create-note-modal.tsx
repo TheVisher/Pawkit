@@ -153,9 +153,9 @@ export function CreateNoteModal({ open, onClose, onConfirm, dailyNoteExists = fa
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
-      {/* Modal Container - Raised panel */}
+      {/* Modal Container - Raised panel with glass support */}
       <div
-        className="w-full max-w-md rounded-2xl overflow-hidden"
+        className="w-full max-w-md rounded-2xl overflow-hidden backdrop-blur-xl"
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'var(--bg-surface-2)',
@@ -176,7 +176,7 @@ export function CreateNoteModal({ open, onClose, onConfirm, dailyNoteExists = fa
           </h2>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
+            className="p-1.5 rounded-lg transition-colors hover:bg-surface-soft"
             style={{ color: 'var(--text-muted)' }}
           >
             <X size={20} />
