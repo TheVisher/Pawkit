@@ -1460,29 +1460,6 @@ export function LeftNavigationPanel({
             }
           >
             <div className="space-y-1">
-              {/* All Notes option */}
-              <button
-                onClick={() => handleSelectFolder(null)}
-                className={`
-                  w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all
-                  ${selectedFolderId === null
-                    ? "font-medium"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
-                  }
-                `}
-                style={selectedFolderId === null ? {
-                  background: 'var(--bg-surface-3)',
-                  color: 'var(--text-primary)',
-                  boxShadow: 'inset -3px 0 0 var(--ds-accent), var(--shadow-1)',
-                  border: '1px solid var(--border-subtle)',
-                  borderTopColor: 'var(--border-highlight-top)',
-                  borderLeftColor: 'var(--border-highlight-left)',
-                } : undefined}
-              >
-                <FileText size={16} className="flex-shrink-0" />
-                <span className="flex-1 text-left">All Notes</span>
-              </button>
-
               {/* Today's Note */}
               <button
                 onClick={goToTodaysNote}
