@@ -102,7 +102,9 @@ export const cardUpdateSchema = z
     // Cloud sync tracking (for notes)
     cloudId: nullableString,
     cloudProvider: nullableString,
-    cloudSyncedAt: z.string().datetime().nullable().optional()
+    cloudSyncedAt: z.string().datetime().nullable().optional(),
+    // Note folder organization
+    noteFolderId: z.string().nullable().optional()
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: "At least one field must be provided"

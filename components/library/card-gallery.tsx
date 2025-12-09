@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDataStore } from "@/lib/stores/data-store";
 import { MoveToPawkitModal } from "@/components/modals/move-to-pawkit-modal";
+import { MoveToFolderModal } from "@/components/modals/move-to-folder-modal";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { UnpinNotesModal } from "@/components/modals/unpin-notes-modal";
@@ -241,6 +242,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [imageLoadCount, setImageLoadCount] = useState(0);
   const [showUnpinModal, setShowUnpinModal] = useState(false);
+  // Move to folder modal state
+  const [showMoveToFolderModal, setShowMoveToFolderModal] = useState(false);
+  const [moveToFolderCardId, setMoveToFolderCardId] = useState<string | null>(null);
   // Thumbnail modal state
   const [showThumbnailModal, setShowThumbnailModal] = useState(false);
   const [thumbnailCardId, setThumbnailCardId] = useState<string | null>(null);
@@ -671,6 +675,32 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
     }
   }, [handlePinToSidebar, handleUnpinFromSidebar]);
 
+  // Move to folder handlers
+  const handleOpenMoveToFolderModal = useCallback((cardId: string) => {
+    setMoveToFolderCardId(cardId);
+    setShowMoveToFolderModal(true);
+  }, []);
+
+  const handleConfirmMoveToFolder = useCallback(async (folderId: string | null) => {
+    if (!moveToFolderCardId) return;
+
+    // Update the card's noteFolderId
+    await updateCardInStore(moveToFolderCardId, { noteFolderId: folderId });
+    setCards((prev) =>
+      prev.map((c) => (c.id === moveToFolderCardId ? { ...c, noteFolderId: folderId } : c))
+    );
+
+    // Show success toast
+    if (folderId) {
+      useToastStore.getState().success("Note moved to folder");
+    } else {
+      useToastStore.getState().success("Note removed from folder");
+    }
+
+    setShowMoveToFolderModal(false);
+    setMoveToFolderCardId(null);
+  }, [moveToFolderCardId, updateCardInStore, setCards]);
+
   // Empty state for new users (check original cards, not filtered)
   if (cards.length === 0) {
     return (
@@ -751,6 +781,8 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                       onPinToSidebar={() => handlePinToSidebar(card.id)}
                       onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
                       onSetThumbnail={() => handleOpenThumbnailModal(card.id)}
+                      currentFolderId={card.noteFolderId}
+                      onMoveToFolder={() => handleOpenMoveToFolderModal(card.id)}
                     >
                       <tr
                         className={`border-b border-subtle hover:bg-white/5 cursor-pointer transition-colors ${
@@ -930,6 +962,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                       onPinToSidebar={() => handlePinToSidebar(card.id)}
                       onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
                       onSetThumbnail={() => handleOpenThumbnailModal(card.id)}
+                      onMoveToFolder={() => handleOpenMoveToFolderModal(card.id)}
                       hasAttachments={cardsWithAttachments.has(card.id)}
                       showLabels={viewSettings.showLabels}
                       showMetadata={viewSettings.showMetadata}
@@ -964,6 +997,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 onPinToSidebar={() => handlePinToSidebar(card.id)}
                 onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
                 onSetThumbnail={() => handleOpenThumbnailModal(card.id)}
+                onMoveToFolder={() => handleOpenMoveToFolderModal(card.id)}
                 hasAttachments={cardsWithAttachments.has(card.id)}
                 showLabels={viewSettings.showLabels}
                 showMetadata={viewSettings.showMetadata}
@@ -984,6 +1018,17 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
         open={showMoveModal}
         onClose={() => setShowMoveModal(false)}
         onConfirm={handleConfirmMove}
+      />
+
+      {/* Move to Folder Modal (for notes) */}
+      <MoveToFolderModal
+        open={showMoveToFolderModal}
+        onClose={() => {
+          setShowMoveToFolderModal(false);
+          setMoveToFolderCardId(null);
+        }}
+        onConfirm={handleConfirmMoveToFolder}
+        currentFolderId={cards.find(c => c.id === moveToFolderCardId)?.noteFolderId}
       />
 
       {/* Delete Confirmation Modal */}
@@ -1172,6 +1217,7 @@ type CardCellProps = {
   onPinToSidebar?: () => void;
   onUnpinFromSidebar?: () => void;
   onSetThumbnail?: () => void;
+  onMoveToFolder?: () => void;
   hasAttachments?: boolean;
   // View settings props - passed from parent to ensure memo updates correctly
   showLabels: boolean;
@@ -1180,7 +1226,7 @@ type CardCellProps = {
   cardPadding: number;
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar, onSetThumbnail, hasAttachments, showLabels, showMetadata, showPreview, cardPadding }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar, onSetThumbnail, onMoveToFolder, hasAttachments, showLabels, showMetadata, showPreview, cardPadding }: CardCellProps) {
   // Only use dnd-kit draggable for non-masonry layouts (masonry uses Muuri's built-in drag)
   const isMasonry = layout === "masonry";
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -1291,6 +1337,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       onPinToSidebar={onPinToSidebar}
       onUnpinFromSidebar={onUnpinFromSidebar}
       onSetThumbnail={onSetThumbnail}
+      currentFolderId={card.noteFolderId}
+      onMoveToFolder={onMoveToFolder}
     >
       <div
         ref={setNodeRef}
