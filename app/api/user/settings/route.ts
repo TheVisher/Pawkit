@@ -178,6 +178,8 @@ export async function PATCH(request: Request) {
 
     if (body.theme !== undefined) updateData.theme = body.theme;
     if (body.accentColor !== undefined) updateData.accentColor = body.accentColor;
+    if (body.uiStyle !== undefined) updateData.uiStyle = body.uiStyle;
+    if (body.surfaceTint !== undefined) updateData.surfaceTint = body.surfaceTint;
     if (body.notifications !== undefined) updateData.notifications = body.notifications;
     if (body.autoSave !== undefined) updateData.autoSave = body.autoSave;
     if (body.compactMode !== undefined) updateData.compactMode = body.compactMode;
