@@ -1,12 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Bookmark, Layout, ChevronRight, ChevronLeft, CalendarDays } from "lucide-react";
+import { FileText, Layout, ChevronDown, ChevronUp, CalendarDays, Sparkles, X } from "lucide-react";
 import { createPortal } from "react-dom";
 import { CardType } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { noteTemplates, NoteTemplate, getTemplatesByCategory, getTemplateById } from "@/lib/templates/note-templates";
+import { noteTemplates, NoteTemplate, getTemplateById } from "@/lib/templates/note-templates";
 
 const LAST_TEMPLATE_KEY = "pawkit-last-used-template";
 
@@ -16,6 +14,55 @@ type CreateNoteModalProps = {
   onConfirm: (data: { type: CardType; title: string; content?: string; tags?: string[] }) => Promise<void>;
   dailyNoteExists?: boolean; // Whether today's daily note already exists
 };
+
+// Lifted button for note type selection
+function NoteTypeButton({
+  selected,
+  onClick,
+  disabled,
+  icon: Icon,
+  label,
+  className = "",
+}: {
+  selected: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  icon: React.ElementType;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`
+        flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium
+        transition-all duration-200
+        ${className}
+        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+      `}
+      style={
+        selected
+          ? {
+              background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+              boxShadow: 'var(--raised-shadow), 0 0 20px hsla(var(--accent-h) var(--accent-s) 50% / 0.3)',
+              border: '1px solid hsla(var(--accent-h) var(--accent-s) 50% / 0.5)',
+              borderTopColor: 'var(--raised-border-top)',
+              color: 'var(--ds-accent)',
+            }
+          : {
+              background: 'var(--bg-surface-1)',
+              boxShadow: 'var(--inset-shadow)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-secondary)',
+            }
+      }
+    >
+      <Icon size={18} />
+      <span>{label}</span>
+    </button>
+  );
+}
 
 export function CreateNoteModal({ open, onClose, onConfirm, dailyNoteExists = false }: CreateNoteModalProps) {
   const [noteType, setNoteType] = useState<"md-note" | "text-note" | "daily-note">("md-note");
@@ -105,83 +152,105 @@ export function CreateNoteModal({ open, onClose, onConfirm, dailyNoteExists = fa
     <div
       className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
     >
+      {/* Modal Container - Raised panel */}
       <div
-        className="bg-gray-950 rounded-lg border border-gray-800 shadow-2xl w-full max-w-md"
+        className="w-full max-w-md rounded-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'var(--bg-surface-2)',
+          boxShadow: 'var(--shadow-4)',
+          border: '1px solid var(--border-subtle)',
+          borderTopColor: 'var(--border-highlight-top)',
+        }}
       >
-        <div className="border-b border-gray-800 p-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-gray-100">Create New Note</h2>
+        {/* Header */}
+        <div
+          className="px-6 py-4 flex items-center justify-between"
+          style={{
+            borderBottom: '1px solid var(--border-subtle)',
+          }}
+        >
+          <h2 className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
+            Create New Note
+          </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-200 text-2xl leading-none"
+            className="p-1.5 rounded-lg transition-colors hover:bg-white/10"
+            style={{ color: 'var(--text-muted)' }}
           >
-            ×
+            <X size={20} />
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-5">
           {/* Note Type Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+            <label
+              className="block text-sm font-medium mb-3"
+              style={{ color: 'var(--text-secondary)' }}
+            >
               Note Type
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
+            <div className="grid grid-cols-2 gap-3">
+              <NoteTypeButton
+                selected={noteType === "md-note"}
                 onClick={() => setNoteType("md-note")}
-                variant={noteType === "md-note" ? "default" : "secondary"}
-                className="w-full"
-                size="lg"
-              >
-                <FileText size={16} className="mr-2" />
-                Markdown
-              </Button>
-              <Button
+                icon={FileText}
+                label="Markdown"
+              />
+              <NoteTypeButton
+                selected={noteType === "text-note"}
                 onClick={() => setNoteType("text-note")}
-                variant={noteType === "text-note" ? "default" : "secondary"}
-                className="w-full"
-                size="lg"
-              >
-                <FileText size={16} className="mr-2" />
-                Plain Text
-              </Button>
-              <Button
+                icon={FileText}
+                label="Plain Text"
+              />
+              <NoteTypeButton
+                selected={noteType === "daily-note"}
                 onClick={() => !dailyNoteExists && setNoteType("daily-note")}
-                variant={noteType === "daily-note" ? "default" : "secondary"}
-                className="w-full col-span-2"
-                size="lg"
                 disabled={dailyNoteExists}
-              >
-                <CalendarDays size={16} className="mr-2" />
-                {dailyNoteExists ? "Daily Note (Already Created)" : "Daily Note"}
-              </Button>
+                icon={CalendarDays}
+                label={dailyNoteExists ? "Daily Note (Created)" : "Daily Note"}
+                className="col-span-2"
+              />
             </div>
           </div>
 
           {/* Template Selection Toggle */}
           <div>
-            <Button
+            <button
               onClick={() => setShowTemplates(!showTemplates)}
-              variant="outline"
-              className="w-full justify-between"
-              size="lg"
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm transition-all"
+              style={{
+                background: 'var(--bg-surface-1)',
+                boxShadow: 'var(--inset-shadow)',
+                border: '1px solid var(--border-subtle)',
+                color: 'var(--text-secondary)',
+              }}
             >
               <div className="flex items-center gap-2">
                 <Layout size={16} />
                 {selectedTemplate ? (
-                  <span>Template: {selectedTemplate.name}</span>
+                  <span style={{ color: 'var(--text-primary)' }}>
+                    Template: <span style={{ color: 'var(--ds-accent)' }}>{selectedTemplate.name}</span>
+                  </span>
                 ) : (
                   <span>Choose a Template (Optional)</span>
                 )}
               </div>
-              {showTemplates ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-            </Button>
+              {showTemplates ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
           </div>
 
-          {/* Template Picker */}
+          {/* Template Picker - Inset container with raised cards */}
           {showTemplates && (
-            <div className="border border-gray-700 rounded-lg p-3 bg-gray-900/40 max-h-64 overflow-y-auto">
+            <div
+              className="rounded-xl p-3 max-h-56 overflow-y-auto"
+              style={{
+                background: 'var(--bg-surface-1)',
+                boxShadow: 'var(--inset-shadow)',
+              }}
+            >
               <div className="space-y-2">
                 {/* None option */}
                 <button
@@ -189,49 +258,91 @@ export function CreateNoteModal({ open, onClose, onConfirm, dailyNoteExists = fa
                     setSelectedTemplate(null);
                     setShowTemplates(false);
                   }}
-                  className={`w-full text-left p-3 rounded border transition-colors ${
+                  className="w-full text-left p-3 rounded-lg transition-all"
+                  style={
                     selectedTemplate === null
-                      ? 'border-accent bg-accent/20'
-                      : 'border-gray-700 hover:bg-gray-800/50'
-                  }`}
+                      ? {
+                          background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                          boxShadow: 'var(--raised-shadow-sm), 0 0 12px hsla(var(--accent-h) var(--accent-s) 50% / 0.2)',
+                          border: '1px solid hsla(var(--accent-h) var(--accent-s) 50% / 0.4)',
+                          borderTopColor: 'var(--raised-border-top)',
+                        }
+                      : {
+                          background: 'var(--bg-surface-2)',
+                          boxShadow: 'var(--raised-shadow-sm)',
+                          border: '1px solid var(--border-subtle)',
+                          borderTopColor: 'var(--raised-border-top)',
+                        }
+                  }
                 >
-                  <div className="font-medium text-sm text-gray-100">No Template</div>
-                  <div className="text-xs text-gray-400">Start with a blank note</div>
+                  <div
+                    className="font-medium text-sm"
+                    style={{ color: selectedTemplate === null ? 'var(--ds-accent)' : 'var(--text-primary)' }}
+                  >
+                    No Template
+                  </div>
+                  <div className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                    Start with a blank note
+                  </div>
                 </button>
 
                 {/* Template options */}
-                {noteTemplates.map((template) => (
-                  <button
-                    key={template.id}
-                    onClick={() => {
-                      setSelectedTemplate(template);
-                      setShowTemplates(false);
-                    }}
-                    className={`w-full text-left p-3 rounded border transition-colors ${
-                      selectedTemplate?.id === template.id
-                        ? 'border-accent bg-accent/20'
-                        : 'border-gray-700 hover:bg-gray-800/50'
-                    }`}
-                  >
-                    <div className="font-medium text-sm text-gray-100">{template.name}</div>
-                    <div className="text-xs text-gray-400">{template.description}</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {template.category} • {template.tags.map(tag => `#${tag}`).join(' ')}
-                    </div>
-                  </button>
-                ))}
+                {noteTemplates.map((template) => {
+                  const isSelected = selectedTemplate?.id === template.id;
+                  return (
+                    <button
+                      key={template.id}
+                      onClick={() => {
+                        setSelectedTemplate(template);
+                        setShowTemplates(false);
+                      }}
+                      className="w-full text-left p-3 rounded-lg transition-all"
+                      style={
+                        isSelected
+                          ? {
+                              background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                              boxShadow: 'var(--raised-shadow-sm), 0 0 12px hsla(var(--accent-h) var(--accent-s) 50% / 0.2)',
+                              border: '1px solid hsla(var(--accent-h) var(--accent-s) 50% / 0.4)',
+                              borderTopColor: 'var(--raised-border-top)',
+                            }
+                          : {
+                              background: 'var(--bg-surface-2)',
+                              boxShadow: 'var(--raised-shadow-sm)',
+                              border: '1px solid var(--border-subtle)',
+                              borderTopColor: 'var(--raised-border-top)',
+                            }
+                      }
+                    >
+                      <div
+                        className="font-medium text-sm"
+                        style={{ color: isSelected ? 'var(--ds-accent)' : 'var(--text-primary)' }}
+                      >
+                        {template.name}
+                      </div>
+                      <div className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                        {template.description}
+                      </div>
+                      <div className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+                        {template.category} • {template.tags.map(tag => `#${tag}`).join(' ')}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
 
-          {/* Title Input */}
+          {/* Title Input - Inset style */}
           {noteType !== "daily-note" && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
                   Title
                 </label>
-                <Input
+                <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -243,53 +354,97 @@ export function CreateNoteModal({ open, onClose, onConfirm, dailyNoteExists = fa
                   }}
                   placeholder="Enter note title..."
                   autoFocus
+                  className="w-full px-4 py-3 rounded-xl text-sm transition-all outline-none"
+                  style={{
+                    background: 'var(--bg-surface-1)',
+                    boxShadow: 'var(--inset-shadow)',
+                    border: '1px solid var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                  }}
                 />
               </div>
 
               {/* Generate Title Button */}
-              <Button
+              <button
                 onClick={handleGenerateTitle}
                 disabled={generating}
-                variant="secondary"
-                className="w-full justify-start"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm transition-all"
+                style={{
+                  background: 'var(--bg-surface-2)',
+                  boxShadow: 'var(--raised-shadow-sm)',
+                  border: '1px solid var(--border-subtle)',
+                  borderTopColor: 'var(--raised-border-top)',
+                  color: 'var(--text-secondary)',
+                  opacity: generating ? 0.6 : 1,
+                }}
               >
-                {generating ? "Generating..." : "🎲 Generate Random Title"}
-              </Button>
+                <Sparkles size={16} />
+                {generating ? "Generating..." : "Generate Random Title"}
+              </button>
             </>
           )}
 
           {noteType === "daily-note" && (
-            <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
-              <p className="text-sm text-gray-300">
+            <div
+              className="rounded-xl p-4"
+              style={{
+                background: 'var(--bg-surface-1)',
+                boxShadow: 'var(--inset-shadow)',
+              }}
+            >
+              <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                 Daily note will be created with today&apos;s date as the title.
               </p>
             </div>
           )}
 
           {error && (
-            <p className="text-sm text-rose-400 bg-rose-900/20 rounded px-3 py-2">
+            <p
+              className="text-sm rounded-xl px-4 py-3"
+              style={{
+                background: 'hsla(0, 70%, 50%, 0.15)',
+                color: 'hsl(0, 70%, 60%)',
+                border: '1px solid hsla(0, 70%, 50%, 0.3)',
+              }}
+            >
               {error}
             </p>
           )}
         </div>
 
-        <div className="border-t border-gray-800 p-4 flex gap-3">
-          <Button
+        {/* Footer Actions */}
+        <div
+          className="px-6 py-4 flex gap-3"
+          style={{
+            borderTop: '1px solid var(--border-subtle)',
+            background: 'var(--bg-surface-1)',
+          }}
+        >
+          <button
             onClick={onClose}
-            variant="outline"
-            className="flex-1"
-            size="lg"
+            className="flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all"
+            style={{
+              background: 'var(--bg-surface-2)',
+              boxShadow: 'var(--raised-shadow-sm)',
+              border: '1px solid var(--border-subtle)',
+              borderTopColor: 'var(--raised-border-top)',
+              color: 'var(--text-secondary)',
+            }}
           >
             Cancel
-          </Button>
-          <Button
+          </button>
+          <button
             onClick={handleSubmit}
-            variant="default"
-            className="flex-1"
-            size="lg"
+            className="flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all"
+            style={{
+              background: 'var(--ds-accent)',
+              boxShadow: 'var(--raised-shadow), 0 0 20px hsla(var(--accent-h) var(--accent-s) 50% / 0.3)',
+              border: '1px solid hsla(var(--accent-h) var(--accent-s) 70% / 0.5)',
+              color: 'white',
+            }}
           >
             Create Note
-          </Button>
+          </button>
         </div>
       </div>
     </div>
