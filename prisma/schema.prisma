@@ -23,6 +23,7 @@ model User {
 
   cards          Card[]
   collections    Collection[]
+  noteFolders    NoteFolder[]
   viewSettings   UserViewSettings[]
   settings       UserSettings?
   deviceSessions DeviceSession[]
@@ -65,10 +66,18 @@ model Card {
   cloudProvider   String?   // Provider name: "filen", "google-drive", "dropbox", etc.
   cloudSyncedAt   DateTime? // Last successful sync to cloud
 
+  // Note folder organization (for notes only - type='md-note' or 'text-note')
+  noteFolderId    String?   // Reference to note folder
+  noteFolder      NoteFolder? @relation(fields: [noteFolderId], references: [id], onDelete: SetNull)
+
+  // Junction table for notes appearing in Pawkits
+  collectionNotes CollectionNote[]
+
   @@index([userId])
   @@index([userId, deleted])
   @@index([userId, inDen])
   @@index([userId, scheduledDate])
+  @@index([userId, noteFolderId])
   // Note: Unique constraint on (userId, url) is applied via custom migration
   // with WHERE type = 'url' AND deleted = false
   // This allows: (1) notes to have duplicate URLs, (2) re-adding previously deleted URLs
@@ -94,6 +103,9 @@ model Collection {
   updatedAt            DateTime  @updatedAt
   userId               String
   user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Junction table for notes appearing in this Pawkit
+  collectionNotes      CollectionNote[]
 
   @@index([userId])
   @@index([userId, deleted])
@@ -239,5 +251,40 @@ model CalendarEvent {
   @@index([userId])
   @@index([userId, date])
   @@index([userId, deleted])
+}
+
+// Note folder organization (hierarchical folders for notes)
+model NoteFolder {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  parentId  String?  // Self-reference for nested folders
+  position  Int      @default(0) // For ordering within parent
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    NoteFolder? @relation("NoteFolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  NoteFolder[] @relation("NoteFolderHierarchy")
+  cards     Card[]      // Notes in this folder
+
+  @@index([userId])
+  @@index([userId, parentId])
+}
+
+// Junction table for notes appearing in Pawkits (Collections)
+model CollectionNote {
+  id           String   @id @default(cuid())
+  collectionId String   // The Pawkit
+  cardId       String   // The note (Card with type='md-note' or 'text-note')
+  position     Int      @default(0) // For ordering within the collection
+  createdAt    DateTime @default(now())
+
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  card         Card       @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, cardId])
+  @@index([collectionId])
+  @@index([cardId])
 }
 

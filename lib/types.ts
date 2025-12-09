@@ -174,6 +174,9 @@ export type CardModel = {
   cloudId?: string | null;             // Provider-specific ID (e.g., Filen UUID)
   cloudProvider?: string | null;       // Provider name: "filen", "google-drive", etc.
   cloudSyncedAt?: string | null;       // ISO date string of last sync
+
+  // Note folder organization (for type='md-note' or 'text-note')
+  noteFolderId?: string | null;        // Reference to NoteFolder
 };
 
 export type CollectionNode = {
@@ -228,4 +231,30 @@ export type NoteWithLinks = CardModel & {
   cardLinks?: NoteCardLink[];
   tags?: NoteTag[];
   backlinks?: NoteLink[]; // Notes that link to this note
+};
+
+// Note folder organization (hierarchical)
+export type NoteFolder = {
+  id: string;
+  userId: string;
+  name: string;
+  parentId: string | null;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// NoteFolder with children for tree structure
+export type NoteFolderNode = NoteFolder & {
+  children: NoteFolderNode[];
+  noteCount?: number; // Optional: count of notes in this folder
+};
+
+// CollectionNote junction - notes appearing in Pawkits
+export type CollectionNote = {
+  id: string;
+  collectionId: string;
+  cardId: string;
+  position: number;
+  createdAt: string;
 };
