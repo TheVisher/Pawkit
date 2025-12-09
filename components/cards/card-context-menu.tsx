@@ -227,22 +227,18 @@ export function CardContextMenuWrapper({
                   No folders yet
                 </ContextMenuItem>
               ) : (
-                <>
-                  {/* Remove from folder option if currently in a folder */}
-                  {currentFolderId && (
-                    <>
-                      <ContextMenuItem onClick={() => onMoveToFolder(null)}>
-                        <FileText className="mr-2 h-4 w-4" />
-                        Remove from folder
-                      </ContextMenuItem>
-                      <ContextMenuSeparator />
-                    </>
-                  )}
-                  {renderFolderTree(folders, onMoveToFolder)}
-                </>
+                renderFolderTree(folders, onMoveToFolder)
               )}
             </ContextMenuSubContent>
           </ContextMenuSub>
+        )}
+
+        {/* Remove from Folder - only show if note is in a folder (top-level, like Remove from Pawkits) */}
+        {isNote && currentFolderId && onMoveToFolder && (
+          <ContextMenuItem onClick={() => onMoveToFolder(null)}>
+            <FolderMinus className="mr-2 h-4 w-4" />
+            Remove from Folder
+          </ContextMenuItem>
         )}
 
         {/* 3. Pin to Sidebar - only for notes */}
