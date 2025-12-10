@@ -31,56 +31,61 @@ export async function checkRateLimits(
   const hourAgo = new Date(now.getTime() - 60 * 60 * 1000);
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-  // Check hourly limit
-  const { count: hourlyCount, error: hourlyError } = await supabase
-    .from('kit_usage')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', hourAgo.toISOString());
+  try {
+    // Check hourly limit
+    const { count: hourlyCount, error: hourlyError } = await supabase
+      .from('kit_usage')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', hourAgo.toISOString());
 
-  if (hourlyError) {
-    console.error('[Kit] Rate limit check error:', hourlyError);
-    // Allow on error to not block users due to DB issues
-    return { allowed: true };
-  }
-
-  const hourlyUsed = hourlyCount || 0;
-  if (hourlyUsed >= KIT_CONFIG.limits.requestsPerHour) {
-    return {
-      allowed: false,
-      message: "Whoa there! Kit needs a short break. Try again in an hour! 🐕",
-      remaining: { hourly: 0, daily: KIT_CONFIG.limits.requestsPerDay - hourlyUsed }
-    };
-  }
-
-  // Check daily limit
-  const { count: dailyCount, error: dailyError } = await supabase
-    .from('kit_usage')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .gte('created_at', dayAgo.toISOString());
-
-  if (dailyError) {
-    console.error('[Kit] Daily rate limit check error:', dailyError);
-    return { allowed: true };
-  }
-
-  const dailyUsed = dailyCount || 0;
-  if (dailyUsed >= KIT_CONFIG.limits.requestsPerDay) {
-    return {
-      allowed: false,
-      message: "Kit has been a busy helper today! Let's continue tomorrow. 🐕💤",
-      remaining: { hourly: 0, daily: 0 }
-    };
-  }
-
-  return {
-    allowed: true,
-    remaining: {
-      hourly: KIT_CONFIG.limits.requestsPerHour - hourlyUsed,
-      daily: KIT_CONFIG.limits.requestsPerDay - dailyUsed
+    if (hourlyError) {
+      console.error('[Kit] Rate limit check error:', JSON.stringify(hourlyError));
+      // Allow on error to not block users due to DB issues
+      return { allowed: true };
     }
-  };
+
+    const hourlyUsed = hourlyCount || 0;
+    if (hourlyUsed >= KIT_CONFIG.limits.requestsPerHour) {
+      return {
+        allowed: false,
+        message: "Whoa there! Kit needs a short break. Try again in an hour! 🐕",
+        remaining: { hourly: 0, daily: KIT_CONFIG.limits.requestsPerDay - hourlyUsed }
+      };
+    }
+
+    // Check daily limit
+    const { count: dailyCount, error: dailyError } = await supabase
+      .from('kit_usage')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', dayAgo.toISOString());
+
+    if (dailyError) {
+      console.error('[Kit] Daily rate limit check error:', JSON.stringify(dailyError));
+      return { allowed: true };
+    }
+
+    const dailyUsed = dailyCount || 0;
+    if (dailyUsed >= KIT_CONFIG.limits.requestsPerDay) {
+      return {
+        allowed: false,
+        message: "Kit has been a busy helper today! Let's continue tomorrow. 🐕💤",
+        remaining: { hourly: 0, daily: 0 }
+      };
+    }
+
+    return {
+      allowed: true,
+      remaining: {
+        hourly: KIT_CONFIG.limits.requestsPerHour - hourlyUsed,
+        daily: KIT_CONFIG.limits.requestsPerDay - dailyUsed
+      }
+    };
+  } catch (err) {
+    console.error('[Kit] Rate limit exception:', err);
+    return { allowed: true };
+  }
 }
 
 /**
@@ -103,19 +108,32 @@ export async function logUsage(
   const outputCost = usage.outputTokens * outputCostPerToken;
   const totalCostCents = (inputCost + outputCost) * 100;
 
-  const { error } = await supabase.from('kit_usage').insert({
+  const insertData = {
     user_id: userId,
     model: usage.model,
     input_tokens: usage.inputTokens,
     output_tokens: usage.outputTokens,
     estimated_cost_cents: totalCostCents,
     feature: usage.feature,
-    request_summary: usage.requestSummary?.slice(0, 200), // Truncate summary
-  });
+    request_summary: usage.requestSummary?.slice(0, 200),
+  };
 
-  if (error) {
-    console.error('[Kit] Failed to log usage:', error);
-    // Don't throw - logging failure shouldn't break the feature
+  console.log('[Kit] Attempting to log usage:', JSON.stringify(insertData));
+
+  try {
+    const { data, error, status, statusText } = await supabase
+      .from('kit_usage')
+      .insert(insertData)
+      .select();
+
+    if (error) {
+      console.error('[Kit] Failed to log usage - error:', JSON.stringify(error));
+      console.error('[Kit] Failed to log usage - status:', status, statusText);
+    } else {
+      console.log('[Kit] Usage logged successfully:', data);
+    }
+  } catch (err) {
+    console.error('[Kit] Usage logging exception:', err);
   }
 }
 
