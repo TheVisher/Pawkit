@@ -126,19 +126,78 @@ async function uniqueSlug(userId: string, base: string, excludeId?: string): Pro
 export async function createCollection(userId: string, payload: unknown) {
   const parsed = collectionCreateSchema.parse(payload);
   await ensureDepth(userId, parsed.parentId ?? null);
-  const slug = await uniqueSlug(userId, parsed.name);
-
-  const created = await prisma.collection.create({
-    data: {
-      name: parsed.name,
-      parentId: parsed.parentId ?? null,
-      slug,
-      user: { connect: { id: userId } }
+  
+  // Check if collection with this name already exists for this user
+  const existingSlug = slugify(parsed.name) || `collection-${Date.now()}`;
+  const existing = await prisma.collection.findFirst({
+    where: { 
+      slug: existingSlug, 
+      userId 
     }
   });
 
-  revalidateTag('collections');
-  return created;
+  // If it exists, return the existing one (idempotent for sync)
+  // This handles the case where local client tries to create something that already exists on server
+  if (existing) {
+    console.log(`[Collections] Collection "${parsed.name}" already exists for user, returning existing (id: ${existing.id})`);
+    
+    // If it was soft-deleted, restore it
+    if (existing.deleted) {
+      const restored = await prisma.collection.update({
+        where: { id: existing.id },
+        data: {
+          deleted: false,
+          deletedAt: null,
+          name: parsed.name, // Update name in case casing changed
+          parentId: parsed.parentId ?? null
+        }
+      });
+      revalidateTag('collections');
+      return restored;
+    }
+    
+    // Update if there are changes (e.g., parentId)
+    if (existing.parentId !== (parsed.parentId ?? null)) {
+      const updated = await prisma.collection.update({
+        where: { id: existing.id },
+        data: {
+          parentId: parsed.parentId ?? null
+        }
+      });
+      revalidateTag('collections');
+      return updated;
+    }
+    
+    return existing;
+  }
+
+  const slug = await uniqueSlug(userId, parsed.name);
+
+  try {
+    const created = await prisma.collection.create({
+      data: {
+        name: parsed.name,
+        parentId: parsed.parentId ?? null,
+        slug,
+        user: { connect: { id: userId } }
+      }
+    });
+
+    revalidateTag('collections');
+    return created;
+  } catch (error) {
+    // Handle race condition where another request created the same slug
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      console.log(`[Collections] Unique constraint hit for slug "${slug}", fetching existing`);
+      const existingAfterRace = await prisma.collection.findFirst({
+        where: { slug, userId }
+      });
+      if (existingAfterRace) {
+        return existingAfterRace;
+      }
+    }
+    throw error;
+  }
 }
 
 async function isDescendant(userId: string, ancestorId: string, potentialDescendantId: string): Promise<boolean> {
