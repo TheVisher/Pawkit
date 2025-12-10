@@ -943,9 +943,9 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             {(calculatedWidth: number) => (
               <>
                 {filteredAndSortedCards.map((card) => {
-                  // Calculate fixed height for grid mode (16:9 aspect + metadata space)
+                  // Calculate fixed height for grid mode (16:9 aspect - metadata is overlaid inside)
                   const gridItemHeight = layout === "grid"
-                    ? Math.round((calculatedWidth * 9) / 16) + (viewSettings.showMetadata ? 80 : 20)
+                    ? Math.round((calculatedWidth * 9) / 16) + 20 // Small padding for card border
                     : undefined;
 
                   return (
@@ -1335,7 +1335,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
 
       {showThumbnail && !isNote && (
         <div
-          className={`relative ${hasTextSection && showMetadata ? "mb-2" : ""} w-full rounded-xl ${layout === "masonry" ? "min-h-[120px]" : layout === "grid" ? "flex-1 min-h-0" : "aspect-video"} group/filmstrip`}
+          className={`relative ${layout !== "grid" && hasTextSection && showMetadata ? "mb-2" : ""} w-full rounded-xl ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip overflow-hidden`}
           style={{ background: 'var(--bg-surface-1)' }}
         >
           {/* Film sprocket holes for movie cards */}
@@ -1484,6 +1484,37 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               )}
             </div>
           ) : null}
+          {/* Frosted glass metadata overlay for grid view */}
+          {layout === "grid" && showMetadata && (
+            <div className="absolute bottom-0 left-0 right-0 bg-black/50 backdrop-blur-md border-t border-white/10 px-3 py-2">
+              <div className="flex items-center gap-2">
+                <span style={{ color: 'var(--text-muted)' }}>
+                  <Bookmark size={14} />
+                </span>
+                <h3 className="flex-1 font-medium text-sm text-white truncate">{displayTitle}</h3>
+                {hasCalendarEvents && (
+                  <span style={{ color: 'var(--ds-accent)' }} className="flex-shrink-0" title="On your calendar">
+                    <Calendar size={12} />
+                  </span>
+                )}
+              </div>
+              {card.collections && card.collections.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1 text-[10px]">
+                  {card.collections
+                    .filter((collection) => !collection.startsWith('den-'))
+                    .slice(0, 3)
+                    .map((collection) => (
+                      <span key={collection} className="rounded px-1.5 py-0.5 bg-white/10 text-white/80 truncate max-w-[80px]">
+                        {collection}
+                      </span>
+                    ))}
+                  {card.collections.filter((c) => !c.startsWith('den-')).length > 3 && (
+                    <span className="text-white/60">+{card.collections.filter((c) => !c.startsWith('den-')).length - 3}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
       {/* Notes: Clean document-style with rendered markdown preview */}
@@ -1642,9 +1673,9 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         </div>
       )}
 
-      {/* Show text section for non-notes */}
-      {!isNote && (showMetadata || isPending || isError) && (
-        <div className={`space-y-1 text-sm mt-2 ${layout === "grid" ? "flex-shrink-0" : ""}`}>
+      {/* Show text section for non-notes (not in grid mode - grid uses frosted overlay) */}
+      {!isNote && layout !== "grid" && (showMetadata || isPending || isError) && (
+        <div className="space-y-1 text-sm mt-2">
           {showMetadata && (
             <div className="flex items-center gap-2">
               <span style={{ color: 'var(--text-muted)' }}>
