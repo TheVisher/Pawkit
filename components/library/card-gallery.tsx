@@ -943,9 +943,10 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
             {(calculatedWidth: number) => (
               <>
                 {filteredAndSortedCards.map((card) => {
-                  // Calculate fixed height for grid mode (16:9 aspect + metadata space below when enabled)
+                  // Calculate fixed height for grid mode (16:9 aspect + padding + metadata when enabled)
+                  const paddingPx = Math.round((viewSettings.cardPadding - 1) / 99 * 32);
                   const gridItemHeight = layout === "grid"
-                    ? Math.round((calculatedWidth * 9) / 16) + (viewSettings.showMetadata ? 44 : 0)
+                    ? Math.round((calculatedWidth * 9) / 16) + (paddingPx * 2) + (viewSettings.showMetadata ? 36 : 0)
                     : undefined;
 
                   return (
@@ -1319,7 +1320,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         {...attributes}
         style={{
           ...style,
-          padding: layout === "grid" ? `${cardPaddingPx}px ${cardPaddingPx}px 0 ${cardPaddingPx}px` : `${cardPaddingPx}px`,
+          padding: `${cardPaddingPx}px`,
           borderWidth: '1px',
           borderStyle: 'solid',
           borderColor: selected ? 'var(--ds-accent)' : 'var(--border-subtle)'
@@ -1330,16 +1331,29 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         onClick={(event) => onClick(event, card)}
         data-id={card.id}
       >
-        {/* Container for Grid view - thumbnail fills aspect-video, metadata below */}
-        <div className={layout === "grid" ? "h-full flex flex-col" : ""}>
+        {/* Blurred image background - fills entire card including corners */}
+        {imageUrl && (
+          <>
+            <div
+              className="absolute inset-0 scale-125"
+              style={{
+                backgroundImage: `url(${imageUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'blur(20px) saturate(1.2)',
+                zIndex: 0
+              }}
+            />
+            <div className="absolute inset-0 bg-black/50" style={{ zIndex: 1 }} />
+          </>
+        )}
+        {/* Container for content - sits above blur */}
+        <div className={`relative ${layout === "grid" ? "h-full flex flex-col" : ""}`} style={{ zIndex: 2 }}>
 
       {showThumbnail && !isNote && (
         <div
-          className={`relative ${layout !== "grid" && hasTextSection && showMetadata ? "mb-2" : ""} w-full ${layout === "grid" ? "" : "rounded-xl"} ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip overflow-hidden`}
-          style={{
-            background: layout === "grid" ? 'transparent' : 'var(--bg-surface-1)',
-            borderRadius: layout === "grid" && showMetadata ? '0' : undefined
-          }}
+          className={`relative ${hasTextSection && showMetadata && layout !== "grid" ? "mb-2" : ""} w-full rounded-xl ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip overflow-hidden`}
+          style={{ background: 'var(--bg-surface-1)' }}
         >
           {/* Film sprocket holes for movie cards */}
           {isMovie && (
@@ -1489,55 +1503,35 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           ) : null}
         </div>
       )}
-      {/* Blurred extension metadata for grid view - below thumbnail */}
+      {/* Grid view metadata - sits on the card's blurred background */}
       {layout === "grid" && showMetadata && !isNote && (
-        <div
-          className="relative overflow-hidden"
-          style={{ height: '44px', borderRadius: '0' }}
-        >
-          {/* Blurred image background - extends the thumbnail colors */}
-          {imageUrl && (
-            <div
-              className="absolute inset-0 scale-150"
-              style={{
-                backgroundImage: `url(${imageUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center bottom',
-                filter: 'blur(20px) saturate(1.2)',
-              }}
-            />
-          )}
-          {/* Dark overlay for readability */}
-          <div className="absolute inset-0 bg-black/40" />
-          {/* Metadata content */}
-          <div className="relative z-10 px-3 py-2 h-full flex flex-col justify-center">
-            <div className="flex items-center gap-2">
-              <span style={{ color: 'var(--text-muted)' }}>
-                <Bookmark size={12} />
+        <div className="px-1 py-2 flex flex-col justify-center">
+          <div className="flex items-center gap-2">
+            <span className="text-white/60">
+              <Bookmark size={12} />
+            </span>
+            <h3 className="flex-1 font-medium text-xs text-white truncate">{displayTitle}</h3>
+            {hasCalendarEvents && (
+              <span style={{ color: 'var(--ds-accent)' }} className="flex-shrink-0" title="On your calendar">
+                <Calendar size={10} />
               </span>
-              <h3 className="flex-1 font-medium text-xs text-white truncate">{displayTitle}</h3>
-              {hasCalendarEvents && (
-                <span style={{ color: 'var(--ds-accent)' }} className="flex-shrink-0" title="On your calendar">
-                  <Calendar size={10} />
-                </span>
-              )}
-            </div>
-            {card.collections && card.collections.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-0.5 text-[9px]">
-                {card.collections
-                  .filter((collection) => !collection.startsWith('den-'))
-                  .slice(0, 2)
-                  .map((collection) => (
-                    <span key={collection} className="rounded px-1 py-0.5 bg-white/15 text-white/80 truncate max-w-[60px]">
-                      {collection}
-                    </span>
-                  ))}
-                {card.collections.filter((c) => !c.startsWith('den-')).length > 2 && (
-                  <span className="text-white/60">+{card.collections.filter((c) => !c.startsWith('den-')).length - 2}</span>
-                )}
-              </div>
             )}
           </div>
+          {card.collections && card.collections.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-0.5 text-[9px]">
+              {card.collections
+                .filter((collection) => !collection.startsWith('den-'))
+                .slice(0, 2)
+                .map((collection) => (
+                  <span key={collection} className="rounded px-1 py-0.5 bg-white/15 text-white/80 truncate max-w-[60px]">
+                    {collection}
+                  </span>
+                ))}
+              {card.collections.filter((c) => !c.startsWith('den-')).length > 2 && (
+                <span className="text-white/60">+{card.collections.filter((c) => !c.startsWith('den-')).length - 2}</span>
+              )}
+            </div>
+          )}
         </div>
       )}
       {/* Notes: Clean document-style with rendered markdown preview */}
