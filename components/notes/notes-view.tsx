@@ -6,7 +6,6 @@ import { LibraryWorkspace } from "@/components/library/workspace";
 import { useViewSettingsStore, type LayoutMode } from "@/lib/hooks/view-settings-store";
 import { sortCards } from "@/lib/utils/sort-cards";
 import { FileText, Network, Calendar } from "lucide-react";
-import { SmartSearch } from "@/components/notes/smart-search";
 import { KnowledgeGraph } from "@/components/notes/knowledge-graph";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -241,15 +240,6 @@ export function NotesView({ initialCards, collectionsTree, query }: NotesViewPro
         </div>
       </div>
 
-      {/* Smart Search */}
-      <div className="max-w-md">
-        <SmartSearch
-          onSelectCard={(card) => {
-            openCardDetails(card.id);
-          }}
-          placeholder="Search notes, tags, and content..."
-        />
-      </div>
 
       {/* Timeline View */}
       {showTimeline && (

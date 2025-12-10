@@ -202,6 +202,7 @@ function OmniBarContent() {
     <div data-tour="omnibar">
       <form onSubmit={handleSubmit} className="relative">
         <input
+          id="omnibar-input"
           value={value}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
