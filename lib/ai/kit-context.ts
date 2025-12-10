@@ -16,12 +16,39 @@ interface CardContext {
   tags?: string[];
 }
 
+interface PawkitInfo {
+  name: string;
+  slug: string;
+}
+
 /**
- * Parse tags from comma-separated string to array
+ * Parse tags/collections from comma-separated string to array
  */
-function parseTags(tags: string | null | undefined): string[] {
-  if (!tags) return [];
-  return tags.split(',').map(t => t.trim()).filter(Boolean);
+function parseCommaSeparated(value: string | null | undefined): string[] {
+  if (!value) return [];
+  return value.split(',').map(t => t.trim()).filter(Boolean);
+}
+
+/**
+ * Detect if user is asking about a specific Pawkit
+ * Returns the matching pawkit slug if found
+ */
+function detectPawkitInQuery(query: string, pawkits: PawkitInfo[]): PawkitInfo | null {
+  const queryLower = query.toLowerCase();
+  
+  // Check if query mentions "pawkit" or "collection"
+  const mentionsPawkit = queryLower.includes('pawkit') || queryLower.includes('collection');
+  
+  for (const pawkit of pawkits) {
+    const nameLower = pawkit.name.toLowerCase();
+    // Check if the pawkit name appears in the query
+    if (queryLower.includes(nameLower)) {
+      console.log(`[Kit] Detected pawkit reference: "${pawkit.name}" (${pawkit.slug})`);
+      return pawkit;
+    }
+  }
+  
+  return null;
 }
 
 /**
@@ -30,6 +57,7 @@ function parseTags(tags: string | null | undefined): string[] {
  * This fetches relevant data from Supabase to give Kit context about:
  * - The specific card being discussed (if any)
  * - User's Pawkits (collections)
+ * - Cards in a specific Pawkit (if mentioned)
  * - Cards that might be relevant to the query
  * - Recently saved items
  */
@@ -41,7 +69,10 @@ export async function buildKitContext(
 ): Promise<string> {
   const contextParts: string[] = [];
   let totalTokens = 0;
-  const maxContextTokens = KIT_CONFIG.limits.maxInputTokens - 2000; // Reserve for system prompt + response
+  const maxContextTokens = KIT_CONFIG.limits.maxInputTokens - 2000;
+
+  console.log('[Kit] Building context for query:', query);
+  console.log('[Kit] User ID:', userId);
 
   // 1. Add specific card context if provided
   if (cardContext) {
@@ -52,7 +83,6 @@ export async function buildKitContext(
     if (cardContext.tags?.length) cardSection += `**Tags**: ${cardContext.tags.join(', ')}\n`;
     if (cardContext.notes) cardSection += `**User Notes**: ${cardContext.notes}\n`;
     if (cardContext.content) {
-      // Truncate content to fit token budget
       const contentLimit = 4000;
       const truncatedContent = cardContext.content.length > contentLimit
         ? cardContext.content.slice(0, contentLimit) + '...[truncated]'
@@ -68,9 +98,9 @@ export async function buildKitContext(
   }
 
   // 2. Get user's Pawkits (collections) for context
-  // Note: Table is 'Collection' (Prisma model name), columns are camelCase
+  let pawkits: PawkitInfo[] = [];
   try {
-    const { data: pawkits, error: pawkitsError } = await supabase
+    const { data: pawkitsData, error: pawkitsError } = await supabase
       .from('Collection')
       .select('name, slug')
       .eq('userId', userId)
@@ -80,9 +110,12 @@ export async function buildKitContext(
 
     if (pawkitsError) {
       console.error('[Kit] Error fetching pawkits:', pawkitsError);
+    } else {
+      pawkits = pawkitsData || [];
+      console.log('[Kit] Found', pawkits.length, 'pawkits:', pawkits.map(p => p.name).join(', '));
     }
 
-    if (pawkits?.length) {
+    if (pawkits.length) {
       let pawkitSection = `## User's Pawkits (${pawkits.length} collections)\n`;
       pawkitSection += pawkits.map(p => `- ${p.name}`).join('\n');
 
@@ -96,81 +129,142 @@ export async function buildKitContext(
     console.error('[Kit] Exception fetching pawkits:', err);
   }
 
-  // 3. Search for relevant cards based on query
-  const keywords = extractKeywords(query);
-  if (keywords.length > 0 && totalTokens < maxContextTokens - 1000) {
+  // 3. Check if user is asking about a specific Pawkit
+  const targetPawkit = detectPawkitInQuery(query, pawkits);
+  
+  if (targetPawkit) {
+    // User asked about a specific Pawkit - fetch ONLY cards in that collection
     try {
-      // Build search pattern for each keyword
-      const searchPattern = keywords.map(k => `%${k}%`).join('%');
-
-      const { data: relevantCards, error: relevantError } = await supabase
+      const { data: pawkitCards, error: pawkitCardsError } = await supabase
         .from('Card')
-        .select('id, title, description, url, domain, tags')
+        .select('id, title, description, url, domain, tags, collections, deleted')
         .eq('userId', userId)
         .eq('deleted', false)
-        .or(`title.ilike.${searchPattern},description.ilike.${searchPattern}`)
-        .limit(10);
+        .ilike('collections', `%${targetPawkit.slug}%`)
+        .limit(50);
 
-      if (relevantError) {
-        console.error('[Kit] Error fetching relevant cards:', relevantError);
+      if (pawkitCardsError) {
+        console.error('[Kit] Error fetching pawkit cards:', pawkitCardsError);
       }
 
-      if (relevantCards?.length) {
-        let relevantSection = `## Potentially Relevant Saved Items\n`;
-        for (const card of relevantCards) {
-          relevantSection += `- **${card.title || 'Untitled'}**`;
-          if (card.domain) relevantSection += ` (${card.domain})`;
-          const tagArray = parseTags(card.tags);
-          if (tagArray.length) relevantSection += ` [${tagArray.slice(0, 3).join(', ')}]`;
-          relevantSection += '\n';
+      console.log('[Kit] Cards in pawkit "' + targetPawkit.name + '":', pawkitCards?.length || 0);
+      if (pawkitCards?.length) {
+        pawkitCards.forEach((card, i) => {
+          console.log(`[Kit]   ${i + 1}. "${card.title}" (id: ${card.id}, deleted: ${card.deleted}, collections: ${card.collections})`);
+        });
+      }
+
+      if (pawkitCards?.length) {
+        let pawkitCardsSection = `## Cards in "${targetPawkit.name}" Pawkit (${pawkitCards.length} items)\n`;
+        for (const card of pawkitCards) {
+          pawkitCardsSection += `- **${card.title || 'Untitled'}**`;
+          if (card.domain) pawkitCardsSection += ` (${card.domain})`;
+          const tagArray = parseCommaSeparated(card.tags);
+          if (tagArray.length) pawkitCardsSection += ` [${tagArray.slice(0, 3).join(', ')}]`;
+          pawkitCardsSection += '\n';
           if (card.description) {
-            relevantSection += `  ${card.description.slice(0, 100)}${card.description.length > 100 ? '...' : ''}\n`;
+            pawkitCardsSection += `  ${card.description.slice(0, 150)}${card.description.length > 150 ? '...' : ''}\n`;
           }
         }
 
-        const sectionTokens = estimateTokens(relevantSection);
+        const sectionTokens = estimateTokens(pawkitCardsSection);
         if (totalTokens + sectionTokens < maxContextTokens) {
-          contextParts.push(relevantSection);
+          contextParts.push(pawkitCardsSection);
           totalTokens += sectionTokens;
         }
+      } else {
+        contextParts.push(`## Cards in "${targetPawkit.name}" Pawkit\nThis pawkit is empty or has no matching cards.`);
       }
     } catch (err) {
-      console.error('[Kit] Exception fetching relevant cards:', err);
+      console.error('[Kit] Exception fetching pawkit cards:', err);
     }
-  }
+  } else {
+    // 4. No specific pawkit - search for relevant cards based on keywords
+    const keywords = extractKeywords(query);
+    console.log('[Kit] Extracted keywords:', keywords);
+    
+    if (keywords.length > 0 && totalTokens < maxContextTokens - 1000) {
+      try {
+        const searchPattern = keywords.map(k => `%${k}%`).join('%');
 
-  // 4. Add recent cards for general context
-  if (totalTokens < maxContextTokens - 500) {
-    try {
-      const { data: recentCards, error: recentError } = await supabase
-        .from('Card')
-        .select('title, domain, tags')
-        .eq('userId', userId)
-        .eq('deleted', false)
-        .order('createdAt', { ascending: false })
-        .limit(20);
+        const { data: relevantCards, error: relevantError } = await supabase
+          .from('Card')
+          .select('id, title, description, url, domain, tags, collections, deleted')
+          .eq('userId', userId)
+          .eq('deleted', false)
+          .or(`title.ilike.${searchPattern},description.ilike.${searchPattern}`)
+          .limit(10);
 
-      if (recentError) {
-        console.error('[Kit] Error fetching recent cards:', recentError);
-      }
-
-      if (recentCards?.length) {
-        let recentSection = `## Recently Saved (${recentCards.length} items)\n`;
-        for (const card of recentCards) {
-          recentSection += `- ${card.title || 'Untitled'}`;
-          if (card.domain) recentSection += ` (${card.domain})`;
-          const tagArray = parseTags(card.tags);
-          if (tagArray.length) recentSection += ` [${tagArray.slice(0, 2).join(', ')}]`;
-          recentSection += '\n';
+        if (relevantError) {
+          console.error('[Kit] Error fetching relevant cards:', relevantError);
         }
 
-        const sectionTokens = estimateTokens(recentSection);
-        if (totalTokens + sectionTokens < maxContextTokens) {
-          contextParts.push(recentSection);
+        console.log('[Kit] Relevant cards found:', relevantCards?.length || 0);
+        if (relevantCards?.length) {
+          relevantCards.forEach((card, i) => {
+            console.log(`[Kit]   ${i + 1}. "${card.title}" (id: ${card.id}, deleted: ${card.deleted}, collections: ${card.collections})`);
+          });
         }
+
+        if (relevantCards?.length) {
+          let relevantSection = `## Potentially Relevant Saved Items\n`;
+          for (const card of relevantCards) {
+            relevantSection += `- **${card.title || 'Untitled'}**`;
+            if (card.domain) relevantSection += ` (${card.domain})`;
+            const tagArray = parseCommaSeparated(card.tags);
+            if (tagArray.length) relevantSection += ` [${tagArray.slice(0, 3).join(', ')}]`;
+            relevantSection += '\n';
+            if (card.description) {
+              relevantSection += `  ${card.description.slice(0, 100)}${card.description.length > 100 ? '...' : ''}\n`;
+            }
+          }
+
+          const sectionTokens = estimateTokens(relevantSection);
+          if (totalTokens + sectionTokens < maxContextTokens) {
+            contextParts.push(relevantSection);
+            totalTokens += sectionTokens;
+          }
+        }
+      } catch (err) {
+        console.error('[Kit] Exception fetching relevant cards:', err);
       }
-    } catch (err) {
-      console.error('[Kit] Exception fetching recent cards:', err);
+    }
+
+    // 5. Add recent cards for general context (only if no specific pawkit)
+    if (totalTokens < maxContextTokens - 500) {
+      try {
+        const { data: recentCards, error: recentError } = await supabase
+          .from('Card')
+          .select('title, domain, tags')
+          .eq('userId', userId)
+          .eq('deleted', false)
+          .order('createdAt', { ascending: false })
+          .limit(15);
+
+        if (recentError) {
+          console.error('[Kit] Error fetching recent cards:', recentError);
+        }
+
+        console.log('[Kit] Recent cards found:', recentCards?.length || 0);
+
+        if (recentCards?.length) {
+          let recentSection = `## Recently Saved (${recentCards.length} items)\n`;
+          for (const card of recentCards) {
+            recentSection += `- ${card.title || 'Untitled'}`;
+            if (card.domain) recentSection += ` (${card.domain})`;
+            const tagArray = parseCommaSeparated(card.tags);
+            if (tagArray.length) recentSection += ` [${tagArray.slice(0, 2).join(', ')}]`;
+            recentSection += '\n';
+          }
+
+          const sectionTokens = estimateTokens(recentSection);
+          if (totalTokens + sectionTokens < maxContextTokens) {
+            contextParts.push(recentSection);
+          }
+        }
+      } catch (err) {
+        console.error('[Kit] Exception fetching recent cards:', err);
+      }
     }
   }
 
@@ -197,7 +291,8 @@ function extractKeywords(query: string): string[] {
     'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not',
     'only', 'own', 'same', 'so', 'than', 'too', 'very', 'just', 'about',
     'find', 'show', 'get', 'give', 'tell', 'help', 'want', 'need', 'please',
-    'my', 'me', 'any', 'saved', 'bookmark', 'bookmarks', 'card', 'cards'
+    'my', 'me', 'any', 'saved', 'bookmark', 'bookmarks', 'card', 'cards',
+    'whats', 'what\'s', 'pawkit', 'pawkits', 'collection', 'collections'
   ]);
 
   return query
@@ -205,5 +300,5 @@ function extractKeywords(query: string): string[] {
     .replace(/[^\w\s]/g, '')
     .split(/\s+/)
     .filter(word => word.length > 2 && !stopWords.has(word))
-    .slice(0, 5); // Max 5 keywords
+    .slice(0, 5);
 }
