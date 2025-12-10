@@ -10,7 +10,7 @@
 
 | Task Type | Primary Skill | Secondary Skills |
 |-----------|---------------|------------------|
-| **UI work** (components, styling, modals) | `pawkit-ui-ux/UI_QUICK_REFERENCE.md` ⚠️ | `pawkit-ui-ux/SKILL.md` |
+| **UI work** (components, styling, modals) | `pawkit-ui-ux/COMPONENT_REGISTRY.md` ⚠️ | `pawkit-ui-ux/UI_QUICK_REFERENCE.md` |
 | **Sync/data issues** | `pawkit-sync-patterns` | `pawkit-troubleshooting` |
 | **API routes** | `pawkit-api-patterns` | `pawkit-security` |
 | **Cloud storage** (Filen, GDrive, etc.) | `pawkit-cloud-providers` | `pawkit-sync-patterns` |
@@ -29,17 +29,44 @@
 
 **For ANY UI work, read these files IN ORDER:**
 
-1. **FIRST**: `pawkit-ui-ux/UI_QUICK_REFERENCE.md` - Copy-paste patterns, default style
-2. **THEN** (if needed): `pawkit-ui-ux/SKILL.md` - Full component documentation
-3. **ALSO**: `docs/PAWKIT_UI_DESIGN_SYSTEM.md` - CSS variables and elevation system
+1. **FIRST**: `pawkit-ui-ux/COMPONENT_REGISTRY.md` - CSS variables, copy-paste patterns
+2. **THEN**: `pawkit-ui-ux/UI_QUICK_REFERENCE.md` - Quick reference for Modern vs Glass
+3. **IF NEEDED**: `pawkit-ui-ux/SKILL.md` - Full component documentation (Glass-focused)
+4. **ALSO**: `docs/PAWKIT_UI_DESIGN_SYSTEM.md` - CSS variables and elevation system
 
-**Key Rules:**
+### The Golden Rule: CSS Variables = Theme-Aware
+
+**ALL components must use CSS variables** for backgrounds, shadows, borders. This is how theme switching works automatically:
+
+```tsx
+// ✅ CORRECT - Works in ALL themes (Modern, Glass, Light, Dark, Purple)
+style={{ background: 'var(--bg-surface-2)' }}
+
+// ❌ WRONG - Only works in Glass mode
+className="bg-white/5 backdrop-blur-md"
+```
+
+### Key Rules:
 - **Modern is the DEFAULT style** (solid surfaces with depth)
 - **Glass is OPT-IN** (only when user enables it in settings)
+- Use **CSS variables** so components work in ALL theme combinations
 - Buttons must have **shadow + hover lift effect** (not flat!)
 - Cards must have **elevation shadows** (not just borders)
+- **No `backdrop-blur`** in component code (CSS handles this for Glass mode)
 
-**If CC creates flat buttons or uses Glass patterns by default, it hasn't read the Quick Reference.**
+### Creating New UI = Support ALL Themes
+
+When creating any new component, it must work with:
+- Modern mode (default)
+- Glass mode (transparent + blur)
+- Light mode
+- Dark mode  
+- Purple tint
+- ALL combinations of the above
+
+**This is automatic if you use CSS variables correctly.**
+
+**If CC creates flat buttons, uses hardcoded colors, or uses Glass patterns by default, it hasn't read the Component Registry.**
 
 ---
 
@@ -68,23 +95,27 @@
 
 #### `pawkit-ui-ux` ⚠️ SPECIAL HANDLING
 
-**TWO FILES - Read in order:**
+**THREE FILES - Read in order:**
 
-1. **`UI_QUICK_REFERENCE.md`** (READ FIRST!)
-   - Default style = Modern (NOT Glass)
-   - Copy-paste button/card/modal patterns
+1. **`COMPONENT_REGISTRY.md`** (READ FIRST!)
+   - CSS variable system explained
+   - 7 core UI patterns with copy-paste code
+   - Existing components to use vs deprecate
+   - Inline style templates
+   - Theme combination support
+
+2. **`UI_QUICK_REFERENCE.md`** (Quick decisions)
+   - Modern vs Glass quick comparison
    - Common mistakes to avoid
    - Checklist before submitting UI work
 
-2. **`SKILL.md`** (Full reference)
-   - Glass morphism patterns (for when Glass is requested)
+3. **`SKILL.md`** (Full reference - optional)
+   - Glass morphism details
    - Calendar components
    - Context menu patterns
-   - List view standardization
-   - Mobile glass patterns
-   - Toast notification system
+   - Mobile patterns
 
-**Key insight**: The main SKILL.md focuses heavily on Glass patterns because it was written when Glass was the default. Now Modern is default. Always check UI_QUICK_REFERENCE.md first!
+**Key insight**: The main SKILL.md focuses heavily on Glass patterns because it was written when Glass was the default. Now Modern is default. Always check Component Registry first!
 
 #### `pawkit-sync-patterns`
 **When to use**: Sync issues, conflict resolution, multi-session problems, offline behavior
@@ -150,14 +181,14 @@ When giving tasks to Claude Code, include skill references:
 Task: Add a new modal for tag management
 
 Skills to read:
-- .claude/skills/pawkit-ui-ux/UI_QUICK_REFERENCE.md (READ FIRST - default patterns)
-- .claude/skills/pawkit-ui-ux/SKILL.md (Section: MODALS - if needed)
+- .claude/skills/pawkit-ui-ux/COMPONENT_REGISTRY.md (READ FIRST - CSS variables + patterns)
+- .claude/skills/pawkit-ui-ux/UI_QUICK_REFERENCE.md (Modern vs Glass)
 - .claude/skills/pawkit-conventions/SKILL.md
 
-Style: Use Modern (default) style unless I say otherwise
+Style: Use CSS variables so it works in ALL themes
 
 After completing, update:
-- .claude/skills/pawkit-ui-ux/UI_QUICK_REFERENCE.md if new pattern emerged
+- COMPONENT_REGISTRY.md if new pattern emerged
 ```
 
 ### For Claude Code (via filesystem)
@@ -165,10 +196,13 @@ After completing, update:
 At the start of any UI task:
 
 ```bash
-# ALWAYS read Quick Reference FIRST for UI work
+# ALWAYS read Component Registry FIRST for UI work
+view .claude/skills/pawkit-ui-ux/COMPONENT_REGISTRY.md
+
+# Then Quick Reference
 view .claude/skills/pawkit-ui-ux/UI_QUICK_REFERENCE.md
 
-# Then read full skill if needed
+# Full skill only if needed
 view .claude/skills/pawkit-ui-ux/SKILL.md
 ```
 
