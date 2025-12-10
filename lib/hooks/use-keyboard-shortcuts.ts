@@ -124,10 +124,6 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
               e.preventDefault();
               router.push("/pawkits");
               break;
-            case "d":
-              e.preventDefault();
-              router.push("/distill");
-              break;
             // case "t": // Timeline route doesn't exist yet
             //   e.preventDefault();
             //   router.push("/timeline");
@@ -235,12 +231,6 @@ export function getAllShortcuts(): KeyboardShortcut[] {
     {
       key: "G then P",
       description: "Go to Pawkits",
-      action: () => {},
-      group: "Navigation",
-    },
-    {
-      key: "G then D",
-      description: "Go to Dig Up",
       action: () => {},
       group: "Navigation",
     },
