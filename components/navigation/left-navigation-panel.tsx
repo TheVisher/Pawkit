@@ -1205,14 +1205,10 @@ export function LeftNavigationPanel({
         {/* Header - Icon-only controls */}
         <TooltipProvider>
           <div className="flex items-center justify-between gap-2 p-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            {/* Search Input - triggers omnibar */}
+            {/* Search Input - triggers command palette */}
             <button
               onClick={() => {
-                const omnibar = document.getElementById('omnibar-input');
-                if (omnibar) {
-                  omnibar.focus();
-                  omnibar.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
+                window.dispatchEvent(new CustomEvent('pawkit:open-command-palette'));
               }}
               className="flex items-center gap-2 px-3 h-10 rounded-full transition-colors flex-1 cursor-text"
               style={{

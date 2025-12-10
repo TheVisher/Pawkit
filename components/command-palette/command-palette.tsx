@@ -306,14 +306,6 @@ export function CommandPalette({
         action: () => router.push('/den'),
         keywords: ["den", "private", "secure"],
       },
-      {
-        id: "nav-dig-up",
-        type: "navigation",
-        label: "Dig Up (Review Cards)",
-        icon: Layers,
-        action: () => router.push('/distill'),
-        keywords: ["dig", "up", "review", "distill"],
-      },
     );
 
     // Add notes to commands (exclude private pawkit cards)

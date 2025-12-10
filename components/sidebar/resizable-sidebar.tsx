@@ -34,7 +34,6 @@ const primaryLinks: SidebarLinkConfig[] = [
   { href: "/timeline", label: "Timeline", icon: IconTimeline },
   { href: "/pawkits", label: "Pawkits", icon: IconCollections },
   { href: "/notes", label: "Notes", icon: IconNotes },
-  { href: "/distill", label: "Dig Up", icon: IconDistill },
   { href: "/trash", label: "Trash", icon: IconTrash }
 ];
 
@@ -469,14 +468,6 @@ function IconNotes({ className }: IconProps) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M5 3h10l4 4v14H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 9h6M9 13h6M9 17h3" />
-    </svg>
-  );
-}
-
-function IconDistill({ className }: IconProps) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v6.5l6 10.5H6l6-10.5" />
     </svg>
   );
 }
