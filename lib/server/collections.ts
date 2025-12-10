@@ -1,16 +1,14 @@
 import { Prisma, PrismaClient } from "@prisma/client";
 import type { PrismaCollection } from "@/lib/types";
-// Use PrismaCollection instead of Collection from @prisma/client when Prisma client is not generated
 type Collection = PrismaCollection;
 import { prisma } from "@/lib/server/prisma";
 import { collectionCreateSchema, collectionUpdateSchema } from "@/lib/validators/collection";
 import { slugify } from "@/lib/utils/slug";
 import { unstable_cache, revalidateTag } from 'next/cache';
 
-// Transaction client type for Prisma $transaction callbacks
 type TransactionClient = Omit<PrismaClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
-const MAX_DEPTH = 10; // Allow deep nesting
+const MAX_DEPTH = 10;
 
 export type CollectionDTO = Omit<Collection, 'createdAt' | 'updatedAt' | 'deletedAt'> & {
   children: CollectionDTO[];
@@ -28,8 +26,6 @@ function mapCollection(collection: Collection): Omit<CollectionDTO, 'children'> 
   };
 }
 
-// Cache collections for 5 seconds to improve navigation speed while keeping data fresh
-// Note: For sync purposes, we bypass cache and include deleted collections
 export const listCollections = unstable_cache(
   async (userId: string, includeDeleted = false) => {
     const items = await prisma.collection.findMany({
@@ -72,18 +68,16 @@ export const listCollections = unstable_cache(
 async function ensureDepth(userId: string, parentId: string | undefined | null) {
   if (!parentId) return 1;
 
-  // Fetch all collections for the user in a single query to avoid N+1
   const allCollections = await prisma.collection.findMany({
     where: { userId },
     select: { id: true, parentId: true }
   });
 
-  // Build a map for O(1) parent lookups
   const collectionMap = new Map(allCollections.map(c => [c.id, c.parentId]));
 
   let depth = 1;
   let currentId: string | undefined | null = parentId;
-  const visited = new Set<string>(); // Prevent infinite loops from circular references
+  const visited = new Set<string>();
 
   while (currentId) {
     if (visited.has(currentId)) {
@@ -92,7 +86,7 @@ async function ensureDepth(userId: string, parentId: string | undefined | null) 
     visited.add(currentId);
 
     const parentOfCurrent = collectionMap.get(currentId);
-    if (parentOfCurrent === undefined) break; // Collection not found
+    if (parentOfCurrent === undefined) break;
     depth += 1;
     currentId = parentOfCurrent;
     if (depth > MAX_DEPTH) {
@@ -109,17 +103,22 @@ async function uniqueSlug(userId: string, base: string, excludeId?: string): Pro
   for (let attempt = 0; attempt <= MAX_ATTEMPTS; attempt++) {
     const candidate = attempt === 0 ? baseSlug : `${baseSlug}-${attempt}`;
 
+    // Check globally since slug is a global unique constraint
     const existing = await prisma.collection.findFirst({
-      where: { slug: candidate, userId },
-      select: { id: true }
+      where: { slug: candidate },
+      select: { id: true, userId: true }
     });
 
     if (!existing || (excludeId && existing.id === excludeId)) {
       return candidate;
     }
+    
+    // If the slug belongs to THIS user, we can use it (idempotent)
+    if (existing.userId === userId) {
+      return candidate;
+    }
   }
 
-  // Final fallback: timestamp ensures uniqueness
   return `${baseSlug}-${Date.now()}`;
 }
 
@@ -127,28 +126,31 @@ export async function createCollection(userId: string, payload: unknown) {
   const parsed = collectionCreateSchema.parse(payload);
   await ensureDepth(userId, parsed.parentId ?? null);
   
-  // Check if collection with this name already exists for this user
-  const existingSlug = slugify(parsed.name) || `collection-${Date.now()}`;
-  const existing = await prisma.collection.findFirst({
+  const baseSlug = slugify(parsed.name) || `collection-${Date.now()}`;
+  
+  // Check if this user already has this collection (by name or slug pattern)
+  const existingForUser = await prisma.collection.findFirst({
     where: { 
-      slug: existingSlug, 
-      userId 
-    }
+      userId,
+      OR: [
+        { slug: baseSlug },
+        { slug: { startsWith: `${baseSlug}-` } },
+        { name: parsed.name }
+      ]
+    },
+    orderBy: { createdAt: 'asc' }
   });
 
-  // If it exists, return the existing one (idempotent for sync)
-  // This handles the case where local client tries to create something that already exists on server
-  if (existing) {
-    console.log(`[Collections] Collection "${parsed.name}" already exists for user, returning existing (id: ${existing.id})`);
+  if (existingForUser) {
+    console.log(`[Collections] Collection "${parsed.name}" already exists for user (id: ${existingForUser.id}, slug: ${existingForUser.slug})`);
     
-    // If it was soft-deleted, restore it
-    if (existing.deleted) {
+    if (existingForUser.deleted) {
       const restored = await prisma.collection.update({
-        where: { id: existing.id },
+        where: { id: existingForUser.id },
         data: {
           deleted: false,
           deletedAt: null,
-          name: parsed.name, // Update name in case casing changed
+          name: parsed.name,
           parentId: parsed.parentId ?? null
         }
       });
@@ -156,19 +158,19 @@ export async function createCollection(userId: string, payload: unknown) {
       return restored;
     }
     
-    // Update if there are changes (e.g., parentId)
-    if (existing.parentId !== (parsed.parentId ?? null)) {
+    if (existingForUser.parentId !== (parsed.parentId ?? null) || existingForUser.name !== parsed.name) {
       const updated = await prisma.collection.update({
-        where: { id: existing.id },
+        where: { id: existingForUser.id },
         data: {
-          parentId: parsed.parentId ?? null
+          parentId: parsed.parentId ?? null,
+          name: parsed.name
         }
       });
       revalidateTag('collections');
       return updated;
     }
     
-    return existing;
+    return existingForUser;
   }
 
   const slug = await uniqueSlug(userId, parsed.name);
@@ -186,14 +188,42 @@ export async function createCollection(userId: string, payload: unknown) {
     revalidateTag('collections');
     return created;
   } catch (error) {
-    // Handle race condition where another request created the same slug
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      console.log(`[Collections] Unique constraint hit for slug "${slug}", fetching existing`);
+      console.log(`[Collections] Unique constraint hit for slug "${slug}", attempting recovery`);
+      
       const existingAfterRace = await prisma.collection.findFirst({
-        where: { slug, userId }
+        where: { 
+          userId,
+          OR: [{ slug }, { name: parsed.name }]
+        }
       });
+      
       if (existingAfterRace) {
+        console.log(`[Collections] Found existing collection after race (id: ${existingAfterRace.id})`);
         return existingAfterRace;
+      }
+      
+      const newSlug = `${slug}-${Date.now()}`;
+      
+      try {
+        const createdWithNewSlug = await prisma.collection.create({
+          data: {
+            name: parsed.name,
+            parentId: parsed.parentId ?? null,
+            slug: newSlug,
+            user: { connect: { id: userId } }
+          }
+        });
+        revalidateTag('collections');
+        return createdWithNewSlug;
+      } catch (retryError) {
+        const finalCheck = await prisma.collection.findFirst({
+          where: { userId, name: parsed.name }
+        });
+        if (finalCheck) {
+          return finalCheck;
+        }
+        throw retryError;
       }
     }
     throw error;
@@ -205,7 +235,7 @@ async function isDescendant(userId: string, ancestorId: string, potentialDescend
   const visited = new Set<string>();
 
   while (currentId) {
-    if (visited.has(currentId)) return false; // Cycle detected
+    if (visited.has(currentId)) return false;
     visited.add(currentId);
 
     if (currentId === ancestorId) return true;
@@ -239,11 +269,9 @@ export async function updateCollection(userId: string, id: string, payload: unkn
 
   const updated = await prisma.collection.update({ where: { id, userId }, data });
 
-  // Handle isPrivate toggle: Update card inDen flags
   if (parsed.isPrivate !== undefined && updated.slug) {
     const newInDenValue = parsed.isPrivate;
 
-    // Find all cards in this collection using raw SQL for JSONB query
     const cardsInCollection = await prisma.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM "Card"
       WHERE "userId" = ${userId}
@@ -252,7 +280,6 @@ export async function updateCollection(userId: string, id: string, payload: unkn
     `;
 
     if (cardsInCollection.length > 0) {
-      // Update inDen flag for all cards in this collection
       await prisma.card.updateMany({
         where: {
           id: { in: cardsInCollection.map((c: {id: string}) => c.id) }
@@ -297,24 +324,20 @@ export async function deleteCollection(userId: string, id: string, deleteCards =
     let collectionIdsToDelete = [id];
 
     if (deleteSubPawkits) {
-      // Recursively find all descendant collections
       const descendantIds = await getAllDescendantIds(userId, id, tx);
       collectionIdsToDelete = [id, ...descendantIds];
     } else {
-      // Move child collections to parent (they don't get deleted)
       await tx.collection.updateMany({
         where: { parentId: id, userId },
         data: { parentId: collection.parentId }
       });
     }
 
-    // Process each collection to delete
     for (const collectionId of collectionIdsToDelete) {
       const coll = await tx.collection.findFirst({ where: { id: collectionId, userId } });
       if (!coll) continue;
 
       if (deleteCards) {
-        // Soft delete all cards in this collection
         await tx.card.updateMany({
           where: {
             userId,
@@ -327,7 +350,6 @@ export async function deleteCollection(userId: string, id: string, deleteCards =
           }
         });
       } else {
-        // Remove collection slug from all cards
         const affectedCards = await tx.card.findMany({
           where: {
             userId,
@@ -349,7 +371,6 @@ export async function deleteCollection(userId: string, id: string, deleteCards =
         }
       }
 
-      // Soft delete the collection
       await tx.collection.update({
         where: { id: collectionId, userId },
         data: {
@@ -368,7 +389,7 @@ export async function pinnedCollections(userId: string, limit = 8) {
     where: {
       userId,
       pinned: true,
-      parentId: null, // Only root-level Pawkits
+      parentId: null,
       deleted: false,
       inDen: false
     },
@@ -394,7 +415,6 @@ export async function restoreCollection(userId: string, id: string) {
     throw new Error('Collection not found');
   }
 
-  // Check if parent exists and is not deleted
   let parentId = collection.parentId;
   let restoredToRoot = false;
 
@@ -403,7 +423,6 @@ export async function restoreCollection(userId: string, id: string) {
       where: { id: parentId, userId }
     });
 
-    // If parent doesn't exist or is deleted, restore to root level
     if (!parent || parent.deleted) {
       parentId = null;
       restoredToRoot = true;
