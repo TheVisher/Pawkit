@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { CustomCalendar } from "@/components/calendar/custom-calendar";
@@ -13,6 +14,7 @@ import { format, startOfWeek, addMonths, subMonths, addWeeks, subWeeks } from "d
 import { CalendarEvent } from "@/lib/types/calendar";
 
 export default function CalendarPage() {
+  const pathname = usePathname();
   const { cards, addCard } = useDataStore();
   const setActiveCardId = usePanelStore((state) => state.setActiveCardId);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
@@ -28,9 +30,10 @@ export default function CalendarPage() {
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
 
   // Set calendar controls when this page loads (doesn't force panel open)
+  // Include pathname to ensure this runs on every navigation to this page
   useEffect(() => {
     setCalendarControls();
-  }, [setCalendarControls]);
+  }, [setCalendarControls, pathname]);
 
   // Handle day click
   const handleDayClick = (date: Date) => {

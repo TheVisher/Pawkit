@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useMemo, Suspense, useEffect, useState } from "react";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { LibraryView } from "@/components/library/library-view";
@@ -14,6 +14,7 @@ import { CardModel, CollectionNode } from "@/lib/types";
 function LibraryPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const updateViewSettings = useViewSettingsStore((state) => state.updateSettings);
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
   const setContentType = usePanelStore((state) => state.setContentType);
@@ -56,9 +57,10 @@ function LibraryPageContent() {
   const contentTypeFilter = viewSettings.contentTypeFilter;
 
   // Set the right panel content to show library controls
+  // Include pathname to ensure this runs on every navigation to this page
   useEffect(() => {
     setContentType("library-controls");
-  }, [setContentType]);
+  }, [setContentType, pathname]);
 
   // Check if tag filter exists in any card, if not clear it
   useEffect(() => {

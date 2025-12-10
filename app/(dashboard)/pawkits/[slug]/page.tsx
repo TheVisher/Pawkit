@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useRef, Suspense } from "react";
-import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { useParams, useSearchParams, useRouter, usePathname } from "next/navigation";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useDataStore } from "@/lib/stores/data-store";
@@ -16,6 +16,7 @@ function CollectionPageContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
   const slug = params.slug as string;
   const setContentType = usePanelStore((state) => state.setContentType);
 
@@ -52,9 +53,10 @@ function CollectionPageContent() {
   }, [setPawkitActions]);
 
   // Set the right panel content to show pawkits controls
+  // Include pathname to ensure this runs on every navigation to this page
   useEffect(() => {
     setContentType("pawkits-controls");
-  }, [setContentType]);
+  }, [setContentType, pathname]);
 
   // Focus input when modal opens
   useEffect(() => {

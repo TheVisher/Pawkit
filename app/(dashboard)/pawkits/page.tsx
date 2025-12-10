@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { CollectionsGrid } from "@/components/pawkits/grid";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
@@ -11,6 +12,7 @@ import { GlowButton } from "@/components/ui/glow-button";
 import type { CollectionNode } from "@/lib/types";
 
 export default function CollectionsPage() {
+  const pathname = usePathname();
   const { collections, cards, addCollection } = useDataStore();
   const { setOnCreatePawkit } = usePawkitActions();
   const setContentType = usePanelStore((state) => state.setContentType);
@@ -35,9 +37,10 @@ export default function CollectionsPage() {
   }, [setOnCreatePawkit]);
 
   // Set the right panel content to show pawkits controls
+  // Include pathname to ensure this runs on every navigation to this page
   useEffect(() => {
     setContentType("pawkits-controls");
-  }, [setContentType]);
+  }, [setContentType, pathname]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
