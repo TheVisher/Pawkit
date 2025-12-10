@@ -1330,12 +1330,12 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         onClick={(event) => onClick(event, card)}
         data-id={card.id}
       >
-        {/* Uniform sizing container for Grid view - all cards same aspect ratio */}
-        <div className={layout === "grid" ? "aspect-video overflow-hidden flex flex-col" : ""}>
+        {/* Container for Grid view - thumbnail fills aspect-video, metadata below */}
+        <div className={layout === "grid" ? "h-full flex flex-col" : ""}>
 
       {showThumbnail && !isNote && (
         <div
-          className={`relative ${hasTextSection && showMetadata ? "mb-3" : ""} w-full rounded-xl ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip`}
+          className={`relative ${hasTextSection && showMetadata ? "mb-3" : ""} w-full rounded-xl ${layout === "masonry" ? "min-h-[120px]" : "aspect-video flex-shrink-0"} group/filmstrip`}
           style={{ background: 'var(--bg-surface-1)' }}
         >
           {/* Film sprocket holes for movie cards */}
@@ -1644,7 +1644,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
 
       {/* Show text section for non-notes */}
       {!isNote && (showMetadata || isPending || isError) && (
-        <div className="space-y-1 text-sm mt-2">
+        <div className={`space-y-1 text-sm mt-2 ${layout === "grid" ? "flex-1 overflow-hidden" : ""}`}>
           {showMetadata && (
             <div className="flex items-center gap-2">
               <span style={{ color: 'var(--text-muted)' }}>
