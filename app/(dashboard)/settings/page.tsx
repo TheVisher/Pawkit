@@ -540,7 +540,9 @@ export default function SettingsPage() {
         if (status.connected && status.email) {
           setGDriveConnected(status.email);
         }
-      } catch {}
+      } catch (error) {
+        console.error('[Settings] Failed to check Google Drive status:', error);
+      }
     };
 
     const checkDropboxStatus = async () => {
@@ -549,7 +551,9 @@ export default function SettingsPage() {
         if (status.connected && status.email) {
           setDropboxConnected(status.email);
         }
-      } catch {}
+      } catch (error) {
+        console.error('[Settings] Failed to check Dropbox status:', error);
+      }
     };
 
     const checkOneDriveStatus = async () => {
@@ -558,7 +562,9 @@ export default function SettingsPage() {
         if (status.connected && status.email) {
           setOneDriveConnected(status.email);
         }
-      } catch {}
+      } catch (error) {
+        console.error('[Settings] Failed to check OneDrive status:', error);
+      }
     };
 
     checkGDriveStatus();

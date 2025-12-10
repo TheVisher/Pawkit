@@ -71,6 +71,7 @@ export function CardContextMenuWrapper({
         setCollections(data.tree || []);
       }
     } catch (error) {
+      console.error('[CardContextMenu] Failed to fetch collections:', error);
     } finally {
       setLoading(false);
     }

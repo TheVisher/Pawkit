@@ -19,7 +19,6 @@ import {
   CalendarDays,
   Zap,
 } from "lucide-react";
-import { DogHouseIcon } from "@/components/icons/dog-house";
 import { generateDailyNoteTitle, generateDailyNoteContent, findDailyNoteForDate } from "@/lib/utils/daily-notes";
 import { isProbablyUrl } from "@/lib/utils/strings";
 
@@ -297,14 +296,6 @@ export function CommandPalette({
         icon: Calendar,
         action: () => router.push('/calendar'),
         keywords: ["calendar", "schedule"],
-      },
-      {
-        id: "nav-den",
-        type: "navigation",
-        label: "Go to The Den",
-        icon: DogHouseIcon,
-        action: () => router.push('/den'),
-        keywords: ["den", "private", "secure"],
       },
     );
 
