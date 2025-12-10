@@ -25,7 +25,8 @@ export default function CollectionsPage() {
   const sortOrder = viewSettings.sortOrder;
   const rawLayout = viewSettings.layout;
   // Map layout, defaulting masonry to grid for Pawkits view
-  const layout: "grid" | "list" | "compact" = rawLayout === "masonry" ? "grid" : rawLayout;
+  // TypeScript type is now ["grid", "masonry", "list"], map masonry to grid for this view
+  const layout: "grid" | "list" = rawLayout === "masonry" ? "grid" : rawLayout === "list" ? "list" : "grid";
 
   // Set the create action for the top bar
   useEffect(() => {

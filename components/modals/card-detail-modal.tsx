@@ -7,7 +7,7 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkWikiLink from "remark-wiki-link";
 import remarkBreaks from "remark-breaks";
-import { CardModel, CollectionNode, ExtractedDate } from "@/lib/types";
+import { CardModel, CollectionNode, ExtractedDate, NoteFolderNode } from "@/lib/types";
 import { getMostRelevantDate, extractDatesFromMetadata } from "@/lib/utils/extract-dates";
 import { useDataStore, extractAndSaveLinks } from "@/lib/stores/data-store";
 import { localDb } from "@/lib/services/local-storage";
@@ -53,6 +53,8 @@ import { FilePreviewModal } from "@/components/files/file-preview-modal";
 import { StoredFile } from "@/lib/types";
 import dynamic from "next/dynamic";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { useNoteFolderStore } from "@/lib/stores/note-folder-store";
+import { FolderInput } from "lucide-react";
 
 // Dynamic imports to avoid SSR issues with pdf.js
 const PdfViewer = dynamic(
@@ -124,6 +126,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const isNote = card.type === "md-note" || card.type === "text-note";
   const isFileCard = card.type === "file";
   const [isMounted, setIsMounted] = useState(false);
+
+  // Note folder store for folder info and move functionality
+  const { getFolderById, getFolderTree, fetchFolders } = useNoteFolderStore();
+  const currentFolder = isNote && card.noteFolderId ? getFolderById(card.noteFolderId) : null;
 
   // File card preview state - must be declared before useEffects that use them
   const [filePreviewUrl, setFilePreviewUrl] = useState<string | null>(null);
@@ -840,6 +846,22 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     toast.success(isAlreadyIn ? "Removed from Pawkit" : "Added to Pawkit");
   };
 
+  // Handle moving note to folder
+  const handleMoveToFolder = async (folderId: string | null) => {
+    if (!isNote) return;
+
+    await updateCardInStore(card.id, { noteFolderId: folderId });
+    const updated = { ...card, noteFolderId: folderId };
+    onUpdate(updated);
+
+    if (folderId) {
+      const folder = getFolderById(folderId);
+      toast.success(`Moved to ${folder?.name || 'folder'}`);
+    } else {
+      toast.success("Removed from folder");
+    }
+  };
+
   const handleExtractArticle = async () => {
     setExtracting(true);
     try {
@@ -1130,6 +1152,18 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               {isNote && noteMetadata ? (
                 // Note metadata under title (like domain for URL cards)
                 <div className="flex items-center gap-4 text-xs text-gray-400 mt-1">
+                  {currentFolder ? (
+                    <span className="flex items-center gap-1">
+                      <Folder size={12} className="text-accent" />
+                      {currentFolder.name}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 opacity-50">
+                      <FileText size={12} />
+                      Unfiled
+                    </span>
+                  )}
+                  <span>·</span>
                   <span>{noteMetadata.words} words</span>
                   <span>{noteMetadata.characters} chars</span>
                   <span>{noteMetadata.linkCount} links</span>
@@ -1952,6 +1986,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 <Tag className="h-5 w-5" />
               </TabsTrigger>
             )}
+            {isNote && (
+              <TabsTrigger
+                value="folders"
+                className="w-12 h-12 rounded-xl flex items-center justify-center border border-transparent data-[state=active]:border-accent data-[state=active]:bg-white/10 data-[state=active]:shadow-glow-accent hover:bg-white/5 transition-all"
+                title="Move to Folder"
+              >
+                <FolderInput className="h-5 w-5" />
+              </TabsTrigger>
+            )}
             <TabsTrigger
               value="schedule"
               className="w-12 h-12 rounded-xl flex items-center justify-center border border-transparent data-[state=active]:border-accent data-[state=active]:bg-white/10 data-[state=active]:shadow-glow-accent hover:bg-white/5 transition-all"
@@ -2047,6 +2090,14 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               {isNote && (
                 <TabsContent value="tags" className="p-4 mt-0 h-full">
                   <TagsTab content={content} />
+                </TabsContent>
+              )}
+              {isNote && (
+                <TabsContent value="folders" className="p-4 mt-0 h-full">
+                  <FoldersTab
+                    currentFolderId={card.noteFolderId}
+                    onSelect={handleMoveToFolder}
+                  />
                 </TabsContent>
               )}
               {!isYouTubeUrl(card.url) && (
@@ -2326,6 +2377,134 @@ function PawkitTreeItem({ node, depth, currentCollections, onSelect }: PawkitTre
           node={child}
           depth={depth + 1}
           currentCollections={currentCollections}
+          onSelect={onSelect}
+        />
+      ))}
+    </>
+  );
+}
+
+// Folders Tab (for notes)
+type FoldersTabProps = {
+  currentFolderId?: string | null;
+  onSelect: (folderId: string | null) => void;
+};
+
+function FoldersTab({ currentFolderId, onSelect }: FoldersTabProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const { getFolderTree, fetchFolders } = useNoteFolderStore();
+
+  // Fetch folders on mount
+  useEffect(() => {
+    fetchFolders();
+  }, [fetchFolders]);
+
+  const folders = getFolderTree();
+
+  // Recursively filter folders based on search
+  const filterFolders = (nodes: NoteFolderNode[], query: string): NoteFolderNode[] => {
+    if (!query) return nodes;
+
+    return nodes.reduce<NoteFolderNode[]>((acc, node) => {
+      const matchesSearch = node.name.toLowerCase().includes(query.toLowerCase());
+      const filteredChildren = filterFolders(node.children, query);
+
+      if (matchesSearch || filteredChildren.length > 0) {
+        acc.push({
+          ...node,
+          children: filteredChildren
+        });
+      }
+
+      return acc;
+    }, []);
+  };
+
+  const filteredFolders = filterFolders(folders, searchQuery);
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-gray-500">
+        Click to move this note to a folder
+      </p>
+
+      {/* Search input */}
+      <Input
+        type="text"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        placeholder="Search folders..."
+      />
+
+      {/* Remove from folder option */}
+      {currentFolderId && (
+        <Button
+          onClick={() => onSelect(null)}
+          variant="secondary"
+          className="w-full justify-start text-left"
+        >
+          <span className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4 text-gray-400" />
+            Remove from folder (unfiled)
+          </span>
+        </Button>
+      )}
+
+      {/* Folders list */}
+      <div className="space-y-1">
+        {folders.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-8">No folders available. Create one in the sidebar.</p>
+        ) : filteredFolders.length === 0 ? (
+          <p className="text-sm text-gray-500 text-center py-8">No folders match your search</p>
+        ) : (
+          filteredFolders.map((folder) => (
+            <FolderTreeItem
+              key={folder.id}
+              node={folder}
+              depth={0}
+              currentFolderId={currentFolderId}
+              onSelect={onSelect}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+type FolderTreeItemProps = {
+  node: NoteFolderNode;
+  depth: number;
+  currentFolderId?: string | null;
+  onSelect: (folderId: string | null) => void;
+};
+
+function FolderTreeItem({ node, depth, currentFolderId, onSelect }: FolderTreeItemProps) {
+  const hasChildren = node.children && node.children.length > 0;
+  const paddingLeft = 16 + (depth * 16);
+  const isActive = currentFolderId === node.id;
+
+  return (
+    <>
+      <Button
+        onClick={() => onSelect(node.id)}
+        variant={isActive ? "default" : "secondary"}
+        className={`w-full justify-between text-left ${isActive ? 'opacity-50 cursor-not-allowed' : ''}`}
+        style={{ paddingLeft: `${paddingLeft + 16}px` }}
+        disabled={isActive}
+      >
+        <span className="flex items-center gap-2">
+          <Folder className="h-4 w-4 text-accent" />
+          {node.name}
+        </span>
+        {isActive && <span className="text-xs text-gray-400">(current)</span>}
+      </Button>
+      {hasChildren && node.children.map((child) => (
+        <FolderTreeItem
+          key={child.id}
+          node={child}
+          depth={depth + 1}
+          currentFolderId={currentFolderId}
           onSelect={onSelect}
         />
       ))}

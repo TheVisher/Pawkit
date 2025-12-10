@@ -47,7 +47,7 @@ export const viewSettingsUpdateSchema = z.object({
   }),
   settings: z.object({
     layout: z
-      .enum(["grid", "masonry", "list", "compact"], {
+      .enum(["grid", "masonry", "list"], {
         errorMap: () => ({ message: "Invalid layout type" }),
       })
       .optional(),

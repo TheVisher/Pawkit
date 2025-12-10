@@ -13,22 +13,31 @@ type DragState = {
   hoveredPawkitSlug: string | null;
   // Set the hovered pawkit
   setHoveredPawkit: (slug: string | null) => void;
+  // The ID of the note folder currently being hovered over during drag
+  hoveredFolderId: string | null;
+  // Set the hovered folder
+  setHoveredFolder: (folderId: string | null) => void;
 };
 
 export const useDragStore = create<DragState>((set) => ({
   draggedCardId: null,
   isDragging: false,
   hoveredPawkitSlug: null,
+  hoveredFolderId: null,
 
   startDrag: (cardId: string) => {
     set({ draggedCardId: cardId, isDragging: true });
   },
 
   endDrag: () => {
-    set({ draggedCardId: null, isDragging: false, hoveredPawkitSlug: null });
+    set({ draggedCardId: null, isDragging: false, hoveredPawkitSlug: null, hoveredFolderId: null });
   },
 
   setHoveredPawkit: (slug: string | null) => {
     set({ hoveredPawkitSlug: slug });
+  },
+
+  setHoveredFolder: (folderId: string | null) => {
+    set({ hoveredFolderId: folderId });
   },
 }));

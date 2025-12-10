@@ -41,8 +41,6 @@ function layoutClass(layout: LayoutMode): string {
       return "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
     case "masonry":
       return "columns-1 gap-4 sm:columns-2 lg:columns-3 xl:columns-4";
-    case "compact":
-      return "grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8";
     case "list":
       return "flex flex-col gap-2";
     default:
@@ -61,7 +59,6 @@ function CardCell({
   isSelected: boolean;
   onClick: (e: MouseEvent) => void;
 }) {
-  const isCompact = layout === "compact";
   const isList = layout === "list";
   const isMasonry = layout === "masonry";
 
@@ -93,7 +90,7 @@ function CardCell({
     >
       {card.image && (
         <div className={`relative mb-3 w-full overflow-hidden rounded-xl bg-surface-soft ${
-          isMasonry ? "" : isCompact ? "aspect-square" : "aspect-video"
+          isMasonry ? "" : "aspect-video"
         }`}>
           <img
             src={card.image}
@@ -104,13 +101,11 @@ function CardCell({
         </div>
       )}
       <div className="space-y-1">
-        <div className={`font-semibold text-foreground ${isCompact ? "text-xs line-clamp-2" : "text-sm"}`}>
+        <div className="font-semibold text-foreground text-sm">
           {card.title || card.domain || card.url}
         </div>
-        {!isCompact && (
-          <div className="text-xs text-muted-foreground">{card.domain ?? card.url}</div>
-        )}
-        {card.collections.length > 0 && !isCompact && (
+        <div className="text-xs text-muted-foreground">{card.domain ?? card.url}</div>
+        {card.collections.length > 0 && (
           <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
             {card.collections.map((collection) => (
               <span key={collection} className="rounded bg-surface-soft px-2 py-0.5">

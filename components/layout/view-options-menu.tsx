@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Grid3x3, LayoutList, LayoutGrid, Table, type LucideIcon } from "lucide-react";
+import { Check, Grid3x3, LayoutList, LayoutGrid, type LucideIcon } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +25,6 @@ const LAYOUT_OPTIONS: { value: LayoutMode; label: string; icon: LucideIcon }[] =
   { value: "grid", label: "Grid", icon: LayoutGrid },
   { value: "masonry", label: "Masonry", icon: Grid3x3 },
   { value: "list", label: "List", icon: LayoutList },
-  { value: "compact", label: "Compact", icon: Table },
 ];
 
 export function ViewOptionsMenu({ 

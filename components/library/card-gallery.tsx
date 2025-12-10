@@ -834,11 +834,11 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               </tbody>
             </table>
           </div>
-        ) : layout === "masonry" ? (
-          /* Muuri-powered masonry grid with drag-and-drop */
-          /* Key based on filter settings - only remount when filters change, not when cards added */
+        ) : (layout === "masonry" || layout === "grid") ? (
+          /* Muuri-powered grid with drag-and-drop (masonry = variable height, grid = fixed height) */
+          /* Key based on filter settings and layout - remount when filters or layout change */
           <MuuriGridComponent
-            key={`muuri-${viewSettings.sortBy}-${viewSettings.sortOrder}-${(viewSettings.contentTypeFilter || []).join(',')}`}
+            key={`muuri-${layout}-${viewSettings.sortBy}-${viewSettings.sortOrder}-${(viewSettings.contentTypeFilter || []).join(',')}`}
             ref={muuriRef}
             className="w-full"
             style={{ minHeight: 200 }}
@@ -894,6 +894,28 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                   }
                 }
               }
+
+              // Check if we should drop into a note folder
+              if (dragState.hoveredFolderId && dragState.draggedCardId) {
+                const card = cards.find((c) => c.id === dragState.draggedCardId);
+                // Only move notes to folders (not regular cards)
+                if (card && (card.type === 'md-note' || card.type === 'text-note')) {
+                  // Import note folder store dynamically to avoid circular deps
+                  import('@/lib/stores/note-folder-store').then(({ useNoteFolderStore }) => {
+                    const folderStore = useNoteFolderStore.getState();
+                    const folder = folderStore.getFolderById(dragState.hoveredFolderId!);
+                    const folderName = folder?.name || 'folder';
+
+                    // Update the card's folder
+                    updateCardInStore(dragState.draggedCardId!, { noteFolderId: dragState.hoveredFolderId });
+                    setCards((prev) =>
+                      prev.map((c) => (c.id === dragState.draggedCardId ? { ...c, noteFolderId: dragState.hoveredFolderId } : c))
+                    );
+                    useToastStore.getState().success(`Moved to ${folderName}`);
+                  });
+                }
+              }
+
               // Clear global drag state
               useDragStore.getState().endDrag();
               // Remove body class for z-index handling
@@ -920,12 +942,19 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
           >
             {(calculatedWidth: number) => (
               <>
-                {filteredAndSortedCards.map((card) => (
+                {filteredAndSortedCards.map((card) => {
+                  // Calculate fixed height for grid mode (16:9 aspect + metadata space)
+                  const gridItemHeight = layout === "grid"
+                    ? Math.round((calculatedWidth * 9) / 16) + (viewSettings.showMetadata ? 80 : 20)
+                    : undefined;
+
+                  return (
                   <MuuriItem
                     key={card.id}
                     cardId={card.id}
                     width={calculatedWidth}
                     spacing={cardSpacing}
+                    height={gridItemHeight}
                   >
                     <CardCell
                       card={card}
@@ -956,44 +985,12 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                       cardPadding={viewSettings.cardPadding}
                     />
                   </MuuriItem>
-                ))}
+                  );
+                })}
               </>
             )}
           </MuuriGridComponent>
-        ) : (
-          /* CSS Grid for grid/compact layouts */
-          <div className="w-full" style={{ padding: '0 16px' }}>
-          <div className={layoutConfig.className} style={layoutConfig.style} data-masonry-gallery>
-            {filteredAndSortedCards.map((card) => (
-              <CardCell
-                key={card.id}
-                card={card}
-                selected={selectedIds.includes(card.id)}
-                showThumbnail={showThumbnails}
-                layout={layout}
-                area={area}
-                onClick={handleCardClick}
-                onImageLoad={handleImageLoad}
-                onAddToPawkit={(slug) => handleAddToPawkit(card.id, slug)}
-                onDeleteCard={() => handleDeleteCard(card.id)}
-                onRemoveFromPawkit={(slug) => handleRemoveFromPawkit(card.id, slug)}
-                onRemoveFromAllPawkits={() => handleRemoveFromAllPawkits(card.id)}
-                onFetchMetadata={handleFetchMetadata}
-                isPinned={pinnedNoteIds.includes(card.id)}
-                onPinToSidebar={() => handlePinToSidebar(card.id)}
-                onUnpinFromSidebar={() => handleUnpinFromSidebar(card.id)}
-                onSetThumbnail={() => handleOpenThumbnailModal(card.id)}
-                onMoveToFolder={(folderId) => handleMoveToFolder(card.id, folderId)}
-                hasAttachments={cardsWithAttachments.has(card.id)}
-                showLabels={viewSettings.showLabels}
-                showMetadata={viewSettings.showMetadata}
-                showPreview={viewSettings.showPreview}
-                cardPadding={viewSettings.cardPadding}
-              />
-            ))}
-          </div>
-          </div>
-        )}
+        ) : null /* Compact layout removed - only list, masonry, and grid are supported */}
       {nextCursor && (
         <button className="w-full rounded bg-gray-900 py-2 text-sm" onClick={handleLoadMore}>
           Load more
@@ -1336,7 +1333,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         {/* Uniform sizing container for Grid view - all cards same aspect ratio */}
         <div className={layout === "grid" ? "aspect-video overflow-hidden flex flex-col" : ""}>
 
-      {showThumbnail && layout !== "compact" && !isNote && (
+      {showThumbnail && !isNote && (
         <div
           className={`relative ${hasTextSection && showMetadata ? "mb-3" : ""} w-full rounded-xl ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip`}
           style={{ background: 'var(--bg-surface-1)' }}
@@ -1624,7 +1621,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               {card.type === "md-note" ? "Markdown" : "Text"}
             </span>
           </div>
-          {card.collections && card.collections.length > 0 && layout !== "compact" && (
+          {card.collections && card.collections.length > 0 && (
             <div className="flex flex-wrap gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
               {card.collections
                 .filter((collection) =>
@@ -1664,7 +1661,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           {displaySubtext && showMetadata && (
             <p className="text-xs line-clamp-2" style={{ color: 'var(--text-muted)' }}>{displaySubtext}</p>
           )}
-          {showMetadata && card.collections && card.collections.length > 0 && layout !== "compact" && (
+          {showMetadata && card.collections && card.collections.length > 0 && (
             <div className="flex flex-wrap gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
               {card.collections
                 .filter((collection) =>
@@ -1759,21 +1756,10 @@ function getLayoutConfig(layout: LayoutMode, cardSize: number = 50, cardSpacing:
           gap: `${gapPx}px`
         }
       };
-    case "compact":
-      return {
-        className: "grid",
-        style: {
-          // Use minmax with max constraint to prevent overly wide cards on ultrawide monitors
-          gridTemplateColumns: `repeat(auto-fill, minmax(${minCardWidth}px, ${maxCardWidth}px))`,
-          gap: `${gapPx}px`,
-          // Center the grid when cards don't fill the full width
-          justifyContent: 'center',
-          // Align cards to top - prevents stretching to match tallest card in row
-          alignItems: 'start',
-        }
-      };
     case "grid":
+    case "masonry":
     default:
+      // Note: grid and masonry now use Muuri, but this is kept for any fallback scenarios
       return {
         className: "grid",
         style: {

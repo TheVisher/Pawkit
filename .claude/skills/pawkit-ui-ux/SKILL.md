@@ -1,13 +1,17 @@
 ---
 name: pawkit-ui-ux
-description: Official Pawkit design language - glass morphism with strategic purple glow for interactions
+description: Official Pawkit design language - glass morphism with strategic purple glow for interactions (project)
 ---
 
 # Pawkit UI/UX Design System - "Selective Glow"
 
-**Purpose**: Official Pawkit design language - glass morphism with strategic purple glow for interactions
+**Purpose**: Official Pawkit design language - neumorphic-lite depth effects with glass morphism and dynamic accent glow
 
-**Philosophy**: Glass is default. Purple glow reveals interaction. Not everything glows - hierarchy, not chaos.
+**Philosophy**:
+1. **Depth creates hierarchy** - Raised elements are interactive, inset elements receive input
+2. **Glass is optional** - Modern (solid) or Glass (transparent + blur) modes
+3. **Accent glow reveals interaction** - Purple/blue/green/red/orange glow on hover and selected states
+4. **CSS variables everywhere** - All colors, shadows, and effects use variables for theming
 
 ---
 
@@ -3927,4 +3931,430 @@ useEffect(() => {
 
 ---
 
-**Last Updated**: December 7, 2025
+## Depth Effects System (December 2025)
+
+### Overview
+
+Pawkit uses a "neumorphic-lite" depth system where elements can appear either **raised** (lifted above the surface) or **inset** (pressed into the surface). This creates visual hierarchy and clear interactive states without heavy 3D effects.
+
+**Philosophy**: Elements that can be interacted with appear **raised**. Elements that receive input (containers, fields) appear **inset**. Selected/active elements are **raised with accent glow**.
+
+### Depth CSS Variables
+
+These variables are defined in `app/globals.css` and automatically adapt to dark/light mode:
+
+```css
+/* DARK MODE */
+--inset-shadow: inset 0 3px 6px rgba(0, 0, 0, 0.4), inset 0 1px 3px rgba(0, 0, 0, 0.3), inset 0 -1px 0 rgba(255, 255, 255, 0.08);
+--inset-border: 1px solid rgba(0, 0, 0, 0.3);
+--inset-border-bottom: rgba(255, 255, 255, 0.12);
+--inset-border-right: rgba(255, 255, 255, 0.06);
+
+--raised-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+--raised-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+--raised-border-top: rgba(255, 255, 255, 0.12);
+
+/* LIGHT MODE */
+--inset-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.12), inset 0 1px 2px rgba(0, 0, 0, 0.08);
+--raised-shadow: 0 2px 6px rgba(0, 0, 0, 0.12), 0 1px 3px rgba(0, 0, 0, 0.08);
+```
+
+### Surface Hierarchy
+
+Use surface variables for depth layering:
+
+```
+--bg-surface-1  →  Darkest (most recessed, inset containers)
+--bg-surface-2  →  Mid-level (standard panels, modals)
+--bg-surface-3  →  Lighter (raised elements, buttons)
+--bg-surface-4  →  Lightest (hover states on raised elements)
+```
+
+---
+
+### Pattern 1: Lifted/Raised Buttons (Selected State)
+
+**Use Case**: Selected buttons, active navigation items, primary actions
+
+**Key Characteristics**:
+- Background gradient from surface-3 (top) to surface-2 (bottom)
+- `--raised-shadow` for depth
+- `--raised-border-top` highlight on top edge
+- Accent color glow for selected state
+
+```tsx
+// LIFTED BUTTON (SELECTED)
+<button
+  style={{
+    background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+    boxShadow: 'var(--raised-shadow), 0 0 20px hsla(var(--accent-h) var(--accent-s) 50% / 0.3)',
+    border: '1px solid hsla(var(--accent-h) var(--accent-s) 50% / 0.5)',
+    borderTopColor: 'var(--raised-border-top)',
+    color: 'var(--ds-accent)',
+  }}
+  className="px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+>
+  Selected Option
+</button>
+```
+
+---
+
+### Pattern 2: Inset Buttons (Unselected State)
+
+**Use Case**: Unselected options, inactive toggles, secondary buttons
+
+**Key Characteristics**:
+- Flat background using surface-1 (recessed)
+- `--inset-shadow` for pressed-in appearance
+- Subtle border without accent color
+
+```tsx
+// INSET BUTTON (UNSELECTED)
+<button
+  style={{
+    background: 'var(--bg-surface-1)',
+    boxShadow: 'var(--inset-shadow)',
+    border: '1px solid var(--border-subtle)',
+    color: 'var(--text-secondary)',
+  }}
+  className="px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200"
+>
+  Unselected Option
+</button>
+```
+
+---
+
+### Pattern 3: Toggle Button Component
+
+**Use Case**: Option selectors, type switches (e.g., Markdown/Plain Text/Daily Note)
+
+Complete component pattern for buttons that toggle between lifted and inset states:
+
+```tsx
+interface ToggleButtonProps {
+  selected: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  icon?: React.ElementType;
+  label: string;
+}
+
+function ToggleButton({ selected, onClick, disabled, icon: Icon, label }: ToggleButtonProps) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`
+        flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-medium
+        transition-all duration-200
+        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+      `}
+      style={
+        selected
+          ? {
+              // LIFTED STATE
+              background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+              boxShadow: 'var(--raised-shadow), 0 0 20px hsla(var(--accent-h) var(--accent-s) 50% / 0.3)',
+              border: '1px solid hsla(var(--accent-h) var(--accent-s) 50% / 0.5)',
+              borderTopColor: 'var(--raised-border-top)',
+              color: 'var(--ds-accent)',
+            }
+          : {
+              // INSET STATE
+              background: 'var(--bg-surface-1)',
+              boxShadow: 'var(--inset-shadow)',
+              border: '1px solid var(--border-subtle)',
+              color: 'var(--text-secondary)',
+            }
+      }
+    >
+      {Icon && <Icon size={18} />}
+      <span>{label}</span>
+    </button>
+  );
+}
+```
+
+**Hover State for Unselected** (optional):
+```tsx
+// Add to className for hover effect on unselected
+hover:bg-surface-soft  // Use Tailwind class
+// OR via style:
+onMouseEnter: bg-surface-2 equivalent
+```
+
+---
+
+### Pattern 4: Inset Text Inputs
+
+**Use Case**: All text inputs, textareas, search fields
+
+**Key Characteristics**:
+- Recessed appearance using surface-1 background
+- `--inset-shadow` for depth
+- Focus state adds accent glow without changing depth
+
+```tsx
+<input
+  type="text"
+  placeholder="Enter title..."
+  className="w-full px-4 py-3 rounded-xl text-sm transition-all outline-none"
+  style={{
+    background: 'var(--bg-surface-1)',
+    boxShadow: 'var(--inset-shadow)',
+    border: '1px solid var(--border-subtle)',
+    color: 'var(--text-primary)',
+  }}
+/>
+
+// With focus ring (via Tailwind):
+className="... focus:ring-2 focus:ring-[var(--ds-accent)]/30"
+```
+
+---
+
+### Pattern 5: Inset Containers with Raised Items
+
+**Use Case**: Selection lists, template pickers, option grids
+
+**Structure**: Outer container is inset (recessed well), inner items are raised (selectable cards)
+
+```tsx
+{/* INSET CONTAINER */}
+<div
+  className="rounded-xl p-3 max-h-56 overflow-y-auto"
+  style={{
+    background: 'var(--bg-surface-1)',
+    boxShadow: 'var(--inset-shadow)',
+  }}
+>
+  {/* RAISED ITEMS INSIDE */}
+  {items.map((item) => (
+    <button
+      key={item.id}
+      className="w-full text-left p-3 rounded-lg transition-all mb-2 last:mb-0"
+      style={
+        selectedId === item.id
+          ? {
+              // SELECTED ITEM - raised with glow
+              background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+              boxShadow: 'var(--raised-shadow-sm), 0 0 12px hsla(var(--accent-h) var(--accent-s) 50% / 0.2)',
+              border: '1px solid hsla(var(--accent-h) var(--accent-s) 50% / 0.4)',
+              borderTopColor: 'var(--raised-border-top)',
+            }
+          : {
+              // UNSELECTED ITEM - raised but neutral
+              background: 'var(--bg-surface-2)',
+              boxShadow: 'var(--raised-shadow-sm)',
+              border: '1px solid var(--border-subtle)',
+              borderTopColor: 'var(--raised-border-top)',
+            }
+      }
+    >
+      <span style={{ color: selectedId === item.id ? 'var(--ds-accent)' : 'var(--text-primary)' }}>
+        {item.title}
+      </span>
+    </button>
+  ))}
+</div>
+```
+
+---
+
+### Pattern 6: Modal Container with Depth
+
+**Use Case**: All modals, dialogs, panels
+
+**Key Characteristics**:
+- Modal uses surface-2 background
+- Large shadow (shadow-4) for elevation
+- `backdrop-blur-xl` for glass mode support
+- Subtle border with highlight top edge
+
+```tsx
+{/* MODAL OVERLAY */}
+<div
+  className="fixed inset-0 z-50 flex items-center justify-center p-4"
+  style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+  onClick={onClose}
+>
+  {/* MODAL CONTAINER */}
+  <div
+    className="w-full max-w-md rounded-2xl overflow-hidden backdrop-blur-xl"
+    onClick={(e) => e.stopPropagation()}
+    style={{
+      background: 'var(--bg-surface-2)',
+      boxShadow: 'var(--shadow-4)',
+      border: '1px solid var(--border-subtle)',
+      borderTopColor: 'var(--border-highlight-top)',
+    }}
+  >
+    {/* MODAL HEADER */}
+    <div
+      className="px-6 py-4"
+      style={{
+        borderBottom: '1px solid var(--border-subtle)',
+      }}
+    >
+      <h2 style={{ color: 'var(--text-primary)' }} className="text-lg font-semibold">
+        Modal Title
+      </h2>
+    </div>
+
+    {/* MODAL CONTENT */}
+    <div className="p-6 space-y-6">
+      {/* Content with inset inputs, raised buttons, etc. */}
+    </div>
+
+    {/* MODAL FOOTER */}
+    <div
+      className="px-6 py-4 flex justify-end gap-3"
+      style={{
+        background: 'var(--bg-surface-1)',
+        borderTop: '1px solid var(--border-subtle)',
+      }}
+    >
+      <button
+        className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+        style={{
+          background: 'var(--bg-surface-2)',
+          boxShadow: 'var(--raised-shadow-sm)',
+          border: '1px solid var(--border-subtle)',
+          borderTopColor: 'var(--raised-border-top)',
+          color: 'var(--text-secondary)',
+        }}
+      >
+        Cancel
+      </button>
+      <button
+        className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+        style={{
+          background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+          boxShadow: 'var(--raised-shadow), 0 0 15px hsla(var(--accent-h) var(--accent-s) 50% / 0.3)',
+          border: '1px solid hsla(var(--accent-h) var(--accent-s) 50% / 0.5)',
+          borderTopColor: 'var(--raised-border-top)',
+          color: 'var(--ds-accent)',
+        }}
+      >
+        Create
+      </button>
+    </div>
+  </div>
+</div>
+```
+
+---
+
+### Pattern 7: Section Headers in Modals
+
+**Use Case**: Labeling sections within modals or panels
+
+```tsx
+<h3
+  className="text-sm font-medium uppercase tracking-wide mb-3"
+  style={{ color: 'var(--text-muted)' }}
+>
+  Section Label
+</h3>
+```
+
+---
+
+### Glass Mode Compatibility
+
+When building components that should work with Glass UI mode:
+
+1. **Always add `backdrop-blur-xl`** to modal containers
+2. **Use CSS variables** instead of hardcoded colors - they auto-adjust for glass
+3. **Test in both Modern and Glass modes** before committing
+
+Glass mode automatically:
+- Makes surface backgrounds semi-transparent
+- Applies backdrop blur to panels with `data-panel` attributes
+- Adjusts shadow intensity
+
+---
+
+### DO's and DON'Ts
+
+**✅ DO**:
+- Use CSS variables for ALL colors and shadows
+- Use `--raised-shadow` for interactive elements
+- Use `--inset-shadow` for input fields and containers
+- Add accent glow to selected states: `0 0 20px hsla(var(--accent-h) var(--accent-s) 50% / 0.3)`
+- Use gradient backgrounds for lifted elements
+- Include `backdrop-blur-xl` on modals
+
+**❌ DON'T**:
+- Hardcode colors like `bg-gray-800` - use `var(--bg-surface-2)`
+- Skip the border-top highlight on raised elements
+- Use flat backgrounds for interactive buttons
+- Forget hover states (add `hover:bg-surface-soft` for unselected)
+- Mix the glass pill pattern with the depth pattern - choose one based on context
+
+---
+
+### When to Use Glass Pills vs Depth Buttons
+
+| Use Case | Pattern |
+|----------|---------|
+| Workspace switcher, top nav | Glass pill with glow |
+| Filter tags | Glass pill with glow |
+| Option toggles (Markdown/Plain Text) | Depth buttons (lifted/inset) |
+| Form inputs | Inset depth |
+| Modal action buttons | Depth buttons (raised) |
+| Cards in grid | Glass card OR Depth raised |
+| Selection lists | Inset container + raised items |
+
+---
+
+### Quick Reference: Common Style Objects
+
+```typescript
+// Lifted/Selected Button
+const liftedStyle = {
+  background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+  boxShadow: 'var(--raised-shadow), 0 0 20px hsla(var(--accent-h) var(--accent-s) 50% / 0.3)',
+  border: '1px solid hsla(var(--accent-h) var(--accent-s) 50% / 0.5)',
+  borderTopColor: 'var(--raised-border-top)',
+  color: 'var(--ds-accent)',
+};
+
+// Inset/Unselected Button
+const insetStyle = {
+  background: 'var(--bg-surface-1)',
+  boxShadow: 'var(--inset-shadow)',
+  border: '1px solid var(--border-subtle)',
+  color: 'var(--text-secondary)',
+};
+
+// Inset Input
+const inputStyle = {
+  background: 'var(--bg-surface-1)',
+  boxShadow: 'var(--inset-shadow)',
+  border: '1px solid var(--border-subtle)',
+  color: 'var(--text-primary)',
+};
+
+// Raised Card (neutral)
+const cardStyle = {
+  background: 'var(--bg-surface-2)',
+  boxShadow: 'var(--raised-shadow-sm)',
+  border: '1px solid var(--border-subtle)',
+  borderTopColor: 'var(--raised-border-top)',
+};
+
+// Modal Container
+const modalStyle = {
+  background: 'var(--bg-surface-2)',
+  boxShadow: 'var(--shadow-4)',
+  border: '1px solid var(--border-subtle)',
+  borderTopColor: 'var(--border-highlight-top)',
+};
+```
+
+---
+
+**Last Updated**: December 8, 2025
