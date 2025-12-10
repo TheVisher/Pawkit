@@ -1336,7 +1336,10 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       {showThumbnail && !isNote && (
         <div
           className={`relative ${layout !== "grid" && hasTextSection && showMetadata ? "mb-2" : ""} w-full ${layout === "grid" ? "" : "rounded-xl"} ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip overflow-hidden`}
-          style={{ background: layout === "grid" ? 'transparent' : 'var(--bg-surface-1)' }}
+          style={{
+            background: layout === "grid" ? 'transparent' : 'var(--bg-surface-1)',
+            borderRadius: layout === "grid" && showMetadata ? '0' : undefined
+          }}
         >
           {/* Film sprocket holes for movie cards */}
           {isMovie && (
@@ -1490,7 +1493,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       {layout === "grid" && showMetadata && !isNote && (
         <div
           className="relative overflow-hidden"
-          style={{ height: '44px' }}
+          style={{ height: '44px', borderRadius: '0' }}
         >
           {/* Blurred image background - extends the thumbnail colors */}
           {imageUrl && (
