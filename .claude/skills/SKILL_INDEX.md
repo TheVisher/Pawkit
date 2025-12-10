@@ -10,7 +10,7 @@
 
 | Task Type | Primary Skill | Secondary Skills |
 |-----------|---------------|------------------|
-| **UI work** (components, styling, modals) | `pawkit-ui-ux` | `pawkit-conventions` |
+| **UI work** (components, styling, modals) | `pawkit-ui-ux/UI_QUICK_REFERENCE.md` ⚠️ | `pawkit-ui-ux/SKILL.md` |
 | **Sync/data issues** | `pawkit-sync-patterns` | `pawkit-troubleshooting` |
 | **API routes** | `pawkit-api-patterns` | `pawkit-security` |
 | **Cloud storage** (Filen, GDrive, etc.) | `pawkit-cloud-providers` | `pawkit-sync-patterns` |
@@ -22,6 +22,24 @@
 | **New feature planning** | `pawkit-roadmap` | `pawkit-project-context` |
 | **Project status/context** | `pawkit-project-context` | `pawkit-roadmap` |
 | **Code conventions** | `pawkit-conventions` | `pawkit-api-patterns` |
+
+---
+
+## ⚠️ CRITICAL: UI Work Instructions
+
+**For ANY UI work, read these files IN ORDER:**
+
+1. **FIRST**: `pawkit-ui-ux/UI_QUICK_REFERENCE.md` - Copy-paste patterns, default style
+2. **THEN** (if needed): `pawkit-ui-ux/SKILL.md` - Full component documentation
+3. **ALSO**: `docs/PAWKIT_UI_DESIGN_SYSTEM.md` - CSS variables and elevation system
+
+**Key Rules:**
+- **Modern is the DEFAULT style** (solid surfaces with depth)
+- **Glass is OPT-IN** (only when user enables it in settings)
+- Buttons must have **shadow + hover lift effect** (not flat!)
+- Cards must have **elevation shadows** (not just borders)
+
+**If CC creates flat buttons or uses Glass patterns by default, it hasn't read the Quick Reference.**
 
 ---
 
@@ -48,23 +66,25 @@
 
 ### Domain-Specific Skills
 
-#### `pawkit-ui-ux`
-**When to use**: Any UI/styling work, component creation, design consistency
-**Contains**: 
-- Glass morphism patterns (108KB of patterns!)
-- Button, card, modal, slider patterns
-- Calendar components
-- Context menu patterns
-- List view standardization
-- Mobile glass patterns (React Native)
-- Toast notification system
-- Neumorphic-lite design system
+#### `pawkit-ui-ux` ⚠️ SPECIAL HANDLING
 
-**Key patterns**:
-- `GlassPillButton`, `GlassCard`, `GlassModal`
-- Purple glow = interaction indicator
-- `rounded-3xl` for cards, `rounded-full` for pills
-- Line icons only (no emojis!)
+**TWO FILES - Read in order:**
+
+1. **`UI_QUICK_REFERENCE.md`** (READ FIRST!)
+   - Default style = Modern (NOT Glass)
+   - Copy-paste button/card/modal patterns
+   - Common mistakes to avoid
+   - Checklist before submitting UI work
+
+2. **`SKILL.md`** (Full reference)
+   - Glass morphism patterns (for when Glass is requested)
+   - Calendar components
+   - Context menu patterns
+   - List view standardization
+   - Mobile glass patterns
+   - Toast notification system
+
+**Key insight**: The main SKILL.md focuses heavily on Glass patterns because it was written when Glass was the default. Now Modern is default. Always check UI_QUICK_REFERENCE.md first!
 
 #### `pawkit-sync-patterns`
 **When to use**: Sync issues, conflict resolution, multi-session problems, offline behavior
@@ -127,24 +147,29 @@
 When giving tasks to Claude Code, include skill references:
 
 ```
-Task: Add a new glass modal for tag management
+Task: Add a new modal for tag management
 
 Skills to read:
-- .claude/skills/pawkit-ui-ux/SKILL.md (Section: MODALS)
+- .claude/skills/pawkit-ui-ux/UI_QUICK_REFERENCE.md (READ FIRST - default patterns)
+- .claude/skills/pawkit-ui-ux/SKILL.md (Section: MODALS - if needed)
 - .claude/skills/pawkit-conventions/SKILL.md
 
+Style: Use Modern (default) style unless I say otherwise
+
 After completing, update:
-- .claude/skills/pawkit-ui-ux/SKILL.md if new pattern emerged
+- .claude/skills/pawkit-ui-ux/UI_QUICK_REFERENCE.md if new pattern emerged
 ```
 
 ### For Claude Code (via filesystem)
 
-At the start of any task:
+At the start of any UI task:
 
 ```bash
-# Read relevant skills FIRST
-view .claude/skills/SKILL_INDEX.md
-view .claude/skills/pawkit-ui-ux/SKILL.md  # for UI work
+# ALWAYS read Quick Reference FIRST for UI work
+view .claude/skills/pawkit-ui-ux/UI_QUICK_REFERENCE.md
+
+# Then read full skill if needed
+view .claude/skills/pawkit-ui-ux/SKILL.md
 ```
 
 ### Skill Update Workflow
