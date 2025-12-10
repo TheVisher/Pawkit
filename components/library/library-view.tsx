@@ -234,8 +234,6 @@ export function LibraryView({
         return classes.masonry;
       case "list":
         return "flex flex-col gap-3";
-      case "compact":
-        return classes.compact;
       case "grid":
       default:
         return classes.grid;
@@ -243,7 +241,6 @@ export function LibraryView({
   };
 
   const TimelineCard = ({ card, layout }: { card: CardModel; layout: LayoutMode }) => {
-    const isCompact = layout === "compact";
     const isList = layout === "list";
     const isMasonry = layout === "masonry";
     const isSelected = selectedIds.includes(card.id);
@@ -276,7 +273,7 @@ export function LibraryView({
       >
         {card.image && (
           <div className={`relative mb-3 w-full overflow-hidden rounded-xl bg-surface-soft ${
-            isMasonry ? "" : isCompact ? "aspect-square" : "aspect-video"
+            isMasonry ? "" : "aspect-video"
           }`}>
             <img
               src={card.image}
@@ -287,13 +284,11 @@ export function LibraryView({
           </div>
         )}
         <div className="space-y-1">
-          <div className={`font-semibold text-foreground ${isCompact ? "text-xs line-clamp-2" : "text-sm"}`}>
+          <div className="font-semibold text-foreground text-sm">
             {card.title || card.domain || card.url}
           </div>
-          {!isCompact && (
-            <div className="text-xs text-muted-foreground">{card.domain ?? card.url}</div>
-          )}
-          {card.collections && card.collections.length > 0 && !isCompact && (
+          <div className="text-xs text-muted-foreground">{card.domain ?? card.url}</div>
+          {card.collections && card.collections.length > 0 && (
             <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
               {card.collections.map((collectionId) => (
                 <span key={collectionId} className="rounded bg-surface-soft px-2 py-0.5">

@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, Suspense } from "react";
-import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CardModel, CollectionNode } from "@/lib/types";
-import { useSelection } from "@/lib/hooks/selection-store";
 import { CardGallery } from "@/components/library/card-gallery";
 import { LayoutMode } from "@/lib/constants";
 import { useViewSettingsStore, type ViewKey } from "@/lib/hooks/view-settings-store";
@@ -28,14 +26,9 @@ export type LibraryWorkspaceProps = {
 function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery, collectionsTree, collectionName, hideControls = false, storageKey = "library-layout", area }: LibraryWorkspaceProps) {
   const [cards, setCards] = useState<CardModel[]>(initialCards);
   const [nextCursor, setNextCursor] = useState<string | undefined>(initialNextCursor);
-  const [activeCollectionSlug, setActiveCollectionSlug] = useState<string | null>(null);
   const [layout, setLayout] = useState<LayoutMode>(initialQuery.layout);
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const router = useRouter();
   const searchParams = useSearchParams();
-
-  const selectedIds = useSelection((state) => state.selectedIds);
-  const clearSelection = useSelection((state) => state.clear);
 
   // Get view settings from the store
   // For pawkits, use pawkit-specific key (e.g., "pawkit-my-collection") if slug provided
@@ -45,12 +38,10 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
   const viewSettings = useViewSettingsStore((state) => state.getSettings(viewKey));
   const setViewLayout = useViewSettingsStore((state) => state.setLayout);
 
-  const selectedCollection = useMemo(() => searchParams?.get("collection") ?? null, [searchParams]);
-
   // Load saved layout preference from view settings store on mount
   useEffect(() => {
     const savedLayout = viewSettings.layout;
-    if (savedLayout && ["grid", "masonry", "compact", "list"].includes(savedLayout)) {
+    if (savedLayout && ["grid", "masonry", "list"].includes(savedLayout)) {
       setLayout(savedLayout);
       // Update URL with saved preference if not already set
       if (!searchParams?.has("layout")) {
@@ -60,7 +51,7 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
         router.replace(`${currentPath}?${params.toString()}`);
       }
     }
-  }, [router, searchParams, viewSettings.layout]);
+  }, [router, searchParams, viewSettings.layout, viewKey, setViewLayout]);
 
   useEffect(() => {
     setCards(initialCards);
@@ -84,76 +75,21 @@ function LibraryWorkspaceContent({ initialCards, initialNextCursor, initialQuery
     router.push(`${currentPath}?${params.toString()}`);
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const slug = event.over?.data.current?.slug as string | undefined;
-    setActiveCollectionSlug(null);
-    if (!slug) return;
-    const ids = selectedIds.length ? selectedIds : [event.active.id as string];
-
-    // Optimistically update UI
-    const updatedCards = ids.map((id) => {
-      const currentCollections = cards.find((card) => card.id === id)?.collections ?? [];
-      return {
-        id,
-        collections: Array.from(new Set([slug, ...currentCollections]))
-      };
-    });
-
-    setCards((prev) =>
-      prev.map((card) => {
-        const update = updatedCards.find((u) => u.id === card.id);
-        return update ? { ...card, collections: update.collections } : card;
-      })
-    );
-
-    try {
-      // Update backend
-      const results = await Promise.all(
-        updatedCards.map(({ id, collections }) =>
-          fetch(`/api/cards/${id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ collections })
-          }).then((res) => {
-            if (!res.ok) throw new Error(`Failed to update card ${id}`);
-            return res.json();
-          })
-        )
-      );
-
-      // Update with actual server response
-      setCards((prev) =>
-        prev.map((card) => {
-          const updated = results.find((r) => r.id === card.id);
-          return updated || card;
-        })
-      );
-
-      clearSelection();
-    } catch (error) {
-      // Revert optimistic update on error
-      setCards(cards);
-    }
-  };
-
-  const handleDragOver = (slug: string | null) => {
-    setActiveCollectionSlug(slug);
-  };
+  // Note: Drag-and-drop is now handled entirely by Muuri in CardGallery
+  // for both masonry and grid layouts. List layout doesn't support drag-and-drop.
 
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <CardGallery
-        cards={cards}
-        nextCursor={nextCursor}
-        layout={layout}
-        onLayoutChange={handleLayoutChange}
-        setCards={setCards}
-        setNextCursor={setNextCursor}
-        hideControls={hideControls}
-        area={area}
-        currentPawkitSlug={initialQuery.collection}
-      />
-    </DndContext>
+    <CardGallery
+      cards={cards}
+      nextCursor={nextCursor}
+      layout={layout}
+      onLayoutChange={handleLayoutChange}
+      setCards={setCards}
+      setNextCursor={setNextCursor}
+      hideControls={hideControls}
+      area={area}
+      currentPawkitSlug={initialQuery.collection}
+    />
   );
 }
 

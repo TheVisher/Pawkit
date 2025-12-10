@@ -16,7 +16,7 @@ interface FileCardProps {
   selected?: boolean;
   onClick?: () => void;
   onPreview?: () => void;
-  layout?: "grid" | "list" | "compact";
+  layout?: "grid" | "list";
 }
 
 export function FileCard({
@@ -159,9 +159,7 @@ export function FileCard({
 
       {/* Thumbnail/Preview area */}
       <div
-        className={`relative mb-3 w-full rounded-xl bg-surface-soft overflow-hidden ${
-          layout === "compact" ? "aspect-square" : "aspect-video"
-        }`}
+        className="relative mb-3 w-full rounded-xl bg-surface-soft overflow-hidden aspect-video"
       >
         {thumbnailUrl ? (
           <img

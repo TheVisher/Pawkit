@@ -533,9 +533,10 @@ export type MuuriItemProps = {
   className?: string;
   width: number; // Width in pixels (content width)
   spacing: number; // Gap between items in pixels
+  height?: number; // Optional fixed height in pixels (for grid mode)
 };
 
-export function MuuriItem({ children, cardId, className = "", width, spacing }: MuuriItemProps) {
+export function MuuriItem({ children, cardId, className = "", width, spacing, height }: MuuriItemProps) {
   // Half spacing on each side creates the gap between items
   const margin = spacing / 2;
 
@@ -545,6 +546,7 @@ export function MuuriItem({ children, cardId, className = "", width, spacing }: 
       data-card-id={cardId}
       style={{
         width: `${width}px`,
+        height: height ? `${height}px` : "auto",
         position: "absolute",
         padding: `${margin}px`, // Padding creates the visual gap
         boxSizing: "border-box",

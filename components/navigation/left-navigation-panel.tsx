@@ -141,6 +141,8 @@ export function LeftNavigationPanel({
   const isDraggingCard = useDragStore((state) => state.isDragging);
   const dragHoveredPawkit = useDragStore((state) => state.hoveredPawkitSlug);
   const setDragHoveredPawkit = useDragStore((state) => state.setHoveredPawkit);
+  const dragHoveredFolder = useDragStore((state) => state.hoveredFolderId);
+  const setDragHoveredFolder = useDragStore((state) => state.setHoveredFolder);
 
   // PERFORMANCE: Selective subscription - only get cards we actually need for the sidebar
   // This prevents re-renders when unrelated cards change
@@ -278,6 +280,27 @@ export function LeftNavigationPanel({
       staleIds.forEach(id => unpinNote(id));
     }
   }, [pinnedNoteIds, allCards, unpinNote]);
+
+  // Calculate note counts per folder (and unfiled count)
+  const noteCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    let unfiledCount = 0;
+
+    // Only count notes (md-note, text-note), not deleted
+    const notes = allCards.filter(
+      (card) => (card.type === 'md-note' || card.type === 'text-note') && !card.deleted
+    );
+
+    notes.forEach((note) => {
+      if (note.noteFolderId) {
+        counts[note.noteFolderId] = (counts[note.noteFolderId] || 0) + 1;
+      } else {
+        unfiledCount++;
+      }
+    });
+
+    return { counts, unfiledCount, totalNotes: notes.length };
+  }, [allCards]);
 
   // Drag and drop for pinned notes
   const sensors = useSensors(
@@ -1004,6 +1027,7 @@ export function LeftNavigationPanel({
     const isExpanded = expandedFolderIds.has(folder.id);
     const isSelected = selectedFolderId === folder.id;
     const isFolderHovered = hoveredCreatePawkit === `folder-${folder.id}`;
+    const isDragTarget = isDraggingCard && dragHoveredFolder === folder.id;
 
     const iconSize = depth === 0 ? 14 : 12;
     const textSize = depth === 0 ? "text-sm" : "text-xs";
@@ -1049,21 +1073,35 @@ export function LeftNavigationPanel({
     const folderContent = (
       <div key={folder.id}>
         <div
-          className="flex items-center gap-1 group/folder"
-          onMouseEnter={() => setHoveredCreatePawkit(`folder-${folder.id}`)}
-          onMouseLeave={() => setHoveredCreatePawkit(null)}
+          className={`flex items-center gap-1 group/folder rounded-lg transition-all ${
+            isDragTarget ? 'ring-2 ring-accent ring-offset-2 ring-offset-background' : ''
+          }`}
+          onMouseEnter={() => {
+            setHoveredCreatePawkit(`folder-${folder.id}`);
+            if (isDraggingCard) {
+              setDragHoveredFolder(folder.id);
+            }
+          }}
+          onMouseLeave={() => {
+            setHoveredCreatePawkit(null);
+            if (isDraggingCard) {
+              setDragHoveredFolder(null);
+            }
+          }}
         >
           <div className="relative flex-1">
             <button
               onClick={() => handleSelectFolder(folder.id)}
               className={`
                 w-full flex items-center gap-2 ${padding} rounded-lg ${textSize} transition-all overflow-hidden
-                ${isSelected
-                  ? "font-medium"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                ${isDragTarget
+                  ? "bg-accent/20 text-accent font-medium"
+                  : isSelected
+                    ? "font-medium"
+                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
                 }
               `}
-              style={isSelected ? {
+              style={isSelected && !isDragTarget ? {
                 background: 'var(--bg-surface-3)',
                 color: 'var(--text-primary)',
                 boxShadow: 'inset -3px 0 0 var(--ds-accent), var(--shadow-1)',
@@ -1074,6 +1112,11 @@ export function LeftNavigationPanel({
             >
               <Folder size={iconSize} className="flex-shrink-0" />
               <span className="flex-1 text-left truncate">{folder.name}</span>
+              {noteCounts.counts[folder.id] > 0 && (
+                <span className="text-xs text-muted-foreground ml-auto">
+                  ({noteCounts.counts[folder.id]})
+                </span>
+              )}
             </button>
           </div>
 
@@ -1504,6 +1547,11 @@ export function LeftNavigationPanel({
                 >
                   <FileText size={16} className="flex-shrink-0 opacity-50" />
                   <span className="flex-1 text-left">Unfiled</span>
+                  {noteCounts.unfiledCount > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      ({noteCounts.unfiledCount})
+                    </span>
+                  )}
                 </button>
               )}
 
