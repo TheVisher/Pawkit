@@ -316,7 +316,8 @@ export const useNoteFolderStore = create<NoteFolderState>()(
     {
       name: 'note-folders-ui',
       partialize: (state) => ({
-        // Only persist UI state, not data
+        // Persist both UI state and folder data for local-first experience
+        folders: state.folders,
         expandedFolderIds: Array.from(state.expandedFolderIds),
         selectedFolderId: state.selectedFolderId,
       }),
