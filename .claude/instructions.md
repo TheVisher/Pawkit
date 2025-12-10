@@ -1,5 +1,29 @@
 # Claude Code Instructions for Pawkit Project
 
+## 📚 SKILL SYSTEM - READ FIRST
+
+**Before starting any task**, check the skill index to find relevant skills:
+
+```bash
+# Read the skill index to find which skills apply to your task
+view .claude/skills/SKILL_INDEX.md
+```
+
+The skill system contains comprehensive patterns, conventions, and troubleshooting guides accumulated over months of development. **Using the right skills prevents reinventing solutions and maintains consistency.**
+
+**Quick reference:**
+- UI/styling work → `pawkit-ui-ux`
+- Sync/data issues → `pawkit-sync-patterns`
+- API routes → `pawkit-api-patterns`
+- Cloud storage → `pawkit-cloud-providers`
+- Database → `pawkit-migrations` + this file
+- Bugs → `pawkit-troubleshooting`
+- New features → `pawkit-roadmap`
+
+**After completing significant work**: Update the relevant skill file with any new patterns discovered.
+
+---
+
 ## 📦 PACKAGE MANAGER: PNPM
 
 **This project uses pnpm, NOT npm.** Always use:

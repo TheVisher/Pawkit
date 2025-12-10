@@ -12,6 +12,7 @@ import { useRediscoverStore } from "@/lib/hooks/rediscover-store";
 import { useRouter, usePathname } from "next/navigation";
 import { useMemo, useState, useRef, useEffect } from "react";
 import { TodosSection } from "./todos-section";
+import { KitSection } from "@/components/kit/kit-section";
 
 // Map view settings sortBy to control panel sort options
 const mapSortByToControl = (sortBy: SortBy): "date" | "modified" | "title" | "domain" => {
@@ -762,7 +763,10 @@ export function LibraryControls() {
       ) : (
         // Normal Library Controls
         <>
-          {/* Todos Section - Always at top */}
+          {/* Kit AI Assistant - Always at top */}
+          <KitSection />
+
+          {/* Todos Section */}
           <TodosSection />
 
           {/* Tags Filter Section - Option 3: Inline chips with expansion */}
