@@ -1578,8 +1578,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               )}
             </div>
 
-            {/* Title at bottom */}
-            {showLabels && (
+            {/* Title at bottom - only show if metadata is OFF (otherwise metadata section shows title) */}
+            {showLabels && !showMetadata && (
               <div
                 className="px-4 pb-4 pt-2"
                 style={{
@@ -1607,17 +1607,17 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
             borderRadius: 'var(--radius-lg)'
           }}
         >
-          {/* Title */}
-          {showLabels && (
+          {/* Title - only show if metadata is OFF (otherwise metadata section shows title) */}
+          {showLabels && !showMetadata && (
             <div className="flex items-center gap-2">
-              <FileText size={16} style={{ color: 'var(--ds-accent)' }} className="flex-shrink-0" />
+              <FileText size={16} style={{ color: 'var(--text-muted)' }} className="flex-shrink-0" />
               <span className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>{displayTitle}</span>
             </div>
           )}
-          {/* Minimal fallback when no labels */}
-          {!showLabels && (
+          {/* Minimal fallback when no labels, or just show icon when metadata handles title */}
+          {(!showLabels || showMetadata) && (
             <div className="flex items-center justify-center flex-1">
-              <FileText size={32} style={{ color: 'var(--ds-accent)' }} />
+              <FileText size={32} style={{ color: 'var(--text-muted)' }} />
             </div>
           )}
         </div>
@@ -1641,11 +1641,11 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         </div>
       )}
 
-      {/* Show metadata section for notes - separate from card content */}
+      {/* Show metadata section for notes - matches URL card styling */}
       {isNote && showMetadata && (
         <div className="space-y-1 text-sm mt-2">
           <div className="flex items-center gap-2">
-            <span style={{ color: 'var(--ds-accent)' }}>
+            <span style={{ color: 'var(--text-muted)' }}>
               <FileText size={16} />
             </span>
             <h3 className="flex-1 font-semibold transition-colors line-clamp-2" style={{ color: 'var(--text-primary)' }}>{displayTitle}</h3>
@@ -1655,7 +1655,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               </span>
             )}
             {isPinned && (
-              <span style={{ color: 'var(--ds-accent)' }} className="flex-shrink-0">
+              <span style={{ color: 'var(--text-muted)' }} className="flex-shrink-0">
                 <Pin size={14} />
               </span>
             )}
@@ -1664,9 +1664,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
             <span
               className="inline-block rounded px-2 py-0.5 text-[10px]"
               style={{
-                background: 'var(--ds-accent-subtle)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--ds-accent-muted)'
+                background: 'var(--bg-surface-3)',
+                color: 'var(--text-muted)'
               }}
             >
               {card.type === "md-note" ? "Markdown" : "Text"}
