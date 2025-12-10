@@ -1326,7 +1326,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         }}
         className={`card-hover group relative cursor-pointer break-inside-avoid-column select-none ${
           selected ? "is-selected ring-2 ring-accent" : ""
-        } ${isDragging ? "opacity-50" : ""}`}
+        } ${isDragging ? "opacity-50" : ""} ${layout === "grid" ? "h-full overflow-hidden" : ""}`}
         onClick={(event) => onClick(event, card)}
         data-id={card.id}
       >
