@@ -49,6 +49,8 @@ import { useCloudSync } from "@/lib/hooks/use-cloud-sync";
 import { TourProvider } from "@/components/onboarding/tour-provider";
 import { CardDTO } from "@/lib/server/cards";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { FloatingActionBar } from "@/components/fab/floating-action-bar";
+import { KitOverlay } from "@/components/kit/kit-overlay";
 
 // Wrapper component that provides bulk operation handlers with access to selection store
 function BulkOperationsPanelWithHandlers({
@@ -688,6 +690,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               onNavigateToCard={handleNavigateToCard}
             />
           )}
+
+          {/* Kit Overlay (floating chat window) */}
+          <KitOverlay />
+
+          {/* Floating Action Bar (always visible) */}
+          <FloatingActionBar />
           </SidebarProvider>
         </PawkitActionsProvider>
       </SelectionStoreProvider>

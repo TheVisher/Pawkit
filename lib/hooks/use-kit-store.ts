@@ -10,7 +10,24 @@ interface Message {
   timestamp: Date;
 }
 
+interface Position {
+  x: number;
+  y: number;
+}
+
+interface Size {
+  width: number;
+  height: number;
+}
+
 interface KitState {
+  // Window state
+  isOpen: boolean;
+  isMinimized: boolean;
+  isAnchored: boolean;
+  position: Position;
+  size: Size;
+
   // Chat state
   messages: Message[];
   isLoading: boolean;
@@ -23,25 +40,56 @@ interface KitState {
     content?: string;
   } | null;
 
-  // Actions
+  // Window actions
+  open: () => void;
+  close: () => void;
+  toggleOpen: () => void;
+  toggleMinimized: () => void;
+  toggleAnchored: () => void;
+  setPosition: (position: Position) => void;
+  setSize: (size: Size) => void;
+
+  // Chat actions
   addMessage: (role: 'user' | 'assistant', content: string) => void;
   clearMessages: () => void;
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setActiveCardContext: (card: KitState['activeCardContext']) => void;
-
-  // API call
-  sendMessage: (message: string) => Promise<void>;
+  sendMessage: (message: string, context?: string) => Promise<void>;
 }
+
+const DEFAULT_POSITION = { x: 0, y: 0 }; // Will be calculated on mount
+const DEFAULT_SIZE = { width: 400, height: 500 };
 
 export const useKitStore = create<KitState>()(
   persist(
     (set, get) => ({
+      // Window defaults
+      isOpen: false,
+      isMinimized: false,
+      isAnchored: false,
+      position: DEFAULT_POSITION,
+      size: DEFAULT_SIZE,
+
+      // Chat defaults
       messages: [],
       isLoading: false,
       error: null,
       activeCardContext: null,
 
+      // Window actions
+      open: () => set({ isOpen: true }),
+      close: () => set({ isOpen: false }),
+      toggleOpen: () => set(state => ({ isOpen: !state.isOpen })),
+      toggleMinimized: () => set(state => ({ isMinimized: !state.isMinimized })),
+      toggleAnchored: () => set(state => ({
+        isAnchored: !state.isAnchored,
+        isMinimized: false // Expand when anchoring
+      })),
+      setPosition: (position) => set({ position }),
+      setSize: (size) => set({ size }),
+
+      // Chat actions
       addMessage: (role, content) => {
         const message: Message = {
           id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -56,17 +104,13 @@ export const useKitStore = create<KitState>()(
       },
 
       clearMessages: () => set({ messages: [], error: null }),
-
       setLoading: (isLoading) => set({ isLoading }),
-
       setError: (error) => set({ error }),
-
       setActiveCardContext: (card) => set({ activeCardContext: card }),
 
-      sendMessage: async (message: string) => {
+      sendMessage: async (message: string, context?: string) => {
         const { messages, activeCardContext, addMessage, setLoading, setError } = get();
 
-        // Add user message immediately
         addMessage('user', message);
         setLoading(true);
         setError(null);
@@ -82,6 +126,7 @@ export const useKitStore = create<KitState>()(
                 content: m.content,
               })),
               cardContext: activeCardContext,
+              viewContext: context,
             }),
           });
 
@@ -95,7 +140,6 @@ export const useKitStore = create<KitState>()(
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : 'Something went wrong';
           setError(errorMessage);
-          // Remove the user message if request failed
           set(state => ({
             messages: state.messages.slice(0, -1),
           }));
@@ -105,10 +149,13 @@ export const useKitStore = create<KitState>()(
       },
     }),
     {
-      name: 'kit-chat-storage',
+      name: 'kit-store',
       partialize: (state) => ({
-        // Only persist messages (not loading/error state)
-        messages: state.messages.slice(-20), // Keep last 20 messages
+        // Persist window state and recent messages
+        isAnchored: state.isAnchored,
+        position: state.position,
+        size: state.size,
+        messages: state.messages.slice(-20),
       }),
     }
   )
