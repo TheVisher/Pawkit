@@ -945,7 +945,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                 {filteredAndSortedCards.map((card) => {
                   // Calculate fixed height for grid mode (16:9 aspect + metadata space below when enabled)
                   const gridItemHeight = layout === "grid"
-                    ? Math.round((calculatedWidth * 9) / 16) + (viewSettings.showMetadata ? 60 : 20)
+                    ? Math.round((calculatedWidth * 9) / 16) + (viewSettings.showMetadata ? 44 : 0)
                     : undefined;
 
                   return (
@@ -1319,7 +1319,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         {...attributes}
         style={{
           ...style,
-          padding: `${cardPaddingPx}px`,
+          padding: layout === "grid" ? `${cardPaddingPx}px ${cardPaddingPx}px 0 ${cardPaddingPx}px` : `${cardPaddingPx}px`,
           borderWidth: '1px',
           borderStyle: 'solid',
           borderColor: selected ? 'var(--ds-accent)' : 'var(--border-subtle)'
@@ -1335,8 +1335,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
 
       {showThumbnail && !isNote && (
         <div
-          className={`relative ${layout !== "grid" && hasTextSection && showMetadata ? "mb-2" : ""} w-full ${layout === "grid" && showMetadata ? "rounded-t-xl" : "rounded-xl"} ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip overflow-hidden`}
-          style={{ background: 'var(--bg-surface-1)' }}
+          className={`relative ${layout !== "grid" && hasTextSection && showMetadata ? "mb-2" : ""} w-full ${layout === "grid" ? "" : "rounded-xl"} ${layout === "masonry" ? "min-h-[120px]" : "aspect-video"} group/filmstrip overflow-hidden`}
+          style={{ background: layout === "grid" ? 'transparent' : 'var(--bg-surface-1)' }}
         >
           {/* Film sprocket holes for movie cards */}
           {isMovie && (
@@ -1489,8 +1489,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       {/* Blurred extension metadata for grid view - below thumbnail */}
       {layout === "grid" && showMetadata && !isNote && (
         <div
-          className="relative overflow-hidden rounded-b-xl"
-          style={{ height: '40px' }}
+          className="relative overflow-hidden"
+          style={{ height: '44px' }}
         >
           {/* Blurred image background - extends the thumbnail colors */}
           {imageUrl && (
