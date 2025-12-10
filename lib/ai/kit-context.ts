@@ -185,15 +185,21 @@ export async function buildKitContext(
     
     if (keywords.length > 0 && totalTokens < maxContextTokens - 1000) {
       try {
-        const searchPattern = keywords.map(k => `%${k}%`).join('%');
+        // Build OR conditions for each keyword searching title and description
+        // Each keyword gets its own ilike check, combined with OR
+        const orConditions = keywords
+          .flatMap(k => [`title.ilike.%${k}%`, `description.ilike.%${k}%`])
+          .join(',');
+        
+        console.log('[Kit] Search OR conditions:', orConditions);
 
         const { data: relevantCards, error: relevantError } = await supabase
           .from('Card')
           .select('id, title, description, url, domain, tags, collections, deleted')
           .eq('userId', userId)
           .eq('deleted', false)
-          .or(`title.ilike.${searchPattern},description.ilike.${searchPattern}`)
-          .limit(10);
+          .or(orConditions)
+          .limit(15);
 
         if (relevantError) {
           console.error('[Kit] Error fetching relevant cards:', relevantError);
@@ -207,7 +213,7 @@ export async function buildKitContext(
         }
 
         if (relevantCards?.length) {
-          let relevantSection = `## Potentially Relevant Saved Items\n`;
+          let relevantSection = `## Potentially Relevant Saved Items (${relevantCards.length} matches)\n`;
           for (const card of relevantCards) {
             relevantSection += `- **${card.title || 'Untitled'}**`;
             if (card.domain) relevantSection += ` (${card.domain})`;
@@ -239,7 +245,7 @@ export async function buildKitContext(
           .eq('userId', userId)
           .eq('deleted', false)
           .order('createdAt', { ascending: false })
-          .limit(15);
+          .limit(25);
 
         if (recentError) {
           console.error('[Kit] Error fetching recent cards:', recentError);
