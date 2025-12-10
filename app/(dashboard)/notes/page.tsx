@@ -1,6 +1,6 @@
 "use client";
 
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import { useMemo, Suspense, useEffect } from "react";
 import { NotesView } from "@/components/notes/notes-view";
 import { useDataStore } from "@/lib/stores/data-store";
@@ -9,6 +9,7 @@ import { CollectionNode } from "@/lib/types";
 
 function NotesPageContent() {
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const q = searchParams.get("q") || undefined;
   const setNotesControls = usePanelStore((state) => state.setNotesControls);
 
@@ -16,9 +17,10 @@ function NotesPageContent() {
   const { cards, collections } = useDataStore();
 
   // Set notes controls when this page loads (doesn't force panel open)
+  // Include pathname to ensure this runs on every navigation to this page
   useEffect(() => {
     setNotesControls();
-  }, [setNotesControls]);
+  }, [setNotesControls, pathname]);
 
   // Filter to only notes (md-note or text-note) and exclude Den cards and private pawkit cards
   const allNotes = useMemo(() => {
