@@ -17,6 +17,14 @@ interface CardContext {
 }
 
 /**
+ * Parse tags from comma-separated string to array
+ */
+function parseTags(tags: string | null | undefined): string[] {
+  if (!tags) return [];
+  return tags.split(',').map(t => t.trim()).filter(Boolean);
+}
+
+/**
  * Build context from user's Pawkit data for Kit to reference
  *
  * This fetches relevant data from Supabase to give Kit context about:
@@ -60,87 +68,119 @@ export async function buildKitContext(
   }
 
   // 2. Get user's Pawkits (collections) for context
-  const { data: pawkits } = await supabase
-    .from('collections')
-    .select('name, slug, description')
-    .eq('user_id', userId)
-    .eq('deleted', false)
-    .order('name')
-    .limit(30);
+  // Note: Table is 'Collection' (Prisma model name), columns are camelCase
+  try {
+    const { data: pawkits, error: pawkitsError } = await supabase
+      .from('Collection')
+      .select('name, slug')
+      .eq('userId', userId)
+      .eq('deleted', false)
+      .order('name')
+      .limit(30);
 
-  if (pawkits?.length) {
-    let pawkitSection = `## User's Pawkits (${pawkits.length} collections)\n`;
-    pawkitSection += pawkits.map(p => `- ${p.name}${p.description ? `: ${p.description}` : ''}`).join('\n');
-
-    const sectionTokens = estimateTokens(pawkitSection);
-    if (totalTokens + sectionTokens < maxContextTokens) {
-      contextParts.push(pawkitSection);
-      totalTokens += sectionTokens;
+    if (pawkitsError) {
+      console.error('[Kit] Error fetching pawkits:', pawkitsError);
     }
+
+    if (pawkits?.length) {
+      let pawkitSection = `## User's Pawkits (${pawkits.length} collections)\n`;
+      pawkitSection += pawkits.map(p => `- ${p.name}`).join('\n');
+
+      const sectionTokens = estimateTokens(pawkitSection);
+      if (totalTokens + sectionTokens < maxContextTokens) {
+        contextParts.push(pawkitSection);
+        totalTokens += sectionTokens;
+      }
+    }
+  } catch (err) {
+    console.error('[Kit] Exception fetching pawkits:', err);
   }
 
   // 3. Search for relevant cards based on query
   const keywords = extractKeywords(query);
   if (keywords.length > 0 && totalTokens < maxContextTokens - 1000) {
-    // Build search pattern
-    const searchPattern = keywords.map(k => `%${k}%`).join('%');
+    try {
+      // Build search pattern for each keyword
+      const searchPattern = keywords.map(k => `%${k}%`).join('%');
 
-    const { data: relevantCards } = await supabase
-      .from('cards')
-      .select('id, title, description, url, domain, tags')
-      .eq('user_id', userId)
-      .eq('deleted', false)
-      .or(`title.ilike.${searchPattern},description.ilike.${searchPattern}`)
-      .limit(10);
+      const { data: relevantCards, error: relevantError } = await supabase
+        .from('Card')
+        .select('id, title, description, url, domain, tags')
+        .eq('userId', userId)
+        .eq('deleted', false)
+        .or(`title.ilike.${searchPattern},description.ilike.${searchPattern}`)
+        .limit(10);
 
-    if (relevantCards?.length) {
-      let relevantSection = `## Potentially Relevant Saved Items\n`;
-      for (const card of relevantCards) {
-        relevantSection += `- **${card.title}**`;
-        if (card.domain) relevantSection += ` (${card.domain})`;
-        if (card.tags?.length) relevantSection += ` [${card.tags.slice(0, 3).join(', ')}]`;
-        relevantSection += '\n';
-        if (card.description) {
-          relevantSection += `  ${card.description.slice(0, 100)}${card.description.length > 100 ? '...' : ''}\n`;
+      if (relevantError) {
+        console.error('[Kit] Error fetching relevant cards:', relevantError);
+      }
+
+      if (relevantCards?.length) {
+        let relevantSection = `## Potentially Relevant Saved Items\n`;
+        for (const card of relevantCards) {
+          relevantSection += `- **${card.title || 'Untitled'}**`;
+          if (card.domain) relevantSection += ` (${card.domain})`;
+          const tagArray = parseTags(card.tags);
+          if (tagArray.length) relevantSection += ` [${tagArray.slice(0, 3).join(', ')}]`;
+          relevantSection += '\n';
+          if (card.description) {
+            relevantSection += `  ${card.description.slice(0, 100)}${card.description.length > 100 ? '...' : ''}\n`;
+          }
+        }
+
+        const sectionTokens = estimateTokens(relevantSection);
+        if (totalTokens + sectionTokens < maxContextTokens) {
+          contextParts.push(relevantSection);
+          totalTokens += sectionTokens;
         }
       }
-
-      const sectionTokens = estimateTokens(relevantSection);
-      if (totalTokens + sectionTokens < maxContextTokens) {
-        contextParts.push(relevantSection);
-        totalTokens += sectionTokens;
-      }
+    } catch (err) {
+      console.error('[Kit] Exception fetching relevant cards:', err);
     }
   }
 
   // 4. Add recent cards for general context
   if (totalTokens < maxContextTokens - 500) {
-    const { data: recentCards } = await supabase
-      .from('cards')
-      .select('title, domain, tags')
-      .eq('user_id', userId)
-      .eq('deleted', false)
-      .order('created_at', { ascending: false })
-      .limit(5);
+    try {
+      const { data: recentCards, error: recentError } = await supabase
+        .from('Card')
+        .select('title, domain, tags')
+        .eq('userId', userId)
+        .eq('deleted', false)
+        .order('createdAt', { ascending: false })
+        .limit(20);
 
-    if (recentCards?.length) {
-      let recentSection = `## Recently Saved\n`;
-      for (const card of recentCards) {
-        recentSection += `- ${card.title}`;
-        if (card.domain) recentSection += ` (${card.domain})`;
-        recentSection += '\n';
+      if (recentError) {
+        console.error('[Kit] Error fetching recent cards:', recentError);
       }
 
-      const sectionTokens = estimateTokens(recentSection);
-      if (totalTokens + sectionTokens < maxContextTokens) {
-        contextParts.push(recentSection);
+      if (recentCards?.length) {
+        let recentSection = `## Recently Saved (${recentCards.length} items)\n`;
+        for (const card of recentCards) {
+          recentSection += `- ${card.title || 'Untitled'}`;
+          if (card.domain) recentSection += ` (${card.domain})`;
+          const tagArray = parseTags(card.tags);
+          if (tagArray.length) recentSection += ` [${tagArray.slice(0, 2).join(', ')}]`;
+          recentSection += '\n';
+        }
+
+        const sectionTokens = estimateTokens(recentSection);
+        if (totalTokens + sectionTokens < maxContextTokens) {
+          contextParts.push(recentSection);
+        }
       }
+    } catch (err) {
+      console.error('[Kit] Exception fetching recent cards:', err);
     }
   }
 
-  return contextParts.length > 0
+  const result = contextParts.length > 0
     ? contextParts.join('\n\n')
     : 'User has no saved items yet.';
+  
+  console.log('[Kit] Built context with', contextParts.length, 'sections, ~', totalTokens, 'tokens');
+  
+  return result;
 }
 
 /**
