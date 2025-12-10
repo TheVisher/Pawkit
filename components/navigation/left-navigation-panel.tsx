@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Briefcase, Folder, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, HelpCircle, type LucideIcon } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Folder, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, HelpCircle, Search, type LucideIcon } from "lucide-react";
 import { shallow } from "zustand/shallow";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -1205,30 +1205,27 @@ export function LeftNavigationPanel({
         {/* Header - Icon-only controls */}
         <TooltipProvider>
           <div className="flex items-center justify-between gap-2 p-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-            {/* Workspace Selector - Pill Shape */}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  className="flex items-center gap-2 px-4 h-10 rounded-full transition-colors"
-                  style={{
-                    background: 'var(--bg-surface-2)',
-                    border: '1px solid var(--border-subtle)',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface-3)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-surface-2)'; }}
-                  aria-label="Workspace"
-                >
-                  <Briefcase size={16} className="text-muted-foreground" />
-                  <span className="text-sm font-medium text-foreground">Personal</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="z-[200]">
-                <div className="text-center">
-                  <div className="font-semibold">Personal</div>
-                  <div className="text-xs text-muted-foreground">Switch workspace</div>
-                </div>
-              </TooltipContent>
-            </Tooltip>
+            {/* Search Input - triggers omnibar */}
+            <button
+              onClick={() => {
+                const omnibar = document.getElementById('omnibar-input');
+                if (omnibar) {
+                  omnibar.focus();
+                  omnibar.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }}
+              className="flex items-center gap-2 px-3 h-10 rounded-full transition-colors flex-1 cursor-text"
+              style={{
+                background: 'var(--bg-surface-2)',
+                border: '1px solid var(--border-subtle)',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface-3)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--bg-surface-2)'; }}
+              aria-label="Search"
+            >
+              <Search size={14} className="text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Search...</span>
+            </button>
 
             {/* Right side buttons */}
             <div className="flex items-center gap-1">
