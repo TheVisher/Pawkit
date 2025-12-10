@@ -258,6 +258,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const selectRange = useSelection((state) => state.selectRange);
   const clearSelection = useSelection((state) => state.clear);
   const showThumbnails = useSettingsStore((state) => state.showThumbnails);
+  const uiStyle = useSettingsStore((state) => state.uiStyle);
 
   // Muuri grid ref for masonry layout
   const muuriRef = useRef<MuuriGridRef>(null);
@@ -984,6 +985,7 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
                       showMetadata={viewSettings.showMetadata}
                       showPreview={viewSettings.showPreview}
                       cardPadding={viewSettings.cardPadding}
+                      uiStyle={uiStyle}
                     />
                   </MuuriItem>
                   );
@@ -1198,9 +1200,10 @@ type CardCellProps = {
   showMetadata: boolean; // Also controls tags/badges visibility
   showPreview: boolean;
   cardPadding: number;
+  uiStyle: "modern" | "glass";
 };
 
-function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar, onSetThumbnail, onMoveToFolder, hasAttachments, showLabels, showMetadata, showPreview, cardPadding }: CardCellProps) {
+function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, onImageLoad, onAddToPawkit, onDeleteCard, onRemoveFromPawkit, onRemoveFromAllPawkits, onFetchMetadata, isPinned, onPinToSidebar, onUnpinFromSidebar, onSetThumbnail, onMoveToFolder, hasAttachments, showLabels, showMetadata, showPreview, cardPadding, uiStyle }: CardCellProps) {
   // Only use dnd-kit draggable for non-masonry layouts (masonry uses Muuri's built-in drag)
   const isMasonry = layout === "masonry";
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -1331,8 +1334,8 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
         onClick={(event) => onClick(event, card)}
         data-id={card.id}
       >
-        {/* Blurred image background - fills entire card including corners */}
-        {imageUrl && (
+        {/* Blurred image background - only in glass UI mode */}
+        {imageUrl && uiStyle === "glass" && (
           <>
             <div
               className="absolute inset-0 scale-125"
@@ -1765,7 +1768,8 @@ const CardCell = memo(CardCellInner, (prevProps, nextProps) => {
     prevProps.showLabels === nextProps.showLabels &&
     prevProps.showMetadata === nextProps.showMetadata &&
     prevProps.showPreview === nextProps.showPreview &&
-    prevProps.cardPadding === nextProps.cardPadding
+    prevProps.cardPadding === nextProps.cardPadding &&
+    prevProps.uiStyle === nextProps.uiStyle
   );
 });
 
