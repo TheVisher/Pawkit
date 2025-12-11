@@ -136,7 +136,7 @@
   gap: 6px; /* Increased from 4px */
   height: 44px; /* Increased from 36px (20% larger) */
   padding: 5px 16px; /* Increased from 4px 12px */
-  background: #000;
+  background: var(--island-bg, #000);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-top: none; /* No top border - merges with content panel border */
@@ -144,8 +144,6 @@
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(255, 255, 255, 0.05) inset;
-  /* Extend upward to cover the border highlight line */
-  margin-top: -1px;
 }
 
 /* Island buttons - 20% larger */
@@ -183,39 +181,50 @@
 
 .dynamic-top-bar-slopes {
   position: absolute;
-  top: -1px; /* Move up to cover border line */
+  top: 0;
   left: 50%;
   transform: translateX(-50%);
   width: 168px; /* Match island width */
   height: 20px;
   pointer-events: none;
   z-index: 50; /* Above the island to cover the border line */
+  overflow: hidden; /* Clip the shadows so they don't extend above */
 }
 
-/* Left slope - solid black to match island */
+/* Left slope - uses island color variable for light/dark mode */
 .dynamic-top-bar-slopes::before {
   content: '';
   position: absolute;
-  top: 0;
+  top: 6px; /* Offset down so shadow doesn't overflow top */
   right: calc(100% - 10px);
   width: 20px;
   height: 20px;
   background: transparent;
   border-top-right-radius: 20px;
-  box-shadow: 6px -6px 0 0 #000;
+  box-shadow: 6px -6px 0 0 var(--island-bg, #000);
 }
 
-/* Right slope - solid black to match island */
+/* Right slope - uses island color variable for light/dark mode */
 .dynamic-top-bar-slopes::after {
   content: '';
   position: absolute;
-  top: 0;
+  top: 6px; /* Offset down so shadow doesn't overflow top */
   left: calc(100% - 10px);
   width: 20px;
   height: 20px;
   background: transparent;
   border-top-left-radius: 20px;
-  box-shadow: -6px -6px 0 0 #000;
+  box-shadow: -6px -6px 0 0 var(--island-bg, #000);
+}
+
+/* Island color variable - dark mode default */
+:root {
+  --island-bg: #000;
+}
+
+/* Light mode island color */
+[data-theme="light"] {
+  --island-bg: #1a1a1a;
 }
 
 .slopes-visible {
