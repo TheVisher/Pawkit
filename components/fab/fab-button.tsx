@@ -24,8 +24,8 @@ export function FabButton({
       title={label}
       className={cn(
         "w-12 h-12 rounded-full flex items-center justify-center",
-        "bg-black/80 backdrop-blur-xl border border-white/20",
-        "hover:bg-black/90 hover:border-white/30",
+        "bg-[rgb(30,30,35)] border border-white/20",
+        "hover:bg-[rgb(40,40,45)] hover:border-white/30",
         "transition-all duration-200",
         "shadow-xl shadow-black/50",
         active && "bg-white/20 border-white/30",
