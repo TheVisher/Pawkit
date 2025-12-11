@@ -140,31 +140,34 @@ export function KitOverlay() {
         setPosition(newPosition);
       }}
       className={cn(
-        "z-[9998] flex flex-col",
+        "z-[9998]",
         "bg-black/70 backdrop-blur-xl",
         "border border-white/10 rounded-xl",
         "shadow-2xl shadow-black/50",
         "overflow-hidden"
       )}
     >
-      {/* Header - always visible, draggable */}
-      <KitHeader
-        onClose={close}
-        onMinimize={toggleMinimized}
-        onAnchor={handleAnchorToggle}
-        isMinimized={isMinimized}
-        isAnchored={isAnchored}
-      />
+      {/* Inner flex container - Rnd doesn't reliably pass flex to children */}
+      <div className="flex flex-col h-full">
+        {/* Header - always visible, draggable */}
+        <KitHeader
+          onClose={close}
+          onMinimize={toggleMinimized}
+          onAnchor={handleAnchorToggle}
+          isMinimized={isMinimized}
+          isAnchored={isAnchored}
+        />
 
-      {/* Context indicator */}
-      {!isMinimized && <KitContextIndicator />}
+        {/* Context indicator */}
+        {!isMinimized && <KitContextIndicator />}
 
-      {/* Chat panel */}
-      {!isMinimized && (
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <KitChatPanelOverlay />
-        </div>
-      )}
+        {/* Chat panel */}
+        {!isMinimized && (
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <KitChatPanelOverlay />
+          </div>
+        )}
+      </div>
     </Rnd>
   );
 }
