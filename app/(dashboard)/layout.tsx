@@ -51,6 +51,7 @@ import { CardDTO } from "@/lib/server/cards";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { FloatingActionBar } from "@/components/fab/floating-action-bar";
 import { KitOverlay } from "@/components/kit/kit-overlay";
+import { useKitStore } from "@/lib/hooks/use-kit-store";
 
 // Wrapper component that provides bulk operation handlers with access to selection store
 function BulkOperationsPanelWithHandlers({
@@ -141,6 +142,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const closeLeft = usePanelStore((state) => state.closeLeft);
   const setLeftMode = usePanelStore((state) => state.setLeftMode);
   const toggleLeft = usePanelStore((state) => state.toggleLeft);
+
+  // Kit overlay state - used for anchoring Kit to content panel
+  const isKitOpen = useKitStore((state) => state.isOpen);
+  const isKitAnchored = useKitStore((state) => state.isAnchored);
 
   // Mobile detection - panels are hidden by default on mobile
   const isMobile = useIsMobile();
@@ -501,6 +506,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 leftMode={leftMode}
                 rightOpen={isPanelOpen}
                 rightMode={panelMode}
+                kitAnchored={isKitOpen && isKitAnchored}
               >
                 {children}
               </ContentPanel>
