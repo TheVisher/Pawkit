@@ -55,7 +55,7 @@ interface KitState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setActiveCardContext: (card: KitState['activeCardContext']) => void;
-  sendMessage: (message: string, context?: string) => Promise<void>;
+  sendMessage: (message: string, context?: string, pawkitSlug?: string) => Promise<void>;
 }
 
 const DEFAULT_POSITION = { x: 0, y: 0 }; // Will be calculated on mount
@@ -108,7 +108,7 @@ export const useKitStore = create<KitState>()(
       setError: (error) => set({ error }),
       setActiveCardContext: (card) => set({ activeCardContext: card }),
 
-      sendMessage: async (message: string, context?: string) => {
+      sendMessage: async (message: string, context?: string, pawkitSlug?: string) => {
         const { messages, activeCardContext, addMessage, setLoading, setError } = get();
 
         addMessage('user', message);
@@ -127,6 +127,7 @@ export const useKitStore = create<KitState>()(
               })),
               cardContext: activeCardContext,
               viewContext: context,
+              pawkitSlug: pawkitSlug,
             }),
           });
 

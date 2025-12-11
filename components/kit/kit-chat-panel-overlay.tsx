@@ -10,7 +10,7 @@ export function KitChatPanelOverlay() {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { context } = useCurrentContext();
+  const { context, pawkitSlug } = useCurrentContext();
 
   const {
     messages,
@@ -35,7 +35,7 @@ export function KitChatPanelOverlay() {
     if (!trimmedInput || isLoading) return;
 
     setInput('');
-    await sendMessage(trimmedInput, context);
+    await sendMessage(trimmedInput, context, pawkitSlug);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
