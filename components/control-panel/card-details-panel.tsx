@@ -27,22 +27,32 @@ export function CardDetailsPanel() {
   // Kit integration
   const isKitOpen = useKitStore((state) => state.isOpen);
   const setEmbeddedInSidebar = useKitStore((state) => state.setEmbeddedInSidebar);
+  const setActiveCardContext = useKitStore((state) => state.setActiveCardContext);
   const closeKit = useKitStore((state) => state.close);
   const openKit = useKitStore((state) => state.open);
 
   // When card details opens and Kit is active, embed Kit in sidebar
   useEffect(() => {
-    if (isKitOpen) {
+    if (isKitOpen && card) {
       setEmbeddedInSidebar(true);
       // Auto-switch to AI tab if Kit was open
       setActiveTab('ai');
+      // Give Kit context about the current card
+      setActiveCardContext({
+        id: card.id,
+        title: card.title || 'Untitled',
+        content: card.notes || card.description || undefined,
+      });
     }
 
     // Cleanup: restore Kit overlay when card closes
     return () => {
-      setEmbeddedInSidebar(false);
+      if (isKitOpen) {
+        setEmbeddedInSidebar(false);
+        setActiveCardContext(null);
+      }
     };
-  }, [isKitOpen, setEmbeddedInSidebar]);
+  }, [isKitOpen, card, setEmbeddedInSidebar, setActiveCardContext]);
 
   // Notes state
   const [notes, setNotes] = useState(card?.notes || "");
