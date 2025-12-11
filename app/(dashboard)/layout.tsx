@@ -49,7 +49,6 @@ import { useCloudSync } from "@/lib/hooks/use-cloud-sync";
 import { TourProvider } from "@/components/onboarding/tour-provider";
 import { CardDTO } from "@/lib/server/cards";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
-import { FloatingActionBar } from "@/components/fab/floating-action-bar";
 import { KitOverlay } from "@/components/kit/kit-overlay";
 import { useKitStore } from "@/lib/hooks/use-kit-store";
 
@@ -301,6 +300,24 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     return () => {
       window.removeEventListener("pawkit:open-command-palette", handleOpenCommandPalette);
       window.removeEventListener("pawkit:close-command-palette", handleCloseCommandPalette);
+    };
+  }, []);
+
+  // Listen for top bar add menu events
+  useEffect(() => {
+    const handleOpenCreateNote = () => {
+      setShowCreateNoteModal(true);
+    };
+
+    const handleOpenAddCard = () => {
+      setShowCreateCardModal(true);
+    };
+
+    window.addEventListener("pawkit:open-create-note", handleOpenCreateNote);
+    window.addEventListener("pawkit:open-add-card", handleOpenAddCard);
+    return () => {
+      window.removeEventListener("pawkit:open-create-note", handleOpenCreateNote);
+      window.removeEventListener("pawkit:open-add-card", handleOpenAddCard);
     };
   }, []);
 
@@ -703,8 +720,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         </PawkitActionsProvider>
       </SelectionStoreProvider>
 
-      {/* Floating Action Bar - outside all providers, fixed position */}
-      <FloatingActionBar />
     </TourProvider>
   );
 }

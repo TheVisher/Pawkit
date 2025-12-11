@@ -1,0 +1,306 @@
+/* components/top-bar/top-bar.css */
+
+/* Container - positioned at top of content area */
+.dynamic-top-bar-container {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: center;
+  padding: 12px 0;
+  pointer-events: none; /* Allow clicks through to content */
+}
+
+.dynamic-top-bar {
+  pointer-events: auto; /* Re-enable clicks on the bar itself */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ========== EXPANDED STATE ========== */
+
+.top-bar-expanded {
+  position: relative;
+}
+
+.top-bar-pill {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  width: 500px;
+  max-width: calc(100vw - 48px);
+  height: 48px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: 4px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.top-bar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.top-bar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.top-bar-btn.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.top-bar-btn.kit-btn:hover {
+  background: rgba(168, 85, 247, 0.2);
+  color: rgb(216, 180, 254);
+}
+
+.top-bar-search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 100%;
+  cursor: pointer;
+}
+
+.search-icon {
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.search-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.search-shortcut {
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: inherit;
+  flex-shrink: 0;
+  border: none;
+}
+
+/* ========== COLLAPSED STATE ========== */
+
+.top-bar-collapsed {
+  display: flex;
+  justify-content: center;
+}
+
+.top-bar-island {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 40px;
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+.island-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.island-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+
+.island-btn.kit:hover {
+  background: rgba(168, 85, 247, 0.25);
+  color: rgb(216, 180, 254);
+}
+
+/* ========== SLOPES (Dynamic Island Effect) ========== */
+
+.dynamic-top-bar-slopes {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 52px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.dynamic-top-bar-slopes::before,
+.dynamic-top-bar-slopes::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 40px;
+  height: 100%;
+  background: var(--background, #0a0a0a);
+}
+
+/* Left slope */
+.dynamic-top-bar-slopes::before {
+  right: 100%;
+  border-radius: 0 0 20px 0;
+}
+
+/* Right slope */
+.dynamic-top-bar-slopes::after {
+  left: 100%;
+  border-radius: 0 0 0 20px;
+}
+
+.slopes-visible {
+  opacity: 1;
+}
+
+.slopes-hidden {
+  opacity: 0;
+}
+
+/* ========== ANIMATIONS ========== */
+
+.dynamic-top-bar.expanded {
+  animation: expand 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.dynamic-top-bar.collapsed {
+  animation: collapse 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes expand {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes collapse {
+  from {
+    transform: scale(1.1);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ========== ADD MENU ========== */
+
+.top-bar-add-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 4px;
+  min-width: 200px;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  animation: menuAppear 0.2s ease;
+}
+
+@keyframes menuAppear {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.add-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.add-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.add-menu-item span {
+  flex: 1;
+}
+
+.add-menu-shortcut {
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: inherit;
+  border: none;
+}
+
+/* ========== RESPONSIVE ========== */
+
+@media (max-width: 640px) {
+  .top-bar-pill {
+    width: calc(100vw - 32px);
+  }
+
+  .search-shortcut {
+    display: none;
+  }
+}
