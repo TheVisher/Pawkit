@@ -90,7 +90,7 @@ export function KitOverlay() {
         }
       }}
       className={cn(
-        "z-[100] flex flex-col",
+        "z-[9998] flex flex-col",
         "bg-black/70 backdrop-blur-xl",
         "border border-white/10 rounded-xl",
         "shadow-2xl shadow-black/50",
