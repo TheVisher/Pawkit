@@ -26,9 +26,8 @@ export function KitHeader({
       className={cn(
         "kit-drag-handle flex-shrink-0",
         "flex items-center justify-between",
-        "mx-1.5 mt-1.5 px-3 py-2 h-12",
-        "cursor-move select-none",
-        "rounded-lg"
+        "px-3 py-2 h-12",
+        "cursor-move select-none"
       )}
       style={{
         borderBottom: '1px solid var(--border-subtle)',
