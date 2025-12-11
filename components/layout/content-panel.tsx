@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect } from "react";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
+import { DynamicTopBar } from "@/components/top-bar/dynamic-top-bar";
 
 type ContentPanelProps = {
   children: ReactNode;
@@ -141,8 +142,14 @@ export function ContentPanel({
       data-right-embedded={isRightEmbedded}
     >
       {/* Content container with scrolling - scrollbar hidden for cleaner look */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide px-6 py-6">
-        {children}
+      <div className="content-panel-scroll flex-1 overflow-y-auto scrollbar-hide">
+        {/* Dynamic Top Bar - sticky at top of scrollable content */}
+        {!isMobile && <DynamicTopBar />}
+
+        {/* Page content with padding */}
+        <div className="px-6 py-6">
+          {children}
+        </div>
       </div>
     </div>
   );
