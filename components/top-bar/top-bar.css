@@ -195,7 +195,7 @@
   content: '';
   position: absolute;
   top: 0;
-  right: calc(100% - 15px); /* Moved closer to island */
+  right: calc(100% - 10px); /* Adjusted outward a few pixels */
   width: 20px;
   height: 20px;
   background: transparent;
@@ -208,7 +208,7 @@
   content: '';
   position: absolute;
   top: 0;
-  left: calc(100% - 15px); /* Moved closer to island */
+  left: calc(100% - 10px); /* Adjusted outward a few pixels */
   width: 20px;
   height: 20px;
   background: transparent;
