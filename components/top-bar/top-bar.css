@@ -189,6 +189,7 @@
   width: 168px; /* Match island width */
   height: 20px;
   pointer-events: none;
+  z-index: 50; /* Above the island to cover the border line */
 }
 
 /* Left slope - solid black to match island */
