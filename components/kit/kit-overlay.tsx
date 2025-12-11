@@ -140,20 +140,20 @@ export function KitOverlay() {
         });
         setPosition(newPosition);
       }}
-      className={cn(
-        "z-[9998]",
-        "rounded-xl overflow-hidden"
-      )}
-      style={{
-        background: 'var(--bg-surface-1)',
-        boxShadow: 'var(--shadow-4)',
-        border: '1px solid var(--border-subtle)',
-        borderTopColor: 'var(--border-highlight-top)',
-        borderLeftColor: 'var(--border-highlight-left)',
-      }}
+      className="z-[9998]"
     >
-      {/* Inner flex container - Rnd doesn't reliably pass flex to children */}
-      <div data-panel="kit" className="absolute inset-0 flex flex-col">
+      {/* Inner flex container - contains all visual styling */}
+      <div
+        data-panel="kit"
+        className="flex flex-col w-full h-full rounded-xl overflow-hidden"
+        style={{
+          background: 'var(--bg-surface-1)',
+          boxShadow: 'var(--shadow-4)',
+          border: '1px solid var(--border-subtle)',
+          borderTopColor: 'var(--border-highlight-top)',
+          borderLeftColor: 'var(--border-highlight-left)',
+        }}
+      >
         {/* Header - always visible, draggable */}
         <KitHeader
           onClose={close}
