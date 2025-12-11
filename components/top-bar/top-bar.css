@@ -2,9 +2,10 @@
 /* Modern style - rectangular with rounded corners, matches app theme */
 
 /* ========== CONTAINER ========== */
+/* Sticky positioning allows backdrop-filter to blur scrolling content beneath */
 
 .dynamic-top-bar-container {
-  position: absolute;
+  position: sticky;
   top: 0;
   left: 0;
   right: 0;
@@ -13,6 +14,8 @@
   justify-content: center;
   padding: 16px 0;
   pointer-events: none;
+  /* Negative margin so content starts at top, not below the bar */
+  margin-bottom: -80px;
 }
 
 .dynamic-top-bar {
