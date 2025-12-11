@@ -178,7 +178,6 @@
 
 /* ========== SLOPES (Dynamic Island Effect) ========== */
 /* Curved corners connecting island sides to the top edge */
-/* Uses background color matching content panel, with inverted radius */
 
 .dynamic-top-bar-slopes {
   position: absolute;
@@ -188,6 +187,8 @@
   width: 168px; /* Match island width */
   height: 20px;
   pointer-events: none;
+  /* Black bar across the top to cover the content panel's highlight border */
+  background: #000;
 }
 
 /* Left slope - solid black to match island */
