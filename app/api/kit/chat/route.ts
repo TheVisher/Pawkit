@@ -30,6 +30,8 @@ interface ChatRequest {
     notes?: string;
     tags?: string[];
   };
+  viewContext?: 'library' | 'notes' | 'calendar' | 'pawkit' | 'home';
+  pawkitSlug?: string; // When viewContext is 'pawkit', this is the current pawkit
 }
 
 export async function POST(req: NextRequest) {
@@ -66,7 +68,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Parse and validate request
     const body: ChatRequest = await req.json();
-    const { message, conversationHistory = [], cardContext } = body;
+    const { message, conversationHistory = [], cardContext, viewContext, pawkitSlug } = body;
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -83,7 +85,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Build context from user's Pawkit data
-    const context = await buildKitContext(user.id, message, supabase, cardContext);
+    const context = await buildKitContext(user.id, message, supabase, cardContext, viewContext, pawkitSlug);
 
     // 6. Determine model based on complexity
     // Use smart model for: long messages, long conversations, or explicit request
