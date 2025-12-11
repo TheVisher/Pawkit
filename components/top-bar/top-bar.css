@@ -1,14 +1,25 @@
 /* components/top-bar/top-bar.css */
 
-/* Container - positioned at top of content area */
+/* Container - FIXED position at top of content panel, floats above content */
 .dynamic-top-bar-container {
-  position: sticky;
+  position: absolute;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 40;
   display: flex;
   justify-content: center;
-  padding: 12px 0;
   pointer-events: none; /* Allow clicks through to content */
+}
+
+/* Expanded state container - has padding for floating pill */
+.dynamic-top-bar-container.is-expanded {
+  padding: 12px 0;
+}
+
+/* Collapsed state container - no padding, island attaches to top */
+.dynamic-top-bar-container.is-collapsed {
+  padding: 0;
 }
 
 .dynamic-top-bar {
@@ -109,23 +120,26 @@
   border: none;
 }
 
-/* ========== COLLAPSED STATE ========== */
+/* ========== COLLAPSED STATE (Dynamic Island) ========== */
 
 .top-bar-collapsed {
+  position: relative;
   display: flex;
   justify-content: center;
 }
 
+/* The island pill - sits at top edge */
 .top-bar-island {
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 40px;
-  padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.7);
+  height: 36px;
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 20px;
+  border-top: none; /* No top border - merges with content panel border */
+  border-radius: 0 0 18px 18px; /* Only bottom corners rounded */
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(255, 255, 255, 0.05) inset;
@@ -135,9 +149,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 16px;
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.7);
@@ -156,39 +170,43 @@
 }
 
 /* ========== SLOPES (Dynamic Island Effect) ========== */
+/* These create the curved connection between the island and the content panel top border */
 
 .dynamic-top-bar-slopes {
   position: absolute;
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 200px;
-  height: 52px;
+  width: 140px; /* Match island width approximately */
+  height: 36px; /* Match island height */
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.3s ease;
+  display: flex;
+  justify-content: space-between;
 }
 
+/* The slope curves on each side */
 .dynamic-top-bar-slopes::before,
 .dynamic-top-bar-slopes::after {
   content: '';
   position: absolute;
   top: 0;
-  width: 40px;
-  height: 100%;
-  background: var(--background, #0a0a0a);
+  width: 20px;
+  height: 20px;
+  background: var(--bg-surface-1, #1a1a2e);
 }
 
-/* Left slope */
+/* Left slope - curves inward from left */
 .dynamic-top-bar-slopes::before {
-  right: 100%;
+  right: calc(100% - 1px);
   border-radius: 0 0 20px 0;
+  box-shadow: 8px 0 0 0 rgba(0, 0, 0, 0.85);
 }
 
-/* Right slope */
+/* Right slope - curves inward from right */
 .dynamic-top-bar-slopes::after {
-  left: 100%;
+  left: calc(100% - 1px);
   border-radius: 0 0 0 20px;
+  box-shadow: -8px 0 0 0 rgba(0, 0, 0, 0.85);
 }
 
 .slopes-visible {
@@ -197,6 +215,7 @@
 
 .slopes-hidden {
   opacity: 0;
+  pointer-events: none;
 }
 
 /* ========== ANIMATIONS ========== */
@@ -236,18 +255,41 @@
 .top-bar-add-menu {
   position: absolute;
   top: calc(100% + 8px);
-  left: 4px;
+  left: 50%;
+  transform: translateX(-50%);
   min-width: 200px;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   padding: 4px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   animation: menuAppear 0.2s ease;
+  z-index: 50;
+}
+
+/* For expanded state, align menu to left of pill */
+.top-bar-expanded .top-bar-add-menu {
+  left: 4px;
+  transform: none;
 }
 
 @keyframes menuAppear {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) translateX(-50%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) translateX(-50%);
+  }
+}
+
+.top-bar-expanded .top-bar-add-menu {
+  animation-name: menuAppearLeft;
+}
+
+@keyframes menuAppearLeft {
   from {
     opacity: 0;
     transform: translateY(-8px);
@@ -291,6 +333,30 @@
   color: rgba(255, 255, 255, 0.5);
   font-family: inherit;
   border: none;
+}
+
+/* ========== CONTENT FADE ========== */
+/* Subtle gradient fade below the bar so content doesn't look cut off */
+
+.dynamic-top-bar-container::after {
+  content: '';
+  position: absolute;
+  bottom: -24px;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: linear-gradient(
+    to bottom,
+    var(--bg-surface-1, rgba(26, 26, 46, 0.5)) 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.dynamic-top-bar-container.is-expanded::after {
+  opacity: 1;
 }
 
 /* ========== RESPONSIVE ========== */
