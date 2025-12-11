@@ -101,7 +101,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [userData, setUserData] = useState<{ email: string; displayName?: string | null } | null>(null);
   const { collections, initialize, isInitialized, refresh, addCard, cards, updateCard, deleteCard } = useDataStore();
   const loadFiles = useFileStore((state) => state.loadFiles);
-  const { loadFromServer } = useViewSettingsStore();
+  const { initializeSettings, syncSettings } = useViewSettingsStore();
   const router = useRouter();
 
   // Check if today's daily note exists
@@ -216,12 +216,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     }
   }, [isReady, isInitialized, initialize, loadFiles]);
 
-  // Load view settings ONLY after user storage is ready
+  // Initialize view settings (local-first: uses localStorage, only fetches server on first-time)
+  // Then sync in background to pick up changes from other devices
   useEffect(() => {
     if (isReady) {
-      loadFromServer();
+      // Initialize instantly from localStorage (Zustand persist handles this)
+      // Only fetches from server on first-time setup
+      initializeSettings().then(() => {
+        // Background sync to merge any server changes (non-blocking)
+        syncSettings().catch(() => {
+          // Silently ignore - local settings are primary
+        });
+      });
     }
-  }, [isReady, loadFromServer]);
+  }, [isReady, initializeSettings, syncSettings]);
 
   // Network sync hook handles queue draining on reconnection + periodic retries
   // Pass isReady to prevent 401 errors before auth is confirmed

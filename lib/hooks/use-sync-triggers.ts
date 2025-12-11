@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { syncQueue } from "@/lib/services/sync-queue";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 
 /**
  * Hook to manage sync triggers
@@ -19,6 +20,7 @@ import { useSettingsStore } from "@/lib/hooks/settings-store";
  */
 export function useSyncTriggers() {
   const serverSync = useSettingsStore((state) => state.serverSync);
+  const syncViewSettings = useViewSettingsStore((state) => state.syncSettings);
 
   useEffect(() => {
     // Don't set up triggers if server sync is disabled
@@ -30,8 +32,12 @@ export function useSyncTriggers() {
     const intervalId = setInterval(async () => {
       if (navigator.onLine) {
         try {
+          // Sync card/collection queue
           await syncQueue.process();
+          // Sync view settings (bi-directional with timestamps)
+          await syncViewSettings();
         } catch (error) {
+          // Silently ignore - non-critical
         }
       }
     }, 60000); // 60 seconds
@@ -40,7 +46,9 @@ export function useSyncTriggers() {
     const handleOnline = async () => {
       try {
         await syncQueue.process();
+        await syncViewSettings();
       } catch (error) {
+        // Silently ignore
       }
     };
 
@@ -49,7 +57,9 @@ export function useSyncTriggers() {
       try {
         // This is best-effort - browser may kill the request
         await syncQueue.process();
+        // Skip view settings sync on unload - too slow
       } catch (error) {
+        // Silently ignore
       }
     };
 
@@ -61,7 +71,14 @@ export function useSyncTriggers() {
           try {
             await syncQueue.process();
           } catch (error) {
+            // Silently ignore
           }
+        }
+        // Also sync view settings when tab becomes visible (may have changes from other devices)
+        try {
+          await syncViewSettings();
+        } catch (error) {
+          // Silently ignore
         }
       }
     };
@@ -78,5 +95,5 @@ export function useSyncTriggers() {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [serverSync]);
+  }, [serverSync, syncViewSettings]);
 }

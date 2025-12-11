@@ -33,6 +33,9 @@ export type ViewSettings = {
 
   // View-specific settings (flexible JSON)
   viewSpecific?: Record<string, unknown>;
+
+  // Timestamp for sync (local-first)
+  updatedAt?: number;
 };
 
 // Server response shape for view settings API
@@ -52,6 +55,7 @@ interface ServerViewSettingsItem {
   sortBy: string;
   sortOrder: string;
   viewSpecific?: string; // JSON string
+  updatedAt?: string;    // ISO timestamp from server
 }
 
 // ViewKey can be a static ViewType or a dynamic key like "pawkit-my-collection"
@@ -84,6 +88,10 @@ export type ViewSettingsState = {
   // Sync with server
   syncToServer: (view: ViewKey) => Promise<void>;
   loadFromServer: () => Promise<void>;
+
+  // Local-first sync (bi-directional with timestamps)
+  syncSettings: () => Promise<void>;
+  initializeSettings: () => Promise<void>;
 };
 
 const defaultSettings: ViewSettings = {
@@ -133,18 +141,22 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
       },
 
       updateSettings: async (view, updates) => {
+        const now = Date.now();
         set((state) => ({
           settings: {
             ...state.settings,
             [view]: {
               ...state.settings[view],
               ...updates,
+              updatedAt: now, // Track when this setting was changed
             },
           },
         }));
 
-        // Sync to server
-        await get().syncToServer(view);
+        // Sync to server (non-blocking, best-effort)
+        get().syncToServer(view).catch(() => {
+          // Silently ignore - local settings are primary, server is secondary
+        });
       },
 
       setLayout: async (view, layout) => {
@@ -310,6 +322,7 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
                 sortBy: item.sortBy as SortBy,
                 sortOrder: item.sortOrder as SortOrder,
                 viewSpecific: item.viewSpecific ? JSON.parse(item.viewSpecific) : {},
+                updatedAt: item.updatedAt ? new Date(item.updatedAt).getTime() : undefined,
               };
             });
 
@@ -320,6 +333,107 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
           // Keep local settings on error - settings are still available from localStorage
         } finally {
           set({ isLoading: false });
+        }
+      },
+
+      // LOCAL-FIRST: Initialize settings - only fetches from server on first-time setup
+      initializeSettings: async () => {
+        // Check if this is first load (no local settings exist)
+        const isFirstLoad = typeof window !== 'undefined' &&
+          !localStorage.getItem('view-settings-initialized');
+
+        if (isFirstLoad) {
+          console.log('[ViewSettings] First load detected, fetching from server');
+          await get().loadFromServer();
+          localStorage.setItem('view-settings-initialized', 'true');
+        } else {
+          console.log('[ViewSettings] Returning user, using local settings (instant)');
+          // Local settings already loaded by Zustand persist - nothing to do
+        }
+      },
+
+      // LOCAL-FIRST: Bi-directional sync with timestamps (last-write-wins)
+      syncSettings: async () => {
+        // Check if server sync is enabled
+        const serverSyncEnabled = typeof window !== 'undefined'
+          ? localStorage.getItem('vbm-settings')
+          : null;
+
+        if (serverSyncEnabled) {
+          const parsed = JSON.parse(serverSyncEnabled);
+          if (parsed?.state?.serverSync === false) {
+            // Local-only mode - don't sync
+            return;
+          }
+        }
+
+        set({ isSyncing: true });
+
+        try {
+          const response = await fetch('/api/user/view-settings');
+          if (!response.ok) {
+            console.warn('[ViewSettings] Sync failed to fetch server settings:', response.status);
+            return;
+          }
+
+          const serverData = await response.json();
+          const localSettings = get().settings;
+          const lastSyncTime = parseInt(localStorage.getItem('view-settings-last-sync') || '0');
+
+          // Build a map of server settings by view
+          const serverSettingsMap: Record<string, ServerViewSettingsItem> = {};
+          if (serverData.settings && Array.isArray(serverData.settings)) {
+            (serverData.settings as ServerViewSettingsItem[]).forEach((item) => {
+              serverSettingsMap[item.view] = item;
+            });
+          }
+
+          // Process each local view setting
+          for (const [view, local] of Object.entries(localSettings)) {
+            const server = serverSettingsMap[view];
+            const localUpdatedAt = local.updatedAt || 0;
+            const serverUpdatedAt = server?.updatedAt ? new Date(server.updatedAt).getTime() : 0;
+
+            if (localUpdatedAt > lastSyncTime && localUpdatedAt > serverUpdatedAt) {
+              // Local changed since last sync and is newer → push to server
+              console.log(`[ViewSettings] Pushing ${view} to server (local is newer)`);
+              await get().syncToServer(view as ViewKey);
+            } else if (serverUpdatedAt > lastSyncTime && serverUpdatedAt > localUpdatedAt) {
+              // Server is newer → update local
+              console.log(`[ViewSettings] Pulling ${view} from server (server is newer)`);
+              const scaledCardSize = Math.round(((server.cardSize - 1) / 4) * 99 + 1);
+              const scaledCardPadding = Math.round((server.cardPadding / 4) * 100);
+
+              set((state) => ({
+                settings: {
+                  ...state.settings,
+                  [view]: {
+                    layout: server.layout as LayoutMode,
+                    cardSize: scaledCardSize,
+                    cardSpacing: server.cardSpacing || 16,
+                    showLabels: server.showLabels ?? (server.showTitles || server.showUrls) ?? true,
+                    showMetadata: server.showMetadata ?? server.showTitles ?? true,
+                    showTags: server.showTags,
+                    showPreview: server.showPreview ?? true,
+                    cardPadding: scaledCardPadding,
+                    contentTypeFilter: server.contentTypeFilter || [],
+                    sortBy: server.sortBy as SortBy,
+                    sortOrder: server.sortOrder as SortOrder,
+                    viewSpecific: server.viewSpecific ? JSON.parse(server.viewSpecific) : {},
+                    updatedAt: serverUpdatedAt,
+                  },
+                },
+              }));
+            }
+          }
+
+          // Update last sync time
+          localStorage.setItem('view-settings-last-sync', Date.now().toString());
+          console.log('[ViewSettings] Sync complete');
+        } catch (error) {
+          console.warn('[ViewSettings] Sync failed (non-critical):', error);
+        } finally {
+          set({ isSyncing: false });
         }
       },
 
@@ -345,8 +459,8 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
         } catch (error) {
         }
 
-        // Load from server
-        await get().loadFromServer();
+        // Initialize (only loads from server if first time)
+        await get().initializeSettings();
       },
     }),
     {
