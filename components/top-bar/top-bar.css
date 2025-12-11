@@ -177,8 +177,8 @@
 }
 
 /* ========== SLOPES (Dynamic Island Effect) ========== */
-/* Create the curved "ears" that connect the island to the top edge */
-/* Uses inverted border-radius technique for the correct curve direction */
+/* Create curved corners that connect the island to the top edge */
+/* Box-shadow technique: transparent element with rounded corner casts shadow in island color */
 
 .dynamic-top-bar-slopes {
   position: absolute;
@@ -186,32 +186,34 @@
   left: 50%;
   transform: translateX(-50%);
   width: 168px; /* Match island width */
-  height: 24px;
+  height: 20px;
   pointer-events: none;
 }
 
-/* Left slope - filled curve connecting island to top-left */
+/* Left slope - transparent with bottom-right radius, shadow goes up-left into island */
 .dynamic-top-bar-slopes::before {
   content: '';
   position: absolute;
   top: 0;
-  right: 100%;
-  width: 24px;
-  height: 24px;
-  background: rgba(0, 0, 0, 0.85);
-  border-bottom-left-radius: 24px;
+  right: calc(100% + 20px); /* Position outside, then shadow reaches back */
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border-bottom-right-radius: 20px;
+  box-shadow: 10px 0 0 0 rgba(0, 0, 0, 0.85);
 }
 
-/* Right slope - filled curve connecting island to top-right */
+/* Right slope - transparent with bottom-left radius, shadow goes up-right into island */
 .dynamic-top-bar-slopes::after {
   content: '';
   position: absolute;
   top: 0;
-  left: 100%;
-  width: 24px;
-  height: 24px;
-  background: rgba(0, 0, 0, 0.85);
-  border-bottom-right-radius: 24px;
+  left: calc(100% + 20px); /* Position outside, then shadow reaches back */
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border-bottom-left-radius: 20px;
+  box-shadow: -10px 0 0 0 rgba(0, 0, 0, 0.85);
 }
 
 .slopes-visible {
