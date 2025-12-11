@@ -693,12 +693,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
           {/* Kit Overlay (floating chat window) */}
           <KitOverlay />
-
-          {/* Floating Action Bar (always visible) */}
-          <FloatingActionBar />
           </SidebarProvider>
         </PawkitActionsProvider>
       </SelectionStoreProvider>
+
+      {/* Floating Action Bar - outside all providers, fixed position */}
+      <FloatingActionBar />
     </TourProvider>
   );
 }
