@@ -64,12 +64,12 @@ export function TopBarExpanded({
           )}
           title="Add content"
         >
-          <Plus size={18} />
+          <Plus size={20} />
         </button>
 
         {/* Search input - clicking opens command palette */}
         <div className="top-bar-search" onClick={handleInputClick}>
-          <Search size={16} className="search-icon" />
+          <Search size={18} className="search-icon" />
           <input
             ref={inputRef}
             type="text"
@@ -92,7 +92,7 @@ export function TopBarExpanded({
           className="top-bar-btn right kit-btn"
           title="Ask Kit"
         >
-          <MessageCircle size={18} />
+          <MessageCircle size={20} />
         </button>
       </form>
 
