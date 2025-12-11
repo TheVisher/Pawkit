@@ -47,7 +47,7 @@ export function KitChatPanel() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-white/10">
+      <div className="flex-shrink-0 flex items-center justify-between p-3 border-b border-white/10">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full bg-purple-500/20 flex items-center justify-center">
             <span className="text-lg">🐕</span>
@@ -69,7 +69,7 @@ export function KitChatPanel() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center mb-4">
@@ -137,13 +137,13 @@ export function KitChatPanel() {
 
       {/* Error message */}
       {error && (
-        <div className="px-3 py-2 text-xs text-red-400 bg-red-500/10 border-t border-red-500/20">
+        <div className="flex-shrink-0 px-3 py-2 text-xs text-red-400 bg-red-500/10 border-t border-red-500/20">
           {error}
         </div>
       )}
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-3 border-t border-white/10">
+      <form onSubmit={handleSubmit} className="flex-shrink-0 p-3 border-t border-white/10">
         <div className="flex gap-2">
           <input
             ref={inputRef}
