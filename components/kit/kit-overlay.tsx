@@ -153,7 +153,7 @@ export function KitOverlay() {
       }}
     >
       {/* Inner flex container - Rnd doesn't reliably pass flex to children */}
-      <div data-panel="kit" className="flex flex-col h-full">
+      <div data-panel="kit" className="flex flex-col h-full pt-1.5 pb-1">
         {/* Header - always visible, draggable */}
         <KitHeader
           onClose={close}
