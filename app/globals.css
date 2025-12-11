@@ -1475,3 +1475,28 @@ body.muuri-dragging [data-content-panel] {
 .serendipity-action-btn:active {
   transform: scale(0.98);
 }
+
+/* ========================================
+   KIT CHAT MESSAGE - Markdown Styling
+   ======================================== */
+.kit-message p {
+  margin-bottom: 0.5rem;
+}
+
+.kit-message p:last-child {
+  margin-bottom: 0;
+}
+
+.kit-message ul,
+.kit-message ol {
+  margin: 0.5rem 0;
+}
+
+.kit-message li {
+  margin-bottom: 0.25rem;
+}
+
+.kit-message code {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 0.85em;
+}
