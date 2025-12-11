@@ -190,28 +190,28 @@
   pointer-events: none;
 }
 
-/* Left slope - content panel colored block with top-right radius carved out */
+/* Left slope - just the curved shadow, no background block */
 .dynamic-top-bar-slopes::before {
   content: '';
   position: absolute;
   top: 0;
-  right: 100%; /* Directly adjacent to island left edge */
+  right: calc(100% - 15px); /* Moved closer to island */
   width: 20px;
   height: 20px;
-  background: var(--bg-surface-1, #1a1a2e);
+  background: transparent;
   border-top-right-radius: 20px;
   box-shadow: 5px -5px 0 0 rgba(0, 0, 0, 0.85);
 }
 
-/* Right slope - content panel colored block with top-left radius carved out */
+/* Right slope - just the curved shadow, no background block */
 .dynamic-top-bar-slopes::after {
   content: '';
   position: absolute;
   top: 0;
-  left: 100%; /* Directly adjacent to island right edge */
+  left: calc(100% - 15px); /* Moved closer to island */
   width: 20px;
   height: 20px;
-  background: var(--bg-surface-1, #1a1a2e);
+  background: transparent;
   border-top-left-radius: 20px;
   box-shadow: -5px -5px 0 0 rgba(0, 0, 0, 0.85);
 }
