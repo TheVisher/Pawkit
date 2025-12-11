@@ -2,11 +2,31 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Send, Trash2, Sparkles, Loader2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useKitStore } from '@/lib/hooks/use-kit-store';
 import { cn } from '@/lib/utils';
 
+const LOADING_MESSAGES = [
+  "*sniff sniff*...",
+  "Fetching...",
+  "*digs around*...",
+  "*ears perk up*...",
+  "*tail wag*...",
+  "On it!...",
+  "Sniffing out an answer...",
+  "*paws at keyboard*...",
+  "Let me dig that up...",
+  "One sec...",
+];
+
+function getRandomLoadingMessage() {
+  return LOADING_MESSAGES[Math.floor(Math.random() * LOADING_MESSAGES.length)];
+}
+
 export function KitChatPanel() {
   const [input, setInput] = useState('');
+  const [loadingMessage, setLoadingMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -27,6 +47,13 @@ export function KitChatPanel() {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Update loading message when isLoading changes to true
+  useEffect(() => {
+    if (isLoading) {
+      setLoadingMessage(getRandomLoadingMessage());
+    }
+  }, [isLoading]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,13 +149,39 @@ export function KitChatPanel() {
                     "max-w-[85%] rounded-2xl px-4 py-2 text-sm",
                     msg.role === 'user'
                       ? 'text-white rounded-br-md'
-                      : 'rounded-bl-md'
+                      : 'rounded-bl-md kit-message'
                   )}
                   style={{
                     background: msg.role === 'user' ? 'var(--ds-accent)' : 'var(--bg-surface-2)',
                   }}
                 >
-                  {msg.content}
+                  {msg.role === 'user' ? (
+                    msg.content
+                  ) : (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                        ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                        em: ({ children }) => <em className="italic">{children}</em>,
+                        code: ({ children }) => (
+                          <code className="px-1 py-0.5 rounded text-xs" style={{ background: 'var(--bg-surface-3)' }}>
+                            {children}
+                          </code>
+                        ),
+                        a: ({ href, children }) => (
+                          <a href={href} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--ds-accent)' }}>
+                            {children}
+                          </a>
+                        ),
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  )}
                 </div>
               </div>
             ))}
@@ -139,8 +192,8 @@ export function KitChatPanel() {
                   style={{ background: 'var(--bg-surface-2)' }}
                 >
                   <div className="flex items-center gap-2">
-                    <Loader2 size={14} className="animate-spin" />
-                    <span className="text-muted-foreground">Kit is thinking...</span>
+                    <Loader2 size={14} className="animate-spin" style={{ color: 'var(--ds-accent)' }} />
+                    <span className="text-muted-foreground italic">{loadingMessage}</span>
                   </div>
                 </div>
               </div>
