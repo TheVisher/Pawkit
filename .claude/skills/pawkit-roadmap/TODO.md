@@ -357,6 +357,63 @@ NOTES
 
 ---
 
+## Kit AI Assistant
+
+### Current Implementation (Dec 10, 2025)
+Kit is Pawkit's built-in AI assistant powered by Claude Haiku, available in-app.
+
+**Status:**
+- [x] Chat API endpoint (`/api/kit/chat`)
+- [x] Summarize endpoint (`/api/kit/suggest-tags`)
+- [x] Suggest tags endpoint (`/api/kit/suggest-tags`)
+- [x] Rate limiting and usage tracking (`kit_usage` table)
+- [x] Context building from user's library
+- [ ] UI: Floating overlay window (in progress - see `.claude/plans/KIT_OVERLAY_UI.md`)
+
+### Kit Actions (Write Capabilities)
+Kit should be able to take actions, not just answer questions.
+
+**Calendar Actions:**
+- [ ] **Create events from chat** — "Remind me to check this article on Friday"
+- [ ] **Parse natural language dates** — "this weekend", "next Tuesday", "in 3 days"
+- [ ] **Event creation API** — Kit calls `/api/events` to create calendar entries
+- [ ] **Confirmation flow** — Kit shows what it will create before doing it
+- [ ] **Movie/show release reminders** — "Remind me when Avatar comes out"
+
+**Example interactions:**
+```
+User: "Remind me to read this article tomorrow"
+Kit: "I'll add a reminder for tomorrow at 9am. Sound good? 📅"
+User: "Make it 2pm"
+Kit: "Done! Added 'Read: [article title]' to your calendar for tomorrow at 2pm."
+```
+
+**Other Kit Actions (Future):**
+- [ ] **Create bookmarks** — "Save this URL to my Design Pawkit"
+- [ ] **Create notes** — "Create a note about what we just discussed"
+- [ ] **Add tags** — "Tag this as 'read-later' and 'design'"
+- [ ] **Move items** — "Move this to my Archive Pawkit"
+
+### Kit Context Awareness
+- [ ] **Route-based context** — In Library = search cards, in Notes = search notes
+- [ ] **View context indicator** — Shows "Searching Library" or "Searching Notes"
+- [ ] **Override capability** — "Search my library for..." while in Notes view
+
+### Kit UI Improvements (In Progress)
+See `.claude/plans/KIT_OVERLAY_UI.md` for full implementation plan:
+- [ ] Floating Action Bar (FAB) with Kit button
+- [ ] Draggable/resizable overlay window
+- [ ] Anchorable to right side
+- [ ] Minimize/close controls
+- [ ] Context indicator
+
+### Kit Performance Optimization
+- [ ] **Two-stage RAG** — Send title index first, fetch full details for relevant items
+- [ ] **Embeddings** — Semantic search for better relevance (pgvector)
+- [ ] **Caching** — Cache library context for repeat queries
+
+---
+
 ## AI Features
 
 ### Embeddings for Cross-Platform Linking
@@ -554,6 +611,7 @@ Tags exist but are auto-generated when a card is added to a Pawkit (card gets th
   - `add_tags` — Tag items
   - `move_to_pawkit` — Organize items
   - `delete_quick_note` — Remove quick note
+  - `create_event` — Create calendar event (enables Kit calendar writing)
 - [ ] Auth via token (generated in Pawkit settings)
 - [ ] Test locally with Claude Desktop
 
@@ -648,4 +706,4 @@ npx pawkit-mcp-setup
 
 ---
 
-*Last conversation: December 10, 2025 — Connected Platforms, Note Folders, Topic Notes, AI linking, Reminders, Clipboard capture, BYOAI, MCP integration*
+*Last conversation: December 10, 2025 — Connected Platforms, Note Folders, Topic Notes, AI linking, Reminders, Clipboard capture, BYOAI, MCP integration, Kit Actions (calendar writing)*
