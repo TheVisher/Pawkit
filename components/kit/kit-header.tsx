@@ -23,7 +23,7 @@ export function KitHeader({
 
   return (
     <div className={cn(
-      "kit-drag-handle",
+      "kit-drag-handle flex-shrink-0",
       "flex items-center justify-between",
       "px-3 py-2 h-12",
       "border-b border-white/10",
