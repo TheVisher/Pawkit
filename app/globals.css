@@ -142,7 +142,8 @@
 /* Apply backdrop blur to glass panels */
 [data-ui-style="glass"] [data-panel="left"],
 [data-ui-style="glass"] [data-panel="right"],
-[data-ui-style="glass"] [data-panel="content"] {
+[data-ui-style="glass"] [data-panel="content"],
+[data-ui-style="glass"] [data-panel="kit"] {
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
