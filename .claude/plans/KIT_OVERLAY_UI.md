@@ -2,7 +2,7 @@
 
 > **Purpose**: Replace sidebar Kit chat with floating overlay window + action bar
 > **Created**: December 10, 2025
-> **Status**: Ready for implementation
+> **Status**: ✅ COMPLETED - December 10, 2025
 > **Branch**: `feature/note-folders`
 
 ---
@@ -839,41 +839,46 @@ Then update `buildKitContext` to adjust behavior based on view:
 After implementation, these files should exist/be updated:
 
 **New files:**
-- [ ] `components/fab/floating-action-bar.tsx`
-- [ ] `components/fab/fab-button.tsx`
-- [ ] `components/fab/fab-menu.tsx`
-- [ ] `components/kit/kit-overlay.tsx`
-- [ ] `components/kit/kit-header.tsx`
-- [ ] `components/kit/kit-context-indicator.tsx`
-- [ ] `hooks/use-current-context.ts`
+- [x] `components/fab/floating-action-bar.tsx`
+- [x] `components/fab/fab-button.tsx`
+- [x] `components/fab/fab-menu.tsx`
+- [x] `components/kit/kit-overlay.tsx`
+- [x] `components/kit/kit-header.tsx`
+- [x] `components/kit/kit-context-indicator.tsx`
+- [x] `components/kit/kit-chat-panel-overlay.tsx` (added)
+- [x] `hooks/use-current-context.ts`
 
 **Updated files:**
-- [ ] `hooks/use-kit-store.ts` - Add window state
-- [ ] `app/(dashboard)/layout.tsx` - Add FAB and KitOverlay
-- [ ] `components/control-panel/library-controls.tsx` - Remove KitSection
-- [ ] `app/api/kit/chat/route.ts` - Accept viewContext
-- [ ] `lib/ai/kit-context.ts` - Use viewContext
+- [x] `lib/hooks/use-kit-store.ts` - Add window state
+- [x] `app/(dashboard)/layout.tsx` - Add FAB and KitOverlay
+- [x] `components/control-panel/library-controls.tsx` - Remove KitSection
+- [x] `components/layout/content-panel.tsx` - Add kitAnchored prop
+- [x] `app/api/kit/chat/route.ts` - Accept viewContext
+- [x] `lib/ai/kit-context.ts` - Use viewContext
 
 **Dependencies:**
-- [ ] `pnpm add react-rnd`
+- [x] `pnpm add react-rnd`
 
 ---
 
 ## Testing Checklist
 
-- [ ] FAB appears in bottom-right corner
-- [ ] Click Kit button opens overlay
-- [ ] Click Kit button again closes overlay
-- [ ] Overlay is draggable by header
-- [ ] Overlay is resizable from edges/corners
-- [ ] Anchor button snaps window to right side
-- [ ] Minimize collapses to header only
-- [ ] Close button closes window
-- [ ] Position and size persist after refresh
-- [ ] Context indicator shows current route
-- [ ] Chat still works correctly
-- [ ] Search button triggers command palette
-- [ ] Add menu opens with options
+- [x] FAB appears in bottom center (Dynamic Island style)
+- [x] Click Kit button opens overlay
+- [x] Click Kit button again closes overlay
+- [x] Overlay is draggable by header
+- [x] Overlay is resizable from edges/corners
+- [x] Anchor button snaps window to right side (like sidebars)
+- [x] Anchored Kit closes right sidebar
+- [x] Anchored Kit integrates with content panel
+- [x] Minimize collapses to header only
+- [x] Close button closes window
+- [x] Position and size persist after refresh
+- [x] Context indicator shows current route
+- [x] Chat still works correctly
+- [x] Search button triggers command palette
+- [x] Add menu opens with options
+- [x] viewContext passed to API based on current route
 
 ---
 
