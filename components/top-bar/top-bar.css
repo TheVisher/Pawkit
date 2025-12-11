@@ -190,30 +190,30 @@
   pointer-events: none;
 }
 
-/* Left slope - just the curved shadow, no background block */
+/* Left slope - curved shadow matching island color */
 .dynamic-top-bar-slopes::before {
   content: '';
   position: absolute;
   top: 0;
-  right: calc(100% - 10px); /* Adjusted outward a few pixels */
+  right: calc(100% - 10px);
   width: 20px;
   height: 20px;
   background: transparent;
   border-top-right-radius: 20px;
-  box-shadow: 5px -5px 0 0 rgba(0, 0, 0, 0.85);
+  box-shadow: 6px -6px 0 0 rgba(0, 0, 0, 0.85);
 }
 
-/* Right slope - just the curved shadow, no background block */
+/* Right slope - curved shadow matching island color */
 .dynamic-top-bar-slopes::after {
   content: '';
   position: absolute;
   top: 0;
-  left: calc(100% - 10px); /* Adjusted outward a few pixels */
+  left: calc(100% - 10px);
   width: 20px;
   height: 20px;
   background: transparent;
   border-top-left-radius: 20px;
-  box-shadow: -5px -5px 0 0 rgba(0, 0, 0, 0.85);
+  box-shadow: -6px -6px 0 0 rgba(0, 0, 0, 0.85);
 }
 
 .slopes-visible {
