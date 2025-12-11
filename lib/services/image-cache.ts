@@ -116,8 +116,14 @@ class ImageCacheService {
 
   /**
    * Get cached image or fetch and cache it (main method to use)
+   * Only caches Supabase images - external images have CORS issues
    */
   async getOrFetch(imageUrl: string): Promise<string> {
+    // Only cache Supabase images - external images have CORS issues
+    if (!imageUrl.includes('supabase.co/storage')) {
+      return imageUrl;
+    }
+
     // Try cache first
     const cached = await this.get(imageUrl);
     if (cached) return cached;
@@ -136,13 +142,21 @@ class ImageCacheService {
 
   /**
    * Pre-cache multiple images in background
+   * Only caches Supabase images - external images have CORS issues
    */
   async preCacheImages(imageUrls: string[]): Promise<void> {
     if (!imageUrls.length) return;
 
+    // Filter to only Supabase images (external images have CORS issues)
+    const supabaseUrls = imageUrls.filter(url => url.includes('supabase.co/storage'));
+    if (!supabaseUrls.length) {
+      console.log('[ImageCache] No Supabase images to cache');
+      return;
+    }
+
     // Filter out already cached images
     const uncachedUrls: string[] = [];
-    for (const url of imageUrls) {
+    for (const url of supabaseUrls) {
       const isCached = await this.isCached(url);
       if (!isCached) {
         uncachedUrls.push(url);
