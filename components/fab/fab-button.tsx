@@ -24,13 +24,13 @@ export function FabButton({
       title={label}
       className={cn(
         "w-12 h-12 rounded-full flex items-center justify-center",
-        "bg-black/40 backdrop-blur-xl border border-white/10",
-        "hover:bg-white/10 hover:border-white/20",
+        "bg-black/80 backdrop-blur-xl border border-white/20",
+        "hover:bg-black/90 hover:border-white/30",
         "transition-all duration-200",
-        "shadow-lg",
-        active && "bg-white/10 border-white/20",
-        highlight && "hover:shadow-purple-500/25 hover:border-purple-500/50",
-        highlight && active && "shadow-purple-500/30 border-purple-500/50 bg-purple-500/20"
+        "shadow-xl shadow-black/50",
+        active && "bg-white/20 border-white/30",
+        highlight && "hover:shadow-purple-500/40 hover:border-purple-500/50",
+        highlight && active && "shadow-purple-500/50 border-purple-500/50 bg-purple-500/30"
       )}
     >
       <Icon size={20} className={cn(
