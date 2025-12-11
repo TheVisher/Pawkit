@@ -67,6 +67,13 @@ const config: Config = {
   			'glass-border': 'rgba(255, 255, 255, 0.08)',
   			'success-glow': '#22c55e',
   			'danger-glow': '#ef4444',
+  			// Surface hierarchy - uses design system variables
+  			surface: {
+  				1: 'var(--bg-surface-1)',
+  				2: 'var(--bg-surface-2)',
+  				3: 'var(--bg-surface-3)',
+  				4: 'var(--bg-surface-4)',
+  			},
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
@@ -78,6 +85,11 @@ const config: Config = {
   			'glow-accent': '0 0 25px rgba(124, 58, 237, 0.45)',
   			'glow-success': '0 0 25px rgba(34, 197, 94, 0.45)',
   			'glow-danger': '0 0 25px rgba(239, 68, 68, 0.45)',
+  			// Elevation system - uses design system shadow variables
+  			'elevation-1': 'var(--shadow-1)',
+  			'elevation-2': 'var(--shadow-2)',
+  			'elevation-3': 'var(--shadow-3)',
+  			'elevation-4': 'var(--shadow-4)',
   		},
   		keyframes: {
   			'slide-in-right': {
