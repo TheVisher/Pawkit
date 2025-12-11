@@ -165,7 +165,7 @@
   left: 50%;
   transform: translateX(-50%);
   min-width: 200px;
-  background: var(--bg-surface-1);
+  background: hsl(var(--card));
   border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 4px;
