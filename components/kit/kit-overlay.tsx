@@ -21,17 +21,21 @@ export function KitOverlay() {
     isOpen,
     isMinimized,
     isAnchored,
+    isEmbeddedInSidebar,
     position,
     size,
+    sidebarWasOpenBeforeAnchor,
     setPosition,
     setSize,
     toggleMinimized,
     toggleAnchored,
     close,
+    setSidebarWasOpen,
   } = useKitStore();
 
-  // Get panel store to close right panel when Kit anchors and get left mode
+  // Get panel store to close/open right panel when Kit anchors and get left mode
   const closeRightPanel = usePanelStore((state) => state.close);
+  const openRightPanel = usePanelStore((state) => state.open);
   const isRightPanelOpen = usePanelStore((state) => state.isOpen);
   const leftMode = usePanelStore((state) => state.leftMode);
 
@@ -45,14 +49,29 @@ export function KitOverlay() {
     }
   }, [isOpen, isAnchored, isRightPanelOpen, closeRightPanel]);
 
-  // Handle anchor toggle - close right panel when Kit anchors
+  // Handle anchor toggle - track sidebar state and restore when unanchoring
   const handleAnchorToggle = useCallback(() => {
     if (!isAnchored) {
-      // About to anchor - close right panel first
+      // About to anchor - remember if sidebar was open, then close it
+      setSidebarWasOpen(isRightPanelOpen);
       closeRightPanel();
+    } else {
+      // Unanchoring - restore sidebar if it was open before
+      if (sidebarWasOpenBeforeAnchor) {
+        openRightPanel();
+      }
     }
     toggleAnchored();
-  }, [isAnchored, closeRightPanel, toggleAnchored]);
+  }, [isAnchored, isRightPanelOpen, sidebarWasOpenBeforeAnchor, closeRightPanel, openRightPanel, setSidebarWasOpen, toggleAnchored]);
+
+  // Handle close - restore sidebar if needed
+  const handleClose = useCallback(() => {
+    // If Kit was anchored and sidebar was open before, restore it
+    if (isAnchored && sidebarWasOpenBeforeAnchor) {
+      openRightPanel();
+    }
+    close();
+  }, [isAnchored, sidebarWasOpenBeforeAnchor, openRightPanel, close]);
 
   // Set initial position if not yet set (0,0)
   useEffect(() => {
@@ -65,6 +84,9 @@ export function KitOverlay() {
   }, [position.x, position.y, size.width, size.height, setPosition, isAnchored]);
 
   if (!isOpen) return null;
+
+  // When Kit is embedded in sidebar (card is open), don't render overlay
+  if (isEmbeddedInSidebar) return null;
 
   // When anchored, Kit becomes a sidebar-like panel on the right
   // Style depends on whether left panel is floating or anchored
@@ -98,7 +120,7 @@ export function KitOverlay() {
       >
         {/* Header */}
         <KitHeader
-          onClose={close}
+          onClose={handleClose}
           onMinimize={toggleMinimized}
           onAnchor={handleAnchorToggle}
           isMinimized={isMinimized}
@@ -156,7 +178,7 @@ export function KitOverlay() {
       >
         {/* Header - always visible, draggable */}
         <KitHeader
-          onClose={close}
+          onClose={handleClose}
           onMinimize={toggleMinimized}
           onAnchor={handleAnchorToggle}
           isMinimized={isMinimized}
