@@ -298,6 +298,34 @@ export const useDataStore = create<DataStore>((set, get) => ({
         isLoading: false,
       });
 
+      // Pre-cache card images in background (non-blocking)
+      // This dramatically improves load times on slow connections by caching
+      // images to IndexedDB for instant loading on subsequent visits
+      if (typeof window !== 'undefined') {
+        const preCacheImages = async () => {
+          try {
+            const { imageCache } = await import('@/lib/services/image-cache');
+            const imageUrls = cards
+              .filter(c => c.image && !c.isFileCard && c.type !== 'file')
+              .map(c => c.image as string);
+
+            if (imageUrls.length > 0) {
+              console.log(`[DataStore] Pre-caching ${imageUrls.length} card images in background`);
+              await imageCache.preCacheImages(imageUrls);
+            }
+          } catch (error) {
+            // Non-critical - silently fail
+          }
+        };
+
+        // Use requestIdleCallback to avoid blocking the UI
+        if (typeof requestIdleCallback !== 'undefined') {
+          requestIdleCallback(() => preCacheImages(), { timeout: 5000 });
+        } else {
+          setTimeout(preCacheImages, 2000);
+        }
+      }
+
       // NOTE: Removed aggressive auto-sync on page load
       // Sync now happens on:
       // - Periodic intervals (every 60s)
