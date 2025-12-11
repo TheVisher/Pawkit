@@ -76,7 +76,7 @@
   background: transparent;
   border: none;
   border-radius: 8px;
-  color: var(--text-muted);
+  color: var(--text-secondary); /* Brighter than --text-muted */
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
@@ -125,7 +125,7 @@
 }
 
 .search-icon {
-  color: var(--text-muted);
+  color: var(--text-secondary); /* Brighter for visibility */
   flex-shrink: 0;
 }
 
@@ -238,10 +238,25 @@
 }
 
 /* ========== ANIMATIONS ========== */
-/* Simple width morph, no scale transforms */
+/* Smooth morph between expanded and collapsed states */
 
 .dynamic-top-bar {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.35s cubic-bezier(0.32, 0.72, 0, 1); /* iOS-like spring curve */
+}
+
+/* Smooth content fade during transition */
+.top-bar-expanded,
+.top-bar-collapsed {
+  animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 /* ========== RESPONSIVE ========== */
@@ -254,6 +269,30 @@
   .search-shortcut {
     display: none;
   }
+}
+
+/* ========== GLASS THEME - Enhanced readability ========== */
+/* Glass theme needs more opacity/blur for top bar readability over content */
+
+[data-theme="glass"] .top-bar-pill,
+[data-theme="glass"] .top-bar-island {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="glass"] .top-bar-pill:hover,
+[data-theme="glass"] .top-bar-island:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* Glass theme add menu also needs enhanced readability */
+[data-theme="glass"] .top-bar-add-menu {
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 /* ========== LEGACY/UNUSED - TO BE REMOVED ========== */

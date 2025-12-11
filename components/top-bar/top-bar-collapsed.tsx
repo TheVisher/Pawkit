@@ -27,7 +27,7 @@ export function TopBarCollapsed({ onSearchClick, onKitClick }: TopBarCollapsedPr
           className={cn("island-btn", addMenuOpen && "active")}
           title="Add content"
         >
-          <Plus size={16} />
+          <Plus size={18} />
         </button>
 
         {/* Search button - opens command palette */}
@@ -36,7 +36,7 @@ export function TopBarCollapsed({ onSearchClick, onKitClick }: TopBarCollapsedPr
           className="island-btn search"
           title="Search (⌘K)"
         >
-          <Search size={16} />
+          <Search size={18} />
         </button>
 
         {/* Kit button */}
@@ -45,7 +45,7 @@ export function TopBarCollapsed({ onSearchClick, onKitClick }: TopBarCollapsedPr
           className="island-btn kit"
           title="Ask Kit"
         >
-          <MessageCircle size={16} />
+          <MessageCircle size={18} />
         </button>
       </div>
 
