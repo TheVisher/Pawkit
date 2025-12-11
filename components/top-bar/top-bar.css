@@ -316,38 +316,33 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* Glass theme add menu - nearly opaque since parent has backdrop-filter */
-/* backdrop-filter doesn't work on children when parent already uses it */
+/* Glass theme add menu - solid background, no blur */
 [data-theme="glass"] .top-bar-add-menu {
-  /* Nearly opaque dark background for readability */
-  background: rgba(22, 22, 28, 0.96);
+  background: rgb(30, 30, 35);
   border-color: rgba(255, 255, 255, 0.12);
-  /* Enhanced shadow for depth and separation */
-  box-shadow:
-    0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="glass"] .add-menu-item {
   color: rgba(255, 255, 255, 0.92);
 }
 
-[data-theme="glass"] .add-menu-item svg {
-  color: rgba(255, 255, 255, 0.85);
-}
-
 [data-theme="glass"] .add-menu-item:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: rgba(255, 255, 255, 1);
-}
-
-[data-theme="glass"] .add-menu-item:hover svg {
+  background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 1);
 }
 
 [data-theme="glass"] .add-menu-shortcut {
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.6);
+}
+
+/* Light mode */
+[data-theme="light"] .top-bar-add-menu,
+.light .top-bar-add-menu {
+  background: rgb(255, 255, 255);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
 /* ========== LEGACY/UNUSED - TO BE REMOVED ========== */
