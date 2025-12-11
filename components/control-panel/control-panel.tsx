@@ -75,8 +75,9 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
 
   // When embedded, the panel is positioned within the content panel
   // Otherwise it's fixed to the viewport
+  // Both modes use z-[102] to stay above the card modal backdrop/content
   const positionClasses = embedded
-    ? "fixed top-4 right-4 bottom-4 w-[325px] z-20"
+    ? "fixed top-4 right-4 bottom-4 w-[325px] z-[102]"
     : `fixed top-0 right-0 bottom-0 w-[325px] z-[102] ${mode === "floating" ? "m-4" : ""}`;
 
   const styleClasses = embedded
