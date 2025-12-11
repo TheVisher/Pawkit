@@ -27,7 +27,7 @@ export function KitContextIndicator() {
 
   return (
     <div className={cn(
-      "flex items-center gap-2 px-3 py-1.5",
+      "flex-shrink-0 flex items-center gap-2 px-3 py-1.5",
       "text-xs text-muted-foreground",
       "border-b border-white/5",
       "bg-white/[0.02]"
