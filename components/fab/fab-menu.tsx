@@ -48,7 +48,7 @@ export function FabMenu({ open, onClose }: FabMenuProps) {
       ref={menuRef}
       className={cn(
         "absolute bottom-full right-0 mb-2",
-        "bg-black/60 backdrop-blur-xl rounded-xl",
+        "bg-[rgb(30,30,35)] rounded-xl",
         "border border-white/10 shadow-xl",
         "p-2 min-w-[160px]",
         "animate-in fade-in slide-in-from-bottom-2 duration-200"
