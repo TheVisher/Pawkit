@@ -141,11 +141,12 @@ export function ContentPanel({
       data-content-panel
       data-right-embedded={isRightEmbedded}
     >
-      {/* Dynamic Top Bar - absolutely positioned, floats above content */}
-      {!isMobile && <DynamicTopBar />}
-
       {/* Content container with scrolling - scrollbar hidden for cleaner look */}
-      <div className="content-panel-scroll flex-1 overflow-y-auto scrollbar-hide">
+      {/* Top bar is INSIDE scroll container so backdrop-filter can blur scrolling content */}
+      <div className="content-panel-scroll flex-1 overflow-y-auto scrollbar-hide relative">
+        {/* Dynamic Top Bar - sticky inside scroll container for backdrop-filter to work */}
+        {!isMobile && <DynamicTopBar />}
+
         {/* Page content with padding */}
         <div className="px-6 py-6">
           {children}
