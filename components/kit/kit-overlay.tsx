@@ -38,16 +38,19 @@ export function KitOverlay() {
   const openRightPanel = usePanelStore((state) => state.open);
   const isRightPanelOpen = usePanelStore((state) => state.isOpen);
   const leftMode = usePanelStore((state) => state.leftMode);
+  const contentType = usePanelStore((state) => state.contentType);
 
   // Determine if content panel is floating (left panel is floating)
   const isContentFloating = leftMode === "floating";
 
   // Close right panel when Kit opens while anchored
+  // Only close sidebar if Kit is anchored AND sidebar isn't showing card-details
+  // When showing card-details, Kit should embed in sidebar instead of blocking it
   useEffect(() => {
-    if (isOpen && isAnchored && isRightPanelOpen) {
+    if (isOpen && isAnchored && isRightPanelOpen && contentType !== 'card-details') {
       closeRightPanel();
     }
-  }, [isOpen, isAnchored, isRightPanelOpen, closeRightPanel]);
+  }, [isOpen, isAnchored, isRightPanelOpen, contentType, closeRightPanel]);
 
   // Handle anchor toggle - track sidebar state and restore when unanchoring
   const handleAnchorToggle = useCallback(() => {
