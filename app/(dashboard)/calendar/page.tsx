@@ -105,8 +105,8 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="relative">
+      {/* Header - flex row with title left, month navigation right */}
+      <div className="flex items-center justify-between gap-4">
         {/* Left-aligned header */}
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
@@ -122,29 +122,27 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Absolutely centered month/year with navigation arrows */}
-        <div className="absolute top-0 left-0 right-0 h-full flex items-center justify-center pointer-events-none">
-          <div className="flex items-center gap-3 pointer-events-auto">
-            <button
-              onClick={() => setCurrentMonth(viewMode === "week" ? subWeeks(currentMonth, 1) : subMonths(currentMonth, 1))}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={viewMode === "week" ? "Previous week" : "Previous month"}
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <span className="text-xl font-semibold text-foreground min-w-[200px] text-center">
-              {viewMode === "week"
-                ? `Week of ${format(startOfWeek(currentMonth), 'MMM d, yyyy')}`
-                : format(currentMonth, 'MMMM yyyy')}
-            </span>
-            <button
-              onClick={() => setCurrentMonth(viewMode === "week" ? addWeeks(currentMonth, 1) : addMonths(currentMonth, 1))}
-              className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={viewMode === "week" ? "Next week" : "Next month"}
-            >
-              <ChevronRight size={20} />
-            </button>
-          </div>
+        {/* Right-aligned month/year navigation */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setCurrentMonth(viewMode === "week" ? subWeeks(currentMonth, 1) : subMonths(currentMonth, 1))}
+            className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label={viewMode === "week" ? "Previous week" : "Previous month"}
+          >
+            <ChevronLeft size={20} />
+          </button>
+          <span className="text-lg font-semibold text-foreground min-w-[180px] text-center">
+            {viewMode === "week"
+              ? `Week of ${format(startOfWeek(currentMonth), 'MMM d, yyyy')}`
+              : format(currentMonth, 'MMMM yyyy')}
+          </span>
+          <button
+            onClick={() => setCurrentMonth(viewMode === "week" ? addWeeks(currentMonth, 1) : addMonths(currentMonth, 1))}
+            className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label={viewMode === "week" ? "Next week" : "Next month"}
+          >
+            <ChevronRight size={20} />
+          </button>
         </div>
       </div>
 
