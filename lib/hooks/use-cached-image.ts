@@ -42,7 +42,8 @@ export function useCachedImage(imageUrl: string | null | undefined) {
 
     async function loadImage() {
       try {
-        const cachedSrc = await imageCache.getOrFetch(imageUrl);
+        // imageUrl is guaranteed to be a string here due to early return above
+        const cachedSrc = await imageCache.getOrFetch(imageUrl as string);
 
         if (!cancelled && mountedRef.current) {
           setSrc(cachedSrc);
@@ -53,7 +54,7 @@ export function useCachedImage(imageUrl: string | null | undefined) {
           setError(err as Error);
           setIsLoading(false);
           // Fallback to original URL if caching fails
-          setSrc(imageUrl);
+          setSrc(imageUrl as string);
         }
       }
     }
