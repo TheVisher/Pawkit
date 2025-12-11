@@ -32,10 +32,18 @@ export function KitOverlay() {
 
   // Get panel store to close right panel when Kit anchors and get left mode
   const closeRightPanel = usePanelStore((state) => state.close);
+  const isRightPanelOpen = usePanelStore((state) => state.isOpen);
   const leftMode = usePanelStore((state) => state.leftMode);
 
   // Determine if content panel is floating (left panel is floating)
   const isContentFloating = leftMode === "floating";
+
+  // Close right panel when Kit opens while anchored
+  useEffect(() => {
+    if (isOpen && isAnchored && isRightPanelOpen) {
+      closeRightPanel();
+    }
+  }, [isOpen, isAnchored, isRightPanelOpen, closeRightPanel]);
 
   // Handle anchor toggle - close right panel when Kit anchors
   const handleAnchorToggle = useCallback(() => {
