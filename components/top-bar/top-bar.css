@@ -271,20 +271,46 @@
   }
 }
 
-/* ========== GLASS THEME - Enhanced readability ========== */
-/* Glass theme needs more opacity/blur for top bar readability over content */
+/* ========== GLASS THEME - Match Kit overlay blur ========== */
+/* Glass theme needs strong blur to match Kit window (bg-black/70 backdrop-blur-xl) */
 
 [data-theme="glass"] .top-bar-pill,
 [data-theme="glass"] .top-bar-island {
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(24px);
+  background: rgba(0, 0, 0, 0.70); /* Match Kit's bg-black/70 */
+  backdrop-filter: blur(24px); /* xl = 24px */
   -webkit-backdrop-filter: blur(24px);
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 [data-theme="glass"] .top-bar-pill:hover,
 [data-theme="glass"] .top-bar-island:hover {
-  background: rgba(0, 0, 0, 0.7);
+  background: rgba(0, 0, 0, 0.75);
+}
+
+/* Brighter text/icons in Glass theme for readability */
+[data-theme="glass"] .top-bar-btn,
+[data-theme="glass"] .island-btn,
+[data-theme="glass"] .search-icon {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+[data-theme="glass"] .top-bar-btn:hover,
+[data-theme="glass"] .island-btn:hover {
+  color: rgba(255, 255, 255, 1);
+}
+
+[data-theme="glass"] .search-input {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+[data-theme="glass"] .search-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+[data-theme="glass"] .search-shortcut {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* Glass theme add menu also needs enhanced readability */
@@ -292,7 +318,16 @@
   background: rgba(0, 0, 0, 0.75);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="glass"] .add-menu-item {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+[data-theme="glass"] .add-menu-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 1);
 }
 
 /* ========== LEGACY/UNUSED - TO BE REMOVED ========== */
