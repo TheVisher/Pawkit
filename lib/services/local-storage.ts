@@ -111,13 +111,28 @@ interface LocalStorageDB extends DBSchema {
       'by-category': string;
     };
   };
+  imageCache: {
+    key: string; // URL or image ID (normalized)
+    value: {
+      id: string;           // Original URL or Supabase path (normalized)
+      blob: Blob;           // The actual image data
+      mimeType: string;     // e.g., 'image/jpeg'
+      size: number;         // Bytes
+      cachedAt: number;     // Timestamp when cached
+      lastAccessedAt: number; // For LRU eviction if needed
+    };
+    indexes: {
+      'by-cached-at': number;
+      'by-last-accessed': number;
+    };
+  };
 }
 
 class LocalStorage {
   private db: IDBPDatabase<LocalStorageDB> | null = null;
   private userId: string | null = null;
   private workspaceId: string | null = null;
-  private readonly DB_VERSION = 7; // Version 7: added 'files' store for file attachments
+  private readonly DB_VERSION = 8; // Version 8: added 'imageCache' store for thumbnail caching
 
   /**
    * Get user-specific database name with workspace support
@@ -219,6 +234,13 @@ class LocalStorage {
           filesStore.createIndex('by-card', 'cardId');
           filesStore.createIndex('by-deleted', 'deleted');
           filesStore.createIndex('by-category', 'category');
+        }
+
+        // Create imageCache store (added in v8)
+        if (!db.objectStoreNames.contains('imageCache')) {
+          const imageCacheStore = db.createObjectStore('imageCache', { keyPath: 'id' });
+          imageCacheStore.createIndex('by-cached-at', 'cachedAt');
+          imageCacheStore.createIndex('by-last-accessed', 'lastAccessedAt');
         }
       },
     });
@@ -1170,6 +1192,142 @@ class LocalStorage {
       totalSize: activeFiles.reduce((total, file) => total + file.size, 0),
       byCategory,
     };
+  }
+
+  // ==================== IMAGE CACHE ====================
+
+  /**
+   * Get cached image by normalized URL/ID
+   */
+  async getCachedImage(id: string): Promise<{
+    id: string;
+    blob: Blob;
+    mimeType: string;
+    size: number;
+    cachedAt: number;
+    lastAccessedAt: number;
+  } | undefined> {
+    if (!this.db) {
+      return undefined;
+    }
+
+    const cached = await this.db.get('imageCache', id);
+    if (!cached) return undefined;
+
+    // Update lastAccessedAt
+    await this.db.put('imageCache', {
+      ...cached,
+      lastAccessedAt: Date.now(),
+    });
+
+    return cached;
+  }
+
+  /**
+   * Save image to cache
+   */
+  async cacheImage(
+    id: string,
+    blob: Blob,
+    mimeType: string
+  ): Promise<void> {
+    if (!this.db) {
+      throw new Error('[LocalStorage] Database not initialized. Call init(userId, workspaceId) first.');
+    }
+
+    const now = Date.now();
+    await this.db.put('imageCache', {
+      id,
+      blob,
+      mimeType,
+      size: blob.size,
+      cachedAt: now,
+      lastAccessedAt: now,
+    });
+  }
+
+  /**
+   * Check if image is cached
+   */
+  async isImageCached(id: string): Promise<boolean> {
+    if (!this.db) {
+      return false;
+    }
+
+    const cached = await this.db.get('imageCache', id);
+    return !!cached;
+  }
+
+  /**
+   * Delete cached image
+   */
+  async deleteCachedImage(id: string): Promise<void> {
+    if (!this.db) {
+      return;
+    }
+
+    await this.db.delete('imageCache', id);
+  }
+
+  /**
+   * Get image cache statistics
+   */
+  async getImageCacheStats(): Promise<{
+    count: number;
+    totalSize: number;
+  }> {
+    if (!this.db) {
+      return { count: 0, totalSize: 0 };
+    }
+
+    const images = await this.db.getAll('imageCache');
+    return {
+      count: images.length,
+      totalSize: images.reduce((total, img) => total + img.size, 0),
+    };
+  }
+
+  /**
+   * Get all cached image IDs (for eviction decisions)
+   */
+  async getAllCachedImageIds(): Promise<string[]> {
+    if (!this.db) {
+      return [];
+    }
+
+    const images = await this.db.getAll('imageCache');
+    return images.map(img => img.id);
+  }
+
+  /**
+   * Get oldest cached images (by lastAccessedAt) for LRU eviction
+   */
+  async getOldestCachedImages(limit: number): Promise<Array<{
+    id: string;
+    size: number;
+    lastAccessedAt: number;
+  }>> {
+    if (!this.db) {
+      return [];
+    }
+
+    const images = await this.db.getAllFromIndex('imageCache', 'by-last-accessed');
+    return images.slice(0, limit).map(img => ({
+      id: img.id,
+      size: img.size,
+      lastAccessedAt: img.lastAccessedAt,
+    }));
+  }
+
+  /**
+   * Clear all cached images
+   */
+  async clearImageCache(): Promise<void> {
+    if (!this.db) {
+      return;
+    }
+
+    await this.db.clear('imageCache');
   }
 }
 
