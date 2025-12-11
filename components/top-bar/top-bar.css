@@ -143,8 +143,9 @@
   border-radius: 0 0 22px 22px; /* Increased from 18px */
   box-shadow:
     0 4px 16px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-    0 -2px 0 0 #000; /* Cover the highlight border line above */
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  /* Extend upward to cover the border highlight line */
+  margin-top: -1px;
 }
 
 /* Island buttons - 20% larger */
@@ -182,7 +183,7 @@
 
 .dynamic-top-bar-slopes {
   position: absolute;
-  top: 0;
+  top: -1px; /* Move up to cover border line */
   left: 50%;
   transform: translateX(-50%);
   width: 168px; /* Match island width */
