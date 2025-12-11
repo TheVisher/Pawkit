@@ -10,69 +10,84 @@ const config: Config = {
   theme: {
   	extend: {
   		colors: {
-  			accent: {
-  				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))',
-  				muted: 'hsl(var(--accent-h) var(--accent-s) 35%)',
-  				subtle: 'hsl(var(--accent-h) var(--accent-s) 20%)',
-  				hover: 'hsl(var(--accent-h) var(--accent-s) calc(var(--accent-l) + 10%))',
-  			},
-  			background: 'hsl(var(--background))',
-  			foreground: 'hsl(var(--foreground))',
+  			// === TEXT COLORS - Map to v2.0 ===
+  			foreground: 'var(--text-primary)',
+  			'muted-foreground': 'var(--text-muted)',
+
+  			// === BACKGROUNDS - Map to v2.0 ===
+  			background: 'var(--bg-base)',
   			card: {
-  				DEFAULT: 'hsl(var(--card))',
-  				foreground: 'hsl(var(--card-foreground))'
+  				DEFAULT: 'var(--bg-surface-2)',
+  				foreground: 'var(--text-primary)',
   			},
   			popover: {
-  				DEFAULT: 'hsl(var(--popover))',
-  				foreground: 'hsl(var(--popover-foreground))'
-  			},
-  			primary: {
-  				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
-  			},
-  			secondary: {
-  				DEFAULT: 'hsl(var(--secondary))',
-  				foreground: 'hsl(var(--secondary-foreground))'
+  				DEFAULT: 'var(--bg-surface-1)',
+  				foreground: 'var(--text-primary)',
   			},
   			muted: {
-  				DEFAULT: 'hsl(var(--muted))',
-  				foreground: 'hsl(var(--muted-foreground))'
+  				DEFAULT: 'var(--bg-surface-3)',
+  				foreground: 'var(--text-muted)',
+  			},
+
+  			// === BORDERS - Map to v2.0 ===
+  			border: 'var(--border-default)',
+  			input: 'var(--border-default)',
+  			ring: 'var(--ds-accent)',
+
+  			// === ACCENT - Keep dynamic accent system ===
+  			accent: {
+  				DEFAULT: 'var(--ds-accent)',
+  				foreground: 'hsl(0 0% 100%)',
+  				muted: 'var(--ds-accent-muted)',
+  				subtle: 'var(--ds-accent-subtle)',
+  				hover: 'var(--ds-accent-hover)',
+  			},
+  			primary: {
+  				DEFAULT: 'var(--ds-accent)',
+  				foreground: 'hsl(0 0% 100%)',
+  			},
+  			secondary: {
+  				DEFAULT: 'var(--bg-surface-2)',
+  				foreground: 'var(--text-primary)',
   			},
   			destructive: {
-  				DEFAULT: 'hsl(var(--destructive))',
-  				foreground: 'hsl(var(--destructive-foreground))'
+  				DEFAULT: 'hsl(0 70% 48%)',
+  				foreground: 'hsl(0 0% 100%)',
   			},
-  			border: 'hsl(var(--border))',
-  			input: 'hsl(var(--input))',
-  			ring: 'hsl(var(--ring))',
-  			chart: {
-  				'1': 'hsl(var(--chart-1))',
-  				'2': 'hsl(var(--chart-2))',
-  				'3': 'hsl(var(--chart-3))',
-  				'4': 'hsl(var(--chart-4))',
-  				'5': 'hsl(var(--chart-5))'
-  			},
-  			sidebar: {
-  				DEFAULT: 'hsl(var(--sidebar-background))',
-  				foreground: 'hsl(var(--sidebar-foreground))',
-  				primary: 'hsl(var(--sidebar-primary))',
-  				'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
-  				accent: 'hsl(var(--sidebar-accent))',
-  				'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
-  				border: 'hsl(var(--sidebar-border))',
-  				ring: 'hsl(var(--sidebar-ring))'
-  			},
-  			'glass-surface': 'rgba(255, 255, 255, 0.05)',
-  			'glass-border': 'rgba(255, 255, 255, 0.08)',
-  			'success-glow': '#22c55e',
-  			'danger-glow': '#ef4444',
-  			// Surface hierarchy - uses design system variables
+
+  			// === SURFACE HIERARCHY ===
   			surface: {
   				1: 'var(--bg-surface-1)',
   				2: 'var(--bg-surface-2)',
   				3: 'var(--bg-surface-3)',
   				4: 'var(--bg-surface-4)',
+  			},
+
+  			// === KEEP EXISTING ===
+  			'glass-surface': 'rgba(255, 255, 255, 0.05)',
+  			'glass-border': 'rgba(255, 255, 255, 0.08)',
+  			'success-glow': '#22c55e',
+  			'danger-glow': '#ef4444',
+
+  			// === SIDEBAR - Map to v2.0 ===
+  			sidebar: {
+  				DEFAULT: 'var(--bg-surface-1)',
+  				foreground: 'var(--text-secondary)',
+  				primary: 'var(--ds-accent)',
+  				'primary-foreground': 'hsl(0 0% 100%)',
+  				accent: 'var(--bg-surface-3)',
+  				'accent-foreground': 'var(--text-primary)',
+  				border: 'var(--border-subtle)',
+  				ring: 'var(--ds-accent)',
+  			},
+
+  			// === CHART COLORS ===
+  			chart: {
+  				'1': 'var(--ds-accent)',
+  				'2': 'hsl(222 76% 65%)',
+  				'3': 'hsl(190 68% 62%)',
+  				'4': 'hsl(40 90% 65%)',
+  				'5': 'hsl(340 82% 65%)',
   			},
   		},
   		borderRadius: {
