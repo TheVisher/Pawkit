@@ -177,43 +177,41 @@
 }
 
 /* ========== SLOPES (Dynamic Island Effect) ========== */
-/* These create the curved connection between the island and the content panel top border */
-/* The curves should go OUTWARD - like the island is emerging from the top edge */
+/* Create the curved "ears" that connect the island to the top edge */
+/* Uses inverted border-radius technique for the correct curve direction */
 
 .dynamic-top-bar-slopes {
   position: absolute;
   top: 0;
   left: 50%;
   transform: translateX(-50%);
-  width: 168px; /* Match island width (20% larger) */
-  height: 20px;
+  width: 168px; /* Match island width */
+  height: 24px;
   pointer-events: none;
 }
 
-/* Left slope curve - curves outward to the left */
+/* Left slope - filled curve connecting island to top-left */
 .dynamic-top-bar-slopes::before {
   content: '';
   position: absolute;
   top: 0;
   right: 100%;
-  width: 20px;
-  height: 20px;
-  background: transparent;
-  border-top-right-radius: 20px;
-  box-shadow: 8px -8px 0 0 rgba(0, 0, 0, 0.85);
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.85);
+  border-bottom-left-radius: 24px;
 }
 
-/* Right slope curve - curves outward to the right */
+/* Right slope - filled curve connecting island to top-right */
 .dynamic-top-bar-slopes::after {
   content: '';
   position: absolute;
   top: 0;
   left: 100%;
-  width: 20px;
-  height: 20px;
-  background: transparent;
-  border-top-left-radius: 20px;
-  box-shadow: -8px -8px 0 0 rgba(0, 0, 0, 0.85);
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.85);
+  border-bottom-right-radius: 24px;
 }
 
 .slopes-visible {
