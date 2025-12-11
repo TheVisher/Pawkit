@@ -22,17 +22,24 @@ export function KitHeader({
   const { messages, clearMessages } = useKitStore();
 
   return (
-    <div className={cn(
-      "kit-drag-handle flex-shrink-0",
-      "flex items-center justify-between",
-      "px-3 py-2 h-12",
-      "border-b border-white/10",
-      "cursor-move select-none",
-      "bg-white/5"
-    )}>
+    <div
+      className={cn(
+        "kit-drag-handle flex-shrink-0",
+        "flex items-center justify-between",
+        "px-3 py-2 h-12",
+        "cursor-move select-none"
+      )}
+      style={{
+        borderBottom: '1px solid var(--border-subtle)',
+        background: 'var(--bg-surface-2)',
+      }}
+    >
       {/* Left side - icon and title */}
       <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-full bg-purple-500/20 flex items-center justify-center">
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center"
+          style={{ background: 'hsla(var(--accent) / 0.2)' }}
+        >
           <span className="text-sm">🐕</span>
         </div>
         <div>
@@ -50,7 +57,7 @@ export function KitHeader({
           <button
             onClick={clearMessages}
             title="Clear chat"
-            className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+            className="p-1.5 hover:bg-[var(--bg-surface-3)] rounded-md transition-colors"
           >
             <Trash2 size={14} className="text-muted-foreground" />
           </button>
@@ -60,7 +67,7 @@ export function KitHeader({
         <button
           onClick={onAnchor}
           title={isAnchored ? "Detach window" : "Anchor to side"}
-          className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+          className="p-1.5 hover:bg-[var(--bg-surface-3)] rounded-md transition-colors"
         >
           {isAnchored ? (
             <PanelRightOpen size={14} className="text-muted-foreground" />
@@ -73,7 +80,7 @@ export function KitHeader({
         <button
           onClick={onMinimize}
           title={isMinimized ? "Expand" : "Minimize"}
-          className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+          className="p-1.5 hover:bg-[var(--bg-surface-3)] rounded-md transition-colors"
         >
           <Minus size={14} className="text-muted-foreground" />
         </button>
@@ -82,7 +89,7 @@ export function KitHeader({
         <button
           onClick={onClose}
           title="Close"
-          className="p-1.5 hover:bg-white/10 rounded-md transition-colors"
+          className="p-1.5 hover:bg-[var(--bg-surface-3)] rounded-md transition-colors"
         >
           <X size={14} className="text-muted-foreground" />
         </button>

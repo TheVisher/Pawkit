@@ -75,6 +75,7 @@ export function KitOverlay() {
 
     return (
       <div
+        data-panel="kit"
         className={cn(
           "fixed z-[9998]",
           "flex flex-col",
@@ -141,14 +142,18 @@ export function KitOverlay() {
       }}
       className={cn(
         "z-[9998]",
-        "bg-black/70 backdrop-blur-xl",
-        "border border-white/10 rounded-xl",
-        "shadow-2xl shadow-black/50",
-        "overflow-hidden"
+        "rounded-xl overflow-hidden"
       )}
+      style={{
+        background: 'var(--bg-surface-1)',
+        boxShadow: 'var(--shadow-4)',
+        border: '1px solid var(--border-subtle)',
+        borderTopColor: 'var(--border-highlight-top)',
+        borderLeftColor: 'var(--border-highlight-left)',
+      }}
     >
       {/* Inner flex container - Rnd doesn't reliably pass flex to children */}
-      <div className="flex flex-col h-full">
+      <div data-panel="kit" className="flex flex-col h-full">
         {/* Header - always visible, draggable */}
         <KitHeader
           onClose={close}
