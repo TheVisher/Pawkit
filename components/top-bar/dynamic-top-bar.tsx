@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import { TopBarExpanded } from './top-bar-expanded';
 import { TopBarCollapsed } from './top-bar-collapsed';
 import { useKitStore } from '@/lib/hooks/use-kit-store';
-import { cn } from '@/lib/utils';
 import './top-bar.css';
 
 const SCROLL_THRESHOLD = 50; // Pixels scrolled before collapsing
@@ -66,27 +65,8 @@ export function DynamicTopBar() {
   }, []);
 
   return (
-    <div
-      className={cn(
-        "dynamic-top-bar-container",
-        isCollapsed ? "is-collapsed" : "is-expanded"
-      )}
-    >
-      {/* Background slopes for collapsed state */}
-      <div
-        className={cn(
-          "dynamic-top-bar-slopes",
-          isCollapsed ? "slopes-visible" : "slopes-hidden"
-        )}
-      />
-
-      {/* The bar itself */}
-      <div
-        className={cn(
-          "dynamic-top-bar",
-          isCollapsed ? "collapsed" : "expanded"
-        )}
-      >
+    <div className="dynamic-top-bar-container">
+      <div className="dynamic-top-bar">
         {isCollapsed ? (
           <TopBarCollapsed
             onSearchClick={handleExpandClick}

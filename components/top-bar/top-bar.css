@@ -1,6 +1,8 @@
 /* components/top-bar/top-bar.css */
+/* Modern style - rectangular with rounded corners, matches app theme */
 
-/* Container - FIXED position at top of content panel, floats above content */
+/* ========== CONTAINER ========== */
+
 .dynamic-top-bar-container {
   position: absolute;
   top: 0;
@@ -9,76 +11,108 @@
   z-index: 40;
   display: flex;
   justify-content: center;
-  pointer-events: none; /* Allow clicks through to content */
-}
-
-/* Expanded state container - positioned to align with page headers */
-.dynamic-top-bar-container.is-expanded {
-  padding: 24px 0 12px 0; /* More top padding to align with headers */
-}
-
-/* Collapsed state container - no padding, island attaches to top */
-.dynamic-top-bar-container.is-collapsed {
-  padding: 0;
+  padding: 16px 0;
+  pointer-events: none;
 }
 
 .dynamic-top-bar {
-  pointer-events: auto; /* Re-enable clicks on the bar itself */
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
+}
+
+/* ========== SHARED BAR STYLES ========== */
+/* Both expanded and collapsed use the same base styling */
+
+.top-bar-expanded,
+.top-bar-collapsed {
+  position: relative;
+}
+
+.top-bar-pill,
+.top-bar-island {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  /* Modern style: solid surface with depth */
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-subtle);
+  border-top-color: var(--border-highlight-top);
+  border-radius: 12px; /* Rectangular with rounded corners, not pill */
+  box-shadow: var(--shadow-2);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.2s ease,
+              transform 0.2s ease;
+}
+
+.top-bar-pill:hover,
+.top-bar-island:hover {
+  box-shadow: var(--shadow-3);
 }
 
 /* ========== EXPANDED STATE ========== */
 
-.top-bar-expanded {
-  position: relative;
-}
-
 .top-bar-pill {
-  display: flex;
-  align-items: center;
-  gap: 0;
   width: 500px;
   max-width: calc(100vw - 48px);
-  height: 48px;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
   padding: 4px;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.3),
-    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  gap: 0;
 }
 
-.top-bar-btn {
+/* ========== COLLAPSED STATE ========== */
+
+.top-bar-island {
+  width: 140px;
+  padding: 4px 8px;
+  gap: 4px;
+  justify-content: center;
+}
+
+/* ========== BUTTONS ========== */
+
+.top-bar-btn,
+.island-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 20px;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  border-radius: 8px;
+  color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
-.top-bar-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+.top-bar-btn {
+  width: 40px;
+  height: 40px;
 }
 
-.top-bar-btn.active {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
+.island-btn {
+  width: 36px;
+  height: 36px;
 }
 
-.top-bar-btn.kit-btn:hover {
-  background: rgba(168, 85, 247, 0.2);
-  color: rgb(216, 180, 254);
+.top-bar-btn:hover,
+.island-btn:hover {
+  background: var(--bg-surface-3);
+  color: var(--text-primary);
 }
+
+.top-bar-btn.active,
+.island-btn.active {
+  background: var(--bg-surface-3);
+  color: var(--text-primary);
+}
+
+/* Kit button purple glow on hover */
+.top-bar-btn.kit-btn:hover,
+.island-btn.kit:hover {
+  background: var(--ds-accent-muted, hsl(270 50% 50% / 0.15));
+  color: var(--ds-accent, hsl(270 50% 60%));
+  box-shadow: 0 0 12px var(--ds-accent-muted, hsl(270 50% 50% / 0.3));
+}
+
+/* ========== SEARCH INPUT ========== */
 
 .top-bar-search {
   flex: 1;
@@ -91,7 +125,7 @@
 }
 
 .search-icon {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
   flex-shrink: 0;
 }
 
@@ -100,175 +134,27 @@
   background: transparent;
   border: none;
   outline: none;
-  color: white;
+  color: var(--text-primary);
   font-size: 14px;
   cursor: pointer;
 }
 
 .search-input::placeholder {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--text-muted);
 }
 
 .search-shortcut {
-  padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  padding: 3px 8px;
+  background: var(--bg-surface-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
   font-family: inherit;
   flex-shrink: 0;
-  border: none;
 }
 
-/* ========== COLLAPSED STATE (Dynamic Island) ========== */
-/* Increased size by 20% from original */
-
-.top-bar-collapsed {
-  position: relative;
-  display: flex;
-  justify-content: center;
-}
-
-/* The island pill - sits at top edge, 20% larger */
-.top-bar-island {
-  display: flex;
-  align-items: center;
-  gap: 6px; /* Increased from 4px */
-  height: 44px; /* Increased from 36px (20% larger) */
-  padding: 5px 16px; /* Increased from 4px 12px */
-  background: var(--island-bg, #000);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-top: none; /* No top border - merges with content panel border */
-  border-radius: 0 0 22px 22px; /* Increased from 18px */
-  box-shadow:
-    0 4px 16px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
-}
-
-/* Island buttons - 20% larger */
-.island-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px; /* Increased from 28px */
-  height: 34px; /* Increased from 28px */
-  border-radius: 17px; /* Increased from 14px */
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.island-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-}
-
-.island-btn.active {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
-}
-
-.island-btn.kit:hover {
-  background: rgba(168, 85, 247, 0.25);
-  color: rgb(216, 180, 254);
-}
-
-/* ========== SLOPES (Dynamic Island Effect) ========== */
-/* Curved corners connecting island sides to the top edge */
-
-.dynamic-top-bar-slopes {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 168px; /* Match island width */
-  height: 20px;
-  pointer-events: none;
-  z-index: 50; /* Above the island to cover the border line */
-  overflow: hidden; /* Clip the shadows so they don't extend above */
-}
-
-/* Left slope - uses island color variable for light/dark mode */
-.dynamic-top-bar-slopes::before {
-  content: '';
-  position: absolute;
-  top: 6px; /* Offset down so shadow doesn't overflow top */
-  right: calc(100% - 10px);
-  width: 20px;
-  height: 20px;
-  background: transparent;
-  border-top-right-radius: 20px;
-  box-shadow: 6px -6px 0 0 var(--island-bg, #000);
-}
-
-/* Right slope - uses island color variable for light/dark mode */
-.dynamic-top-bar-slopes::after {
-  content: '';
-  position: absolute;
-  top: 6px; /* Offset down so shadow doesn't overflow top */
-  left: calc(100% - 10px);
-  width: 20px;
-  height: 20px;
-  background: transparent;
-  border-top-left-radius: 20px;
-  box-shadow: -6px -6px 0 0 var(--island-bg, #000);
-}
-
-/* Island color variable - dark mode default */
-:root {
-  --island-bg: #000;
-}
-
-/* Light mode island color */
-[data-theme="light"] {
-  --island-bg: #1a1a1a;
-}
-
-.slopes-visible {
-  opacity: 1;
-}
-
-.slopes-hidden {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* ========== ANIMATIONS ========== */
-
-.dynamic-top-bar.expanded {
-  animation: expand 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.dynamic-top-bar.collapsed {
-  animation: collapse 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes expand {
-  from {
-    transform: scale(0.8);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-@keyframes collapse {
-  from {
-    transform: scale(1.1);
-    opacity: 0;
-  }
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-/* ========== ADD MENU ========== */
+/* ========== ADD MENU (Dropdown) ========== */
 
 .top-bar-add-menu {
   position: absolute;
@@ -276,17 +162,15 @@
   left: 50%;
   transform: translateX(-50%);
   min-width: 200px;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-surface-1);
+  border: 1px solid var(--border-subtle);
   border-radius: 12px;
   padding: 4px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-3);
   animation: menuAppear 0.2s ease;
   z-index: 50;
 }
 
-/* For expanded state, align menu to left of pill */
 .top-bar-expanded .top-bar-add-menu {
   left: 4px;
   transform: none;
@@ -327,7 +211,7 @@
   background: transparent;
   border: none;
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s ease;
@@ -335,8 +219,8 @@
 }
 
 .add-menu-item:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
+  background: var(--bg-surface-2);
+  color: var(--text-primary);
 }
 
 .add-menu-item span {
@@ -345,12 +229,19 @@
 
 .add-menu-shortcut {
   padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--bg-surface-3);
   border-radius: 4px;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-muted);
   font-family: inherit;
   border: none;
+}
+
+/* ========== ANIMATIONS ========== */
+/* Simple width morph, no scale transforms */
+
+.dynamic-top-bar {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ========== RESPONSIVE ========== */
@@ -363,4 +254,20 @@
   .search-shortcut {
     display: none;
   }
+}
+
+/* ========== LEGACY/UNUSED - TO BE REMOVED ========== */
+/* Keeping these empty so dynamic-top-bar.tsx doesn't error */
+
+.dynamic-top-bar-slopes,
+.slopes-visible,
+.slopes-hidden {
+  display: none;
+}
+
+.dynamic-top-bar.expanded,
+.dynamic-top-bar.collapsed,
+.dynamic-top-bar-container.is-expanded,
+.dynamic-top-bar-container.is-collapsed {
+  /* No special styles needed - unified design */
 }
