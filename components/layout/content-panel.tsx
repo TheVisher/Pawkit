@@ -141,11 +141,11 @@ export function ContentPanel({
       data-content-panel
       data-right-embedded={isRightEmbedded}
     >
+      {/* Dynamic Top Bar - absolutely positioned, floats above content */}
+      {!isMobile && <DynamicTopBar />}
+
       {/* Content container with scrolling - scrollbar hidden for cleaner look */}
       <div className="content-panel-scroll flex-1 overflow-y-auto scrollbar-hide">
-        {/* Dynamic Top Bar - sticky at top of scrollable content */}
-        {!isMobile && <DynamicTopBar />}
-
         {/* Page content with padding */}
         <div className="px-6 py-6">
           {children}

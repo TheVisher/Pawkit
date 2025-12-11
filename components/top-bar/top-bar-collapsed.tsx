@@ -1,13 +1,18 @@
 'use client';
 
+import { useState } from 'react';
 import { Plus, Search, MessageCircle } from 'lucide-react';
+import { TopBarAddMenu } from './top-bar-add-menu';
+import { cn } from '@/lib/utils';
 
 interface TopBarCollapsedProps {
-  onExpand: () => void;
+  onSearchClick: () => void;
   onKitClick: () => void;
 }
 
-export function TopBarCollapsed({ onExpand, onKitClick }: TopBarCollapsedProps) {
+export function TopBarCollapsed({ onSearchClick, onKitClick }: TopBarCollapsedProps) {
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+
   const handleSearchClick = () => {
     // Open command palette directly
     window.dispatchEvent(new CustomEvent('pawkit:open-command-palette'));
@@ -16,10 +21,10 @@ export function TopBarCollapsed({ onExpand, onKitClick }: TopBarCollapsedProps) 
   return (
     <div className="top-bar-collapsed">
       <div className="top-bar-island">
-        {/* Add button */}
+        {/* Add button - opens menu directly */}
         <button
-          onClick={onExpand}
-          className="island-btn"
+          onClick={() => setAddMenuOpen(!addMenuOpen)}
+          className={cn("island-btn", addMenuOpen && "active")}
           title="Add content"
         >
           <Plus size={16} />
@@ -43,6 +48,12 @@ export function TopBarCollapsed({ onExpand, onKitClick }: TopBarCollapsedProps) 
           <MessageCircle size={16} />
         </button>
       </div>
+
+      {/* Add menu dropdown - same menu as expanded state */}
+      <TopBarAddMenu
+        open={addMenuOpen}
+        onClose={() => setAddMenuOpen(false)}
+      />
     </div>
   );
 }

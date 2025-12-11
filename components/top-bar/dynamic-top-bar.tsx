@@ -53,7 +53,7 @@ export function DynamicTopBar() {
     setIsSearchFocused(false);
   }, []);
 
-  // Expand when clicking collapsed bar
+  // Expand when clicking search in collapsed bar
   const handleExpandClick = useCallback(() => {
     setIsCollapsed(false);
     // Scroll to top smoothly
@@ -66,7 +66,12 @@ export function DynamicTopBar() {
   }, []);
 
   return (
-    <div className="dynamic-top-bar-container">
+    <div
+      className={cn(
+        "dynamic-top-bar-container",
+        isCollapsed ? "is-collapsed" : "is-expanded"
+      )}
+    >
       {/* Background slopes for collapsed state */}
       <div
         className={cn(
@@ -84,7 +89,7 @@ export function DynamicTopBar() {
       >
         {isCollapsed ? (
           <TopBarCollapsed
-            onExpand={handleExpandClick}
+            onSearchClick={handleExpandClick}
             onKitClick={toggleKit}
           />
         ) : (
