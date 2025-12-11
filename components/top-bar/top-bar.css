@@ -136,7 +136,7 @@
   gap: 6px; /* Increased from 4px */
   height: 44px; /* Increased from 36px (20% larger) */
   padding: 5px 16px; /* Increased from 4px 12px */
-  background: rgba(0, 0, 0, 0.85);
+  background: #000;
   backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-top: none; /* No top border - merges with content panel border */
@@ -190,7 +190,7 @@
   pointer-events: none;
 }
 
-/* Left slope - curved shadow matching island color */
+/* Left slope - solid black to match island */
 .dynamic-top-bar-slopes::before {
   content: '';
   position: absolute;
@@ -200,10 +200,10 @@
   height: 20px;
   background: transparent;
   border-top-right-radius: 20px;
-  box-shadow: 6px -6px 0 0 rgba(0, 0, 0, 0.85);
+  box-shadow: 6px -6px 0 0 #000;
 }
 
-/* Right slope - curved shadow matching island color */
+/* Right slope - solid black to match island */
 .dynamic-top-bar-slopes::after {
   content: '';
   position: absolute;
@@ -213,7 +213,7 @@
   height: 20px;
   background: transparent;
   border-top-left-radius: 20px;
-  box-shadow: -6px -6px 0 0 rgba(0, 0, 0, 0.85);
+  box-shadow: -6px -6px 0 0 #000;
 }
 
 .slopes-visible {
