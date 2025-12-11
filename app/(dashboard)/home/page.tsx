@@ -345,7 +345,8 @@ export default function HomePage() {
         {/* Welcome Banner for new users */}
         <WelcomeBanner className="mb-2" />
 
-        <section className="relative text-center">
+        {/* Greeting section - pushed down to avoid search bar overlap */}
+        <section className="relative text-center pt-16">
           <h1 className="text-4xl font-semibold text-gray-100 sm:text-5xl">
             <span className="mr-3 inline-block" aria-hidden="true">👋</span>
             {displayName ? `${greeting}, ${displayName}` : "Welcome to Pawkit!"}
