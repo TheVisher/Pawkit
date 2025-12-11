@@ -9,6 +9,7 @@ type ContentPanelProps = {
   leftMode: "floating" | "anchored";
   rightOpen: boolean;
   rightMode: "floating" | "anchored";
+  kitAnchored?: boolean; // NEW: Kit overlay anchored state
 };
 
 export function ContentPanel({
@@ -17,6 +18,7 @@ export function ContentPanel({
   leftMode,
   rightOpen,
   rightMode,
+  kitAnchored = false,
 }: ContentPanelProps) {
   // Mobile detection - on mobile, content takes full width
   const isMobile = useIsMobile();
@@ -28,14 +30,18 @@ export function ContentPanel({
   const hasAnchoredLeft = leftOpen && leftMode === "anchored";
   const hasAnchoredRight = rightOpen && rightMode === "anchored";
 
-  // Special case: left floating + content floating + right anchored
-  // = Right panel embeds INSIDE content panel
-  const isRightEmbedded = !contentIsAnchored && hasAnchoredRight;
+  // Kit takes precedence over right panel when anchored
+  // If Kit is anchored, treat it like the right panel is anchored
+  const effectiveRightAnchored = kitAnchored || hasAnchoredRight;
+
+  // Special case: left floating + content floating + right anchored (or Kit anchored)
+  // = Right panel/Kit embeds INSIDE content panel
+  const isRightEmbedded = !contentIsAnchored && effectiveRightAnchored;
 
   // Calculate exact positioning
   // When content is anchored:
   //   - Left: 0 or 325px (if left panel is open)
-  //   - Right: 0, 325px (if right is anchored), or 16px (if right is floating/closed)
+  //   - Right: 0, 325px (if right is anchored or Kit anchored), or 16px (if right is floating/closed)
   // When content is floating:
   //   - Special case (right embedded): Right margin is 16px
   //   - Normal: 357px (floating panel) or 325px (anchored panel) or 16px (closed)
@@ -50,13 +56,14 @@ export function ContentPanel({
 
   // Right position calculation:
   // - Mobile: 0 (full width)
+  // - Kit anchored takes precedence over right panel
   // - Embedded mode: content ends at 341px (325px panel + 16px margin) so panel sits flush
   // - Normal mode: standard positioning
   const rightPosition = isMobile
     ? "0"
     : (contentIsAnchored
-      ? (rightOpen && rightMode === "anchored" ? "325px" : "0")
-      : (isRightEmbedded ? "341px" : (rightOpen ? (rightMode === "floating" ? "357px" : "325px") : "16px")));
+      ? (effectiveRightAnchored ? "325px" : "0")
+      : (isRightEmbedded ? "341px" : (rightOpen && !kitAnchored ? (rightMode === "floating" ? "357px" : "325px") : "16px")));
 
   // Build border classes dynamically
   // Mobile: no borders (full screen)
@@ -97,7 +104,7 @@ export function ContentPanel({
         const rect = panel.getBoundingClientRect();
       }
     }, 350); // Wait for transition to complete
-  }, [leftOpen, leftMode, rightOpen, rightMode, leftPosition, rightPosition, contentIsAnchored, isRightEmbedded, hasAnchoredLeft, hasAnchoredRight]);
+  }, [leftOpen, leftMode, rightOpen, rightMode, kitAnchored, leftPosition, rightPosition, contentIsAnchored, isRightEmbedded, hasAnchoredLeft, hasAnchoredRight]);
 
   return (
     <div

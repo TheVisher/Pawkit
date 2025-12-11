@@ -30,10 +30,12 @@ export function KitOverlay() {
     close,
   } = useKitStore();
 
-  // Get panel store to close right panel when Kit anchors
+  // Get panel store to close right panel when Kit anchors and get left mode
   const closeRightPanel = usePanelStore((state) => state.close);
-  const isRightPanelOpen = usePanelStore((state) => state.isOpen);
-  const rightPanelMode = usePanelStore((state) => state.mode);
+  const leftMode = usePanelStore((state) => state.leftMode);
+
+  // Determine if content panel is floating (left panel is floating)
+  const isContentFloating = leftMode === "floating";
 
   // Handle anchor toggle - close right panel when Kit anchors
   const handleAnchorToggle = useCallback(() => {
@@ -57,22 +59,32 @@ export function KitOverlay() {
   if (!isOpen) return null;
 
   // When anchored, Kit becomes a sidebar-like panel on the right
+  // Style depends on whether left panel is floating or anchored
   if (isAnchored) {
+    // When left is floating: Kit has rounded corners, margin, attaches to content panel
+    // When left is anchored: Kit is edge-to-edge, no rounding
+    const isEmbedded = isContentFloating;
+
     return (
       <div
         className={cn(
-          "fixed top-0 right-0 bottom-0 z-[9998]",
+          "fixed z-[9998]",
           "flex flex-col",
-          "bg-black/70 backdrop-blur-xl",
-          "border-l border-white/10",
-          "shadow-2xl shadow-black/50",
-          "animate-slide-in-right"
+          "animate-slide-in-right",
+          // Positioning based on left panel mode
+          isEmbedded
+            ? "top-4 right-4 bottom-4 rounded-r-2xl"
+            : "top-0 right-0 bottom-0 rounded-none"
         )}
         style={{
           width: ANCHORED_WIDTH,
           background: 'var(--bg-surface-1)',
-          boxShadow: 'var(--shadow-4)',
-          borderLeft: '1px solid var(--border-subtle)',
+          boxShadow: isEmbedded ? 'var(--shadow-4)' : 'var(--shadow-2)',
+          border: '1px solid var(--border-subtle)',
+          borderTopColor: 'var(--border-highlight-top)',
+          borderLeftColor: 'var(--border-highlight-left)',
+          // When embedded, remove right border to blend with edge
+          borderRightColor: isEmbedded ? 'var(--border-subtle)' : 'transparent',
         }}
       >
         {/* Header */}
