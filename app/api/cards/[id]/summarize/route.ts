@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
+import { YoutubeTranscript } from "youtube-transcript";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { handleApiError } from "@/lib/utils/api-error";
@@ -89,6 +90,68 @@ function isTwitterUrl(url: string): boolean {
   return url.includes('twitter.com') || url.includes('x.com');
 }
 
+/**
+ * Check if URL is a YouTube URL
+ */
+function isYouTubeUrl(url: string): boolean {
+  return url.includes('youtube.com') || url.includes('youtu.be');
+}
+
+/**
+ * Extract YouTube video ID from URL
+ */
+function extractYouTubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+    /youtube\.com\/shorts\/([^&\n?#]+)/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+/**
+ * Fetch YouTube video transcript
+ */
+async function fetchYouTubeContent(url: string): Promise<string | null> {
+  try {
+    // Extract video ID from URL
+    const videoId = extractYouTubeId(url);
+    if (!videoId) {
+      console.log('[YouTube] Could not extract video ID from:', url);
+      return null;
+    }
+
+    console.log('[YouTube] Fetching transcript for:', videoId);
+
+    // Fetch transcript
+    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+
+    if (!transcript || transcript.length === 0) {
+      console.log('[YouTube] No transcript available');
+      return null;
+    }
+
+    // Combine transcript segments into full text
+    const fullText = transcript
+      .map(segment => segment.text)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    console.log('[YouTube] Transcript length:', fullText.length);
+
+    // Limit to ~8000 chars to avoid token limits
+    return fullText.slice(0, 8000);
+  } catch (error) {
+    console.error('[YouTube] Transcript error:', error);
+    return null;
+  }
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -151,7 +214,10 @@ export async function POST(
 
       let fetchedContent: string | null = null;
 
-      if (isTwitterUrl(card.url)) {
+      if (isYouTubeUrl(card.url)) {
+        // Fetch YouTube transcript
+        fetchedContent = await fetchYouTubeContent(card.url);
+      } else if (isTwitterUrl(card.url)) {
         fetchedContent = await fetchTwitterContent(card.url);
       } else {
         fetchedContent = await fetchArticleContent(card.url);
@@ -165,6 +231,14 @@ export async function POST(
           where: { id, userId: user.id },
           data: { articleContent: fetchedContent.slice(0, 50000) } // Limit size
         });
+      }
+    }
+
+    // Fallback for YouTube videos without transcripts: use title + description
+    if ((!contentToSummarize || contentToSummarize.trim().length < 20) && card.url && isYouTubeUrl(card.url)) {
+      if (card.title) {
+        contentToSummarize = `Video: ${card.title}${card.description ? '\n\nDescription: ' + card.description : ''}`;
+        console.log('[YouTube] Using title/description fallback');
       }
     }
 
