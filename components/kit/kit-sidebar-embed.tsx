@@ -94,12 +94,11 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
         borderLeftColor: 'var(--border-highlight-left)',
       }}
     >
-      {/* ===== HEADER - Inset depth (recessed look) ===== */}
+      {/* ===== HEADER ===== */}
       <div
         className="px-3 py-3 flex-shrink-0"
         style={{
           background: 'var(--bg-surface-1)',
-          boxShadow: 'var(--inset-shadow)',
           borderBottom: '1px solid var(--border-subtle)',
         }}
       >
