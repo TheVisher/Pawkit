@@ -98,22 +98,67 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
   ({ videoId, iframeId, onTimeUpdate, onReady, className }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<YTPlayer | null>(null);
+    const iframeRef = useRef<HTMLIFrameElement | null>(null);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const isInitializedRef = useRef(false);
+    const currentTimeRef = useRef(0);
+
+    // For iframe mode, use postMessage to get current time
+    const handleMessage = useCallback((event: MessageEvent) => {
+      if (event.origin !== 'https://www.youtube.com') return;
+
+      try {
+        const data = JSON.parse(event.data);
+        if (data.event === 'infoDelivery' && data.info?.currentTime !== undefined) {
+          currentTimeRef.current = data.info.currentTime;
+          onTimeUpdate?.(data.info.currentTime);
+        }
+        if (data.event === 'onReady') {
+          onReady?.();
+        }
+      } catch {
+        // Not JSON, ignore
+      }
+    }, [onTimeUpdate, onReady]);
 
     // Expose methods via ref
     useImperativeHandle(ref, () => ({
       seekTo: (seconds: number) => {
-        playerRef.current?.seekTo(seconds, true);
+        if (playerRef.current) {
+          playerRef.current.seekTo(seconds, true);
+        } else if (iframeRef.current?.contentWindow) {
+          // Use postMessage for existing iframe
+          iframeRef.current.contentWindow.postMessage(
+            JSON.stringify({ event: 'command', func: 'seekTo', args: [seconds, true] }),
+            'https://www.youtube.com'
+          );
+        }
       },
       getCurrentTime: () => {
-        return playerRef.current?.getCurrentTime() || 0;
+        if (playerRef.current) {
+          return playerRef.current.getCurrentTime();
+        }
+        return currentTimeRef.current;
       },
       play: () => {
-        playerRef.current?.playVideo();
+        if (playerRef.current) {
+          playerRef.current.playVideo();
+        } else if (iframeRef.current?.contentWindow) {
+          iframeRef.current.contentWindow.postMessage(
+            JSON.stringify({ event: 'command', func: 'playVideo', args: [] }),
+            'https://www.youtube.com'
+          );
+        }
       },
       pause: () => {
-        playerRef.current?.pauseVideo();
+        if (playerRef.current) {
+          playerRef.current.pauseVideo();
+        } else if (iframeRef.current?.contentWindow) {
+          iframeRef.current.contentWindow.postMessage(
+            JSON.stringify({ event: 'command', func: 'pauseVideo', args: [] }),
+            'https://www.youtube.com'
+          );
+        }
       }
     }), []);
 
@@ -148,45 +193,84 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       let mounted = true;
 
       async function initPlayer() {
-        await loadYouTubeAPI();
+        if (iframeId) {
+          // Attaching to existing iframe - use postMessage API
+          const iframe = document.getElementById(iframeId) as HTMLIFrameElement;
+          if (!iframe) {
+            console.error('[YouTubePlayer] Could not find iframe with id:', iframeId);
+            return;
+          }
 
-        if (!mounted) return;
+          iframeRef.current = iframe;
 
-        // If iframeId is provided, attach to existing iframe
-        // Otherwise, create a new player in the container
-        const targetId = iframeId || (() => {
-          if (!containerRef.current) return null;
+          // Listen for messages from YouTube iframe
+          window.addEventListener('message', handleMessage);
+
+          // Request current time updates by listening to the iframe
+          // We need to first "activate" the API by sending a listening command
+          const sendListenCommand = () => {
+            if (iframe.contentWindow) {
+              iframe.contentWindow.postMessage(
+                JSON.stringify({ event: 'listening' }),
+                'https://www.youtube.com'
+              );
+              // Also request initial info
+              iframe.contentWindow.postMessage(
+                JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }),
+                'https://www.youtube.com'
+              );
+            }
+          };
+
+          // Send command after a short delay to ensure iframe is ready
+          setTimeout(sendListenCommand, 500);
+
+          // Start polling for time updates (postMessage time updates can be unreliable)
+          intervalRef.current = setInterval(() => {
+            if (iframe.contentWindow) {
+              iframe.contentWindow.postMessage(
+                JSON.stringify({ event: 'command', func: 'getCurrentTime', args: [] }),
+                'https://www.youtube.com'
+              );
+            }
+          }, 250);
+
+          if (mounted) {
+            onReady?.();
+          }
+        } else {
+          // Creating new player with YT API
+          await loadYouTubeAPI();
+
+          if (!mounted || !containerRef.current) return;
+
           const containerId = `youtube-player-${videoId}-${Date.now()}`;
           containerRef.current.id = containerId;
-          return containerId;
-        })();
 
-        if (!targetId) return;
-
-        playerRef.current = new window.YT.Player(targetId, {
-          ...(iframeId ? {} : { videoId }), // Only pass videoId when creating new player
-          playerVars: {
-            autoplay: 0,
-            modestbranding: 1,
-            rel: 0,
-            enablejsapi: 1,
-            origin: window.location.origin,
-          },
-          events: {
-            onReady: () => {
-              if (!mounted) return;
-              startTimeTracking();
-              onReady?.();
+          playerRef.current = new window.YT.Player(containerId, {
+            videoId,
+            playerVars: {
+              autoplay: 0,
+              modestbranding: 1,
+              rel: 0,
+              enablejsapi: 1,
+              origin: window.location.origin,
             },
-            onStateChange: (event) => {
-              if (!mounted) return;
-              // Start/stop tracking based on play state
-              if (event.data === window.YT.PlayerState.PLAYING) {
+            events: {
+              onReady: () => {
+                if (!mounted) return;
                 startTimeTracking();
+                onReady?.();
+              },
+              onStateChange: (event) => {
+                if (!mounted) return;
+                if (event.data === window.YT.PlayerState.PLAYING) {
+                  startTimeTracking();
+                }
               }
             }
-          }
-        });
+          });
+        }
       }
 
       initPlayer();
@@ -194,16 +278,19 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       return () => {
         mounted = false;
         stopTimeTracking();
+        if (iframeId) {
+          window.removeEventListener('message', handleMessage);
+        }
       };
-    }, [videoId, iframeId, onReady, startTimeTracking, stopTimeTracking]);
+    }, [videoId, iframeId, onReady, startTimeTracking, stopTimeTracking, handleMessage]);
 
     // Cleanup on unmount
     useEffect(() => {
       return () => {
         stopTimeTracking();
+        window.removeEventListener('message', handleMessage);
         if (playerRef.current) {
           try {
-            // Only destroy if we created the player (not attached to existing iframe)
             if (!iframeId) {
               playerRef.current.destroy();
             }
@@ -212,9 +299,10 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
           }
           playerRef.current = null;
         }
+        iframeRef.current = null;
         isInitializedRef.current = false;
       };
-    }, [iframeId, stopTimeTracking]);
+    }, [iframeId, stopTimeTracking, handleMessage]);
 
     // If attaching to existing iframe, render nothing
     if (iframeId) {
