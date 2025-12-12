@@ -84,20 +84,42 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
   };
 
   return (
-    <div className="flex flex-col h-full relative" style={{ background: 'var(--bg-surface-2)' }}>
-      {/* Header - 2 lines */}
-      <div className="px-3 py-3" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-        <div className="font-semibold text-foreground flex items-center gap-2">
+    <div
+      className="flex flex-col h-full rounded-lg overflow-hidden relative"
+      style={{
+        background: 'var(--bg-surface-2)',
+        boxShadow: 'var(--shadow-2)',
+        border: '1px solid var(--border-subtle)',
+        borderTopColor: 'var(--border-highlight-top)',
+        borderLeftColor: 'var(--border-highlight-left)',
+      }}
+    >
+      {/* ===== HEADER - Inset depth (recessed look) ===== */}
+      <div
+        className="px-3 py-3 flex-shrink-0"
+        style={{
+          background: 'var(--bg-surface-1)',
+          boxShadow: 'var(--inset-shadow)',
+          borderBottom: '1px solid var(--border-subtle)',
+        }}
+      >
+        <div className="font-semibold text-sm flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
           <span>🐕</span>
           <span>Kit</span>
         </div>
-        <div className="text-sm text-muted-foreground truncate">
+        <div
+          className="text-xs truncate mt-0.5"
+          style={{ color: 'var(--text-muted)' }}
+        >
           Viewing: {cardTitle}
         </div>
       </div>
 
-      {/* Chat messages - scrollable, takes remaining space */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3">
+      {/* ===== CHAT MESSAGES - Scrollable area ===== */}
+      <div
+        className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3"
+        style={{ background: 'var(--bg-surface-2)' }}
+      >
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-2">
             <div
@@ -106,8 +128,10 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
             >
               <Sparkles size={24} style={{ color: 'var(--ds-accent)' }} />
             </div>
-            <h4 className="font-medium mb-1 text-sm">Chat with Kit about this card</h4>
-            <p className="text-xs text-muted-foreground mb-3">
+            <h4 className="font-medium mb-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+              Chat with Kit about this card
+            </h4>
+            <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
               Ask questions, get summaries, or explore related content.
             </p>
             <div className="flex flex-wrap gap-1 justify-center text-xs">
@@ -120,7 +144,11 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
                   key={i}
                   onClick={() => setInput(suggestion)}
                   className="px-2 py-1 rounded-md transition-colors"
-                  style={{ background: 'var(--bg-surface-1)' }}
+                  style={{
+                    background: 'var(--bg-surface-1)',
+                    color: 'var(--text-secondary)',
+                    boxShadow: 'var(--raised-shadow-sm)',
+                  }}
                 >
                   {suggestion}
                 </button>
@@ -138,14 +166,11 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
                 )}
               >
                 <div
-                  className={cn(
-                    "max-w-[85%] rounded-2xl px-3 py-2 text-sm",
-                    msg.role === 'user'
-                      ? 'text-white rounded-br-md'
-                      : 'rounded-bl-md'
-                  )}
+                  className="max-w-[85%] px-3 py-2 rounded-lg text-sm"
                   style={{
-                    background: msg.role === 'user' ? 'var(--ds-accent)' : 'var(--bg-surface-1)',
+                    background: msg.role === 'user' ? 'var(--ds-accent)' : 'var(--bg-surface-3)',
+                    color: msg.role === 'user' ? 'white' : 'var(--text-primary)',
+                    boxShadow: 'var(--raised-shadow-sm)',
                   }}
                 >
                   {msg.role === 'user' ? (
@@ -161,7 +186,7 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
                         strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
                         em: ({ children }) => <em className="italic">{children}</em>,
                         code: ({ children }) => (
-                          <code className="px-1 py-0.5 rounded text-xs" style={{ background: 'var(--bg-surface-3)' }}>
+                          <code className="px-1 py-0.5 rounded text-xs" style={{ background: 'var(--bg-surface-1)' }}>
                             {children}
                           </code>
                         ),
@@ -181,12 +206,16 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
             {isLoading && (
               <div className="flex justify-start">
                 <div
-                  className="rounded-2xl rounded-bl-md px-3 py-2 text-sm"
-                  style={{ background: 'var(--bg-surface-1)' }}
+                  className="px-3 py-2 rounded-lg text-sm"
+                  style={{
+                    background: 'var(--bg-surface-3)',
+                    color: 'var(--text-muted)',
+                    boxShadow: 'var(--raised-shadow-sm)',
+                  }}
                 >
                   <div className="flex items-center gap-2">
                     <Loader2 size={14} className="animate-spin" style={{ color: 'var(--ds-accent)' }} />
-                    <span className="text-muted-foreground italic">{loadingMessage}</span>
+                    <span className="italic">{loadingMessage}</span>
                   </div>
                 </div>
               </div>
@@ -203,8 +232,15 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
         </div>
       )}
 
-      {/* Input + Kit toolbar - ONE unit, no internal divider */}
-      <div className="flex-shrink-0 px-3 py-3" style={{ borderTop: '1px solid var(--border-subtle)' }}>
+      {/* ===== INPUT + TOOLBAR - Raised depth ===== */}
+      <div
+        className="flex-shrink-0 px-3 py-3"
+        style={{
+          background: 'var(--bg-surface-2)',
+          boxShadow: 'var(--raised-shadow-sm)',
+          borderTop: '1px solid var(--border-highlight-top)',
+        }}
+      >
         {/* Input row */}
         <form onSubmit={handleSubmit} className="flex gap-2 mb-3">
           <input
@@ -216,25 +252,34 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
             placeholder="Ask Kit anything..."
             disabled={isLoading}
             className={cn(
-              "flex-1 px-3 py-2 rounded-lg text-sm",
-              "placeholder:text-muted-foreground",
-              "focus:outline-none focus:ring-2 focus:ring-[hsla(var(--accent)/0.5)]",
+              "flex-1 px-3 py-2 rounded-lg text-sm outline-none transition-shadow",
               "disabled:opacity-50"
             )}
             style={{
               background: 'var(--bg-surface-1)',
               border: '1px solid var(--border-subtle)',
+              color: 'var(--text-primary)',
+              boxShadow: 'var(--inset-shadow)',
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.boxShadow = 'var(--glow-focus)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.boxShadow = 'var(--inset-shadow)';
             }}
           />
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
             className={cn(
-              "p-2 rounded-lg text-white",
-              "disabled:opacity-50 disabled:cursor-not-allowed",
-              "transition-colors hover:opacity-90"
+              "p-2 rounded-lg transition-all",
+              "disabled:opacity-50 disabled:cursor-not-allowed"
             )}
-            style={{ background: 'var(--ds-accent)' }}
+            style={{
+              background: 'var(--ds-accent)',
+              color: 'white',
+              boxShadow: 'var(--raised-shadow-sm)',
+            }}
             title="Send message"
           >
             <Send size={16} />
@@ -245,32 +290,34 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
         <div className="flex justify-around">
           <button
             onClick={toggleConversationSelector}
-            className={cn(
-              "p-2 rounded-lg transition-colors",
-              isConversationSelectorOpen
-                ? "bg-white/10 text-[var(--ds-accent)]"
-                : "text-muted-foreground hover:bg-white/10"
-            )}
+            className="p-2 rounded-lg transition-colors"
+            style={{
+              color: isConversationSelectorOpen ? 'var(--ds-accent)' : 'var(--text-muted)',
+              background: isConversationSelectorOpen ? 'var(--bg-surface-3)' : 'transparent',
+            }}
             title="Conversations"
           >
             <MessageSquare size={18} />
           </button>
           <button
-            className="p-2 rounded-lg text-muted-foreground opacity-50 cursor-not-allowed"
+            className="p-2 rounded-lg opacity-50 cursor-not-allowed"
+            style={{ color: 'var(--text-muted)' }}
             title="Attachments (coming soon)"
             disabled
           >
             <Paperclip size={18} />
           </button>
           <button
-            className="p-2 rounded-lg text-muted-foreground opacity-50 cursor-not-allowed"
+            className="p-2 rounded-lg opacity-50 cursor-not-allowed"
+            style={{ color: 'var(--text-muted)' }}
             title="Link cards (coming soon)"
             disabled
           >
             <Link2 size={18} />
           </button>
           <button
-            className="p-2 rounded-lg text-muted-foreground opacity-50 cursor-not-allowed"
+            className="p-2 rounded-lg opacity-50 cursor-not-allowed"
+            style={{ color: 'var(--text-muted)' }}
             title="Kit Settings (coming soon)"
             disabled
           >
@@ -278,7 +325,8 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
           </button>
           <button
             onClick={handlePopOut}
-            className="p-2 rounded-lg text-muted-foreground hover:bg-white/10 transition-colors"
+            className="p-2 rounded-lg transition-colors hover:bg-white/10"
+            style={{ color: 'var(--text-muted)' }}
             title="Pop out to overlay"
           >
             <ExternalLink size={18} />
