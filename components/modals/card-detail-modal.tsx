@@ -413,6 +413,23 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState(card.summary ?? null);
+
+  // Modal resize state with localStorage persistence
+  const [modalSize, setModalSize] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('pawkit-modal-size');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return { width: 896, height: 720 };
+        }
+      }
+    }
+    return { width: 896, height: 720 }; // Default ~max-w-4xl
+  });
+  const [isResizing, setIsResizing] = useState(false);
+
   // Bottom tab view mode: 'preview' | 'reader' | 'info'
   const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'info' | 'attachments'>('preview');
 
@@ -900,6 +917,39 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }
   };
 
+  // Modal resize handler
+  const handleResizeStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startWidth = modalSize.width;
+    const startHeight = modalSize.height;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.max(400, Math.min(startWidth + (e.clientX - startX), window.innerWidth - 100));
+      const newHeight = Math.max(300, Math.min(startHeight + (e.clientY - startY), window.innerHeight - 100));
+      setModalSize({ width: newWidth, height: newHeight });
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      // Persist to localStorage
+      const finalSize = {
+        width: Math.max(400, Math.min(startWidth + (window.event as MouseEvent)?.clientX - startX || 0, window.innerWidth - 100)),
+        height: Math.max(300, Math.min(startHeight + (window.event as MouseEvent)?.clientY - startY || 0, window.innerHeight - 100))
+      };
+      localStorage.setItem('pawkit-modal-size', JSON.stringify(modalSize));
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   const handleRefreshMetadata = async () => {
     toast.info("Refreshing metadata...");
     try {
@@ -1111,15 +1161,13 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       >
         <div
           className={`${isMobile ? "rounded-none" : "rounded-2xl"} overflow-hidden pointer-events-auto relative flex flex-col ${
-            isMobile || isReaderExpanded || isModalExpanded
-              ? "w-full h-full"
-              : isYouTubeUrl(card.url)
-                ? "w-full max-w-6xl max-h-[85vh]"
-                : isNote
-                  ? "w-full max-w-3xl h-[80vh]"
-                  : "w-full max-w-4xl max-h-[90vh]"
-          }`}
+            isMobile || isReaderExpanded || isModalExpanded ? "w-full h-full" : ""
+          } ${isResizing ? "select-none" : ""}`}
           style={{
+            width: isMobile || isReaderExpanded || isModalExpanded ? '100%' : `${modalSize.width}px`,
+            height: isMobile || isReaderExpanded || isModalExpanded ? '100%' : `${modalSize.height}px`,
+            maxWidth: isMobile || isReaderExpanded || isModalExpanded ? '100%' : '95vw',
+            maxHeight: isMobile || isReaderExpanded || isModalExpanded ? '100%' : '95vh',
             background: 'var(--bg-surface-1)',
             border: '1px solid var(--border-subtle)',
             boxShadow: 'var(--shadow-3)',
@@ -1460,11 +1508,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                         <img
                           src={filePreviewUrl}
                           alt={filePreviewData.filename}
-                          className="max-w-full max-h-[calc(90vh-180px)] object-contain rounded-lg"
+                          className="max-w-full max-h-full object-contain rounded-lg"
                         />
                       )}
                       {filePreviewData.mimeType === "application/pdf" && filePreviewUrl && (
-                        <div className="w-full h-[calc(90vh-180px)] rounded-lg overflow-hidden">
+                        <div className="w-full h-full rounded-lg overflow-hidden">
                           <PdfViewer
                             url={filePreviewUrl}
                             filename={filePreviewData.filename}
@@ -1483,7 +1531,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                         <video
                           src={filePreviewUrl}
                           controls
-                          className="max-w-full max-h-[calc(90vh-180px)] rounded-lg"
+                          className="max-w-full max-h-full rounded-lg"
                         >
                           Your browser does not support video playback.
                         </video>
@@ -1704,7 +1752,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     <img
                       src={card.image}
                       alt={card.title || "Card preview"}
-                      className="max-w-full max-h-[calc(90vh-180px)] object-contain rounded-lg"
+                      className="max-w-full max-h-full object-contain rounded-lg"
                     />
                   ) : (
                     <div className="text-center space-y-4">
@@ -2075,6 +2123,18 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               )}
             </div>
           </div>
+
+          {/* Resize Handle - only show on desktop when not expanded */}
+          {!isMobile && !isReaderExpanded && !isModalExpanded && (
+            <div
+              className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize z-50 opacity-50 hover:opacity-100 transition-opacity"
+              onMouseDown={handleResizeStart}
+              style={{
+                background: 'linear-gradient(135deg, transparent 50%, var(--text-muted) 50%)',
+                borderRadius: '0 0 12px 0',
+              }}
+            />
+          )}
         </div>
       </div>
 
