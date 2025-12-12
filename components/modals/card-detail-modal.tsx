@@ -1802,20 +1802,197 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                 )}
               </div>
             ) : isYouTubeUrl(card.url) ? (
-              // YouTube video embed in main content area
-              <div className="h-full flex items-center justify-center p-[5px]">
-                <div className="w-full max-w-6xl">
-                  <div className="relative w-full bg-black rounded-2xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
-                    <iframe
-                      src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
-                      title={card.title || "YouTube video"}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      className="absolute top-0 left-0 w-full h-full border-0"
-                      loading="lazy"
-                    />
+              // YouTube video with tabs
+              <div className="relative h-full">
+                {/* Video embed - show when preview mode */}
+                <div className={`h-full flex items-center justify-center p-[5px] ${bottomTabMode === 'preview' ? '' : 'hidden'}`}>
+                  <div className="w-full max-w-6xl">
+                    <div className="relative w-full bg-black rounded-2xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
+                      <iframe
+                        src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
+                        title={card.title || "YouTube video"}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        className="absolute top-0 left-0 w-full h-full border-0"
+                        loading="lazy"
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {/* Info tab content for YouTube */}
+                {bottomTabMode === 'info' && (
+                  <div className="absolute inset-0 p-[5px] overflow-y-auto flex items-start justify-center">
+                    <div className="max-w-2xl w-full space-y-6 py-8">
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Video Information</h3>
+                        <div className="space-y-3 text-sm">
+                          <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Title</span>
+                            <span className="text-right max-w-md truncate" style={{ color: 'var(--text-primary)' }}>{card.title || "—"}</span>
+                          </div>
+                          <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Platform</span>
+                            <span style={{ color: 'var(--text-primary)' }}>YouTube</span>
+                          </div>
+                          <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>URL</span>
+                            <a
+                              href={card.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-accent hover:underline max-w-md truncate"
+                            >
+                              {card.url}
+                            </a>
+                          </div>
+                          <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Created</span>
+                            <span style={{ color: 'var(--text-primary)' }}>{new Date(card.createdAt).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                            <span style={{ color: 'var(--text-secondary)' }}>Updated</span>
+                            <span style={{ color: 'var(--text-primary)' }}>{new Date(card.updatedAt).toLocaleString()}</span>
+                          </div>
+                          {card.description && (
+                            <div className="py-2">
+                              <span className="block mb-2" style={{ color: 'var(--text-secondary)' }}>Description</span>
+                              <p style={{ color: 'var(--text-primary)' }}>{card.description}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* AI Summary Section */}
+                      <div className="p-4 rounded-xl" style={{ background: 'var(--bg-surface-2)', border: '1px solid var(--border-subtle)' }}>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <Sparkles size={16} style={{ color: 'var(--ds-accent)' }} />
+                            <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>AI Summary</span>
+                            {summaryType && (
+                              <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--bg-surface-3)', color: 'var(--text-muted)' }}>
+                                {summaryType === 'concise' ? '⚡ Concise' : '📝 Detailed'}
+                              </span>
+                            )}
+                          </div>
+                          {summary && (
+                            <div className="relative">
+                              <button
+                                onClick={() => setShowSummaryOptions(!showSummaryOptions)}
+                                disabled={isSummarizing}
+                                className="text-xs px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                                style={{
+                                  color: 'var(--text-secondary)',
+                                  background: 'var(--bg-surface-3)',
+                                }}
+                              >
+                                <RefreshCw size={12} className={isSummarizing ? 'animate-spin' : ''} />
+                                Regenerate
+                              </button>
+                              {showSummaryOptions && !isSummarizing && (
+                                <div
+                                  className="absolute top-full mt-1 right-0 rounded-lg overflow-hidden z-50"
+                                  style={{
+                                    background: 'var(--bg-surface-3)',
+                                    border: '1px solid var(--border-subtle)',
+                                    boxShadow: 'var(--shadow-3)',
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => handleGenerateSummary('concise')}
+                                    className="w-full px-3 py-2 text-left text-xs flex items-center gap-2 transition-colors"
+                                    style={{ color: 'var(--text-primary)' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-2)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                  >
+                                    <Zap size={12} /> Concise
+                                  </button>
+                                  <button
+                                    onClick={() => handleGenerateSummary('detailed')}
+                                    className="w-full px-3 py-2 text-left text-xs flex items-center gap-2 transition-colors"
+                                    style={{ color: 'var(--text-primary)' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-2)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                  >
+                                    <FileText size={12} /> Detailed
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        {summary ? (
+                          <div className="text-sm leading-relaxed prose prose-sm max-w-none" style={{ color: 'var(--text-primary)' }}>
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {summary}
+                            </ReactMarkdown>
+                          </div>
+                        ) : (
+                          <div className="text-center py-4">
+                            <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
+                              Generate an AI summary of this video
+                            </p>
+                            <div className="relative inline-block">
+                              <button
+                                onClick={() => setShowSummaryOptions(!showSummaryOptions)}
+                                disabled={isSummarizing}
+                                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
+                                style={{
+                                  background: 'var(--ds-accent)',
+                                  color: 'white',
+                                }}
+                              >
+                                {isSummarizing ? (
+                                  <>
+                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    Kit is summarizing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Sparkles size={16} />
+                                    Generate Summary
+                                  </>
+                                )}
+                              </button>
+                              {showSummaryOptions && !isSummarizing && (
+                                <div
+                                  className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 rounded-lg overflow-hidden z-50"
+                                  style={{
+                                    background: 'var(--bg-surface-3)',
+                                    border: '1px solid var(--border-subtle)',
+                                    boxShadow: 'var(--shadow-3)',
+                                  }}
+                                >
+                                  <button
+                                    onClick={() => handleGenerateSummary('concise')}
+                                    className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors whitespace-nowrap"
+                                    style={{ color: 'var(--text-primary)' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-2)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                  >
+                                    <Zap size={14} /> Concise
+                                  </button>
+                                  <button
+                                    onClick={() => handleGenerateSummary('detailed')}
+                                    className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors whitespace-nowrap"
+                                    style={{ color: 'var(--text-primary)' }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-2)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                  >
+                                    <FileText size={14} /> Detailed
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               // URL card content with tabs - all tabs positioned absolutely to maintain size
@@ -2198,10 +2375,66 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   );
                 })()
               ) : isYouTubeUrl(card.url) ? (
-                // YouTube-specific info
-                <div className="text-sm text-gray-400">
-                  Video Player
-                </div>
+                // YouTube cards with tabs - Video and Info only
+                (() => {
+                  const tabOptions = [
+                    { value: 'preview' as const, label: 'Video', icon: Globe },
+                    { value: 'info' as const, label: 'Info', icon: Info },
+                  ];
+                  const numOptions = tabOptions.length;
+                  const selectedIndex = tabOptions.findIndex(opt => opt.value === bottomTabMode);
+                  const validIndex = selectedIndex >= 0 ? selectedIndex : 0;
+
+                  return (
+                    <div
+                      className="relative rounded-full"
+                      style={{
+                        background: 'var(--bg-surface-1)',
+                        boxShadow: 'var(--slider-inset)',
+                        border: 'var(--inset-border)',
+                        borderBottomColor: 'var(--slider-inset-border-bottom)',
+                        padding: '4px',
+                      }}
+                    >
+                      {/* Sliding indicator */}
+                      {validIndex >= 0 && (
+                        <div
+                          className="absolute rounded-full transition-all duration-300 ease-out pointer-events-none"
+                          style={{
+                            width: `calc((100% - 8px) / ${numOptions})`,
+                            height: 'calc(100% - 8px)',
+                            top: '4px',
+                            left: `calc(4px + (${validIndex} * ((100% - 8px) / ${numOptions})))`,
+                            background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                            boxShadow: 'var(--raised-shadow-sm)',
+                            border: '1px solid transparent',
+                            borderTopColor: 'var(--raised-border-top)',
+                          }}
+                        />
+                      )}
+                      {/* Tab buttons */}
+                      <div className="relative flex items-center">
+                        {tabOptions.map((option) => {
+                          const Icon = option.icon;
+                          const isSelected = bottomTabMode === option.value;
+                          return (
+                            <button
+                              key={option.value}
+                              onClick={() => setBottomTabMode(option.value)}
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-full transition-colors duration-200 z-10 text-sm font-medium min-w-[100px]"
+                              style={{
+                                color: isSelected ? 'var(--text-primary)' : 'var(--text-muted)',
+                              }}
+                            >
+                              <Icon size={14} />
+                              <span>{option.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()
               ) : (
                 // URL cards with tabs - segmented pill control with sliding indicator
                 (() => {
