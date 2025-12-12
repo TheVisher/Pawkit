@@ -29,6 +29,19 @@ export function CardDetailsPanel() {
   const setActiveCardContext = useKitStore((state) => state.setActiveCardContext);
   const saveConversation = useKitStore((state) => state.saveConversation);
   const openKit = useKitStore((state) => state.open);
+  const closeKit = useKitStore((state) => state.close);
+  const wasOpenBeforeCardOpened = useKitStore((state) => state.wasOpenBeforeCardOpened);
+  const setWasOpenBeforeCardOpened = useKitStore((state) => state.setWasOpenBeforeCardOpened);
+
+  // Track if Kit was open when card opened (for restoration on close)
+  useEffect(() => {
+    if (card) {
+      // Remember if Kit was open when card opens
+      setWasOpenBeforeCardOpened(isKitOpen);
+    }
+    // Only run once when card changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card?.id]);
 
   // When card details opens and Kit is active, embed Kit in sidebar
   useEffect(() => {
@@ -43,17 +56,40 @@ export function CardDetailsPanel() {
         content: card.notes || card.description || undefined,
       });
     }
+  }, [isKitOpen, card, setEmbeddedInSidebar, setActiveCardContext]);
 
-    // Cleanup: restore Kit overlay when card closes
+  // Cleanup: restore Kit overlay when card closes
+  useEffect(() => {
     return () => {
-      if (isKitOpen) {
+      const { isOpen, wasOpenBeforeCardOpened, saveConversation } = useKitStore.getState();
+      if (isOpen) {
         // Auto-save conversation before transitioning
         saveConversation();
         setEmbeddedInSidebar(false);
         setActiveCardContext(null);
+
+        // If Kit wasn't open before card opened, close it entirely
+        if (!wasOpenBeforeCardOpened) {
+          closeKit();
+        }
       }
     };
-  }, [isKitOpen, card, setEmbeddedInSidebar, setActiveCardContext, saveConversation]);
+  }, [setEmbeddedInSidebar, setActiveCardContext, closeKit]);
+
+  // Handle AI tab click - open Kit immediately if not open
+  const handleTabClick = (tabId: "notes" | "links" | "schedule" | "ai") => {
+    if (tabId === 'ai' && !isKitOpen && card) {
+      // Open Kit and embed immediately when clicking AI tab
+      openKit();
+      setEmbeddedInSidebar(true);
+      setActiveCardContext({
+        id: card.id,
+        title: card.title || 'Untitled',
+        content: card.notes || card.description || undefined,
+      });
+    }
+    setActiveTab(tabId);
+  };
 
   // Notes state
   const [notes, setNotes] = useState(card?.notes || "");
@@ -231,38 +267,13 @@ export function CardDetailsPanel() {
           </div>
         )}
 
-        {/* AI Chat Tab */}
+        {/* AI Chat Tab - Kit renders immediately, no placeholder */}
         {activeTab === "ai" && (
           <div className="flex flex-col h-full -mx-4 -my-6">
-            {isKitOpen ? (
-              <KitSidebarEmbed
-                cardId={card.id}
-                cardTitle={card.title || 'Untitled'}
-              />
-            ) : (
-              // Placeholder when Kit is not active
-              <div className="p-8 text-center h-full flex flex-col items-center justify-center">
-                <Bot size={48} className="mx-auto mb-4 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  AI Chat
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Chat with AI about this card&apos;s content, get insights, and more.
-                </p>
-                <button
-                  onClick={() => {
-                    openKit();
-                    setEmbeddedInSidebar(true);
-                  }}
-                  className="mt-4 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-white"
-                  style={{
-                    background: 'var(--ds-accent)',
-                  }}
-                >
-                  Start Chat with Kit 🐕
-                </button>
-              </div>
-            )}
+            <KitSidebarEmbed
+              cardId={card.id}
+              cardTitle={card.title || 'Untitled'}
+            />
           </div>
         )}
       </div>
@@ -276,7 +287,7 @@ export function CardDetailsPanel() {
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabClick(tab.id)}
                 className={`
                   w-full aspect-square rounded-xl flex items-center justify-center border transition-all
                   ${
