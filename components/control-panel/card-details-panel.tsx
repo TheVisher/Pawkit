@@ -269,7 +269,13 @@ export function CardDetailsPanel() {
 
         {/* AI Chat Tab - Kit renders immediately, no placeholder */}
         {activeTab === "ai" && (
-          <div className="flex flex-col h-full -mx-4 -my-6">
+          <div
+            className="h-full -mx-4 -my-6"
+            style={{
+              maskImage: 'none',
+              WebkitMaskImage: 'none',
+            }}
+          >
             <KitSidebarEmbed
               cardId={card.id}
               cardTitle={card.title || 'Untitled'}
