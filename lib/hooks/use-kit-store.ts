@@ -43,6 +43,9 @@ interface KitState {
   // Track if Kit is embedded in sidebar (when card is open)
   isEmbeddedInSidebar: boolean;
 
+  // Track if Kit was open before card opened (for restoration)
+  wasOpenBeforeCardOpened: boolean;
+
   // Chat state
   messages: Message[];
   isLoading: boolean;
@@ -70,6 +73,7 @@ interface KitState {
   setSize: (size: Size) => void;
   setSidebarWasOpen: (wasOpen: boolean) => void;
   setEmbeddedInSidebar: (embedded: boolean) => void;
+  setWasOpenBeforeCardOpened: (wasOpen: boolean) => void;
 
   // Chat actions
   addMessage: (role: 'user' | 'assistant', content: string) => void;
@@ -102,6 +106,7 @@ export const useKitStore = create<KitState>()(
       size: DEFAULT_SIZE,
       sidebarWasOpenBeforeAnchor: false,
       isEmbeddedInSidebar: false,
+      wasOpenBeforeCardOpened: false,
 
       // Chat defaults
       messages: [],
@@ -127,6 +132,7 @@ export const useKitStore = create<KitState>()(
       setSize: (size) => set({ size }),
       setSidebarWasOpen: (wasOpen) => set({ sidebarWasOpenBeforeAnchor: wasOpen }),
       setEmbeddedInSidebar: (embedded) => set({ isEmbeddedInSidebar: embedded }),
+      setWasOpenBeforeCardOpened: (wasOpen) => set({ wasOpenBeforeCardOpened: wasOpen }),
 
       // Chat actions
       addMessage: (role, content) => {
