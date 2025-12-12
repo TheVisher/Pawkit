@@ -480,6 +480,21 @@ style={{
 }}
 ```
 
+### Scrollbar (Default)
+**Always use `scrollbar-minimal` class on any scrollable container.**
+
+```tsx
+<div className="overflow-y-auto scrollbar-minimal">
+  {/* Scrollable content */}
+</div>
+```
+
+This provides:
+- 6px width, transparent track
+- Subtle thumb (`hsl(var(--foreground) / 0.2)`)
+- Hover state (`hsl(var(--foreground) / 0.3)`)
+- Firefox support via `scrollbar-width: thin`
+
 ---
 
 **Remember**: If you use CSS variables correctly, your component automatically supports Modern, Glass, Light, Dark, and Purple tint with ZERO extra code.
