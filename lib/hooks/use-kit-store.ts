@@ -10,6 +10,15 @@ interface Message {
   timestamp: Date;
 }
 
+interface SavedConversation {
+  id: string;
+  title: string;
+  messages: Message[];
+  cardId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface Position {
   x: number;
   y: number;
@@ -46,6 +55,11 @@ interface KitState {
     content?: string;
   } | null;
 
+  // Conversation management
+  savedConversations: SavedConversation[];
+  activeConversationId: string | null;
+  isConversationSelectorOpen: boolean;
+
   // Window actions
   open: () => void;
   close: () => void;
@@ -64,6 +78,14 @@ interface KitState {
   setError: (error: string | null) => void;
   setActiveCardContext: (card: KitState['activeCardContext']) => void;
   sendMessage: (message: string, context?: string, pawkitSlug?: string) => Promise<void>;
+
+  // Conversation actions
+  saveConversation: () => void;
+  loadConversation: (id: string) => void;
+  deleteConversation: (id: string) => void;
+  newConversation: () => void;
+  toggleConversationSelector: () => void;
+  setConversationSelectorOpen: (open: boolean) => void;
 }
 
 const DEFAULT_POSITION = { x: 0, y: 0 }; // Will be calculated on mount
@@ -86,6 +108,11 @@ export const useKitStore = create<KitState>()(
       isLoading: false,
       error: null,
       activeCardContext: null,
+
+      // Conversation defaults
+      savedConversations: [],
+      activeConversationId: null,
+      isConversationSelectorOpen: false,
 
       // Window actions
       open: () => set({ isOpen: true }),
@@ -160,15 +187,110 @@ export const useKitStore = create<KitState>()(
           setLoading(false);
         }
       },
+
+      // Conversation actions
+      saveConversation: () => {
+        const { messages, activeConversationId, activeCardContext, savedConversations } = get();
+
+        // Don't save empty conversations
+        if (messages.length === 0) return;
+
+        const now = new Date().toISOString();
+
+        // Generate title from first user message or card title
+        const firstUserMessage = messages.find(m => m.role === 'user');
+        let title = 'Untitled Chat';
+        if (activeCardContext?.title) {
+          title = `Chat about: ${activeCardContext.title}`.slice(0, 50);
+        } else if (firstUserMessage) {
+          title = firstUserMessage.content.slice(0, 50) + (firstUserMessage.content.length > 50 ? '...' : '');
+        }
+
+        if (activeConversationId) {
+          // Update existing conversation
+          set(state => ({
+            savedConversations: state.savedConversations.map(conv =>
+              conv.id === activeConversationId
+                ? { ...conv, messages: [...messages], updatedAt: now, title }
+                : conv
+            ),
+          }));
+        } else {
+          // Create new conversation
+          const newId = `conv-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+          const newConversation: SavedConversation = {
+            id: newId,
+            title,
+            messages: [...messages],
+            cardId: activeCardContext?.id,
+            createdAt: now,
+            updatedAt: now,
+          };
+          set({
+            savedConversations: [newConversation, ...savedConversations],
+            activeConversationId: newId,
+          });
+        }
+      },
+
+      loadConversation: (id: string) => {
+        const { messages, saveConversation, savedConversations } = get();
+
+        // Auto-save current conversation if it has messages
+        if (messages.length > 0) {
+          saveConversation();
+        }
+
+        const conversation = savedConversations.find(c => c.id === id);
+        if (conversation) {
+          set({
+            messages: [...conversation.messages],
+            activeConversationId: id,
+            isConversationSelectorOpen: false,
+          });
+        }
+      },
+
+      deleteConversation: (id: string) => {
+        set(state => ({
+          savedConversations: state.savedConversations.filter(c => c.id !== id),
+          // Clear active if deleting current conversation
+          activeConversationId: state.activeConversationId === id ? null : state.activeConversationId,
+        }));
+      },
+
+      newConversation: () => {
+        const { messages, saveConversation } = get();
+
+        // Auto-save current conversation if it has messages
+        if (messages.length > 0) {
+          saveConversation();
+        }
+
+        set({
+          messages: [],
+          activeConversationId: null,
+          activeCardContext: null,
+          isConversationSelectorOpen: false,
+        });
+      },
+
+      toggleConversationSelector: () => set(state => ({
+        isConversationSelectorOpen: !state.isConversationSelectorOpen
+      })),
+
+      setConversationSelectorOpen: (open: boolean) => set({ isConversationSelectorOpen: open }),
     }),
     {
       name: 'kit-store',
       partialize: (state) => ({
-        // Persist window state and recent messages
+        // Persist window state, recent messages, and conversations
         isAnchored: state.isAnchored,
         position: state.position,
         size: state.size,
         messages: state.messages.slice(-20),
+        savedConversations: state.savedConversations.slice(0, 50), // Keep last 50 conversations
+        activeConversationId: state.activeConversationId,
       }),
     }
   )

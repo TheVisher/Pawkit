@@ -5,11 +5,10 @@ import { useRouter } from "next/navigation";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useKitStore } from "@/lib/hooks/use-kit-store";
-import { FileText, Link2, Clock, Bot, X } from "lucide-react";
+import { FileText, Link2, Clock, Bot } from "lucide-react";
 import { BacklinksPanel } from "@/components/notes/backlinks-panel";
 import { AttachmentsSection } from "@/components/modals/attachments-section";
-import { KitChatPanelOverlay } from "@/components/kit/kit-chat-panel-overlay";
-import { KitContextIndicator } from "@/components/kit/kit-context-indicator";
+import { KitSidebarEmbed } from "@/components/kit/kit-sidebar-embed";
 
 export function CardDetailsPanel() {
   const router = useRouter();
@@ -28,7 +27,7 @@ export function CardDetailsPanel() {
   const isKitOpen = useKitStore((state) => state.isOpen);
   const setEmbeddedInSidebar = useKitStore((state) => state.setEmbeddedInSidebar);
   const setActiveCardContext = useKitStore((state) => state.setActiveCardContext);
-  const closeKit = useKitStore((state) => state.close);
+  const saveConversation = useKitStore((state) => state.saveConversation);
   const openKit = useKitStore((state) => state.open);
 
   // When card details opens and Kit is active, embed Kit in sidebar
@@ -48,11 +47,13 @@ export function CardDetailsPanel() {
     // Cleanup: restore Kit overlay when card closes
     return () => {
       if (isKitOpen) {
+        // Auto-save conversation before transitioning
+        saveConversation();
         setEmbeddedInSidebar(false);
         setActiveCardContext(null);
       }
     };
-  }, [isKitOpen, card, setEmbeddedInSidebar, setActiveCardContext]);
+  }, [isKitOpen, card, setEmbeddedInSidebar, setActiveCardContext, saveConversation]);
 
   // Notes state
   const [notes, setNotes] = useState(card?.notes || "");
@@ -234,41 +235,10 @@ export function CardDetailsPanel() {
         {activeTab === "ai" && (
           <div className="flex flex-col h-full -mx-4 -my-6">
             {isKitOpen ? (
-              <>
-                {/* Mini Kit Header for embedded mode */}
-                <div
-                  className="flex-shrink-0 flex items-center justify-between px-3 py-2"
-                  style={{
-                    borderBottom: '1px solid var(--border-subtle)',
-                    background: 'var(--bg-surface-2)',
-                  }}
-                >
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-6 h-6 rounded-full flex items-center justify-center"
-                      style={{ background: 'hsla(var(--accent) / 0.2)' }}
-                    >
-                      <span className="text-xs">🐕</span>
-                    </div>
-                    <span className="font-medium text-sm">Kit</span>
-                  </div>
-                  <button
-                    onClick={closeKit}
-                    className="p-1 hover:bg-[var(--bg-surface-3)] rounded-md transition-colors"
-                    title="Close Kit"
-                  >
-                    <X size={14} className="text-muted-foreground" />
-                  </button>
-                </div>
-
-                {/* Context indicator showing card context */}
-                <KitContextIndicator />
-
-                {/* The actual chat */}
-                <div className="flex-1 min-h-0 overflow-hidden">
-                  <KitChatPanelOverlay />
-                </div>
-              </>
+              <KitSidebarEmbed
+                cardId={card.id}
+                cardTitle={card.title || 'Untitled'}
+              />
             ) : (
               // Placeholder when Kit is not active
               <div className="p-8 text-center h-full flex flex-col items-center justify-center">
