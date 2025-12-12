@@ -1876,33 +1876,33 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               <div className="relative h-full">
                 {/* Video embed - show when preview mode */}
                 <div className={`h-full ${bottomTabMode === 'preview' ? '' : 'hidden'}`}>
-                  {showTranscript ? (
-                    // Split layout: Video + Transcript panel
-                    <div className={`flex h-full ${isMobile ? 'flex-col' : 'flex-row'}`}>
-                      {/* Video side */}
-                      <div className={`${isMobile ? 'h-auto shrink-0' : 'flex-1'} flex items-center justify-center p-[5px] min-w-0`}>
-                        <div className="w-full h-full flex items-center justify-center">
-                          <div
-                            className="relative bg-black rounded-2xl overflow-hidden"
-                            style={{
-                              width: isMobile ? '100%' : 'calc(100% - 20px)',
-                              maxWidth: isMobile ? '100%' : '900px',
-                              aspectRatio: '16/9'
-                            }}
-                          >
-                            {youtubeVideoId && (
-                              <YouTubePlayer
-                                ref={youtubePlayerRef}
-                                videoId={youtubeVideoId}
-                                onTimeUpdate={setCurrentVideoTime}
-                                className="absolute inset-0 w-full h-full"
-                              />
-                            )}
-                          </div>
+                  {/* Always use flex layout with YouTubePlayer - transcript panel toggles */}
+                  <div className={`flex h-full ${isMobile ? 'flex-col' : 'flex-row'}`}>
+                    {/* Video side - always rendered to prevent reload on transcript toggle */}
+                    <div className={`${showTranscript ? (isMobile ? 'h-auto shrink-0' : 'flex-1') : 'flex-1'} flex items-center justify-center p-[5px] min-w-0`}>
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div
+                          className="relative bg-black rounded-2xl overflow-hidden"
+                          style={{
+                            width: showTranscript && !isMobile ? 'calc(100% - 20px)' : '100%',
+                            maxWidth: showTranscript && !isMobile ? '900px' : '1200px',
+                            aspectRatio: '16/9'
+                          }}
+                        >
+                          {youtubeVideoId && (
+                            <YouTubePlayer
+                              ref={youtubePlayerRef}
+                              videoId={youtubeVideoId}
+                              onTimeUpdate={setCurrentVideoTime}
+                              className="absolute inset-0 w-full h-full"
+                            />
+                          )}
                         </div>
                       </div>
+                    </div>
 
-                      {/* Transcript panel */}
+                    {/* Transcript panel - conditionally shown */}
+                    {showTranscript && (
                       <div
                         className={`${isMobile ? 'flex-1 min-h-0' : 'shrink-0'}`}
                         style={{ width: isMobile ? '100%' : '380px' }}
@@ -1916,24 +1916,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                           onClose={() => setShowTranscript(false)}
                         />
                       </div>
-                    </div>
-                  ) : (
-                    // Standard layout: Video only (centered)
-                    <div className="h-full flex items-center justify-center p-[5px]">
-                      <div className="w-full max-w-6xl">
-                        <div className="relative w-full bg-black rounded-2xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
-                          <iframe
-                            src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
-                            title={card.title || "YouTube video"}
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowFullScreen
-                            className="absolute top-0 left-0 w-full h-full border-0"
-                            loading="lazy"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* Info tab content for YouTube */}
