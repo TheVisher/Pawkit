@@ -4,6 +4,7 @@ import { useEffect, useRef, forwardRef, useImperativeHandle, useCallback } from 
 
 interface YouTubePlayerProps {
   videoId: string;
+  iframeId?: string; // Optional: attach to existing iframe instead of creating new one
   onTimeUpdate?: (time: number) => void;
   onReady?: () => void;
   className?: string;
@@ -23,7 +24,7 @@ declare global {
       Player: new (
         element: HTMLElement | string,
         config: {
-          videoId: string;
+          videoId?: string;
           playerVars?: Record<string, number | string>;
           events?: {
             onReady?: (event: { target: YTPlayer }) => void;
@@ -94,7 +95,7 @@ function loadYouTubeAPI(): Promise<void> {
 }
 
 export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>(
-  ({ videoId, onTimeUpdate, onReady, className }, ref) => {
+  ({ videoId, iframeId, onTimeUpdate, onReady, className }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const playerRef = useRef<YTPlayer | null>(null);
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -149,14 +150,21 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       async function initPlayer() {
         await loadYouTubeAPI();
 
-        if (!mounted || !containerRef.current) return;
+        if (!mounted) return;
 
-        // Create unique ID for the container
-        const containerId = `youtube-player-${videoId}-${Date.now()}`;
-        containerRef.current.id = containerId;
+        // If iframeId is provided, attach to existing iframe
+        // Otherwise, create a new player in the container
+        const targetId = iframeId || (() => {
+          if (!containerRef.current) return null;
+          const containerId = `youtube-player-${videoId}-${Date.now()}`;
+          containerRef.current.id = containerId;
+          return containerId;
+        })();
 
-        playerRef.current = new window.YT.Player(containerId, {
-          videoId,
+        if (!targetId) return;
+
+        playerRef.current = new window.YT.Player(targetId, {
+          ...(iframeId ? {} : { videoId }), // Only pass videoId when creating new player
           playerVars: {
             autoplay: 0,
             modestbranding: 1,
@@ -186,10 +194,8 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
       return () => {
         mounted = false;
         stopTimeTracking();
-        // Note: Don't destroy player here as it can cause issues with React strict mode
-        // The iframe will be cleaned up when the component unmounts
       };
-    }, [videoId, onReady, startTimeTracking, stopTimeTracking]);
+    }, [videoId, iframeId, onReady, startTimeTracking, stopTimeTracking]);
 
     // Cleanup on unmount
     useEffect(() => {
@@ -197,14 +203,23 @@ export const YouTubePlayer = forwardRef<YouTubePlayerHandle, YouTubePlayerProps>
         stopTimeTracking();
         if (playerRef.current) {
           try {
-            playerRef.current.destroy();
+            // Only destroy if we created the player (not attached to existing iframe)
+            if (!iframeId) {
+              playerRef.current.destroy();
+            }
           } catch {
             // Ignore errors during cleanup
           }
           playerRef.current = null;
         }
+        isInitializedRef.current = false;
       };
-    }, [stopTimeTracking]);
+    }, [iframeId, stopTimeTracking]);
+
+    // If attaching to existing iframe, render nothing
+    if (iframeId) {
+      return null;
+    }
 
     return (
       <div

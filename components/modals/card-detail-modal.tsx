@@ -1876,64 +1876,56 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               <div className="relative h-full">
                 {/* Video embed - show when preview mode */}
                 <div className={`h-full ${bottomTabMode === 'preview' ? '' : 'hidden'}`}>
-                  {showTranscript ? (
-                    // Split layout: Video + Transcript panel (uses YouTubePlayer for time tracking)
-                    <div className={`flex h-full ${isMobile ? 'flex-col' : 'flex-row'}`}>
-                      {/* Video side */}
-                      <div className={`${isMobile ? 'h-auto shrink-0' : 'flex-1'} flex items-center justify-center p-[5px] min-w-0`}>
-                        <div className="w-full h-full flex items-center justify-center">
-                          <div
-                            className="relative bg-black rounded-2xl overflow-hidden"
-                            style={{
-                              width: isMobile ? '100%' : 'calc(100% - 20px)',
-                              maxWidth: isMobile ? '100%' : '900px',
-                              aspectRatio: '16/9'
-                            }}
-                          >
-                            {youtubeVideoId && (
-                              <YouTubePlayer
-                                ref={youtubePlayerRef}
-                                videoId={youtubeVideoId}
-                                onTimeUpdate={setCurrentVideoTime}
-                                className="absolute inset-0 w-full h-full"
-                              />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Transcript panel */}
-                      <div
-                        className={`${isMobile ? 'flex-1 min-h-0' : 'shrink-0'}`}
-                        style={{ width: isMobile ? '100%' : '380px' }}
-                      >
-                        <VideoTranscriptPanel
-                          cardId={card.id}
-                          cardTitle={card.title || 'Untitled'}
-                          summary={summary}
-                          currentTime={currentVideoTime}
-                          onSeek={handleVideoSeek}
-                          onClose={() => setShowTranscript(false)}
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    // Standard layout: Video only (centered) - uses reliable iframe embed
-                    <div className="h-full flex items-center justify-center p-[5px]">
-                      <div className="w-full max-w-6xl">
-                        <div className="relative w-full bg-black rounded-2xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
+                  {/* Unified layout: Video always stays mounted, transcript panel slides in */}
+                  <div className={`flex h-full ${isMobile ? 'flex-col' : 'flex-row'}`}>
+                    {/* Video side - always rendered, never re-mounted */}
+                    <div className={`${isMobile ? (showTranscript ? 'h-auto shrink-0' : 'flex-1') : 'flex-1'} flex items-center justify-center p-[5px] min-w-0`}>
+                      <div className={`w-full ${showTranscript ? 'h-full' : ''} flex items-center justify-center`}>
+                        <div
+                          className="relative w-full bg-black rounded-2xl overflow-hidden"
+                          style={{
+                            maxWidth: showTranscript && !isMobile ? '900px' : '1200px',
+                            paddingBottom: '56.25%'
+                          }}
+                        >
                           <iframe
-                            src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}?enablejsapi=1`}
+                            id={`youtube-iframe-${card.id}`}
+                            src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}?enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
                             title={card.title || "YouTube video"}
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                             allowFullScreen
                             className="absolute top-0 left-0 w-full h-full border-0"
-                            loading="lazy"
                           />
                         </div>
                       </div>
                     </div>
-                  )}
+
+                    {/* Transcript panel - slides in from right */}
+                    {showTranscript && (
+                      <>
+                        {/* Hidden YouTubePlayer that attaches to existing iframe for API access */}
+                        <YouTubePlayer
+                          ref={youtubePlayerRef}
+                          videoId={youtubeVideoId || ''}
+                          iframeId={`youtube-iframe-${card.id}`}
+                          onTimeUpdate={setCurrentVideoTime}
+                        />
+                        <div
+                          className={`${isMobile ? 'flex-1 min-h-0' : 'shrink-0'}`}
+                          style={{ width: isMobile ? '100%' : '380px' }}
+                        >
+                          <VideoTranscriptPanel
+                            cardId={card.id}
+                            cardTitle={card.title || 'Untitled'}
+                            summary={summary}
+                            currentTime={currentVideoTime}
+                            onSeek={handleVideoSeek}
+                            onClose={() => setShowTranscript(false)}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
                 {/* Info tab content for YouTube */}
