@@ -153,7 +153,7 @@ export function CardDetailsPanel() {
     <div className="flex-1 min-h-0 flex flex-col">
       {/* AI Tab - Outside scrollable area, has its own scroll and needs shadow room */}
       {activeTab === "ai" && (
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0" style={{ background: 'var(--bg-surface-2)' }}>
           <KitSidebarEmbed
             cardId={card.id}
             cardTitle={card.title || 'Untitled'}
