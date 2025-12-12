@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { Readability } from "@mozilla/readability";
+import { JSDOM } from "jsdom";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { handleApiError } from "@/lib/utils/api-error";
@@ -15,6 +17,77 @@ const anthropic = new Anthropic({
 const CONCISE_PROMPT = `Summarize this content in 2-3 sentences. Be direct and concise. Focus on the main point and key takeaway. Do not include the title or use any markdown formatting. Write in plain text.`;
 
 const DETAILED_PROMPT = `Provide a comprehensive summary covering the key points, main arguments, and important details. Structure your response clearly but use plain text without markdown formatting. Do not repeat the title. Aim for 4-6 sentences that capture the essential information.`;
+
+/**
+ * Fetch and extract article content from a URL using Readability
+ */
+async function fetchArticleContent(url: string): Promise<string | null> {
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Pawkit/1.0; +https://pawkit.app)',
+      },
+      signal: AbortSignal.timeout(10000), // 10 second timeout
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch URL: ${response.status}`);
+      return null;
+    }
+
+    const html = await response.text();
+    const dom = new JSDOM(html, { url });
+    const reader = new Readability(dom.window.document);
+    const article = reader.parse();
+
+    return article?.textContent?.trim() || null;
+  } catch (error) {
+    console.error('Failed to fetch article:', error);
+    return null;
+  }
+}
+
+/**
+ * Fetch Twitter/X post content using oEmbed API
+ */
+async function fetchTwitterContent(url: string): Promise<string | null> {
+  try {
+    // Use Twitter's oEmbed endpoint
+    const oembedUrl = `https://publish.twitter.com/oembed?url=${encodeURIComponent(url)}&omit_script=true`;
+    const response = await fetch(oembedUrl, {
+      signal: AbortSignal.timeout(5000), // 5 second timeout
+    });
+
+    if (!response.ok) {
+      console.error(`Failed to fetch tweet: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+
+    // Extract text from the HTML embed
+    if (data.html) {
+      const dom = new JSDOM(data.html);
+      const tweetText = dom.window.document.body.textContent?.trim();
+      if (tweetText) {
+        // Include author name for context
+        return data.author_name ? `${data.author_name}: ${tweetText}` : tweetText;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Failed to fetch tweet:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if URL is a Twitter/X URL
+ */
+function isTwitterUrl(url: string): boolean {
+  return url.includes('twitter.com') || url.includes('x.com');
+}
 
 export async function POST(
   request: NextRequest,
@@ -72,8 +145,31 @@ export async function POST(
       }
     }
 
+    // If still not enough content and we have a URL, try to fetch it
+    if ((!contentToSummarize || contentToSummarize.trim().length < 50) && card.url) {
+      console.log(`[Summarize] Fetching content from URL: ${card.url}`);
+
+      let fetchedContent: string | null = null;
+
+      if (isTwitterUrl(card.url)) {
+        fetchedContent = await fetchTwitterContent(card.url);
+      } else {
+        fetchedContent = await fetchArticleContent(card.url);
+      }
+
+      if (fetchedContent && fetchedContent.length > 50) {
+        contentToSummarize = fetchedContent;
+
+        // Optionally save the fetched content as articleContent for future use
+        await prisma.card.update({
+          where: { id, userId: user.id },
+          data: { articleContent: fetchedContent.slice(0, 50000) } // Limit size
+        });
+      }
+    }
+
     if (!contentToSummarize || contentToSummarize.trim().length < 20) {
-      return validationError('Not enough content to summarize. Try extracting the article first or adding some notes.');
+      return validationError('No content available to summarize. The page may be protected or require authentication.');
     }
 
     // Select prompt based on type
