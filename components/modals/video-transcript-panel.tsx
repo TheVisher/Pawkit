@@ -130,51 +130,76 @@ export function VideoTranscriptPanel({
         borderLeft: '1px solid var(--border-subtle)'
       }}
     >
-      {/* Close button only */}
-      <div className="flex items-center justify-end px-3 py-2 shrink-0">
-        <button
-          onClick={onClose}
-          className="p-1.5 rounded-lg transition-all hover:scale-105"
-          style={{
-            color: 'var(--text-muted)',
-            background: 'transparent'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--bg-surface-3)';
-            e.currentTarget.style.color = 'var(--text-primary)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'var(--text-muted)';
-          }}
-          title="Close panel"
-        >
-          <X size={18} />
-        </button>
-      </div>
-
       {/* Content */}
-      <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+      <div className="flex-1 overflow-hidden flex flex-col min-h-0 pt-3">
         {loading ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 p-4">
-            <Loader2
-              className="w-6 h-6 animate-spin"
-              style={{ color: 'var(--ds-accent)' }}
-            />
-            <span style={{ color: 'var(--text-muted)' }}>
-              Fetching transcript...
-            </span>
-          </div>
+          <>
+            <div className="flex items-center justify-end px-3 shrink-0">
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-lg transition-all"
+                style={{ color: 'var(--text-muted)', background: 'transparent' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-3)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                title="Close panel"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-4">
+              <Loader2
+                className="w-6 h-6 animate-spin"
+                style={{ color: 'var(--ds-accent)' }}
+              />
+              <span style={{ color: 'var(--text-muted)' }}>
+                Fetching transcript...
+              </span>
+            </div>
+          </>
         ) : error ? (
-          <div className="flex-1 flex items-center justify-center p-4 text-center">
-            <span style={{ color: 'var(--text-muted)' }}>{error}</span>
-          </div>
+          <>
+            <div className="flex items-center justify-end px-3 shrink-0">
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-lg transition-all"
+                style={{ color: 'var(--text-muted)', background: 'transparent' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-3)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                title="Close panel"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 flex items-center justify-center p-4 text-center">
+              <span style={{ color: 'var(--text-muted)' }}>{error}</span>
+            </div>
+          </>
         ) : (
           <>
-            {/* Collapsible Summary - Raised Container */}
+            {/* Close button when no summary */}
+            {!summary && (
+              <div className="flex items-center justify-end px-3 pb-2 shrink-0">
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-lg transition-all"
+                  style={{ color: 'var(--text-muted)', background: 'transparent' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-surface-3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                  title="Close panel"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Summary section with close button */}
             {summary && (
               <div
-                className="mx-3 mt-1 mb-3 rounded-xl shrink-0"
+                className="mx-3 mb-3 rounded-xl overflow-hidden shrink-0"
                 style={{
                   background: 'var(--bg-surface-2)',
                   boxShadow: 'var(--shadow-2)',
@@ -183,41 +208,42 @@ export function VideoTranscriptPanel({
                   borderLeftColor: 'var(--border-highlight-left)',
                 }}
               >
-                {/* Collapse button - always visible */}
-                <button
-                  onClick={() => setSummaryCollapsed(!summaryCollapsed)}
-                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors"
-                  style={{ background: 'transparent' }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'var(--bg-surface-3)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                  }}
-                >
-                  <span
-                    className="text-sm font-medium flex items-center gap-2"
+                <div className="flex items-center justify-between px-4 py-3">
+                  <button
+                    onClick={() => setSummaryCollapsed(!summaryCollapsed)}
+                    className="flex items-center gap-2 transition-all"
                     style={{ color: 'var(--text-primary)' }}
                   >
                     <Sparkles className="w-4 h-4" style={{ color: 'var(--ds-accent)' }} />
-                    Summary
-                  </span>
-                  {summaryCollapsed ? (
-                    <ChevronDown
-                      className="w-4 h-4"
-                      style={{ color: 'var(--text-muted)' }}
-                    />
-                  ) : (
-                    <ChevronUp
-                      className="w-4 h-4"
-                      style={{ color: 'var(--text-muted)' }}
-                    />
-                  )}
-                </button>
+                    <span className="text-sm font-medium">Summary</span>
+                    {summaryCollapsed ? (
+                      <ChevronDown className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                    ) : (
+                      <ChevronUp className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                    )}
+                  </button>
+
+                  {/* Close button on same row */}
+                  <button
+                    onClick={onClose}
+                    className="p-1.5 rounded-lg transition-all"
+                    style={{ color: 'var(--text-muted)', background: 'transparent' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-surface-3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                    title="Close panel"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
                 {/* Summary content - scrollable with max height */}
                 {!summaryCollapsed && (
                   <div
-                    className="px-4 pb-3 overflow-y-auto"
+                    className="px-4 pb-4 overflow-y-auto scrollbar-minimal"
                     style={{ maxHeight: '150px' }}
                   >
                     <p
@@ -253,7 +279,7 @@ export function VideoTranscriptPanel({
               {/* Transcript segments */}
               <div
                 ref={transcriptRef}
-                className="flex-1 overflow-y-auto px-2 pb-2"
+                className="flex-1 overflow-y-auto px-2 pb-2 scrollbar-minimal"
                 onScroll={handleScroll}
               >
                 {segments.map((segment, index) => (
