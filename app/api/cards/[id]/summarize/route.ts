@@ -113,7 +113,7 @@ function extractYouTubeId(url: string): string | null {
 }
 
 /**
- * Fetch YouTube video transcript by scraping the watch page
+ * Fetch YouTube video transcript using ytInitialPlayerResponse
  */
 async function fetchYouTubeContent(url: string): Promise<string | null> {
   const videoId = extractYouTubeId(url);
@@ -125,41 +125,46 @@ async function fetchYouTubeContent(url: string): Promise<string | null> {
   console.log('[YouTube] Fetching transcript for video:', videoId);
 
   try {
-    // Fetch the YouTube watch page
+    // Step 1: Get video page to extract player response
     const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    const response = await fetch(watchUrl, {
+    const pageResponse = await fetch(watchUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept-Language': 'en-US,en;q=0.9',
       },
     });
 
-    if (!response.ok) {
-      console.log('[YouTube] Failed to fetch page:', response.status);
+    if (!pageResponse.ok) {
+      console.log('[YouTube] Failed to fetch page:', pageResponse.status);
       return null;
     }
 
-    const html = await response.text();
+    const html = await pageResponse.text();
 
-    // Find the captions/timedtext URL in the page
-    const captionMatch = html.match(/"captionTracks":\s*(\[.*?\])/);
-    if (!captionMatch) {
-      console.log('[YouTube] No caption tracks found in page');
+    // Extract the player response from the page
+    const playerResponseMatch = html.match(/var ytInitialPlayerResponse\s*=\s*(\{.+?\});/s);
+    if (!playerResponseMatch) {
+      console.log('[YouTube] Could not find ytInitialPlayerResponse');
       return null;
     }
 
-    let captionTracks;
+    let playerResponse;
     try {
-      captionTracks = JSON.parse(captionMatch[1]);
+      playerResponse = JSON.parse(playerResponseMatch[1]);
     } catch {
-      console.log('[YouTube] Failed to parse caption tracks');
+      console.log('[YouTube] Failed to parse player response');
       return null;
     }
+
+    // Navigate to captions
+    const captionTracks = playerResponse?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
 
     if (!captionTracks || captionTracks.length === 0) {
-      console.log('[YouTube] Caption tracks array is empty');
+      console.log('[YouTube] No caption tracks in player response');
       return null;
     }
+
+    console.log('[YouTube] Found', captionTracks.length, 'caption tracks');
 
     // Prefer English, fall back to first available
     const englishTrack = captionTracks.find((t: { languageCode?: string }) =>
@@ -172,43 +177,47 @@ async function fetchYouTubeContent(url: string): Promise<string | null> {
       return null;
     }
 
-    console.log('[YouTube] Found caption track:', track.languageCode);
+    console.log('[YouTube] Using caption track:', track.languageCode, track.name?.simpleText);
 
-    // Fetch the actual captions (returns XML)
-    const captionResponse = await fetch(track.baseUrl);
+    // Step 2: Fetch the captions XML
+    const captionResponse = await fetch(track.baseUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      },
+    });
+
+    if (!captionResponse.ok) {
+      console.log('[YouTube] Failed to fetch captions:', captionResponse.status);
+      return null;
+    }
+
     const captionXml = await captionResponse.text();
+    console.log('[YouTube] Caption XML length:', captionXml.length);
 
     // Parse XML to extract text
-    // Format: <text start="0.0" dur="2.5">Hello and welcome</text>
-    const textMatches = captionXml.matchAll(/<text[^>]*>([^<]*)<\/text>/g);
-    const segments: string[] = [];
+    const textMatches = [...captionXml.matchAll(/<text[^>]*>([^<]*)<\/text>/g)];
 
-    for (const match of textMatches) {
-      // Decode HTML entities
-      const text = match[1]
+    if (textMatches.length === 0) {
+      console.log('[YouTube] No text segments found');
+      return null;
+    }
+
+    const segments = textMatches.map(match => {
+      return match[1]
         .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ')
         .replace(/\n/g, ' ')
         .trim();
-
-      if (text) {
-        segments.push(text);
-      }
-    }
-
-    if (segments.length === 0) {
-      console.log('[YouTube] No text segments found in captions');
-      return null;
-    }
+    }).filter(Boolean);
 
     const fullText = segments.join(' ').replace(/\s+/g, ' ').trim();
-    console.log('[YouTube] Extracted transcript length:', fullText.length);
-    console.log('[YouTube] First 200 chars:', fullText.slice(0, 200));
+    console.log('[YouTube] Extracted transcript:', fullText.length, 'chars');
+    console.log('[YouTube] Preview:', fullText.slice(0, 200));
 
-    // Limit to avoid token limits
     return fullText.slice(0, 10000);
   } catch (error) {
     console.error('[YouTube] Transcript fetch error:', error);
