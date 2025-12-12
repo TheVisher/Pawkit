@@ -55,6 +55,8 @@ import dynamic from "next/dynamic";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 import { useNoteFolderStore } from "@/lib/stores/note-folder-store";
 import { FolderInput } from "lucide-react";
+import { YouTubePlayer, YouTubePlayerHandle } from "@/components/modals/youtube-player";
+import { VideoTranscriptPanel } from "@/components/modals/video-transcript-panel";
 
 // Dynamic imports to avoid SSR issues with pdf.js
 const PdfViewer = dynamic(
@@ -416,6 +418,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [summaryType, setSummaryType] = useState<'concise' | 'detailed' | null>(card.summaryType ?? null);
   const [limitedSummary, setLimitedSummary] = useState(false);
   const [showSummaryOptions, setShowSummaryOptions] = useState(false);
+
+  // YouTube transcript panel state
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [currentVideoTime, setCurrentVideoTime] = useState(0);
+  const youtubePlayerRef = useRef<YouTubePlayerHandle>(null);
+
+  // Check if card is a YouTube video
+  const isYouTubeVideo = useMemo(() => isYouTubeUrl(card.url), [card.url]);
+  const youtubeVideoId = useMemo(() => isYouTubeVideo ? extractYouTubeId(card.url) : null, [card.url, isYouTubeVideo]);
 
   // Modal resize state with localStorage persistence
   const [modalSize, setModalSize] = useState(() => {
@@ -925,6 +936,17 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
 
   // Quick summary handler for top bar button
   const handleQuickSummary = () => {
+    // For YouTube videos, toggle the transcript panel
+    if (isYouTubeVideo) {
+      setShowTranscript(!showTranscript);
+      // Also generate summary if not already done
+      if (!summary && !isSummarizing) {
+        handleGenerateSummary('concise');
+      }
+      return;
+    }
+
+    // For non-YouTube content, use existing behavior
     if (summary) {
       // Summary exists - navigate to Info tab
       setBottomTabMode('info');
@@ -933,6 +955,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       handleGenerateSummary('concise');
       setBottomTabMode('info');
     }
+  };
+
+  // Handler for seeking video from transcript
+  const handleVideoSeek = (seconds: number) => {
+    youtubePlayerRef.current?.seekTo(seconds);
   };
 
   // Modal resize handler
@@ -1182,10 +1209,16 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             isMobile || isReaderExpanded || isModalExpanded ? "w-full h-full" : ""
           } ${isResizing ? "select-none" : ""}`}
           style={{
-            width: isMobile || isReaderExpanded || isModalExpanded ? '100%' : `${modalSize.width}px`,
+            // Expand width when transcript panel is shown for YouTube videos
+            width: isMobile || isReaderExpanded || isModalExpanded
+              ? '100%'
+              : showTranscript
+                ? `${Math.max(modalSize.width, 1200)}px`
+                : `${modalSize.width}px`,
             height: isMobile || isReaderExpanded || isModalExpanded ? '100%' : `${modalSize.height}px`,
             maxWidth: isMobile || isReaderExpanded || isModalExpanded ? '100%' : '95vw',
             maxHeight: isMobile || isReaderExpanded || isModalExpanded ? '100%' : '95vh',
+            transition: 'width 0.3s ease-out',
             background: 'var(--bg-surface-1)',
             border: '1px solid var(--border-subtle)',
             boxShadow: 'var(--shadow-3)',
@@ -1842,19 +1875,65 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
               // YouTube video with tabs
               <div className="relative h-full">
                 {/* Video embed - show when preview mode */}
-                <div className={`h-full flex items-center justify-center p-[5px] ${bottomTabMode === 'preview' ? '' : 'hidden'}`}>
-                  <div className="w-full max-w-6xl">
-                    <div className="relative w-full bg-black rounded-2xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
-                      <iframe
-                        src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
-                        title={card.title || "YouTube video"}
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                        className="absolute top-0 left-0 w-full h-full border-0"
-                        loading="lazy"
-                      />
+                <div className={`h-full ${bottomTabMode === 'preview' ? '' : 'hidden'}`}>
+                  {showTranscript ? (
+                    // Split layout: Video + Transcript panel
+                    <div className={`flex h-full ${isMobile ? 'flex-col' : 'flex-row'}`}>
+                      {/* Video side */}
+                      <div className={`${isMobile ? 'h-auto shrink-0' : 'flex-1'} flex items-center justify-center p-[5px] min-w-0`}>
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div
+                            className="relative bg-black rounded-2xl overflow-hidden"
+                            style={{
+                              width: isMobile ? '100%' : 'calc(100% - 20px)',
+                              maxWidth: isMobile ? '100%' : '900px',
+                              aspectRatio: '16/9'
+                            }}
+                          >
+                            {youtubeVideoId && (
+                              <YouTubePlayer
+                                ref={youtubePlayerRef}
+                                videoId={youtubeVideoId}
+                                onTimeUpdate={setCurrentVideoTime}
+                                className="absolute inset-0 w-full h-full"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Transcript panel */}
+                      <div
+                        className={`${isMobile ? 'flex-1 min-h-0' : 'shrink-0'}`}
+                        style={{ width: isMobile ? '100%' : '380px' }}
+                      >
+                        <VideoTranscriptPanel
+                          cardId={card.id}
+                          cardTitle={card.title || 'Untitled'}
+                          summary={summary}
+                          currentTime={currentVideoTime}
+                          onSeek={handleVideoSeek}
+                          onClose={() => setShowTranscript(false)}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    // Standard layout: Video only (centered)
+                    <div className="h-full flex items-center justify-center p-[5px]">
+                      <div className="w-full max-w-6xl">
+                        <div className="relative w-full bg-black rounded-2xl overflow-hidden" style={{ paddingBottom: '56.25%' }}>
+                          <iframe
+                            src={`https://www.youtube.com/embed/${extractYouTubeId(card.url)}`}
+                            title={card.title || "YouTube video"}
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                            className="absolute top-0 left-0 w-full h-full border-0"
+                            loading="lazy"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Info tab content for YouTube */}
