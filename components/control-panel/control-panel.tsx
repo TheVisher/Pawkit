@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ProfileModal } from "@/components/modals/profile-modal";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
+import { useKitStore } from "@/lib/hooks/use-kit-store";
 import { SyncStatus } from "@/components/sync/sync-status";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
@@ -54,6 +55,9 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
 
   // Get sidebar visibility settings
   const showSyncStatusInSidebar = useSettingsStore((state) => state.showSyncStatusInSidebar);
+
+  // Check if Kit is embedded (to disable mask gradient)
+  const isKitEmbedded = useKitStore((state) => state.isEmbeddedInSidebar);
 
   const handleModeToggle = () => {
     const newMode = mode === "floating" ? "anchored" : "floating";
@@ -212,8 +216,11 @@ export function ControlPanel({ open, onClose, mode: controlledMode, onModeChange
             display: 'flex',
             flexDirection: 'column',
             gap: 'var(--space-4)',
-            maskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
-            WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)"
+            // Only apply mask when Kit is NOT embedded
+            ...(isKitEmbedded ? {} : {
+              maskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
+              WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)"
+            })
           }}
         >
           {children}
