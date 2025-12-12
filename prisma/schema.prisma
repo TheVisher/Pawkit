@@ -47,6 +47,7 @@ model Card {
   metadata        String?
   articleContent  String?
   summary         String?   // AI-generated summary
+  summaryType     String?   // 'concise' or 'detailed'
   pinned          Boolean   @default(false)
   deleted         Boolean   @default(false)
   deletedAt       DateTime?

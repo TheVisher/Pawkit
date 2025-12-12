@@ -157,6 +157,7 @@ export type CardModel = {
   extractedDates?: ExtractedDate[];  // Dates found in metadata
   articleContent: string | null;
   summary?: string | null;        // AI-generated summary of the card content
+  summaryType?: 'concise' | 'detailed' | null;  // Type of AI summary
   pinned: boolean;
   deleted: boolean;
   deletedAt: string | null;
