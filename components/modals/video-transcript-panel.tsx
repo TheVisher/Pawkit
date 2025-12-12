@@ -170,6 +170,7 @@ export function VideoTranscriptPanel({
             {/* Collapsible Summary */}
             {summary && (
               <div className="border-b shrink-0" style={{ borderColor: 'hsl(var(--border))' }}>
+                {/* Collapse button - always visible */}
                 <button
                   onClick={() => setSummaryCollapsed(!summaryCollapsed)}
                   className="w-full flex items-center justify-between px-4 py-2 hover:bg-white/5 transition-colors"
@@ -193,8 +194,12 @@ export function VideoTranscriptPanel({
                     />
                   )}
                 </button>
+                {/* Summary content - scrollable with max height */}
                 {!summaryCollapsed && (
-                  <div className="px-4 pb-3">
+                  <div
+                    className="px-4 pb-3 overflow-y-auto"
+                    style={{ maxHeight: '150px' }}
+                  >
                     <p
                       className="text-sm leading-relaxed"
                       style={{ color: 'hsl(var(--muted-foreground))' }}
