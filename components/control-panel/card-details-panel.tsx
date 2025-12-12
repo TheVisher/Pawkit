@@ -281,7 +281,7 @@ export function CardDetailsPanel() {
       )}
 
       {/* Icon Navigation Grid - Above keyboard shortcuts */}
-      <div className="border-t border-white/10 p-3 flex-shrink-0">
+      <div className={`p-3 flex-shrink-0 ${activeTab !== "ai" ? "border-t border-white/10" : ""}`}>
         <div className="grid grid-cols-4 gap-2">
           {tabs.map((tab) => {
             const Icon = tab.icon;
