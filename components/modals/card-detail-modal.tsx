@@ -414,6 +414,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState(card.summary ?? null);
   const [summaryType, setSummaryType] = useState<'concise' | 'detailed' | null>(card.summaryType ?? null);
+  const [limitedSummary, setLimitedSummary] = useState(false);
   const [showSummaryOptions, setShowSummaryOptions] = useState(false);
 
   // Modal resize state with localStorage persistence
@@ -907,6 +908,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
         const data = await response.json();
         setSummary(data.summary);
         setSummaryType(type);
+        setLimitedSummary(data.limitedSummary || false);
         await updateCardInStore(card.id, { summary: data.summary, summaryType: type });
         onUpdate({ ...card, summary: data.summary, summaryType: type });
         toast.success("Summary generated");
@@ -1706,6 +1708,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                                   {summaryType === 'concise' ? '⚡ Concise' : '📝 Detailed'}
                                 </span>
                               )}
+                              {limitedSummary && (
+                                <span
+                                  className="text-xs px-2 py-0.5 rounded-full cursor-help"
+                                  style={{ background: 'rgba(234, 179, 8, 0.2)', color: 'rgb(234, 179, 8)' }}
+                                  title="Summary based on title/description only (video captions unavailable)"
+                                >
+                                  ⚠️ Limited
+                                </span>
+                              )}
                             </div>
                             {summary && (
                               <div className="relative">
@@ -1898,6 +1909,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                             {summaryType && (
                               <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--bg-surface-3)', color: 'var(--text-muted)' }}>
                                 {summaryType === 'concise' ? '⚡ Concise' : '📝 Detailed'}
+                              </span>
+                            )}
+                            {limitedSummary && (
+                              <span
+                                className="text-xs px-2 py-0.5 rounded-full cursor-help"
+                                style={{ background: 'rgba(234, 179, 8, 0.2)', color: 'rgb(234, 179, 8)' }}
+                                title="Summary based on title/description only (video captions unavailable)"
+                              >
+                                ⚠️ Limited
                               </span>
                             )}
                           </div>
@@ -2193,6 +2213,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                               {summaryType && (
                                 <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--bg-surface-3)', color: 'var(--text-muted)' }}>
                                   {summaryType === 'concise' ? '⚡ Concise' : '📝 Detailed'}
+                                </span>
+                              )}
+                              {limitedSummary && (
+                                <span
+                                  className="text-xs px-2 py-0.5 rounded-full cursor-help"
+                                  style={{ background: 'rgba(234, 179, 8, 0.2)', color: 'rgb(234, 179, 8)' }}
+                                  title="Summary based on title/description only (video captions unavailable)"
+                                >
+                                  ⚠️ Limited
                                 </span>
                               )}
                             </div>

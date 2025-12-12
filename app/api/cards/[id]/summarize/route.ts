@@ -201,18 +201,22 @@ export async function POST(
 
     // Use provided content or build from card data
     let contentToSummarize = providedContent;
+    let isYouTube = card.url ? isYouTubeUrl(card.url) : false;
+    let transcriptAvailable = false;
+
     console.log('[Summarize] Provided content:', providedContent ? `${providedContent.length} chars` : 'none');
     console.log('[Summarize] Card URL:', card.url);
-    console.log('[Summarize] Is YouTube URL:', card.url ? isYouTubeUrl(card.url) : false);
+    console.log('[Summarize] Is YouTube URL:', isYouTube);
 
     // For YouTube URLs, ALWAYS try to fetch transcript first (ignore provided content which is just title/description)
-    if (card.url && isYouTubeUrl(card.url)) {
+    if (card.url && isYouTube) {
       console.log('[Summarize] YouTube detected - fetching transcript...');
       const transcriptContent = await fetchYouTubeContent(card.url);
       console.log('[Summarize] Transcript result:', transcriptContent ? `${transcriptContent.length} chars` : 'null');
 
       if (transcriptContent && transcriptContent.length > 50) {
         contentToSummarize = transcriptContent;
+        transcriptAvailable = true;
         console.log('[Summarize] Using YouTube transcript');
 
         // Save transcript as articleContent for future use
@@ -223,7 +227,7 @@ export async function POST(
       } else {
         // Fallback to title + description for YouTube without transcript
         console.log('[Summarize] No transcript, using title/description fallback');
-        contentToSummarize = `Video: ${card.title || 'Untitled'}${card.description ? '\n\nDescription: ' + card.description : ''}`;
+        contentToSummarize = `Video Title: ${card.title || 'Unknown'}\n\nDescription: ${card.description || 'No description available'}`;
       }
     } else if (!contentToSummarize) {
       // Non-YouTube: Build content based on card type
@@ -269,8 +273,25 @@ export async function POST(
       return validationError('No content available to summarize. The page may be protected or require authentication.');
     }
 
-    // Select prompt based on type
-    const systemPrompt = summaryType === 'detailed' ? DETAILED_PROMPT : CONCISE_PROMPT;
+    // Select prompt based on content type and summary type
+    let systemPrompt: string;
+
+    if (isYouTube) {
+      if (transcriptAvailable) {
+        // YouTube with transcript
+        systemPrompt = summaryType === 'detailed'
+          ? 'Provide a comprehensive summary of this video transcript covering the key points, main arguments, and important details. Use plain text without markdown formatting. Aim for 4-6 sentences.'
+          : 'Summarize this video transcript in 2-3 sentences. Be direct and concise. Focus on the main point and key takeaway. Use plain text without markdown.';
+      } else {
+        // YouTube without transcript - be honest about limitations
+        systemPrompt = summaryType === 'detailed'
+          ? 'Based on the video title and description provided, explain what this video appears to cover. Note that this summary is based on available metadata since the video transcript is not accessible. Use plain text without markdown.'
+          : 'Based on the video title and description provided, give a brief 2-3 sentence overview of what this video appears to be about. Note this is based on metadata only. Use plain text without markdown.';
+      }
+    } else {
+      // Regular content (articles, notes, etc.)
+      systemPrompt = summaryType === 'detailed' ? DETAILED_PROMPT : CONCISE_PROMPT;
+    }
 
     // Build the prompt
     const userMessage = `Title: ${card.title || 'Untitled'}
@@ -298,9 +319,13 @@ ${contentToSummarize.slice(0, 6000)}${contentToSummarize.length > 6000 ? '\n\n[C
       data: { summary, summaryType }
     });
 
+    // Flag to indicate summary is based on limited metadata (YouTube without transcript)
+    const limitedSummary = isYouTube && !transcriptAvailable;
+
     return success({
       summary,
       summaryType,
+      limitedSummary,
       cardId: id,
       usage: {
         inputTokens: response.usage.input_tokens,
