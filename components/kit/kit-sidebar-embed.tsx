@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, Loader2, MessageSquare, Paperclip, Link2, Settings, ExternalLink, Eye } from 'lucide-react';
+import { Send, Sparkles, Loader2, MessageSquare, Paperclip, Link2, Settings, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useKitStore } from '@/lib/hooks/use-kit-store';
@@ -112,18 +112,9 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Context bar - 1 line, subtle */}
-      <div
-        className="flex-shrink-0 flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground"
-        style={{
-          borderBottom: '1px solid var(--border-subtle)',
-          background: 'var(--bg-surface-2)',
-        }}
-      >
-        <Eye size={12} />
-        <span className="truncate">
-          Viewing: <span className="font-medium" style={{ color: 'var(--ds-accent)' }}>{cardTitle}</span>
-        </span>
+      {/* Context header - ONE line, plain styling */}
+      <div className="flex-shrink-0 px-3 py-2 text-sm text-muted-foreground border-b border-border">
+        Viewing: <span className="font-medium text-foreground">{cardTitle}</span>
       </div>
 
       {/* Messages area - scrollable, flex-1 */}
@@ -234,11 +225,10 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
         </div>
       )}
 
-      {/* Input row */}
+      {/* Input */}
       <form
         onSubmit={handleSubmit}
-        className="flex-shrink-0 p-3"
-        style={{ borderTop: '1px solid var(--border-subtle)' }}
+        className="flex-shrink-0 px-3 py-2 border-t border-border"
       >
         <div className="flex gap-2">
           <input
@@ -276,14 +266,8 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
         </div>
       </form>
 
-      {/* Bottom toolbar */}
-      <div
-        className="flex-shrink-0 flex items-center justify-around px-2 py-2"
-        style={{
-          borderTop: '1px solid var(--border-subtle)',
-          background: 'var(--bg-surface-2)',
-        }}
-      >
+      {/* Kit toolbar - tight to input */}
+      <div className="flex-shrink-0 flex items-center justify-around px-3 py-2 border-t border-border">
         <ToolbarButton
           icon={MessageSquare}
           onClick={toggleConversationSelector}
