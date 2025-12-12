@@ -119,16 +119,20 @@ function extractYouTubeId(url: string): string | null {
 async function fetchYouTubeContent(url: string): Promise<string | null> {
   try {
     // Extract video ID from URL
+    console.log('[YouTube] URL:', url);
     const videoId = extractYouTubeId(url);
+    console.log('[YouTube] Extracted video ID:', videoId);
+
     if (!videoId) {
-      console.log('[YouTube] Could not extract video ID from:', url);
+      console.log('[YouTube] Could not extract video ID');
       return null;
     }
 
-    console.log('[YouTube] Fetching transcript for:', videoId);
-
     // Fetch transcript
+    console.log('[YouTube] Fetching transcript...');
     const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+
+    console.log('[YouTube] Transcript segments:', transcript?.length || 0);
 
     if (!transcript || transcript.length === 0) {
       console.log('[YouTube] No transcript available');
@@ -142,12 +146,13 @@ async function fetchYouTubeContent(url: string): Promise<string | null> {
       .replace(/\s+/g, ' ')
       .trim();
 
-    console.log('[YouTube] Transcript length:', fullText.length);
+    console.log('[YouTube] Full transcript length:', fullText.length);
+    console.log('[YouTube] First 200 chars:', fullText.slice(0, 200));
 
     // Limit to ~8000 chars to avoid token limits
     return fullText.slice(0, 8000);
   } catch (error) {
-    console.error('[YouTube] Transcript error:', error);
+    console.error('[YouTube] Transcript fetch error:', error);
     return null;
   }
 }
@@ -209,14 +214,19 @@ export async function POST(
     }
 
     // If still not enough content and we have a URL, try to fetch it
+    console.log('[Summarize] Card URL:', card.url);
+    console.log('[Summarize] Current content length:', contentToSummarize?.length || 0);
+    console.log('[Summarize] Is YouTube URL:', card.url ? isYouTubeUrl(card.url) : false);
+
     if ((!contentToSummarize || contentToSummarize.trim().length < 50) && card.url) {
-      console.log(`[Summarize] Fetching content from URL: ${card.url}`);
+      console.log(`[Summarize] Content insufficient, fetching from URL: ${card.url}`);
 
       let fetchedContent: string | null = null;
 
       if (isYouTubeUrl(card.url)) {
-        // Fetch YouTube transcript
+        console.log('[Summarize] Attempting YouTube transcript fetch...');
         fetchedContent = await fetchYouTubeContent(card.url);
+        console.log('[Summarize] YouTube content result:', fetchedContent ? `${fetchedContent.length} chars` : 'null');
       } else if (isTwitterUrl(card.url)) {
         fetchedContent = await fetchTwitterContent(card.url);
       } else {
@@ -225,6 +235,7 @@ export async function POST(
 
       if (fetchedContent && fetchedContent.length > 50) {
         contentToSummarize = fetchedContent;
+        console.log('[Summarize] Using fetched content, length:', fetchedContent.length);
 
         // Optionally save the fetched content as articleContent for future use
         await prisma.card.update({
