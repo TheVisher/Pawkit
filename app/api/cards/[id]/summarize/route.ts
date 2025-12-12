@@ -2,7 +2,6 @@ import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
-import { YoutubeTranscript } from "youtube-transcript";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { handleApiError } from "@/lib/utils/api-error";
@@ -114,43 +113,103 @@ function extractYouTubeId(url: string): string | null {
 }
 
 /**
- * Fetch YouTube video transcript
+ * Fetch YouTube video transcript by scraping the watch page
  */
 async function fetchYouTubeContent(url: string): Promise<string | null> {
+  const videoId = extractYouTubeId(url);
+  if (!videoId) {
+    console.log('[YouTube] Could not extract video ID');
+    return null;
+  }
+
+  console.log('[YouTube] Fetching transcript for video:', videoId);
+
   try {
-    // Extract video ID from URL
-    console.log('[YouTube] URL:', url);
-    const videoId = extractYouTubeId(url);
-    console.log('[YouTube] Extracted video ID:', videoId);
+    // Fetch the YouTube watch page
+    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const response = await fetch(watchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
 
-    if (!videoId) {
-      console.log('[YouTube] Could not extract video ID');
+    if (!response.ok) {
+      console.log('[YouTube] Failed to fetch page:', response.status);
       return null;
     }
 
-    // Fetch transcript
-    console.log('[YouTube] Fetching transcript...');
-    const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+    const html = await response.text();
 
-    console.log('[YouTube] Transcript segments:', transcript?.length || 0);
-
-    if (!transcript || transcript.length === 0) {
-      console.log('[YouTube] No transcript available');
+    // Find the captions/timedtext URL in the page
+    const captionMatch = html.match(/"captionTracks":\s*(\[.*?\])/);
+    if (!captionMatch) {
+      console.log('[YouTube] No caption tracks found in page');
       return null;
     }
 
-    // Combine transcript segments into full text
-    const fullText = transcript
-      .map(segment => segment.text)
-      .join(' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    let captionTracks;
+    try {
+      captionTracks = JSON.parse(captionMatch[1]);
+    } catch {
+      console.log('[YouTube] Failed to parse caption tracks');
+      return null;
+    }
 
-    console.log('[YouTube] Full transcript length:', fullText.length);
+    if (!captionTracks || captionTracks.length === 0) {
+      console.log('[YouTube] Caption tracks array is empty');
+      return null;
+    }
+
+    // Prefer English, fall back to first available
+    const englishTrack = captionTracks.find((t: { languageCode?: string }) =>
+      t.languageCode === 'en' || t.languageCode?.startsWith('en')
+    );
+    const track = englishTrack || captionTracks[0];
+
+    if (!track?.baseUrl) {
+      console.log('[YouTube] No baseUrl in caption track');
+      return null;
+    }
+
+    console.log('[YouTube] Found caption track:', track.languageCode);
+
+    // Fetch the actual captions (returns XML)
+    const captionResponse = await fetch(track.baseUrl);
+    const captionXml = await captionResponse.text();
+
+    // Parse XML to extract text
+    // Format: <text start="0.0" dur="2.5">Hello and welcome</text>
+    const textMatches = captionXml.matchAll(/<text[^>]*>([^<]*)<\/text>/g);
+    const segments: string[] = [];
+
+    for (const match of textMatches) {
+      // Decode HTML entities
+      const text = match[1]
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/\n/g, ' ')
+        .trim();
+
+      if (text) {
+        segments.push(text);
+      }
+    }
+
+    if (segments.length === 0) {
+      console.log('[YouTube] No text segments found in captions');
+      return null;
+    }
+
+    const fullText = segments.join(' ').replace(/\s+/g, ' ').trim();
+    console.log('[YouTube] Extracted transcript length:', fullText.length);
     console.log('[YouTube] First 200 chars:', fullText.slice(0, 200));
 
-    // Limit to ~8000 chars to avoid token limits
-    return fullText.slice(0, 8000);
+    // Limit to avoid token limits
+    return fullText.slice(0, 10000);
   } catch (error) {
     console.error('[YouTube] Transcript fetch error:', error);
     return null;
