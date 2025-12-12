@@ -48,6 +48,7 @@ model Card {
   articleContent  String?
   summary         String?   // AI-generated summary
   summaryType     String?   // 'concise' or 'detailed'
+  transcriptSegments String? @map("transcript_segments") // JSON array of timestamped segments for YouTube videos
   pinned          Boolean   @default(false)
   deleted         Boolean   @default(false)
   deletedAt       DateTime?

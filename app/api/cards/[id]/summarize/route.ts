@@ -19,7 +19,7 @@ const anthropic = new Anthropic({
 // Summary type prompts
 const CONCISE_PROMPT = `Summarize this content in 2-3 sentences. Be direct and concise. Focus on the main point and key takeaway. Do not include the title or use any markdown formatting. Write in plain text.`;
 
-const DETAILED_PROMPT = `Provide a comprehensive summary covering the key points, main arguments, and important details. Structure your response clearly but use plain text without markdown formatting. Do not repeat the title. Aim for 4-6 sentences that capture the essential information.`;
+const DETAILED_PROMPT = `Provide a comprehensive summary covering the key points, main arguments, and important details. Write in plain paragraphs without any headers, titles, or markdown formatting. Do not start with "Summary" or any heading. Aim for 4-6 sentences that capture the essential information.`;
 
 /**
  * Fetch and extract article content from a URL using Readability
@@ -116,10 +116,21 @@ function extractYouTubeId(url: string): string | null {
   return null;
 }
 
+interface TranscriptSegment {
+  start: number;
+  end: number;
+  text: string;
+}
+
+interface YouTubeTranscriptResult {
+  transcript: string | null;
+  segments: TranscriptSegment[];
+}
+
 /**
  * Fetch YouTube transcript from the Railway transcript service (PRIMARY METHOD)
  */
-async function fetchYouTubeFromRailway(url: string): Promise<string | null> {
+async function fetchYouTubeFromRailway(url: string): Promise<YouTubeTranscriptResult | null> {
   const TRANSCRIPT_SERVICE = process.env.TRANSCRIPT_SERVICE_URL || 'https://web-production-8e544.up.railway.app';
 
   try {
@@ -140,9 +151,12 @@ async function fetchYouTubeFromRailway(url: string): Promise<string | null> {
     }
 
     const data = await response.json();
-    console.log('[YouTube] Got transcript from Railway:', data.transcript?.length || 0, 'chars from:', data.title);
+    console.log('[YouTube] Got transcript from Railway:', data.transcript?.length || 0, 'chars,', data.segments?.length || 0, 'segments');
 
-    return data.transcript || null;
+    return {
+      transcript: data.transcript || null,
+      segments: data.segments || []
+    };
   } catch (error) {
     console.error('[YouTube] Railway transcript service error:', error);
     return null;
@@ -219,34 +233,42 @@ async function fetchYouTubeTimedText(videoId: string): Promise<string | null> {
   return null;
 }
 
+interface YouTubeContentResult {
+  transcript: string | null;
+  segments: TranscriptSegment[];
+}
+
 /**
  * Fetch YouTube video transcript using multiple methods
  */
-async function fetchYouTubeContent(url: string): Promise<string | null> {
+async function fetchYouTubeContent(url: string): Promise<YouTubeContentResult> {
   const videoId = extractYouTubeId(url);
   if (!videoId) {
     console.log('[YouTube] Could not extract video ID');
-    return null;
+    return { transcript: null, segments: [] };
   }
 
   console.log('[YouTube] Fetching transcript for video:', videoId);
 
   // Try Railway service first (most reliable with yt-dlp)
   const railwayResult = await fetchYouTubeFromRailway(url);
-  if (railwayResult && railwayResult.length > 100) {
-    return railwayResult.slice(0, 10000);
+  if (railwayResult?.transcript && railwayResult.transcript.length > 100) {
+    return {
+      transcript: railwayResult.transcript.slice(0, 10000),
+      segments: railwayResult.segments
+    };
   }
 
   console.log('[YouTube] Railway failed, trying timedtext API...');
 
-  // Fallback to timedtext API
+  // Fallback to timedtext API (no segments available from this method)
   const timedTextResult = await fetchYouTubeTimedText(videoId);
   if (timedTextResult) {
-    return timedTextResult;
+    return { transcript: timedTextResult, segments: [] };
   }
 
   console.log('[YouTube] All methods failed');
-  return null;
+  return { transcript: null, segments: [] };
 }
 
 export async function POST(
@@ -306,19 +328,26 @@ export async function POST(
     if (card.url && isYouTube) {
       console.log('[Summarize] >>> ENTERING YOUTUBE BRANCH');
       console.log('[Summarize] About to call fetchYouTubeContent with:', card.url);
-      const transcriptContent = await fetchYouTubeContent(card.url);
+      const youtubeResult = await fetchYouTubeContent(card.url);
       console.log('[Summarize] <<< fetchYouTubeContent returned');
-      console.log('[Summarize] Transcript result:', transcriptContent ? `${transcriptContent.length} chars` : 'null');
+      console.log('[Summarize] Transcript result:', youtubeResult.transcript ? `${youtubeResult.transcript.length} chars` : 'null');
+      console.log('[Summarize] Segments result:', youtubeResult.segments.length, 'segments');
 
-      if (transcriptContent && transcriptContent.length > 50) {
-        contentToSummarize = transcriptContent;
+      if (youtubeResult.transcript && youtubeResult.transcript.length > 50) {
+        contentToSummarize = youtubeResult.transcript;
         transcriptAvailable = true;
         console.log('[Summarize] Using YouTube transcript');
 
-        // Save transcript as articleContent for future use
+        // Save transcript as articleContent and segments for future use
         await prisma.card.update({
           where: { id, userId: user.id },
-          data: { articleContent: transcriptContent.slice(0, 50000) }
+          data: {
+            articleContent: youtubeResult.transcript.slice(0, 50000),
+            // Store segments as JSON string if available
+            ...(youtubeResult.segments.length > 0 ? {
+              transcriptSegments: JSON.stringify(youtubeResult.segments)
+            } : {})
+          }
         });
       } else {
         // Fallback to title + description for YouTube without transcript
@@ -376,7 +405,7 @@ export async function POST(
       if (transcriptAvailable) {
         // YouTube with transcript
         systemPrompt = summaryType === 'detailed'
-          ? 'Provide a comprehensive summary of this video transcript covering the key points, main arguments, and important details. Use plain text without markdown formatting. Aim for 4-6 sentences.'
+          ? 'Provide a comprehensive summary of this video transcript covering the key points, main arguments, and important details. Write in plain paragraphs without any headers, titles, or markdown formatting. Do not start with "Summary" or any heading. Aim for 4-6 sentences.'
           : 'Summarize this video transcript in 2-3 sentences. Be direct and concise. Focus on the main point and key takeaway. Use plain text without markdown.';
       } else {
         // YouTube without transcript - be honest about limitations
