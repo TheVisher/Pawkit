@@ -5,12 +5,16 @@ import { getCurrentUser } from "@/lib/auth/get-user";
 import { handleApiError } from "@/lib/utils/api-error";
 import { unauthorized, notFound, validationError, success, rateLimited } from "@/lib/utils/api-responses";
 import { rateLimit, getRateLimitHeaders } from "@/lib/utils/rate-limit";
-import { SUMMARIZE_PROMPT } from "@/lib/ai/kit-prompts";
 import { getModel } from "@/lib/ai/kit-config";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
+
+// Summary type prompts
+const CONCISE_PROMPT = `Summarize this content in 2-3 sentences. Be direct and concise. Focus on the main point and key takeaway. Do not include the title or use any markdown formatting. Write in plain text.`;
+
+const DETAILED_PROMPT = `Provide a comprehensive summary covering the key points, main arguments, and important details. Structure your response clearly but use plain text without markdown formatting. Do not repeat the title. Aim for 4-6 sentences that capture the essential information.`;
 
 export async function POST(
   request: NextRequest,
@@ -40,7 +44,10 @@ export async function POST(
 
     const { id } = await params;
     const body = await request.json();
-    const { content: providedContent } = body;
+    const { content: providedContent, type = 'concise' } = body;
+
+    // Validate summary type
+    const summaryType = type === 'detailed' ? 'detailed' : 'concise';
 
     // Get the card
     const card = await prisma.card.findFirst({
@@ -69,6 +76,9 @@ export async function POST(
       return validationError('Not enough content to summarize. Try extracting the article first or adding some notes.');
     }
 
+    // Select prompt based on type
+    const systemPrompt = summaryType === 'detailed' ? DETAILED_PROMPT : CONCISE_PROMPT;
+
     // Build the prompt
     const userMessage = `Title: ${card.title || 'Untitled'}
 ${card.url ? `URL: ${card.url}` : ''}
@@ -76,11 +86,11 @@ ${card.url ? `URL: ${card.url}` : ''}
 Content to summarize:
 ${contentToSummarize.slice(0, 6000)}${contentToSummarize.length > 6000 ? '\n\n[Content truncated...]' : ''}`;
 
-    // Call Anthropic API
+    // Call Anthropic API - use more tokens for detailed summaries
     const response = await anthropic.messages.create({
       model: getModel('fast'),
-      max_tokens: 300,
-      system: SUMMARIZE_PROMPT,
+      max_tokens: summaryType === 'detailed' ? 500 : 200,
+      system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],
     });
 
@@ -89,14 +99,15 @@ ${contentToSummarize.slice(0, 6000)}${contentToSummarize.length > 6000 ? '\n\n[C
       .map(block => block.text)
       .join('');
 
-    // Save summary to the card
+    // Save summary and type to the card
     await prisma.card.update({
       where: { id, userId: user.id },
-      data: { summary }
+      data: { summary, summaryType }
     });
 
     return success({
       summary,
+      summaryType,
       cardId: id,
       usage: {
         inputTokens: response.usage.input_tokens,

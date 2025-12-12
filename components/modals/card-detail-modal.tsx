@@ -413,6 +413,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [summary, setSummary] = useState(card.summary ?? null);
+  const [summaryType, setSummaryType] = useState<'concise' | 'detailed' | null>(card.summaryType ?? null);
+  const [showSummaryOptions, setShowSummaryOptions] = useState(false);
 
   // Modal resize state with localStorage persistence
   const [modalSize, setModalSize] = useState(() => {
@@ -869,8 +871,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }
   };
 
-  const handleGenerateSummary = async () => {
+  const handleGenerateSummary = async (type: 'concise' | 'detailed') => {
     setIsSummarizing(true);
+    setShowSummaryOptions(false);
     try {
       // Determine content to summarize based on card type
       let contentToSummarize = '';
@@ -897,14 +900,15 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       const response = await fetch(`/api/cards/${card.id}/summarize`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: contentToSummarize })
+        body: JSON.stringify({ content: contentToSummarize, type })
       });
 
       if (response.ok) {
         const data = await response.json();
         setSummary(data.summary);
-        await updateCardInStore(card.id, { summary: data.summary });
-        onUpdate({ ...card, summary: data.summary });
+        setSummaryType(type);
+        await updateCardInStore(card.id, { summary: data.summary, summaryType: type });
+        onUpdate({ ...card, summary: data.summary, summaryType: type });
         toast.success("Summary generated");
       } else {
         const error = await response.json();
@@ -1671,55 +1675,124 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                             <div className="flex items-center gap-2">
                               <Sparkles size={16} style={{ color: 'var(--ds-accent)' }} />
                               <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>AI Summary</span>
+                              {summaryType && (
+                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--bg-surface-3)', color: 'var(--text-muted)' }}>
+                                  {summaryType === 'concise' ? '⚡ Concise' : '📝 Detailed'}
+                                </span>
+                              )}
                             </div>
                             {summary && (
-                              <button
-                                onClick={handleGenerateSummary}
-                                disabled={isSummarizing}
-                                className="text-xs px-2 py-1 rounded-md transition-colors flex items-center gap-1"
-                                style={{
-                                  color: 'var(--text-secondary)',
-                                  background: 'var(--bg-surface-3)',
-                                }}
-                              >
-                                <RefreshCw size={12} className={isSummarizing ? 'animate-spin' : ''} />
-                                Regenerate
-                              </button>
+                              <div className="relative">
+                                <button
+                                  onClick={() => setShowSummaryOptions(!showSummaryOptions)}
+                                  disabled={isSummarizing}
+                                  className="text-xs px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                                  style={{
+                                    color: 'var(--text-secondary)',
+                                    background: 'var(--bg-surface-3)',
+                                  }}
+                                >
+                                  <RefreshCw size={12} className={isSummarizing ? 'animate-spin' : ''} />
+                                  Regenerate
+                                </button>
+                                {showSummaryOptions && !isSummarizing && (
+                                  <div
+                                    className="absolute top-full mt-1 right-0 rounded-lg overflow-hidden z-50"
+                                    style={{
+                                      background: 'var(--bg-surface-3)',
+                                      border: '1px solid var(--border-subtle)',
+                                      boxShadow: 'var(--shadow-3)',
+                                    }}
+                                  >
+                                    <button
+                                      onClick={() => handleGenerateSummary('concise')}
+                                      className="w-full px-3 py-2 text-left text-xs flex items-center gap-2 transition-colors"
+                                      style={{ color: 'var(--text-primary)' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-2)'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <Zap size={12} /> Concise
+                                    </button>
+                                    <button
+                                      onClick={() => handleGenerateSummary('detailed')}
+                                      className="w-full px-3 py-2 text-left text-xs flex items-center gap-2 transition-colors"
+                                      style={{ color: 'var(--text-primary)' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-2)'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <FileText size={12} /> Detailed
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
                           {summary ? (
-                            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
-                              {summary}
-                            </p>
+                            <div className="text-sm leading-relaxed prose prose-sm max-w-none" style={{ color: 'var(--text-primary)' }}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {summary}
+                              </ReactMarkdown>
+                            </div>
                           ) : (
                             <div className="text-center py-4">
                               <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                                Generate a concise summary of this file
+                                Generate an AI summary of this content
                               </p>
-                              <button
-                                onClick={handleGenerateSummary}
-                                disabled={isSummarizing}
-                                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
-                                style={{
-                                  background: 'var(--ds-accent)',
-                                  color: 'white',
-                                }}
-                              >
-                                {isSummarizing ? (
-                                  <>
-                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                    </svg>
-                                    Kit is summarizing...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Sparkles size={16} />
-                                    Generate Summary
-                                  </>
+                              <div className="relative inline-block">
+                                <button
+                                  onClick={() => setShowSummaryOptions(!showSummaryOptions)}
+                                  disabled={isSummarizing}
+                                  className="px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
+                                  style={{
+                                    background: 'var(--ds-accent)',
+                                    color: 'white',
+                                  }}
+                                >
+                                  {isSummarizing ? (
+                                    <>
+                                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                      </svg>
+                                      Kit is summarizing...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles size={16} />
+                                      Generate Summary
+                                    </>
+                                  )}
+                                </button>
+                                {showSummaryOptions && !isSummarizing && (
+                                  <div
+                                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 rounded-lg overflow-hidden z-50"
+                                    style={{
+                                      background: 'var(--bg-surface-3)',
+                                      border: '1px solid var(--border-subtle)',
+                                      boxShadow: 'var(--shadow-3)',
+                                    }}
+                                  >
+                                    <button
+                                      onClick={() => handleGenerateSummary('concise')}
+                                      className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors whitespace-nowrap"
+                                      style={{ color: 'var(--text-primary)' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-2)'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <Zap size={14} /> Concise
+                                    </button>
+                                    <button
+                                      onClick={() => handleGenerateSummary('detailed')}
+                                      className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors whitespace-nowrap"
+                                      style={{ color: 'var(--text-primary)' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-2)'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <FileText size={14} /> Detailed
+                                    </button>
+                                  </div>
                                 )}
-                              </button>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1914,55 +1987,124 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                             <div className="flex items-center gap-2">
                               <Sparkles size={16} style={{ color: 'var(--ds-accent)' }} />
                               <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>AI Summary</span>
+                              {summaryType && (
+                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: 'var(--bg-surface-3)', color: 'var(--text-muted)' }}>
+                                  {summaryType === 'concise' ? '⚡ Concise' : '📝 Detailed'}
+                                </span>
+                              )}
                             </div>
                             {summary && (
-                              <button
-                                onClick={handleGenerateSummary}
-                                disabled={isSummarizing}
-                                className="text-xs px-2 py-1 rounded-md transition-colors flex items-center gap-1"
-                                style={{
-                                  color: 'var(--text-secondary)',
-                                  background: 'var(--bg-surface-3)',
-                                }}
-                              >
-                                <RefreshCw size={12} className={isSummarizing ? 'animate-spin' : ''} />
-                                Regenerate
-                              </button>
+                              <div className="relative">
+                                <button
+                                  onClick={() => setShowSummaryOptions(!showSummaryOptions)}
+                                  disabled={isSummarizing}
+                                  className="text-xs px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                                  style={{
+                                    color: 'var(--text-secondary)',
+                                    background: 'var(--bg-surface-3)',
+                                  }}
+                                >
+                                  <RefreshCw size={12} className={isSummarizing ? 'animate-spin' : ''} />
+                                  Regenerate
+                                </button>
+                                {showSummaryOptions && !isSummarizing && (
+                                  <div
+                                    className="absolute top-full mt-1 right-0 rounded-lg overflow-hidden z-50"
+                                    style={{
+                                      background: 'var(--bg-surface-3)',
+                                      border: '1px solid var(--border-subtle)',
+                                      boxShadow: 'var(--shadow-3)',
+                                    }}
+                                  >
+                                    <button
+                                      onClick={() => handleGenerateSummary('concise')}
+                                      className="w-full px-3 py-2 text-left text-xs flex items-center gap-2 transition-colors"
+                                      style={{ color: 'var(--text-primary)' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-2)'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <Zap size={12} /> Concise
+                                    </button>
+                                    <button
+                                      onClick={() => handleGenerateSummary('detailed')}
+                                      className="w-full px-3 py-2 text-left text-xs flex items-center gap-2 transition-colors"
+                                      style={{ color: 'var(--text-primary)' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-2)'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <FileText size={12} /> Detailed
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             )}
                           </div>
                           {summary ? (
-                            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
-                              {summary}
-                            </p>
+                            <div className="text-sm leading-relaxed prose prose-sm max-w-none" style={{ color: 'var(--text-primary)' }}>
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {summary}
+                              </ReactMarkdown>
+                            </div>
                           ) : (
                             <div className="text-center py-4">
                               <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
-                                Generate a concise summary of this content
+                                Generate an AI summary of this content
                               </p>
-                              <button
-                                onClick={handleGenerateSummary}
-                                disabled={isSummarizing}
-                                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
-                                style={{
-                                  background: 'var(--ds-accent)',
-                                  color: 'white',
-                                }}
-                              >
-                                {isSummarizing ? (
-                                  <>
-                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                    </svg>
-                                    Kit is summarizing...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Sparkles size={16} />
-                                    Generate Summary
-                                  </>
+                              <div className="relative inline-block">
+                                <button
+                                  onClick={() => setShowSummaryOptions(!showSummaryOptions)}
+                                  disabled={isSummarizing}
+                                  className="px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
+                                  style={{
+                                    background: 'var(--ds-accent)',
+                                    color: 'white',
+                                  }}
+                                >
+                                  {isSummarizing ? (
+                                    <>
+                                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                      </svg>
+                                      Kit is summarizing...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles size={16} />
+                                      Generate Summary
+                                    </>
+                                  )}
+                                </button>
+                                {showSummaryOptions && !isSummarizing && (
+                                  <div
+                                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 rounded-lg overflow-hidden z-50"
+                                    style={{
+                                      background: 'var(--bg-surface-3)',
+                                      border: '1px solid var(--border-subtle)',
+                                      boxShadow: 'var(--shadow-3)',
+                                    }}
+                                  >
+                                    <button
+                                      onClick={() => handleGenerateSummary('concise')}
+                                      className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors whitespace-nowrap"
+                                      style={{ color: 'var(--text-primary)' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-2)'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <Zap size={14} /> Concise
+                                    </button>
+                                    <button
+                                      onClick={() => handleGenerateSummary('detailed')}
+                                      className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors whitespace-nowrap"
+                                      style={{ color: 'var(--text-primary)' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-surface-2)'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                                    >
+                                      <FileText size={14} /> Detailed
+                                    </button>
+                                  </div>
                                 )}
-                              </button>
+                              </div>
                             </div>
                           )}
                         </div>
