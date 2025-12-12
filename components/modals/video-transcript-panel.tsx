@@ -228,15 +228,15 @@ export function VideoTranscriptPanel({
                   className={cn(
                     "flex gap-3 p-2 rounded-lg cursor-pointer transition-all duration-200",
                     "hover:bg-white/5",
-                    activeSegmentIndex === index && "scale-[1.01]"
+                    activeSegmentIndex === index && "ring-1 ring-purple-500/50"
                   )}
                   style={{
                     backgroundColor: activeSegmentIndex === index
-                      ? 'hsl(var(--ds-accent) / 0.15)'
+                      ? 'rgba(147, 51, 234, 0.2)'
                       : 'transparent',
-                    boxShadow: activeSegmentIndex === index
-                      ? '0 0 0 1px hsl(var(--ds-accent) / 0.5)'
-                      : 'none'
+                    borderLeft: activeSegmentIndex === index
+                      ? '3px solid rgb(147, 51, 234)'
+                      : '3px solid transparent'
                   }}
                 >
                   <span
@@ -245,17 +245,21 @@ export function VideoTranscriptPanel({
                     )}
                     style={{
                       color: activeSegmentIndex === index
-                        ? 'var(--ds-accent)'
+                        ? 'rgb(167, 139, 250)'
                         : 'hsl(var(--muted-foreground))',
                       minWidth: '40px',
-                      fontWeight: activeSegmentIndex === index ? 600 : 400
+                      fontWeight: activeSegmentIndex === index ? 700 : 400
                     }}
                   >
                     {formatTimestamp(segment.start)}
                   </span>
                   <p
-                    className="text-sm leading-relaxed"
-                    style={{ color: 'hsl(var(--foreground))' }}
+                    className="text-sm leading-relaxed transition-colors duration-200"
+                    style={{
+                      color: activeSegmentIndex === index
+                        ? 'hsl(var(--foreground))'
+                        : 'hsl(var(--muted-foreground))'
+                    }}
                   >
                     {segment.text}
                   </p>
