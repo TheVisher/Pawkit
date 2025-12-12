@@ -1073,6 +1073,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
             background: 'var(--bg-surface-1)',
             border: '1px solid var(--border-subtle)',
             boxShadow: 'var(--shadow-3)',
+            backdropFilter: 'blur(16px) saturate(1.5)',
+            WebkitBackdropFilter: 'blur(16px) saturate(1.5)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
