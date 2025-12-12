@@ -125,12 +125,18 @@ async function fetchYouTubeContent(url: string): Promise<string | null> {
 
   console.log('[YouTube] Fetching transcript for video:', videoId);
 
-  // List of Invidious instances to try
+  // List of Invidious instances to try (updated list of working instances)
   const instances = [
+    'https://yewtu.be',
+    'https://vid.puffyan.us',
+    'https://invidious.snopyta.org',
+    'https://iv.ggtyler.dev',
+    'https://invidious.kavin.rocks',
     'https://inv.nadeko.net',
     'https://invidious.nerdvpn.de',
     'https://invidious.privacyredirect.com',
-    'https://invidious.io.lol',
+    'https://invidious.slipfox.xyz',
+    'https://inv.tux.pizza',
   ];
 
   for (const instance of instances) {
@@ -231,7 +237,80 @@ async function fetchYouTubeContent(url: string): Promise<string | null> {
     }
   }
 
-  console.log('[YouTube] All instances failed');
+  console.log('[YouTube] All Invidious instances failed, trying direct YouTube...');
+
+  // Fallback: Try fetching directly from YouTube
+  try {
+    const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const pageResponse = await fetch(watchUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (pageResponse.ok) {
+      const html = await pageResponse.text();
+      console.log('[YouTube] Got YouTube page, length:', html.length);
+
+      // Try to find captions in ytInitialPlayerResponse
+      const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});/);
+      if (playerMatch) {
+        try {
+          const playerData = JSON.parse(playerMatch[1]);
+          const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+
+          if (captionTracks && captionTracks.length > 0) {
+            console.log('[YouTube] Found caption tracks in player response:', captionTracks.length);
+
+            // Find English track
+            const englishTrack = captionTracks.find((t: { languageCode?: string }) =>
+              t.languageCode === 'en' || t.languageCode?.startsWith('en')
+            );
+            const track = englishTrack || captionTracks[0];
+
+            if (track?.baseUrl) {
+              console.log('[YouTube] Fetching captions from:', track.baseUrl.slice(0, 100));
+              const captionResponse = await fetch(track.baseUrl, {
+                signal: AbortSignal.timeout(10000),
+              });
+
+              if (captionResponse.ok) {
+                const captionXml = await captionResponse.text();
+                const matches = [...captionXml.matchAll(/<text[^>]*>([^<]*)<\/text>/g)];
+
+                if (matches.length > 0) {
+                  const transcript = matches
+                    .map(m => m[1])
+                    .join(' ')
+                    .replace(/&amp;/g, '&')
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"')
+                    .replace(/&#39;/g, "'")
+                    .replace(/&nbsp;/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+
+                  if (transcript.length > 100) {
+                    console.log('[YouTube] Direct fetch successful:', transcript.length, 'chars');
+                    return transcript.slice(0, 10000);
+                  }
+                }
+              }
+            }
+          }
+        } catch (parseError) {
+          console.log('[YouTube] Failed to parse player response');
+        }
+      }
+    }
+  } catch (directError) {
+    console.error('[YouTube] Direct fetch failed:', directError);
+  }
+
+  console.log('[YouTube] All methods failed');
   return null;
 }
 
