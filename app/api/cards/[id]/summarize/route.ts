@@ -92,7 +92,8 @@ function isTwitterUrl(url: string): boolean {
 /**
  * Check if URL is a YouTube URL
  */
-function isYouTubeUrl(url: string): boolean {
+function isYouTubeUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
   return url.includes('youtube.com') || url.includes('youtu.be');
 }
 
@@ -281,14 +282,18 @@ export async function POST(
     let isYouTube = card.url ? isYouTubeUrl(card.url) : false;
     let transcriptAvailable = false;
 
+    console.log('[Summarize] ========== START ==========');
     console.log('[Summarize] Provided content:', providedContent ? `${providedContent.length} chars` : 'none');
     console.log('[Summarize] Card URL:', card.url);
     console.log('[Summarize] Is YouTube URL:', isYouTube);
+    console.log('[Summarize] card.url && isYouTube:', !!(card.url && isYouTube));
 
     // For YouTube URLs, ALWAYS try to fetch transcript first (ignore provided content which is just title/description)
     if (card.url && isYouTube) {
-      console.log('[Summarize] YouTube detected - fetching transcript...');
+      console.log('[Summarize] >>> ENTERING YOUTUBE BRANCH');
+      console.log('[Summarize] About to call fetchYouTubeContent with:', card.url);
       const transcriptContent = await fetchYouTubeContent(card.url);
+      console.log('[Summarize] <<< fetchYouTubeContent returned');
       console.log('[Summarize] Transcript result:', transcriptContent ? `${transcriptContent.length} chars` : 'null');
 
       if (transcriptContent && transcriptContent.length > 50) {
