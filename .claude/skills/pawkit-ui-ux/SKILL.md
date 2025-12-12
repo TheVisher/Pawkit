@@ -4357,4 +4357,70 @@ const modalStyle = {
 
 ---
 
-**Last Updated**: December 8, 2025
+### Pattern 8: Embedded Panel Flex Layout
+
+**Use Case**: Child components rendered inside ControlPanel's content area (e.g., CardDetailsPanel, Kit sidebar embed)
+
+**Problem**: Using `absolute inset-0` on a child component breaks flex layout because it takes the element out of normal document flow. This causes:
+- Parent padding to be ignored
+- Scroll behavior issues
+- Child components not respecting sibling elements (like tab buttons)
+
+**Solution**: Use `flex-1 min-h-0` instead of `absolute inset-0` to make the child a proper flex participant.
+
+**Key Insight**: The ControlPanel's content area already provides `px-4 py-6` padding. Child components should be normal flex children that inherit this padding, not absolutely positioned elements that bypass it.
+
+**❌ WRONG** (absolute positioning):
+```tsx
+// CardDetailsPanel - WRONG
+return (
+  <div className="absolute inset-0 flex flex-col">
+    {activeTab === "ai" && (
+      <div className="flex-1 min-h-0 px-4 pt-6 pb-2">
+        <KitSidebarEmbed />
+      </div>
+    )}
+    {/* Tab buttons at bottom */}
+  </div>
+);
+```
+
+Problems with this approach:
+- `absolute inset-0` takes element out of flex flow
+- Child adds its own padding that stacks with parent padding
+- Tab buttons may get pushed off-screen
+
+**✅ CORRECT** (flex child):
+```tsx
+// CardDetailsPanel - CORRECT
+return (
+  <div className="flex-1 min-h-0 flex flex-col">
+    {activeTab === "ai" && (
+      <div className="flex-1 min-h-0">
+        <KitSidebarEmbed />
+      </div>
+    )}
+    {/* Tab buttons at bottom - properly positioned */}
+  </div>
+);
+```
+
+**Why this works**:
+1. `flex-1` - Takes available space in parent flex container
+2. `min-h-0` - Critical for flex overflow to work (allows shrinking below content size)
+3. No extra padding - Parent's `px-4 py-6` already provides spacing
+4. Tab buttons stay at bottom because they're normal flex children
+
+**CSS Requirements**:
+- Parent wrapper: `flex-1 min-h-0 flex flex-col`
+- Content area (Kit embed): `flex-1 min-h-0`
+- Tab buttons: Just normal flex children at the end
+
+**Files Using This Pattern**:
+- `components/control-panel/card-details-panel.tsx`
+
+**Rule**: When rendering content inside ControlPanel's content area, NEVER use `absolute inset-0`. Always use `flex-1 min-h-0` to participate in flex layout.
+
+---
+
+**Last Updated**: December 12, 2025
