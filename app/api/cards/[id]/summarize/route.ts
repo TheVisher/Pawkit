@@ -201,33 +201,53 @@ export async function POST(
 
     // Use provided content or build from card data
     let contentToSummarize = providedContent;
+    console.log('[Summarize] Provided content:', providedContent ? `${providedContent.length} chars` : 'none');
+    console.log('[Summarize] Card URL:', card.url);
+    console.log('[Summarize] Is YouTube URL:', card.url ? isYouTubeUrl(card.url) : false);
 
-    if (!contentToSummarize) {
-      // Build content based on card type
+    // For YouTube URLs, ALWAYS try to fetch transcript first (ignore provided content which is just title/description)
+    if (card.url && isYouTubeUrl(card.url)) {
+      console.log('[Summarize] YouTube detected - fetching transcript...');
+      const transcriptContent = await fetchYouTubeContent(card.url);
+      console.log('[Summarize] Transcript result:', transcriptContent ? `${transcriptContent.length} chars` : 'null');
+
+      if (transcriptContent && transcriptContent.length > 50) {
+        contentToSummarize = transcriptContent;
+        console.log('[Summarize] Using YouTube transcript');
+
+        // Save transcript as articleContent for future use
+        await prisma.card.update({
+          where: { id, userId: user.id },
+          data: { articleContent: transcriptContent.slice(0, 50000) }
+        });
+      } else {
+        // Fallback to title + description for YouTube without transcript
+        console.log('[Summarize] No transcript, using title/description fallback');
+        contentToSummarize = `Video: ${card.title || 'Untitled'}${card.description ? '\n\nDescription: ' + card.description : ''}`;
+      }
+    } else if (!contentToSummarize) {
+      // Non-YouTube: Build content based on card type
       if (card.articleContent) {
         contentToSummarize = card.articleContent;
+        console.log('[Summarize] Using articleContent:', contentToSummarize.length, 'chars');
       } else if (card.content) {
         contentToSummarize = card.content;
+        console.log('[Summarize] Using card.content:', contentToSummarize.length, 'chars');
       } else {
         contentToSummarize = [card.title, card.description].filter(Boolean).join('\n\n');
+        console.log('[Summarize] Using title/description:', contentToSummarize.length, 'chars');
       }
     }
 
-    // If still not enough content and we have a URL, try to fetch it
-    console.log('[Summarize] Card URL:', card.url);
+    // For non-YouTube URLs with insufficient content, try to fetch
     console.log('[Summarize] Current content length:', contentToSummarize?.length || 0);
-    console.log('[Summarize] Is YouTube URL:', card.url ? isYouTubeUrl(card.url) : false);
 
-    if ((!contentToSummarize || contentToSummarize.trim().length < 50) && card.url) {
+    if ((!contentToSummarize || contentToSummarize.trim().length < 50) && card.url && !isYouTubeUrl(card.url)) {
       console.log(`[Summarize] Content insufficient, fetching from URL: ${card.url}`);
 
       let fetchedContent: string | null = null;
 
-      if (isYouTubeUrl(card.url)) {
-        console.log('[Summarize] Attempting YouTube transcript fetch...');
-        fetchedContent = await fetchYouTubeContent(card.url);
-        console.log('[Summarize] YouTube content result:', fetchedContent ? `${fetchedContent.length} chars` : 'null');
-      } else if (isTwitterUrl(card.url)) {
+      if (isTwitterUrl(card.url)) {
         fetchedContent = await fetchTwitterContent(card.url);
       } else {
         fetchedContent = await fetchArticleContent(card.url);
@@ -237,19 +257,11 @@ export async function POST(
         contentToSummarize = fetchedContent;
         console.log('[Summarize] Using fetched content, length:', fetchedContent.length);
 
-        // Optionally save the fetched content as articleContent for future use
+        // Save as articleContent for future use
         await prisma.card.update({
           where: { id, userId: user.id },
-          data: { articleContent: fetchedContent.slice(0, 50000) } // Limit size
+          data: { articleContent: fetchedContent.slice(0, 50000) }
         });
-      }
-    }
-
-    // Fallback for YouTube videos without transcripts: use title + description
-    if ((!contentToSummarize || contentToSummarize.trim().length < 20) && card.url && isYouTubeUrl(card.url)) {
-      if (card.title) {
-        contentToSummarize = `Video: ${card.title}${card.description ? '\n\nDescription: ' + card.description : ''}`;
-        console.log('[YouTube] Using title/description fallback');
       }
     }
 
