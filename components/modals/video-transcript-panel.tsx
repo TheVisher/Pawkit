@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronDown, ChevronUp, MessageSquare, Loader2, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, MessageSquare, Loader2, X, Sparkles, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useKitStore } from '@/lib/hooks/use-kit-store';
 
@@ -136,14 +136,15 @@ export function VideoTranscriptPanel({
         className="flex items-center justify-between px-4 py-3 border-b shrink-0"
         style={{ borderColor: 'hsl(var(--border))' }}
       >
-        <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-          Transcript
+        <span className="font-medium flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
+          <Sparkles className="w-4 h-4 text-purple-400" />
+          Kit
         </span>
         <button
           onClick={onClose}
           className="p-1 rounded hover:bg-white/10 transition-colors"
           style={{ color: 'hsl(var(--muted-foreground))' }}
-          title="Close transcript"
+          title="Close panel"
         >
           <X size={18} />
         </button>
@@ -173,13 +174,13 @@ export function VideoTranscriptPanel({
                 {/* Collapse button - always visible */}
                 <button
                   onClick={() => setSummaryCollapsed(!summaryCollapsed)}
-                  className="w-full flex items-center justify-between px-4 py-2 hover:bg-white/5 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
                 >
                   <span
                     className="text-sm font-medium flex items-center gap-2"
                     style={{ color: 'hsl(var(--foreground))' }}
                   >
-                    <span style={{ color: 'var(--ds-accent)' }}>✨</span>
+                    <Sparkles className="w-4 h-4 text-purple-400" />
                     Summary
                   </span>
                   {summaryCollapsed ? (
@@ -210,6 +211,17 @@ export function VideoTranscriptPanel({
                 )}
               </div>
             )}
+
+            {/* Transcript header */}
+            <div
+              className="px-4 py-2 border-b shrink-0 flex items-center gap-2"
+              style={{ borderColor: 'hsl(var(--border))' }}
+            >
+              <FileText className="w-4 h-4" style={{ color: 'hsl(var(--muted-foreground))' }} />
+              <span className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
+                Transcript
+              </span>
+            </div>
 
             {/* Transcript segments */}
             <div
