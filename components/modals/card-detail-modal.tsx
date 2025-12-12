@@ -2169,7 +2169,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                         />
                       )}
                       {/* Tab buttons */}
-                      <div className="relative flex">
+                      <div className="relative flex items-center">
                         {noteTabOptions.map((option, index) => {
                           const Icon = option.icon;
                           const isSelected = index === selectedIndex;
@@ -2183,7 +2183,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                                   setNoteMode(option.value);
                                 }
                               }}
-                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-full transition-colors duration-200 z-10 text-sm font-medium"
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-full transition-colors duration-200 z-10 text-sm font-medium min-w-[100px]"
                               style={{
                                 color: isSelected ? 'var(--text-primary)' : 'var(--text-muted)',
                               }}
@@ -2240,7 +2240,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                         }}
                       />
                       {/* Tab buttons */}
-                      <div className="relative flex">
+                      <div className="relative flex items-center">
                         {tabOptions.map((option) => {
                           const Icon = option.icon;
                           const isSelected = bottomTabMode === option.value;
@@ -2248,7 +2248,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                             <button
                               key={option.value}
                               onClick={() => setBottomTabMode(option.value)}
-                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-full transition-colors duration-200 z-10 text-sm font-medium"
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-full transition-colors duration-200 z-10 text-sm font-medium min-w-[100px]"
                               style={{
                                 color: isSelected ? 'var(--text-primary)' : 'var(--text-muted)',
                               }}
