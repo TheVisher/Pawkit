@@ -1538,31 +1538,31 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     ) : (
                       <div className="max-w-2xl w-full space-y-6 py-8">
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-200 mb-4">File Information</h3>
+                          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>File Information</h3>
                           <div className="space-y-3 text-sm">
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Filename</span>
-                              <span className="text-gray-200 text-right max-w-md truncate">{filePreviewData?.filename || card.title || "—"}</span>
+                            <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>Filename</span>
+                              <span className="text-right max-w-md truncate" style={{ color: 'var(--text-primary)' }}>{filePreviewData?.filename || card.title || "—"}</span>
                             </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Type</span>
-                              <span className="text-gray-200">{filePreviewData?.category || "—"}</span>
+                            <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>Type</span>
+                              <span style={{ color: 'var(--text-primary)' }}>{filePreviewData?.category || "—"}</span>
                             </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Size</span>
-                              <span className="text-gray-200">{filePreviewData?.size ? formatFileSize(filePreviewData.size) : "—"}</span>
+                            <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>Size</span>
+                              <span style={{ color: 'var(--text-primary)' }}>{filePreviewData?.size ? formatFileSize(filePreviewData.size) : "—"}</span>
                             </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">MIME Type</span>
-                              <span className="text-gray-200">{filePreviewData?.mimeType || "—"}</span>
+                            <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>MIME Type</span>
+                              <span style={{ color: 'var(--text-primary)' }}>{filePreviewData?.mimeType || "—"}</span>
                             </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Created</span>
-                              <span className="text-gray-200">{new Date(card.createdAt).toLocaleString()}</span>
+                            <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>Created</span>
+                              <span style={{ color: 'var(--text-primary)' }}>{new Date(card.createdAt).toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Updated</span>
-                              <span className="text-gray-200">{new Date(card.updatedAt).toLocaleString()}</span>
+                            <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>Updated</span>
+                              <span style={{ color: 'var(--text-primary)' }}>{new Date(card.updatedAt).toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
@@ -1599,10 +1599,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     />
                   ) : (
                     <div className="text-center space-y-4">
-                      <div className="w-32 h-32 mx-auto bg-gray-600 rounded-lg flex items-center justify-center">
-                        <span className="text-white text-4xl">🔗</span>
+                      <div className="w-32 h-32 mx-auto rounded-lg flex items-center justify-center" style={{ background: 'var(--bg-surface-3)' }}>
+                        <span className="text-4xl">🔗</span>
                       </div>
-                      <h3 className="text-xl font-semibold text-gray-300">
+                      <h3 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>
                         {card.title || card.domain || card.url}
                       </h3>
                     </div>
@@ -1632,11 +1632,11 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     ) : (
                       <div className="flex items-center justify-center h-full">
                         <div className="text-center space-y-4">
-                          <div className="text-gray-400 mb-4">
+                          <div className="mb-4" style={{ color: 'var(--text-secondary)' }}>
                             <BookOpen size={48} className="mx-auto" />
                           </div>
-                          <h3 className="text-xl font-semibold text-gray-300">No Article Content Yet</h3>
-                          <p className="text-sm text-gray-500 max-w-md mx-auto">
+                          <h3 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>No Article Content Yet</h3>
+                          <p className="text-sm max-w-md mx-auto" style={{ color: 'var(--text-muted)' }}>
                             Extract the article content for distraction-free reading
                           </p>
                           <Button
@@ -1672,18 +1672,18 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                     ) : (
                       <div className="max-w-2xl w-full space-y-6 py-8">
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-200 mb-4">Card Information</h3>
+                          <h3 className="text-lg font-semibold mb-4" style={{ color: 'var(--text-primary)' }}>Card Information</h3>
                           <div className="space-y-3 text-sm">
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Title</span>
-                              <span className="text-gray-200 text-right max-w-md truncate">{card.title || "—"}</span>
+                            <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>Title</span>
+                              <span className="text-right max-w-md truncate" style={{ color: 'var(--text-primary)' }}>{card.title || "—"}</span>
                             </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Domain</span>
-                              <span className="text-gray-200">{card.domain || "—"}</span>
+                            <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>Domain</span>
+                              <span style={{ color: 'var(--text-primary)' }}>{card.domain || "—"}</span>
                             </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">URL</span>
+                            <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>URL</span>
                               <a
                                 href={card.url}
                                 target="_blank"
@@ -1693,18 +1693,18 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                                 {card.url}
                               </a>
                             </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Created</span>
-                              <span className="text-gray-200">{new Date(card.createdAt).toLocaleString()}</span>
+                            <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>Created</span>
+                              <span style={{ color: 'var(--text-primary)' }}>{new Date(card.createdAt).toLocaleString()}</span>
                             </div>
-                            <div className="flex justify-between py-2 border-b border-white/10">
-                              <span className="text-gray-400">Updated</span>
-                              <span className="text-gray-200">{new Date(card.updatedAt).toLocaleString()}</span>
+                            <div className="flex justify-between py-2 border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>Updated</span>
+                              <span style={{ color: 'var(--text-primary)' }}>{new Date(card.updatedAt).toLocaleString()}</span>
                             </div>
                             {card.description && (
                               <div className="py-2">
-                                <span className="text-gray-400 block mb-2">Description</span>
-                                <p className="text-gray-200">{card.description}</p>
+                                <span className="block mb-2" style={{ color: 'var(--text-secondary)' }}>Description</span>
+                                <p style={{ color: 'var(--text-primary)' }}>{card.description}</p>
                               </div>
                             )}
                           </div>
@@ -1719,10 +1719,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                                   <Calendar size={20} className="text-accent" />
                                 </div>
                                 <div>
-                                  <span className="text-sm text-gray-400">
+                                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                                     {linkedCalendarEvent ? 'On Calendar' : (extractedReleaseDate?.label || 'Release Date')}
                                   </span>
-                                  <div className="text-lg font-semibold text-white">
+                                  <div className="text-lg font-semibold" style={{ color: 'var(--text-primary)' }}>
                                     {linkedCalendarEvent
                                       ? formatDateDisplay(linkedCalendarEvent.date)
                                       : extractedReleaseDate ? formatDateDisplay(extractedReleaseDate.date) : ''}
