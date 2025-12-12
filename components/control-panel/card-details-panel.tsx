@@ -151,12 +151,12 @@ export function CardDetailsPanel() {
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      {/* Main Content Area - Scrollable */}
+      {/* Main Content Area - Scrollable (mask disabled for AI tab) */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
-        style={{
+        style={activeTab !== 'ai' ? {
           maskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)",
           WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, black 24px, black calc(100% - 24px), transparent 100%)"
-        }}
+        } : undefined}
       >
         {/* Notes Tab */}
         {activeTab === "notes" && (
@@ -269,13 +269,7 @@ export function CardDetailsPanel() {
 
         {/* AI Chat Tab - Kit renders immediately, no placeholder */}
         {activeTab === "ai" && (
-          <div
-            className="h-full -mx-4 -my-6"
-            style={{
-              maskImage: 'none',
-              WebkitMaskImage: 'none',
-            }}
-          >
+          <div className="h-full -mx-4 -my-6">
             <KitSidebarEmbed
               cardId={card.id}
               cardTitle={card.title || 'Untitled'}
