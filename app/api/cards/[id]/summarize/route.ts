@@ -254,21 +254,57 @@ async function fetchYouTubeContent(url: string): Promise<string | null> {
       const html = await pageResponse.text();
       console.log('[YouTube] Got YouTube page, length:', html.length);
 
-      // Try to find captions in ytInitialPlayerResponse
-      const playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});/);
+      // Try to find ytInitialPlayerResponse with different patterns
+      let playerMatch = html.match(/var ytInitialPlayerResponse\s*=\s*(\{.+?\});/s);
+      console.log('[YouTube] Pattern 1 (var ytInitialPlayerResponse) match:', !!playerMatch);
+
+      if (!playerMatch) {
+        playerMatch = html.match(/ytInitialPlayerResponse\s*=\s*(\{.+?\});/);
+        console.log('[YouTube] Pattern 2 (ytInitialPlayerResponse) match:', !!playerMatch);
+      }
+
+      if (!playerMatch) {
+        // Log debugging info
+        const snippetStart = html.indexOf('ytInitialPlayerResponse');
+        if (snippetStart > -1) {
+          console.log('[YouTube] Found ytInitialPlayerResponse at index:', snippetStart);
+          console.log('[YouTube] Snippet:', html.slice(snippetStart, snippetStart + 300));
+        } else {
+          console.log('[YouTube] ytInitialPlayerResponse not found in page');
+        }
+        console.log('[YouTube] Has "captions":', html.includes('"captions"'));
+        console.log('[YouTube] Has "captionTracks":', html.includes('"captionTracks"'));
+        console.log('[YouTube] Has "playerCaptionsTracklistRenderer":', html.includes('playerCaptionsTracklistRenderer'));
+      }
+
       if (playerMatch) {
         try {
           const playerData = JSON.parse(playerMatch[1]);
-          const captionTracks = playerData?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+          console.log('[YouTube] Successfully parsed player response');
 
-          if (captionTracks && captionTracks.length > 0) {
-            console.log('[YouTube] Found caption tracks in player response:', captionTracks.length);
+          const captionsRenderer = playerData?.captions?.playerCaptionsTracklistRenderer;
+          console.log('[YouTube] Has captions renderer:', !!captionsRenderer);
+
+          const captionTracks = captionsRenderer?.captionTracks;
+          console.log('[YouTube] Caption tracks found:', captionTracks?.length || 0);
+
+          if (!captionTracks?.length) {
+            console.log('[YouTube] No caption tracks available');
+            if (playerData?.captions === undefined) {
+              console.log('[YouTube] Captions object missing entirely - video may not have captions');
+            }
+          } else {
+            // Log available tracks
+            captionTracks.forEach((track: { languageCode?: string; name?: { simpleText?: string }; baseUrl?: string }, i: number) => {
+              console.log(`[YouTube] Track ${i}: ${track.languageCode} - ${track.name?.simpleText} - hasUrl: ${!!track.baseUrl}`);
+            });
 
             // Find English track
             const englishTrack = captionTracks.find((t: { languageCode?: string }) =>
               t.languageCode === 'en' || t.languageCode?.startsWith('en')
             );
             const track = englishTrack || captionTracks[0];
+            console.log('[YouTube] Selected track:', track?.languageCode);
 
             if (track?.baseUrl) {
               console.log('[YouTube] Fetching captions from:', track.baseUrl.slice(0, 100));
@@ -276,9 +312,15 @@ async function fetchYouTubeContent(url: string): Promise<string | null> {
                 signal: AbortSignal.timeout(10000),
               });
 
+              console.log('[YouTube] Caption response status:', captionResponse.status);
+
               if (captionResponse.ok) {
                 const captionXml = await captionResponse.text();
+                console.log('[YouTube] Caption XML length:', captionXml.length);
+                console.log('[YouTube] Caption XML preview:', captionXml.slice(0, 200));
+
                 const matches = [...captionXml.matchAll(/<text[^>]*>([^<]*)<\/text>/g)];
+                console.log('[YouTube] Text segments found:', matches.length);
 
                 if (matches.length > 0) {
                   const transcript = matches
@@ -293,18 +335,31 @@ async function fetchYouTubeContent(url: string): Promise<string | null> {
                     .replace(/\s+/g, ' ')
                     .trim();
 
+                  console.log('[YouTube] Cleaned transcript length:', transcript.length);
+
                   if (transcript.length > 100) {
                     console.log('[YouTube] Direct fetch successful:', transcript.length, 'chars');
+                    console.log('[YouTube] Preview:', transcript.slice(0, 300));
                     return transcript.slice(0, 10000);
+                  } else {
+                    console.log('[YouTube] Transcript too short:', transcript.length);
                   }
+                } else {
+                  console.log('[YouTube] No text segments matched in XML');
                 }
+              } else {
+                console.log('[YouTube] Caption fetch failed:', captionResponse.status);
               }
+            } else {
+              console.log('[YouTube] Selected track has no baseUrl');
             }
           }
         } catch (parseError) {
-          console.log('[YouTube] Failed to parse player response');
+          console.log('[YouTube] Failed to parse player response:', parseError);
         }
       }
+    } else {
+      console.log('[YouTube] Page fetch failed:', pageResponse.status);
     }
   } catch (directError) {
     console.error('[YouTube] Direct fetch failed:', directError);
