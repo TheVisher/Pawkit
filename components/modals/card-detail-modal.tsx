@@ -921,6 +921,18 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
     }
   };
 
+  // Quick summary handler for top bar button
+  const handleQuickSummary = () => {
+    if (summary) {
+      // Summary exists - navigate to Info tab
+      setBottomTabMode('info');
+    } else {
+      // No summary - generate a concise one
+      handleGenerateSummary('concise');
+      setBottomTabMode('info');
+    }
+  };
+
   // Modal resize handler
   const handleResizeStart = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -1276,6 +1288,20 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   title="Manage tags"
                 >
                   <Tags size={20} className="text-gray-400" />
+                </button>
+
+                {/* Quick Summary Button */}
+                <button
+                  onClick={handleQuickSummary}
+                  disabled={isSummarizing}
+                  className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
+                  title={summary ? "View AI Summary" : "Generate AI Summary"}
+                >
+                  <Sparkles
+                    size={20}
+                    className={isSummarizing ? 'animate-pulse' : ''}
+                    style={{ color: summary ? 'var(--ds-accent)' : 'var(--text-muted)' }}
+                  />
                 </button>
 
                 {/* 3-Dot Menu */}
