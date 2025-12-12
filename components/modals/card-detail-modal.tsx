@@ -23,7 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { extractYouTubeId, isYouTubeUrl } from "@/lib/utils/youtube";
-import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon, Calendar, ChevronRight, Plus, Paperclip, Download } from "lucide-react";
+import { FileText, Bookmark, Globe, Tag, FolderOpen, Folder, Link2, Clock, Zap, BookOpen, Sparkles, X, MoreVertical, RefreshCw, Share2, Pin, Trash2, Maximize2, Search, Tags, Edit, Eye, Bold, Italic, Strikethrough, Code, List, ListOrdered, Quote, Heading1, Heading2, Heading3, Link as LinkIcon, ChevronDown, ImageIcon, Calendar, ChevronRight, Plus, Paperclip, Download, Info } from "lucide-react";
 import { formatFileSize } from "@/lib/utils/file-utils";
 import { findBestFuzzyMatch } from "@/lib/utils/fuzzy-match";
 import { extractTags } from "@/lib/stores/data-store";
@@ -411,8 +411,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [articleContent, setArticleContent] = useState(card.articleContent ?? null);
-  // Bottom tab view mode: 'preview' | 'reader' | 'metadata'
-  const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'metadata' | 'attachments'>('preview');
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summary, setSummary] = useState(card.summary ?? null);
+  // Bottom tab view mode: 'preview' | 'reader' | 'info'
+  const [bottomTabMode, setBottomTabMode] = useState<'preview' | 'reader' | 'info' | 'attachments'>('preview');
 
   // Auto-expand to fullscreen when Reader tab is selected for PDF files
   useEffect(() => {
@@ -847,6 +849,54 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
       toast.error("Failed to extract article");
     } finally {
       setExtracting(false);
+    }
+  };
+
+  const handleGenerateSummary = async () => {
+    setIsSummarizing(true);
+    try {
+      // Determine content to summarize based on card type
+      let contentToSummarize = '';
+
+      if (card.type === 'url') {
+        // URL cards: prefer articleContent, fallback to description + title
+        contentToSummarize = articleContent || card.articleContent || '';
+        if (!contentToSummarize) {
+          contentToSummarize = [card.title, card.description].filter(Boolean).join('\n\n');
+        }
+      } else if (card.type === 'md-note' || card.type === 'text-note') {
+        // Notes: use content
+        contentToSummarize = card.content || '';
+      } else if (card.type === 'file') {
+        // File cards: use filename + metadata description
+        contentToSummarize = [card.title, card.description].filter(Boolean).join('\n\n');
+      }
+
+      if (!contentToSummarize.trim()) {
+        toast.error("No content available to summarize");
+        return;
+      }
+
+      const response = await fetch(`/api/cards/${card.id}/summarize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: contentToSummarize })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setSummary(data.summary);
+        await updateCardInStore(card.id, { summary: data.summary });
+        onUpdate({ ...card, summary: data.summary });
+        toast.success("Summary generated");
+      } else {
+        const error = await response.json();
+        toast.error(error.message || "Failed to generate summary");
+      }
+    } catch (error) {
+      toast.error("Failed to generate summary");
+    } finally {
+      setIsSummarizing(false);
     }
   };
 
@@ -1530,8 +1580,8 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   </div>
                 )}
 
-                {/* Metadata tab content for file cards */}
-                {bottomTabMode === 'metadata' && (
+                {/* Info tab content for file cards */}
+                {bottomTabMode === 'info' && (
                   <div className="absolute inset-0 p-[5px] overflow-y-auto flex items-start justify-center">
                     {isPdfFileCard && card.fileId ? (
                       <PdfMetadataView fileId={card.fileId} />
@@ -1565,6 +1615,65 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                               <span style={{ color: 'var(--text-primary)' }}>{new Date(card.updatedAt).toLocaleString()}</span>
                             </div>
                           </div>
+                        </div>
+
+                        {/* AI Summary Section */}
+                        <div className="p-4 rounded-xl" style={{ background: 'var(--bg-surface-2)', border: '1px solid var(--border-subtle)' }}>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <Sparkles size={16} style={{ color: 'var(--ds-accent)' }} />
+                              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>AI Summary</span>
+                            </div>
+                            {summary && (
+                              <button
+                                onClick={handleGenerateSummary}
+                                disabled={isSummarizing}
+                                className="text-xs px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                                style={{
+                                  color: 'var(--text-secondary)',
+                                  background: 'var(--bg-surface-3)',
+                                }}
+                              >
+                                <RefreshCw size={12} className={isSummarizing ? 'animate-spin' : ''} />
+                                Regenerate
+                              </button>
+                            )}
+                          </div>
+                          {summary ? (
+                            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                              {summary}
+                            </p>
+                          ) : (
+                            <div className="text-center py-4">
+                              <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
+                                Generate a concise summary of this file
+                              </p>
+                              <button
+                                onClick={handleGenerateSummary}
+                                disabled={isSummarizing}
+                                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
+                                style={{
+                                  background: 'var(--ds-accent)',
+                                  color: 'white',
+                                }}
+                              >
+                                {isSummarizing ? (
+                                  <>
+                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    Kit is summarizing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Sparkles size={16} />
+                                    Generate Summary
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
@@ -1664,9 +1773,9 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   </div>
                 )}
 
-                {bottomTabMode === 'metadata' && (
+                {bottomTabMode === 'info' && (
                   <div className="absolute inset-0 p-[5px] overflow-y-auto flex items-start justify-center">
-                    {/* PDF file card - show PDF metadata */}
+                    {/* PDF file card - show PDF info */}
                     {isPdfFileCard && card.fileId ? (
                       <PdfMetadataView fileId={card.fileId} />
                     ) : (
@@ -1750,6 +1859,65 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                             </div>
                           </div>
                         )}
+
+                        {/* AI Summary Section */}
+                        <div className="p-4 rounded-xl" style={{ background: 'var(--bg-surface-2)', border: '1px solid var(--border-subtle)' }}>
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <Sparkles size={16} style={{ color: 'var(--ds-accent)' }} />
+                              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>AI Summary</span>
+                            </div>
+                            {summary && (
+                              <button
+                                onClick={handleGenerateSummary}
+                                disabled={isSummarizing}
+                                className="text-xs px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                                style={{
+                                  color: 'var(--text-secondary)',
+                                  background: 'var(--bg-surface-3)',
+                                }}
+                              >
+                                <RefreshCw size={12} className={isSummarizing ? 'animate-spin' : ''} />
+                                Regenerate
+                              </button>
+                            )}
+                          </div>
+                          {summary ? (
+                            <p className="text-sm leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+                              {summary}
+                            </p>
+                          ) : (
+                            <div className="text-center py-4">
+                              <p className="text-sm mb-3" style={{ color: 'var(--text-muted)' }}>
+                                Generate a concise summary of this content
+                              </p>
+                              <button
+                                onClick={handleGenerateSummary}
+                                disabled={isSummarizing}
+                                className="px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 mx-auto disabled:opacity-50"
+                                style={{
+                                  background: 'var(--ds-accent)',
+                                  color: 'white',
+                                }}
+                              >
+                                {isSummarizing ? (
+                                  <>
+                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    Kit is summarizing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Sparkles size={16} />
+                                    Generate Summary
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -1850,7 +2018,7 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   const tabOptions = [
                     { value: 'preview' as const, label: 'Preview', icon: Globe },
                     { value: 'reader' as const, label: 'Reader', icon: BookOpen },
-                    { value: 'metadata' as const, label: 'Metadata', icon: Tag },
+                    { value: 'info' as const, label: 'Info', icon: Info },
                     ...(hasAttachments ? [{ value: 'attachments' as const, label: `Files (${attachments.length})`, icon: Paperclip }] : []),
                   ];
                   const numOptions = tabOptions.length;
