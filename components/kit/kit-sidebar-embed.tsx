@@ -96,7 +96,7 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
     >
       {/* ===== HEADER ===== */}
       <div
-        className="px-3 py-3 flex-shrink-0"
+        className="px-3 py-3 flex-shrink-0 rounded-t-lg"
         style={{
           background: 'var(--bg-surface-1)',
           borderBottom: '1px solid var(--border-subtle)',
@@ -233,7 +233,7 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
 
       {/* ===== INPUT + TOOLBAR - Raised depth ===== */}
       <div
-        className="flex-shrink-0 px-3 py-3"
+        className="flex-shrink-0 px-3 py-3 rounded-b-lg"
         style={{
           background: 'var(--bg-surface-2)',
           boxShadow: 'var(--raised-shadow-sm)',
