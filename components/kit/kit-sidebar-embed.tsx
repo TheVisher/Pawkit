@@ -85,7 +85,7 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
 
   return (
     <div
-      className="flex flex-col h-full rounded-lg overflow-hidden relative"
+      className="flex flex-col h-full w-full rounded-lg relative"
       style={{
         background: 'var(--bg-surface-2)',
         boxShadow: 'var(--shadow-2)',
