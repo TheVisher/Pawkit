@@ -114,6 +114,77 @@ function extractYouTubeId(url: string): string | null {
 }
 
 /**
+ * Try YouTube's timedtext API directly
+ */
+async function fetchYouTubeTimedText(videoId: string): Promise<string | null> {
+  // Try different language codes including auto-generated
+  const languages = ['en', 'en-US', 'en-GB', 'a.en']; // a.en = auto-generated English
+
+  for (const lang of languages) {
+    try {
+      // Try the timedtext endpoint with different formats
+      const urls = [
+        `https://www.youtube.com/api/timedtext?lang=${lang}&v=${videoId}&fmt=srv3`,
+        `https://www.youtube.com/api/timedtext?lang=${lang}&v=${videoId}`,
+        `https://video.google.com/timedtext?lang=${lang}&v=${videoId}`,
+      ];
+
+      for (const url of urls) {
+        console.log('[YouTube] Trying timedtext:', lang, url.split('?')[0]);
+
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          },
+          signal: AbortSignal.timeout(5000),
+        });
+
+        if (!response.ok) {
+          continue;
+        }
+
+        const xml = await response.text();
+        console.log('[YouTube] Timedtext response length:', xml.length);
+
+        if (xml.includes('<text')) {
+          // Parse the XML
+          const matches = [...xml.matchAll(/<text[^>]*>([^<]*)<\/text>/g)];
+          console.log('[YouTube] Found text segments:', matches.length);
+
+          if (matches.length > 0) {
+            const transcript = matches
+              .map(m => m[1]
+                .replace(/&amp;/g, '&')
+                .replace(/&#39;/g, "'")
+                .replace(/&quot;/g, '"')
+                .replace(/&lt;/g, '<')
+                .replace(/&gt;/g, '>')
+                .replace(/\n/g, ' ')
+                .trim()
+              )
+              .filter(Boolean)
+              .join(' ')
+              .replace(/\s+/g, ' ')
+              .trim();
+
+            if (transcript.length > 100) {
+              console.log('[YouTube] Got transcript from timedtext:', transcript.length, 'chars');
+              console.log('[YouTube] Preview:', transcript.slice(0, 300));
+              return transcript.slice(0, 10000);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.log('[YouTube] Timedtext error for', lang, ':', e);
+    }
+  }
+
+  console.log('[YouTube] All timedtext attempts failed');
+  return null;
+}
+
+/**
  * Fetch YouTube video transcript using Invidious API
  */
 async function fetchYouTubeContent(url: string): Promise<string | null> {
@@ -237,9 +308,17 @@ async function fetchYouTubeContent(url: string): Promise<string | null> {
     }
   }
 
-  console.log('[YouTube] All Invidious instances failed, trying direct YouTube...');
+  console.log('[YouTube] All Invidious instances failed, trying timedtext API...');
 
-  // Fallback: Try fetching directly from YouTube
+  // Try timedtext API first (works for many videos)
+  const timedTextResult = await fetchYouTubeTimedText(videoId);
+  if (timedTextResult) {
+    return timedTextResult;
+  }
+
+  console.log('[YouTube] Timedtext failed, trying direct page scraping...');
+
+  // Fallback: Try fetching directly from YouTube page
   try {
     const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
     const pageResponse = await fetch(watchUrl, {
