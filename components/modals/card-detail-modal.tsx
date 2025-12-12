@@ -1880,11 +1880,10 @@ export function CardDetailModal({ card, collections, onClose, onUpdate, onDelete
                   <div className={`flex h-full ${isMobile ? 'flex-col' : 'flex-row'}`}>
                     {/* Video side - always rendered, never re-mounted */}
                     <div className={`${isMobile ? (showTranscript ? 'h-auto shrink-0' : 'flex-1') : 'flex-1'} flex items-center justify-center p-[5px] min-w-0`}>
-                      <div className={`w-full ${showTranscript ? 'h-full' : ''} flex items-center justify-center`}>
+                      <div className="w-full h-full flex items-center justify-center">
                         <div
                           className="relative w-full bg-black rounded-2xl overflow-hidden"
                           style={{
-                            maxWidth: showTranscript && !isMobile ? '900px' : '1200px',
                             paddingBottom: '56.25%'
                           }}
                         >
