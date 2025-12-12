@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { ChevronDown, ChevronUp, MessageSquare, Loader2, X, Sparkles, FileText } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useKitStore } from '@/lib/hooks/use-kit-store';
 
 interface TranscriptSegment {
@@ -127,23 +126,27 @@ export function VideoTranscriptPanel({
     <div
       className="flex flex-col h-full"
       style={{
-        backgroundColor: 'hsl(var(--card))',
-        borderLeft: '1px solid hsl(var(--border))'
+        background: 'var(--bg-surface-2)',
+        borderLeft: '1px solid var(--border-subtle)'
       }}
     >
-      {/* Header */}
-      <div
-        className="flex items-center justify-between px-4 py-3 border-b shrink-0"
-        style={{ borderColor: 'hsl(var(--border))' }}
-      >
-        <span className="font-medium flex items-center gap-2" style={{ color: 'hsl(var(--foreground))' }}>
-          <Sparkles className="w-4 h-4 text-purple-400" />
-          Kit
-        </span>
+      {/* Close button only */}
+      <div className="flex items-center justify-end px-3 py-2 shrink-0">
         <button
           onClick={onClose}
-          className="p-1 rounded hover:bg-white/10 transition-colors"
-          style={{ color: 'hsl(var(--muted-foreground))' }}
+          className="p-1.5 rounded-lg transition-all hover:scale-105"
+          style={{
+            color: 'var(--text-muted)',
+            background: 'transparent'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--bg-surface-3)';
+            e.currentTarget.style.color = 'var(--text-primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--text-muted)';
+          }}
           title="Close panel"
         >
           <X size={18} />
@@ -158,40 +161,56 @@ export function VideoTranscriptPanel({
               className="w-6 h-6 animate-spin"
               style={{ color: 'var(--ds-accent)' }}
             />
-            <span style={{ color: 'hsl(var(--muted-foreground))' }}>
+            <span style={{ color: 'var(--text-muted)' }}>
               Fetching transcript...
             </span>
           </div>
         ) : error ? (
           <div className="flex-1 flex items-center justify-center p-4 text-center">
-            <span style={{ color: 'hsl(var(--muted-foreground))' }}>{error}</span>
+            <span style={{ color: 'var(--text-muted)' }}>{error}</span>
           </div>
         ) : (
           <>
-            {/* Collapsible Summary */}
+            {/* Collapsible Summary - Raised Container */}
             {summary && (
-              <div className="border-b shrink-0" style={{ borderColor: 'hsl(var(--border))' }}>
+              <div
+                className="mx-3 mt-1 mb-3 rounded-xl shrink-0"
+                style={{
+                  background: 'var(--bg-surface-2)',
+                  boxShadow: 'var(--shadow-2)',
+                  border: '1px solid var(--border-subtle)',
+                  borderTopColor: 'var(--border-highlight-top)',
+                  borderLeftColor: 'var(--border-highlight-left)',
+                }}
+              >
                 {/* Collapse button - always visible */}
                 <button
                   onClick={() => setSummaryCollapsed(!summaryCollapsed)}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-white/5 transition-colors"
+                  className="w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors"
+                  style={{ background: 'transparent' }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-surface-3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                  }}
                 >
                   <span
                     className="text-sm font-medium flex items-center gap-2"
-                    style={{ color: 'hsl(var(--foreground))' }}
+                    style={{ color: 'var(--text-primary)' }}
                   >
-                    <Sparkles className="w-4 h-4 text-purple-400" />
+                    <Sparkles className="w-4 h-4" style={{ color: 'var(--ds-accent)' }} />
                     Summary
                   </span>
                   {summaryCollapsed ? (
                     <ChevronDown
                       className="w-4 h-4"
-                      style={{ color: 'hsl(var(--muted-foreground))' }}
+                      style={{ color: 'var(--text-muted)' }}
                     />
                   ) : (
                     <ChevronUp
                       className="w-4 h-4"
-                      style={{ color: 'hsl(var(--muted-foreground))' }}
+                      style={{ color: 'var(--text-muted)' }}
                     />
                   )}
                 </button>
@@ -203,7 +222,7 @@ export function VideoTranscriptPanel({
                   >
                     <p
                       className="text-sm leading-relaxed"
-                      style={{ color: 'hsl(var(--muted-foreground))' }}
+                      style={{ color: 'var(--text-secondary)' }}
                     >
                       {summary}
                     </p>
@@ -212,90 +231,117 @@ export function VideoTranscriptPanel({
               </div>
             )}
 
-            {/* Transcript header */}
+            {/* Transcript - Inset Container */}
             <div
-              className="px-4 py-2 border-b shrink-0 flex items-center gap-2"
-              style={{ borderColor: 'hsl(var(--border))' }}
+              className="mx-3 mb-3 rounded-xl flex-1 flex flex-col min-h-0"
+              style={{
+                background: 'var(--bg-surface-1)',
+                boxShadow: 'var(--inset-shadow)',
+                border: 'var(--inset-border)',
+                borderBottomColor: 'var(--inset-border-bottom)',
+                borderRightColor: 'var(--inset-border-right)',
+              }}
             >
-              <FileText className="w-4 h-4" style={{ color: 'hsl(var(--muted-foreground))' }} />
-              <span className="text-sm font-medium" style={{ color: 'hsl(var(--foreground))' }}>
-                Transcript
-              </span>
-            </div>
+              {/* Transcript header */}
+              <div className="px-4 py-2.5 shrink-0 flex items-center gap-2">
+                <FileText className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                  Transcript
+                </span>
+              </div>
 
-            {/* Transcript segments */}
-            <div
-              ref={transcriptRef}
-              className="flex-1 overflow-y-auto p-2"
-              onScroll={handleScroll}
-            >
-              {segments.map((segment, index) => (
-                <div
-                  key={index}
-                  ref={(el) => {
-                    if (el) segmentRefs.current.set(index, el);
-                    else segmentRefs.current.delete(index);
-                  }}
-                  onClick={() => onSeek(segment.start)}
-                  className={cn(
-                    "flex gap-3 p-2 rounded-lg cursor-pointer transition-all duration-200",
-                    "hover:bg-white/5",
-                    activeSegmentIndex === index && "ring-1 ring-purple-500/50"
-                  )}
-                  style={{
-                    backgroundColor: activeSegmentIndex === index
-                      ? 'rgba(147, 51, 234, 0.2)'
-                      : 'transparent',
-                    borderLeft: activeSegmentIndex === index
-                      ? '3px solid rgb(147, 51, 234)'
-                      : '3px solid transparent'
-                  }}
-                >
-                  <span
-                    className={cn(
-                      "text-xs font-mono shrink-0 pt-0.5 transition-all duration-200"
-                    )}
+              {/* Transcript segments */}
+              <div
+                ref={transcriptRef}
+                className="flex-1 overflow-y-auto px-2 pb-2"
+                onScroll={handleScroll}
+              >
+                {segments.map((segment, index) => (
+                  <div
+                    key={index}
+                    ref={(el) => {
+                      if (el) segmentRefs.current.set(index, el);
+                      else segmentRefs.current.delete(index);
+                    }}
+                    onClick={() => onSeek(segment.start)}
+                    className="flex gap-3 p-2 rounded-lg cursor-pointer transition-all duration-200"
                     style={{
-                      color: activeSegmentIndex === index
-                        ? 'rgb(167, 139, 250)'
-                        : 'hsl(var(--muted-foreground))',
-                      minWidth: '40px',
-                      fontWeight: activeSegmentIndex === index ? 700 : 400
+                      background: activeSegmentIndex === index
+                        ? 'var(--ds-accent-subtle)'
+                        : 'transparent',
+                      borderLeft: activeSegmentIndex === index
+                        ? '3px solid var(--ds-accent)'
+                        : '3px solid transparent',
+                      boxShadow: activeSegmentIndex === index
+                        ? '0 0 12px var(--ds-accent-subtle)'
+                        : 'none'
+                    }}
+                    onMouseEnter={(e) => {
+                      if (activeSegmentIndex !== index) {
+                        e.currentTarget.style.background = 'var(--bg-surface-2)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (activeSegmentIndex !== index) {
+                        e.currentTarget.style.background = 'transparent';
+                      }
                     }}
                   >
-                    {formatTimestamp(segment.start)}
-                  </span>
-                  <p
-                    className="text-sm leading-relaxed transition-colors duration-200"
-                    style={{
-                      color: activeSegmentIndex === index
-                        ? 'hsl(var(--foreground))'
-                        : 'hsl(var(--muted-foreground))'
-                    }}
-                  >
-                    {segment.text}
-                  </p>
-                </div>
-              ))}
+                    <span
+                      className="text-xs font-mono shrink-0 pt-0.5 transition-all duration-200"
+                      style={{
+                        color: activeSegmentIndex === index
+                          ? 'var(--ds-accent)'
+                          : 'var(--text-muted)',
+                        minWidth: '40px',
+                        fontWeight: activeSegmentIndex === index ? 700 : 400
+                      }}
+                    >
+                      {formatTimestamp(segment.start)}
+                    </span>
+                    <p
+                      className="text-sm leading-relaxed transition-colors duration-200"
+                      style={{
+                        color: activeSegmentIndex === index
+                          ? 'var(--text-primary)'
+                          : 'var(--text-secondary)'
+                      }}
+                    >
+                      {segment.text}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           </>
         )}
       </div>
 
-      {/* Ask Kit button */}
+      {/* Ask Kit button - Raised Button */}
       {!loading && !error && segments.length > 0 && (
-        <div className="p-3 border-t shrink-0" style={{ borderColor: 'hsl(var(--border))' }}>
+        <div className="px-3 pb-3 shrink-0">
           <button
             onClick={askKitAboutVideo}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-all hover:scale-[1.02]"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all hover:scale-[1.02]"
             style={{
-              backgroundColor: 'hsl(var(--ds-accent) / 0.15)',
-              color: 'var(--ds-accent)',
-              border: '1px solid hsl(var(--ds-accent) / 0.3)'
+              background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+              boxShadow: 'var(--raised-shadow)',
+              border: '1px solid transparent',
+              borderTopColor: 'var(--raised-border-top)',
+              color: 'var(--text-primary)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.boxShadow = 'var(--raised-shadow), 0 0 12px var(--ds-accent-subtle)';
+              e.currentTarget.style.borderColor = 'var(--ds-accent)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.boxShadow = 'var(--raised-shadow)';
+              e.currentTarget.style.borderColor = 'transparent';
+              e.currentTarget.style.borderTopColor = 'var(--raised-border-top)';
             }}
           >
-            <MessageSquare className="w-4 h-4" />
-            <span className="text-sm font-medium">Ask Kit about this video</span>
+            <MessageSquare className="w-4 h-4" style={{ color: 'var(--ds-accent)' }} />
+            <span>Ask Kit about this video</span>
           </button>
         </div>
       )}
