@@ -40,6 +40,7 @@ export function TimeGrid({
 }: TimeGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
   const totalGridHeight = 24 * hourHeight;
 
   // Popover dimensions (approximate)
@@ -55,14 +56,21 @@ export function TimeGrid({
     anchor: "left" | "right";
   } | null>(null);
 
-  const handleTimeSlotClick = (date: Date, hour: number, columnRect: DOMRect) => {
-    // Get the calendar container's bounding rect
+  const handleTimeSlotClick = (date: Date, hour: number, columnIndex: number) => {
+    // Get the calendar container and grid bounding rects
     const containerRect = containerRef.current?.getBoundingClientRect();
+    const gridRect = gridRef.current?.getBoundingClientRect();
+    const scrollRect = scrollContainerRef.current?.getBoundingClientRect();
 
-    if (!containerRect) return;
+    if (!containerRect || !gridRect || !scrollRect) return;
+
+    // Calculate column bounds mathematically from the grid
+    const columnWidth = gridRect.width / 7;
+    const columnLeft = gridRect.left + (columnIndex * columnWidth);
+    const columnRight = columnLeft + columnWidth;
 
     // Determine if popover should appear on left or right of the column
-    const spaceOnRight = containerRect.right - columnRect.right;
+    const spaceOnRight = containerRect.right - columnRight;
 
     // Prefer right side, but flip to left if not enough space
     const anchor = spaceOnRight >= POPOVER_WIDTH + 8 ? "right" : "left";
@@ -70,14 +78,16 @@ export function TimeGrid({
     // Calculate x position - anchor to column edge
     let x: number;
     if (anchor === "right") {
-      x = columnRect.right + 8; // 8px gap from column's right edge
+      x = columnRight + 8; // 8px gap from column's right edge
     } else {
-      x = columnRect.left - POPOVER_WIDTH - 8; // Position to left of column
+      x = columnLeft - POPOVER_WIDTH - 8; // Position to left of column
     }
 
-    // Calculate y position based on the hour clicked
-    const hourOffset = hour * hourHeight;
-    let y = columnRect.top + hourOffset;
+    // Calculate y position - use scroll container top as reference, offset by hour
+    // Account for the scroll position within the container
+    const scrollTop = scrollContainerRef.current?.scrollTop || 0;
+    const hourPixelOffset = hour * hourHeight;
+    let y = scrollRect.top + hourPixelOffset - scrollTop + 8; // 8px padding at top
 
     // Ensure popover doesn't go above container
     if (y < containerRect.top) {
@@ -237,6 +247,7 @@ export function TimeGrid({
 
           {/* Day columns */}
           <div
+            ref={gridRef}
             className="flex-1 grid grid-cols-7 relative"
             style={{ borderLeft: "1px solid var(--border-subtle)" }}
           >
@@ -250,7 +261,7 @@ export function TimeGrid({
                   events={dayEvents}
                   hourHeight={hourHeight}
                   onEventClick={onEventClick}
-                  onTimeSlotClick={(hour, columnRect) => handleTimeSlotClick(day, hour, columnRect)}
+                  onTimeSlotClick={(hour) => handleTimeSlotClick(day, hour, index)}
                   onEventDrop={(eventId, sourceType, targetHour) => {
                     onEventReschedule?.(eventId, dateStr, sourceType, targetHour);
                   }}
