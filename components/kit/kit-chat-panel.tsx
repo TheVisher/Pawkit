@@ -165,22 +165,26 @@ export function KitChatPanel() {
         ) : (
           <>
             {messages.map((msg) => {
-              // Context change - minimal pill style
+              // Context change - divider style with accent pill
               if (msg.type === 'context-change') {
                 return (
-                  <div
-                    key={msg.id}
-                    className="flex justify-center my-3"
-                  >
-                    <div
-                      className="py-1.5 px-4 text-xs rounded-full"
+                  <div key={msg.id} className="flex items-center gap-3 my-4 px-2">
+                    {/* Left line */}
+                    <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
+
+                    {/* Context pill */}
+                    <span
+                      className="text-xs px-3 py-1.5 rounded-full whitespace-nowrap flex items-center gap-1.5 font-medium"
                       style={{
-                        background: 'var(--bg-surface-1)',
-                        color: 'var(--text-muted)',
+                        background: 'var(--ds-accent)',
+                        color: 'white',
                       }}
                     >
                       🎬 {msg.content}
-                    </div>
+                    </span>
+
+                    {/* Right line */}
+                    <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
                   </div>
                 );
               }
