@@ -24,9 +24,10 @@ export interface EventRecurrence {
 
 // Source tracking for future bookmark date extraction
 export interface EventSource {
-  type: 'manual' | 'card' | 'note';
+  type: 'manual' | 'card' | 'note' | 'todo';
   cardId?: string;
   noteId?: string;
+  todoId?: string;
 }
 
 // Main CalendarEvent type
