@@ -85,7 +85,7 @@ export function CalendarDatePicker({
           const targetScrollTop = paddingTop + (yearIndex * buttonHeight) - (containerHeight / 2) + (buttonHeight / 2);
           container.scrollTop = Math.max(0, targetScrollTop);
         }
-      }, 50);
+      }, 300);
       return () => clearTimeout(timer);
     }
   }, [datePickerOpen, currentYearValue, years]);
