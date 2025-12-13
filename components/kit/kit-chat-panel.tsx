@@ -165,17 +165,19 @@ export function KitChatPanel() {
         ) : (
           <>
             {messages.map((msg) => {
-              // Debug: Log message structure to diagnose context detection
-              console.log('[Kit] Message:', { id: msg.id, type: msg.type, cardId: msg.cardId, role: msg.role, content: msg.content?.slice(0, 50) });
-
               // Context change - full-width divider style (like Fabric)
               // Check for type OR for cardId on assistant messages (legacy detection)
               const isContextChange = msg.type === 'context-change' ||
                 (msg.cardId && msg.role === 'assistant');
 
+              // DEBUG: Always show debug info for first message
+              const debugInfo = `type="${msg.type}" cardId="${msg.cardId}" role="${msg.role}" isCtx=${isContextChange}`;
+
               if (isContextChange) {
                 return (
                   <div key={msg.id} className="-mx-3 my-4">
+                    {/* DEBUG */}
+                    <div className="text-[10px] text-green-400 px-3 mb-1">✓ {debugInfo}</div>
                     {/* Full width context block - extends beyond padding */}
                     <div
                       className="py-3 px-4 text-center text-sm font-medium"
@@ -204,6 +206,8 @@ export function KitChatPanel() {
                     msg.role === 'user' ? 'items-end' : 'items-start'
                   )}
                 >
+                  {/* DEBUG for regular messages */}
+                  <div className="text-[10px] text-red-400 mb-1">✗ {debugInfo}</div>
                   <div
                     className={cn(
                       "max-w-[85%] rounded-2xl px-4 py-2 text-sm",
