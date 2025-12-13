@@ -5,6 +5,7 @@ import { format, isToday } from "date-fns";
 import { CardModel } from "@/lib/types";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
+import { getCardDisplayTitle } from "@/lib/utils/card-display";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { getHolidaysInRange, ResolvedHoliday } from "@/lib/data/us-holidays";
@@ -111,10 +112,11 @@ export function DayView({
       results.push({
         id: `card-${card.id}`,
         userId: "",
-        title: card.title || card.domain || card.url || "Untitled",
+        title: getCardDisplayTitle(card),
         date: dateStr,
         isAllDay: true,
         color: "#6b7280",
+        url: card.url, // Pass URL for favicon lookup
         source: { type: "card", cardId: card.id },
         createdAt: card.createdAt || new Date().toISOString(),
         updatedAt: card.updatedAt || new Date().toISOString(),
