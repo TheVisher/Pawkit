@@ -34,15 +34,28 @@ export function TimePositionedEvent({
   const padding = hasOverlap ? 1 : 2;
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       draggable={isDraggable}
-      onDragStart={(e) => isDraggable && onDragStart?.(e, event)}
+      onDragStart={(e) => {
+        if (isDraggable) {
+          e.stopPropagation();
+          onDragStart?.(e, event);
+        }
+      }}
       onClick={(e) => {
         e.stopPropagation();
         onClick?.(event);
       }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.(event);
+        }
+      }}
       className={`absolute overflow-hidden transition-all duration-150 hover:z-10 ${
-        isDraggable ? "cursor-grab active:cursor-grabbing" : ""
+        isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
       }`}
       style={{
         top: top,
@@ -147,6 +160,6 @@ export function TimePositionedEvent({
           background: "rgba(255, 255, 255, 0.3)",
         }}
       />
-    </button>
+    </div>
   );
 }

@@ -166,12 +166,19 @@ export function AllDaySection({
                   const isDraggable = event.source?.type !== "card"; // Cards are rescheduled differently
 
                   return (
-                    <button
+                    <div
                       key={event.id}
+                      role="button"
+                      tabIndex={0}
                       draggable={isDraggable}
-                      onDragStart={(e) => isDraggable && handleDragStart(e, event)}
+                      onDragStart={(e) => {
+                        if (isDraggable) {
+                          e.stopPropagation();
+                          handleDragStart(e, event);
+                        }
+                      }}
                       className={`w-full text-left px-2 py-0.5 rounded text-[10px] font-medium truncate transition-opacity hover:opacity-80 flex items-center gap-1 ${
-                        isDraggable ? "cursor-grab active:cursor-grabbing" : ""
+                        isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
                       }`}
                       style={{
                         background: event.color || "var(--ds-accent)",
@@ -180,6 +187,12 @@ export function AllDaySection({
                       onClick={(e) => {
                         e.stopPropagation();
                         onEventClick?.(event);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onEventClick?.(event);
+                        }
                       }}
                     >
                       {isTodo && <CheckSquare size={10} className="flex-shrink-0" />}
@@ -195,7 +208,7 @@ export function AllDaySection({
                         />
                       )}
                       <span className="truncate">{event.title}</span>
-                    </button>
+                    </div>
                   );
                 })}
 
