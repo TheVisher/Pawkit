@@ -172,37 +172,21 @@ export const useKitStore = create<KitState>()(
       setVideoContext: (card) => {
         const { messages } = get();
 
-        // Generate unique IDs
-        const contextId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-        const summaryId = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-
-        // Create context change marker
+        // Only add context change marker (not summary card - summary is in system prompt)
         const contextMessage: Message = {
-          id: contextId,
+          id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
           role: 'assistant',
           type: 'context-change',
           content: card.title,
           timestamp: new Date(),
           cardId: card.id,
-          cardTitle: card.title,
         };
-
-        // Create summary card if available
-        const summaryMessage: Message | null = card.summary ? {
-          id: summaryId,
-          role: 'assistant',
-          type: 'summary-card',
-          content: card.summary,
-          timestamp: new Date(),
-          cardId: card.id,
-          cardTitle: card.title,
-        } : null;
 
         // Truncate transcript for API calls (4000 chars max)
         const truncatedTranscript = card.transcript?.slice(0, 4000) || '';
 
         set({
-          messages: [...messages, contextMessage, ...(summaryMessage ? [summaryMessage] : [])],
+          messages: [...messages, contextMessage],
           videoContext: {
             cardId: card.id,
             cardTitle: card.title,
