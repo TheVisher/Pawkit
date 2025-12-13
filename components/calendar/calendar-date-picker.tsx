@@ -2,9 +2,9 @@
 
 import { useState, useRef, useEffect } from "react";
 import { format, setMonth, setYear, startOfWeek } from "date-fns";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar, CalendarDays, CalendarRange, Grid3X3 } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar, CalendarDays, CalendarRange, Grid3X3, Menu, Flag } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import type { CalendarViewMode } from "@/lib/hooks/use-calendar-store";
+import { useCalendarStore, type CalendarViewMode, type HolidayFilter, type HolidayCountry } from "@/lib/hooks/use-calendar-store";
 
 const MONTHS = [
   { name: "Jan", value: 0 },
@@ -56,8 +56,15 @@ export function CalendarDatePicker({
 }: CalendarDatePickerProps) {
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [viewModeOpen, setViewModeOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const yearListRef = useRef<HTMLDivElement>(null);
   const years = generateYears();
+
+  // Holiday settings from store
+  const holidayFilter = useCalendarStore((state) => state.holidayFilter);
+  const enabledCountries = useCalendarStore((state) => state.enabledCountries);
+  const setHolidayFilter = useCalendarStore((state) => state.setHolidayFilter);
+  const toggleCountry = useCalendarStore((state) => state.toggleCountry);
 
   const currentMonthValue = currentDate.getMonth();
   const currentYearValue = currentDate.getFullYear();
@@ -407,6 +414,120 @@ export function CalendarDatePicker({
                 </button>
               );
             })}
+          </div>
+        </PopoverContent>
+      </Popover>
+
+      {/* Settings menu */}
+      <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <PopoverTrigger asChild>
+          <button
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-white/10 transition-all"
+            aria-label="Calendar settings"
+          >
+            <Menu size={18} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[240px] p-0 backdrop-blur-md" align="end">
+          <div className="p-4">
+            {/* Holidays Header */}
+            <div className="flex items-center gap-2 mb-3">
+              <Flag size={14} style={{ color: 'var(--ds-accent)' }} />
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                Holidays
+              </span>
+            </div>
+
+            {/* Country Selection */}
+            <div
+              className="rounded-xl p-3 mb-3"
+              style={{
+                background: 'var(--bg-surface-1)',
+                boxShadow: 'var(--inset-shadow)',
+              }}
+            >
+              <div className="grid grid-cols-2 gap-2">
+                {/* US Button */}
+                <button
+                  onClick={() => toggleCountry("us")}
+                  className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                  style={enabledCountries.includes("us") ? {
+                    background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                    color: 'var(--text-primary)',
+                    boxShadow: 'var(--raised-shadow-sm)',
+                  } : {
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  <span>🇺🇸</span>
+                  <span>US</span>
+                </button>
+
+                {/* Canada Button */}
+                <button
+                  onClick={() => toggleCountry("ca")}
+                  className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                  style={enabledCountries.includes("ca") ? {
+                    background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                    color: 'var(--text-primary)',
+                    boxShadow: 'var(--raised-shadow-sm)',
+                  } : {
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  <span>🇨🇦</span>
+                  <span>Canada</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Major/All Toggle - only show when at least one country enabled */}
+            {enabledCountries.length > 0 && (
+              <div
+                className="relative rounded-full"
+                style={{
+                  background: 'var(--bg-surface-1)',
+                  boxShadow: 'var(--inset-shadow)',
+                  padding: '4px',
+                }}
+              >
+                {/* Sliding indicator */}
+                <div
+                  className="absolute rounded-full transition-all duration-300 ease-out pointer-events-none"
+                  style={{
+                    width: 'calc((100% - 8px) / 2)',
+                    height: 'calc(100% - 8px)',
+                    top: '4px',
+                    left: holidayFilter === "major" ? '4px' : 'calc(4px + ((100% - 8px) / 2))',
+                    background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                    boxShadow: 'var(--raised-shadow-sm)',
+                  }}
+                />
+                {/* Buttons */}
+                <div className="relative flex">
+                  <button
+                    onClick={() => setHolidayFilter("major")}
+                    className="flex-1 flex items-center justify-center py-1.5 rounded-full transition-colors duration-200 z-10 text-xs font-medium"
+                    style={{
+                      color: holidayFilter === "major" ? 'var(--text-primary)' : 'var(--text-muted)',
+                    }}
+                  >
+                    Major
+                  </button>
+                  <button
+                    onClick={() => setHolidayFilter("all")}
+                    className="flex-1 flex items-center justify-center py-1.5 rounded-full transition-colors duration-200 z-10 text-xs font-medium"
+                    style={{
+                      color: holidayFilter === "all" ? 'var(--text-primary)' : 'var(--text-muted)',
+                    }}
+                  >
+                    All
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </PopoverContent>
       </Popover>

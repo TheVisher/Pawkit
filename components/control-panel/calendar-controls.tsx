@@ -4,7 +4,7 @@ import { useMemo, useEffect } from "react";
 import { PanelSection } from "./control-panel";
 import { Clock, ChevronRight, Bookmark, Flag } from "lucide-react";
 import { format, startOfToday } from "date-fns";
-import { useCalendarStore, type HolidayCountry, type HolidayFilter } from "@/lib/hooks/use-calendar-store";
+import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -44,13 +44,9 @@ export type CalendarContentFilter =
 export function CalendarControls() {
   // Get state from calendar store
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
-
-  // Holiday settings
   const showHolidays = useCalendarStore((state) => state.showHolidays);
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
   const enabledCountries = useCalendarStore((state) => state.enabledCountries);
-  const setHolidayFilter = useCalendarStore((state) => state.setHolidayFilter);
-  const toggleCountry = useCalendarStore((state) => state.toggleCountry);
 
   // Get cards from data store
   const { cards } = useDataStore();
@@ -158,124 +154,6 @@ export function CalendarControls() {
     <>
       {/* Todos Section - Always at top */}
       <TodosSection />
-
-      {/* Holidays Section */}
-      <PanelSection
-        id="calendar-holidays"
-        title="Holidays"
-        icon={<Flag className="h-4 w-4 text-accent" />}
-      >
-        {/* Country Selection - Inset Grid */}
-        <div
-          className="rounded-xl p-4"
-          style={{
-            background: 'var(--bg-surface-1)',
-            boxShadow: 'var(--inset-shadow)',
-            border: 'var(--inset-border)',
-            borderBottomColor: 'var(--inset-border-bottom)',
-            borderRightColor: 'var(--inset-border-right)',
-          }}
-        >
-          <div
-            className="grid grid-cols-2"
-            style={{ gap: 'var(--space-4)' }}
-          >
-            {/* US Button */}
-            <button
-              onClick={() => toggleCountry("us")}
-              className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium transition-all"
-              style={enabledCountries.includes("us") ? {
-                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
-                color: 'var(--text-primary)',
-                boxShadow: 'var(--raised-shadow)',
-                borderWidth: '1px',
-                borderStyle: 'solid',
-                borderColor: 'transparent',
-                borderTopColor: 'var(--raised-border-top)',
-              } : {
-                background: 'transparent',
-                color: 'var(--text-muted)',
-              }}
-            >
-              <span>🇺🇸</span>
-              <span>US</span>
-            </button>
-
-            {/* Canada Button */}
-            <button
-              onClick={() => toggleCountry("ca")}
-              className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-xs font-medium transition-all"
-              style={enabledCountries.includes("ca") ? {
-                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
-                color: 'var(--text-primary)',
-                boxShadow: 'var(--raised-shadow)',
-                borderWidth: '1px',
-                borderStyle: 'solid',
-                borderColor: 'transparent',
-                borderTopColor: 'var(--raised-border-top)',
-              } : {
-                background: 'transparent',
-                color: 'var(--text-muted)',
-              }}
-            >
-              <span>🇨🇦</span>
-              <span>Canada</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Major/All Holidays Pill Slider - only show when at least one country enabled */}
-        {enabledCountries.length > 0 && (
-          <div
-            className="relative rounded-full mt-3"
-            style={{
-              background: 'var(--bg-surface-1)',
-              boxShadow: 'var(--slider-inset)',
-              border: 'var(--inset-border)',
-              borderBottomColor: 'var(--slider-inset-border-bottom)',
-              padding: '4px',
-            }}
-          >
-            {/* Sliding indicator */}
-            <div
-              className="absolute rounded-full transition-all duration-300 ease-out pointer-events-none"
-              style={{
-                width: 'calc((100% - 8px) / 2)',
-                height: 'calc(100% - 8px)',
-                top: '4px',
-                left: holidayFilter === "major" ? '4px' : 'calc(4px + ((100% - 8px) / 2))',
-                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
-                boxShadow: 'var(--raised-shadow-sm)',
-                borderWidth: '1px',
-                borderStyle: 'solid',
-                borderColor: 'transparent',
-                borderTopColor: 'var(--raised-border-top)',
-              }}
-            />
-            {/* Buttons */}
-            <div className="relative flex">
-              <button
-                onClick={() => setHolidayFilter("major")}
-                className="flex-1 flex items-center justify-center py-2 rounded-full transition-colors duration-200 z-10 text-xs font-medium"
-                style={{
-                  color: holidayFilter === "major" ? 'var(--text-primary)' : 'var(--text-muted)',
-                }}
-              >
-                Major
-              </button>
-              <button
-                onClick={() => setHolidayFilter("all")}
-                className="flex-1 flex items-center justify-center py-2 rounded-full transition-colors duration-200 z-10 text-xs font-medium"
-                style={{
-                  color: holidayFilter === "all" ? 'var(--text-primary)' : 'var(--text-muted)',
-                }}
-              >
-                All
-              </button>
-            </div>
-          </div>
-        )}
-      </PanelSection>
 
       {/* Upcoming Events */}
       <PanelSection
