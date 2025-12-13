@@ -116,7 +116,7 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
 
       {/* ===== CHAT MESSAGES - Scrollable area ===== */}
       <div
-        className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3"
+        className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-3 scrollbar-minimal"
         style={{ background: 'var(--bg-surface-2)' }}
       >
         {messages.length === 0 ? (
@@ -156,52 +156,81 @@ export function KitSidebarEmbed({ cardTitle }: KitSidebarEmbedProps) {
           </div>
         ) : (
           <>
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={cn(
-                  "flex",
-                  msg.role === 'user' ? 'justify-end' : 'justify-start'
-                )}
-              >
-                <div
-                  className="max-w-[85%] px-3 py-2 rounded-lg text-sm"
-                  style={{
-                    background: msg.role === 'user' ? 'var(--ds-accent)' : 'var(--bg-surface-3)',
-                    color: msg.role === 'user' ? 'white' : 'var(--text-primary)',
-                    boxShadow: 'var(--raised-shadow-sm)',
-                  }}
-                >
-                  {msg.role === 'user' ? (
-                    msg.content
-                  ) : (
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                        ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
-                        ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
-                        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                        em: ({ children }) => <em className="italic">{children}</em>,
-                        code: ({ children }) => (
-                          <code className="px-1 py-0.5 rounded text-xs" style={{ background: 'var(--bg-surface-1)' }}>
-                            {children}
-                          </code>
-                        ),
-                        a: ({ href, children }) => (
-                          <a href={href} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--ds-accent)' }}>
-                            {children}
-                          </a>
-                        ),
+            {messages.map((msg) => {
+              // Context change detection - check for type OR cardId on assistant messages
+              const isContextChange = msg.type === 'context-change' ||
+                (msg.cardId && msg.role === 'assistant');
+
+              // Render context change as full-width divider
+              if (isContextChange) {
+                return (
+                  <div key={msg.id} className="-mx-3 my-3">
+                    <div
+                      className="py-2.5 px-3 text-center text-sm font-medium"
+                      style={{
+                        background: 'var(--ds-accent)',
+                        color: 'white',
                       }}
                     >
-                      {msg.content}
-                    </ReactMarkdown>
+                      🎬 Context: {msg.cardTitle || msg.content}
+                    </div>
+                  </div>
+                );
+              }
+
+              // Skip summary-card type
+              if (msg.type === 'summary-card') {
+                return null;
+              }
+
+              // Regular messages
+              return (
+                <div
+                  key={msg.id}
+                  className={cn(
+                    "flex",
+                    msg.role === 'user' ? 'justify-end' : 'justify-start'
                   )}
+                >
+                  <div
+                    className="max-w-[85%] px-3 py-2 rounded-lg text-sm"
+                    style={{
+                      background: msg.role === 'user' ? 'var(--ds-accent)' : 'var(--bg-surface-3)',
+                      color: msg.role === 'user' ? 'white' : 'var(--text-primary)',
+                      boxShadow: 'var(--raised-shadow-sm)',
+                    }}
+                  >
+                    {msg.role === 'user' ? (
+                      msg.content
+                    ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                          em: ({ children }) => <em className="italic">{children}</em>,
+                          code: ({ children }) => (
+                            <code className="px-1 py-0.5 rounded text-xs" style={{ background: 'var(--bg-surface-1)' }}>
+                              {children}
+                            </code>
+                          ),
+                          a: ({ href, children }) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--ds-accent)' }}>
+                              {children}
+                            </a>
+                          ),
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {isLoading && (
               <div className="flex justify-start">
                 <div
