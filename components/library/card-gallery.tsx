@@ -1506,9 +1506,15 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           ) : null}
         </div>
       )}
-      {/* Grid view metadata - sits on the card's blurred background */}
+      {/* Grid view metadata - sits below the card image with its own background */}
       {layout === "grid" && showMetadata && !isNote && (
-        <div className="px-1 py-2 flex flex-col justify-center">
+        <div
+          className="px-2 py-2 flex flex-col justify-center rounded-b-lg"
+          style={{
+            background: 'var(--bg-surface-2)',
+            borderTop: '1px solid var(--border-subtle)'
+          }}
+        >
           <div className="flex items-center gap-2">
             <span style={{ color: 'var(--text-muted)' }}>
               <Bookmark size={12} />
