@@ -26,14 +26,8 @@ backups/
 # Keep environment templates in git, but not actual env files
 !.env.*.template
 
-# DO NOT ignore these safety files - they must be in git:
-# .claude/instructions.md
+# DO NOT ignore these critical files - they must be in git:
+# .claude/instructions.md - All safety rules, project context, auto-loads every chat
 # scripts/protect-production-db.js
 # scripts/pre-migration-check.js
-# scripts/auto-backup.sh
-# SAFETY.md
-
-## AI Assistant Coordination Files
-# .ai-context.json - Tracks AI assistant coordination state across development sessions
-# .ai-instructions.md - Instructions for AI assistants working on this project
-# Both files are tracked in git to maintain context when switching between development machines
+# PAWKIT_BIBLE.md - Single source of truth for project context
