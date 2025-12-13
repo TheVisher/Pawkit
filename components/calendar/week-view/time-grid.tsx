@@ -73,7 +73,10 @@ export function TimeGrid({
         />
 
         {/* Day headers */}
-        <div className="flex-1 grid grid-cols-7">
+        <div
+          className="flex-1 grid grid-cols-7"
+          style={{ borderLeft: "1px solid var(--border-subtle)" }}
+        >
           {weekDays.map((day, index) => {
             const isCurrentDay = isToday(day);
             return (
@@ -133,14 +136,14 @@ export function TimeGrid({
       {/* Scrollable time grid */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden"
+        className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-minimal"
         style={{
           scrollBehavior: "smooth",
         }}
       >
         <div
           className="relative flex"
-          style={{ height: totalGridHeight }}
+          style={{ height: totalGridHeight, paddingTop: 8 }}
         >
           {/* Time labels column */}
           <div
@@ -152,7 +155,7 @@ export function TimeGrid({
                 key={hour}
                 className="absolute right-0 flex items-start justify-end pr-3"
                 style={{
-                  top: hour * hourHeight - 8, // Offset to align with gridline
+                  top: hour * hourHeight,
                   height: hourHeight,
                 }}
               >
@@ -167,7 +170,10 @@ export function TimeGrid({
           </div>
 
           {/* Day columns */}
-          <div className="flex-1 grid grid-cols-7 relative">
+          <div
+            className="flex-1 grid grid-cols-7 relative"
+            style={{ borderLeft: "1px solid var(--border-subtle)" }}
+          >
             {weekDays.map((day, index) => {
               const dateStr = format(day, "yyyy-MM-dd");
               const dayEvents = eventsByDate.get(dateStr) || [];
@@ -182,6 +188,7 @@ export function TimeGrid({
                     // Could open event creation dialog at this time
                     onDayClick?.(day);
                   }}
+                  isFirst={index === 0}
                 />
               );
             })}

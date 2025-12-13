@@ -10,6 +10,7 @@ interface DayColumnProps {
   hourHeight?: number;
   onEventClick?: (event: CalendarEvent) => void;
   onTimeSlotClick?: (hour: number) => void;
+  isFirst?: boolean;
 }
 
 /**
@@ -21,6 +22,7 @@ export function DayColumn({
   hourHeight = HOUR_HEIGHT,
   onEventClick,
   onTimeSlotClick,
+  isFirst = false,
 }: DayColumnProps) {
   // Filter to only timed events (not all-day)
   const timedEvents = useMemo(
@@ -41,7 +43,7 @@ export function DayColumn({
       className="relative flex-1 min-w-0"
       style={{
         height: totalHeight,
-        borderLeft: "1px solid var(--border-subtle)",
+        borderLeft: isFirst ? "none" : "1px solid var(--border-subtle)",
       }}
     >
       {/* Hour gridlines */}
