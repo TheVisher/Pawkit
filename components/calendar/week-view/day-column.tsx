@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { positionEvents, HOUR_HEIGHT } from "@/lib/utils/time-grid";
 import { TimePositionedEvent } from "./time-positioned-event";
@@ -9,7 +9,7 @@ interface DayColumnProps {
   events: CalendarEvent[];
   hourHeight?: number;
   onEventClick?: (event: CalendarEvent) => void;
-  onTimeSlotClick?: (hour: number, event: React.MouseEvent) => void;
+  onTimeSlotClick?: (hour: number, columnRect: DOMRect) => void;
   onEventDrop?: (eventId: string, sourceType: string) => void;
   isFirst?: boolean;
 }
@@ -26,6 +26,7 @@ export function DayColumn({
   onEventDrop,
   isFirst = false,
 }: DayColumnProps) {
+  const columnRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
   // Filter to only timed events (not all-day)
@@ -72,8 +73,16 @@ export function DayColumn({
     }
   };
 
+  const handleTimeSlotClick = (hour: number) => {
+    if (columnRef.current && onTimeSlotClick) {
+      const columnRect = columnRef.current.getBoundingClientRect();
+      onTimeSlotClick(hour, columnRect);
+    }
+  };
+
   return (
     <div
+      ref={columnRef}
       className={`relative flex-1 min-w-0 transition-colors ${
         isDragOver ? "bg-accent/20" : ""
       }`}
@@ -95,7 +104,7 @@ export function DayColumn({
             height: hourHeight,
             borderTop: hour > 0 ? "1px solid var(--border-subtle)" : "none",
           }}
-          onClick={(e) => onTimeSlotClick?.(hour, e)}
+          onClick={() => handleTimeSlotClick(hour)}
         />
       ))}
 
