@@ -136,9 +136,10 @@ export function TimeGrid({
       {/* Scrollable time grid */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-minimal"
+        className="flex-1 overflow-x-hidden scrollbar-minimal"
         style={{
           scrollBehavior: "smooth",
+          overflowY: "overlay" as unknown as "scroll", // Overlay scrollbar doesn't take up space
         }}
       >
         <div
