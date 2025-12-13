@@ -183,7 +183,7 @@ export function MiniCalendar({ onDateSelect, onWeekSelect }: MiniCalendarProps) 
                     style={{
                       color: isTodayDate
                         ? 'white'
-                        : isSelected
+                        : isSelected && viewMode === "day"
                           ? 'var(--ds-accent)'
                           : isInDisplayMonth
                             ? 'var(--text-primary)'
