@@ -44,7 +44,7 @@ export function EventCreationPopover({
     `${(hour + 1).toString().padStart(2, "0")}:00`
   );
   const [isAllDay, setIsAllDay] = useState(false);
-  const [color, setColor] = useState(EVENT_COLORS.purple);
+  const [color, setColor] = useState<string>(EVENT_COLORS.purple);
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [showColorPicker, setShowColorPicker] = useState(false);

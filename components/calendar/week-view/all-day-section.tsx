@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { format, isToday } from "date-fns";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { TIME_LABEL_WIDTH } from "@/lib/utils/time-grid";
@@ -14,6 +14,7 @@ interface AllDaySectionProps {
   holidaysByDate: Map<string, ResolvedHoliday>;
   onEventClick?: (event: CalendarEvent) => void;
   onDayClick?: (date: Date) => void;
+  onEventReschedule?: (eventId: string, newDate: string, sourceType?: string) => void;
 }
 
 const EVENT_HEIGHT = 22; // Height of each all-day event
@@ -29,7 +30,40 @@ export function AllDaySection({
   holidaysByDate,
   onEventClick,
   onDayClick,
+  onEventReschedule,
 }: AllDaySectionProps) {
+  // Track drag state for visual feedback
+  const [dragOverDay, setDragOverDay] = useState<number | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, event: CalendarEvent) => {
+    e.dataTransfer.setData("eventId", event.id);
+    e.dataTransfer.setData("sourceType", event.source?.type || "manual");
+    e.dataTransfer.setData("sourceDate", event.date);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, dayIndex: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDragOverDay(dayIndex);
+  };
+
+  const handleDragLeave = () => {
+    setDragOverDay(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, day: Date) => {
+    e.preventDefault();
+    setDragOverDay(null);
+
+    const eventId = e.dataTransfer.getData("eventId");
+    const sourceType = e.dataTransfer.getData("sourceType");
+    const newDate = format(day, "yyyy-MM-dd");
+
+    if (eventId && onEventReschedule) {
+      onEventReschedule(eventId, newDate, sourceType);
+    }
+  };
   // Get all-day events for each day
   const allDayByDay = useMemo(() => {
     return weekDays.map((day) => {
@@ -101,12 +135,15 @@ export function AllDaySection({
               <div
                 key={dayIndex}
                 className={`px-1 py-2 space-y-1 cursor-pointer transition-colors ${
-                  isCurrentDay ? "bg-accent/5" : "hover:bg-white/5"
+                  isCurrentDay ? "bg-accent/5" : dragOverDay === dayIndex ? "bg-accent/20" : "hover:bg-white/5"
                 }`}
                 style={{
                   borderLeft: dayIndex > 0 ? "1px solid var(--border-subtle)" : "none",
                 }}
                 onClick={() => onDayClick?.(day)}
+                onDragOver={(e) => handleDragOver(e, dayIndex)}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, day)}
               >
                 {/* Holiday first */}
                 {holiday && (
@@ -126,11 +163,16 @@ export function AllDaySection({
                 {visibleEvents.map((event) => {
                   const isTodo = event.source?.type === "todo";
                   const isCard = event.source?.type === "card" && event.url;
+                  const isDraggable = event.source?.type !== "card"; // Cards are rescheduled differently
 
                   return (
                     <button
                       key={event.id}
-                      className="w-full text-left px-2 py-0.5 rounded text-[10px] font-medium truncate transition-opacity hover:opacity-80 flex items-center gap-1"
+                      draggable={isDraggable}
+                      onDragStart={(e) => isDraggable && handleDragStart(e, event)}
+                      className={`w-full text-left px-2 py-0.5 rounded text-[10px] font-medium truncate transition-opacity hover:opacity-80 flex items-center gap-1 ${
+                        isDraggable ? "cursor-grab active:cursor-grabbing" : ""
+                      }`}
                       style={{
                         background: event.color || "var(--ds-accent)",
                         color: "white",
