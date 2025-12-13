@@ -7,8 +7,9 @@ import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
+import { useTodoStore } from "@/lib/hooks/use-todos";
 import { getHolidaysInRange, ResolvedHoliday } from "@/lib/data/us-holidays";
-import { ChevronLeft, ChevronRight, Plus, FileText, Clock, Flag } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, FileText, Clock, Flag, CheckSquare } from "lucide-react";
 import { useIsMobile } from "@/lib/hooks/use-is-mobile";
 
 // Helper to format time in 12-hour format
@@ -39,6 +40,9 @@ export function CustomCalendar({
   const [isClient, setIsClient] = useState(false);
   const { events, isInitialized, initialize, generateRecurrenceInstances } = useEventStore();
 
+  // Get todos from store
+  const { todos, fetchTodos } = useTodoStore();
+
   // Holiday settings
   const showHolidays = useCalendarStore((state) => state.showHolidays);
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
@@ -59,6 +63,11 @@ export function CustomCalendar({
       initialize();
     }
   }, [isInitialized, initialize]);
+
+  // Fetch todos
+  useEffect(() => {
+    fetchTodos();
+  }, [fetchTodos]);
 
   // Get all days to display (including days from prev/next month to fill the grid)
   const calendarDays = useMemo(() => {
@@ -133,8 +142,36 @@ export function CustomCalendar({
       });
     });
 
+    // Add todos with due dates
+    todos
+      .filter((todo) => todo.dueDate && !todo.completed)
+      .forEach((todo) => {
+        const dateStr = format(todo.dueDate!, "yyyy-MM-dd");
+        if (dateStr < rangeStart || dateStr > rangeEnd) return;
+
+        if (!map.has(dateStr)) {
+          map.set(dateStr, []);
+        }
+
+        const pseudoEvent: CalendarEvent = {
+          id: `todo-${todo.id}`,
+          userId: todo.userId,
+          title: todo.text,
+          date: dateStr,
+          isAllDay: true,
+          color: "#f59e0b", // Amber/orange for todos
+          source: {
+            type: "todo" as const,
+            todoId: todo.id,
+          },
+          createdAt: todo.createdAt.toISOString(),
+          updatedAt: todo.updatedAt.toISOString(),
+        };
+        map.get(dateStr)!.push(pseudoEvent);
+      });
+
     return map;
-  }, [events, calendarDays, generateRecurrenceInstances]);
+  }, [events, calendarDays, generateRecurrenceInstances, todos]);
 
   // Group holidays by date
   const holidaysByDate = useMemo(() => {
