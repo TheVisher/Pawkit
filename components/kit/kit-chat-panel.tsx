@@ -165,6 +165,9 @@ export function KitChatPanel() {
         ) : (
           <>
             {messages.map((msg) => {
+              // Debug: Log message structure to diagnose context detection
+              console.log('[Kit] Message:', { id: msg.id, type: msg.type, cardId: msg.cardId, role: msg.role, content: msg.content?.slice(0, 50) });
+
               // Context change - full-width divider style (like Fabric)
               // Check for type OR for cardId on assistant messages (legacy detection)
               const isContextChange = msg.type === 'context-change' ||
