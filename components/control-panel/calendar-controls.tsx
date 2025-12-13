@@ -9,6 +9,7 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { TodosSection } from "./todos-section";
+import { MiniCalendar } from "./mini-calendar";
 import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
 import { getUpcomingHolidays } from "@/lib/data/us-holidays";
 
@@ -230,6 +231,15 @@ export function CalendarControls() {
             No upcoming events
           </div>
         )}
+      </PanelSection>
+
+      {/* Mini Calendar */}
+      <PanelSection
+        id="calendar-mini"
+        title="Calendar"
+        icon={<Clock className="h-4 w-4 text-accent" />}
+      >
+        <MiniCalendar />
       </PanelSection>
     </>
   );
