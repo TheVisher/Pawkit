@@ -68,23 +68,27 @@ export function CalendarDatePicker({
       // Use setTimeout to ensure DOM is fully rendered and measured
       const timer = setTimeout(() => {
         if (yearListRef.current) {
-          const currentYearElement = yearListRef.current.querySelector(
-            `[data-year="${currentYearValue}"]`
-          ) as HTMLElement;
-          if (currentYearElement) {
-            // Calculate scroll position to center the year
-            const container = yearListRef.current;
-            const containerHeight = container.clientHeight;
-            const elementTop = currentYearElement.offsetTop;
-            const elementHeight = currentYearElement.offsetHeight;
-            const scrollTop = elementTop - (containerHeight / 2) + (elementHeight / 2);
-            container.scrollTop = scrollTop;
-          }
+          const container = yearListRef.current;
+          // Find the index of current year in the years array
+          const yearIndex = years.indexOf(currentYearValue);
+          if (yearIndex === -1) return;
+
+          // Get the first year button to measure actual button height
+          const firstButton = container.querySelector('button') as HTMLElement;
+          if (!firstButton) return;
+
+          const buttonHeight = firstButton.offsetHeight + 0; // py-1.5 is included in offsetHeight
+          const paddingTop = 60; // py-[60px] on inner wrapper
+          const containerHeight = container.clientHeight;
+
+          // Calculate position: paddingTop + (index * buttonHeight) - center offset
+          const targetScrollTop = paddingTop + (yearIndex * buttonHeight) - (containerHeight / 2) + (buttonHeight / 2);
+          container.scrollTop = Math.max(0, targetScrollTop);
         }
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [datePickerOpen, currentYearValue]);
+  }, [datePickerOpen, currentYearValue, years]);
 
   const handleMonthSelect = (monthValue: number) => {
     const newDate = setMonth(currentDate, monthValue);
