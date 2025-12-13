@@ -68,7 +68,7 @@ Pawkit is a visual bookmark manager built for speed, privacy, and control. With 
 - Bidirectional sync with Supabase backend
 - Offline queue with automatic retry
 - Multi-tab awareness and conflict resolution
-- Filen cloud integration for file storage (Google Drive, Dropbox in development)
+- Cloud storage integration (Filen, Google Drive, Dropbox, OneDrive)
 
 ### Productivity
 - Todo management in sidebar
@@ -200,7 +200,7 @@ Pawkit follows a local-first design:
 4. Conflicts resolved automatically with timestamps
 5. Private collections encrypted client-side
 
-See [LOCAL_FIRST_ARCHITECTURE.md](./LOCAL_FIRST_ARCHITECTURE.md) for details.
+See [LOCAL_FIRST_ARCHITECTURE.md](./docs/LOCAL_FIRST_ARCHITECTURE.md) for details.
 
 ---
 
@@ -265,21 +265,13 @@ See `.claude/skills/pawkit-roadmap/TODO.md` for the full roadmap.
 
 ## Contributing
 
-Contributions welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
+Contributions welcome! Fork the repo, create a feature branch, and open a PR.
 
 ```bash
-# Fork, then:
 git checkout -b feature/your-feature
 git commit -m 'Add feature'
 git push origin feature/your-feature
-# Open PR
 ```
-
----
-
-## License
-
-MIT — see [LICENSE](./LICENSE)
 
 ---
 
