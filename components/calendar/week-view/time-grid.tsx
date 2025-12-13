@@ -22,7 +22,7 @@ interface TimeGridProps {
   hourHeight?: number;
   onEventClick?: (event: CalendarEvent) => void;
   onDayClick?: (date: Date) => void;
-  onEventReschedule?: (eventId: string, newDate: string, sourceType?: string) => void;
+  onEventReschedule?: (eventId: string, newDate: string, sourceType?: string, targetHour?: number) => void;
 }
 
 /**
@@ -251,8 +251,8 @@ export function TimeGrid({
                   hourHeight={hourHeight}
                   onEventClick={onEventClick}
                   onTimeSlotClick={(hour, columnRect) => handleTimeSlotClick(day, hour, columnRect)}
-                  onEventDrop={(eventId, sourceType) => {
-                    onEventReschedule?.(eventId, dateStr, sourceType);
+                  onEventDrop={(eventId, sourceType, targetHour) => {
+                    onEventReschedule?.(eventId, dateStr, sourceType, targetHour);
                   }}
                   isFirst={index === 0}
                 />
