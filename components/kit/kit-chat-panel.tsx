@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Send, Trash2, Sparkles, Loader2 } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, Trash2, Sparkles, Loader2, Copy, FileText, Check } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useKitStore } from '@/lib/hooks/use-kit-store';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const LOADING_MESSAGES = [
   "*sniff sniff*...",
@@ -27,6 +28,7 @@ function getRandomLoadingMessage() {
 export function KitChatPanel() {
   const [input, setInput] = useState('');
   const [loadingMessage, setLoadingMessage] = useState('');
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -37,6 +39,30 @@ export function KitChatPanel() {
     sendMessage,
     clearMessages,
   } = useKitStore();
+
+  // Copy message content to clipboard
+  const copyToClipboard = useCallback(async (content: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopiedId(messageId);
+      toast.success('Copied to clipboard');
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      toast.error('Failed to copy');
+    }
+  }, []);
+
+  // Create note from message (placeholder - will integrate with notes system)
+  const saveAsNote = useCallback(async (content: string) => {
+    // TODO: Integrate with notes creation system
+    // For now, copy to clipboard with a note prompt
+    try {
+      await navigator.clipboard.writeText(content);
+      toast.success('Content copied - create a new note to save it');
+    } catch {
+      toast.error('Failed to copy content');
+    }
+  }, []);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -136,55 +162,146 @@ export function KitChatPanel() {
           </div>
         ) : (
           <>
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={cn(
-                  "flex",
-                  msg.role === 'user' ? 'justify-end' : 'justify-start'
-                )}
-              >
-                <div
-                  className={cn(
-                    "max-w-[85%] rounded-2xl px-4 py-2 text-sm",
-                    msg.role === 'user'
-                      ? 'text-white rounded-br-md'
-                      : 'rounded-bl-md kit-message'
-                  )}
-                  style={{
-                    background: msg.role === 'user' ? 'var(--ds-accent)' : 'var(--bg-surface-2)',
-                  }}
-                >
-                  {msg.role === 'user' ? (
-                    msg.content
-                  ) : (
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-                        ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
-                        ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
-                        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
-                        strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                        em: ({ children }) => <em className="italic">{children}</em>,
-                        code: ({ children }) => (
-                          <code className="px-1 py-0.5 rounded text-xs" style={{ background: 'var(--bg-surface-3)' }}>
-                            {children}
-                          </code>
-                        ),
-                        a: ({ href, children }) => (
-                          <a href={href} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--ds-accent)' }}>
-                            {children}
-                          </a>
-                        ),
-                      }}
-                    >
+            {messages.map((msg) => {
+              // Context change marker
+              if (msg.type === 'context-change') {
+                return (
+                  <div
+                    key={msg.id}
+                    className="w-full py-2 px-4 text-xs text-center rounded-lg my-2"
+                    style={{
+                      background: 'var(--bg-surface-1)',
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    📹 Context: &quot;{msg.content}&quot;
+                  </div>
+                );
+              }
+
+              // Summary card
+              if (msg.type === 'summary-card') {
+                return (
+                  <div
+                    key={msg.id}
+                    className="rounded-xl p-4 my-2"
+                    style={{
+                      background: 'var(--bg-surface-2)',
+                      boxShadow: 'var(--shadow-2)',
+                      border: '1px solid var(--border-subtle)',
+                      borderTopColor: 'var(--border-highlight-top)',
+                      borderLeftColor: 'var(--border-highlight-left)',
+                    }}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-4 h-4" style={{ color: 'var(--ds-accent)' }} />
+                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                        AI Summary
+                      </span>
+                    </div>
+                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
                       {msg.content}
-                    </ReactMarkdown>
+                    </p>
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => copyToClipboard(msg.content, msg.id)}
+                        className="text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                        style={{
+                          background: 'var(--bg-surface-3)',
+                          color: 'var(--text-secondary)',
+                        }}
+                      >
+                        {copiedId === msg.id ? <Check size={12} /> : <Copy size={12} />}
+                        {copiedId === msg.id ? 'Copied' : 'Copy'}
+                      </button>
+                      <button
+                        onClick={() => saveAsNote(msg.content)}
+                        className="text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                        style={{
+                          background: 'var(--bg-surface-3)',
+                          color: 'var(--text-secondary)',
+                        }}
+                      >
+                        <FileText size={12} />
+                        Save as note
+                      </button>
+                    </div>
+                  </div>
+                );
+              }
+
+              // Regular user/assistant messages
+              return (
+                <div
+                  key={msg.id}
+                  className={cn(
+                    "flex flex-col",
+                    msg.role === 'user' ? 'items-end' : 'items-start'
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "max-w-[85%] rounded-2xl px-4 py-2 text-sm",
+                      msg.role === 'user'
+                        ? 'text-white rounded-br-md'
+                        : 'rounded-bl-md kit-message'
+                    )}
+                    style={{
+                      background: msg.role === 'user' ? 'var(--ds-accent)' : 'var(--bg-surface-2)',
+                    }}
+                  >
+                    {msg.role === 'user' ? (
+                      msg.content
+                    ) : (
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                          ul: ({ children }) => <ul className="list-disc list-inside mb-2 space-y-1">{children}</ul>,
+                          ol: ({ children }) => <ol className="list-decimal list-inside mb-2 space-y-1">{children}</ol>,
+                          li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                          em: ({ children }) => <em className="italic">{children}</em>,
+                          code: ({ children }) => (
+                            <code className="px-1 py-0.5 rounded text-xs" style={{ background: 'var(--bg-surface-3)' }}>
+                              {children}
+                            </code>
+                          ),
+                          a: ({ href, children }) => (
+                            <a href={href} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--ds-accent)' }}>
+                              {children}
+                            </a>
+                          ),
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    )}
+                  </div>
+                  {/* Copy/Save buttons for assistant messages */}
+                  {msg.role === 'assistant' && (
+                    <div className="flex gap-1 mt-1 opacity-0 hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => copyToClipboard(msg.content, msg.id)}
+                        className="text-xs p-1.5 rounded transition-all"
+                        style={{ color: 'var(--text-muted)' }}
+                        title="Copy"
+                      >
+                        {copiedId === msg.id ? <Check size={12} /> : <Copy size={12} />}
+                      </button>
+                      <button
+                        onClick={() => saveAsNote(msg.content)}
+                        className="text-xs p-1.5 rounded transition-all"
+                        style={{ color: 'var(--text-muted)' }}
+                        title="Save as note"
+                      >
+                        <FileText size={12} />
+                      </button>
+                    </div>
                   )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {isLoading && (
               <div className="flex justify-start">
                 <div

@@ -3,11 +3,16 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+type MessageType = 'user' | 'assistant' | 'context-change' | 'summary-card';
+
 interface Message {
   id: string;
   role: 'user' | 'assistant';
+  type?: MessageType;  // Defaults to role if not specified
   content: string;
   timestamp: Date;
+  cardId?: string;     // For context tracking
+  cardTitle?: string;  // For display
 }
 
 interface SavedConversation {
@@ -58,6 +63,14 @@ interface KitState {
     content?: string;
   } | null;
 
+  // Video-specific context (includes transcript)
+  videoContext: {
+    cardId: string;
+    cardTitle: string;
+    summary?: string;
+    transcript?: string;  // Truncated for API calls
+  } | null;
+
   // Conversation management
   savedConversations: SavedConversation[];
   activeConversationId: string | null;
@@ -81,6 +94,8 @@ interface KitState {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   setActiveCardContext: (card: KitState['activeCardContext']) => void;
+  setVideoContext: (card: { id: string; title: string; summary?: string; transcript?: string }) => void;
+  clearVideoContext: () => void;
   sendMessage: (message: string, context?: string, pawkitSlug?: string) => Promise<void>;
 
   // Conversation actions
@@ -113,6 +128,7 @@ export const useKitStore = create<KitState>()(
       isLoading: false,
       error: null,
       activeCardContext: null,
+      videoContext: null,
 
       // Conversation defaults
       savedConversations: [],
@@ -148,29 +164,86 @@ export const useKitStore = create<KitState>()(
         }));
       },
 
-      clearMessages: () => set({ messages: [], error: null }),
+      clearMessages: () => set({ messages: [], error: null, videoContext: null }),
       setLoading: (isLoading) => set({ isLoading }),
       setError: (error) => set({ error }),
       setActiveCardContext: (card) => set({ activeCardContext: card }),
 
+      setVideoContext: (card) => {
+        const { messages } = get();
+
+        // Generate unique IDs
+        const contextId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const summaryId = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+
+        // Create context change marker
+        const contextMessage: Message = {
+          id: contextId,
+          role: 'assistant',
+          type: 'context-change',
+          content: card.title,
+          timestamp: new Date(),
+          cardId: card.id,
+          cardTitle: card.title,
+        };
+
+        // Create summary card if available
+        const summaryMessage: Message | null = card.summary ? {
+          id: summaryId,
+          role: 'assistant',
+          type: 'summary-card',
+          content: card.summary,
+          timestamp: new Date(),
+          cardId: card.id,
+          cardTitle: card.title,
+        } : null;
+
+        // Truncate transcript for API calls (4000 chars max)
+        const truncatedTranscript = card.transcript?.slice(0, 4000) || '';
+
+        set({
+          messages: [...messages, contextMessage, ...(summaryMessage ? [summaryMessage] : [])],
+          videoContext: {
+            cardId: card.id,
+            cardTitle: card.title,
+            summary: card.summary,
+            transcript: truncatedTranscript,
+          },
+          activeCardContext: {
+            id: card.id,
+            title: card.title,
+            content: truncatedTranscript,
+          },
+        });
+      },
+
+      clearVideoContext: () => set({ videoContext: null }),
+
       sendMessage: async (message: string, context?: string, pawkitSlug?: string) => {
-        const { messages, activeCardContext, addMessage, setLoading, setError } = get();
+        const { messages, activeCardContext, videoContext, addMessage, setLoading, setError } = get();
 
         addMessage('user', message);
         setLoading(true);
         setError(null);
 
         try {
+          // Filter out context-change and summary-card messages from history
+          const conversationHistory = messages
+            .filter(m => !m.type || m.type === 'user' || m.type === 'assistant')
+            .slice(-10)
+            .map(m => ({
+              role: m.role,
+              content: m.content,
+            }));
+
           const response = await fetch('/api/kit/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               message,
-              conversationHistory: messages.slice(-10).map(m => ({
-                role: m.role,
-                content: m.content,
-              })),
+              conversationHistory,
               cardContext: activeCardContext,
+              videoContext: videoContext,  // Include video-specific context
               viewContext: context,
               pawkitSlug: pawkitSlug,
             }),
