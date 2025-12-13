@@ -1,22 +1,14 @@
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
-import { addDays, startOfWeek, format, isSameDay, isToday } from "date-fns";
+import { addDays, startOfWeek, format } from "date-fns";
 import { CardModel } from "@/lib/types";
-import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
+import { CalendarEvent } from "@/lib/types/calendar";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { getHolidaysInRange, ResolvedHoliday } from "@/lib/data/us-holidays";
-import { FileText, Plus, Clock, Flag } from "lucide-react";
-
-// Helper to format time in 12-hour format
-function formatTime12h(time24: string): string {
-  const [hours, minutes] = time24.split(':').map(Number);
-  const period = hours >= 12 ? 'PM' : 'AM';
-  const hours12 = hours % 12 || 12;
-  return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
-}
+import { TimeGrid } from "./week-view/time-grid";
 
 type WeekViewProps = {
   cards: CardModel[];
@@ -27,9 +19,17 @@ type WeekViewProps = {
   onCreateDailyNote?: (date: Date) => void;
 };
 
-export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEventClick, onCreateDailyNote }: WeekViewProps) {
+export function WeekView({
+  cards,
+  currentMonth,
+  onDayClick,
+  onCardClick,
+  onEventClick,
+  onCreateDailyNote,
+}: WeekViewProps) {
   const [isClient, setIsClient] = useState(false);
-  const { events, isInitialized, initialize, generateRecurrenceInstances } = useEventStore();
+  const { events, isInitialized, initialize, generateRecurrenceInstances } =
+    useEventStore();
 
   // Holiday settings
   const showHolidays = useCalendarStore((state) => state.showHolidays);
@@ -58,15 +58,18 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
     return days;
   }, [currentMonth]);
 
-  // Group cards by date
+  // Group cards by date (scheduled cards become calendar events)
   const cardsByDate = useMemo(() => {
     const map = new Map<string, CardModel[]>();
 
     // Scheduled cards
     cards
-      .filter((card) => card.scheduledDate && !card.collections?.includes('the-den'))
+      .filter(
+        (card) =>
+          card.scheduledDate && !card.collections?.includes("the-den")
+      )
       .forEach((card) => {
-        const dateStr = card.scheduledDate!.split('T')[0];
+        const dateStr = card.scheduledDate!.split("T")[0];
         if (!map.has(dateStr)) {
           map.set(dateStr, []);
         }
@@ -81,7 +84,9 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
     const map = new Map<string, CardModel>();
 
     cards
-      .filter((card) => isDailyNote(card) && !card.collections?.includes('the-den'))
+      .filter(
+        (card) => isDailyNote(card) && !card.collections?.includes("the-den")
+      )
       .forEach((card) => {
         const date = extractDateFromTitle(card.title!);
         if (date) {
@@ -94,15 +99,17 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
   }, [cards]);
 
   // Group events by date (including recurrence instances)
+  // Also convert scheduled cards to event-like objects for the time grid
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
 
     // Get date range for the visible week
     if (weekDays.length === 0) return map;
 
-    const rangeStart = format(weekDays[0], 'yyyy-MM-dd');
-    const rangeEnd = format(weekDays[weekDays.length - 1], 'yyyy-MM-dd');
+    const rangeStart = format(weekDays[0], "yyyy-MM-dd");
+    const rangeEnd = format(weekDays[weekDays.length - 1], "yyyy-MM-dd");
 
+    // Add calendar events
     events.forEach((event) => {
       // Generate recurrence instances for recurring events
       const instances = generateRecurrenceInstances(event, rangeStart, rangeEnd);
@@ -116,8 +123,57 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
       });
     });
 
+    // Convert scheduled cards to all-day events for display
+    cardsByDate.forEach((dayCards, dateStr) => {
+      if (!map.has(dateStr)) {
+        map.set(dateStr, []);
+      }
+
+      dayCards.forEach((card) => {
+        // Create a pseudo-event from the scheduled card
+        const pseudoEvent: CalendarEvent = {
+          id: `card-${card.id}`,
+          userId: "",
+          title: card.title || card.domain || card.url || "Untitled",
+          date: dateStr,
+          isAllDay: true, // Scheduled cards are shown as all-day events
+          color: "#6b7280", // Gray color for cards
+          source: {
+            type: "card",
+            cardId: card.id,
+          },
+          createdAt: card.createdAt || new Date().toISOString(),
+          updatedAt: card.updatedAt || new Date().toISOString(),
+        };
+        map.get(dateStr)!.push(pseudoEvent);
+      });
+    });
+
+    // Add daily notes as special events
+    dailyNotesByDate.forEach((note, dateStr) => {
+      if (!map.has(dateStr)) {
+        map.set(dateStr, []);
+      }
+
+      const pseudoEvent: CalendarEvent = {
+        id: `note-${note.id}`,
+        userId: "",
+        title: "Daily Note",
+        date: dateStr,
+        isAllDay: true,
+        color: "var(--ds-accent)", // Purple for notes
+        source: {
+          type: "card",
+          cardId: note.id,
+        },
+        createdAt: note.createdAt || new Date().toISOString(),
+        updatedAt: note.updatedAt || new Date().toISOString(),
+      };
+      map.get(dateStr)!.push(pseudoEvent);
+    });
+
     // Sort events by time within each day
-    map.forEach((dayEvents, dateStr) => {
+    map.forEach((dayEvents) => {
       dayEvents.sort((a, b) => {
         // All-day events first
         if (a.isAllDay && !b.isAllDay) return -1;
@@ -131,16 +187,17 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
     });
 
     return map;
-  }, [events, weekDays, generateRecurrenceInstances]);
+  }, [events, weekDays, generateRecurrenceInstances, cardsByDate, dailyNotesByDate]);
 
   // Group holidays by date
   const holidaysByDate = useMemo(() => {
     const map = new Map<string, ResolvedHoliday>();
 
-    if (!showHolidays || enabledCountries.length === 0 || weekDays.length === 0) return map;
+    if (!showHolidays || enabledCountries.length === 0 || weekDays.length === 0)
+      return map;
 
-    const rangeStart = format(weekDays[0], 'yyyy-MM-dd');
-    const rangeEnd = format(weekDays[weekDays.length - 1], 'yyyy-MM-dd');
+    const rangeStart = format(weekDays[0], "yyyy-MM-dd");
+    const rangeEnd = format(weekDays[weekDays.length - 1], "yyyy-MM-dd");
 
     const holidays = getHolidaysInRange(rangeStart, rangeEnd, holidayFilter);
 
@@ -151,160 +208,42 @@ export function WeekView({ cards, currentMonth, onDayClick, onCardClick, onEvent
     return map;
   }, [showHolidays, holidayFilter, enabledCountries, weekDays]);
 
+  // Handle event click - route to appropriate handler
+  const handleEventClick = (event: CalendarEvent) => {
+    // If it's a pseudo-event from a card, use card handler
+    if (event.source?.cardId) {
+      const card = cards.find((c) => c.id === event.source?.cardId);
+      if (card) {
+        onCardClick?.(card);
+        return;
+      }
+    }
+    // Otherwise use event handler
+    onEventClick?.(event);
+  };
+
+  // Don't render until client-side to prevent hydration issues with dates
+  if (!isClient) {
+    return (
+      <div
+        className="h-[600px] rounded-xl"
+        style={{
+          background: "var(--bg-surface-2)",
+          border: "1px solid var(--border-subtle)",
+        }}
+      />
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Week days in horizontal columns */}
-      <div className="grid grid-cols-7 gap-3">
-        {weekDays.map((day, index) => {
-          const dateStr = format(day, 'yyyy-MM-dd');
-          const dayCards = cardsByDate.get(dateStr) || [];
-          const dayEvents = eventsByDate.get(dateStr) || [];
-          const dailyNote = dailyNotesByDate.get(dateStr);
-          const holiday = holidaysByDate.get(dateStr);
-          const isCurrentDay = isClient ? isToday(day) : false;
-
-          const hasContent = dailyNote || dayCards.length > 0 || dayEvents.length > 0 || holiday;
-
-          return (
-            <div
-              key={index}
-              className="rounded-2xl transition-all cursor-pointer flex flex-col"
-              style={{
-                /* ===== TODAY STYLING - OPTION 2: Purple pill on day number ===== */
-                background: 'var(--bg-surface-3)',
-                boxShadow: 'var(--raised-shadow-sm)',
-                borderWidth: '1px',
-                borderStyle: 'solid',
-                borderColor: 'var(--border-default)',
-                borderTopColor: 'var(--raised-border-top)',
-              }}
-              onClick={() => onDayClick?.(day)}
-            >
-              {/* Day header */}
-              <div className="p-3 flex flex-col items-center" style={{ borderBottom: '1px solid var(--border-subtle)' }}>
-                <div
-                  className="text-sm font-semibold text-center"
-                  style={{ color: 'var(--text-primary)' }}
-                >
-                  {format(day, 'EEE')}
-                </div>
-                <span
-                  className={`text-xs mt-0.5 ${isCurrentDay ? 'inline-flex items-center justify-center' : ''}`}
-                  style={isCurrentDay ? {
-                    background: 'var(--ds-accent)',
-                    color: 'white',
-                    borderRadius: '9999px',
-                    minWidth: '24px',
-                    height: '24px',
-                    padding: '0 6px',
-                  } : {
-                    color: 'var(--text-muted)',
-                  }}
-                >
-                  {format(day, 'd')}
-                </span>
-              </div>
-
-              {/* Events container - scrollable */}
-              <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[500px]">
-                {/* Daily note */}
-                {dailyNote && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCardClick?.(dailyNote);
-                    }}
-                    className="w-full px-2 py-2 rounded-lg bg-accent/10 border border-accent/30 hover:bg-accent/20 transition-colors flex items-center gap-2 text-left"
-                  >
-                    <FileText size={12} className="text-accent flex-shrink-0" />
-                    <span className="text-xs font-medium text-accent truncate">
-                      Note
-                    </span>
-                  </button>
-                )}
-
-                {/* Calendar Events */}
-                {dayEvents.map((event) => (
-                  <button
-                    key={event.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEventClick?.(event);
-                    }}
-                    className="w-full text-left px-2 py-2 rounded-lg bg-surface-soft hover:bg-surface transition-colors border border-subtle"
-                  >
-                    <div className="flex items-start gap-2">
-                      <span
-                        className="w-2 h-2 rounded-full flex-shrink-0 mt-1"
-                        style={{ backgroundColor: event.color || 'var(--ds-accent)' }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        {!event.isAllDay && event.startTime && (
-                          <div className="text-[10px] text-muted-foreground flex items-center gap-1 mb-0.5">
-                            <Clock size={10} />
-                            {formatTime12h(event.startTime)}
-                            {event.endTime && ` - ${formatTime12h(event.endTime)}`}
-                          </div>
-                        )}
-                        <div className="text-xs font-medium text-foreground truncate">
-                          {event.title}
-                        </div>
-                        {event.location && (
-                          <div className="text-[10px] text-muted-foreground truncate mt-0.5">
-                            {event.location}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-
-                {/* Scheduled cards */}
-                {dayCards.map((card) => (
-                  <button
-                    key={card.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCardClick?.(card);
-                    }}
-                    className="w-full text-left px-2 py-2 rounded-lg bg-surface-soft hover:bg-surface transition-colors border border-subtle"
-                  >
-                    {card.image && (
-                      <img
-                        src={card.image}
-                        alt=""
-                        className="w-full h-16 rounded object-cover mb-2"
-                      />
-                    )}
-                    <div className="text-xs font-medium text-foreground truncate">
-                      {card.title || card.domain || card.url}
-                    </div>
-                  </button>
-                ))}
-
-                {/* Holiday */}
-                {holiday && (
-                  <div className="px-2 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                    <div className="flex items-center gap-2">
-                      <Flag size={12} className="text-amber-400 flex-shrink-0" />
-                      <span className="text-xs font-medium text-amber-400 truncate">
-                        {holiday.name}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Empty state */}
-                {!hasContent && (
-                  <div className="text-xs text-muted-foreground text-center py-4">
-                    No events
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
+    <div className="h-[calc(100vh-200px)] min-h-[500px]">
+      <TimeGrid
+        weekDays={weekDays}
+        eventsByDate={eventsByDate}
+        holidaysByDate={holidaysByDate}
+        onEventClick={handleEventClick}
+        onDayClick={onDayClick}
+      />
     </div>
   );
 }
