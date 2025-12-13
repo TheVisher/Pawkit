@@ -64,7 +64,6 @@ export function TimeGrid({
         style={{
           borderBottom: "1px solid var(--border-subtle)",
           background: "var(--bg-surface-3)",
-          paddingRight: 6, // Compensate for scrollbar width in time grid below
         }}
       >
         {/* Time column spacer */}
@@ -137,7 +136,7 @@ export function TimeGrid({
       {/* Scrollable time grid */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-minimal"
+        className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide"
         style={{
           scrollBehavior: "smooth",
         }}

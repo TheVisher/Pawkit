@@ -65,7 +65,6 @@ export function AllDaySection({
         minHeight: sectionHeight,
         borderBottom: "1px solid var(--border-subtle)",
         background: "var(--bg-surface-2)",
-        paddingRight: 6, // Compensate for scrollbar width in time grid below
       }}
     >
       <div className="flex h-full">
