@@ -6,11 +6,12 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { CustomCalendar } from "@/components/calendar/custom-calendar";
 import { WeekView } from "@/components/calendar/week-view";
+import { CalendarDatePicker } from "@/components/calendar/calendar-date-picker";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/daily-notes";
-import { CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
-import { format, startOfWeek, addMonths, subMonths, addWeeks, subWeeks } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { addMonths, subMonths, addWeeks, subWeeks } from "date-fns";
 import { CalendarEvent } from "@/lib/types/calendar";
 
 export default function CalendarPage() {
@@ -26,6 +27,7 @@ export default function CalendarPage() {
   const currentMonth = useCalendarStore((state) => state.currentMonth);
   const viewMode = useCalendarStore((state) => state.viewMode);
   const setCurrentMonth = useCalendarStore((state) => state.setCurrentMonth);
+  const setViewMode = useCalendarStore((state) => state.setViewMode);
   const selectedDay = useCalendarStore((state) => state.selectedDay);
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
 
@@ -122,28 +124,15 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Right-aligned month/year navigation */}
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setCurrentMonth(viewMode === "week" ? subWeeks(currentMonth, 1) : subMonths(currentMonth, 1))}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label={viewMode === "week" ? "Previous week" : "Previous month"}
-          >
-            <ChevronLeft size={20} />
-          </button>
-          <span className="text-lg font-semibold text-foreground min-w-[180px] text-center">
-            {viewMode === "week"
-              ? `Week of ${format(startOfWeek(currentMonth), 'MMM d, yyyy')}`
-              : format(currentMonth, 'MMMM yyyy')}
-          </span>
-          <button
-            onClick={() => setCurrentMonth(viewMode === "week" ? addWeeks(currentMonth, 1) : addMonths(currentMonth, 1))}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
-            aria-label={viewMode === "week" ? "Next week" : "Next month"}
-          >
-            <ChevronRight size={20} />
-          </button>
-        </div>
+        {/* Right-aligned month/year navigation with interactive pickers */}
+        <CalendarDatePicker
+          currentDate={currentMonth}
+          viewMode={viewMode}
+          onDateChange={setCurrentMonth}
+          onViewModeChange={setViewMode}
+          onPrevious={() => setCurrentMonth(viewMode === "week" ? subWeeks(currentMonth, 1) : subMonths(currentMonth, 1))}
+          onNext={() => setCurrentMonth(viewMode === "week" ? addWeeks(currentMonth, 1) : addMonths(currentMonth, 1))}
+        />
       </div>
 
       {/* Conditional Calendar View */}

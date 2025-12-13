@@ -2,8 +2,8 @@
 
 import { useMemo, useEffect } from "react";
 import { PanelSection } from "./control-panel";
-import { Calendar, Clock, CalendarCheck, CalendarRange, ChevronRight, ChevronLeft, Bookmark, Flag } from "lucide-react";
-import { format, setMonth, setYear, isAfter, startOfToday, startOfWeek, endOfWeek, addYears, subYears } from "date-fns";
+import { Clock, ChevronRight, Bookmark, Flag } from "lucide-react";
+import { format, startOfToday } from "date-fns";
 import { useCalendarStore, type HolidayCountry, type HolidayFilter } from "@/lib/hooks/use-calendar-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useEventStore } from "@/lib/hooks/use-event-store";
@@ -32,22 +32,6 @@ function formatTime12h(time24: string): string {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
-// Month names for the 3x4 grid
-const MONTHS = [
-  { name: "Jan", value: 0 },
-  { name: "Feb", value: 1 },
-  { name: "Mar", value: 2 },
-  { name: "Apr", value: 3 },
-  { name: "May", value: 4 },
-  { name: "Jun", value: 5 },
-  { name: "Jul", value: 6 },
-  { name: "Aug", value: 7 },
-  { name: "Sep", value: 8 },
-  { name: "Oct", value: 9 },
-  { name: "Nov", value: 10 },
-  { name: "Dec", value: 11 },
-];
-
 // Content type filter options (for future AI detection)
 export type CalendarContentFilter =
   | "movies-shows"
@@ -59,10 +43,6 @@ export type CalendarContentFilter =
 
 export function CalendarControls() {
   // Get state from calendar store
-  const currentMonth = useCalendarStore((state) => state.currentMonth);
-  const viewMode = useCalendarStore((state) => state.viewMode);
-  const setCurrentMonth = useCalendarStore((state) => state.setCurrentMonth);
-  const setViewMode = useCalendarStore((state) => state.setViewMode);
   const setSelectedDay = useCalendarStore((state) => state.setSelectedDay);
 
   // Holiday settings
@@ -77,8 +57,6 @@ export function CalendarControls() {
   const { events, isInitialized, initialize } = useEventStore();
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const openDayDetails = usePanelStore((state) => state.openDayDetails);
-
-  const currentMonthValue = currentMonth.getMonth();
 
   // Initialize event store
   useEffect(() => {
@@ -176,124 +154,10 @@ export function CalendarControls() {
     return cardCount + eventCount;
   }, [cards, events]);
 
-  const handleMonthClick = (monthValue: number) => {
-    const newDate = setMonth(currentMonth, monthValue);
-    setCurrentMonth(newDate);
-    setViewMode("month"); // Switch to month view when selecting a month
-  };
-
-  const handleJumpToToday = () => {
-    setCurrentMonth(new Date());
-    setViewMode("month");
-  };
-
-  const handleToggleView = () => {
-    // Toggle between week and month view
-    setCurrentMonth(new Date());
-    setViewMode(viewMode === "week" ? "month" : "week");
-  };
-
   return (
     <>
       {/* Todos Section - Always at top */}
       <TodosSection />
-
-      {/* Month Grid Selector */}
-      <PanelSection
-        id="calendar-month-selector"
-        title="Jump to Date"
-        icon={<Calendar className="h-4 w-4 text-accent" />}
-      >
-        {/* Year Selector */}
-        <div className="flex items-center justify-center gap-4 mb-4">
-          <button
-            onClick={() => setCurrentMonth(subYears(currentMonth, 1))}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-all"
-            style={{ background: 'transparent' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface-3)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            aria-label="Previous year"
-          >
-            <ChevronLeft size={18} />
-          </button>
-          <span className="text-lg font-semibold text-foreground min-w-[60px] text-center">
-            {format(currentMonth, 'yyyy')}
-          </span>
-          <button
-            onClick={() => setCurrentMonth(addYears(currentMonth, 1))}
-            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-all"
-            style={{ background: 'transparent' }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-surface-3)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-            aria-label="Next year"
-          >
-            <ChevronRight size={18} />
-          </button>
-        </div>
-
-        {/* Month Grid */}
-        <div className="grid grid-cols-3 gap-2">
-          {MONTHS.map((month) => (
-            <button
-              key={month.value}
-              onClick={() => handleMonthClick(month.value)}
-              className="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200"
-              style={month.value === currentMonthValue ? {
-                background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
-                color: 'var(--text-primary)',
-                boxShadow: 'var(--raised-shadow)',
-                border: '1px solid transparent',
-                borderTopColor: 'var(--raised-border-top)',
-              } : {
-                background: 'transparent',
-                color: 'var(--text-muted)',
-                border: '1px solid var(--border-subtle)',
-              }}
-            >
-              {month.name}
-            </button>
-          ))}
-        </div>
-
-        {/* Quick Navigation Buttons */}
-        <div
-          className="grid grid-cols-2 mt-3 pt-3 pb-1 border-t"
-          style={{ borderColor: 'var(--border-divider)', gap: 'var(--space-3)' }}
-        >
-          <button
-            onClick={handleJumpToToday}
-            className="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
-            style={{
-              background: 'var(--bg-surface-3)',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--text-secondary)',
-              boxShadow: 'var(--raised-shadow-sm)',
-            }}
-          >
-            <CalendarCheck size={14} />
-            Today
-          </button>
-          <button
-            onClick={handleToggleView}
-            className="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
-            style={viewMode === "week" ? {
-              background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
-              color: 'var(--ds-accent)',
-              boxShadow: 'var(--raised-shadow)',
-              border: '1px solid transparent',
-              borderTopColor: 'var(--raised-border-top)',
-            } : {
-              background: 'var(--bg-surface-3)',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--text-secondary)',
-              boxShadow: 'var(--raised-shadow-sm)',
-            }}
-          >
-            <CalendarRange size={14} />
-            Week
-          </button>
-        </div>
-      </PanelSection>
 
       {/* Holidays Section */}
       <PanelSection
