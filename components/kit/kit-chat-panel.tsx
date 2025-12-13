@@ -130,7 +130,7 @@ export function KitChatPanel() {
       </div>
 
       {/* Messages */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-3 scrollbar-minimal">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-4">
             <div
@@ -166,24 +166,22 @@ export function KitChatPanel() {
           <>
             {messages.map((msg) => {
               // Context change - full-width divider style (like Fabric)
-              // Check for type OR for cardId on short assistant messages (legacy detection)
+              // Check for type OR for cardId on assistant messages (legacy detection)
               const isContextChange = msg.type === 'context-change' ||
-                (msg.cardId && msg.role === 'assistant' && msg.content.length < 200);
+                (msg.cardId && msg.role === 'assistant');
 
               if (isContextChange) {
                 return (
-                  <div key={msg.id} className="my-4">
-                    {/* Full width context block */}
+                  <div key={msg.id} className="-mx-3 my-4">
+                    {/* Full width context block - extends beyond padding */}
                     <div
-                      className="w-full py-2.5 px-4 text-center text-sm"
+                      className="py-3 px-4 text-center text-sm font-medium"
                       style={{
-                        background: 'var(--bg-surface-1)',
-                        borderTop: '1px solid var(--border-subtle)',
-                        borderBottom: '1px solid var(--border-subtle)',
-                        color: 'var(--text-secondary)',
+                        background: 'var(--ds-accent)',
+                        color: 'white',
                       }}
                     >
-                      Context changed to &quot;<span style={{ color: 'var(--ds-accent)', fontWeight: 500 }}>{msg.cardTitle || msg.content}</span>&quot;
+                      🎬 Context: {msg.cardTitle || msg.content}
                     </div>
                   </div>
                 );
