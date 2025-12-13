@@ -5,8 +5,8 @@ import { Send, Trash2, Sparkles, Loader2, Copy, FileText, Check } from 'lucide-r
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useKitStore } from '@/lib/hooks/use-kit-store';
+import { useToastStore } from '@/lib/stores/toast-store';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 
 const LOADING_MESSAGES = [
   "*sniff sniff*...",
@@ -40,17 +40,19 @@ export function KitChatPanel() {
     clearMessages,
   } = useKitStore();
 
+  const { addToast } = useToastStore();
+
   // Copy message content to clipboard
   const copyToClipboard = useCallback(async (content: string, messageId: string) => {
     try {
       await navigator.clipboard.writeText(content);
       setCopiedId(messageId);
-      toast.success('Copied to clipboard');
+      addToast({ type: 'success', message: 'Copied to clipboard' });
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
-      toast.error('Failed to copy');
+      addToast({ type: 'error', message: 'Failed to copy' });
     }
-  }, []);
+  }, [addToast]);
 
   // Create note from message (placeholder - will integrate with notes system)
   const saveAsNote = useCallback(async (content: string) => {
@@ -58,11 +60,11 @@ export function KitChatPanel() {
     // For now, copy to clipboard with a note prompt
     try {
       await navigator.clipboard.writeText(content);
-      toast.success('Content copied - create a new note to save it');
+      addToast({ type: 'success', message: 'Content copied - create a new note to save it' });
     } catch {
-      toast.error('Failed to copy content');
+      addToast({ type: 'error', message: 'Failed to copy content' });
     }
-  }, []);
+  }, [addToast]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
