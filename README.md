@@ -275,6 +275,12 @@ git push origin feature/your-feature
 
 ---
 
+## License
+
+MIT - see [LICENSE](./LICENSE)
+
+---
+
 ## Links
 
 - [Documentation](./docs/)
