@@ -71,6 +71,8 @@
   --text-secondary: hsl(var(--hue-neutral) 0% 70%);
   --text-muted: hsl(var(--hue-neutral) 0% 50%);
   --text-disabled: hsl(var(--hue-neutral) 0% 35%);
+  --card-overlay-text: hsl(0 0% 100%);
+  --card-overlay-text-muted: hsl(0 0% 100% / 0.7);
 
   /* Borders - neumorphism-lite highlights */
   --border-subtle: hsl(0 0% 100% / 0.06);
@@ -206,6 +208,9 @@
   --text-secondary: hsl(var(--hue-neutral) 0% 30%);
   --text-muted: hsl(var(--hue-neutral) 0% 50%);
   --text-disabled: hsl(var(--hue-neutral) 0% 65%);
+  /* Card overlay text - black in light modern, white in glass/dark */
+  --card-overlay-text: hsl(0 0% 5%);
+  --card-overlay-text-muted: hsl(0 0% 5% / 0.7);
 
   /* Borders */
   --border-subtle: hsl(var(--hue-neutral) 0% 0% / 0.10);
@@ -264,6 +269,10 @@
   --border-subtle: hsl(0 0% 0% / 0.08);
   --border-default: hsl(0 0% 0% / 0.12);
   --border-strong: hsl(0 0% 0% / 0.18);
+
+  /* Card overlay text stays white in glass mode */
+  --card-overlay-text: hsl(0 0% 100%);
+  --card-overlay-text-muted: hsl(0 0% 100% / 0.7);
 }
 
 /* === LIGHT MODE + PURPLE TINT === */
