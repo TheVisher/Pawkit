@@ -10,7 +10,7 @@ interface DayColumnProps {
   hourHeight?: number;
   onEventClick?: (event: CalendarEvent) => void;
   onTimeSlotClick?: (hour: number, columnRect: DOMRect) => void;
-  onEventDrop?: (eventId: string, sourceType: string) => void;
+  onEventDrop?: (eventId: string, sourceType: string, targetHour: number) => void;
   isFirst?: boolean;
 }
 
@@ -68,8 +68,15 @@ export function DayColumn({
     const eventId = e.dataTransfer.getData("eventId");
     const sourceType = e.dataTransfer.getData("sourceType");
 
-    if (eventId && onEventDrop) {
-      onEventDrop(eventId, sourceType);
+    if (eventId && onEventDrop && columnRef.current) {
+      // Calculate target hour from drop position
+      const columnRect = columnRef.current.getBoundingClientRect();
+      const dropY = e.clientY - columnRect.top;
+      const targetHour = Math.floor(dropY / hourHeight);
+      // Clamp to valid hours (0-23)
+      const clampedHour = Math.max(0, Math.min(23, targetHour));
+
+      onEventDrop(eventId, sourceType, clampedHour);
     }
   };
 

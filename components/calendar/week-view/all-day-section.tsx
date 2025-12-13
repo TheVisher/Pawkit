@@ -14,7 +14,7 @@ interface AllDaySectionProps {
   holidaysByDate: Map<string, ResolvedHoliday>;
   onEventClick?: (event: CalendarEvent) => void;
   onDayClick?: (date: Date) => void;
-  onEventReschedule?: (eventId: string, newDate: string, sourceType?: string) => void;
+  onEventReschedule?: (eventId: string, newDate: string, sourceType?: string, targetHour?: number) => void;
 }
 
 const EVENT_HEIGHT = 22; // Height of each all-day event

@@ -263,7 +263,7 @@ export function WeekView({
   };
 
   // Handle drag-and-drop reschedule
-  const handleEventReschedule = async (eventId: string, newDate: string, sourceType?: string) => {
+  const handleEventReschedule = async (eventId: string, newDate: string, sourceType?: string, targetHour?: number) => {
     if (sourceType === "todo") {
       // Extract todo ID from event ID (format: "todo-{id}")
       const todoId = eventId.replace("todo-", "");
@@ -272,10 +272,35 @@ export function WeekView({
         await updateTodo(todoId, { dueDate: parseISO(newDate) });
       }
     } else if (sourceType === "manual" || !sourceType) {
-      // Update calendar event date
+      // Update calendar event date and optionally time
       const event = events.find((e) => e.id === eventId);
       if (event) {
-        await updateEvent(eventId, { date: newDate });
+        const updates: { date: string; startTime?: string; endTime?: string } = { date: newDate };
+
+        // If targetHour is provided and event has time, update start/end times
+        if (targetHour !== undefined && event.startTime) {
+          // Calculate event duration in minutes
+          let durationMinutes = 60; // Default 1 hour
+          if (event.startTime && event.endTime) {
+            const [startH, startM] = event.startTime.split(":").map(Number);
+            const [endH, endM] = event.endTime.split(":").map(Number);
+            durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+            if (durationMinutes <= 0) durationMinutes = 60; // Handle edge cases
+          }
+
+          // Set new start time
+          const newStartHour = targetHour;
+          const newStartMinute = 0;
+          updates.startTime = `${newStartHour.toString().padStart(2, "0")}:${newStartMinute.toString().padStart(2, "0")}`;
+
+          // Calculate new end time
+          const newEndMinutes = newStartHour * 60 + newStartMinute + durationMinutes;
+          const newEndHour = Math.min(23, Math.floor(newEndMinutes / 60));
+          const newEndMinute = newEndMinutes % 60;
+          updates.endTime = `${newEndHour.toString().padStart(2, "0")}:${newEndMinute.toString().padStart(2, "0")}`;
+        }
+
+        await updateEvent(eventId, updates);
       }
     }
     // Note: Cards are not rescheduled via drag - they need different handling
