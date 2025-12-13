@@ -1642,20 +1642,21 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       )}
 
       {/* Show metadata section for notes - matches URL card styling */}
+      {/* Uses --card-overlay-text for glass mode compatibility */}
       {isNote && showMetadata && (
         <div className="space-y-1 text-sm mt-2">
           <div className="flex items-center gap-2">
-            <span style={{ color: 'var(--text-muted)' }}>
+            <span style={{ color: 'var(--card-overlay-text-muted)' }}>
               <FileText size={16} />
             </span>
-            <h3 className="flex-1 font-semibold transition-colors line-clamp-2" style={{ color: 'var(--text-primary)' }}>{displayTitle}</h3>
+            <h3 className="flex-1 font-semibold transition-colors line-clamp-2" style={{ color: 'var(--card-overlay-text)' }}>{displayTitle}</h3>
             {hasCalendarEvents && (
               <span style={{ color: 'var(--ds-accent)' }} className="flex-shrink-0" title="On your calendar">
                 <Calendar size={14} />
               </span>
             )}
             {isPinned && (
-              <span style={{ color: 'var(--text-muted)' }} className="flex-shrink-0">
+              <span style={{ color: 'var(--card-overlay-text-muted)' }} className="flex-shrink-0">
                 <Pin size={14} />
               </span>
             )}
@@ -1665,14 +1666,14 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
               className="inline-block rounded px-2 py-0.5 text-[10px]"
               style={{
                 background: 'var(--bg-surface-3)',
-                color: 'var(--text-muted)'
+                color: 'var(--card-overlay-text-muted)'
               }}
             >
               {card.type === "md-note" ? "Markdown" : "Text"}
             </span>
           </div>
           {card.collections && card.collections.length > 0 && (
-            <div className="flex flex-wrap gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            <div className="flex flex-wrap gap-1 text-[10px]" style={{ color: 'var(--card-overlay-text-muted)' }}>
               {card.collections
                 .filter((collection) =>
                   !collection.startsWith('den-')
@@ -1693,14 +1694,15 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       )}
 
       {/* Show text section for non-notes (not in grid mode - grid uses frosted overlay) */}
+      {/* Uses --card-overlay-text for glass mode compatibility (light text on dark blur) */}
       {!isNote && layout !== "grid" && (showMetadata || isPending || isError) && (
         <div className="space-y-1 text-sm mt-2">
           {showMetadata && (
             <div className="flex items-center gap-2">
-              <span style={{ color: 'var(--text-muted)' }}>
+              <span style={{ color: 'var(--card-overlay-text-muted)' }}>
                 <Bookmark size={16} />
               </span>
-              <h3 className="flex-1 font-semibold transition-colors line-clamp-2" style={{ color: 'var(--text-primary)' }}>{displayTitle}</h3>
+              <h3 className="flex-1 font-semibold transition-colors line-clamp-2" style={{ color: 'var(--card-overlay-text)' }}>{displayTitle}</h3>
               {hasCalendarEvents && (
                 <span style={{ color: 'var(--ds-accent)' }} className="flex-shrink-0" title="On your calendar">
                   <Calendar size={14} />
@@ -1709,10 +1711,10 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
             </div>
           )}
           {displaySubtext && showMetadata && (
-            <p className="text-xs line-clamp-2" style={{ color: 'var(--text-muted)' }}>{displaySubtext}</p>
+            <p className="text-xs line-clamp-2" style={{ color: 'var(--card-overlay-text-muted)' }}>{displaySubtext}</p>
           )}
           {showMetadata && card.collections && card.collections.length > 0 && (
-            <div className="flex flex-wrap gap-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+            <div className="flex flex-wrap gap-1 text-[10px]" style={{ color: 'var(--card-overlay-text-muted)' }}>
               {card.collections
                 .filter((collection) =>
                   !collection.startsWith('den-')
@@ -1732,7 +1734,7 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
           {(isPending || isError) && (
             <div className="flex items-center gap-2">
               {isPending && (
-                <span className="inline-block rounded px-2 py-0.5 text-[10px]" style={{ background: 'var(--bg-surface-3)', color: 'var(--text-secondary)' }}>
+                <span className="inline-block rounded px-2 py-0.5 text-[10px]" style={{ background: 'var(--bg-surface-3)', color: 'var(--card-overlay-text-muted)' }}>
                   Kit is Fetching
                 </span>
               )}
