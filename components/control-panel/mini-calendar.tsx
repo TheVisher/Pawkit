@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   format,
@@ -26,8 +26,18 @@ interface MiniCalendarProps {
 export function MiniCalendar({ onDateSelect, onWeekSelect }: MiniCalendarProps) {
   const [displayMonth, setDisplayMonth] = useState(new Date());
 
+  const currentMonth = useCalendarStore((state) => state.currentMonth);
+  const viewMode = useCalendarStore((state) => state.viewMode);
   const setCurrentMonth = useCalendarStore((state) => state.setCurrentMonth);
   const setViewMode = useCalendarStore((state) => state.setViewMode);
+
+  // Sync display month when main calendar changes (so mini calendar follows)
+  useEffect(() => {
+    // Only sync if viewing a different month
+    if (!isSameMonth(displayMonth, currentMonth)) {
+      setDisplayMonth(currentMonth);
+    }
+  }, [currentMonth]);
 
   // Generate calendar grid with weeks
   const calendarWeeks = useMemo(() => {
@@ -58,11 +68,15 @@ export function MiniCalendar({ onDateSelect, onWeekSelect }: MiniCalendarProps) 
     return weeks;
   }, [displayMonth]);
 
-  // Check if a week contains today
-  const isCurrentWeek = (weekStart: Date) => {
-    const today = new Date();
+  // Check if a week is the currently viewed week (based on currentMonth from store)
+  const isViewedWeek = (weekStart: Date) => {
     const weekEnd = addDays(weekStart, 6);
-    return today >= weekStart && today <= weekEnd;
+    return currentMonth >= weekStart && currentMonth <= weekEnd;
+  };
+
+  // Check if a day is the currently viewed day (in day view or week view)
+  const isSelectedDay = (day: Date) => {
+    return isSameDay(day, currentMonth);
   };
 
   const handlePrevMonth = () => setDisplayMonth(subMonths(displayMonth, 1));
@@ -70,6 +84,7 @@ export function MiniCalendar({ onDateSelect, onWeekSelect }: MiniCalendarProps) 
 
   const handleDateClick = (date: Date) => {
     setCurrentMonth(date);
+    setViewMode("day");
     onDateSelect?.(date);
   };
 
@@ -131,59 +146,78 @@ export function MiniCalendar({ onDateSelect, onWeekSelect }: MiniCalendarProps) 
 
       {/* Calendar grid */}
       <div className="space-y-0">
-        {calendarWeeks.map((week) => (
-          <div
-            key={week.weekNumber}
-            className="grid grid-cols-8 gap-0 rounded transition-colors"
-            style={{
-              background: isCurrentWeek(week.weekStart) ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
-            }}
-          >
-            {/* Week number */}
-            <button
-              onClick={() => handleWeekClick(week.weekStart)}
-              className="w-6 text-[10px] font-medium text-center py-1 rounded-l hover:bg-white/10 transition-colors"
-              style={{ color: 'var(--text-muted)' }}
-              title={`Jump to week ${week.weekNumber}`}
+        {calendarWeeks.map((week) => {
+          const isWeekViewed = isViewedWeek(week.weekStart);
+
+          return (
+            <div
+              key={week.weekNumber}
+              className="grid grid-cols-8 gap-0 rounded transition-colors"
+              style={{
+                background: isWeekViewed ? 'rgba(139, 92, 246, 0.12)' : 'transparent',
+              }}
             >
-              {week.weekNumber}
-            </button>
+              {/* Week number */}
+              <button
+                onClick={() => handleWeekClick(week.weekStart)}
+                className="w-6 text-[10px] font-medium text-center py-1 rounded-l hover:bg-white/10 transition-colors"
+                style={{
+                  color: isWeekViewed ? 'var(--ds-accent)' : 'var(--text-muted)',
+                }}
+                title={`Jump to week ${week.weekNumber}`}
+              >
+                {week.weekNumber}
+              </button>
 
-            {/* Days */}
-            {week.days.map((day) => {
-              const isCurrentMonth = isSameMonth(day, displayMonth);
-              const isTodayDate = isToday(day);
+              {/* Days */}
+              {week.days.map((day) => {
+                const isInDisplayMonth = isSameMonth(day, displayMonth);
+                const isTodayDate = isToday(day);
+                const isSelected = isSelectedDay(day);
 
-              return (
-                <button
-                  key={day.toISOString()}
-                  onClick={() => handleDateClick(day)}
-                  className="relative w-full aspect-square flex items-center justify-center text-[11px] rounded-full transition-colors hover:bg-white/10"
-                  style={{
-                    color: isTodayDate
-                      ? 'white'
-                      : isCurrentMonth
-                        ? 'var(--text-primary)'
-                        : 'var(--text-muted)',
-                    opacity: isCurrentMonth ? 1 : 0.4,
-                  }}
-                >
-                  {/* Today purple circle */}
-                  {isTodayDate && (
-                    <span
-                      className="absolute inset-0.5 rounded-full"
-                      style={{
-                        background: 'var(--ds-accent)',
-                        boxShadow: '0 0 8px var(--ds-accent)',
-                      }}
-                    />
-                  )}
-                  <span className="relative z-10">{format(day, "d")}</span>
-                </button>
-              );
-            })}
-          </div>
-        ))}
+                return (
+                  <button
+                    key={day.toISOString()}
+                    onClick={() => handleDateClick(day)}
+                    className="relative w-full aspect-square flex items-center justify-center text-[11px] transition-colors hover:bg-white/10"
+                    style={{
+                      color: isTodayDate
+                        ? 'white'
+                        : isSelected
+                          ? 'var(--ds-accent)'
+                          : isInDisplayMonth
+                            ? 'var(--text-primary)'
+                            : 'var(--text-muted)',
+                      opacity: isInDisplayMonth ? 1 : 0.4,
+                    }}
+                  >
+                    {/* Today purple filled circle */}
+                    {isTodayDate && (
+                      <span
+                        className="absolute inset-0.5 rounded-full"
+                        style={{
+                          background: 'var(--ds-accent)',
+                          boxShadow: '0 0 8px var(--ds-accent)',
+                        }}
+                      />
+                    )}
+                    {/* Selected day outline (when not today) */}
+                    {isSelected && !isTodayDate && (
+                      <span
+                        className="absolute inset-0.5 rounded-full"
+                        style={{
+                          border: '1.5px solid var(--ds-accent)',
+                          boxShadow: '0 0 6px var(--ds-accent)',
+                        }}
+                      />
+                    )}
+                    <span className="relative z-10">{format(day, "d")}</span>
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
