@@ -1510,10 +1510,10 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
       {layout === "grid" && showMetadata && !isNote && (
         <div className="px-2 py-2 flex flex-col justify-center">
           <div className="flex items-center gap-2">
-            <span className="text-white/70">
+            <span style={{ color: 'var(--card-overlay-text-muted)' }}>
               <Bookmark size={12} />
             </span>
-            <h3 className="flex-1 font-medium text-xs truncate text-white drop-shadow-sm">{displayTitle}</h3>
+            <h3 className="flex-1 font-medium text-xs truncate drop-shadow-sm" style={{ color: 'var(--card-overlay-text)' }}>{displayTitle}</h3>
             {hasCalendarEvents && (
               <span style={{ color: 'var(--ds-accent)' }} className="flex-shrink-0" title="On your calendar">
                 <Calendar size={10} />
@@ -1526,12 +1526,12 @@ function CardCellInner({ card, selected, showThumbnail, layout, area, onClick, o
                 .filter((collection) => !collection.startsWith('den-'))
                 .slice(0, 2)
                 .map((collection) => (
-                  <span key={collection} className="rounded px-1 py-0.5 truncate max-w-[60px] bg-black/30 text-white/90">
+                  <span key={collection} className="rounded px-1 py-0.5 truncate max-w-[60px] bg-black/20" style={{ color: 'var(--card-overlay-text)' }}>
                     {collection}
                   </span>
                 ))}
               {card.collections.filter((c) => !c.startsWith('den-')).length > 2 && (
-                <span className="text-white/70">+{card.collections.filter((c) => !c.startsWith('den-')).length - 2}</span>
+                <span style={{ color: 'var(--card-overlay-text-muted)' }}>+{card.collections.filter((c) => !c.startsWith('den-')).length - 2}</span>
               )}
             </div>
           )}
