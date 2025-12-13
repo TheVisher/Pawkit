@@ -9,7 +9,7 @@ interface DayColumnProps {
   events: CalendarEvent[];
   hourHeight?: number;
   onEventClick?: (event: CalendarEvent) => void;
-  onTimeSlotClick?: (hour: number) => void;
+  onTimeSlotClick?: (hour: number, event: React.MouseEvent) => void;
   isFirst?: boolean;
 }
 
@@ -56,7 +56,7 @@ export function DayColumn({
             height: hourHeight,
             borderTop: hour > 0 ? "1px solid var(--border-subtle)" : "none",
           }}
-          onClick={() => onTimeSlotClick?.(hour)}
+          onClick={(e) => onTimeSlotClick?.(hour, e)}
         />
       ))}
 
