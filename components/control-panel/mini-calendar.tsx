@@ -1,0 +1,190 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  startOfISOWeek,
+  endOfISOWeek,
+  addDays,
+  addMonths,
+  subMonths,
+  isSameMonth,
+  isSameDay,
+  isToday,
+  getISOWeek,
+} from "date-fns";
+import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
+
+interface MiniCalendarProps {
+  onDateSelect?: (date: Date) => void;
+  onWeekSelect?: (weekStart: Date) => void;
+}
+
+export function MiniCalendar({ onDateSelect, onWeekSelect }: MiniCalendarProps) {
+  const [displayMonth, setDisplayMonth] = useState(new Date());
+
+  const setCurrentMonth = useCalendarStore((state) => state.setCurrentMonth);
+  const setViewMode = useCalendarStore((state) => state.setViewMode);
+
+  // Generate calendar grid with weeks
+  const calendarWeeks = useMemo(() => {
+    const monthStart = startOfMonth(displayMonth);
+    const monthEnd = endOfMonth(displayMonth);
+
+    // Start from the Monday of the week containing the 1st
+    const calendarStart = startOfISOWeek(monthStart);
+    // End at the Sunday of the week containing the last day
+    const calendarEnd = endOfISOWeek(monthEnd);
+
+    const weeks: { weekNumber: number; weekStart: Date; days: Date[] }[] = [];
+    let currentDay = calendarStart;
+
+    while (currentDay <= calendarEnd) {
+      const weekStart = currentDay;
+      const weekNumber = getISOWeek(currentDay);
+      const days: Date[] = [];
+
+      for (let i = 0; i < 7; i++) {
+        days.push(currentDay);
+        currentDay = addDays(currentDay, 1);
+      }
+
+      weeks.push({ weekNumber, weekStart, days });
+    }
+
+    return weeks;
+  }, [displayMonth]);
+
+  // Check if a week contains today
+  const isCurrentWeek = (weekStart: Date) => {
+    const today = new Date();
+    const weekEnd = addDays(weekStart, 6);
+    return today >= weekStart && today <= weekEnd;
+  };
+
+  const handlePrevMonth = () => setDisplayMonth(subMonths(displayMonth, 1));
+  const handleNextMonth = () => setDisplayMonth(addMonths(displayMonth, 1));
+
+  const handleDateClick = (date: Date) => {
+    setCurrentMonth(date);
+    onDateSelect?.(date);
+  };
+
+  const handleWeekClick = (weekStart: Date) => {
+    setCurrentMonth(weekStart);
+    setViewMode("week");
+    onWeekSelect?.(weekStart);
+  };
+
+  return (
+    <div
+      className="rounded-xl p-3"
+      style={{
+        background: 'var(--bg-surface-1)',
+        boxShadow: 'var(--inset-shadow)',
+        border: 'var(--inset-border)',
+        borderBottomColor: 'var(--inset-border-bottom)',
+        borderRightColor: 'var(--inset-border-right)',
+      }}
+    >
+      {/* Month/Year Header with navigation */}
+      <div className="flex items-center justify-between mb-2">
+        <button
+          onClick={handlePrevMonth}
+          className="p-1 rounded hover:bg-white/10 transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <span
+          className="text-xs font-medium"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          {format(displayMonth, "MMMM yyyy")}
+        </span>
+        <button
+          onClick={handleNextMonth}
+          className="p-1 rounded hover:bg-white/10 transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+
+      {/* Day headers (Mon-Sun) */}
+      <div className="grid grid-cols-8 gap-0 mb-1">
+        {/* Empty cell for week number column */}
+        <div className="w-6" />
+        {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => (
+          <div
+            key={i}
+            className="text-[10px] font-medium text-center py-0.5"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="space-y-0">
+        {calendarWeeks.map((week) => (
+          <div
+            key={week.weekNumber}
+            className="grid grid-cols-8 gap-0 rounded transition-colors"
+            style={{
+              background: isCurrentWeek(week.weekStart) ? 'rgba(139, 92, 246, 0.08)' : 'transparent',
+            }}
+          >
+            {/* Week number */}
+            <button
+              onClick={() => handleWeekClick(week.weekStart)}
+              className="w-6 text-[10px] font-medium text-center py-1 rounded-l hover:bg-white/10 transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+              title={`Jump to week ${week.weekNumber}`}
+            >
+              {week.weekNumber}
+            </button>
+
+            {/* Days */}
+            {week.days.map((day) => {
+              const isCurrentMonth = isSameMonth(day, displayMonth);
+              const isTodayDate = isToday(day);
+
+              return (
+                <button
+                  key={day.toISOString()}
+                  onClick={() => handleDateClick(day)}
+                  className="relative w-full aspect-square flex items-center justify-center text-[11px] rounded-full transition-colors hover:bg-white/10"
+                  style={{
+                    color: isTodayDate
+                      ? 'white'
+                      : isCurrentMonth
+                        ? 'var(--text-primary)'
+                        : 'var(--text-muted)',
+                    opacity: isCurrentMonth ? 1 : 0.4,
+                  }}
+                >
+                  {/* Today purple circle */}
+                  {isTodayDate && (
+                    <span
+                      className="absolute inset-0.5 rounded-full"
+                      style={{
+                        background: 'var(--ds-accent)',
+                        boxShadow: '0 0 8px var(--ds-accent)',
+                      }}
+                    />
+                  )}
+                  <span className="relative z-10">{format(day, "d")}</span>
+                </button>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
