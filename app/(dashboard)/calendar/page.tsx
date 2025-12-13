@@ -6,12 +6,13 @@ import { useDataStore } from "@/lib/stores/data-store";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { CustomCalendar } from "@/components/calendar/custom-calendar";
 import { WeekView } from "@/components/calendar/week-view";
+import { DayView } from "@/components/calendar/day-view";
 import { CalendarDatePicker } from "@/components/calendar/calendar-date-picker";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { generateDailyNoteTitle, generateDailyNoteContent } from "@/lib/utils/daily-notes";
 import { CalendarIcon } from "lucide-react";
-import { addMonths, subMonths, addWeeks, subWeeks } from "date-fns";
+import { addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from "date-fns";
 import { CalendarEvent } from "@/lib/types/calendar";
 
 export default function CalendarPage() {
@@ -117,26 +118,45 @@ export default function CalendarPage() {
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Calendar</h1>
             <p className="text-sm text-muted-foreground">
-              {viewMode === "week"
-                ? "Week view - detailed view of your schedule"
-                : "View your scheduled cards and daily notes by date"}
+              {viewMode === "day"
+                ? "Day view - focus on a single day"
+                : viewMode === "week"
+                ? "Week view - see your weekly schedule"
+                : "Month view - overview of your calendar"}
             </p>
           </div>
         </div>
 
-        {/* Right-aligned month/year navigation with interactive pickers */}
+        {/* Right-aligned date navigation with interactive pickers */}
         <CalendarDatePicker
           currentDate={currentMonth}
           viewMode={viewMode}
           onDateChange={setCurrentMonth}
           onViewModeChange={setViewMode}
-          onPrevious={() => setCurrentMonth(viewMode === "week" ? subWeeks(currentMonth, 1) : subMonths(currentMonth, 1))}
-          onNext={() => setCurrentMonth(viewMode === "week" ? addWeeks(currentMonth, 1) : addMonths(currentMonth, 1))}
+          onPrevious={() => {
+            if (viewMode === "day") setCurrentMonth(subDays(currentMonth, 1));
+            else if (viewMode === "week") setCurrentMonth(subWeeks(currentMonth, 1));
+            else setCurrentMonth(subMonths(currentMonth, 1));
+          }}
+          onNext={() => {
+            if (viewMode === "day") setCurrentMonth(addDays(currentMonth, 1));
+            else if (viewMode === "week") setCurrentMonth(addWeeks(currentMonth, 1));
+            else setCurrentMonth(addMonths(currentMonth, 1));
+          }}
         />
       </div>
 
       {/* Conditional Calendar View */}
-      {viewMode === "week" ? (
+      {viewMode === "day" ? (
+        <DayView
+          cards={cards}
+          currentDate={currentMonth}
+          onDayClick={handleDayClick}
+          onCardClick={(card) => setActiveCardId(card.id)}
+          onEventClick={handleEventClick}
+          onCreateDailyNote={handleCreateDailyNote}
+        />
+      ) : viewMode === "week" ? (
         <WeekView
           cards={cards}
           currentMonth={currentMonth}

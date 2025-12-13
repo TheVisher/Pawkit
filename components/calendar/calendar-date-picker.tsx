@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { format, setMonth, setYear, startOfWeek, isToday, startOfMonth } from "date-fns";
-import { ChevronLeft, ChevronRight, ChevronDown, CalendarCheck, CalendarRange } from "lucide-react";
+import { format, setMonth, setYear, startOfWeek } from "date-fns";
+import { ChevronLeft, ChevronRight, ChevronDown, Calendar, CalendarDays, CalendarRange, Grid3X3 } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import type { CalendarViewMode } from "@/lib/hooks/use-calendar-store";
 
 const MONTHS = [
   { name: "Jan", value: 0 },
@@ -20,6 +21,12 @@ const MONTHS = [
   { name: "Dec", value: 11 },
 ];
 
+const VIEW_MODES: { value: CalendarViewMode; label: string; icon: typeof Calendar }[] = [
+  { value: "day", label: "Day", icon: CalendarDays },
+  { value: "week", label: "Week", icon: CalendarRange },
+  { value: "month", label: "Month", icon: Grid3X3 },
+];
+
 // Generate year range (current year - 10 to current year + 10)
 const generateYears = () => {
   const currentYear = new Date().getFullYear();
@@ -32,9 +39,9 @@ const generateYears = () => {
 
 interface CalendarDatePickerProps {
   currentDate: Date;
-  viewMode: "month" | "week";
+  viewMode: CalendarViewMode;
   onDateChange: (date: Date) => void;
-  onViewModeChange: (mode: "month" | "week") => void;
+  onViewModeChange: (mode: CalendarViewMode) => void;
   onPrevious: () => void;
   onNext: () => void;
 }
@@ -49,6 +56,7 @@ export function CalendarDatePicker({
 }: CalendarDatePickerProps) {
   const [monthOpen, setMonthOpen] = useState(false);
   const [yearOpen, setYearOpen] = useState(false);
+  const [viewModeOpen, setViewModeOpen] = useState(false);
   const yearListRef = useRef<HTMLDivElement>(null);
   const years = generateYears();
 
@@ -79,12 +87,27 @@ export function CalendarDatePicker({
     setYearOpen(false);
   };
 
+  const handleViewModeSelect = (mode: CalendarViewMode) => {
+    onViewModeChange(mode);
+    setViewModeOpen(false);
+  };
+
   // Format display based on view mode
-  const monthDisplay = viewMode === "week"
-    ? format(startOfWeek(currentDate), "MMM d")
-    : format(currentDate, "MMMM");
+  const getDateDisplay = () => {
+    switch (viewMode) {
+      case "day":
+        return format(currentDate, "EEEE, MMMM d");
+      case "week":
+        return `Week of ${format(startOfWeek(currentDate), "MMM d")}`;
+      case "month":
+      default:
+        return format(currentDate, "MMMM");
+    }
+  };
 
   const yearDisplay = format(currentDate, "yyyy");
+  const currentViewMode = VIEW_MODES.find(v => v.value === viewMode) || VIEW_MODES[2];
+  const ViewModeIcon = currentViewMode.icon;
 
   return (
     <div className="flex items-center gap-2">
@@ -92,24 +115,20 @@ export function CalendarDatePicker({
       <button
         onClick={onPrevious}
         className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
-        aria-label={viewMode === "week" ? "Previous week" : "Previous month"}
+        aria-label="Previous"
       >
         <ChevronLeft size={20} />
       </button>
 
       {/* Date display with pickers */}
-      <div className="flex items-center gap-1 min-w-[180px] justify-center">
-        {viewMode === "week" && (
-          <span className="text-lg font-semibold text-foreground mr-1">Week of</span>
-        )}
-
-        {/* Month picker */}
+      <div className="flex items-center gap-1 min-w-[200px] justify-center">
+        {/* Date picker - shows different format based on view mode */}
         <Popover open={monthOpen} onOpenChange={setMonthOpen}>
           <PopoverTrigger asChild>
             <button
               className="text-lg font-semibold text-foreground hover:text-accent transition-colors flex items-center gap-0.5 px-1 rounded hover:bg-white/5"
             >
-              {monthDisplay}
+              {getDateDisplay()}
               <ChevronDown size={14} className="opacity-50" />
             </button>
           </PopoverTrigger>
@@ -144,11 +163,6 @@ export function CalendarDatePicker({
             </div>
           </PopoverContent>
         </Popover>
-
-        {/* Comma separator for week view */}
-        {viewMode === "week" && (
-          <span className="text-lg font-semibold text-foreground">,</span>
-        )}
 
         {/* Year picker */}
         <Popover open={yearOpen} onOpenChange={setYearOpen}>
@@ -201,7 +215,7 @@ export function CalendarDatePicker({
       <button
         onClick={onNext}
         className="p-1.5 rounded-lg hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
-        aria-label={viewMode === "week" ? "Next week" : "Next month"}
+        aria-label="Next"
       >
         <ChevronRight size={20} />
       </button>
@@ -211,11 +225,8 @@ export function CalendarDatePicker({
 
       {/* Today button */}
       <button
-        onClick={() => {
-          onDateChange(new Date());
-          onViewModeChange("month");
-        }}
-        className="px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5"
+        onClick={() => onDateChange(new Date())}
+        className="px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all"
         style={{
           background: 'transparent',
           color: 'var(--text-muted)',
@@ -229,40 +240,60 @@ export function CalendarDatePicker({
           e.currentTarget.style.color = 'var(--text-muted)';
         }}
       >
-        <CalendarCheck size={14} />
         Today
       </button>
 
-      {/* Week toggle */}
-      <button
-        onClick={() => {
-          onDateChange(new Date());
-          onViewModeChange(viewMode === "week" ? "month" : "week");
-        }}
-        className="px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5"
-        style={viewMode === "week" ? {
-          background: 'var(--ds-accent)',
-          color: 'white',
-        } : {
-          background: 'transparent',
-          color: 'var(--text-muted)',
-        }}
-        onMouseEnter={(e) => {
-          if (viewMode !== "week") {
-            e.currentTarget.style.background = 'var(--bg-surface-3)';
-            e.currentTarget.style.color = 'var(--text-primary)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          if (viewMode !== "week") {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'var(--text-muted)';
-          }
-        }}
-      >
-        <CalendarRange size={14} />
-        Week
-      </button>
+      {/* View mode dropdown */}
+      <Popover open={viewModeOpen} onOpenChange={setViewModeOpen}>
+        <PopoverTrigger asChild>
+          <button
+            className="px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all flex items-center gap-1.5"
+            style={{
+              background: 'var(--ds-accent)',
+              color: 'white',
+            }}
+          >
+            <ViewModeIcon size={14} />
+            {currentViewMode.label}
+            <ChevronDown size={12} />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[140px] p-1.5" align="end">
+          <div className="space-y-0.5">
+            {VIEW_MODES.map((mode) => {
+              const Icon = mode.icon;
+              const isActive = viewMode === mode.value;
+              return (
+                <button
+                  key={mode.value}
+                  onClick={() => handleViewModeSelect(mode.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2"
+                  style={isActive ? {
+                    background: 'var(--ds-accent)',
+                    color: 'white',
+                  } : {
+                    background: 'transparent',
+                    color: 'var(--text-secondary)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'var(--bg-surface-3)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'transparent';
+                    }
+                  }}
+                >
+                  <Icon size={14} />
+                  {mode.label}
+                </button>
+              );
+            })}
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
