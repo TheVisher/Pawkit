@@ -114,15 +114,17 @@ export function KitChatPanelOverlay() {
               const isContextChange = msg.type === 'context-change' ||
                 (msg.cardId && msg.role === 'assistant');
 
-              // Render context change as full-width divider
+              // Render context change as raised pill with purple glow
               if (isContextChange) {
                 return (
-                  <div key={msg.id} className="-mx-3 my-4">
+                  <div key={msg.id} className="flex justify-center my-4">
                     <div
-                      className="py-3 px-4 text-center text-sm font-medium"
+                      className="px-4 py-2 rounded-xl text-sm font-medium"
                       style={{
-                        background: 'var(--ds-accent)',
-                        color: 'white',
+                        background: 'var(--bg-surface-3)',
+                        color: 'var(--text-primary)',
+                        boxShadow: '0 0 12px var(--ds-accent-subtle), var(--raised-shadow-sm)',
+                        border: '1px solid var(--ds-accent)',
                       }}
                     >
                       🎬 Context: {msg.cardTitle || msg.content}
