@@ -1,6 +1,21 @@
 # Claude Code Instructions for Pawkit Project
 
-## 📚 SKILL SYSTEM - READ FIRST
+## 📖 PROJECT CONTEXT - START HERE
+
+**For comprehensive project context, read `PAWKIT_BIBLE.md` at the project root.**
+
+This is a local-first bookmarking and note-taking app. Key facts:
+- **Tech**: Next.js 14, React, TypeScript, Tailwind, Supabase, IndexedDB
+- **Architecture**: IndexedDB is source of truth, server is backup
+- **Data**: Cards reference collections by `slug` (not `id`)
+- **UI**: Must use CSS variables for theme compatibility
+- **Package manager**: pnpm (not npm)
+
+The Bible contains: architecture, feature inventory, UI patterns, sync logic, security model, known issues, and links to all other docs.
+
+---
+
+## 📚 SKILL SYSTEM
 
 **Before starting any task**, check the skill index to find relevant skills:
 
@@ -71,7 +86,7 @@ npm run prisma:push:force
 ## ✅ REQUIRED BEFORE ANY DATABASE OPERATION:
 
 ### Step 1: Read SAFETY.md
-Before ANY database-related command, you MUST read and follow [SAFETY.md](../SAFETY.md).
+Before ANY database-related command, you MUST read and follow [SAFETY.md](../docs/SAFETY.md).
 
 ### Step 2: Check Environment
 ```bash
@@ -231,7 +246,7 @@ This project has multiple layers of protection:
    - All dangerous commands are blocked
    - Safe commands route through protection scripts
 
-4. **[SAFETY.md](../SAFETY.md)**
+4. **[SAFETY.md](../docs/SAFETY.md)**
    - Complete safety documentation
    - Recovery procedures
    - Best practices
@@ -241,13 +256,38 @@ This project has multiple layers of protection:
 ## 🚨 IF USER REPORTS DATA LOSS:
 
 1. **STOP immediately** - don't run any more commands
+
 2. **Check for backups**:
    ```bash
    ls -lht backups/ | head -10
    ```
-3. **Tell user**: "Check Supabase dashboard → Database → Backups"
-4. **Read SAFETY.md** section "WHAT TO DO IF DATA LOSS HAPPENS"
+
+3. **Recovery - Local Database (SQLite)**:
+   ```bash
+   # Restore from most recent backup
+   cd backups
+   ls -lt | head -5  # List recent backups
+   cp backup_TIMESTAMP.db ../prisma/dev.db
+   ```
+
+4. **Recovery - Production Database (Supabase)**:
+   - Go to Supabase Dashboard → Database → Backups
+   - Select most recent backup
+   - Click "Restore" (restores entire database)
+   - Verify data is back
+
 5. **Guide user through recovery** - don't try to fix it yourself
+
+---
+
+## 🔐 SECURITY NOTES:
+
+1. **Never commit** `.env` files with real credentials
+2. **Never share** production DATABASE_URL publicly
+3. **Always use** environment variables for sensitive data
+4. **Rotate credentials** if they're exposed
+5. **Use separate databases** for dev/staging/production
+6. **Enable Point-in-Time Recovery** in Supabase for production
 
 ---
 
@@ -294,7 +334,7 @@ I'll open Prisma Studio to inspect the data: npm run prisma:studio"
 
 ## 🎓 REMEMBER:
 
-1. **Read [SAFETY.md](../SAFETY.md) before ANY database command**
+1. **Read [SAFETY.md](../docs/SAFETY.md) before ANY database command**
 2. **Check environment - is it production?**
 3. **Ask user permission first**
 4. **Recommend backups**
