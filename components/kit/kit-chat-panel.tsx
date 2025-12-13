@@ -165,71 +165,29 @@ export function KitChatPanel() {
         ) : (
           <>
             {messages.map((msg) => {
-              // Context change marker
+              // Context change - minimal pill style
               if (msg.type === 'context-change') {
                 return (
                   <div
                     key={msg.id}
-                    className="w-full py-2 px-4 text-xs text-center rounded-lg my-2"
-                    style={{
-                      background: 'var(--bg-surface-1)',
-                      color: 'var(--text-muted)',
-                    }}
+                    className="flex justify-center my-3"
                   >
-                    📹 Context: &quot;{msg.content}&quot;
+                    <div
+                      className="py-1.5 px-4 text-xs rounded-full"
+                      style={{
+                        background: 'var(--bg-surface-1)',
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      🎬 {msg.content}
+                    </div>
                   </div>
                 );
               }
 
-              // Summary card
+              // Skip summary-card type (summary is in system prompt)
               if (msg.type === 'summary-card') {
-                return (
-                  <div
-                    key={msg.id}
-                    className="rounded-xl p-4 my-2"
-                    style={{
-                      background: 'var(--bg-surface-2)',
-                      boxShadow: 'var(--shadow-2)',
-                      border: '1px solid var(--border-subtle)',
-                      borderTopColor: 'var(--border-highlight-top)',
-                      borderLeftColor: 'var(--border-highlight-left)',
-                    }}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <Sparkles className="w-4 h-4" style={{ color: 'var(--ds-accent)' }} />
-                      <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-                        AI Summary
-                      </span>
-                    </div>
-                    <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-                      {msg.content}
-                    </p>
-                    <div className="flex gap-2 mt-3">
-                      <button
-                        onClick={() => copyToClipboard(msg.content, msg.id)}
-                        className="text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
-                        style={{
-                          background: 'var(--bg-surface-3)',
-                          color: 'var(--text-secondary)',
-                        }}
-                      >
-                        {copiedId === msg.id ? <Check size={12} /> : <Copy size={12} />}
-                        {copiedId === msg.id ? 'Copied' : 'Copy'}
-                      </button>
-                      <button
-                        onClick={() => saveAsNote(msg.content)}
-                        className="text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
-                        style={{
-                          background: 'var(--bg-surface-3)',
-                          color: 'var(--text-secondary)',
-                        }}
-                      >
-                        <FileText size={12} />
-                        Save as note
-                      </button>
-                    </div>
-                  </div>
-                );
+                return null;
               }
 
               // Regular user/assistant messages
