@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
 import { format, isToday } from "date-fns";
 import { CalendarEvent } from "@/lib/types/calendar";
 import {
@@ -13,6 +13,7 @@ import { DayColumn } from "./day-column";
 import { CurrentTimeIndicator } from "./current-time-indicator";
 import { AllDaySection } from "./all-day-section";
 import { ResolvedHoliday } from "@/lib/data/us-holidays";
+import { EventCreationPopover } from "../event-creation-popover";
 
 interface TimeGridProps {
   weekDays: Date[];
@@ -37,6 +38,32 @@ export function TimeGrid({
 }: TimeGridProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const totalGridHeight = 24 * hourHeight;
+
+  // Event creation popover state
+  const [popoverState, setPopoverState] = useState<{
+    isOpen: boolean;
+    date: Date;
+    hour: number;
+    position: { x: number; y: number };
+  } | null>(null);
+
+  const handleTimeSlotClick = (date: Date, hour: number, event: React.MouseEvent) => {
+    // Get click position for popover
+    const rect = (event.target as HTMLElement).getBoundingClientRect();
+    setPopoverState({
+      isOpen: true,
+      date,
+      hour,
+      position: {
+        x: rect.right + 8,
+        y: rect.top,
+      },
+    });
+  };
+
+  const closePopover = () => {
+    setPopoverState(null);
+  };
 
   // Auto-scroll to current time on mount
   useEffect(() => {
@@ -184,10 +211,7 @@ export function TimeGrid({
                   events={dayEvents}
                   hourHeight={hourHeight}
                   onEventClick={onEventClick}
-                  onTimeSlotClick={(hour) => {
-                    // Could open event creation dialog at this time
-                    onDayClick?.(day);
-                  }}
+                  onTimeSlotClick={(hour, e) => handleTimeSlotClick(day, hour, e)}
                   isFirst={index === 0}
                 />
               );
@@ -201,6 +225,16 @@ export function TimeGrid({
           </div>
         </div>
       </div>
+
+      {/* Event creation popover */}
+      {popoverState && (
+        <EventCreationPopover
+          date={popoverState.date}
+          hour={popoverState.hour}
+          position={popoverState.position}
+          onClose={closePopover}
+        />
+      )}
     </div>
   );
 }
