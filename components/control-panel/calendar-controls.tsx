@@ -276,7 +276,13 @@ export function CalendarControls() {
           <button
             onClick={handleToggleView}
             className="px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
-            style={{
+            style={viewMode === "week" ? {
+              background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+              color: 'var(--ds-accent)',
+              boxShadow: 'var(--raised-shadow)',
+              border: '1px solid transparent',
+              borderTopColor: 'var(--raised-border-top)',
+            } : {
               background: 'var(--bg-surface-3)',
               border: '1px solid var(--border-subtle)',
               color: 'var(--text-secondary)',
