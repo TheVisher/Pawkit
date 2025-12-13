@@ -412,6 +412,37 @@ See `.claude/plans/KIT_OVERLAY_UI.md` for full implementation plan:
 - [ ] **Embeddings** — Semantic search for better relevance (pgvector)
 - [ ] **Caching** — Cache library context for repeat queries
 
+### Kit OCR (Auto Image Text Extraction) — Future/Nice to Have
+**What:** When users upload images, Kit automatically extracts text via OCR and stores it with the card.
+
+**Flow:**
+```
+User uploads image → Image goes to Filen (storage) → Kit (Claude Haiku) extracts text
+→ Extracted text stored in card metadata (Supabase + IndexedDB) → Now searchable offline
+```
+
+**Cost:** ~$0.04/month per 100 images (negligible - just another Kit API call)
+
+**Behavior:**
+- [ ] Auto-OCR for all uploaded images (no user approval needed)
+- [ ] Extracted text lives with card data, not the image
+- [ ] Enables offline search - searching IndexedDB text, not hitting Filen or Claude
+
+**Use Cases:**
+- Screenshots of paywalled articles
+- Receipts and invoices
+- Warranties and terms of service
+- Business cards
+- Handwritten notes
+- Instagram posts, tweets that might get deleted
+
+**Kit Intelligence Layer on Top of OCR:**
+- [ ] Summarize documents
+- [ ] Extract structured data (dates, amounts, names, phone numbers)
+- [ ] Auto-tag based on content
+- [ ] Create calendar reminders from dates found
+- [ ] Answer questions about uploaded documents later
+
 ---
 
 ## AI Features
@@ -539,6 +570,50 @@ Tags exist but are auto-generated when a card is added to a Pawkit (card gets th
   - Cron job to check due reminders and send notifications
   - Integrates with Rediscover: "Remind me later" as skip action
 
+### Subscription/Bill Calendar Tracking — Future/Nice to Have
+**What:** Screenshot subscription confirmations → Kit extracts info → auto-adds to calendar as recurring bill reminder.
+
+**Flow:**
+```
+User on Netflix confirmation page
+    ↓
+Opens Pawkit extension → Capture snippet tool
+    ↓
+Drags over confirmation area showing:
+  - "Thanks for subscribing!"
+  - "Your subscription renews on the 20th"
+  - "$15.99/month"
+    ↓
+Clicks "Extract Info"
+    ↓
+Kit OCRs and extracts:
+  - Service: Netflix
+  - Amount: $15.99
+  - Renewal: 20th of every month
+    ↓
+Kit: "I found a subscription. Add to calendar?"
+  [Netflix - $15.99 - Renews monthly on the 20th]
+  [Add to Calendar] [Skip]
+    ↓
+Creates recurring calendar event
+    ↓
+User has bill reminder calendar in Pawkit
+```
+
+**Why This Matters:**
+- Users hate tracking subscription due dates
+- No need to keep the screenshot - just extract the info
+- Calendar becomes a bill reminder system
+- Leverages existing features: Calendar events, recurring events, Kit, file uploads, extension
+
+**Product Angle:** "Pawkit: Your second brain for subscriptions, warranties, receipts, and everything you forget"
+
+**Dependencies:**
+- [ ] Extension Snippet Tool (capture flow)
+- [ ] Kit OCR (text extraction)
+- [ ] Calendar recurring events
+- [ ] Kit structured data extraction
+
 ### Library & Views
 - [ ] **Customizable columns in list views** — Show/hide columns, localStorage per view
 
@@ -560,6 +635,37 @@ Tags exist but are auto-generated when a card is added to a Pawkit (card gets th
   - Only capture URLs, not all text (avoid passwords)
   - Clear indicator when active, easy toggle on/off
 - [ ] **Portable Browsing vision** — Tab sync, cross-browser context ("Your internet in your Pawkit")
+
+### Extension Snippet Tool — Future/Nice to Have
+**What:** Built-in screenshot/snippet capture in the browser extension with two modes.
+
+**Current flow (clunky):**
+```
+Take screenshot (OS level) → Open extension → Upload image
+```
+
+**New flow:**
+```
+Click extension → "Capture" → drag selection → choose mode → done
+```
+
+**Two modes after capture:**
+
+**"Extract Info" Mode:**
+- [ ] Image sent to Kit for OCR
+- [ ] Kit extracts structured data (service name, amounts, dates, etc.)
+- [ ] Creates card/calendar event with just the info
+- [ ] Image discarded - never stored
+- **Use case:** Subscription confirmations, receipts you don't need to keep
+
+**"Save Image" Mode:**
+- [ ] Image uploaded to Filen
+- [ ] Kit OCRs for searchability
+- [ ] Card created with image + extracted text
+- [ ] Full preservation
+- **Use case:** Flyers, posters, documents you want to keep
+
+**Technical:** Same capture flow, two endpoints - one skips storage step.
 
 ### Knowledge Graph
 - [ ] **Fix existing graph** — Currently broken/disabled
@@ -706,4 +812,4 @@ npx pawkit-mcp-setup
 
 ---
 
-*Last conversation: December 10, 2025 — Connected Platforms, Note Folders, Topic Notes, AI linking, Reminders, Clipboard capture, BYOAI, MCP integration, Kit Actions (calendar writing)*
+*Last conversation: December 12, 2025 — Kit OCR (auto image text extraction), Extension Snippet Tool (capture + extract/save modes), Subscription/Bill Calendar Tracking*
