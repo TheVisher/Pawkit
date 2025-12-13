@@ -55,31 +55,29 @@ export function TimeGrid({
     anchor: "left" | "right";
   } | null>(null);
 
-  const handleTimeSlotClick = (date: Date, hour: number, event: React.MouseEvent) => {
-    // Get the clicked cell's bounding rect
-    const cellRect = (event.target as HTMLElement).getBoundingClientRect();
+  const handleTimeSlotClick = (date: Date, hour: number, columnRect: DOMRect) => {
     // Get the calendar container's bounding rect
     const containerRect = containerRef.current?.getBoundingClientRect();
 
     if (!containerRect) return;
 
-    // Determine if popover should appear on left or right of the cell
-    const spaceOnRight = containerRect.right - cellRect.right;
-    const spaceOnLeft = cellRect.left - containerRect.left;
+    // Determine if popover should appear on left or right of the column
+    const spaceOnRight = containerRect.right - columnRect.right;
 
     // Prefer right side, but flip to left if not enough space
     const anchor = spaceOnRight >= POPOVER_WIDTH + 8 ? "right" : "left";
 
-    // Calculate x position
+    // Calculate x position - anchor to column edge
     let x: number;
     if (anchor === "right") {
-      x = cellRect.right + 8; // 8px gap from cell edge
+      x = columnRect.right + 8; // 8px gap from column's right edge
     } else {
-      x = cellRect.left - POPOVER_WIDTH - 8; // Position to left of cell
+      x = columnRect.left - POPOVER_WIDTH - 8; // Position to left of column
     }
 
-    // Calculate y position - align with top of cell, but keep within bounds
-    let y = cellRect.top;
+    // Calculate y position based on the hour clicked
+    const hourOffset = hour * hourHeight;
+    let y = columnRect.top + hourOffset;
 
     // Ensure popover doesn't go above container
     if (y < containerRect.top) {
@@ -252,7 +250,7 @@ export function TimeGrid({
                   events={dayEvents}
                   hourHeight={hourHeight}
                   onEventClick={onEventClick}
-                  onTimeSlotClick={(hour, e) => handleTimeSlotClick(day, hour, e)}
+                  onTimeSlotClick={(hour, columnRect) => handleTimeSlotClick(day, hour, columnRect)}
                   onEventDrop={(eventId, sourceType) => {
                     onEventReschedule?.(eventId, dateStr, sourceType);
                   }}
