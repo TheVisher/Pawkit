@@ -81,11 +81,7 @@ export function EventCreationPopover({
     };
   }, [onClose]);
 
-  // Calculate position to keep popover in viewport
-  const adjustedPosition = {
-    x: Math.min(position.x, window.innerWidth - 380),
-    y: Math.min(position.y, window.innerHeight - 500),
-  };
+  // Use position directly - parent handles bounds calculation
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -128,8 +124,8 @@ export function EventCreationPopover({
       ref={popoverRef}
       className="fixed z-50 w-[340px] rounded-xl shadow-2xl overflow-hidden"
       style={{
-        left: adjustedPosition.x,
-        top: adjustedPosition.y,
+        left: position.x,
+        top: position.y,
         background: "var(--bg-surface-2)",
         border: "1px solid var(--border-subtle)",
         boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",

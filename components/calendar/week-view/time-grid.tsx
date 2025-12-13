@@ -38,8 +38,13 @@ export function TimeGrid({
   onDayClick,
   onEventReschedule,
 }: TimeGridProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const totalGridHeight = 24 * hourHeight;
+
+  // Popover dimensions (approximate)
+  const POPOVER_WIDTH = 340;
+  const POPOVER_HEIGHT = 480;
 
   // Event creation popover state
   const [popoverState, setPopoverState] = useState<{
@@ -47,18 +52,51 @@ export function TimeGrid({
     date: Date;
     hour: number;
     position: { x: number; y: number };
+    anchor: "left" | "right";
   } | null>(null);
 
   const handleTimeSlotClick = (date: Date, hour: number, event: React.MouseEvent) => {
-    // Position popover at click location
+    // Get the clicked cell's bounding rect
+    const cellRect = (event.target as HTMLElement).getBoundingClientRect();
+    // Get the calendar container's bounding rect
+    const containerRect = containerRef.current?.getBoundingClientRect();
+
+    if (!containerRect) return;
+
+    // Determine if popover should appear on left or right of the cell
+    const spaceOnRight = containerRect.right - cellRect.right;
+    const spaceOnLeft = cellRect.left - containerRect.left;
+
+    // Prefer right side, but flip to left if not enough space
+    const anchor = spaceOnRight >= POPOVER_WIDTH + 8 ? "right" : "left";
+
+    // Calculate x position
+    let x: number;
+    if (anchor === "right") {
+      x = cellRect.right + 8; // 8px gap from cell edge
+    } else {
+      x = cellRect.left - POPOVER_WIDTH - 8; // Position to left of cell
+    }
+
+    // Calculate y position - align with top of cell, but keep within bounds
+    let y = cellRect.top;
+
+    // Ensure popover doesn't go above container
+    if (y < containerRect.top) {
+      y = containerRect.top + 8;
+    }
+
+    // Ensure popover doesn't go below container
+    if (y + POPOVER_HEIGHT > containerRect.bottom) {
+      y = containerRect.bottom - POPOVER_HEIGHT - 8;
+    }
+
     setPopoverState({
       isOpen: true,
       date,
       hour,
-      position: {
-        x: event.clientX + 8,
-        y: event.clientY - 20,
-      },
+      position: { x, y },
+      anchor,
     });
   };
 
@@ -80,6 +118,7 @@ export function TimeGrid({
 
   return (
     <div
+      ref={containerRef}
       className="flex flex-col h-full overflow-hidden rounded-xl"
       style={{
         background: "var(--bg-surface-2)",
