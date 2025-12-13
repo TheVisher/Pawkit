@@ -64,30 +64,58 @@ export function CalendarDatePicker({
 
   // Scroll to current year when picker opens
   useEffect(() => {
-    if (datePickerOpen && yearListRef.current) {
-      // Use setTimeout to ensure DOM is fully rendered and measured
-      const timer = setTimeout(() => {
-        if (yearListRef.current) {
-          const container = yearListRef.current;
-          // Find the index of current year in the years array
-          const yearIndex = years.indexOf(currentYearValue);
-          if (yearIndex === -1) return;
+    if (!datePickerOpen) return;
 
-          // Get the first year button to measure actual button height
-          const firstButton = container.querySelector('button') as HTMLElement;
-          if (!firstButton) return;
+    let attempts = 0;
+    const maxAttempts = 20;
 
-          const buttonHeight = firstButton.offsetHeight + 0; // py-1.5 is included in offsetHeight
-          const paddingTop = 60; // py-[60px] on inner wrapper
-          const containerHeight = container.clientHeight;
+    const scrollToYear = () => {
+      attempts++;
+      const container = yearListRef.current;
 
-          // Calculate position: paddingTop + (index * buttonHeight) - center offset
-          const targetScrollTop = paddingTop + (yearIndex * buttonHeight) - (containerHeight / 2) + (buttonHeight / 2);
-          container.scrollTop = Math.max(0, targetScrollTop);
+      if (!container) {
+        if (attempts < maxAttempts) {
+          requestAnimationFrame(scrollToYear);
         }
-      }, 300);
-      return () => clearTimeout(timer);
-    }
+        return;
+      }
+
+      // Check if container has scrollable content (scrollHeight > clientHeight)
+      if (container.scrollHeight <= container.clientHeight) {
+        if (attempts < maxAttempts) {
+          requestAnimationFrame(scrollToYear);
+        }
+        return;
+      }
+
+      // Find the index of current year in the years array
+      const yearIndex = years.indexOf(currentYearValue);
+      if (yearIndex === -1) return;
+
+      // Get the first year button to measure actual button height
+      const firstButton = container.querySelector('button') as HTMLElement;
+      if (!firstButton) {
+        if (attempts < maxAttempts) {
+          requestAnimationFrame(scrollToYear);
+        }
+        return;
+      }
+
+      const buttonHeight = firstButton.offsetHeight;
+      const paddingTop = 60; // py-[60px] on inner wrapper
+      const containerHeight = container.clientHeight;
+
+      // Calculate position: paddingTop + (index * buttonHeight) - center offset
+      const targetScrollTop = paddingTop + (yearIndex * buttonHeight) - (containerHeight / 2) + (buttonHeight / 2);
+      container.scrollTop = Math.max(0, targetScrollTop);
+    };
+
+    // Start polling after a brief delay for popover to begin rendering
+    const timer = setTimeout(() => {
+      requestAnimationFrame(scrollToYear);
+    }, 50);
+
+    return () => clearTimeout(timer);
   }, [datePickerOpen, currentYearValue, years]);
 
   const handleMonthSelect = (monthValue: number) => {
