@@ -52,6 +52,7 @@ description: Living document of issues encountered, their fixes, and prevention 
    - Filen Sync Broken - Path Format Change
    - Google Drive Connector Not Appearing - Duplicate UI Components
    - Missing Import - useConnectorStore in Data Store
+   - Kit Chat Panel - Multiple Components (Context Divider Not Showing)
 3. [Debugging Strategies](#debugging-strategies)
 4. [How to Add New Issues](#how-to-add-new-issues)
 5. [Maintenance](#maintenance)
@@ -5191,6 +5192,80 @@ const { googleDrive } = useConnectorStore.getState();
 
 ---
 
+### 46. Kit Chat Panel - Multiple Components (Context Divider Not Showing)
+
+**Date**: December 12, 2025
+**Severity**: Medium (Feature not working)
+**Component**: Kit AI Assistant UI
+
+**Symptom**: Context change divider (purple `🎬 Context:` bar) not appearing when clicking "Ask Kit about this video" despite code being correct.
+
+**Root Cause**: Kit has **THREE different chat panel components** that render in different contexts:
+
+| Component | File | Used When |
+|-----------|------|-----------|
+| `KitChatPanel` | `components/kit/kit-chat-panel.tsx` | Used by `KitSection` |
+| `KitChatPanelOverlay` | `components/kit/kit-chat-panel-overlay.tsx` | Used by `KitOverlay` (floating/anchored mode) |
+| `KitSidebarEmbed` | `components/kit/kit-sidebar-embed.tsx` | **Used when a card is open** (embedded in sidebar) |
+
+When viewing a YouTube video (card modal open), Kit is embedded using `KitSidebarEmbed`, NOT the overlay components.
+
+**What Failed**:
+```tsx
+// Only edited kit-chat-panel.tsx and kit-chat-panel-overlay.tsx
+// But user was viewing a card, which uses kit-sidebar-embed.tsx!
+```
+
+**What Worked**:
+```tsx
+// Must add context-change detection to ALL THREE components:
+// 1. kit-chat-panel.tsx
+// 2. kit-chat-panel-overlay.tsx
+// 3. kit-sidebar-embed.tsx  <-- This was the missing one!
+
+{messages.map((msg) => {
+  const isContextChange = msg.type === 'context-change' ||
+    (msg.cardId && msg.role === 'assistant');
+
+  if (isContextChange) {
+    return (
+      <div key={msg.id} className="-mx-3 my-3">
+        <div
+          className="py-2.5 px-3 text-center text-sm font-medium"
+          style={{ background: 'var(--ds-accent)', color: 'white' }}
+        >
+          🎬 Context: {msg.cardTitle || msg.content}
+        </div>
+      </div>
+    );
+  }
+  // ... regular message rendering
+})}
+```
+
+**Prevention**:
+- When modifying Kit UI, check ALL THREE chat panel components
+- Use grep to find all Kit rendering locations: `grep -r "KitChat" --include="*.tsx"`
+- The `isEmbeddedInSidebar` state determines which component renders
+- Test Kit changes in BOTH contexts: floating overlay AND card sidebar
+
+**Key Architecture**:
+```
+KitOverlay (layout.tsx)
+  └── if isEmbeddedInSidebar → return null (don't render)
+  └── else → render KitChatPanelOverlay
+
+CardDetailsPanel (when card open)
+  └── KitSidebarEmbed (embedded Kit)
+```
+
+**Files Changed**:
+- `components/kit/kit-chat-panel.tsx`
+- `components/kit/kit-chat-panel-overlay.tsx`
+- `components/kit/kit-sidebar-embed.tsx`
+
+---
+
 ## Issue Categories Quick Reference
 
 **API Routes**:
@@ -5227,6 +5302,7 @@ const { googleDrive } = useConnectorStore.getState();
 - Modal state management
 - Window.prompt() vs custom modals
 - Visual consistency (glassmorphism)
+- Kit has THREE chat panel components (check all when modifying)
 
 **Security**:
 - Auth failures
@@ -5265,7 +5341,7 @@ const { googleDrive } = useConnectorStore.getState();
 
 ---
 
-**Last Updated**: November 30, 2025 (Added Issues #42-45: Google Drive integration issues - URL encoding, path format, duplicate UI, missing imports)
+**Last Updated**: December 12, 2025 (Added Issue #46: Kit Chat Panel multiple components - context divider not showing)
 **Next Review**: April 2025 (Quarterly)
 
 **This is a living document. Keep it current!**
