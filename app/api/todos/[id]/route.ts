@@ -54,7 +54,13 @@ export async function PATCH(
     }
 
     // Update todo
-    const updateData: { text?: string; completed?: boolean } = {};
+    const updateData: {
+      text?: string;
+      completed?: boolean;
+      dueDate?: Date | null;
+      completedAt?: Date | null;
+    } = {};
+
     if (body.text !== undefined) {
       const trimmedText = body.text.trim();
       // Validate length (max 500 characters)
@@ -66,7 +72,20 @@ export async function PATCH(
       }
       updateData.text = trimmedText;
     }
-    if (body.completed !== undefined) updateData.completed = body.completed;
+
+    if (body.completed !== undefined) {
+      updateData.completed = body.completed;
+      // Set completedAt when marking as complete, clear when uncompleting
+      if (body.completed && !existingTodo.completed) {
+        updateData.completedAt = new Date();
+      } else if (!body.completed && existingTodo.completed) {
+        updateData.completedAt = null;
+      }
+    }
+
+    if (body.dueDate !== undefined) {
+      updateData.dueDate = body.dueDate ? new Date(body.dueDate) : null;
+    }
 
     const todo = await prisma.todo.update({
       where: { id: params.id },

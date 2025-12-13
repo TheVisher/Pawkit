@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { startOfDay, endOfDay, isBefore, isToday, isTomorrow, isAfter, addDays } from "date-fns";
 
 export interface Todo {
   id: string;
@@ -9,6 +10,8 @@ export interface Todo {
   completed: boolean;
   createdAt: Date;
   updatedAt: Date;
+  dueDate: Date | null;
+  completedAt: Date | null;
 }
 
 // API response has date strings instead of Date objects
@@ -19,6 +22,49 @@ interface TodoApiResponse {
   completed: boolean;
   createdAt: string;
   updatedAt: string;
+  dueDate: string | null;
+  completedAt: string | null;
+}
+
+// Helper to categorize todos
+export type TodoCategory = "overdue" | "today" | "upcoming" | "backlog";
+
+export function categorizeTodo(todo: Todo): TodoCategory {
+  if (!todo.dueDate) return "backlog";
+
+  const now = new Date();
+  const todayStart = startOfDay(now);
+  const todayEnd = endOfDay(now);
+
+  if (isBefore(todo.dueDate, todayStart)) return "overdue";
+  if (todo.dueDate >= todayStart && todo.dueDate <= todayEnd) return "today";
+  return "upcoming";
+}
+
+export function groupTodosByCategory(todos: Todo[]) {
+  const groups: Record<TodoCategory, Todo[]> = {
+    overdue: [],
+    today: [],
+    upcoming: [],
+    backlog: [],
+  };
+
+  todos.forEach((todo) => {
+    const category = categorizeTodo(todo);
+    groups[category].push(todo);
+  });
+
+  // Sort each group
+  // Overdue: oldest first
+  groups.overdue.sort((a, b) => (a.dueDate?.getTime() || 0) - (b.dueDate?.getTime() || 0));
+  // Today: by creation date
+  groups.today.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  // Upcoming: nearest first
+  groups.upcoming.sort((a, b) => (a.dueDate?.getTime() || 0) - (b.dueDate?.getTime() || 0));
+  // Backlog: newest first
+  groups.backlog.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
+  return groups;
 }
 
 interface TodoStore {
@@ -28,10 +74,10 @@ interface TodoStore {
 
   // Actions
   fetchTodos: () => Promise<void>;
-  addTodo: (text: string) => Promise<void>;
+  addTodo: (text: string, dueDate?: Date | null) => Promise<void>;
   toggleTodo: (id: string) => Promise<void>;
   deleteTodo: (id: string) => Promise<void>;
-  updateTodo: (id: string, updates: Partial<Todo>) => Promise<void>;
+  updateTodo: (id: string, updates: Partial<Pick<Todo, "text" | "dueDate">>) => Promise<void>;
 }
 
 export const useTodoStore = create<TodoStore>((set, get) => ({
@@ -52,7 +98,9 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       const parsedTodos = (todos as TodoApiResponse[]).map((todo) => ({
         ...todo,
         createdAt: new Date(todo.createdAt),
-        updatedAt: new Date(todo.updatedAt)
+        updatedAt: new Date(todo.updatedAt),
+        dueDate: todo.dueDate ? new Date(todo.dueDate) : null,
+        completedAt: todo.completedAt ? new Date(todo.completedAt) : null,
       }));
 
       set({ todos: parsedTodos, isLoading: false });
@@ -61,14 +109,17 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
     }
   },
 
-  addTodo: async (text: string) => {
+  addTodo: async (text: string, dueDate?: Date | null) => {
     if (!text.trim()) return;
 
     try {
       const response = await fetch('/api/todos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text.trim() })
+        body: JSON.stringify({
+          text: text.trim(),
+          dueDate: dueDate ? dueDate.toISOString() : null,
+        })
       });
 
       if (!response.ok) throw new Error('Failed to add todo');
@@ -80,7 +131,9 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       const parsedTodo = {
         ...newTodo,
         createdAt: new Date(newTodo.createdAt),
-        updatedAt: new Date(newTodo.updatedAt)
+        updatedAt: new Date(newTodo.updatedAt),
+        dueDate: newTodo.dueDate ? new Date(newTodo.dueDate) : null,
+        completedAt: newTodo.completedAt ? new Date(newTodo.completedAt) : null,
       };
 
       set((state) => ({
@@ -121,7 +174,9 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
             ? {
                 ...updatedTodo,
                 createdAt: new Date(updatedTodo.createdAt),
-                updatedAt: new Date(updatedTodo.updatedAt)
+                updatedAt: new Date(updatedTodo.updatedAt),
+                dueDate: updatedTodo.dueDate ? new Date(updatedTodo.dueDate) : null,
+                completedAt: updatedTodo.completedAt ? new Date(updatedTodo.completedAt) : null,
               }
             : t
         )
@@ -130,7 +185,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
       // Revert optimistic update
       set((state) => ({
         todos: state.todos.map((t) =>
-          t.id === id ? { ...t, completed: !t.completed } : t
+          t.id === id ? { ...t, completed: todo.completed } : t
         ),
         error: (error as Error).message
       }));
@@ -156,7 +211,7 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
     }
   },
 
-  updateTodo: async (id: string, updates: Partial<Todo>) => {
+  updateTodo: async (id: string, updates: Partial<Pick<Todo, "text" | "dueDate">>) => {
     // Optimistic update
     const previousTodos = get().todos;
     set((state) => ({
@@ -166,10 +221,16 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
     }));
 
     try {
+      // Convert dueDate to ISO string for API
+      const apiUpdates: Record<string, unknown> = { ...updates };
+      if (updates.dueDate !== undefined) {
+        apiUpdates.dueDate = updates.dueDate ? updates.dueDate.toISOString() : null;
+      }
+
       const response = await fetch(`/api/todos/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
+        body: JSON.stringify(apiUpdates)
       });
 
       if (!response.ok) throw new Error('Failed to update todo');
@@ -184,7 +245,9 @@ export const useTodoStore = create<TodoStore>((set, get) => ({
             ? {
                 ...updatedTodo,
                 createdAt: new Date(updatedTodo.createdAt),
-                updatedAt: new Date(updatedTodo.updatedAt)
+                updatedAt: new Date(updatedTodo.updatedAt),
+                dueDate: updatedTodo.dueDate ? new Date(updatedTodo.dueDate) : null,
+                completedAt: updatedTodo.completedAt ? new Date(updatedTodo.completedAt) : null,
               }
             : t
         )
