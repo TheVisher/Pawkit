@@ -29,7 +29,8 @@ export async function GET() {
     const todos = await prisma.todo.findMany({
       where: { userId: user.id },
       orderBy: [
-        { completed: 'asc' },  // Incomplete first
+        { completed: 'asc' },   // Incomplete first
+        { dueDate: 'asc' },     // Then by due date (nulls last for backlog)
         { createdAt: 'desc' }   // Then by newest
       ]
     });
@@ -76,7 +77,8 @@ export async function POST(request: Request) {
       data: {
         userId: user.id,
         text: validated.text,
-        completed: validated.completed
+        completed: validated.completed,
+        dueDate: validated.dueDate ? new Date(validated.dueDate) : null,
       }
     });
 

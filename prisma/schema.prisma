@@ -207,16 +207,26 @@ model DeviceSession {
 }
 
 model Todo {
-  id        String   @id @default(cuid())
-  userId    String
-  text      String
-  completed Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  userId      String
+  text        String
+  completed   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Phase 1: Due dates and completion tracking
+  dueDate     DateTime? // null = backlog (no due date)
+  completedAt DateTime? // When it was completed (for filtering "completed today")
+
+  // Phase 2: Priority and linking (for future)
+  // priority      String?   // "high" | "medium" | "low"
+  // linkedCardId  String?   // optional link to a card
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, completed])
+  @@index([userId, dueDate])
 }
 
 model CalendarEvent {
