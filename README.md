@@ -250,6 +250,7 @@ docker run -p 3000:3000 --env-file .env.local pawkit
 - [ ] Kit AI improvements and public rollout
 
 ### Planned
+- [ ] BYOAI — Bring your own AI provider via MCP support
 - [ ] Connected Platforms — Import saves from Reddit, YouTube, Twitter
 - [ ] Google Calendar integration
 - [ ] Quick Notes with auto-consolidation
