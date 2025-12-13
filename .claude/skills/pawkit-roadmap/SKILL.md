@@ -1899,6 +1899,585 @@ Fundamental Chromium rendering bug with CSS columns (masonry layout) during pare
 
 ---
 
+## BACKLOG - CONNECTED PLATFORMS (Month 3-4)
+
+**Vision**: Pawkit connects scattered saves across Reddit, YouTube, Twitter, and the web. Import years of saved content, organize it properly, and never lose it again.
+
+**Tagline**: "Your internet in your Pawkit"
+
+### Reddit Integration
+
+- [ ] **OAuth flow** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Reddit has official OAuth, easy approval, rich API
+  Impact: Access user's saved posts programmatically
+  Command: `claude-code "Implement Reddit OAuth: 1) Create /api/auth/reddit/callback route, 2) Store refresh token in user settings, 3) Add 'Connect Reddit' button in Settings > Connectors"`
+
+- [ ] **Import saved posts** (6-8 hours) - [impl: ] [test: ] [done: ]
+  Why: Reddit API returns rich metadata (thumbnails, previews, scores, subreddit)
+  Impact: Import years of saved content with full context
+  Features:
+    - Text posts → note-type cards
+    - Image posts → cards with full images
+    - Link posts → bookmark cards
+    - Preserve: score, comment count, subreddit, author
+  Command: `claude-code "Create Reddit import: 1) /api/reddit/import endpoint, 2) Paginate through saved posts, 3) Map to card types based on post type, 4) Store reddit_id for deduplication"`
+
+- [ ] **Auto-tag by subreddit** (2 hours) - [impl: ] [test: ] [done: ]
+  Why: Instant organization without manual work
+  Impact: r/programming → #programming, r/recipes → #recipes
+  Command: `claude-code "Add subreddit auto-tagging: 1) Extract subreddit from imported posts, 2) Create/find matching tag, 3) Apply to card on import"`
+
+- [ ] **Bulk unsave from Reddit** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Clean up Reddit saves after importing to Pawkit
+  Impact: Remove items from Reddit in bulk after safe import
+  Command: `claude-code "Add Reddit unsave: 1) Track reddit_id on cards, 2) Add 'Unsave from Reddit' bulk action, 3) Call Reddit unsave API for each"`
+
+- [ ] **Bypass 1000 limit** (2 hours) - [impl: ] [test: ] [done: ]
+  Why: Reddit only shows last 1000 saves via UI
+  Impact: Archive EVERYTHING, not just recent saves
+  Note: API can access beyond 1000 with proper pagination
+
+- [ ] **Rediscover for Reddit** (4 hours) - [impl: ] [test: ] [done: ]
+  Why: Triage years of saved posts efficiently
+  Impact: Filter Rediscover by source (Reddit only)
+  Features:
+    - Source picker: "Reddit saves older than 6 months"
+    - Show subreddit context
+    - One-click unsave + keep/delete
+
+### YouTube Integration
+
+- [ ] **OAuth flow** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Google OAuth for YouTube API access
+  Impact: Access user's playlists
+  Note: Watch Later is blocked by Google - use workaround
+  Command: `claude-code "Implement YouTube OAuth: 1) Create /api/auth/youtube/callback, 2) Request playlist scope, 3) Store tokens securely"`
+
+- [ ] **Import playlists** (6-8 hours) - [impl: ] [test: ] [done: ]
+  Why: Pull user-created playlists into Pawkit
+  Impact: All saved videos in one place
+  Features:
+    - List all user playlists
+    - Import selected playlists as Pawkits
+    - Preserve: title, description, thumbnail, duration, channel
+
+- [ ] **Create playlists from Pawkit** (4 hours) - [impl: ] [test: ] [done: ]
+  Why: Pawkit collection → YouTube playlist
+  Impact: Two-way organization
+  Command: `claude-code "Add YouTube playlist creation: 1) 'Export to YouTube' action on Pawkits containing videos, 2) Create playlist via API, 3) Add videos to playlist"`
+
+- [ ] **Two-way playlist sync** (8-10 hours) - [impl: ] [test: ] [done: ]
+  Why: Changes in Pawkit reflect in YouTube and vice versa
+  Impact: Single source of truth for video organization
+  Features:
+    - Add video in Pawkit → add to YouTube playlist
+    - Remove from Pawkit → remove from YouTube
+    - Sync on demand or periodic background sync
+
+- [ ] **"My Watch Later" workaround** (2 hours) - [impl: ] [test: ] [done: ]
+  Why: Google blocks Watch Later API access
+  Impact: Create "My Watch Later" playlist that works like Watch Later
+  Note: Extension can add to this playlist with one click
+
+### Twitter/X Integration
+
+- [ ] **Bookmark import (file-based)** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Twitter API requires developer approval - start simple
+  Impact: Users can export bookmarks and import to Pawkit
+  Flow:
+    1. User runs browser script to export bookmarks as JSON
+    2. Upload JSON to Pawkit
+    3. Parse and create cards
+  Command: `claude-code "Create Twitter import: 1) /api/import/twitter endpoint, 2) Accept JSON file upload, 3) Parse tweet data, 4) Create cards with tweet text, author, media URLs"`
+
+- [ ] **Full metadata preservation** (2 hours) - [impl: ] [test: ] [done: ]
+  Why: Context matters for saved tweets
+  Impact: Preserve author, timestamp, media, reply context
+  Store: tweet_id, author_handle, author_name, created_at, media_urls
+
+- [ ] **Auto-tag by author** (2 hours) - [impl: ] [test: ] [done: ]
+  Why: Group tweets by who posted them
+  Impact: Quick filtering by favorite accounts
+
+- [ ] **OAuth flow (future)** (6-8 hours) - [impl: ] [test: ] [done: ]
+  Why: Direct API access when approved
+  Impact: Automatic import, no manual export needed
+  Note: Requires Twitter developer account approval
+
+### Connected Platforms UI
+
+- [ ] **Connected Sources section** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Dedicated area for imported content
+  Impact: Clear separation from manual saves
+  Location: Left sidebar, below Pawkits
+  Features:
+    - Reddit Saves (count)
+    - YouTube Playlists (count)
+    - Twitter Bookmarks (count)
+    - Click to filter Library by source
+
+- [ ] **Source badges on cards** (2 hours) - [impl: ] [test: ] [done: ]
+  Why: Visual indicator of content origin
+  Impact: Users know where content came from
+  Display: Small Reddit/YouTube/Twitter icon on card
+
+- [ ] **Import progress UI** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Large imports take time
+  Impact: User sees progress, can cancel
+  Features:
+    - Progress bar
+    - "Importing 234 of 1,847 items..."
+    - Cancel button
+    - Background operation
+
+---
+
+## BACKLOG - TOPIC NOTES & KNOWLEDGE CAPTURE (Month 4)
+
+**Vision**: A Topic Note is a living document that grows as you consume related content. Never lose insights from videos, articles, and posts again.
+
+### Core Features
+
+- [ ] **Citation blocks in notes** (6-8 hours) - [impl: ] [test: ] [done: ]
+  Why: Quote with automatic source attribution
+  Impact: Build knowledge base with proper citations
+  Syntax:
+  ```markdown
+  > "Every pixel should earn its place."
+  > — Design Course · YouTube · [14:32](youtube.com/...?t=872)
+  ```
+  Features:
+    - Blockquote with source line
+    - Clickable timestamp links
+    - Source type icon (YouTube, Reddit, Article)
+
+- [ ] **YouTube timestamp capture** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Reference exact moments in videos
+  Impact: Click timestamp → opens video at that second
+  Flow:
+    1. User watching video in Rediscover
+    2. Clicks "Capture" at interesting moment
+    3. Current timestamp auto-included in citation
+    4. Link format: `youtube.com/watch?v=xxx&t=872`
+
+- [ ] **Reddit citation format** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Quote comments with context
+  Impact: Preserve discussion insights
+  Format:
+  ```markdown
+  > "The 60-30-10 color rule from interior design applies perfectly to UI."
+  > — u/designerguy · r/web_design · [View post](reddit.com/...)
+  ```
+
+- [ ] **Article citation format** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Quote articles with link back
+  Impact: Reference written content properly
+  Format:
+  ```markdown
+  > "Users don't read, they scan."
+  > — Nielsen Norman Group · [Article](nngroup.com/...)
+  ```
+
+### Capture Flow
+
+- [ ] **"Capture to Note" panel** (6-8 hours) - [impl: ] [test: ] [done: ]
+  Why: Capture insights while consuming content
+  Impact: Knowledge capture integrated into Rediscover
+  Features:
+    - Always visible side panel while in Rediscover
+    - Quick capture field
+    - Auto-attaches current source + timestamp
+    - Note picker (existing or new)
+
+- [ ] **Note picker with search** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Add to existing Topic Note or create new
+  Impact: Build on existing knowledge
+  Features:
+    - Search existing notes
+    - "Create new Topic Note" option
+    - Recent notes quick-select
+
+- [ ] **Side-by-side view** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: See content and notes simultaneously
+  Impact: Efficient capture workflow
+  Layout: Content (left 60%) | Topic Note (right 40%)
+
+---
+
+## BACKLOG - REDISCOVER AS CONTENT QUEUE (Month 3)
+
+**Vision**: Rediscover evolves from triage tool to consumption interface. "Here's your content queue. Watch, read, or dismiss. Let's go."
+
+### Source Picker
+
+- [ ] **Source selection modal** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Filter what you're in the mood to consume
+  Impact: Focused content sessions
+  Options:
+    - Inbox (uncategorized)
+    - YouTube (videos only)
+    - Reddit (by subreddit filter)
+    - Twitter
+    - Articles (reading mode)
+    - Custom filters (tag, date range, Pawkit)
+  Examples:
+    - "Reddit saves from r/recipes older than 6 months"
+    - "YouTube videos shorter than 10 minutes"
+    - "Articles I saved this week"
+
+### Inline Content Consumption
+
+- [ ] **YouTube embeds in Rediscover** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Watch videos without leaving Pawkit
+  Impact: Seamless consumption experience
+  Features:
+    - Embedded player
+    - Timestamp capture button
+    - Progress tracking (optional)
+
+- [ ] **Reddit rendering** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Read Reddit content inline
+  Impact: No context switching
+  Features:
+    - Text posts: render markdown
+    - Image posts: show full image
+    - Link posts: reader mode
+    - Show score, comments, subreddit
+
+- [ ] **Twitter embeds** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Read tweets inline
+  Impact: Quick consumption
+  Features:
+    - Render tweet with media
+    - Show author, timestamp
+    - Thread expansion (if applicable)
+
+### Enhanced Actions
+
+- [ ] **Skip action** (1 hour) - [impl: ] [test: ] [done: ]
+  Why: Not in the mood now, but don't delete
+  Impact: Move to end of queue, revisit later
+
+- [ ] **Remove + unsave from source** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Clean up both Pawkit AND original platform
+  Impact: True inbox zero across platforms
+  Flow: Delete from Pawkit + unsave from Reddit/YouTube/Twitter
+
+---
+
+## BACKLOG - NOTE FOLDERS (Month 2)
+
+**Context**: User requested folders in Notes section. Reuses Pawkit tree pattern.
+
+### Implementation
+
+- [ ] **note_folders table** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Organize notes hierarchically
+  Impact: Same UX as Pawkits but for notes
+  Schema:
+  ```sql
+  create table note_folders (
+    id uuid primary key,
+    user_id uuid references users(id),
+    name text not null,
+    parent_id uuid references note_folders(id),
+    position integer default 0,
+    created_at timestamp default now()
+  );
+
+  alter table cards add column folder_id uuid references note_folders(id);
+  ```
+
+- [ ] **Nested hierarchy UI** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Consistent with Pawkits
+  Impact: Familiar interaction pattern
+  Features:
+    - Reuse Pawkit tree rendering
+    - Drag-drop to reorganize
+    - Expand/collapse
+    - Context menu (rename, delete, move)
+
+- [ ] **Folder sidebar in Notes view** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Navigate folder structure
+  Impact: Left panel shows folders, right shows notes
+  Features:
+    - "All Notes" option
+    - "Unfiled" for notes without folder
+    - Folder tree with counts
+
+### Notes in Pawkits (Many-to-Many)
+
+- [ ] **pawkit_notes junction table** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Notes can appear in multiple Pawkits (like aliases)
+  Impact: Note about "UI Design" lives alongside design bookmarks
+  Schema:
+  ```sql
+  create table pawkit_notes (
+    pawkit_id uuid references collections(id) on delete cascade,
+    note_id uuid references cards(id) on delete cascade,
+    position integer default 0,
+    primary key (pawkit_id, note_id)
+  );
+  ```
+
+- [ ] **"Add to Pawkit" from note** (2-3 hours) - [impl: ] [test: ] [done: ]
+  Why: Link notes to relevant collections
+  Impact: Notes appear alongside related bookmarks
+
+- [ ] **"Add Note" from Pawkit** (2-3 hours) - [impl: ] [test: ] [done: ]
+  Why: Search existing notes or create new
+  Impact: Build knowledge alongside saved content
+
+---
+
+## BACKLOG - TAG SYSTEM OVERHAUL (Month 2)
+
+**Context**: Current tags only auto-generate from Pawkit names. Need full tag management.
+
+### Manual Tag Creation
+
+- [ ] **Tag creation UI** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Users need to create their own tags
+  Impact: Organization beyond auto-generated tags
+  Location: Settings > Tags, or inline in tag picker
+  Features:
+    - Create tag with name
+    - Optional color selection
+    - Optional icon/emoji
+
+- [ ] **Tag picker in card modals** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Easy tag assignment when editing cards
+  Impact: Quick tagging workflow
+  Features:
+    - Dropdown with existing tags
+    - Search/filter tags
+    - Create new inline
+    - Multi-select
+
+- [ ] **Tag autocomplete** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Fast tag entry while typing
+  Impact: Reduces typos, surfaces existing tags
+  Features:
+    - Autocomplete as user types
+    - Show tag usage count
+    - Keyboard navigation
+
+### Tag Management
+
+- [ ] **Rename tags** (2-3 hours) - [impl: ] [test: ] [done: ]
+  Why: Fix typos, improve naming
+  Impact: Updates all cards with that tag
+  Location: Tags view, context menu
+
+- [ ] **Merge tags** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Consolidate duplicate/similar tags
+  Impact: Cleaner tag taxonomy
+  Flow: Select two tags → Merge → All cards get surviving tag
+
+- [ ] **Delete tags** (2-3 hours) - [impl: ] [test: ] [done: ]
+  Why: Remove unused tags
+  Impact: Cleaner tag list
+  Options:
+    - Delete tag only (remove from cards)
+    - Delete tag + associated cards (with confirmation)
+
+- [ ] **Tag colors** (2-3 hours) - [impl: ] [test: ] [done: ]
+  Why: Visual differentiation
+  Impact: Easier scanning of tagged content
+  Features:
+    - Color picker
+    - Preset palette
+    - Show color in tag pills
+
+---
+
+## BACKLOG - MOBILE ENHANCEMENTS (Month 3)
+
+### Document Scanning
+
+- [ ] **Camera capture for documents** (6-8 hours) - [impl: ] [test: ] [done: ]
+  Why: Scan receipts, documents, notes with phone
+  Impact: Physical → digital workflow
+  Features:
+    - Camera capture in mobile app
+    - Auto-crop/perspective correction
+    - Save as image attachment or card thumbnail
+  Libraries: expo-camera, expo-image-manipulator
+
+- [ ] **Receipt scanning** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Track expenses, warranties
+  Impact: Digital receipt archive
+  Features:
+    - Scan receipt
+    - OCR to extract merchant, amount, date
+    - Auto-tag as #receipt
+
+- [ ] **Handwritten notes scanning** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Digitize paper notes
+  Impact: Searchable handwritten content
+  Features:
+    - Capture handwritten notes
+    - OCR extraction
+    - Create note card with image + extracted text
+
+---
+
+## BACKLOG - UI ENHANCEMENTS (Month 2-3)
+
+### Customizable List Columns
+
+- [ ] **Column show/hide** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Users want to customize what columns appear
+  Impact: Personalized list view
+  Inspired by: Apple Notes column customization
+  Features:
+    - Right-click header → show/hide columns
+    - Settings dropdown for column visibility
+    - Available columns: Name, Type, Tags, URL, Date Created, Date Modified, Pawkits
+
+- [ ] **Column order customization** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Drag to reorder columns
+  Impact: Most important info first
+  Features:
+    - Drag column headers to reorder
+    - Persist order in localStorage per view
+
+- [ ] **Per-view column settings** (2-3 hours) - [impl: ] [test: ] [done: ]
+  Why: Different columns for Library vs Notes vs Pawkits
+  Impact: Optimized views for different content types
+  Storage: `localStorage['pawkit-columns-library']`, `pawkit-columns-notes`, etc.
+
+### Calendar Enhancements
+
+- [ ] **US Holidays** (4-6 hours) - [impl: ✓] [test: ] [done: ]
+  Why: See holidays on calendar without manual entry
+  Impact: Better planning, context
+  Features:
+    - Toggle: Show Holidays (on/off) in right sidebar
+    - Sub-options: Major Only / All Federal / All
+    - Display as subtle badge or different color
+    - Static data (holidays are predictable)
+  Note: Implemented December 2025
+
+- [ ] **Event colors/categories** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Visual organization of events
+  Impact: Quickly distinguish event types
+  Categories: Work, Personal, Bills, Birthdays, Custom
+  Features:
+    - Color picker in event modal
+    - Preset categories with colors
+    - Filter calendar by category
+
+- [ ] **Other countries' holidays** (2-3 hours) - [impl: ] [test: ] [done: ]
+  Why: International users
+  Impact: Relevant holidays for non-US users
+  Options: UK, Canada, Australia, etc.
+  Note: v2 feature, lower priority
+
+---
+
+## BACKLOG - IMPORT/EXPORT (Month 2)
+
+### Bulk Markdown Import
+
+- [ ] **Markdown file import** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Users with existing markdown notes (Obsidian, etc.)
+  Impact: Easy migration to Pawkit
+  Source: YouTube feedback
+  Features:
+    - Drag-drop .md files
+    - Batch upload folder of .md files
+    - Preserve frontmatter as metadata
+    - Convert wiki-links to Pawkit format
+
+- [ ] **Obsidian vault import** (6-8 hours) - [impl: ] [test: ] [done: ]
+  Why: Popular note-taking app migration
+  Impact: Capture Obsidian users
+  Features:
+    - Upload entire vault folder
+    - Preserve folder structure as Note Folders
+    - Convert [[wiki-links]]
+    - Import attachments
+
+---
+
+## BACKLOG - COMMUNICATION (Month 2)
+
+### Weekly Email Digest
+
+- [ ] **Digest email template** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Re-engage users, surface forgotten content
+  Impact: Weekly touchpoint with value
+  Contents:
+    - Activity summary (cards added, notes created)
+    - Rediscover nudge ("You have 47 items to review")
+    - Random "blast from the past" card
+    - Quick stats
+
+- [ ] **Digest scheduling** (3-4 hours) - [impl: ] [test: ] [done: ]
+  Why: Automated weekly sends
+  Impact: Consistent engagement
+  Implementation: Supabase Edge Function + Resend
+  Schedule: Sunday evening or Monday morning
+
+- [ ] **Digest preferences** (2-3 hours) - [impl: ] [test: ] [done: ]
+  Why: User control over emails
+  Impact: Respect preferences
+  Options:
+    - Enable/disable digest
+    - Frequency (weekly, bi-weekly, monthly)
+    - Day of week preference
+
+### In-App Feedback System
+
+- [ ] **Feedback modal** (4-6 hours) - [impl: ] [test: ] [done: ]
+  Why: Collect user feedback easily
+  Impact: Direct line to users
+  Location: Sidebar footer or Help menu
+  Features:
+    - Category: Bug, Feature Request, General
+    - Description field
+    - Optional screenshot attachment
+    - Optional email for follow-up
+
+- [ ] **Feedback storage** (2-3 hours) - [impl: ] [test: ] [done: ]
+  Why: Collect and organize feedback
+  Impact: Structured feedback data
+  Storage: Supabase `feedback` table
+  Fields: user_id, category, description, screenshot_url, status, created_at
+
+- [ ] **Feedback notification** (2-3 hours) - [impl: ] [test: ] [done: ]
+  Why: Get notified of new feedback
+  Impact: Quick response to users
+  Implementation: Resend email on new feedback submission
+
+---
+
+## Implementation Priority (Suggested)
+
+### Phase 1: Quick Wins (Month 2)
+- Note Folders (reuse Pawkit pattern)
+- Tag System Overhaul
+- Customizable List Columns
+- In-App Feedback System
+
+### Phase 2: Platform Integrations (Month 3)
+- Reddit Integration (most accessible API)
+- Rediscover as Content Queue
+- Weekly Email Digest
+
+### Phase 3: Knowledge Capture (Month 4)
+- Topic Notes & Citations
+- YouTube Integration
+- Document Scanning (Mobile)
+
+### Phase 4: Full Platform Support (Month 5)
+- Twitter/X Integration
+- Two-way sync refinements
+- AI-powered cross-platform linking
+
+---
+
 ## BACKLOG - ONGOING
 
 **Phase 5: Technical Debt & Continuous Improvement**
@@ -2009,8 +2588,9 @@ When adding new tasks:
 
 ---
 
-**Last Updated**: October 29, 2025
-**Branch**: feat/multi-session-detection
+**Last Updated**: December 13, 2025
+**Branch**: feature/calendar-week-view-redesign
 **Next Critical Item**: Interactive onboarding checklist (3 hours) - PRIMARY FOCUS
-**Total Tasks**: 104 active tasks across all phases (Pre-merge → Month 3+ → Ongoing)
+**Total Tasks**: 175+ active tasks across all phases (Pre-merge → Month 5 → Ongoing)
+**Recent Additions**: Connected Platforms (Reddit/YouTube/Twitter), Topic Notes, Rediscover Content Queue, Note Folders, Tag System Overhaul, Mobile Enhancements, UI Enhancements, Import/Export, Communication features
 **User Feedback Insight**: Features work well, discoverability is the issue (4 new discoverability tasks, 7 tasks superseded)
