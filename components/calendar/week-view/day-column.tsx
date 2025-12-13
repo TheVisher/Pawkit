@@ -9,7 +9,7 @@ interface DayColumnProps {
   events: CalendarEvent[];
   hourHeight?: number;
   onEventClick?: (event: CalendarEvent) => void;
-  onTimeSlotClick?: (hour: number, columnRect: DOMRect) => void;
+  onTimeSlotClick?: (hour: number) => void;
   onEventDrop?: (eventId: string, sourceType: string, targetHour: number) => void;
   isFirst?: boolean;
 }
@@ -81,10 +81,7 @@ export function DayColumn({
   };
 
   const handleTimeSlotClick = (hour: number) => {
-    if (columnRef.current && onTimeSlotClick) {
-      const columnRect = columnRef.current.getBoundingClientRect();
-      onTimeSlotClick(hour, columnRect);
-    }
+    onTimeSlotClick?.(hour);
   };
 
   return (
