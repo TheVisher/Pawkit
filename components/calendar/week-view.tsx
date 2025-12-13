@@ -7,6 +7,7 @@ import { CalendarEvent } from "@/lib/types/calendar";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
+import { useTodoStore } from "@/lib/hooks/use-todos";
 import { getHolidaysInRange, ResolvedHoliday } from "@/lib/data/us-holidays";
 import { TimeGrid } from "./week-view/time-grid";
 
@@ -31,6 +32,10 @@ export function WeekView({
   const { events, isInitialized, initialize, generateRecurrenceInstances } =
     useEventStore();
 
+  // Get todos from store
+  const { todos, fetchTodos, toggleTodo } = useTodoStore();
+  const todosFetched = useTodoStore((state) => state.todos.length > 0 || state.isLoading === false);
+
   // Holiday settings
   const showHolidays = useCalendarStore((state) => state.showHolidays);
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
@@ -47,6 +52,11 @@ export function WeekView({
       initialize();
     }
   }, [isInitialized, initialize]);
+
+  // Fetch todos
+  useEffect(() => {
+    fetchTodos();
+  }, [fetchTodos]);
 
   // Get all days in the current week (starting from Sunday)
   const weekDays = useMemo(() => {
@@ -172,6 +182,34 @@ export function WeekView({
       map.get(dateStr)!.push(pseudoEvent);
     });
 
+    // Add todos with due dates
+    todos
+      .filter((todo) => todo.dueDate && !todo.completed)
+      .forEach((todo) => {
+        const dateStr = format(todo.dueDate!, "yyyy-MM-dd");
+        if (dateStr < rangeStart || dateStr > rangeEnd) return;
+
+        if (!map.has(dateStr)) {
+          map.set(dateStr, []);
+        }
+
+        const pseudoEvent: CalendarEvent = {
+          id: `todo-${todo.id}`,
+          userId: todo.userId,
+          title: todo.text,
+          date: dateStr,
+          isAllDay: true,
+          color: "#f59e0b", // Amber/orange for todos
+          source: {
+            type: "todo" as const,
+            todoId: todo.id,
+          },
+          createdAt: todo.createdAt.toISOString(),
+          updatedAt: todo.updatedAt.toISOString(),
+        };
+        map.get(dateStr)!.push(pseudoEvent);
+      });
+
     // Sort events by time within each day
     map.forEach((dayEvents) => {
       dayEvents.sort((a, b) => {
@@ -187,7 +225,7 @@ export function WeekView({
     });
 
     return map;
-  }, [events, weekDays, generateRecurrenceInstances, cardsByDate, dailyNotesByDate]);
+  }, [events, weekDays, generateRecurrenceInstances, cardsByDate, dailyNotesByDate, todos]);
 
   // Group holidays by date
   const holidaysByDate = useMemo(() => {

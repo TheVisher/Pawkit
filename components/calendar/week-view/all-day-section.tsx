@@ -5,7 +5,7 @@ import { format, isToday } from "date-fns";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { TIME_LABEL_WIDTH } from "@/lib/utils/time-grid";
 import { ResolvedHoliday } from "@/lib/data/us-holidays";
-import { Flag } from "lucide-react";
+import { Flag, CheckSquare } from "lucide-react";
 
 interface AllDaySectionProps {
   weekDays: Date[];
@@ -122,22 +122,27 @@ export function AllDaySection({
                 )}
 
                 {/* All-day events */}
-                {visibleEvents.map((event) => (
-                  <button
-                    key={event.id}
-                    className="w-full text-left px-2 py-0.5 rounded text-[10px] font-medium truncate transition-opacity hover:opacity-80"
-                    style={{
-                      background: event.color || "var(--ds-accent)",
-                      color: "white",
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEventClick?.(event);
-                    }}
-                  >
-                    {event.title}
-                  </button>
-                ))}
+                {visibleEvents.map((event) => {
+                  const isTodo = event.source?.type === "todo";
+
+                  return (
+                    <button
+                      key={event.id}
+                      className="w-full text-left px-2 py-0.5 rounded text-[10px] font-medium truncate transition-opacity hover:opacity-80 flex items-center gap-1"
+                      style={{
+                        background: event.color || "var(--ds-accent)",
+                        color: "white",
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEventClick?.(event);
+                      }}
+                    >
+                      {isTodo && <CheckSquare size={10} className="flex-shrink-0" />}
+                      <span className="truncate">{event.title}</span>
+                    </button>
+                  );
+                })}
 
                 {/* "More" indicator */}
                 {hasMore && (
