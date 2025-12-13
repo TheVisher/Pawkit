@@ -22,6 +22,7 @@ interface TimeGridProps {
   hourHeight?: number;
   onEventClick?: (event: CalendarEvent) => void;
   onDayClick?: (date: Date) => void;
+  onEventReschedule?: (eventId: string, newDate: string, sourceType?: string) => void;
 }
 
 /**
@@ -35,6 +36,7 @@ export function TimeGrid({
   hourHeight = HOUR_HEIGHT,
   onEventClick,
   onDayClick,
+  onEventReschedule,
 }: TimeGridProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const totalGridHeight = 24 * hourHeight;
@@ -158,6 +160,7 @@ export function TimeGrid({
         holidaysByDate={holidaysByDate}
         onEventClick={onEventClick}
         onDayClick={onDayClick}
+        onEventReschedule={onEventReschedule}
       />
 
       {/* Scrollable time grid */}

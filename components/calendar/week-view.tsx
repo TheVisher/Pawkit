@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useEffect, useState } from "react";
-import { addDays, startOfWeek, format } from "date-fns";
+import { addDays, startOfWeek, format, parseISO } from "date-fns";
 import { CardModel } from "@/lib/types";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
@@ -30,11 +30,11 @@ export function WeekView({
   onCreateDailyNote,
 }: WeekViewProps) {
   const [isClient, setIsClient] = useState(false);
-  const { events, isInitialized, initialize, generateRecurrenceInstances } =
+  const { events, isInitialized, initialize, generateRecurrenceInstances, updateEvent } =
     useEventStore();
 
   // Get todos from store
-  const { todos, fetchTodos, toggleTodo } = useTodoStore();
+  const { todos, fetchTodos, toggleTodo, updateTodo } = useTodoStore();
   const todosFetched = useTodoStore((state) => state.todos.length > 0 || state.isLoading === false);
 
   // Holiday settings
@@ -262,6 +262,25 @@ export function WeekView({
     onEventClick?.(event);
   };
 
+  // Handle drag-and-drop reschedule
+  const handleEventReschedule = async (eventId: string, newDate: string, sourceType?: string) => {
+    if (sourceType === "todo") {
+      // Extract todo ID from event ID (format: "todo-{id}")
+      const todoId = eventId.replace("todo-", "");
+      const todo = todos.find((t) => t.id === todoId);
+      if (todo) {
+        await updateTodo(todoId, { dueDate: parseISO(newDate) });
+      }
+    } else if (sourceType === "manual" || !sourceType) {
+      // Update calendar event date
+      const event = events.find((e) => e.id === eventId);
+      if (event) {
+        await updateEvent(eventId, { date: newDate });
+      }
+    }
+    // Note: Cards are not rescheduled via drag - they need different handling
+  };
+
   // Don't render until client-side to prevent hydration issues with dates
   if (!isClient) {
     return (
@@ -283,6 +302,7 @@ export function WeekView({
         holidaysByDate={holidaysByDate}
         onEventClick={handleEventClick}
         onDayClick={onDayClick}
+        onEventReschedule={handleEventReschedule}
       />
     </div>
   );
