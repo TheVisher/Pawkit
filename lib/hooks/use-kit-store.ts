@@ -180,6 +180,7 @@ export const useKitStore = create<KitState>()(
           content: card.title,
           timestamp: new Date(),
           cardId: card.id,
+          cardTitle: card.title,
         };
 
         // Truncate transcript for API calls (4000 chars max)
