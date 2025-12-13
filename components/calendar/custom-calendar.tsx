@@ -5,6 +5,7 @@ import { addDays, startOfWeek, startOfMonth, endOfMonth, isSameMonth, format, is
 import { CardModel } from "@/lib/types";
 import { CalendarEvent, EVENT_COLORS } from "@/lib/types/calendar";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
+import { getCardDisplayTitle, getFaviconUrl } from "@/lib/utils/card-display";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { useTodoStore } from "@/lib/hooks/use-todos";
@@ -339,7 +340,7 @@ export function CustomCalendar({
                         />
                       )}
                       <span className="text-sm truncate" style={{ color: 'var(--text-primary)' }}>
-                        {card.title || card.domain || card.url}
+                        {getCardDisplayTitle(card)}
                       </span>
                     </button>
                   ))}
@@ -511,7 +512,7 @@ export function CustomCalendar({
                       />
                     )}
                     <span className="text-xs truncate" style={{ color: 'var(--text-primary)' }}>
-                      {card.title || card.domain || card.url}
+                      {getCardDisplayTitle(card)}
                     </span>
                   </button>
                 ))}

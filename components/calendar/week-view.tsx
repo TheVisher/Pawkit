@@ -5,6 +5,7 @@ import { addDays, startOfWeek, format } from "date-fns";
 import { CardModel } from "@/lib/types";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { isDailyNote, extractDateFromTitle, getDateString } from "@/lib/utils/daily-notes";
+import { getCardDisplayTitle } from "@/lib/utils/card-display";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { useTodoStore } from "@/lib/hooks/use-todos";
@@ -144,7 +145,7 @@ export function WeekView({
         const pseudoEvent: CalendarEvent = {
           id: `card-${card.id}`,
           userId: "",
-          title: card.title || card.domain || card.url || "Untitled",
+          title: getCardDisplayTitle(card),
           date: dateStr,
           isAllDay: true, // Scheduled cards are shown as all-day events
           color: "#6b7280", // Gray color for cards
@@ -152,6 +153,7 @@ export function WeekView({
             type: "card",
             cardId: card.id,
           },
+          url: card.url, // Pass URL for favicon lookup
           createdAt: card.createdAt || new Date().toISOString(),
           updatedAt: card.updatedAt || new Date().toISOString(),
         };

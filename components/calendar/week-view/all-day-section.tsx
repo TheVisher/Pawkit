@@ -5,7 +5,8 @@ import { format, isToday } from "date-fns";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { TIME_LABEL_WIDTH } from "@/lib/utils/time-grid";
 import { ResolvedHoliday } from "@/lib/data/us-holidays";
-import { Flag, CheckSquare } from "lucide-react";
+import { Flag, CheckSquare, Globe } from "lucide-react";
+import { getFaviconUrl } from "@/lib/utils/card-display";
 
 interface AllDaySectionProps {
   weekDays: Date[];
@@ -124,6 +125,7 @@ export function AllDaySection({
                 {/* All-day events */}
                 {visibleEvents.map((event) => {
                   const isTodo = event.source?.type === "todo";
+                  const isCard = event.source?.type === "card" && event.url;
 
                   return (
                     <button
@@ -139,6 +141,17 @@ export function AllDaySection({
                       }}
                     >
                       {isTodo && <CheckSquare size={10} className="flex-shrink-0" />}
+                      {isCard && event.url && (
+                        <img
+                          src={getFaviconUrl(event.url, 16)}
+                          alt=""
+                          className="w-3 h-3 flex-shrink-0 rounded-sm"
+                          onError={(e) => {
+                            // Hide broken favicon, show fallback icon
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      )}
                       <span className="truncate">{event.title}</span>
                     </button>
                   );
