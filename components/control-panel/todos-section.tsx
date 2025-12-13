@@ -30,12 +30,12 @@ function TodoItem({
   todo,
   onToggle,
   onDelete,
-  categoryColor,
+  dateLabel,
 }: {
   todo: Todo;
   onToggle: () => void;
   onDelete: () => void;
-  categoryColor: string;
+  dateLabel?: string;
 }) {
   return (
     <div
@@ -66,6 +66,16 @@ function TodoItem({
       >
         {todo.text}
       </span>
+
+      {/* Date label (for upcoming) */}
+      {dateLabel && (
+        <span
+          className="flex-shrink-0 text-[10px] mt-0.5"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          {dateLabel}
+        </span>
+      )}
 
       {/* Delete Button */}
       <button
@@ -139,25 +149,13 @@ function CategorySection({
       {!collapsed && (
         <div className="pl-3 space-y-0.5">
           {displayTodos.map((todo) => (
-            <div key={todo.id} className="flex items-start gap-2">
-              {/* Date indicator for upcoming */}
-              {category === "upcoming" && todo.dueDate && (
-                <span
-                  className="flex-shrink-0 text-[10px] mt-1 w-12"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  {formatDueDate(todo.dueDate)}
-                </span>
-              )}
-              <div className="flex-1">
-                <TodoItem
-                  todo={todo}
-                  onToggle={() => onToggle(todo.id)}
-                  onDelete={() => onDelete(todo.id)}
-                  categoryColor={config.color}
-                />
-              </div>
-            </div>
+            <TodoItem
+              key={todo.id}
+              todo={todo}
+              onToggle={() => onToggle(todo.id)}
+              onDelete={() => onDelete(todo.id)}
+              dateLabel={category === "upcoming" && todo.dueDate ? formatDueDate(todo.dueDate) : undefined}
+            />
           ))}
         </div>
       )}
