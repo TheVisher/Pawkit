@@ -82,7 +82,10 @@ export function AllDaySection({
         </div>
 
         {/* Day columns */}
-        <div className="flex-1 grid grid-cols-7">
+        <div
+          className="flex-1 grid grid-cols-7"
+          style={{ borderLeft: "1px solid var(--border-subtle)" }}
+        >
           {weekDays.map((day, dayIndex) => {
             const allDayEvents = allDayByDay[dayIndex];
             const holiday = holidayByDay[dayIndex];
