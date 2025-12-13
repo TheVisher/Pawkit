@@ -39,6 +39,8 @@ Pawkit is a visual bookmark manager built for speed, privacy, and control. With 
 - Visual bookmark saving with auto-fetched metadata (title, description, favicon, images)
 - Rich markdown notes with GFM support, wiki-links `[[like this]]`, and backlinks
 - File uploads — images, PDFs, audio, video, documents
+- PDF viewer with zoom and navigation
+- YouTube video embedding with transcript extraction
 - Daily notes attached to calendar days
 - Reader mode with Mozilla Readability for distraction-free reading
 - Article extraction for offline access
@@ -75,6 +77,13 @@ Pawkit is a visual bookmark manager built for speed, privacy, and control. With 
 - Bulk operations — multi-select and batch edit
 - Keyboard shortcuts throughout
 - Import from browsers and other tools
+- Dynamic top bar with search and quick actions
+
+### AI Assistant (Kit)
+- Chat with Kit about your bookmarks and notes
+- Summarize articles and web pages
+- Auto-suggest tags based on content
+- Context-aware responses using your collection data
 
 ---
 
@@ -238,13 +247,12 @@ docker run -p 3000:3000 --env-file .env.local pawkit
 
 ### In Progress
 - [ ] Note folders with nested hierarchy
-- [ ] Improved tag management system
+- [ ] Kit AI improvements and public rollout
 
 ### Planned
 - [ ] Connected Platforms — Import saves from Reddit, YouTube, Twitter
 - [ ] Google Calendar integration
 - [ ] Quick Notes with auto-consolidation
-- [ ] BYOAI — Bring your own AI via Claude MCP
 - [ ] Weekly email digest
 - [ ] Android app
 
