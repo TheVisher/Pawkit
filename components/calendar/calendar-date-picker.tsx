@@ -65,12 +65,17 @@ export function CalendarDatePicker({
   // Scroll to current year when picker opens
   useEffect(() => {
     if (datePickerOpen && yearListRef.current) {
-      const currentYearElement = yearListRef.current.querySelector(
-        `[data-year="${currentYearValue}"]`
-      );
-      if (currentYearElement) {
-        currentYearElement.scrollIntoView({ block: "center" });
-      }
+      // Use requestAnimationFrame to ensure DOM is rendered before scrolling
+      requestAnimationFrame(() => {
+        if (yearListRef.current) {
+          const currentYearElement = yearListRef.current.querySelector(
+            `[data-year="${currentYearValue}"]`
+          );
+          if (currentYearElement) {
+            currentYearElement.scrollIntoView({ block: "center", behavior: "instant" });
+          }
+        }
+      });
     }
   }, [datePickerOpen, currentYearValue]);
 
@@ -133,7 +138,13 @@ export function CalendarDatePicker({
             <ChevronDown size={14} className="opacity-50" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="center">
+        <PopoverContent
+          className="w-auto p-0 backdrop-blur-md border border-white/10 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)]"
+          align="center"
+          style={{
+            background: 'rgba(17, 24, 39, 0.90)',
+          }}
+        >
           <div className="flex">
             {/* Months grid - left side */}
             <div className="p-3 border-r" style={{ borderColor: 'var(--border-subtle)' }}>
