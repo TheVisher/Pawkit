@@ -201,8 +201,8 @@ export function MiniCalendar({ onDateSelect, onWeekSelect }: MiniCalendarProps) 
                         }}
                       />
                     )}
-                    {/* Selected day outline (when not today) */}
-                    {isSelected && !isTodayDate && (
+                    {/* Selected day outline (only in day view, and not today) */}
+                    {isSelected && !isTodayDate && viewMode === "day" && (
                       <span
                         className="absolute inset-0.5 rounded-full"
                         style={{
