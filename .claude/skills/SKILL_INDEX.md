@@ -2,7 +2,7 @@
 
 > **Purpose**: Route AI agents (Claude Desktop + Claude Code) to the correct skill files based on task type.
 > **Location**: `.claude/skills/SKILL_INDEX.md`
-> **Last Updated**: December 10, 2025
+> **Last Updated**: December 13, 2025
 
 ---
 
@@ -14,7 +14,8 @@
 | **Sync/data issues** | `pawkit-sync-patterns` | `pawkit-troubleshooting` |
 | **API routes** | `pawkit-api-patterns` | `pawkit-security` |
 | **Cloud storage** (Filen, GDrive, etc.) | `pawkit-cloud-providers` | `pawkit-sync-patterns` |
-| **Database/migrations** | `pawkit-migrations` | `instructions.md` |
+| **Database/migrations** | `pawkit-migrations` | `pawkit-database` |
+| **Supabase/RLS/backend** | `pawkit-database` | `pawkit-security` |
 | **Bug investigation** | `pawkit-troubleshooting` | varies by area |
 | **Performance issues** | `pawkit-performance` | `pawkit-sync-patterns` |
 | **Security concerns** | `pawkit-security` | `pawkit-api-patterns` |
@@ -151,6 +152,18 @@ When creating any new component, it must work with:
 #### `pawkit-security`
 **When to use**: Authentication, authorization, user isolation, XSS prevention
 **Contains**: Security audit findings, user isolation patterns, CSP headers
+
+#### `pawkit-database`
+**When to use**: Supabase backend, RLS policies, database schema, constraints, backend audits
+**Contains**:
+- Database schema overview (tables, relationships)
+- RLS policies (all tables protected as of Dec 2025)
+- Constraint patterns (per-user uniqueness)
+- Supabase migration history
+- Backend audit checklist (SQL queries)
+- Common issues & fixes
+
+**Read this**: Before any Supabase work, backend debugging, or security audits
 
 #### `pawkit-migrations`
 **When to use**: Database schema changes, data migrations
