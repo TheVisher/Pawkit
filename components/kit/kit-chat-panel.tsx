@@ -165,26 +165,26 @@ export function KitChatPanel() {
         ) : (
           <>
             {messages.map((msg) => {
-              // Context change - divider style with accent pill
-              if (msg.type === 'context-change') {
-                return (
-                  <div key={msg.id} className="flex items-center gap-3 my-4 px-2">
-                    {/* Left line */}
-                    <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
+              // Context change - full-width divider style (like Fabric)
+              // Check for type OR for cardId on short assistant messages (legacy detection)
+              const isContextChange = msg.type === 'context-change' ||
+                (msg.cardId && msg.role === 'assistant' && msg.content.length < 200);
 
-                    {/* Context pill */}
-                    <span
-                      className="text-xs px-3 py-1.5 rounded-full whitespace-nowrap flex items-center gap-1.5 font-medium"
+              if (isContextChange) {
+                return (
+                  <div key={msg.id} className="my-4">
+                    {/* Full width context block */}
+                    <div
+                      className="w-full py-2.5 px-4 text-center text-sm"
                       style={{
-                        background: 'var(--ds-accent)',
-                        color: 'white',
+                        background: 'var(--bg-surface-1)',
+                        borderTop: '1px solid var(--border-subtle)',
+                        borderBottom: '1px solid var(--border-subtle)',
+                        color: 'var(--text-secondary)',
                       }}
                     >
-                      🎬 {msg.content}
-                    </span>
-
-                    {/* Right line */}
-                    <div className="flex-1 h-px" style={{ background: 'var(--border-subtle)' }} />
+                      Context changed to &quot;<span style={{ color: 'var(--ds-accent)', fontWeight: 500 }}>{msg.cardTitle || msg.content}</span>&quot;
+                    </div>
                   </div>
                 );
               }
