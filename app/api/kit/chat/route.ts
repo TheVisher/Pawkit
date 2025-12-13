@@ -30,6 +30,12 @@ interface ChatRequest {
     notes?: string;
     tags?: string[];
   };
+  videoContext?: {
+    cardId: string;
+    cardTitle: string;
+    summary?: string;
+    transcript?: string;
+  };
   viewContext?: 'library' | 'notes' | 'calendar' | 'pawkit' | 'home';
   pawkitSlug?: string; // When viewContext is 'pawkit', this is the current pawkit
 }
@@ -68,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     // 4. Parse and validate request
     const body: ChatRequest = await req.json();
-    const { message, conversationHistory = [], cardContext, viewContext, pawkitSlug } = body;
+    const { message, conversationHistory = [], cardContext, videoContext, viewContext, pawkitSlug } = body;
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
@@ -85,7 +91,23 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Build context from user's Pawkit data
-    const context = await buildKitContext(user.id, message, supabase, cardContext, viewContext, pawkitSlug);
+    let context = await buildKitContext(user.id, message, supabase, cardContext, viewContext, pawkitSlug);
+
+    // 5b. Append video context if available
+    if (videoContext) {
+      const videoContextBlock = `
+---
+VIDEO CONTEXT
+You are currently helping the user with a video they are watching.
+
+Video Title: ${videoContext.cardTitle}
+${videoContext.summary ? `\nSummary: ${videoContext.summary}` : ''}
+${videoContext.transcript ? `\nTranscript (partial): ${videoContext.transcript}` : ''}
+
+Answer questions about this video content. Be concise and helpful. Reference specific parts of the transcript when relevant.
+---`;
+      context = videoContextBlock + '\n\n' + context;
+    }
 
     // 6. Determine model based on complexity
     // Use smart model for: long messages, long conversations, or explicit request

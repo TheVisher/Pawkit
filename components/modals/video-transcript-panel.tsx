@@ -44,7 +44,7 @@ export function VideoTranscriptPanel({
   const segmentRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const lastScrollTime = useRef<number>(0);
 
-  const { open: openKit, sendMessage } = useKitStore();
+  const { open: openKit, setVideoContext } = useKitStore();
 
   // Fetch transcript
   useEffect(() => {
@@ -111,16 +111,19 @@ export function VideoTranscriptPanel({
 
   // Open Kit with video context
   const askKitAboutVideo = useCallback(() => {
-    const transcriptText = segments.map(s => s.text).join(' ').slice(0, 8000);
+    const transcriptText = segments.map(s => s.text).join(' ');
 
+    // Use the new context method - adds context marker and summary card
+    setVideoContext({
+      id: cardId,
+      title: cardTitle,
+      summary: summary || undefined,
+      transcript: transcriptText,
+    });
+
+    // Open Kit panel
     openKit();
-    sendMessage(
-      `I'm watching "${cardTitle}". Here's the context:\n\n` +
-      (summary ? `Summary: ${summary}\n\n` : '') +
-      `Transcript excerpt: ${transcriptText.slice(0, 4000)}${transcriptText.length > 4000 ? '...' : ''}\n\n` +
-      `I have questions about this video.`
-    );
-  }, [cardTitle, summary, segments, openKit, sendMessage]);
+  }, [cardId, cardTitle, summary, segments, setVideoContext, openKit]);
 
   return (
     <div
