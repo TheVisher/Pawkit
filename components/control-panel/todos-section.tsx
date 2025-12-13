@@ -169,7 +169,8 @@ export function TodosSection() {
   const { todos, fetchTodos, addTodo, toggleTodo, deleteTodo } = useTodoStore();
   const [newTodoText, setNewTodoText] = useState("");
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [selectedDueDate, setSelectedDueDate] = useState<Date | null>(null);
+  // undefined = no selection yet (will default to today), null = explicitly chose backlog
+  const [selectedDueDate, setSelectedDueDate] = useState<Date | null | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Fetch todos on mount
@@ -186,11 +187,13 @@ export function TodosSection() {
     e.preventDefault();
     if (!newTodoText.trim()) return;
 
-    // Default to today if no date selected
-    const dueDate = selectedDueDate || startOfDay(new Date());
+    // undefined = no explicit choice, default to today
+    // null = explicitly chose backlog (no due date)
+    // Date = explicitly chose a date
+    const dueDate = selectedDueDate === undefined ? startOfDay(new Date()) : selectedDueDate;
     await addTodo(newTodoText, dueDate);
     setNewTodoText("");
-    setSelectedDueDate(null);
+    setSelectedDueDate(undefined);
     setShowDatePicker(false);
     inputRef.current?.focus();
   };
@@ -298,8 +301,9 @@ export function TodosSection() {
                   onClick={() => setQuickDate("today")}
                   className="px-2 py-0.5 rounded text-xs transition-colors"
                   style={{
-                    background: selectedDueDate && isToday(selectedDueDate) ? 'var(--ds-accent)' : 'var(--bg-surface-2)',
-                    color: selectedDueDate && isToday(selectedDueDate) ? 'white' : 'var(--text-secondary)',
+                    // Show selected when: explicitly chose today OR no selection (undefined = defaults to today)
+                    background: (selectedDueDate && isToday(selectedDueDate)) || selectedDueDate === undefined ? 'var(--ds-accent)' : 'var(--bg-surface-2)',
+                    color: (selectedDueDate && isToday(selectedDueDate)) || selectedDueDate === undefined ? 'white' : 'var(--text-secondary)',
                   }}
                 >
                   Today
@@ -320,8 +324,8 @@ export function TodosSection() {
                   onClick={() => setQuickDate("none")}
                   className="px-2 py-0.5 rounded text-xs transition-colors"
                   style={{
-                    background: !selectedDueDate ? 'var(--ds-accent)' : 'var(--bg-surface-2)',
-                    color: !selectedDueDate ? 'white' : 'var(--text-secondary)',
+                    background: selectedDueDate === null ? 'var(--ds-accent)' : 'var(--bg-surface-2)',
+                    color: selectedDueDate === null ? 'white' : 'var(--text-secondary)',
                   }}
                 >
                   Backlog
