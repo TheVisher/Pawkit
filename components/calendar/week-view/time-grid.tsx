@@ -50,15 +50,14 @@ export function TimeGrid({
   } | null>(null);
 
   const handleTimeSlotClick = (date: Date, hour: number, event: React.MouseEvent) => {
-    // Get click position for popover
-    const rect = (event.target as HTMLElement).getBoundingClientRect();
+    // Position popover at click location
     setPopoverState({
       isOpen: true,
       date,
       hour,
       position: {
-        x: rect.right + 8,
-        y: rect.top,
+        x: event.clientX + 8,
+        y: event.clientY - 20,
       },
     });
   };
@@ -215,6 +214,9 @@ export function TimeGrid({
                   hourHeight={hourHeight}
                   onEventClick={onEventClick}
                   onTimeSlotClick={(hour, e) => handleTimeSlotClick(day, hour, e)}
+                  onEventDrop={(eventId, sourceType) => {
+                    onEventReschedule?.(eventId, dateStr, sourceType);
+                  }}
                   isFirst={index === 0}
                 />
               );

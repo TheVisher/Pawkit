@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { positionEvents, HOUR_HEIGHT } from "@/lib/utils/time-grid";
 import { TimePositionedEvent } from "./time-positioned-event";
@@ -10,6 +10,7 @@ interface DayColumnProps {
   hourHeight?: number;
   onEventClick?: (event: CalendarEvent) => void;
   onTimeSlotClick?: (hour: number, event: React.MouseEvent) => void;
+  onEventDrop?: (eventId: string, sourceType: string) => void;
   isFirst?: boolean;
 }
 
@@ -22,8 +23,11 @@ export function DayColumn({
   hourHeight = HOUR_HEIGHT,
   onEventClick,
   onTimeSlotClick,
+  onEventDrop,
   isFirst = false,
 }: DayColumnProps) {
+  const [isDragOver, setIsDragOver] = useState(false);
+
   // Filter to only timed events (not all-day)
   const timedEvents = useMemo(
     () => events.filter((e) => !e.isAllDay && e.startTime),
@@ -38,13 +42,48 @@ export function DayColumn({
 
   const totalHeight = 24 * hourHeight;
 
+  // Drag handlers
+  const handleDragStart = (e: React.DragEvent, event: CalendarEvent) => {
+    e.dataTransfer.setData("eventId", event.id);
+    e.dataTransfer.setData("sourceType", event.source?.type || "manual");
+    e.dataTransfer.setData("sourceDate", event.date);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const eventId = e.dataTransfer.getData("eventId");
+    const sourceType = e.dataTransfer.getData("sourceType");
+
+    if (eventId && onEventDrop) {
+      onEventDrop(eventId, sourceType);
+    }
+  };
+
   return (
     <div
-      className="relative flex-1 min-w-0"
+      className={`relative flex-1 min-w-0 transition-colors ${
+        isDragOver ? "bg-accent/20" : ""
+      }`}
       style={{
         height: totalHeight,
         borderLeft: isFirst ? "none" : "1px solid var(--border-subtle)",
       }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       {/* Hour gridlines */}
       {Array.from({ length: 24 }, (_, hour) => (
@@ -79,6 +118,7 @@ export function DayColumn({
           key={pe.event.id}
           positionedEvent={pe}
           onClick={onEventClick}
+          onDragStart={handleDragStart}
         />
       ))}
     </div>

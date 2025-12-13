@@ -7,6 +7,7 @@ import { Clock, MapPin, Repeat } from "lucide-react";
 interface TimePositionedEventProps {
   positionedEvent: PositionedEvent;
   onClick?: (event: CalendarEvent) => void;
+  onDragStart?: (e: React.DragEvent, event: CalendarEvent) => void;
 }
 
 /**
@@ -16,8 +17,12 @@ interface TimePositionedEventProps {
 export function TimePositionedEvent({
   positionedEvent,
   onClick,
+  onDragStart,
 }: TimePositionedEventProps) {
   const { event, top, height, left, width, totalColumns } = positionedEvent;
+
+  // Cards are not draggable (they need different handling)
+  const isDraggable = event.source?.type !== "card";
 
   // Determine display mode based on height
   const isCompact = height < 35;
@@ -30,11 +35,15 @@ export function TimePositionedEvent({
 
   return (
     <button
+      draggable={isDraggable}
+      onDragStart={(e) => isDraggable && onDragStart?.(e, event)}
       onClick={(e) => {
         e.stopPropagation();
         onClick?.(event);
       }}
-      className="absolute overflow-hidden transition-all duration-150 hover:z-10"
+      className={`absolute overflow-hidden transition-all duration-150 hover:z-10 ${
+        isDraggable ? "cursor-grab active:cursor-grabbing" : ""
+      }`}
       style={{
         top: top,
         height: Math.max(height, MIN_EVENT_HEIGHT),
@@ -44,7 +53,6 @@ export function TimePositionedEvent({
         borderRadius: "6px",
         border: "1px solid rgba(255, 255, 255, 0.2)",
         boxShadow: "var(--raised-shadow-sm)",
-        cursor: "pointer",
       }}
       title={`${event.title}${event.startTime ? ` - ${formatTime12h(event.startTime)}` : ""}${event.location ? ` at ${event.location}` : ""}`}
     >
