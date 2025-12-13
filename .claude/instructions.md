@@ -5,7 +5,7 @@
 **For comprehensive project context, read `PAWKIT_BIBLE.md` at the project root.**
 
 This is a local-first bookmarking and note-taking app. Key facts:
-- **Tech**: Next.js 14, React, TypeScript, Tailwind, Supabase, IndexedDB
+- **Tech**: Next.js 15, React, TypeScript, Tailwind, Supabase, IndexedDB
 - **Architecture**: IndexedDB is source of truth, server is backup
 - **Data**: Cards reference collections by `slug` (not `id`)
 - **UI**: Must use CSS variables for theme compatibility

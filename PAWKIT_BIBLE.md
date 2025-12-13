@@ -52,7 +52,7 @@ A personal knowledge management system where your data is yours, available offli
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Next.js 14, React, TypeScript |
+| Frontend | Next.js 15, React, TypeScript |
 | Styling | Tailwind CSS, CSS Variables (theme-aware) |
 | State | Zustand (client), React Query (server) |
 | Local DB | IndexedDB (via idb library) |
