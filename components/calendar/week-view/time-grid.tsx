@@ -13,7 +13,8 @@ import { DayColumn } from "./day-column";
 import { CurrentTimeIndicator } from "./current-time-indicator";
 import { AllDaySection } from "./all-day-section";
 import { ResolvedHoliday } from "@/lib/data/us-holidays";
-import { EventCreationPopover } from "../event-creation-popover";
+import { Popover, PopoverContent, PopoverAnchor } from "@/components/ui/popover";
+import { EventCreationForm } from "../event-creation-form";
 
 interface TimeGridProps {
   weekDays: Date[];
@@ -43,73 +44,33 @@ export function TimeGrid({
   const gridRef = useRef<HTMLDivElement>(null);
   const totalGridHeight = 24 * hourHeight;
 
-  // Popover dimensions (approximate)
-  const POPOVER_WIDTH = 340;
-  const POPOVER_HEIGHT = 480;
-
-  // Event creation popover state
-  const [popoverState, setPopoverState] = useState<{
-    isOpen: boolean;
+  // Event creation popover state - stores slot info and anchor position
+  const [activeSlot, setActiveSlot] = useState<{
     date: Date;
     hour: number;
-    position: { x: number; y: number };
-    anchor: "left" | "right";
+    anchorRect: { left: number; top: number; width: number; height: number };
   } | null>(null);
 
   const handleTimeSlotClick = (date: Date, hour: number, columnIndex: number) => {
-    // Get the calendar container and grid bounding rects
-    const containerRect = containerRef.current?.getBoundingClientRect();
-    const gridRect = gridRef.current?.getBoundingClientRect();
-    const scrollRect = scrollContainerRef.current?.getBoundingClientRect();
+    if (!gridRef.current) return;
 
-    if (!containerRect || !gridRect || !scrollRect) return;
-
-    // Calculate column bounds mathematically from the grid
+    const gridRect = gridRef.current.getBoundingClientRect();
     const columnWidth = gridRect.width / 7;
-    const columnLeft = gridRect.left + (columnIndex * columnWidth);
-    const columnRight = columnLeft + columnWidth;
-
-    // Determine if popover should appear on left or right of the column
-    const spaceOnRight = containerRect.right - columnRight;
-
-    // Prefer right side, but flip to left if not enough space
-    const anchor = spaceOnRight >= POPOVER_WIDTH + 8 ? "right" : "left";
-
-    // Calculate x position - anchor to column edge
-    let x: number;
-    if (anchor === "right") {
-      x = columnRight + 8; // 8px gap from column's right edge
-    } else {
-      x = columnLeft - POPOVER_WIDTH - 8; // Position to left of column
-    }
-
-    // Calculate y position - use scroll container top as reference, offset by hour
-    // Account for the scroll position within the container
     const scrollTop = scrollContainerRef.current?.scrollTop || 0;
-    const hourPixelOffset = hour * hourHeight;
-    let y = scrollRect.top + hourPixelOffset - scrollTop + 8; // 8px padding at top
 
-    // Ensure popover doesn't go above container
-    if (y < containerRect.top) {
-      y = containerRect.top + 8;
-    }
+    // Calculate the anchor position at the time of click
+    const anchorRect = {
+      left: gridRect.left + (columnIndex * columnWidth),
+      top: gridRect.top + (hour * hourHeight) - scrollTop,
+      width: columnWidth,
+      height: hourHeight,
+    };
 
-    // Ensure popover doesn't go below container
-    if (y + POPOVER_HEIGHT > containerRect.bottom) {
-      y = containerRect.bottom - POPOVER_HEIGHT - 8;
-    }
-
-    setPopoverState({
-      isOpen: true,
-      date,
-      hour,
-      position: { x, y },
-      anchor,
-    });
+    setActiveSlot({ date, hour, anchorRect });
   };
 
   const closePopover = () => {
-    setPopoverState(null);
+    setActiveSlot(null);
   };
 
   // Auto-scroll to current time on mount
@@ -279,15 +240,42 @@ export function TimeGrid({
         </div>
       </div>
 
-      {/* Event creation popover */}
-      {popoverState && (
-        <EventCreationPopover
-          date={popoverState.date}
-          hour={popoverState.hour}
-          position={popoverState.position}
-          onClose={closePopover}
-        />
-      )}
+      {/* Event creation popover using Radix for proper anchoring */}
+      <Popover open={!!activeSlot} onOpenChange={(open) => !open && closePopover()}>
+        {/* Anchor element positioned at the clicked slot */}
+        {activeSlot && (
+          <PopoverAnchor asChild>
+            <div
+              className="fixed pointer-events-none z-40"
+              style={{
+                left: activeSlot.anchorRect.left,
+                top: activeSlot.anchorRect.top,
+                width: activeSlot.anchorRect.width,
+                height: activeSlot.anchorRect.height,
+                // Visual placeholder like Google Calendar
+                background: "var(--ds-accent)",
+                opacity: 0.3,
+                borderRadius: "4px",
+              }}
+            />
+          </PopoverAnchor>
+        )}
+        <PopoverContent
+          side="right"
+          sideOffset={8}
+          align="start"
+          collisionPadding={16}
+          className="w-auto p-0"
+        >
+          {activeSlot && (
+            <EventCreationForm
+              date={activeSlot.date}
+              hour={activeSlot.hour}
+              onClose={closePopover}
+            />
+          )}
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
