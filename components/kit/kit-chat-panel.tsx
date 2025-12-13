@@ -40,19 +40,19 @@ export function KitChatPanel() {
     clearMessages,
   } = useKitStore();
 
-  const { addToast } = useToastStore();
+  const toast = useToastStore();
 
   // Copy message content to clipboard
   const copyToClipboard = useCallback(async (content: string, messageId: string) => {
     try {
       await navigator.clipboard.writeText(content);
       setCopiedId(messageId);
-      addToast({ type: 'success', message: 'Copied to clipboard' });
+      toast.success('Copied to clipboard');
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
-      addToast({ type: 'error', message: 'Failed to copy' });
+      toast.error('Failed to copy');
     }
-  }, [addToast]);
+  }, [toast]);
 
   // Create note from message (placeholder - will integrate with notes system)
   const saveAsNote = useCallback(async (content: string) => {
@@ -60,11 +60,11 @@ export function KitChatPanel() {
     // For now, copy to clipboard with a note prompt
     try {
       await navigator.clipboard.writeText(content);
-      addToast({ type: 'success', message: 'Content copied - create a new note to save it' });
+      toast.success('Content copied - create a new note to save it');
     } catch {
-      addToast({ type: 'error', message: 'Failed to copy content' });
+      toast.error('Failed to copy content');
     }
-  }, [addToast]);
+  }, [toast]);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
