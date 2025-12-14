@@ -289,7 +289,8 @@ export function DayColumn({
       })}
 
       {/* Drag-to-create preview (active drag or persistent after release) */}
-      {(dragCreate?.isDragging || persistentPreview) && (() => {
+      {/* Hide when in multi-day mode - all-day section shows the preview instead */}
+      {((dragCreate?.isDragging && !isMultiDayMode) || persistentPreview) && (() => {
         const previewStartSlot = dragCreate?.isDragging
           ? Math.min(dragCreate.startSlot, dragCreate.endSlot)
           : persistentPreview!.startSlot;
