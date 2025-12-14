@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { format, setMonth, setYear, startOfWeek } from "date-fns";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar, CalendarDays, CalendarRange, Grid3X3, Menu, Flag } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar, CalendarDays, CalendarRange, Grid3X3, Menu, Flag, Link, CheckSquare, Sparkles, FileText, Eye, Plus, Cloud, Globe } from "lucide-react";
+import { useToastStore } from "@/lib/stores/toast-store";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useCalendarStore, type CalendarViewMode, type HolidayFilter, type HolidayCountry } from "@/lib/hooks/use-calendar-store";
 
@@ -57,14 +58,31 @@ export function CalendarDatePicker({
   const [datePickerOpen, setDatePickerOpen] = useState(false);
   const [viewModeOpen, setViewModeOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [addCalendarOpen, setAddCalendarOpen] = useState(false);
   const yearListRef = useRef<HTMLDivElement>(null);
   const years = generateYears();
+  const toast = useToastStore();
 
   // Holiday settings from store
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
   const enabledCountries = useCalendarStore((state) => state.enabledCountries);
   const setHolidayFilter = useCalendarStore((state) => state.setHolidayFilter);
   const toggleCountry = useCalendarStore((state) => state.toggleCountry);
+
+  // Visibility filter settings from store
+  const showUrlCards = useCalendarStore((state) => state.showUrlCards);
+  const showTodos = useCalendarStore((state) => state.showTodos);
+  const showManualEvents = useCalendarStore((state) => state.showManualEvents);
+  const showDailyNotes = useCalendarStore((state) => state.showDailyNotes);
+  const toggleShowUrlCards = useCalendarStore((state) => state.toggleShowUrlCards);
+  const toggleShowTodos = useCalendarStore((state) => state.toggleShowTodos);
+  const toggleShowManualEvents = useCalendarStore((state) => state.toggleShowManualEvents);
+  const toggleShowDailyNotes = useCalendarStore((state) => state.toggleShowDailyNotes);
+
+  // Calendar sources from store
+  const calendarSources = useCalendarStore((state) => state.calendarSources);
+  const enabledCalendarSources = useCalendarStore((state) => state.enabledCalendarSources);
+  const toggleCalendarSource = useCalendarStore((state) => state.toggleCalendarSource);
 
   const currentMonthValue = currentDate.getMonth();
   const currentYearValue = currentDate.getFullYear();
@@ -528,6 +546,240 @@ export function CalendarDatePicker({
                 </div>
               </div>
             )}
+
+            {/* Divider */}
+            <div
+              className="my-4"
+              style={{ borderTop: '1px solid var(--border-subtle)' }}
+            />
+
+            {/* Show on Calendar Header */}
+            <div className="flex items-center gap-2 mb-3">
+              <Eye size={14} style={{ color: 'var(--ds-accent)' }} />
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                Show on Calendar
+              </span>
+            </div>
+
+            {/* Visibility Toggles */}
+            <div
+              className="rounded-xl p-2 space-y-1"
+              style={{
+                background: 'var(--bg-surface-1)',
+                boxShadow: 'var(--inset-shadow)',
+              }}
+            >
+              {/* URL Cards Toggle */}
+              <button
+                onClick={toggleShowUrlCards}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                style={showUrlCards ? {
+                  background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                  color: 'var(--text-primary)',
+                  boxShadow: 'var(--raised-shadow-sm)',
+                } : {
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                <Link size={14} />
+                <span>URL Cards</span>
+              </button>
+
+              {/* Todos Toggle */}
+              <button
+                onClick={toggleShowTodos}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                style={showTodos ? {
+                  background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                  color: 'var(--text-primary)',
+                  boxShadow: 'var(--raised-shadow-sm)',
+                } : {
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                <CheckSquare size={14} />
+                <span>Todos</span>
+              </button>
+
+              {/* Events Toggle */}
+              <button
+                onClick={toggleShowManualEvents}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                style={showManualEvents ? {
+                  background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                  color: 'var(--text-primary)',
+                  boxShadow: 'var(--raised-shadow-sm)',
+                } : {
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                <Sparkles size={14} />
+                <span>Events</span>
+              </button>
+
+              {/* Daily Notes Toggle */}
+              <button
+                onClick={toggleShowDailyNotes}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                style={showDailyNotes ? {
+                  background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                  color: 'var(--text-primary)',
+                  boxShadow: 'var(--raised-shadow-sm)',
+                } : {
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                }}
+              >
+                <FileText size={14} />
+                <span>Daily Notes</span>
+              </button>
+            </div>
+
+            {/* Divider */}
+            <div
+              className="my-4"
+              style={{ borderTop: '1px solid var(--border-subtle)' }}
+            />
+
+            {/* Calendars Header */}
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar size={14} style={{ color: 'var(--ds-accent)' }} />
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                Calendars
+              </span>
+            </div>
+
+            {/* Calendar Sources List */}
+            <div
+              className="rounded-xl p-2 space-y-1"
+              style={{
+                background: 'var(--bg-surface-1)',
+                boxShadow: 'var(--inset-shadow)',
+              }}
+            >
+              {calendarSources.map((source) => (
+                <button
+                  key={source.id}
+                  onClick={() => toggleCalendarSource(source.id)}
+                  className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                  style={enabledCalendarSources.includes(source.id) ? {
+                    background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                    color: 'var(--text-primary)',
+                    boxShadow: 'var(--raised-shadow-sm)',
+                  } : {
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ background: source.color }}
+                  />
+                  <span>{source.name}</span>
+                  {!source.isConnected && (
+                    <span
+                      className="ml-auto text-[10px] px-1.5 py-0.5 rounded"
+                      style={{ background: 'var(--bg-surface-2)', color: 'var(--text-muted)' }}
+                    >
+                      Not connected
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Add Calendar Button */}
+            <Popover open={addCalendarOpen} onOpenChange={setAddCalendarOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                  style={{
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                    border: '1px dashed var(--border-subtle)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'var(--bg-surface-3)';
+                    e.currentTarget.style.borderColor = 'var(--border-default)';
+                    e.currentTarget.style.color = 'var(--text-secondary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.borderColor = 'var(--border-subtle)';
+                    e.currentTarget.style.color = 'var(--text-muted)';
+                  }}
+                >
+                  <Plus size={14} />
+                  <span>Add Calendar</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[220px] p-2" align="end" side="left">
+                <div className="space-y-1">
+                  {/* Google Calendar Option */}
+                  <button
+                    onClick={() => {
+                      toast.info("Google Calendar integration coming soon!");
+                      setAddCalendarOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+                    style={{
+                      background: 'transparent',
+                      color: 'var(--text-secondary)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-surface-3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ background: 'rgba(66, 133, 244, 0.15)' }}
+                    >
+                      <Cloud size={16} style={{ color: '#4285F4' }} />
+                    </div>
+                    <div className="text-left">
+                      <div style={{ color: 'var(--text-primary)' }}>Google Calendar</div>
+                      <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Sign in with Google</div>
+                    </div>
+                  </button>
+
+                  {/* CalDAV/iCal Option */}
+                  <button
+                    onClick={() => {
+                      toast.info("CalDAV/iCal integration coming soon!");
+                      setAddCalendarOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+                    style={{
+                      background: 'transparent',
+                      color: 'var(--text-secondary)',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-surface-3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center"
+                      style={{ background: 'rgba(139, 92, 246, 0.15)' }}
+                    >
+                      <Globe size={16} style={{ color: 'var(--ds-accent)' }} />
+                    </div>
+                    <div className="text-left">
+                      <div style={{ color: 'var(--text-primary)' }}>CalDAV / iCal URL</div>
+                      <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Add by URL</div>
+                    </div>
+                  </button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </PopoverContent>
       </Popover>

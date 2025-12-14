@@ -46,6 +46,12 @@ export function WeekView({
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
   const enabledCountries = useCalendarStore((state) => state.enabledCountries);
 
+  // Visibility filter settings
+  const showUrlCards = useCalendarStore((state) => state.showUrlCards);
+  const showTodos = useCalendarStore((state) => state.showTodos);
+  const showManualEvents = useCalendarStore((state) => state.showManualEvents);
+  const showDailyNotes = useCalendarStore((state) => state.showDailyNotes);
+
   // Mark as client-side after mount to prevent hydration issues
   useEffect(() => {
     setIsClient(true);
@@ -124,102 +130,110 @@ export function WeekView({
     const rangeStart = format(weekDays[0], "yyyy-MM-dd");
     const rangeEnd = format(weekDays[weekDays.length - 1], "yyyy-MM-dd");
 
-    // Add calendar events
-    events.forEach((event) => {
-      // Generate recurrence instances for recurring events
-      const instances = generateRecurrenceInstances(event, rangeStart, rangeEnd);
+    // Add calendar events (manual events) - only if filter enabled
+    if (showManualEvents) {
+      events.forEach((event) => {
+        // Generate recurrence instances for recurring events
+        const instances = generateRecurrenceInstances(event, rangeStart, rangeEnd);
 
-      instances.forEach((instance) => {
-        const dateStr = instance.instanceDate;
+        instances.forEach((instance) => {
+          const dateStr = instance.instanceDate;
+          if (!map.has(dateStr)) {
+            map.set(dateStr, []);
+          }
+          map.get(dateStr)!.push(instance.event);
+        });
+      });
+    }
+
+    // Convert scheduled cards to events for display - only if filter enabled
+    if (showUrlCards) {
+      cardsByDate.forEach((dayCards, dateStr) => {
         if (!map.has(dateStr)) {
           map.set(dateStr, []);
         }
-        map.get(dateStr)!.push(instance.event);
+
+        dayCards.forEach((card) => {
+          // Check if card has specific time or is all-day
+          const hasTime = card.scheduledStartTime != null;
+
+          // Create a pseudo-event from the scheduled card
+          const pseudoEvent: CalendarEvent = {
+            id: `card-${card.id}`,
+            userId: "",
+            title: getCardDisplayTitle(card),
+            date: dateStr,
+            isAllDay: !hasTime,
+            startTime: card.scheduledStartTime ?? undefined,
+            endTime: card.scheduledEndTime ?? undefined,
+            color: "#6b7280", // Gray color for cards
+            source: {
+              type: "card",
+              cardId: card.id,
+            },
+            url: card.url, // Pass URL for favicon lookup
+            createdAt: card.createdAt || new Date().toISOString(),
+            updatedAt: card.updatedAt || new Date().toISOString(),
+          };
+          map.get(dateStr)!.push(pseudoEvent);
+        });
       });
-    });
+    }
 
-    // Convert scheduled cards to events for display
-    cardsByDate.forEach((dayCards, dateStr) => {
-      if (!map.has(dateStr)) {
-        map.set(dateStr, []);
-      }
+    // Add daily notes as special events - only if filter enabled
+    if (showDailyNotes) {
+      dailyNotesByDate.forEach((note, dateStr) => {
+        if (!map.has(dateStr)) {
+          map.set(dateStr, []);
+        }
 
-      dayCards.forEach((card) => {
-        // Check if card has specific time or is all-day
-        const hasTime = card.scheduledStartTime != null;
-
-        // Create a pseudo-event from the scheduled card
         const pseudoEvent: CalendarEvent = {
-          id: `card-${card.id}`,
+          id: `note-${note.id}`,
           userId: "",
-          title: getCardDisplayTitle(card),
-          date: dateStr,
-          isAllDay: !hasTime,
-          startTime: card.scheduledStartTime ?? undefined,
-          endTime: card.scheduledEndTime ?? undefined,
-          color: "#6b7280", // Gray color for cards
-          source: {
-            type: "card",
-            cardId: card.id,
-          },
-          url: card.url, // Pass URL for favicon lookup
-          createdAt: card.createdAt || new Date().toISOString(),
-          updatedAt: card.updatedAt || new Date().toISOString(),
-        };
-        map.get(dateStr)!.push(pseudoEvent);
-      });
-    });
-
-    // Add daily notes as special events
-    dailyNotesByDate.forEach((note, dateStr) => {
-      if (!map.has(dateStr)) {
-        map.set(dateStr, []);
-      }
-
-      const pseudoEvent: CalendarEvent = {
-        id: `note-${note.id}`,
-        userId: "",
-        title: "Daily Note",
-        date: dateStr,
-        isAllDay: true,
-        color: "var(--ds-accent)", // Purple for notes
-        source: {
-          type: "card",
-          cardId: note.id,
-        },
-        createdAt: note.createdAt || new Date().toISOString(),
-        updatedAt: note.updatedAt || new Date().toISOString(),
-      };
-      map.get(dateStr)!.push(pseudoEvent);
-    });
-
-    // Add todos with due dates
-    todos
-      .filter((todo) => todo.dueDate && !todo.completed)
-      .forEach((todo) => {
-        const dateStr = format(todo.dueDate!, "yyyy-MM-dd");
-        if (dateStr < rangeStart || dateStr > rangeEnd) return;
-
-        if (!map.has(dateStr)) {
-          map.set(dateStr, []);
-        }
-
-        const pseudoEvent: CalendarEvent = {
-          id: `todo-${todo.id}`,
-          userId: todo.userId,
-          title: todo.text,
+          title: "Daily Note",
           date: dateStr,
           isAllDay: true,
-          color: "#f59e0b", // Amber/orange for todos
+          color: "var(--ds-accent)", // Purple for notes
           source: {
-            type: "todo" as const,
-            todoId: todo.id,
+            type: "card",
+            cardId: note.id,
           },
-          createdAt: todo.createdAt.toISOString(),
-          updatedAt: todo.updatedAt.toISOString(),
+          createdAt: note.createdAt || new Date().toISOString(),
+          updatedAt: note.updatedAt || new Date().toISOString(),
         };
         map.get(dateStr)!.push(pseudoEvent);
       });
+    }
+
+    // Add todos with due dates - only if filter enabled
+    if (showTodos) {
+      todos
+        .filter((todo) => todo.dueDate && !todo.completed)
+        .forEach((todo) => {
+          const dateStr = format(todo.dueDate!, "yyyy-MM-dd");
+          if (dateStr < rangeStart || dateStr > rangeEnd) return;
+
+          if (!map.has(dateStr)) {
+            map.set(dateStr, []);
+          }
+
+          const pseudoEvent: CalendarEvent = {
+            id: `todo-${todo.id}`,
+            userId: todo.userId,
+            title: todo.text,
+            date: dateStr,
+            isAllDay: true,
+            color: "#f59e0b", // Amber/orange for todos
+            source: {
+              type: "todo" as const,
+              todoId: todo.id,
+            },
+            createdAt: todo.createdAt.toISOString(),
+            updatedAt: todo.updatedAt.toISOString(),
+          };
+          map.get(dateStr)!.push(pseudoEvent);
+        });
+    }
 
     // Sort events by time within each day
     map.forEach((dayEvents) => {
@@ -236,7 +250,7 @@ export function WeekView({
     });
 
     return map;
-  }, [events, weekDays, generateRecurrenceInstances, cardsByDate, dailyNotesByDate, todos]);
+  }, [events, weekDays, generateRecurrenceInstances, cardsByDate, dailyNotesByDate, todos, showUrlCards, showTodos, showManualEvents, showDailyNotes]);
 
   // Group holidays by date
   const holidaysByDate = useMemo(() => {

@@ -45,6 +45,11 @@ export function DayView({
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
   const enabledCountries = useCalendarStore((state) => state.enabledCountries);
 
+  // Visibility filter settings
+  const showUrlCards = useCalendarStore((state) => state.showUrlCards);
+  const showManualEvents = useCalendarStore((state) => state.showManualEvents);
+  const showDailyNotes = useCalendarStore((state) => state.showDailyNotes);
+
   const hourHeight = HOUR_HEIGHT;
   const totalGridHeight = 24 * hourHeight;
   const dateStr = format(currentDate, "yyyy-MM-dd");
@@ -98,33 +103,38 @@ export function DayView({
   const dayEvents = useMemo(() => {
     const results: CalendarEvent[] = [];
 
-    events.forEach((event) => {
-      const instances = generateRecurrenceInstances(event, dateStr, dateStr);
-      instances.forEach((instance) => {
-        if (instance.instanceDate === dateStr) {
-          results.push(instance.event);
-        }
+    // Add manual events - only if filter enabled
+    if (showManualEvents) {
+      events.forEach((event) => {
+        const instances = generateRecurrenceInstances(event, dateStr, dateStr);
+        instances.forEach((instance) => {
+          if (instance.instanceDate === dateStr) {
+            results.push(instance.event);
+          }
+        });
       });
-    });
+    }
 
-    // Convert scheduled cards to all-day events
-    dayCards.forEach((card) => {
-      results.push({
-        id: `card-${card.id}`,
-        userId: "",
-        title: getCardDisplayTitle(card),
-        date: dateStr,
-        isAllDay: true,
-        color: "#6b7280",
-        url: card.url, // Pass URL for favicon lookup
-        source: { type: "card", cardId: card.id },
-        createdAt: card.createdAt || new Date().toISOString(),
-        updatedAt: card.updatedAt || new Date().toISOString(),
+    // Convert scheduled cards to all-day events - only if filter enabled
+    if (showUrlCards) {
+      dayCards.forEach((card) => {
+        results.push({
+          id: `card-${card.id}`,
+          userId: "",
+          title: getCardDisplayTitle(card),
+          date: dateStr,
+          isAllDay: true,
+          color: "#6b7280",
+          url: card.url, // Pass URL for favicon lookup
+          source: { type: "card", cardId: card.id },
+          createdAt: card.createdAt || new Date().toISOString(),
+          updatedAt: card.updatedAt || new Date().toISOString(),
+        });
       });
-    });
+    }
 
-    // Add daily note as event
-    if (dailyNote) {
+    // Add daily note as event - only if filter enabled
+    if (showDailyNotes && dailyNote) {
       results.push({
         id: `note-${dailyNote.id}`,
         userId: "",
@@ -139,7 +149,7 @@ export function DayView({
     }
 
     return results;
-  }, [events, generateRecurrenceInstances, dateStr, dayCards, dailyNote]);
+  }, [events, generateRecurrenceInstances, dateStr, dayCards, dailyNote, showUrlCards, showManualEvents, showDailyNotes]);
 
   // Get holiday for this day
   const holiday = useMemo(() => {

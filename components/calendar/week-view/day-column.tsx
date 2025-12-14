@@ -10,8 +10,18 @@ interface DayColumnProps {
   hourHeight?: number;
   onEventClick?: (event: CalendarEvent, element: HTMLElement) => void;
   onTimeSlotClick?: (startTime: string, element: HTMLElement) => void;
+  onTimeRangeSelect?: (startTime: string, endTime: string, element: HTMLElement) => void;
   onEventDrop?: (eventId: string, sourceType: string, targetHour: number) => void;
+  onEventHoverStart?: (event: CalendarEvent, element: HTMLElement) => void;
+  onEventHoverEnd?: () => void;
   isFirst?: boolean;
+}
+
+// Drag-to-create state
+interface DragCreateState {
+  startSlot: number;  // 0-47 (30-min slots)
+  endSlot: number;
+  isDragging: boolean;
 }
 
 /**
@@ -23,11 +33,16 @@ export function DayColumn({
   hourHeight = HOUR_HEIGHT,
   onEventClick,
   onTimeSlotClick,
+  onTimeRangeSelect,
   onEventDrop,
+  onEventHoverStart,
+  onEventHoverEnd,
   isFirst = false,
 }: DayColumnProps) {
   const columnRef = useRef<HTMLDivElement>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [dragCreate, setDragCreate] = useState<DragCreateState | null>(null);
+  const slotHeight = hourHeight / 2;
 
   // Filter to only timed events (not all-day)
   const timedEvents = useMemo(
@@ -80,12 +95,75 @@ export function DayColumn({
     }
   };
 
-  const handleTimeSlotClick = (e: React.MouseEvent, slotIndex: number) => {
-    // Convert slot index to time string (48 slots = 30-min increments)
+  // Convert slot index to time string (48 slots = 30-min increments)
+  const slotToTime = (slotIndex: number): string => {
     const hour = Math.floor(slotIndex / 2);
     const minutes = (slotIndex % 2) * 30;
-    const startTime = `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-    onTimeSlotClick?.(startTime, e.currentTarget as HTMLElement);
+    return `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+  };
+
+  // Pointer handlers for drag-to-create
+  const handlePointerDown = (e: React.PointerEvent, slotIndex: number) => {
+    // Only left click
+    if (e.button !== 0) return;
+    // Don't start drag if clicking on an event
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-event]")) return;
+
+    e.preventDefault();
+    setDragCreate({
+      startSlot: slotIndex,
+      endSlot: slotIndex,
+      isDragging: true,
+    });
+
+    // Capture pointer for cross-element tracking
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!dragCreate?.isDragging) return;
+
+    const rect = columnRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const y = e.clientY - rect.top;
+    const currentSlot = Math.max(0, Math.min(47, Math.floor(y / slotHeight)));
+
+    setDragCreate(prev => prev ? { ...prev, endSlot: currentSlot } : null);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!dragCreate?.isDragging) return;
+
+    const startSlot = Math.min(dragCreate.startSlot, dragCreate.endSlot);
+    const endSlot = Math.max(dragCreate.startSlot, dragCreate.endSlot) + 1; // +1 to include the end slot
+
+    const startTime = slotToTime(startSlot);
+    const endTime = slotToTime(Math.min(endSlot, 48)); // Clamp to 24:00
+
+    // If drag was just 1 slot (tiny drag = click), use single click handler
+    if (startSlot === Math.max(dragCreate.startSlot, dragCreate.endSlot)) {
+      const element = e.currentTarget as HTMLElement;
+      onTimeSlotClick?.(startTime, element);
+    } else {
+      // Use time range handler for actual drags
+      const element = e.currentTarget as HTMLElement;
+      if (onTimeRangeSelect) {
+        onTimeRangeSelect(startTime, endTime, element);
+      } else {
+        // Fallback to single click if no range handler
+        onTimeSlotClick?.(startTime, element);
+      }
+    }
+
+    setDragCreate(null);
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    setDragCreate(null);
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
   };
 
   return (
@@ -93,19 +171,22 @@ export function DayColumn({
       ref={columnRef}
       className={`relative flex-1 min-w-0 transition-colors ${
         isDragOver ? "bg-accent/20" : ""
-      }`}
+      } ${dragCreate?.isDragging ? "select-none" : ""}`}
       style={{
         height: totalHeight,
         borderLeft: isFirst ? "none" : "1px solid var(--border-subtle)",
+        touchAction: "none", // Prevent touch scrolling during drag
       }}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
     >
       {/* 30-minute time slots (48 slots per day) */}
       {Array.from({ length: 48 }, (_, slotIndex) => {
         const isHourStart = slotIndex % 2 === 0;
-        const slotHeight = hourHeight / 2;
 
         return (
           <div
@@ -121,10 +202,30 @@ export function DayColumn({
                   : "1px dashed rgba(255,255,255,0.05)"
                 : "none",
             }}
-            onClick={(e) => handleTimeSlotClick(e, slotIndex)}
+            onPointerDown={(e) => handlePointerDown(e, slotIndex)}
           />
         );
       })}
+
+      {/* Drag-to-create preview */}
+      {dragCreate?.isDragging && (
+        <div
+          className="absolute left-1 right-1 rounded-md pointer-events-none z-20"
+          style={{
+            top: Math.min(dragCreate.startSlot, dragCreate.endSlot) * slotHeight,
+            height: (Math.abs(dragCreate.endSlot - dragCreate.startSlot) + 1) * slotHeight,
+            background: "var(--ds-accent)",
+            opacity: 0.5,
+            border: "2px dashed var(--ds-accent)",
+          }}
+        >
+          <div className="px-2 py-1">
+            <div className="text-[10px] font-medium text-white opacity-90">
+              {slotToTime(Math.min(dragCreate.startSlot, dragCreate.endSlot))} - {slotToTime(Math.max(dragCreate.startSlot, dragCreate.endSlot) + 1)}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Positioned events */}
       {positionedEvents.map((pe) => (
@@ -133,6 +234,8 @@ export function DayColumn({
           positionedEvent={pe}
           onClick={onEventClick}
           onDragStart={handleDragStart}
+          onHoverStart={onEventHoverStart}
+          onHoverEnd={onEventHoverEnd}
         />
       ))}
     </div>
