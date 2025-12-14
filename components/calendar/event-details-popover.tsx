@@ -2,7 +2,9 @@
 
 import { CalendarEvent } from "@/lib/types/calendar";
 import { formatTime12h } from "@/lib/utils/time-grid";
-import { X, Clock, MapPin, Repeat, AlignLeft, Trash2, Pencil } from "lucide-react";
+import { getFaviconUrl } from "@/lib/utils/card-display";
+import { useDataStore } from "@/lib/stores/data-store";
+import { X, Clock, MapPin, Repeat, AlignLeft, Trash2, Pencil, ExternalLink } from "lucide-react";
 import { format, parseISO } from "date-fns";
 
 interface EventDetailsPopoverProps {
@@ -18,8 +20,14 @@ export function EventDetailsPopover({
   onEdit,
   onDelete,
 }: EventDetailsPopoverProps) {
+  const cards = useDataStore((state) => state.cards);
   const eventDate = parseISO(event.date);
   const formattedDate = format(eventDate, "EEEE, MMMM d, yyyy");
+
+  // Look up the linked card if this event is from a card
+  const linkedCard = event.source?.cardId
+    ? cards.find((c) => c.id === event.source?.cardId)
+    : null;
 
   // Format time range
   const timeRange = event.isAllDay
@@ -130,6 +138,70 @@ export function EventDetailsPopover({
             )}
           </div>
         </div>
+
+        {/* Card Preview */}
+        {linkedCard && linkedCard.type === "url" && (
+          <div
+            className="rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+            style={{
+              background: "var(--bg-surface-3)",
+              border: "1px solid var(--border-subtle)",
+            }}
+            onClick={() => {
+              if (linkedCard.url) {
+                window.open(linkedCard.url, "_blank");
+              }
+            }}
+          >
+            {/* Thumbnail */}
+            {linkedCard.image && (
+              <div className="relative w-full h-32 overflow-hidden">
+                <img
+                  src={linkedCard.image}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              </div>
+            )}
+            {/* Card info */}
+            <div className="p-3">
+              <div className="flex items-center gap-2 mb-1">
+                {linkedCard.url && (
+                  <img
+                    src={getFaviconUrl(linkedCard.url, 16)}
+                    alt=""
+                    className="w-4 h-4 rounded-sm flex-shrink-0"
+                    onError={(e) => {
+                      e.currentTarget.style.display = "none";
+                    }}
+                  />
+                )}
+                <span
+                  className="text-xs truncate"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  {linkedCard.domain || new URL(linkedCard.url).hostname}
+                </span>
+                <ExternalLink
+                  size={12}
+                  className="flex-shrink-0 ml-auto"
+                  style={{ color: "var(--text-muted)" }}
+                />
+              </div>
+              {linkedCard.description && (
+                <p
+                  className="text-xs line-clamp-2"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  {linkedCard.description}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Location */}
         {event.location && (
