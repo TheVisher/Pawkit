@@ -8,8 +8,8 @@ import { TimePositionedEvent } from "./time-positioned-event";
 interface DayColumnProps {
   events: CalendarEvent[];
   hourHeight?: number;
-  onEventClick?: (event: CalendarEvent) => void;
-  onTimeSlotClick?: (hour: number) => void;
+  onEventClick?: (event: CalendarEvent, eventRect: DOMRect) => void;
+  onTimeSlotClick?: (hour: number, slotRect: DOMRect) => void;
   onEventDrop?: (eventId: string, sourceType: string, targetHour: number) => void;
   isFirst?: boolean;
 }
@@ -80,8 +80,10 @@ export function DayColumn({
     }
   };
 
-  const handleTimeSlotClick = (hour: number) => {
-    onTimeSlotClick?.(hour);
+  const handleTimeSlotClick = (e: React.MouseEvent, hour: number) => {
+    // Pass the click position for accurate anchor placement
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    onTimeSlotClick?.(hour, rect);
   };
 
   return (
@@ -108,7 +110,7 @@ export function DayColumn({
             height: hourHeight,
             borderTop: hour > 0 ? "1px solid var(--border-subtle)" : "none",
           }}
-          onClick={() => handleTimeSlotClick(hour)}
+          onClick={(e) => handleTimeSlotClick(e, hour)}
         />
       ))}
 

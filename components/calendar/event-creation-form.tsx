@@ -92,7 +92,16 @@ export function EventCreationForm({
   };
 
   return (
-    <div className="w-[340px]">
+    <div
+      className="w-[340px] rounded-xl overflow-hidden"
+      style={{
+        background: "rgba(30, 30, 35, 0.85)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: "1px solid var(--border-subtle)",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+      }}
+    >
       {/* Header */}
       <div
         className="flex items-center justify-between px-4 py-3"

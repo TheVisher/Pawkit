@@ -12,7 +12,7 @@ interface AllDaySectionProps {
   weekDays: Date[];
   eventsByDate: Map<string, CalendarEvent[]>;
   holidaysByDate: Map<string, ResolvedHoliday>;
-  onEventClick?: (event: CalendarEvent) => void;
+  onEventClick?: (event: CalendarEvent, eventRect: DOMRect) => void;
   onDayClick?: (date: Date) => void;
   onEventReschedule?: (eventId: string, newDate: string, sourceType?: string, targetHour?: number) => void;
 }
@@ -186,12 +186,14 @@ export function AllDaySection({
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onEventClick?.(event);
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        onEventClick?.(event, rect);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          onEventClick?.(event);
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          onEventClick?.(event, rect);
                         }
                       }}
                     >

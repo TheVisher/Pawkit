@@ -15,6 +15,8 @@ import { AllDaySection } from "./all-day-section";
 import { ResolvedHoliday } from "@/lib/data/us-holidays";
 import { Popover, PopoverContent, PopoverAnchor } from "@/components/ui/popover";
 import { EventCreationForm } from "../event-creation-form";
+import { EventDetailsPopover } from "../event-details-popover";
+import { useEventStore } from "@/lib/hooks/use-event-store";
 
 interface TimeGridProps {
   weekDays: Date[];
@@ -51,19 +53,21 @@ export function TimeGrid({
     anchorRect: { left: number; top: number; width: number; height: number };
   } | null>(null);
 
-  const handleTimeSlotClick = (date: Date, hour: number, columnIndex: number) => {
-    if (!gridRef.current) return;
+  // Event details popover state - stores selected event and anchor position
+  const [selectedEvent, setSelectedEvent] = useState<{
+    event: CalendarEvent;
+    anchorRect: { left: number; top: number; width: number; height: number };
+  } | null>(null);
 
-    const gridRect = gridRef.current.getBoundingClientRect();
-    const columnWidth = gridRect.width / 7;
-    const scrollTop = scrollContainerRef.current?.scrollTop || 0;
+  const { deleteEvent } = useEventStore();
 
-    // Calculate the anchor position at the time of click
+  const handleTimeSlotClick = (date: Date, hour: number, slotRect: DOMRect) => {
+    // Use the actual clicked slot's bounding rect for accurate positioning
     const anchorRect = {
-      left: gridRect.left + (columnIndex * columnWidth),
-      top: gridRect.top + (hour * hourHeight) - scrollTop,
-      width: columnWidth,
-      height: hourHeight,
+      left: slotRect.left,
+      top: slotRect.top,
+      width: slotRect.width,
+      height: slotRect.height,
     };
 
     setActiveSlot({ date, hour, anchorRect });
@@ -71,6 +75,35 @@ export function TimeGrid({
 
   const closePopover = () => {
     setActiveSlot(null);
+  };
+
+  const closeEventDetails = () => {
+    setSelectedEvent(null);
+  };
+
+  // Handle event click - show details popover with anchor at event position
+  const handleEventClickInternal = (event: CalendarEvent, eventRect: DOMRect) => {
+    // Close any open creation popover
+    setActiveSlot(null);
+
+    setSelectedEvent({
+      event,
+      anchorRect: {
+        left: eventRect.left,
+        top: eventRect.top,
+        width: eventRect.width,
+        height: eventRect.height,
+      },
+    });
+  };
+
+  // Handle delete from popover
+  const handleDeleteEvent = async (event: CalendarEvent) => {
+    // Only delete manual events (not pseudo-events from cards/todos)
+    if (!event.source || event.source.type === "manual") {
+      await deleteEvent(event.id);
+      closeEventDetails();
+    }
   };
 
   // Auto-scroll to current time on mount
@@ -165,7 +198,7 @@ export function TimeGrid({
         weekDays={weekDays}
         eventsByDate={eventsByDate}
         holidaysByDate={holidaysByDate}
-        onEventClick={onEventClick}
+        onEventClick={handleEventClickInternal}
         onDayClick={onDayClick}
         onEventReschedule={onEventReschedule}
       />
@@ -221,8 +254,8 @@ export function TimeGrid({
                   key={index}
                   events={dayEvents}
                   hourHeight={hourHeight}
-                  onEventClick={onEventClick}
-                  onTimeSlotClick={(hour) => handleTimeSlotClick(day, hour, index)}
+                  onEventClick={handleEventClickInternal}
+                  onTimeSlotClick={(hour, slotRect) => handleTimeSlotClick(day, hour, slotRect)}
                   onEventDrop={(eventId, sourceType, targetHour) => {
                     onEventReschedule?.(eventId, dateStr, sourceType, targetHour);
                   }}
@@ -272,6 +305,42 @@ export function TimeGrid({
               date={activeSlot.date}
               hour={activeSlot.hour}
               onClose={closePopover}
+            />
+          )}
+        </PopoverContent>
+      </Popover>
+
+      {/* Event details popover */}
+      <Popover open={!!selectedEvent} onOpenChange={(open) => !open && closeEventDetails()}>
+        {selectedEvent && (
+          <PopoverAnchor asChild>
+            <div
+              className="fixed pointer-events-none z-40"
+              style={{
+                left: selectedEvent.anchorRect.left,
+                top: selectedEvent.anchorRect.top,
+                width: selectedEvent.anchorRect.width,
+                height: selectedEvent.anchorRect.height,
+              }}
+            />
+          </PopoverAnchor>
+        )}
+        <PopoverContent
+          side="right"
+          sideOffset={8}
+          align="start"
+          collisionPadding={16}
+          className="w-auto p-0"
+        >
+          {selectedEvent && (
+            <EventDetailsPopover
+              event={selectedEvent.event}
+              onClose={closeEventDetails}
+              onDelete={
+                !selectedEvent.event.source || selectedEvent.event.source.type === "manual"
+                  ? handleDeleteEvent
+                  : undefined
+              }
             />
           )}
         </PopoverContent>
