@@ -52,6 +52,9 @@ export function WeekView({
   const showManualEvents = useCalendarStore((state) => state.showManualEvents);
   const showDailyNotes = useCalendarStore((state) => state.showDailyNotes);
 
+  // Week start preference
+  const weekStartsOn = useCalendarStore((state) => state.weekStartsOn);
+
   // Mark as client-side after mount to prevent hydration issues
   useEffect(() => {
     setIsClient(true);
@@ -69,15 +72,15 @@ export function WeekView({
     fetchTodos();
   }, [fetchTodos]);
 
-  // Get all days in the current week (starting from Sunday)
+  // Get all days in the current week (respects weekStartsOn setting)
   const weekDays = useMemo(() => {
-    const weekStart = startOfWeek(currentMonth);
+    const weekStart = startOfWeek(currentMonth, { weekStartsOn });
     const days = [];
     for (let i = 0; i < 7; i++) {
       days.push(addDays(weekStart, i));
     }
     return days;
-  }, [currentMonth]);
+  }, [currentMonth, weekStartsOn]);
 
   // Group cards by date (scheduled cards become calendar events)
   const cardsByDate = useMemo(() => {
