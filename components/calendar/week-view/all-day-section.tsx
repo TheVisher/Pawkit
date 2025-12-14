@@ -88,11 +88,10 @@ export function AllDaySection({
     0
   );
   const visibleRows = Math.min(maxEvents, MAX_VISIBLE_EVENTS);
-  const sectionHeight = Math.max(40, visibleRows * (EVENT_HEIGHT + 4) + 16);
-
-  // Only show section if there are all-day events or holidays
-  const hasContent = maxEvents > 0;
-  if (!hasContent) return null;
+  // Always show at least a minimal drop zone (40px), expand when there are events
+  const sectionHeight = maxEvents > 0
+    ? Math.max(40, visibleRows * (EVENT_HEIGHT + 4) + 16)
+    : 36; // Compact height when empty
 
   return (
     <div
