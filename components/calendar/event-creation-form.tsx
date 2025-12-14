@@ -8,7 +8,7 @@ import { EVENT_COLORS } from "@/lib/types/calendar";
 
 interface EventCreationFormProps {
   date: Date;
-  hour: number;
+  startTime: string; // Format: "HH:MM"
   onClose: () => void;
   onSave?: () => void;
 }
@@ -22,9 +22,18 @@ const COLOR_OPTIONS = [
   { name: "Pink", value: EVENT_COLORS.pink },
 ];
 
+// Helper to calculate end time (default 30 mins after start)
+function calculateEndTime(start: string): string {
+  const [hours, minutes] = start.split(":").map(Number);
+  const totalMinutes = hours * 60 + minutes + 30;
+  const endHours = Math.floor(totalMinutes / 60) % 24;
+  const endMinutes = totalMinutes % 60;
+  return `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`;
+}
+
 export function EventCreationForm({
   date,
-  hour,
+  startTime: initialStartTime,
   onClose,
   onSave,
 }: EventCreationFormProps) {
@@ -34,12 +43,8 @@ export function EventCreationForm({
   // Form state
   const [title, setTitle] = useState("");
   const [eventDate, setEventDate] = useState(format(date, "yyyy-MM-dd"));
-  const [startTime, setStartTime] = useState(
-    `${hour.toString().padStart(2, "0")}:00`
-  );
-  const [endTime, setEndTime] = useState(
-    `${(hour + 1).toString().padStart(2, "0")}:00`
-  );
+  const [startTime, setStartTime] = useState(initialStartTime);
+  const [endTime, setEndTime] = useState(calculateEndTime(initialStartTime));
   const [isAllDay, setIsAllDay] = useState(false);
   const [color, setColor] = useState<string>(EVENT_COLORS.purple);
   const [description, setDescription] = useState("");
