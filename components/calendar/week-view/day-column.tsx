@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useRef } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { positionEvents, HOUR_HEIGHT } from "@/lib/utils/time-grid";
 import { TimePositionedEvent } from "./time-positioned-event";
@@ -15,6 +15,7 @@ interface DayColumnProps {
   onEventHoverStart?: (event: CalendarEvent, element: HTMLElement) => void;
   onEventHoverEnd?: () => void;
   isFirst?: boolean;
+  clearPreviewTrigger?: number; // Increment to clear persistent preview
 }
 
 // Drag-to-create state
@@ -38,12 +39,22 @@ export function DayColumn({
   onEventHoverStart,
   onEventHoverEnd,
   isFirst = false,
+  clearPreviewTrigger,
 }: DayColumnProps) {
   const columnRef = useRef<HTMLDivElement>(null);
   const startSlotElementRef = useRef<HTMLElement | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragCreate, setDragCreate] = useState<DragCreateState | null>(null);
+  // Persistent preview that stays after drag release until form closes
+  const [persistentPreview, setPersistentPreview] = useState<{ startSlot: number; endSlot: number } | null>(null);
   const slotHeight = hourHeight / 2;
+
+  // Clear persistent preview when trigger changes (form closed)
+  useEffect(() => {
+    if (clearPreviewTrigger !== undefined) {
+      setPersistentPreview(null);
+    }
+  }, [clearPreviewTrigger]);
 
   // Filter to only timed events (not all-day)
   const timedEvents = useMemo(
@@ -113,6 +124,9 @@ export function DayColumn({
 
     e.preventDefault();
 
+    // Clear any existing persistent preview when starting a new drag
+    setPersistentPreview(null);
+
     // Store the slot element for positioning the popover later
     startSlotElementRef.current = e.currentTarget as HTMLElement;
 
@@ -142,18 +156,24 @@ export function DayColumn({
     if (!dragCreate?.isDragging) return;
 
     const startSlot = Math.min(dragCreate.startSlot, dragCreate.endSlot);
-    const endSlot = Math.max(dragCreate.startSlot, dragCreate.endSlot) + 1; // +1 to include the end slot
+    const endSlot = Math.max(dragCreate.startSlot, dragCreate.endSlot);
 
     const startTime = slotToTime(startSlot);
-    const endTime = slotToTime(Math.min(endSlot, 48)); // Clamp to 24:00
+    const endTime = slotToTime(Math.min(endSlot + 1, 48)); // +1 to include end slot, clamp to 24:00
 
     // Use the stored slot element for positioning (not e.currentTarget which is the column)
     const element = startSlotElementRef.current;
 
     // If drag was just 1 slot (tiny drag = click), use single click handler
-    if (startSlot === Math.max(dragCreate.startSlot, dragCreate.endSlot)) {
+    const isRangeSelection = startSlot !== endSlot;
+
+    if (!isRangeSelection) {
+      // Single click - no persistent preview needed
       if (element) onTimeSlotClick?.(startTime, element);
     } else {
+      // Range selection - set persistent preview to keep showing the selection
+      setPersistentPreview({ startSlot, endSlot });
+
       // Use time range handler for actual drags
       if (element && onTimeRangeSelect) {
         onTimeRangeSelect(startTime, endTime, element);
@@ -215,25 +235,34 @@ export function DayColumn({
         );
       })}
 
-      {/* Drag-to-create preview */}
-      {dragCreate?.isDragging && (
-        <div
-          className="absolute left-1 right-1 rounded-md pointer-events-none z-20"
-          style={{
-            top: Math.min(dragCreate.startSlot, dragCreate.endSlot) * slotHeight,
-            height: (Math.abs(dragCreate.endSlot - dragCreate.startSlot) + 1) * slotHeight,
-            background: "var(--ds-accent)",
-            opacity: 0.5,
-            border: "2px dashed var(--ds-accent)",
-          }}
-        >
-          <div className="px-2 py-1">
-            <div className="text-[10px] font-medium text-white opacity-90">
-              {slotToTime(Math.min(dragCreate.startSlot, dragCreate.endSlot))} - {slotToTime(Math.max(dragCreate.startSlot, dragCreate.endSlot) + 1)}
+      {/* Drag-to-create preview (active drag or persistent after release) */}
+      {(dragCreate?.isDragging || persistentPreview) && (() => {
+        const previewStartSlot = dragCreate?.isDragging
+          ? Math.min(dragCreate.startSlot, dragCreate.endSlot)
+          : persistentPreview!.startSlot;
+        const previewEndSlot = dragCreate?.isDragging
+          ? Math.max(dragCreate.startSlot, dragCreate.endSlot)
+          : persistentPreview!.endSlot;
+
+        return (
+          <div
+            className="absolute left-1 right-1 rounded-md pointer-events-none z-20"
+            style={{
+              top: previewStartSlot * slotHeight,
+              height: (previewEndSlot - previewStartSlot + 1) * slotHeight,
+              background: "var(--ds-accent)",
+              opacity: 0.5,
+              border: "2px dashed var(--ds-accent)",
+            }}
+          >
+            <div className="px-2 py-1">
+              <div className="text-[10px] font-medium text-white opacity-90">
+                {slotToTime(previewStartSlot)} - {slotToTime(previewEndSlot + 1)}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Positioned events */}
       {positionedEvents.map((pe) => (

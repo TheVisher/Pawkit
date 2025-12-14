@@ -125,6 +125,8 @@ export function TimeGrid({
 
   // Visual preview state - stores the clicked slot element for showing preview
   const [previewElement, setPreviewElement] = useState<HTMLElement | null>(null);
+  // Counter to signal DayColumn to clear persistent preview (incremented when form closes)
+  const [clearPreviewTrigger, setClearPreviewTrigger] = useState(0);
 
   // Event details popover state
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -263,6 +265,8 @@ export function TimeGrid({
     setIsCreationOpen(false);
     setCreationData(null);
     setPreviewElement(null);
+    // Signal all DayColumns to clear their persistent preview
+    setClearPreviewTrigger(prev => prev + 1);
   };
 
   const closeDetailsPopover = () => {
@@ -514,6 +518,7 @@ export function TimeGrid({
                   onEventHoverStart={handleEventHoverStart}
                   onEventHoverEnd={handleEventHoverEnd}
                   isFirst={index === 0}
+                  clearPreviewTrigger={clearPreviewTrigger}
                 />
               );
             })}
