@@ -20,6 +20,11 @@ interface DayColumnProps {
   onMultiDayDragEnd?: (e: PointerEvent) => void; // Called when multi-day drag ends
   isFirst?: boolean;
   clearPreviewTrigger?: number; // Increment to clear persistent preview
+  // Multi-day drag preview - passed from parent when this column is in the drag range
+  multiDayPreview?: {
+    startSlot: number;
+    endSlot: number;
+  } | null;
 }
 
 // Drag-to-create state
@@ -48,6 +53,7 @@ export function DayColumn({
   onMultiDayDragEnd,
   isFirst = false,
   clearPreviewTrigger,
+  multiDayPreview,
 }: DayColumnProps) {
   const columnRef = useRef<HTMLDivElement>(null);
   const startSlotElementRef = useRef<HTMLElement | null>(null);
@@ -178,12 +184,14 @@ export function DayColumn({
     }
 
     if (isMultiDayMode) {
-      // Forward events to parent for multi-day tracking, with time info
-      const eventWithTime = Object.assign(e.nativeEvent, {
+      // Forward events to parent for multi-day tracking, with time and slot info
+      const eventWithInfo = Object.assign(e.nativeEvent, {
         _startTime: currentStartTime,
         _endTime: currentEndTime,
+        _startSlot: startSlot,
+        _endSlot: endSlot,
       });
-      onMultiDayDragMove?.(eventWithTime);
+      onMultiDayDragMove?.(eventWithInfo);
     }
   };
 
@@ -288,15 +296,23 @@ export function DayColumn({
         );
       })}
 
-      {/* Drag-to-create preview (active drag or persistent after release) */}
-      {/* Hide when in multi-day mode - all-day section shows the preview instead */}
-      {((dragCreate?.isDragging && !isMultiDayMode) || persistentPreview) && (() => {
-        const previewStartSlot = dragCreate?.isDragging
-          ? Math.min(dragCreate.startSlot, dragCreate.endSlot)
-          : persistentPreview!.startSlot;
-        const previewEndSlot = dragCreate?.isDragging
-          ? Math.max(dragCreate.startSlot, dragCreate.endSlot)
-          : persistentPreview!.endSlot;
+      {/* Drag-to-create preview - shows for:
+          1. Local single-day drag (dragCreate && !isMultiDayMode)
+          2. Multi-day drag from parent (multiDayPreview)
+          3. Persistent preview after release (persistentPreview)
+      */}
+      {((dragCreate?.isDragging && !isMultiDayMode) || multiDayPreview || persistentPreview) && (() => {
+        // Priority: multiDayPreview > local drag > persistent
+        const previewStartSlot = multiDayPreview
+          ? multiDayPreview.startSlot
+          : dragCreate?.isDragging
+            ? Math.min(dragCreate.startSlot, dragCreate.endSlot)
+            : persistentPreview!.startSlot;
+        const previewEndSlot = multiDayPreview
+          ? multiDayPreview.endSlot
+          : dragCreate?.isDragging
+            ? Math.max(dragCreate.startSlot, dragCreate.endSlot)
+            : persistentPreview!.endSlot;
 
         return (
           <div
