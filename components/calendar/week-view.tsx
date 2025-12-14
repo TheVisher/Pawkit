@@ -138,20 +138,25 @@ export function WeekView({
       });
     });
 
-    // Convert scheduled cards to all-day events for display
+    // Convert scheduled cards to events for display
     cardsByDate.forEach((dayCards, dateStr) => {
       if (!map.has(dateStr)) {
         map.set(dateStr, []);
       }
 
       dayCards.forEach((card) => {
+        // Check if card has specific time or is all-day
+        const hasTime = card.scheduledStartTime != null;
+
         // Create a pseudo-event from the scheduled card
         const pseudoEvent: CalendarEvent = {
           id: `card-${card.id}`,
           userId: "",
           title: getCardDisplayTitle(card),
           date: dateStr,
-          isAllDay: true, // Scheduled cards are shown as all-day events
+          isAllDay: !hasTime,
+          startTime: card.scheduledStartTime ?? undefined,
+          endTime: card.scheduledEndTime ?? undefined,
           color: "#6b7280", // Gray color for cards
           source: {
             type: "card",
@@ -280,8 +285,29 @@ export function WeekView({
       const cardId = eventId.replace("card-", "").replace("note-", "");
       const card = cards.find((c) => c.id === cardId);
       if (card) {
-        // Update card's scheduled date
-        await updateCard(cardId, { scheduledDate: newDate });
+        // Build updates object
+        const updates: { scheduledDate: string; scheduledStartTime?: string | null; scheduledEndTime?: string | null } = {
+          scheduledDate: newDate,
+        };
+
+        // targetHour === -1 means "convert to all-day"
+        if (targetHour === -1) {
+          updates.scheduledStartTime = null;
+          updates.scheduledEndTime = null;
+        } else if (targetHour !== undefined && targetHour >= 0) {
+          // Set specific time when dropped on a time slot
+          const startTime = `${targetHour.toString().padStart(2, "0")}:00`;
+          // Default 30-min duration for cards
+          const endMinutes = targetHour * 60 + 30;
+          const endHour = Math.floor(endMinutes / 60);
+          const endMinute = endMinutes % 60;
+          const endTime = `${endHour.toString().padStart(2, "0")}:${endMinute.toString().padStart(2, "0")}`;
+
+          updates.scheduledStartTime = startTime;
+          updates.scheduledEndTime = endTime;
+        }
+
+        await updateCard(cardId, updates);
       }
     } else if (sourceType === "manual" || !sourceType) {
       // Update calendar event date and optionally time

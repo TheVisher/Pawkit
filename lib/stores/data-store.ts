@@ -470,6 +470,8 @@ export const useDataStore = create<DataStore>((set, get) => ({
       inDen: cardData.inDen || false,
       encryptedContent: null,
       scheduledDate: cardData.scheduledDate || null,
+      scheduledStartTime: cardData.scheduledStartTime || null,
+      scheduledEndTime: cardData.scheduledEndTime || null,
       // File attachment fields
       isFileCard: cardData.isFileCard || false,
       fileId: cardData.fileId || undefined,

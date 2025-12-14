@@ -120,7 +120,9 @@ export function AddCardModal({ open, initialUrl, onClose, onCreated }: AddCardMo
         metadata: undefined,
         inDen: false,
         encryptedContent: null,
-        scheduledDate: null
+        scheduledDate: null,
+        scheduledStartTime: null,
+        scheduledEndTime: null
       });
 
       // Success - close modal
