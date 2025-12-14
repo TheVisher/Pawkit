@@ -35,6 +35,30 @@ const DOMAIN_NAMES: Record<string, string> = {
   "news.ycombinator.com": "Hacker News",
 };
 
+// URL patterns for social media posts
+const SOCIAL_POST_PATTERNS: { pattern: RegExp; name: string }[] = [
+  { pattern: /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/\w+\/status\//, name: "X Post" },
+  { pattern: /^https?:\/\/(www\.)?instagram\.com\/p\//, name: "Instagram Post" },
+  { pattern: /^https?:\/\/(www\.)?instagram\.com\/reel\//, name: "Instagram Reel" },
+  { pattern: /^https?:\/\/(www\.)?facebook\.com\/.*\/posts\//, name: "Facebook Post" },
+  { pattern: /^https?:\/\/(www\.)?reddit\.com\/r\/\w+\/comments\//, name: "Reddit Post" },
+  { pattern: /^https?:\/\/(www\.)?linkedin\.com\/posts\//, name: "LinkedIn Post" },
+  { pattern: /^https?:\/\/(www\.)?tiktok\.com\/@[\w.]+\/video\//, name: "TikTok" },
+  { pattern: /^https?:\/\/(www\.)?threads\.net\/@[\w.]+\/post\//, name: "Threads Post" },
+];
+
+/**
+ * Check if URL is a social media post and return friendly name
+ */
+export function getSocialPostTitle(url: string): string | null {
+  for (const { pattern, name } of SOCIAL_POST_PATTERNS) {
+    if (pattern.test(url)) {
+      return name;
+    }
+  }
+  return null;
+}
+
 /**
  * Get a friendly domain name from a URL or domain string
  */
@@ -77,14 +101,30 @@ export function getCardDisplayTitle(card: {
   domain?: string | null;
   url?: string;
 }): string {
-  // If card has a real title, use it
+  // If card has a real title (not just a URL), use it
   if (card.title && card.title.trim()) {
-    // Truncate very long titles
     const title = card.title.trim();
+    // Check if title is just the URL - if so, try to get a better name
+    if (card.url && (title === card.url || title.startsWith("http"))) {
+      // Try social post detection first
+      const socialTitle = getSocialPostTitle(card.url);
+      if (socialTitle) {
+        return socialTitle;
+      }
+    }
+    // Truncate very long titles
     if (title.length > 60) {
       return title.substring(0, 57) + "...";
     }
     return title;
+  }
+
+  // If we have a URL, check for social media posts first
+  if (card.url) {
+    const socialTitle = getSocialPostTitle(card.url);
+    if (socialTitle) {
+      return socialTitle;
+    }
   }
 
   // Try to create a friendly name from domain
