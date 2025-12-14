@@ -363,9 +363,12 @@ export function TimeGrid({
         endDate: endDate,
       });
       setIsCreationOpen(true);
+      // Don't clear multiDayDrag here - keep preview visible until modal closes
+      // closeCreationPopover() will clear it
+    } else {
+      // Single day drag that ended up not spanning multiple days - clear state
+      setMultiDayDrag(null);
     }
-
-    setMultiDayDrag(null);
   };
 
   const closeDetailsPopover = () => {
