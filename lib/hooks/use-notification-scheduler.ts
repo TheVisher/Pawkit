@@ -23,7 +23,6 @@ const SCHEDULE_AHEAD_HOURS = 24; // Schedule notifications up to 24 hours ahead
  * Should be used once at the app root level.
  */
 export function useNotificationScheduler() {
-  console.warn("[Notifications] Hook initialized");
   const lastScheduleRef = useRef<number>(0);
 
   // Get notification settings
@@ -40,21 +39,17 @@ export function useNotificationScheduler() {
   // Schedule notifications for events
   const scheduleEventNotifications = useCallback(() => {
     if (!notificationsEnabled || eventReminderMinutes === 0) {
-      console.log(`[Notifications] Skipping events - enabled: ${notificationsEnabled}, reminder: ${eventReminderMinutes}`);
       return;
     }
 
     const permission = getNotificationPermission();
     if (permission !== "granted") {
-      console.log(`[Notifications] Permission not granted: ${permission}`);
       return;
     }
 
     const now = new Date();
     const rangeStart = format(now, "yyyy-MM-dd");
     const rangeEnd = format(addDays(now, 1), "yyyy-MM-dd"); // Next 24 hours
-
-    console.log(`[Notifications] Checking ${events.length} events for range ${rangeStart} to ${rangeEnd}`);
 
     // Get events in range including recurrence instances
     events.forEach((event) => {
@@ -100,7 +95,9 @@ export function useNotificationScheduler() {
         );
 
         if (scheduled) {
-          console.log(`[Notifications] Scheduled: "${instance.event.title}" at ${notificationTime.toLocaleTimeString()}`);
+          console.warn(`[Notifications] Scheduled: "${instance.event.title}" - notify at ${notificationTime.toLocaleTimeString()}`);
+        } else {
+          console.warn(`[Notifications] Skipped: "${instance.event.title}" - notification time ${notificationTime.toLocaleTimeString()} already passed or too far`);
         }
       });
     });
@@ -177,11 +174,9 @@ export function useNotificationScheduler() {
     cancelAllNotifications();
 
     if (notificationsEnabled) {
-      console.log(`[Notifications] Scheduler running. Events: ${events.length}, Reminder: ${eventReminderMinutes}min`);
+      console.warn(`[Notifications] Scheduler running at ${new Date().toLocaleTimeString()}. Events: ${events.length}, Reminder: ${eventReminderMinutes}min before`);
       scheduleEventNotifications();
       scheduleTodoNotifications();
-    } else {
-      console.log("[Notifications] Disabled - skipping");
     }
   }, [notificationsEnabled, scheduleEventNotifications, scheduleTodoNotifications, events.length, eventReminderMinutes]);
 
