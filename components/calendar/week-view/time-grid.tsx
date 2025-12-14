@@ -436,8 +436,10 @@ export function TimeGrid({
   const handleDeleteEvent = async (event: CalendarEvent) => {
     // Only delete manual events (not pseudo-events from cards/todos)
     if (!event.source || event.source.type === "manual") {
-      await deleteEvent(event.id);
+      // Close popover BEFORE deleting to prevent brief repositioning to (0,0)
+      // when the anchor element is removed from DOM
       closeDetailsPopover();
+      await deleteEvent(event.id);
     }
   };
 
