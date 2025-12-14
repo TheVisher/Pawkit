@@ -269,6 +269,11 @@ export function TimeGrid({
     setClearPreviewTrigger(prev => prev + 1);
   };
 
+  // Called when any DayColumn starts a drag - clears all persistent previews
+  const handleDragCreateStart = () => {
+    setClearPreviewTrigger(prev => prev + 1);
+  };
+
   const closeDetailsPopover = () => {
     setIsDetailsOpen(false);
     setSelectedEvent(null);
@@ -517,6 +522,7 @@ export function TimeGrid({
                   }}
                   onEventHoverStart={handleEventHoverStart}
                   onEventHoverEnd={handleEventHoverEnd}
+                  onDragCreateStart={handleDragCreateStart}
                   isFirst={index === 0}
                   clearPreviewTrigger={clearPreviewTrigger}
                 />
