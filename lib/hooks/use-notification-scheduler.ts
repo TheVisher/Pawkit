@@ -23,6 +23,7 @@ const SCHEDULE_AHEAD_HOURS = 24; // Schedule notifications up to 24 hours ahead
  * Should be used once at the app root level.
  */
 export function useNotificationScheduler() {
+  console.log("[Notifications] Hook initialized");
   const lastScheduleRef = useRef<number>(0);
 
   // Get notification settings
