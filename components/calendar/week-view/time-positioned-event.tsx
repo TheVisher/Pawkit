@@ -2,7 +2,8 @@
 
 import { CalendarEvent } from "@/lib/types/calendar";
 import { formatTime12h, PositionedEvent, MIN_EVENT_HEIGHT } from "@/lib/utils/time-grid";
-import { Clock, MapPin, Repeat } from "lucide-react";
+import { getFaviconUrl } from "@/lib/utils/card-display";
+import { Clock, MapPin, Repeat, CheckSquare } from "lucide-react";
 
 interface TimePositionedEventProps {
   positionedEvent: PositionedEvent;
@@ -23,6 +24,10 @@ export function TimePositionedEvent({
 
   // All events are draggable (cards, todos, manual events)
   const isDraggable = true;
+
+  // Check event type for icon display
+  const isCard = event.source?.type === "card" && event.url;
+  const isTodo = event.source?.type === "todo";
 
   // Determine display mode based on height
   const isCompact = height < 35;
@@ -76,10 +81,21 @@ export function TimePositionedEvent({
         {/* Compact mode: title only, single line */}
         {isCompact && (
           <div
-            className="text-[10px] font-medium truncate leading-tight"
+            className="text-[10px] font-medium truncate leading-tight flex items-center gap-1"
             style={{ color: "white" }}
           >
-            {event.title}
+            {isTodo && <CheckSquare size={10} className="flex-shrink-0" />}
+            {isCard && event.url && (
+              <img
+                src={getFaviconUrl(event.url, 16)}
+                alt=""
+                className="w-3 h-3 flex-shrink-0 rounded-sm"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            )}
+            <span className="truncate">{event.title}</span>
           </div>
         )}
 
@@ -87,10 +103,21 @@ export function TimePositionedEvent({
         {isMedium && (
           <>
             <div
-              className="text-xs font-medium truncate leading-tight"
+              className="text-xs font-medium truncate leading-tight flex items-center gap-1"
               style={{ color: "white" }}
             >
-              {event.title}
+              {isTodo && <CheckSquare size={12} className="flex-shrink-0" />}
+              {isCard && event.url && (
+                <img
+                  src={getFaviconUrl(event.url, 16)}
+                  alt=""
+                  className="w-3.5 h-3.5 flex-shrink-0 rounded-sm"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              )}
+              <span className="truncate">{event.title}</span>
             </div>
             {event.startTime && (
               <div
@@ -107,10 +134,21 @@ export function TimePositionedEvent({
         {isTall && (
           <>
             <div
-              className="text-xs font-semibold line-clamp-2 leading-tight"
+              className="text-xs font-semibold leading-tight flex items-start gap-1.5"
               style={{ color: "white" }}
             >
-              {event.title}
+              {isTodo && <CheckSquare size={14} className="flex-shrink-0 mt-0.5" />}
+              {isCard && event.url && (
+                <img
+                  src={getFaviconUrl(event.url, 16)}
+                  alt=""
+                  className="w-4 h-4 flex-shrink-0 rounded-sm mt-0.5"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              )}
+              <span className="line-clamp-2">{event.title}</span>
             </div>
 
             {/* Time range */}
