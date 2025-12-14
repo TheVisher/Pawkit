@@ -166,10 +166,9 @@ export function DayColumn({
     const currentStartTime = slotToTime(startSlot);
     const currentEndTime = slotToTime(Math.min(endSlot + 1, 48));
 
-    // Check if pointer has moved significantly outside column horizontally
-    // Use 50% of column width as tolerance to avoid accidental multi-day triggers
-    const columnWidth = rect.width;
-    const HORIZONTAL_TOLERANCE = Math.max(50, columnWidth * 0.5);
+    // Check if pointer has moved outside column horizontally
+    // Small tolerance (10px) to prevent jitter, TimeGrid handles false positives
+    const HORIZONTAL_TOLERANCE = 10;
     const isOutsideHorizontally = e.clientX < rect.left - HORIZONTAL_TOLERANCE ||
                                    e.clientX > rect.right + HORIZONTAL_TOLERANCE;
 
