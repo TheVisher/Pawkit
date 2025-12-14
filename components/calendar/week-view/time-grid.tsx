@@ -137,6 +137,8 @@ export function TimeGrid({
     isDragging: boolean;
     startTime?: string;
     endTime?: string;
+    startSlot?: number;  // 0-47 (30-min slots)
+    endSlot?: number;
   } | null>(null);
 
   // Event details popover state
@@ -293,7 +295,12 @@ export function TimeGrid({
   };
 
   // Handle multi-day drag move (forwarded from DayColumn when pointer exits column)
-  const handleMultiDayDragMove = (e: PointerEvent & { _startTime?: string; _endTime?: string }) => {
+  const handleMultiDayDragMove = (e: PointerEvent & {
+    _startTime?: string;
+    _endTime?: string;
+    _startSlot?: number;
+    _endSlot?: number;
+  }) => {
     if (!multiDayDrag) return;
     if (!gridRef.current) return;
 
@@ -303,9 +310,11 @@ export function TimeGrid({
     const columnWidth = gridRect.width / 7;
     const dayIndex = Math.max(0, Math.min(6, Math.floor(relativeX / columnWidth)));
 
-    // Get time info from the event (passed from DayColumn)
+    // Get time and slot info from the event (passed from DayColumn)
     const startTime = e._startTime || multiDayDrag.startTime;
     const endTime = e._endTime || multiDayDrag.endTime;
+    const startSlot = e._startSlot ?? multiDayDrag.startSlot;
+    const endSlot = e._endSlot ?? multiDayDrag.endSlot;
 
     // Always update state - isDragging is true when day indexes differ
     const isActuallyMultiDay = dayIndex !== multiDayDrag.startDayIndex;
@@ -316,6 +325,8 @@ export function TimeGrid({
       isDragging: isActuallyMultiDay,
       startTime,
       endTime,
+      startSlot,
+      endSlot,
     });
   };
 
@@ -544,16 +555,7 @@ export function TimeGrid({
         onEventClick={handleEventClickInternal}
         onDayClick={onDayClick}
         onEventReschedule={onEventReschedule}
-        multiDayDragPreview={
-          multiDayDrag?.isDragging && multiDayDrag.startDayIndex !== multiDayDrag.currentDayIndex
-            ? {
-                startDayIndex: Math.min(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex),
-                endDayIndex: Math.max(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex),
-                startTime: multiDayDrag.startTime,
-                endTime: multiDayDrag.endTime,
-              }
-            : null
-        }
+        multiDayDragPreview={null} // Time-grid drags show preview in time slots, not all-day
       />
 
       {/* Scrollable time grid */}
@@ -602,6 +604,13 @@ export function TimeGrid({
               const dateStr = format(day, "yyyy-MM-dd");
               const dayEvents = eventsByDate.get(dateStr) || [];
 
+              // Calculate if this column should show multi-day preview
+              const minDay = multiDayDrag ? Math.min(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex) : -1;
+              const maxDay = multiDayDrag ? Math.max(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex) : -1;
+              const isInMultiDayRange = multiDayDrag?.isDragging &&
+                index >= minDay && index <= maxDay &&
+                multiDayDrag.startSlot !== undefined && multiDayDrag.endSlot !== undefined;
+
               return (
                 <DayColumn
                   key={index}
@@ -621,6 +630,10 @@ export function TimeGrid({
                   onMultiDayDragEnd={handleMultiDayDragEnd}
                   isFirst={index === 0}
                   clearPreviewTrigger={clearPreviewTrigger}
+                  multiDayPreview={isInMultiDayRange ? {
+                    startSlot: multiDayDrag!.startSlot!,
+                    endSlot: multiDayDrag!.endSlot!,
+                  } : null}
                 />
               );
             })}
