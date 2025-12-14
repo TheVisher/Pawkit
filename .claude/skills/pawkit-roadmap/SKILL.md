@@ -135,6 +135,52 @@ description: Living, interactive roadmap serving as single source of truth for p
 
 **Reference for what's done - do not modify this section**
 
+### December 14, 2025 - Calendar Enhancements
+
+- ✅ **Agenda View** (2 hours)
+  Added 4th calendar view mode - vertical scrollable list grouped by date
+  **Features**:
+  - Filters to show only future events (today onwards)
+  - Groups events by date with clear date headers
+  - Shows event time, title, and duration
+  - Supports all-day events
+  - Keyboard accessible
+  **Files**: components/calendar/agenda-view.tsx (NEW), lib/hooks/use-calendar-store.ts, components/calendar/calendar-date-picker.tsx, app/(dashboard)/calendar/page.tsx
+  **Impact**: Users can now view their calendar as a simple chronological list
+
+- ✅ **Local Browser Notifications** (4 hours)
+  Implemented native system notifications for calendar events and todos
+  **Features**:
+  - Notification permission request flow
+  - Configurable reminder times (5, 10, 15, 30, 60 min, etc. before event)
+  - Separate todo due date reminders with configurable time of day
+  - Auto-reschedules when events change
+  - Settings UI in calendar hamburger menu
+  **Files**: lib/services/notifications.ts (NEW), lib/hooks/use-notification-scheduler.ts (NEW), components/notification-scheduler.tsx (NEW), lib/hooks/use-calendar-store.ts, components/calendar/calendar-date-picker.tsx, app/layout.tsx
+  **Impact**: Users receive native OS notifications for upcoming events
+
+- ✅ **Notification Settings Store** (30 min)
+  Added notification configuration to calendar store
+  **Settings Added**:
+  - `notificationsEnabled` - Master toggle
+  - `eventReminderMinutes` - Minutes before event to notify (0, 5, 10, 15, 30, 60, 120, 1440)
+  - `todoNotificationsEnabled` - Toggle for todo reminders
+  - `todoReminderTime` - Time of day for todo reminders (default 9 AM)
+  **Files**: lib/hooks/use-calendar-store.ts
+  **Impact**: User preferences persist across sessions
+
+- ✅ **Multi-day Drag-to-Create Events** (Previous session)
+  Users can drag across multiple days in all-day row to create multi-day events
+  **Files**: components/calendar/week-view/all-day-row.tsx
+  **Impact**: Faster creation of vacations, conferences, multi-day events
+
+- ✅ **Single-day Drag-to-Create Events** (Previous session)
+  Users can drag vertically in time grid to create timed events with duration
+  **Files**: components/calendar/week-view/day-column.tsx
+  **Impact**: Visual time block creation like Google Calendar
+
+---
+
 ### November 25, 2025 - Rediscover Mode Enhancements
 
 - ✅ **Ultrawide Monitor Bug Fix** (30 min)

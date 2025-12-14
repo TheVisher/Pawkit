@@ -80,7 +80,6 @@ export function showNotification(
   }
 
   try {
-    console.warn(`[Notifications] Showing notification: "${title}"`);
     const notification = new Notification(title, {
       icon: "/icons/favicon-96x96.png",
       ...options,
@@ -97,7 +96,6 @@ export function showNotification(
     // Auto-close after 10 seconds
     setTimeout(() => notification.close(), 10000);
 
-    console.warn(`[Notifications] Notification displayed successfully`);
     return notification;
   } catch (error) {
     console.error("[Notifications] Failed to show notification:", error);

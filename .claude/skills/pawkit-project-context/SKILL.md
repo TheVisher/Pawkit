@@ -12,8 +12,8 @@ description: Track development progress, major milestones, and session history a
 ## Current Status
 
 **Branch**: `main`
-**Status**: Multi-provider cloud sync complete - Filen AND Google Drive both working
-**Last Updated**: December 3, 2025
+**Status**: Calendar features complete - Agenda view, local notifications, drag-to-create events
+**Last Updated**: December 14, 2025
 **Next Steps**: Dropbox integration, OneDrive integration, onboarding improvements
 
 ---
@@ -52,6 +52,93 @@ description: Track development progress, major milestones, and session history a
 ---
 
 ## Session History
+
+### Date: December 14, 2025 - Calendar Enhancements Complete
+
+**Status**: ✅ COMPLETED
+**Priority**: ⚡ FEATURE MILESTONE
+**Branch**: `main`
+**Impact**: Calendar now has full-featured notifications and multiple view modes
+
+**Summary**: Implemented major calendar enhancements including Agenda view, local browser notifications for events/todos, and various bug fixes. Users can now receive native system notifications for upcoming calendar events.
+
+#### 1. Agenda View
+
+**Feature**: New calendar view mode showing events as a vertical scrollable list grouped by date.
+
+**Files Created**:
+- `components/calendar/agenda-view.tsx` - Scrollable agenda list component
+
+**Files Modified**:
+- `lib/hooks/use-calendar-store.ts` - Added "agenda" to CalendarViewMode type
+- `components/calendar/calendar-date-picker.tsx` - Added Agenda option to VIEW_MODES dropdown with List icon
+- `app/(dashboard)/calendar/page.tsx` - Wired up agenda view rendering
+
+**Implementation**:
+- Filters events to show only future events (today onwards)
+- Groups events by date with date headers
+- Shows event time, title, and duration
+- Supports all-day events
+- Keyboard accessible
+
+#### 2. Local Browser Notifications
+
+**Feature**: Native system notifications for calendar events and todo due dates.
+
+**Files Created**:
+- `lib/services/notifications.ts` - Core notification service
+- `lib/hooks/use-notification-scheduler.ts` - Scheduler hook for events/todos
+- `components/notification-scheduler.tsx` - Client component for app-wide scheduling
+
+**Files Modified**:
+- `lib/hooks/use-calendar-store.ts` - Added notification settings (notificationsEnabled, eventReminderMinutes, todoNotificationsEnabled, todoReminderTime, ReminderMinutes type)
+- `components/calendar/calendar-date-picker.tsx` - Added notification settings UI in hamburger menu
+- `app/layout.tsx` - Added NotificationScheduler component to root layout
+
+**Notification Service Features**:
+- `isNotificationSupported()` - Browser capability check
+- `getNotificationPermission()` - Check current permission status
+- `requestNotificationPermission()` - Request user permission
+- `showNotification()` - Display notification immediately
+- `scheduleNotification()` - Schedule future notification with setTimeout
+- `cancelNotification()` / `cancelAllNotifications()` - Cancel scheduled notifications
+- `calculateNotificationTime()` - Calculate when to notify based on reminder minutes
+
+**Scheduler Hook Features**:
+- Runs app-wide from root layout
+- Schedules notifications for events within next 24 hours
+- Configurable reminder time (0, 5, 10, 15, 30, 60, 120, 1440 minutes before)
+- Separate toggle for todo due date reminders
+- Configurable time of day for todo reminders (default 9 AM)
+- Auto-reschedules when events change
+- Clears all notifications when disabled
+
+**UI Settings**:
+- Enable/Disable toggle (triggers browser permission request)
+- Event reminder dropdown (time before event)
+- Task reminders toggle
+- Note about notifications only working while app is open
+
+#### 3. Bug Fixes & Improvements
+
+- Fixed notification icon 404 errors (changed to existing favicon-96x96.png)
+- Cleaned up debug logging after confirming notifications work
+- NotificationScheduler component simplified to minimal implementation
+
+#### Technical Notes
+
+**Notifications Architecture**:
+- Uses Web Notifications API (not Service Worker push notifications)
+- Notifications only work while browser tab is open
+- Sound controlled by macOS/Windows system notification settings
+- Notifications appear in system notification center
+
+**Limitations**:
+- Local notifications require app to be open (for push notifications when closed, would need Service Worker)
+- Reminder times limited to within 24 hours (setTimeout limitation)
+- Sound is OS-controlled, not app-controlled
+
+---
 
 ### Date: November 30, 2025 - Google Drive Integration Complete
 

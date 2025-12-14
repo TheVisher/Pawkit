@@ -94,11 +94,7 @@ export function useNotificationScheduler() {
           }
         );
 
-        if (scheduled) {
-          console.warn(`[Notifications] Scheduled: "${instance.event.title}" - notify at ${notificationTime.toLocaleTimeString()}`);
-        } else {
-          console.warn(`[Notifications] Skipped: "${instance.event.title}" - notification time ${notificationTime.toLocaleTimeString()} already passed or too far`);
-        }
+        // Notification scheduled or skipped based on timing
       });
     });
   }, [notificationsEnabled, eventReminderMinutes, events, generateRecurrenceInstances]);
@@ -174,7 +170,6 @@ export function useNotificationScheduler() {
     cancelAllNotifications();
 
     if (notificationsEnabled) {
-      console.warn(`[Notifications] Scheduler running at ${new Date().toLocaleTimeString()}. Events: ${events.length}, Reminder: ${eventReminderMinutes}min before`);
       scheduleEventNotifications();
       scheduleTodoNotifications();
     }
