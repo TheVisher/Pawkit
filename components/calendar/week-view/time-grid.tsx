@@ -349,10 +349,16 @@ export function TimeGrid({
       const startTime = e._startTime || multiDayDrag.startTime || "09:00";
       const endTime = e._endTime || multiDayDrag.endTime || "10:00";
 
-      // Find an element to anchor the popover
-      const allDaySection = containerRef.current?.querySelector('[data-all-day-section]');
-      if (allDaySection) {
-        creationRefs.setReference(allDaySection as HTMLElement);
+      // Find an element to anchor the popover - use the first day column in the selection
+      const dayColumns = gridRef.current?.querySelectorAll('[data-day-column]');
+      const targetColumn = dayColumns?.[startDay] as HTMLElement | undefined;
+      if (targetColumn) {
+        creationRefs.setReference(targetColumn);
+      } else {
+        // Fallback to grid container
+        if (gridRef.current) {
+          creationRefs.setReference(gridRef.current);
+        }
       }
 
       setCreationData({
