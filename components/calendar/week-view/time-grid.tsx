@@ -282,17 +282,17 @@ export function TimeGrid({
   // Called when any DayColumn starts a drag - clears all persistent previews
   const handleDragCreateStart = (dayIndex: number) => {
     setClearPreviewTrigger(prev => prev + 1);
-    // Start tracking multi-day drag
+    // Record start position for potential multi-day drag (but don't activate yet)
     setMultiDayDrag({
       startDayIndex: dayIndex,
       currentDayIndex: dayIndex,
-      isDragging: true,
+      isDragging: false, // Only set true when pointer moves to different column
     });
   };
 
-  // Track pointer position for multi-day drag
-  const handleGridPointerMove = (e: React.PointerEvent) => {
-    if (!multiDayDrag?.isDragging) return;
+  // Handle multi-day drag move (forwarded from DayColumn when pointer exits column)
+  const handleMultiDayDragMove = (e: PointerEvent) => {
+    if (!multiDayDrag) return;
     if (!gridRef.current) return;
 
     // Calculate which day column based on position within grid
@@ -301,14 +301,24 @@ export function TimeGrid({
     const columnWidth = gridRect.width / 7;
     const dayIndex = Math.max(0, Math.min(6, Math.floor(relativeX / columnWidth)));
 
-    if (multiDayDrag.currentDayIndex !== dayIndex) {
+    // Activate multi-day mode if not already
+    if (!multiDayDrag.isDragging) {
+      setMultiDayDrag({
+        startDayIndex: multiDayDrag.startDayIndex,
+        currentDayIndex: dayIndex,
+        isDragging: true,
+      });
+    } else if (multiDayDrag.currentDayIndex !== dayIndex) {
       setMultiDayDrag(prev => prev ? { ...prev, currentDayIndex: dayIndex } : null);
     }
   };
 
-  // End multi-day drag
-  const handleGridPointerUp = (e: React.PointerEvent) => {
-    if (!multiDayDrag?.isDragging) return;
+  // Handle multi-day drag end (forwarded from DayColumn)
+  const handleMultiDayDragEnd = (e: PointerEvent) => {
+    if (!multiDayDrag?.isDragging) {
+      setMultiDayDrag(null);
+      return;
+    }
 
     const startDay = Math.min(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex);
     const endDay = Math.max(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex);
@@ -335,11 +345,6 @@ export function TimeGrid({
     }
 
     setMultiDayDrag(null);
-  };
-
-  // Cancel multi-day drag
-  const handleGridPointerLeave = () => {
-    // Don't cancel - let them drag outside and back
   };
 
   const closeDetailsPopover = () => {
@@ -580,8 +585,6 @@ export function TimeGrid({
             ref={gridRef}
             className="flex-1 grid grid-cols-7 relative"
             style={{ borderLeft: "1px solid var(--border-subtle)" }}
-            onPointerMove={handleGridPointerMove}
-            onPointerUp={handleGridPointerUp}
           >
             {weekDays.map((day, index) => {
               const dateStr = format(day, "yyyy-MM-dd");
@@ -602,6 +605,8 @@ export function TimeGrid({
                   onEventHoverStart={handleEventHoverStart}
                   onEventHoverEnd={handleEventHoverEnd}
                   onDragCreateStart={handleDragCreateStart}
+                  onMultiDayDragMove={handleMultiDayDragMove}
+                  onMultiDayDragEnd={handleMultiDayDragEnd}
                   isFirst={index === 0}
                   clearPreviewTrigger={clearPreviewTrigger}
                 />

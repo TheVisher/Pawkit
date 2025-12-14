@@ -16,6 +16,8 @@ interface DayColumnProps {
   onEventHoverStart?: (event: CalendarEvent, element: HTMLElement) => void;
   onEventHoverEnd?: () => void;
   onDragCreateStart?: (dayIndex: number) => void; // Called when drag-to-create starts
+  onMultiDayDragMove?: (e: PointerEvent) => void; // Called during multi-day drag
+  onMultiDayDragEnd?: (e: PointerEvent) => void; // Called when multi-day drag ends
   isFirst?: boolean;
   clearPreviewTrigger?: number; // Increment to clear persistent preview
 }
@@ -42,6 +44,8 @@ export function DayColumn({
   onEventHoverStart,
   onEventHoverEnd,
   onDragCreateStart,
+  onMultiDayDragMove,
+  onMultiDayDragEnd,
   isFirst = false,
   clearPreviewTrigger,
 }: DayColumnProps) {
@@ -49,6 +53,7 @@ export function DayColumn({
   const startSlotElementRef = useRef<HTMLElement | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragCreate, setDragCreate] = useState<DragCreateState | null>(null);
+  const [isMultiDayMode, setIsMultiDayMode] = useState(false); // True when drag exits column horizontally
   // Persistent preview that stays after drag release until form closes
   const [persistentPreview, setPersistentPreview] = useState<{ startSlot: number; endSlot: number } | null>(null);
   const slotHeight = hourHeight / 2;
@@ -150,6 +155,24 @@ export function DayColumn({
     const rect = columnRef.current?.getBoundingClientRect();
     if (!rect) return;
 
+    // Check if pointer has moved outside column horizontally
+    const isOutsideHorizontally = e.clientX < rect.left || e.clientX > rect.right;
+
+    if (isOutsideHorizontally && !isMultiDayMode) {
+      // Switch to multi-day mode - delegate to parent
+      setIsMultiDayMode(true);
+      // Forward the native pointer event to parent
+      onMultiDayDragMove?.(e.nativeEvent);
+      return;
+    }
+
+    if (isMultiDayMode) {
+      // In multi-day mode, forward all events to parent
+      onMultiDayDragMove?.(e.nativeEvent);
+      return;
+    }
+
+    // Normal vertical drag within column
     const y = e.clientY - rect.top;
     const currentSlot = Math.max(0, Math.min(47, Math.floor(y / slotHeight)));
 
@@ -158,6 +181,16 @@ export function DayColumn({
 
   const handlePointerUp = (e: React.PointerEvent) => {
     if (!dragCreate?.isDragging) return;
+
+    // If in multi-day mode, delegate to parent
+    if (isMultiDayMode) {
+      onMultiDayDragEnd?.(e.nativeEvent);
+      setDragCreate(null);
+      setIsMultiDayMode(false);
+      startSlotElementRef.current = null;
+      columnRef.current?.releasePointerCapture(e.pointerId);
+      return;
+    }
 
     const startSlot = Math.min(dragCreate.startSlot, dragCreate.endSlot);
     const endSlot = Math.max(dragCreate.startSlot, dragCreate.endSlot);
@@ -188,12 +221,14 @@ export function DayColumn({
     }
 
     setDragCreate(null);
+    setIsMultiDayMode(false);
     startSlotElementRef.current = null;
     columnRef.current?.releasePointerCapture(e.pointerId);
   };
 
   const handlePointerCancel = (e: React.PointerEvent) => {
     setDragCreate(null);
+    setIsMultiDayMode(false);
     startSlotElementRef.current = null;
     columnRef.current?.releasePointerCapture(e.pointerId);
   };
