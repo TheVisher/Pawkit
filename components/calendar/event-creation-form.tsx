@@ -10,6 +10,8 @@ interface EventCreationFormProps {
   date: Date;
   startTime: string; // Format: "HH:MM"
   endTime?: string; // Optional pre-filled end time (from drag-to-create)
+  isMultiDay?: boolean; // True if creating multi-day event
+  endDate?: Date; // End date for multi-day events
   onClose: () => void;
   onSave?: () => void;
 }
@@ -36,6 +38,8 @@ export function EventCreationForm({
   date,
   startTime: initialStartTime,
   endTime: initialEndTime,
+  isMultiDay: initialIsMultiDay = false,
+  endDate: initialEndDate,
   onClose,
   onSave,
 }: EventCreationFormProps) {
@@ -45,9 +49,13 @@ export function EventCreationForm({
   // Form state - use provided endTime if available, otherwise calculate default
   const [title, setTitle] = useState("");
   const [eventDate, setEventDate] = useState(format(date, "yyyy-MM-dd"));
+  const [eventEndDate, setEventEndDate] = useState(
+    initialEndDate ? format(initialEndDate, "yyyy-MM-dd") : format(date, "yyyy-MM-dd")
+  );
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime || calculateEndTime(initialStartTime));
-  const [isAllDay, setIsAllDay] = useState(false);
+  const [isAllDay, setIsAllDay] = useState(initialIsMultiDay); // Auto-set to all-day for multi-day
+  const [isMultiDay, setIsMultiDay] = useState(initialIsMultiDay);
   const [color, setColor] = useState<string>(EVENT_COLORS.purple);
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
@@ -73,9 +81,10 @@ export function EventCreationForm({
       await addEvent({
         title: title.trim(),
         date: eventDate,
+        endDate: isMultiDay ? eventEndDate : undefined,
         startTime: isAllDay ? null : startTime,
         endTime: isAllDay ? null : endTime,
-        isAllDay,
+        isAllDay: isAllDay || isMultiDay, // Multi-day events are always all-day
         color,
         description: description.trim() || null,
         location: location.trim() || null,
@@ -168,22 +177,58 @@ export function EventCreationForm({
             style={{ color: "var(--text-muted)" }}
           />
           <div className="flex-1 space-y-2">
-            {/* Date */}
-            <input
-              type="date"
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none transition-colors"
-              style={{
-                background: "var(--bg-surface-1)",
-                color: "var(--text-primary)",
-                border: "1px solid var(--border-subtle)",
-                colorScheme: "dark",
-              }}
-            />
+            {/* Date range for multi-day events */}
+            {isMultiDay ? (
+              <div className="flex gap-2 items-center">
+                <input
+                  type="date"
+                  value={eventDate}
+                  onChange={(e) => setEventDate(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none transition-colors"
+                  style={{
+                    background: "var(--bg-surface-1)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border-subtle)",
+                    colorScheme: "dark",
+                  }}
+                />
+                <span
+                  className="text-sm"
+                  style={{ color: "var(--text-muted)" }}
+                >
+                  to
+                </span>
+                <input
+                  type="date"
+                  value={eventEndDate}
+                  onChange={(e) => setEventEndDate(e.target.value)}
+                  className="flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none transition-colors"
+                  style={{
+                    background: "var(--bg-surface-1)",
+                    color: "var(--text-primary)",
+                    border: "1px solid var(--border-subtle)",
+                    colorScheme: "dark",
+                  }}
+                />
+              </div>
+            ) : (
+              /* Single date */
+              <input
+                type="date"
+                value={eventDate}
+                onChange={(e) => setEventDate(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none transition-colors"
+                style={{
+                  background: "var(--bg-surface-1)",
+                  color: "var(--text-primary)",
+                  border: "1px solid var(--border-subtle)",
+                  colorScheme: "dark",
+                }}
+              />
+            )}
 
-            {/* Time row */}
-            {!isAllDay && (
+            {/* Time row - only show for single-day non-all-day events */}
+            {!isAllDay && !isMultiDay && (
               <div className="flex gap-2">
                 <input
                   type="time"
@@ -218,22 +263,34 @@ export function EventCreationForm({
               </div>
             )}
 
-            {/* All day toggle */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isAllDay}
-                onChange={(e) => setIsAllDay(e.target.checked)}
-                className="rounded"
-                style={{ accentColor: "var(--ds-accent)" }}
-              />
-              <span
-                className="text-sm"
-                style={{ color: "var(--text-secondary)" }}
+            {/* All day toggle - only show for single-day events */}
+            {!isMultiDay && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isAllDay}
+                  onChange={(e) => setIsAllDay(e.target.checked)}
+                  className="rounded"
+                  style={{ accentColor: "var(--ds-accent)" }}
+                />
+                <span
+                  className="text-sm"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  All day
+                </span>
+              </label>
+            )}
+
+            {/* Multi-day indicator */}
+            {isMultiDay && (
+              <div
+                className="text-xs"
+                style={{ color: "var(--text-muted)" }}
               >
-                All day
-              </span>
-            </label>
+                Multi-day event (all day)
+              </div>
+            )}
           </div>
         </div>
 

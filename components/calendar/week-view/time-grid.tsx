@@ -121,12 +121,21 @@ export function TimeGrid({
     date: Date;
     startTime: string;
     endTime?: string;
+    isMultiDay?: boolean;
+    endDate?: Date;
   } | null>(null);
 
   // Visual preview state - stores the clicked slot element for showing preview
   const [previewElement, setPreviewElement] = useState<HTMLElement | null>(null);
   // Counter to signal DayColumn to clear persistent preview (incremented when form closes)
   const [clearPreviewTrigger, setClearPreviewTrigger] = useState(0);
+
+  // Multi-day drag state
+  const [multiDayDrag, setMultiDayDrag] = useState<{
+    startDayIndex: number;
+    currentDayIndex: number;
+    isDragging: boolean;
+  } | null>(null);
 
   // Event details popover state
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -265,13 +274,72 @@ export function TimeGrid({
     setIsCreationOpen(false);
     setCreationData(null);
     setPreviewElement(null);
+    setMultiDayDrag(null);
     // Signal all DayColumns to clear their persistent preview
     setClearPreviewTrigger(prev => prev + 1);
   };
 
   // Called when any DayColumn starts a drag - clears all persistent previews
-  const handleDragCreateStart = () => {
+  const handleDragCreateStart = (dayIndex: number) => {
     setClearPreviewTrigger(prev => prev + 1);
+    // Start tracking multi-day drag
+    setMultiDayDrag({
+      startDayIndex: dayIndex,
+      currentDayIndex: dayIndex,
+      isDragging: true,
+    });
+  };
+
+  // Track pointer position for multi-day drag
+  const handleGridPointerMove = (e: React.PointerEvent) => {
+    if (!multiDayDrag?.isDragging) return;
+    if (!gridRef.current) return;
+
+    // Calculate which day column based on position within grid
+    const gridRect = gridRef.current.getBoundingClientRect();
+    const relativeX = e.clientX - gridRect.left;
+    const columnWidth = gridRect.width / 7;
+    const dayIndex = Math.max(0, Math.min(6, Math.floor(relativeX / columnWidth)));
+
+    if (multiDayDrag.currentDayIndex !== dayIndex) {
+      setMultiDayDrag(prev => prev ? { ...prev, currentDayIndex: dayIndex } : null);
+    }
+  };
+
+  // End multi-day drag
+  const handleGridPointerUp = (e: React.PointerEvent) => {
+    if (!multiDayDrag?.isDragging) return;
+
+    const startDay = Math.min(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex);
+    const endDay = Math.max(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex);
+
+    // If drag spans multiple days, create multi-day event
+    if (startDay !== endDay) {
+      const startDate = weekDays[startDay];
+      const endDate = weekDays[endDay];
+
+      // Find an element in the all-day section to anchor the popover
+      const allDaySection = containerRef.current?.querySelector('[data-all-day-section]');
+      if (allDaySection) {
+        creationRefs.setReference(allDaySection as HTMLElement);
+      }
+
+      setCreationData({
+        date: startDate,
+        startTime: "00:00",
+        endTime: undefined,
+        isMultiDay: true,
+        endDate: endDate,
+      });
+      setIsCreationOpen(true);
+    }
+
+    setMultiDayDrag(null);
+  };
+
+  // Cancel multi-day drag
+  const handleGridPointerLeave = () => {
+    // Don't cancel - let them drag outside and back
   };
 
   const closeDetailsPopover = () => {
@@ -461,6 +529,14 @@ export function TimeGrid({
         onEventClick={handleEventClickInternal}
         onDayClick={onDayClick}
         onEventReschedule={onEventReschedule}
+        multiDayDragPreview={
+          multiDayDrag?.isDragging && multiDayDrag.startDayIndex !== multiDayDrag.currentDayIndex
+            ? {
+                startDayIndex: Math.min(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex),
+                endDayIndex: Math.max(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex),
+              }
+            : null
+        }
       />
 
       {/* Scrollable time grid */}
@@ -504,6 +580,8 @@ export function TimeGrid({
             ref={gridRef}
             className="flex-1 grid grid-cols-7 relative"
             style={{ borderLeft: "1px solid var(--border-subtle)" }}
+            onPointerMove={handleGridPointerMove}
+            onPointerUp={handleGridPointerUp}
           >
             {weekDays.map((day, index) => {
               const dateStr = format(day, "yyyy-MM-dd");
@@ -513,6 +591,7 @@ export function TimeGrid({
                 <DayColumn
                   key={index}
                   events={dayEvents}
+                  dayIndex={index}
                   hourHeight={hourHeight}
                   onEventClick={handleEventClickInternal}
                   onTimeSlotClick={(startTime, element) => handleTimeSlotClick(day, startTime, element)}
@@ -557,6 +636,8 @@ export function TimeGrid({
               date={creationData.date}
               startTime={creationData.startTime}
               endTime={creationData.endTime}
+              isMultiDay={creationData.isMultiDay}
+              endDate={creationData.endDate}
               onClose={closeCreationPopover}
             />
           </div>

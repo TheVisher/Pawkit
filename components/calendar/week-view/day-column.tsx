@@ -7,6 +7,7 @@ import { TimePositionedEvent } from "./time-positioned-event";
 
 interface DayColumnProps {
   events: CalendarEvent[];
+  dayIndex: number; // 0-6 index of this day in the week
   hourHeight?: number;
   onEventClick?: (event: CalendarEvent, element: HTMLElement) => void;
   onTimeSlotClick?: (startTime: string, element: HTMLElement) => void;
@@ -14,7 +15,7 @@ interface DayColumnProps {
   onEventDrop?: (eventId: string, sourceType: string, targetHour: number) => void;
   onEventHoverStart?: (event: CalendarEvent, element: HTMLElement) => void;
   onEventHoverEnd?: () => void;
-  onDragCreateStart?: () => void; // Called when drag-to-create starts (to clear other columns)
+  onDragCreateStart?: (dayIndex: number) => void; // Called when drag-to-create starts
   isFirst?: boolean;
   clearPreviewTrigger?: number; // Increment to clear persistent preview
 }
@@ -32,6 +33,7 @@ interface DragCreateState {
  */
 export function DayColumn({
   events,
+  dayIndex,
   hourHeight = HOUR_HEIGHT,
   onEventClick,
   onTimeSlotClick,
@@ -126,8 +128,8 @@ export function DayColumn({
 
     e.preventDefault();
 
-    // Notify parent to clear ALL columns' persistent previews (including other days)
-    onDragCreateStart?.();
+    // Notify parent to clear ALL columns' persistent previews and start multi-day tracking
+    onDragCreateStart?.(dayIndex);
 
     // Store the slot element for positioning the popover later
     startSlotElementRef.current = e.currentTarget as HTMLElement;
