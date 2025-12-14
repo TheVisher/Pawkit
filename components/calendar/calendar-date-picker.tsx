@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { format, setMonth, setYear, startOfWeek } from "date-fns";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar, CalendarDays, CalendarRange, Grid3X3, Menu, Flag, Link, CheckSquare, Sparkles, FileText, Eye, Plus, Cloud, Globe } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar, CalendarDays, CalendarRange, Grid3X3, List, Menu, Flag, Link, CheckSquare, Sparkles, FileText, Eye, Plus, Cloud, Globe } from "lucide-react";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useCalendarStore, type CalendarViewMode, type HolidayFilter, type HolidayCountry } from "@/lib/hooks/use-calendar-store";
@@ -26,6 +26,7 @@ const VIEW_MODES: { value: CalendarViewMode; label: string; icon: typeof Calenda
   { value: "day", label: "Day", icon: CalendarDays },
   { value: "week", label: "Week", icon: CalendarRange },
   { value: "month", label: "Month", icon: Grid3X3 },
+  { value: "agenda", label: "Agenda", icon: List },
 ];
 
 // Generate year range (current year - 50 to current year + 20)

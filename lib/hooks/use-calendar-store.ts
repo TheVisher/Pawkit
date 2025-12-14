@@ -4,7 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { CalendarContentFilter } from "@/components/control-panel/calendar-controls";
 
-export type CalendarViewMode = "day" | "week" | "month";
+export type CalendarViewMode = "day" | "week" | "month" | "agenda";
 export type HolidayFilter = "all" | "major";
 export type HolidayCountry = "us" | "ca"; // Extensible for EU, China, etc.
 

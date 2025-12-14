@@ -7,6 +7,7 @@ import { useToastStore } from "@/lib/stores/toast-store";
 import { CustomCalendar } from "@/components/calendar/custom-calendar";
 import { WeekView } from "@/components/calendar/week-view";
 import { DayView } from "@/components/calendar/day-view";
+import { AgendaView } from "@/components/calendar/agenda-view";
 import { CalendarDatePicker } from "@/components/calendar/calendar-date-picker";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
@@ -114,6 +115,8 @@ export default function CalendarPage() {
                 ? "Day view - focus on a single day"
                 : viewMode === "week"
                 ? "Week view - see your weekly schedule"
+                : viewMode === "agenda"
+                ? "Agenda view - see what's coming up"
                 : "Month view - overview of your calendar"}
             </p>
           </div>
@@ -156,6 +159,14 @@ export default function CalendarPage() {
           onCardClick={(card) => setActiveCardId(card.id)}
           onEventClick={handleEventClick}
           onCreateDailyNote={handleCreateDailyNote}
+        />
+      ) : viewMode === "agenda" ? (
+        <AgendaView
+          cards={cards}
+          currentMonth={currentMonth}
+          onDayClick={handleDayClick}
+          onCardClick={(card) => setActiveCardId(card.id)}
+          onEventClick={handleEventClick}
         />
       ) : (
         <CustomCalendar
