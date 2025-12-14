@@ -2,7 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { format, setMonth, setYear, startOfWeek } from "date-fns";
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar, CalendarDays, CalendarRange, Grid3X3, List, Menu, Flag, Link, CheckSquare, Sparkles, FileText, Eye, Plus, Cloud, Globe } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Calendar, CalendarDays, CalendarRange, Grid3X3, List, Menu, Flag, Link, CheckSquare, Sparkles, FileText, Eye, Plus, Cloud, Globe, Bell, BellOff } from "lucide-react";
+import {
+  isNotificationSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+} from "@/lib/services/notifications";
+import type { ReminderMinutes } from "@/lib/hooks/use-calendar-store";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useCalendarStore, type CalendarViewMode, type HolidayFilter, type HolidayCountry } from "@/lib/hooks/use-calendar-store";
@@ -27,6 +33,17 @@ const VIEW_MODES: { value: CalendarViewMode; label: string; icon: typeof Calenda
   { value: "week", label: "Week", icon: CalendarRange },
   { value: "month", label: "Month", icon: Grid3X3 },
   { value: "agenda", label: "Agenda", icon: List },
+];
+
+const REMINDER_OPTIONS: { value: ReminderMinutes; label: string }[] = [
+  { value: 0, label: "At time of event" },
+  { value: 5, label: "5 minutes before" },
+  { value: 10, label: "10 minutes before" },
+  { value: 15, label: "15 minutes before" },
+  { value: 30, label: "30 minutes before" },
+  { value: 60, label: "1 hour before" },
+  { value: 120, label: "2 hours before" },
+  { value: 1440, label: "1 day before" },
 ];
 
 // Generate year range (current year - 50 to current year + 20)
@@ -84,6 +101,42 @@ export function CalendarDatePicker({
   const calendarSources = useCalendarStore((state) => state.calendarSources);
   const enabledCalendarSources = useCalendarStore((state) => state.enabledCalendarSources);
   const toggleCalendarSource = useCalendarStore((state) => state.toggleCalendarSource);
+
+  // Notification settings from store
+  const notificationsEnabled = useCalendarStore((state) => state.notificationsEnabled);
+  const eventReminderMinutes = useCalendarStore((state) => state.eventReminderMinutes);
+  const todoNotificationsEnabled = useCalendarStore((state) => state.todoNotificationsEnabled);
+  const setNotificationsEnabled = useCalendarStore((state) => state.setNotificationsEnabled);
+  const setEventReminderMinutes = useCalendarStore((state) => state.setEventReminderMinutes);
+  const setTodoNotificationsEnabled = useCalendarStore((state) => state.setTodoNotificationsEnabled);
+
+  // Notification permission state
+  const [notificationPermission, setNotificationPermission] = useState<string>("default");
+
+  // Check notification permission on mount
+  useEffect(() => {
+    if (isNotificationSupported()) {
+      setNotificationPermission(getNotificationPermission());
+    }
+  }, []);
+
+  // Handle enabling notifications
+  const handleEnableNotifications = async () => {
+    if (!isNotificationSupported()) {
+      toast.error("Your browser doesn't support notifications");
+      return;
+    }
+
+    const permission = await requestNotificationPermission();
+    setNotificationPermission(permission);
+
+    if (permission === "granted") {
+      setNotificationsEnabled(true);
+      toast.success("Notifications enabled!");
+    } else if (permission === "denied") {
+      toast.error("Notifications blocked. Please enable in browser settings.");
+    }
+  };
 
   const currentMonthValue = currentDate.getMonth();
   const currentYearValue = currentDate.getFullYear();
@@ -781,6 +834,121 @@ export function CalendarDatePicker({
                 </div>
               </PopoverContent>
             </Popover>
+
+            {/* Divider */}
+            <div
+              className="my-4"
+              style={{ borderTop: '1px solid var(--border-subtle)' }}
+            />
+
+            {/* Notifications Header */}
+            <div className="flex items-center gap-2 mb-3">
+              <Bell size={14} style={{ color: 'var(--ds-accent)' }} />
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                Notifications
+              </span>
+            </div>
+
+            {/* Notification Settings */}
+            <div
+              className="rounded-xl p-3"
+              style={{
+                background: 'var(--bg-surface-1)',
+                boxShadow: 'var(--inset-shadow)',
+              }}
+            >
+              {/* Permission not granted - show enable button */}
+              {notificationPermission !== "granted" ? (
+                <div className="space-y-2">
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                    Get reminders for upcoming events and tasks
+                  </p>
+                  <button
+                    onClick={handleEnableNotifications}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                    style={{
+                      background: 'var(--ds-accent)',
+                      color: 'white',
+                    }}
+                  >
+                    <Bell size={14} />
+                    <span>Enable Notifications</span>
+                  </button>
+                  {notificationPermission === "denied" && (
+                    <p className="text-[10px] text-center" style={{ color: 'var(--text-muted)' }}>
+                      Blocked by browser. Check site settings.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Master toggle */}
+                  <button
+                    onClick={() => setNotificationsEnabled(!notificationsEnabled)}
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                    style={notificationsEnabled ? {
+                      background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                      color: 'var(--text-primary)',
+                      boxShadow: 'var(--raised-shadow-sm)',
+                    } : {
+                      background: 'transparent',
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    {notificationsEnabled ? <Bell size={14} /> : <BellOff size={14} />}
+                    <span>{notificationsEnabled ? "Notifications On" : "Notifications Off"}</span>
+                  </button>
+
+                  {/* Reminder time selector - only show when enabled */}
+                  {notificationsEnabled && (
+                    <>
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-medium" style={{ color: 'var(--text-muted)' }}>
+                          Event reminder
+                        </label>
+                        <select
+                          value={eventReminderMinutes}
+                          onChange={(e) => setEventReminderMinutes(Number(e.target.value) as ReminderMinutes)}
+                          className="w-full px-2 py-1.5 rounded-lg text-xs"
+                          style={{
+                            background: 'var(--bg-surface-2)',
+                            color: 'var(--text-primary)',
+                            border: '1px solid var(--border-subtle)',
+                          }}
+                        >
+                          {REMINDER_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Todo notifications toggle */}
+                      <button
+                        onClick={() => setTodoNotificationsEnabled(!todoNotificationsEnabled)}
+                        className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                        style={todoNotificationsEnabled ? {
+                          background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                          color: 'var(--text-primary)',
+                          boxShadow: 'var(--raised-shadow-sm)',
+                        } : {
+                          background: 'transparent',
+                          color: 'var(--text-muted)',
+                        }}
+                      >
+                        <CheckSquare size={14} />
+                        <span>Task reminders</span>
+                      </button>
+
+                      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                        Only works while the app is open
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </PopoverContent>
       </Popover>

@@ -22,6 +22,9 @@ export type CalendarSource = {
   lastSynced?: string;
 };
 
+// Notification reminder time options (minutes before event)
+export type ReminderMinutes = 0 | 5 | 10 | 15 | 30 | 60 | 120 | 1440;
+
 type CalendarState = {
   // Current month being viewed
   currentMonth: Date;
@@ -50,6 +53,12 @@ type CalendarState = {
   holidayFilter: HolidayFilter;
   enabledCountries: HolidayCountry[]; // Which country holidays to show
 
+  // Notification settings
+  notificationsEnabled: boolean; // Master toggle for notifications
+  eventReminderMinutes: ReminderMinutes; // Minutes before event to notify
+  todoNotificationsEnabled: boolean; // Notify for todo due dates
+  todoReminderTime: string; // Time of day to notify for todos (HH:mm)
+
   // Actions
   setCurrentMonth: (date: Date) => void;
   setViewMode: (mode: CalendarViewMode) => void;
@@ -71,6 +80,12 @@ type CalendarState = {
   removeCalendarSource: (id: string) => void;
   updateCalendarSource: (id: string, updates: Partial<CalendarSource>) => void;
   toggleCalendarSource: (sourceId: string) => void;
+
+  // Notification actions
+  setNotificationsEnabled: (enabled: boolean) => void;
+  setEventReminderMinutes: (minutes: ReminderMinutes) => void;
+  setTodoNotificationsEnabled: (enabled: boolean) => void;
+  setTodoReminderTime: (time: string) => void;
 };
 
 // Default local calendar source
@@ -103,6 +118,12 @@ export const useCalendarStore = create<CalendarState>()(
       showHolidays: true, // Legacy - kept for backwards compatibility
       holidayFilter: "major", // Default to major holidays only
       enabledCountries: ["us"] as HolidayCountry[], // Default to US holidays
+
+      // Notification settings - disabled by default until user enables
+      notificationsEnabled: false,
+      eventReminderMinutes: 15, // 15 minutes before by default
+      todoNotificationsEnabled: true, // Notify for todos when notifications enabled
+      todoReminderTime: "09:00", // 9 AM reminder for todo due dates
 
       setCurrentMonth: (date: Date) => set({ currentMonth: date }),
       setViewMode: (mode: CalendarViewMode) => set({ viewMode: mode }),
@@ -164,6 +185,16 @@ export const useCalendarStore = create<CalendarState>()(
             ? state.enabledCalendarSources.filter((id) => id !== sourceId)
             : [...state.enabledCalendarSources, sourceId],
         })),
+
+      // Notification actions
+      setNotificationsEnabled: (enabled: boolean) =>
+        set({ notificationsEnabled: enabled }),
+      setEventReminderMinutes: (minutes: ReminderMinutes) =>
+        set({ eventReminderMinutes: minutes }),
+      setTodoNotificationsEnabled: (enabled: boolean) =>
+        set({ todoNotificationsEnabled: enabled }),
+      setTodoReminderTime: (time: string) =>
+        set({ todoReminderTime: time }),
     }),
     {
       name: "pawkit-calendar-settings",
@@ -181,6 +212,11 @@ export const useCalendarStore = create<CalendarState>()(
         // Persist calendar sources
         calendarSources: state.calendarSources,
         enabledCalendarSources: state.enabledCalendarSources,
+        // Persist notification settings
+        notificationsEnabled: state.notificationsEnabled,
+        eventReminderMinutes: state.eventReminderMinutes,
+        todoNotificationsEnabled: state.todoNotificationsEnabled,
+        todoReminderTime: state.todoReminderTime,
       }),
     }
   )
