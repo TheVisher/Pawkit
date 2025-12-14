@@ -6,7 +6,7 @@ import { Clock, MapPin, Repeat } from "lucide-react";
 
 interface TimePositionedEventProps {
   positionedEvent: PositionedEvent;
-  onClick?: (event: CalendarEvent) => void;
+  onClick?: (event: CalendarEvent, eventRect: DOMRect) => void;
   onDragStart?: (e: React.DragEvent, event: CalendarEvent) => void;
 }
 
@@ -46,12 +46,14 @@ export function TimePositionedEvent({
       }}
       onClick={(e) => {
         e.stopPropagation();
-        onClick?.(event);
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        onClick?.(event, rect);
       }}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onClick?.(event);
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          onClick?.(event, rect);
         }
       }}
       className={`absolute overflow-hidden transition-all duration-150 hover:z-10 ${
