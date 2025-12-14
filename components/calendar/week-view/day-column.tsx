@@ -40,6 +40,7 @@ export function DayColumn({
   isFirst = false,
 }: DayColumnProps) {
   const columnRef = useRef<HTMLDivElement>(null);
+  const startSlotElementRef = useRef<HTMLElement | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [dragCreate, setDragCreate] = useState<DragCreateState | null>(null);
   const slotHeight = hourHeight / 2;
@@ -111,14 +112,18 @@ export function DayColumn({
     if (target.closest("[data-event]")) return;
 
     e.preventDefault();
+
+    // Store the slot element for positioning the popover later
+    startSlotElementRef.current = e.currentTarget as HTMLElement;
+
     setDragCreate({
       startSlot: slotIndex,
       endSlot: slotIndex,
       isDragging: true,
     });
 
-    // Capture pointer for cross-element tracking
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    // Capture pointer on the column for reliable cross-slot tracking
+    columnRef.current?.setPointerCapture(e.pointerId);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -142,28 +147,31 @@ export function DayColumn({
     const startTime = slotToTime(startSlot);
     const endTime = slotToTime(Math.min(endSlot, 48)); // Clamp to 24:00
 
+    // Use the stored slot element for positioning (not e.currentTarget which is the column)
+    const element = startSlotElementRef.current;
+
     // If drag was just 1 slot (tiny drag = click), use single click handler
     if (startSlot === Math.max(dragCreate.startSlot, dragCreate.endSlot)) {
-      const element = e.currentTarget as HTMLElement;
-      onTimeSlotClick?.(startTime, element);
+      if (element) onTimeSlotClick?.(startTime, element);
     } else {
       // Use time range handler for actual drags
-      const element = e.currentTarget as HTMLElement;
-      if (onTimeRangeSelect) {
+      if (element && onTimeRangeSelect) {
         onTimeRangeSelect(startTime, endTime, element);
-      } else {
+      } else if (element) {
         // Fallback to single click if no range handler
         onTimeSlotClick?.(startTime, element);
       }
     }
 
     setDragCreate(null);
-    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    startSlotElementRef.current = null;
+    columnRef.current?.releasePointerCapture(e.pointerId);
   };
 
   const handlePointerCancel = (e: React.PointerEvent) => {
     setDragCreate(null);
-    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    startSlotElementRef.current = null;
+    columnRef.current?.releasePointerCapture(e.pointerId);
   };
 
   return (
