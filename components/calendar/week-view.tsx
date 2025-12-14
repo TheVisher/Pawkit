@@ -9,6 +9,7 @@ import { getCardDisplayTitle } from "@/lib/utils/card-display";
 import { useEventStore } from "@/lib/hooks/use-event-store";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 import { useTodoStore } from "@/lib/hooks/use-todos";
+import { useDataStore } from "@/lib/stores/data-store";
 import { getHolidaysInRange, ResolvedHoliday } from "@/lib/data/us-holidays";
 import { TimeGrid } from "./week-view/time-grid";
 
@@ -36,6 +37,9 @@ export function WeekView({
   // Get todos from store
   const { todos, fetchTodos, toggleTodo, updateTodo } = useTodoStore();
   const todosFetched = useTodoStore((state) => state.todos.length > 0 || state.isLoading === false);
+
+  // Get card update function
+  const updateCard = useDataStore((state) => state.updateCard);
 
   // Holiday settings
   const showHolidays = useCalendarStore((state) => state.showHolidays);
@@ -271,21 +275,29 @@ export function WeekView({
       if (todo) {
         await updateTodo(todoId, { dueDate: parseISO(newDate) });
       }
+    } else if (sourceType === "card") {
+      // Extract card ID from event ID (format: "card-{id}" or "note-{id}")
+      const cardId = eventId.replace("card-", "").replace("note-", "");
+      const card = cards.find((c) => c.id === cardId);
+      if (card) {
+        // Update card's scheduled date
+        await updateCard(cardId, { scheduledDate: newDate });
+      }
     } else if (sourceType === "manual" || !sourceType) {
       // Update calendar event date and optionally time
       const event = events.find((e) => e.id === eventId);
       if (event) {
-        const updates: { date: string; startTime?: string; endTime?: string } = { date: newDate };
+        const updates: { date: string; startTime?: string | null; endTime?: string | null; isAllDay?: boolean } = { date: newDate };
 
-        // If targetHour is provided and event has time, update start/end times
-        if (targetHour !== undefined && event.startTime) {
-          // Calculate event duration in minutes
-          let durationMinutes = 60; // Default 1 hour
+        // If targetHour is provided, set the time (convert all-day to timed if needed)
+        if (targetHour !== undefined) {
+          // Calculate event duration in minutes (default 30 min for all-day events)
+          let durationMinutes = 30;
           if (event.startTime && event.endTime) {
             const [startH, startM] = event.startTime.split(":").map(Number);
             const [endH, endM] = event.endTime.split(":").map(Number);
             durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
-            if (durationMinutes <= 0) durationMinutes = 60; // Handle edge cases
+            if (durationMinutes <= 0) durationMinutes = 30;
           }
 
           // Set new start time
@@ -298,12 +310,16 @@ export function WeekView({
           const newEndHour = Math.min(23, Math.floor(newEndMinutes / 60));
           const newEndMinute = newEndMinutes % 60;
           updates.endTime = `${newEndHour.toString().padStart(2, "0")}:${newEndMinute.toString().padStart(2, "0")}`;
+
+          // If it was all-day, convert to timed event
+          if (event.isAllDay) {
+            updates.isAllDay = false;
+          }
         }
 
         await updateEvent(eventId, updates);
       }
     }
-    // Note: Cards are not rescheduled via drag - they need different handling
   };
 
   // Don't render until client-side to prevent hydration issues with dates

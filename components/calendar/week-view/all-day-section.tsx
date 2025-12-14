@@ -163,7 +163,8 @@ export function AllDaySection({
                 {visibleEvents.map((event) => {
                   const isTodo = event.source?.type === "todo";
                   const isCard = event.source?.type === "card" && event.url;
-                  const isDraggable = event.source?.type !== "card"; // Cards are rescheduled differently
+                  // All events are draggable now (cards, todos, manual events)
+                  const isDraggable = true;
 
                   return (
                     <div
@@ -172,14 +173,10 @@ export function AllDaySection({
                       tabIndex={0}
                       draggable={isDraggable}
                       onDragStart={(e) => {
-                        if (isDraggable) {
-                          e.stopPropagation();
-                          handleDragStart(e, event);
-                        }
+                        e.stopPropagation();
+                        handleDragStart(e, event);
                       }}
-                      className={`w-full text-left px-2 py-0.5 rounded text-[10px] font-medium truncate transition-opacity hover:opacity-80 flex items-center gap-1 ${
-                        isDraggable ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
-                      }`}
+                      className="w-full text-left px-2 py-0.5 rounded text-[10px] font-medium truncate transition-opacity hover:opacity-80 flex items-center gap-1 cursor-grab active:cursor-grabbing"
                       style={{
                         background: event.color || "var(--ds-accent)",
                         color: "white",
