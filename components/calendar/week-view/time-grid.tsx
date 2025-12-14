@@ -307,34 +307,16 @@ export function TimeGrid({
     const startTime = e._startTime || multiDayDrag.startTime;
     const endTime = e._endTime || multiDayDrag.endTime;
 
-    // Only activate multi-day mode if drag actually spans different days
+    // Always update state - isDragging is true when day indexes differ
     const isActuallyMultiDay = dayIndex !== multiDayDrag.startDayIndex;
 
-    if (isActuallyMultiDay && !multiDayDrag.isDragging) {
-      // Activate multi-day mode
-      setMultiDayDrag({
-        startDayIndex: multiDayDrag.startDayIndex,
-        currentDayIndex: dayIndex,
-        isDragging: true,
-        startTime,
-        endTime,
-      });
-    } else if (multiDayDrag.isDragging) {
-      // Update current day and time info while dragging
-      setMultiDayDrag(prev => prev ? {
-        ...prev,
-        currentDayIndex: dayIndex,
-        startTime,
-        endTime,
-      } : null);
-    } else {
-      // Not multi-day yet, just update time info
-      setMultiDayDrag(prev => prev ? {
-        ...prev,
-        startTime,
-        endTime,
-      } : null);
-    }
+    setMultiDayDrag({
+      startDayIndex: multiDayDrag.startDayIndex,
+      currentDayIndex: dayIndex,
+      isDragging: isActuallyMultiDay,
+      startTime,
+      endTime,
+    });
   };
 
   // Handle multi-day drag end (forwarded from DayColumn)
