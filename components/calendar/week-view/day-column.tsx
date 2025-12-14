@@ -14,6 +14,7 @@ interface DayColumnProps {
   onEventDrop?: (eventId: string, sourceType: string, targetHour: number) => void;
   onEventHoverStart?: (event: CalendarEvent, element: HTMLElement) => void;
   onEventHoverEnd?: () => void;
+  onDragCreateStart?: () => void; // Called when drag-to-create starts (to clear other columns)
   isFirst?: boolean;
   clearPreviewTrigger?: number; // Increment to clear persistent preview
 }
@@ -38,6 +39,7 @@ export function DayColumn({
   onEventDrop,
   onEventHoverStart,
   onEventHoverEnd,
+  onDragCreateStart,
   isFirst = false,
   clearPreviewTrigger,
 }: DayColumnProps) {
@@ -124,8 +126,8 @@ export function DayColumn({
 
     e.preventDefault();
 
-    // Clear any existing persistent preview when starting a new drag
-    setPersistentPreview(null);
+    // Notify parent to clear ALL columns' persistent previews (including other days)
+    onDragCreateStart?.();
 
     // Store the slot element for positioning the popover later
     startSlotElementRef.current = e.currentTarget as HTMLElement;
