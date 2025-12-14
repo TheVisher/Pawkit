@@ -254,7 +254,8 @@ export function TimeGrid({
     // Set the element as the reference for positioning
     creationRefs.setReference(element);
     setCreationData({ date, startTime, endTime });
-    setPreviewElement(element);
+    // Don't set previewElement for drag-to-create (DayColumn shows its own preview during drag)
+    setPreviewElement(null);
     setIsCreationOpen(true);
   };
 
