@@ -8,7 +8,7 @@ import {
   getNotificationPermission,
   requestNotificationPermission,
 } from "@/lib/services/notifications";
-import type { ReminderMinutes } from "@/lib/hooks/use-calendar-store";
+import type { ReminderMinutes, WeekStartDay } from "@/lib/hooks/use-calendar-store";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { useCalendarStore, type CalendarViewMode, type HolidayFilter, type HolidayCountry } from "@/lib/hooks/use-calendar-store";
@@ -109,6 +109,10 @@ export function CalendarDatePicker({
   const setNotificationsEnabled = useCalendarStore((state) => state.setNotificationsEnabled);
   const setEventReminderMinutes = useCalendarStore((state) => state.setEventReminderMinutes);
   const setTodoNotificationsEnabled = useCalendarStore((state) => state.setTodoNotificationsEnabled);
+
+  // Week start preference
+  const weekStartsOn = useCalendarStore((state) => state.weekStartsOn);
+  const setWeekStartsOn = useCalendarStore((state) => state.setWeekStartsOn);
 
   // Notification permission state
   const [notificationPermission, setNotificationPermission] = useState<string>("default");
@@ -225,7 +229,7 @@ export function CalendarDatePicker({
       case "day":
         return format(currentDate, "EEEE, MMMM d, yyyy");
       case "week":
-        return `Week of ${format(startOfWeek(currentDate), "MMM d, yyyy")}`;
+        return `Week of ${format(startOfWeek(currentDate, { weekStartsOn }), "MMM d, yyyy")}`;
       case "month":
       default:
         return format(currentDate, "MMMM yyyy");
@@ -948,6 +952,60 @@ export function CalendarDatePicker({
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Divider */}
+            <div
+              className="my-4"
+              style={{ borderTop: '1px solid var(--border-subtle)' }}
+            />
+
+            {/* Week Start Header */}
+            <div className="flex items-center gap-2 mb-3">
+              <Calendar size={14} style={{ color: 'var(--ds-accent)' }} />
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
+                Week starts on
+              </span>
+            </div>
+
+            {/* Week Start Options */}
+            <div
+              className="rounded-xl p-3"
+              style={{
+                background: 'var(--bg-surface-1)',
+                boxShadow: 'var(--inset-shadow)',
+              }}
+            >
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setWeekStartsOn(0)}
+                  className="flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                  style={weekStartsOn === 0 ? {
+                    background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                    color: 'var(--text-primary)',
+                    boxShadow: 'var(--raised-shadow-sm)',
+                  } : {
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  Sunday
+                </button>
+                <button
+                  onClick={() => setWeekStartsOn(1)}
+                  className="flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                  style={weekStartsOn === 1 ? {
+                    background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
+                    color: 'var(--text-primary)',
+                    boxShadow: 'var(--raised-shadow-sm)',
+                  } : {
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                  }}
+                >
+                  Monday
+                </button>
+              </div>
             </div>
           </div>
         </PopoverContent>

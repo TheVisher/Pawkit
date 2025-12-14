@@ -6,15 +6,15 @@ import {
   format,
   startOfMonth,
   endOfMonth,
-  startOfISOWeek,
-  endOfISOWeek,
+  startOfWeek,
+  endOfWeek,
   addDays,
   addMonths,
   subMonths,
   isSameMonth,
   isSameDay,
   isToday,
-  getISOWeek,
+  getWeek,
 } from "date-fns";
 import { useCalendarStore } from "@/lib/hooks/use-calendar-store";
 
@@ -30,6 +30,7 @@ export function MiniCalendar({ onDateSelect, onWeekSelect }: MiniCalendarProps) 
   const viewMode = useCalendarStore((state) => state.viewMode);
   const setCurrentMonth = useCalendarStore((state) => state.setCurrentMonth);
   const setViewMode = useCalendarStore((state) => state.setViewMode);
+  const weekStartsOn = useCalendarStore((state) => state.weekStartsOn);
 
   // Sync display month when main calendar changes (so mini calendar follows)
   useEffect(() => {
@@ -39,22 +40,22 @@ export function MiniCalendar({ onDateSelect, onWeekSelect }: MiniCalendarProps) 
     }
   }, [currentMonth]);
 
-  // Generate calendar grid with weeks
+  // Generate calendar grid with weeks (respects weekStartsOn setting)
   const calendarWeeks = useMemo(() => {
     const monthStart = startOfMonth(displayMonth);
     const monthEnd = endOfMonth(displayMonth);
 
-    // Start from the Monday of the week containing the 1st
-    const calendarStart = startOfISOWeek(monthStart);
-    // End at the Sunday of the week containing the last day
-    const calendarEnd = endOfISOWeek(monthEnd);
+    // Start from the first day of the week containing the 1st
+    const calendarStart = startOfWeek(monthStart, { weekStartsOn });
+    // End at the last day of the week containing the last day of month
+    const calendarEnd = endOfWeek(monthEnd, { weekStartsOn });
 
     const weeks: { weekNumber: number; weekStart: Date; days: Date[] }[] = [];
     let currentDay = calendarStart;
 
     while (currentDay <= calendarEnd) {
       const weekStart = currentDay;
-      const weekNumber = getISOWeek(currentDay);
+      const weekNumber = getWeek(currentDay, { weekStartsOn });
       const days: Date[] = [];
 
       for (let i = 0; i < 7; i++) {
@@ -66,7 +67,17 @@ export function MiniCalendar({ onDateSelect, onWeekSelect }: MiniCalendarProps) 
     }
 
     return weeks;
-  }, [displayMonth]);
+  }, [displayMonth, weekStartsOn]);
+
+  // Day headers based on week start preference
+  const dayHeaders = useMemo(() => {
+    if (weekStartsOn === 1) {
+      // Monday start: M, T, W, T, F, S, S
+      return ["M", "T", "W", "T", "F", "S", "S"];
+    }
+    // Sunday start: S, M, T, W, T, F, S
+    return ["S", "M", "T", "W", "T", "F", "S"];
+  }, [weekStartsOn]);
 
   // Check if a week is the currently viewed week (based on currentMonth from store)
   const isViewedWeek = (weekStart: Date) => {
@@ -129,11 +140,11 @@ export function MiniCalendar({ onDateSelect, onWeekSelect }: MiniCalendarProps) 
         </button>
       </div>
 
-      {/* Day headers (Mon-Sun) */}
+      {/* Day headers */}
       <div className="grid grid-cols-8 gap-0 mb-1">
         {/* Empty cell for week number column */}
         <div className="w-6" />
-        {["M", "T", "W", "T", "F", "S", "S"].map((day, i) => (
+        {dayHeaders.map((day, i) => (
           <div
             key={i}
             className="text-[10px] font-medium text-center py-0.5"

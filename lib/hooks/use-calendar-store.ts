@@ -25,6 +25,9 @@ export type CalendarSource = {
 // Notification reminder time options (minutes before event)
 export type ReminderMinutes = 0 | 5 | 10 | 15 | 30 | 60 | 120 | 1440;
 
+// Week start day (0 = Sunday, 1 = Monday)
+export type WeekStartDay = 0 | 1;
+
 type CalendarState = {
   // Current month being viewed
   currentMonth: Date;
@@ -59,6 +62,9 @@ type CalendarState = {
   todoNotificationsEnabled: boolean; // Notify for todo due dates
   todoReminderTime: string; // Time of day to notify for todos (HH:mm)
 
+  // Week start preference
+  weekStartsOn: WeekStartDay; // 0 = Sunday, 1 = Monday
+
   // Actions
   setCurrentMonth: (date: Date) => void;
   setViewMode: (mode: CalendarViewMode) => void;
@@ -86,6 +92,9 @@ type CalendarState = {
   setEventReminderMinutes: (minutes: ReminderMinutes) => void;
   setTodoNotificationsEnabled: (enabled: boolean) => void;
   setTodoReminderTime: (time: string) => void;
+
+  // Week start action
+  setWeekStartsOn: (day: WeekStartDay) => void;
 };
 
 // Default local calendar source
@@ -124,6 +133,9 @@ export const useCalendarStore = create<CalendarState>()(
       eventReminderMinutes: 15, // 15 minutes before by default
       todoNotificationsEnabled: true, // Notify for todos when notifications enabled
       todoReminderTime: "09:00", // 9 AM reminder for todo due dates
+
+      // Week start - default to Sunday (US standard)
+      weekStartsOn: 0,
 
       setCurrentMonth: (date: Date) => set({ currentMonth: date }),
       setViewMode: (mode: CalendarViewMode) => set({ viewMode: mode }),
@@ -195,6 +207,10 @@ export const useCalendarStore = create<CalendarState>()(
         set({ todoNotificationsEnabled: enabled }),
       setTodoReminderTime: (time: string) =>
         set({ todoReminderTime: time }),
+
+      // Week start action
+      setWeekStartsOn: (day: WeekStartDay) =>
+        set({ weekStartsOn: day }),
     }),
     {
       name: "pawkit-calendar-settings",
@@ -217,6 +233,8 @@ export const useCalendarStore = create<CalendarState>()(
         eventReminderMinutes: state.eventReminderMinutes,
         todoNotificationsEnabled: state.todoNotificationsEnabled,
         todoReminderTime: state.todoReminderTime,
+        // Persist week start preference
+        weekStartsOn: state.weekStartsOn,
       }),
     }
   )

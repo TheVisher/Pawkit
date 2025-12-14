@@ -55,6 +55,9 @@ export function CustomCalendar({
   const showManualEvents = useCalendarStore((state) => state.showManualEvents);
   const showDailyNotes = useCalendarStore((state) => state.showDailyNotes);
 
+  // Week start preference
+  const weekStartsOn = useCalendarStore((state) => state.weekStartsOn);
+
   // Mobile detection - use agenda view on mobile
   const isMobile = useIsMobile();
 
@@ -80,7 +83,7 @@ export function CustomCalendar({
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(currentMonth);
-    const startDate = startOfWeek(monthStart);
+    const startDate = startOfWeek(monthStart, { weekStartsOn });
 
     // Create exactly 42 days (6 weeks)
     const days = [];
@@ -89,7 +92,18 @@ export function CustomCalendar({
     }
 
     return days;
-  }, [currentMonth]);
+  }, [currentMonth, weekStartsOn]);
+
+  // Day headers based on week start preference
+  const dayHeaders = useMemo(() => {
+    const allDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    if (weekStartsOn === 1) {
+      // Monday start: Mon, Tue, Wed, Thu, Fri, Sat, Sun
+      return ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    }
+    // Sunday start (default)
+    return allDays;
+  }, [weekStartsOn]);
 
   // Group cards by date
   const cardsByDate = useMemo(() => {
@@ -374,7 +388,7 @@ export function CustomCalendar({
           gap: 'var(--space-3)',
         }}
       >
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+        {dayHeaders.map((day) => (
           <div
             key={day}
             className="text-center text-sm font-semibold py-2"
