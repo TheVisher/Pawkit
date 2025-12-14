@@ -5,6 +5,7 @@ import { AuthProvider } from "@/lib/contexts/auth-context";
 import { SWRProvider } from "@/lib/providers/swr-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { ClientEvents } from "@/components/client-events";
+import { NotificationScheduler } from "@/components/notification-scheduler";
 
 export const metadata = {
   title: "Pawkit",
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <ThemeProvider>
                 {children}
                 <ClientEvents />
+                <NotificationScheduler />
               </ThemeProvider>
             </SWRProvider>
           </AuthProvider>
