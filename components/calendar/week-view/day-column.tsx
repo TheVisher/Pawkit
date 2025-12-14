@@ -258,6 +258,7 @@ export function DayColumn({
   return (
     <div
       ref={columnRef}
+      data-day-column
       className={`relative flex-1 min-w-0 transition-colors ${
         isDragOver ? "bg-accent/20" : ""
       } ${dragCreate?.isDragging ? "select-none" : ""}`}
