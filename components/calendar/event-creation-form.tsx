@@ -85,8 +85,9 @@ export function EventCreationForm({
     try {
       if (isMultiDay && !isAllDay) {
         // Create separate events for each day with the same time
-        const startDateObj = new Date(eventDate);
-        const endDateObj = new Date(eventEndDate);
+        // Append T00:00:00 to parse as local midnight (not UTC)
+        const startDateObj = new Date(eventDate + "T00:00:00");
+        const endDateObj = new Date(eventEndDate + "T00:00:00");
 
         for (let d = new Date(startDateObj); d <= endDateObj; d.setDate(d.getDate() + 1)) {
           await addEvent({
