@@ -49,6 +49,12 @@ export function CustomCalendar({
   const holidayFilter = useCalendarStore((state) => state.holidayFilter);
   const enabledCountries = useCalendarStore((state) => state.enabledCountries);
 
+  // Visibility filter settings
+  const showUrlCards = useCalendarStore((state) => state.showUrlCards);
+  const showTodos = useCalendarStore((state) => state.showTodos);
+  const showManualEvents = useCalendarStore((state) => state.showManualEvents);
+  const showDailyNotes = useCalendarStore((state) => state.showDailyNotes);
+
   // Mobile detection - use agenda view on mobile
   const isMobile = useIsMobile();
 
@@ -130,49 +136,54 @@ export function CustomCalendar({
     const rangeStart = format(calendarDays[0], 'yyyy-MM-dd');
     const rangeEnd = format(calendarDays[calendarDays.length - 1], 'yyyy-MM-dd');
 
-    events.forEach((event) => {
-      // Generate recurrence instances for recurring events
-      const instances = generateRecurrenceInstances(event, rangeStart, rangeEnd);
+    // Add manual events - only if filter enabled
+    if (showManualEvents) {
+      events.forEach((event) => {
+        // Generate recurrence instances for recurring events
+        const instances = generateRecurrenceInstances(event, rangeStart, rangeEnd);
 
-      instances.forEach((instance) => {
-        const dateStr = instance.instanceDate;
-        if (!map.has(dateStr)) {
-          map.set(dateStr, []);
-        }
-        map.get(dateStr)!.push(instance.event);
+        instances.forEach((instance) => {
+          const dateStr = instance.instanceDate;
+          if (!map.has(dateStr)) {
+            map.set(dateStr, []);
+          }
+          map.get(dateStr)!.push(instance.event);
+        });
       });
-    });
+    }
 
-    // Add todos with due dates
-    todos
-      .filter((todo) => todo.dueDate && !todo.completed)
-      .forEach((todo) => {
-        const dateStr = format(todo.dueDate!, "yyyy-MM-dd");
-        if (dateStr < rangeStart || dateStr > rangeEnd) return;
+    // Add todos with due dates - only if filter enabled
+    if (showTodos) {
+      todos
+        .filter((todo) => todo.dueDate && !todo.completed)
+        .forEach((todo) => {
+          const dateStr = format(todo.dueDate!, "yyyy-MM-dd");
+          if (dateStr < rangeStart || dateStr > rangeEnd) return;
 
-        if (!map.has(dateStr)) {
-          map.set(dateStr, []);
-        }
+          if (!map.has(dateStr)) {
+            map.set(dateStr, []);
+          }
 
-        const pseudoEvent: CalendarEvent = {
-          id: `todo-${todo.id}`,
-          userId: todo.userId,
-          title: todo.text,
-          date: dateStr,
-          isAllDay: true,
-          color: "#f59e0b", // Amber/orange for todos
-          source: {
-            type: "todo" as const,
-            todoId: todo.id,
-          },
-          createdAt: todo.createdAt.toISOString(),
-          updatedAt: todo.updatedAt.toISOString(),
-        };
-        map.get(dateStr)!.push(pseudoEvent);
-      });
+          const pseudoEvent: CalendarEvent = {
+            id: `todo-${todo.id}`,
+            userId: todo.userId,
+            title: todo.text,
+            date: dateStr,
+            isAllDay: true,
+            color: "#f59e0b", // Amber/orange for todos
+            source: {
+              type: "todo" as const,
+              todoId: todo.id,
+            },
+            createdAt: todo.createdAt.toISOString(),
+            updatedAt: todo.updatedAt.toISOString(),
+          };
+          map.get(dateStr)!.push(pseudoEvent);
+        });
+    }
 
     return map;
-  }, [events, calendarDays, generateRecurrenceInstances, todos]);
+  }, [events, calendarDays, generateRecurrenceInstances, todos, showManualEvents, showTodos]);
 
   // Group holidays by date
   const holidaysByDate = useMemo(() => {
@@ -194,14 +205,14 @@ export function CustomCalendar({
 
   // Mobile Agenda View - list format for better readability on small screens
   if (isMobile) {
-    // Get only days with content in the current month
+    // Get only days with content in the current month (respecting filters)
     const daysWithContent = calendarDays
       .filter((day) => isSameMonth(day, currentMonth))
       .filter((day) => {
         const dateStr = format(day, 'yyyy-MM-dd');
-        const dayCards = cardsByDate.get(dateStr) || [];
+        const dayCards = showUrlCards ? (cardsByDate.get(dateStr) || []) : [];
         const dayEvents = eventsByDate.get(dateStr) || [];
-        const dailyNote = dailyNotesByDate.get(dateStr);
+        const dailyNote = showDailyNotes ? dailyNotesByDate.get(dateStr) : undefined;
         const holiday = holidaysByDate.get(dateStr);
         return dayCards.length > 0 || dayEvents.length > 0 || dailyNote || holiday;
       });
@@ -215,9 +226,9 @@ export function CustomCalendar({
         ) : (
           daysWithContent.map((day) => {
             const dateStr = format(day, 'yyyy-MM-dd');
-            const dayCards = cardsByDate.get(dateStr) || [];
+            const dayCards = showUrlCards ? (cardsByDate.get(dateStr) || []) : [];
             const dayEvents = eventsByDate.get(dateStr) || [];
-            const dailyNote = dailyNotesByDate.get(dateStr);
+            const dailyNote = showDailyNotes ? dailyNotesByDate.get(dateStr) : undefined;
             const holiday = holidaysByDate.get(dateStr);
             const isCurrentDay = isClient ? isSameDay(day, new Date()) : false;
 
@@ -381,9 +392,9 @@ export function CustomCalendar({
       >
         {calendarDays.map((day, index) => {
           const dateStr = format(day, 'yyyy-MM-dd');
-          const dayCards = cardsByDate.get(dateStr) || [];
+          const dayCards = showUrlCards ? (cardsByDate.get(dateStr) || []) : [];
           const dayEvents = eventsByDate.get(dateStr) || [];
-          const dailyNote = dailyNotesByDate.get(dateStr);
+          const dailyNote = showDailyNotes ? dailyNotesByDate.get(dateStr) : undefined;
           const holiday = holidaysByDate.get(dateStr);
           const isCurrentMonth = isSameMonth(day, currentMonth);
           // Only check if it's today on the client to prevent hydration mismatch

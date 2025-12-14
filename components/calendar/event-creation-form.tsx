@@ -9,6 +9,7 @@ import { EVENT_COLORS } from "@/lib/types/calendar";
 interface EventCreationFormProps {
   date: Date;
   startTime: string; // Format: "HH:MM"
+  endTime?: string; // Optional pre-filled end time (from drag-to-create)
   onClose: () => void;
   onSave?: () => void;
 }
@@ -34,17 +35,18 @@ function calculateEndTime(start: string): string {
 export function EventCreationForm({
   date,
   startTime: initialStartTime,
+  endTime: initialEndTime,
   onClose,
   onSave,
 }: EventCreationFormProps) {
   const { addEvent } = useEventStore();
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  // Form state
+  // Form state - use provided endTime if available, otherwise calculate default
   const [title, setTitle] = useState("");
   const [eventDate, setEventDate] = useState(format(date, "yyyy-MM-dd"));
   const [startTime, setStartTime] = useState(initialStartTime);
-  const [endTime, setEndTime] = useState(calculateEndTime(initialStartTime));
+  const [endTime, setEndTime] = useState(initialEndTime || calculateEndTime(initialStartTime));
   const [isAllDay, setIsAllDay] = useState(false);
   const [color, setColor] = useState<string>(EVENT_COLORS.purple);
   const [description, setDescription] = useState("");

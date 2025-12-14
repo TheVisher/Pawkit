@@ -120,6 +120,7 @@ export function TimeGrid({
   const [creationData, setCreationData] = useState<{
     date: Date;
     startTime: string;
+    endTime?: string;
   } | null>(null);
 
   // Visual preview state - stores the clicked slot element for showing preview
@@ -128,6 +129,12 @@ export function TimeGrid({
   // Event details popover state
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+
+  // Hover preview state (with delay)
+  const [hoveredEvent, setHoveredEvent] = useState<CalendarEvent | null>(null);
+  const [isHoverOpen, setIsHoverOpen] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const HOVER_DELAY = 500; // ms
 
   const { deleteEvent } = useEventStore();
 
@@ -197,15 +204,56 @@ export function TimeGrid({
     whileElementsMounted: autoUpdate,
   });
 
+  // Floating UI for hover preview popover
+  const {
+    refs: hoverRefs,
+    floatingStyles: hoverStyles,
+  } = useFloating({
+    open: isHoverOpen,
+    placement: "right-start",
+    middleware: [
+      offset(8),
+      flip({
+        fallbackPlacements: ["left-start", "bottom-start", "top-start"],
+        boundary: containerRef.current || undefined,
+      }),
+      shift({
+        padding: 16,
+        crossAxis: true,
+        boundary: containerRef.current || undefined,
+      }),
+    ],
+    whileElementsMounted: autoUpdate,
+  });
+
   // Handle time slot click - pass the element for anchoring
   const handleTimeSlotClick = (date: Date, startTime: string, element: HTMLElement) => {
     // Close any open details popover
     setIsDetailsOpen(false);
     setSelectedEvent(null);
 
+    // Clear hover state
+    handleEventHoverEnd();
+
     // Set the clicked element as the reference for positioning
     creationRefs.setReference(element);
     setCreationData({ date, startTime });
+    setPreviewElement(element);
+    setIsCreationOpen(true);
+  };
+
+  // Handle time range selection (drag-to-create)
+  const handleTimeRangeSelect = (date: Date, startTime: string, endTime: string, element: HTMLElement) => {
+    // Close any open details popover
+    setIsDetailsOpen(false);
+    setSelectedEvent(null);
+
+    // Clear hover state
+    handleEventHoverEnd();
+
+    // Set the element as the reference for positioning
+    creationRefs.setReference(element);
+    setCreationData({ date, startTime, endTime });
     setPreviewElement(element);
     setIsCreationOpen(true);
   };
@@ -221,11 +269,49 @@ export function TimeGrid({
     setSelectedEvent(null);
   };
 
+  // Handle hover start with delay
+  const handleEventHoverStart = (event: CalendarEvent, element: HTMLElement) => {
+    // Clear any existing timeout
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+
+    // Don't show hover if click popover is open for this event
+    if (isDetailsOpen && selectedEvent?.id === event.id) return;
+    // Don't show hover if creation popover is open
+    if (isCreationOpen) return;
+
+    hoverRefs.setReference(element);
+    setHoveredEvent(event);
+
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHoverOpen(true);
+    }, HOVER_DELAY);
+  };
+
+  // Handle hover end - clear timeout and close popover
+  const handleEventHoverEnd = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsHoverOpen(false);
+    setHoveredEvent(null);
+  };
+
   // Handle event click - show details popover anchored to the event element
   const handleEventClickInternal = (event: CalendarEvent, element: HTMLElement) => {
     // Close any open creation popover
     setIsCreationOpen(false);
     setCreationData(null);
+
+    // Clear hover state when clicking
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsHoverOpen(false);
+    setHoveredEvent(null);
 
     // Set the clicked event element as the reference for positioning
     detailsRefs.setReference(element);
@@ -420,9 +506,12 @@ export function TimeGrid({
                   hourHeight={hourHeight}
                   onEventClick={handleEventClickInternal}
                   onTimeSlotClick={(startTime, element) => handleTimeSlotClick(day, startTime, element)}
+                  onTimeRangeSelect={(startTime, endTime, element) => handleTimeRangeSelect(day, startTime, endTime, element)}
                   onEventDrop={(eventId, sourceType, targetHour) => {
                     onEventReschedule?.(eventId, dateStr, sourceType, targetHour);
                   }}
+                  onEventHoverStart={handleEventHoverStart}
+                  onEventHoverEnd={handleEventHoverEnd}
                   isFirst={index === 0}
                 />
               );
@@ -455,6 +544,7 @@ export function TimeGrid({
             <EventCreationForm
               date={creationData.date}
               startTime={creationData.startTime}
+              endTime={creationData.endTime}
               onClose={closeCreationPopover}
             />
           </div>
@@ -477,6 +567,22 @@ export function TimeGrid({
                   ? handleDeleteEvent
                   : undefined
               }
+            />
+          </div>
+        )}
+      </FloatingPortal>
+
+      {/* Hover preview popover (z-40 to stay below click popover) */}
+      <FloatingPortal>
+        {isHoverOpen && hoveredEvent && !isDetailsOpen && (
+          <div
+            ref={hoverRefs.setFloating}
+            style={hoverStyles}
+            className="z-40 pointer-events-none"
+          >
+            <EventDetailsPopover
+              event={hoveredEvent}
+              onClose={() => setIsHoverOpen(false)}
             />
           </div>
         )}

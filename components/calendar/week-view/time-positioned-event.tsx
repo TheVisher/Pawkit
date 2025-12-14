@@ -9,6 +9,8 @@ interface TimePositionedEventProps {
   positionedEvent: PositionedEvent;
   onClick?: (event: CalendarEvent, element: HTMLElement) => void;
   onDragStart?: (e: React.DragEvent, event: CalendarEvent) => void;
+  onHoverStart?: (event: CalendarEvent, element: HTMLElement) => void;
+  onHoverEnd?: () => void;
 }
 
 /**
@@ -19,6 +21,8 @@ export function TimePositionedEvent({
   positionedEvent,
   onClick,
   onDragStart,
+  onHoverStart,
+  onHoverEnd,
 }: TimePositionedEventProps) {
   const { event, top, height, left, width, totalColumns } = positionedEvent;
 
@@ -58,6 +62,12 @@ export function TimePositionedEvent({
           e.preventDefault();
           onClick?.(event, e.currentTarget as HTMLElement);
         }
+      }}
+      onMouseEnter={(e) => {
+        onHoverStart?.(event, e.currentTarget as HTMLElement);
+      }}
+      onMouseLeave={() => {
+        onHoverEnd?.();
       }}
       data-event
       className={`absolute overflow-hidden transition-all duration-150 hover:z-10 ${
