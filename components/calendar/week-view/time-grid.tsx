@@ -13,7 +13,14 @@ import { DayColumn } from "./day-column";
 import { CurrentTimeIndicator } from "./current-time-indicator";
 import { AllDaySection } from "./all-day-section";
 import { ResolvedHoliday } from "@/lib/data/us-holidays";
-import { Popover, PopoverContent, PopoverAnchor } from "@/components/ui/popover";
+import {
+  useFloating,
+  offset,
+  flip,
+  shift,
+  autoUpdate,
+  FloatingPortal,
+} from "@floating-ui/react";
 import { EventCreationForm } from "../event-creation-form";
 import { EventDetailsPopover } from "../event-details-popover";
 import { useEventStore } from "@/lib/hooks/use-event-store";
@@ -46,55 +53,83 @@ export function TimeGrid({
   const gridRef = useRef<HTMLDivElement>(null);
   const totalGridHeight = 24 * hourHeight;
 
-  // Event creation popover state - stores slot info and anchor position
-  const [activeSlot, setActiveSlot] = useState<{
+  // Event creation popover state
+  const [isCreationOpen, setIsCreationOpen] = useState(false);
+  const [creationData, setCreationData] = useState<{
     date: Date;
     hour: number;
-    anchorRect: { left: number; top: number; width: number; height: number };
   } | null>(null);
 
-  // Event details popover state - stores selected event and anchor position
-  const [selectedEvent, setSelectedEvent] = useState<{
-    event: CalendarEvent;
-    anchorRect: { left: number; top: number; width: number; height: number };
-  } | null>(null);
+  // Event details popover state
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   const { deleteEvent } = useEventStore();
 
-  const handleTimeSlotClick = (date: Date, hour: number, slotRect: DOMRect) => {
-    // Use the actual clicked slot's bounding rect for accurate positioning
-    const anchorRect = {
-      left: slotRect.left,
-      top: slotRect.top,
-      width: slotRect.width,
-      height: slotRect.height,
-    };
+  // Floating UI for event creation popover
+  const {
+    refs: creationRefs,
+    floatingStyles: creationStyles,
+  } = useFloating({
+    open: isCreationOpen,
+    onOpenChange: setIsCreationOpen,
+    placement: "right-start",
+    middleware: [
+      offset(8),
+      flip({ fallbackPlacements: ["left-start", "bottom-start", "top-start"] }),
+      shift({ padding: 16 }),
+    ],
+    whileElementsMounted: autoUpdate,
+  });
 
-    setActiveSlot({ date, hour, anchorRect });
+  // Floating UI for event details popover
+  const {
+    refs: detailsRefs,
+    floatingStyles: detailsStyles,
+  } = useFloating({
+    open: isDetailsOpen,
+    onOpenChange: setIsDetailsOpen,
+    placement: "right-start",
+    middleware: [
+      offset(8),
+      flip({ fallbackPlacements: ["left-start", "bottom-start", "top-start"] }),
+      shift({ padding: 16 }),
+    ],
+    whileElementsMounted: autoUpdate,
+  });
+
+  // Handle time slot click - pass the element for anchoring
+  const handleTimeSlotClick = (date: Date, hour: number, element: HTMLElement) => {
+    // Close any open details popover
+    setIsDetailsOpen(false);
+    setSelectedEvent(null);
+
+    // Set the clicked element as the reference for positioning
+    creationRefs.setReference(element);
+    setCreationData({ date, hour });
+    setIsCreationOpen(true);
   };
 
-  const closePopover = () => {
-    setActiveSlot(null);
+  const closeCreationPopover = () => {
+    setIsCreationOpen(false);
+    setCreationData(null);
   };
 
-  const closeEventDetails = () => {
+  const closeDetailsPopover = () => {
+    setIsDetailsOpen(false);
     setSelectedEvent(null);
   };
 
-  // Handle event click - show details popover with anchor at event position
-  const handleEventClickInternal = (event: CalendarEvent, eventRect: DOMRect) => {
+  // Handle event click - show details popover anchored to the event element
+  const handleEventClickInternal = (event: CalendarEvent, element: HTMLElement) => {
     // Close any open creation popover
-    setActiveSlot(null);
+    setIsCreationOpen(false);
+    setCreationData(null);
 
-    setSelectedEvent({
-      event,
-      anchorRect: {
-        left: eventRect.left,
-        top: eventRect.top,
-        width: eventRect.width,
-        height: eventRect.height,
-      },
-    });
+    // Set the clicked event element as the reference for positioning
+    detailsRefs.setReference(element);
+    setSelectedEvent(event);
+    setIsDetailsOpen(true);
   };
 
   // Handle delete from popover
@@ -102,9 +137,37 @@ export function TimeGrid({
     // Only delete manual events (not pseudo-events from cards/todos)
     if (!event.source || event.source.type === "manual") {
       await deleteEvent(event.id);
-      closeEventDetails();
+      closeDetailsPopover();
     }
   };
+
+  // Close popovers when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+
+      // Check if click is inside either popover
+      const isInsideCreation = creationRefs.floating.current?.contains(target);
+      const isInsideDetails = detailsRefs.floating.current?.contains(target);
+
+      if (!isInsideCreation && isCreationOpen) {
+        // Don't close if clicking on a time slot (will trigger new popover)
+        if (!target.closest("[data-time-slot]")) {
+          closeCreationPopover();
+        }
+      }
+
+      if (!isInsideDetails && isDetailsOpen) {
+        // Don't close if clicking on an event (will trigger new popover)
+        if (!target.closest("[data-event]")) {
+          closeDetailsPopover();
+        }
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isCreationOpen, isDetailsOpen]);
 
   // Auto-scroll to current time on mount
   useEffect(() => {
@@ -255,7 +318,7 @@ export function TimeGrid({
                   events={dayEvents}
                   hourHeight={hourHeight}
                   onEventClick={handleEventClickInternal}
-                  onTimeSlotClick={(hour, slotRect) => handleTimeSlotClick(day, hour, slotRect)}
+                  onTimeSlotClick={(hour, element) => handleTimeSlotClick(day, hour, element)}
                   onEventDrop={(eventId, sourceType, targetHour) => {
                     onEventReschedule?.(eventId, dateStr, sourceType, targetHour);
                   }}
@@ -273,78 +336,43 @@ export function TimeGrid({
         </div>
       </div>
 
-      {/* Event creation popover using Radix for proper anchoring */}
-      <Popover open={!!activeSlot} onOpenChange={(open) => !open && closePopover()}>
-        {/* Anchor element positioned at the clicked slot */}
-        {activeSlot && (
-          <PopoverAnchor asChild>
-            <div
-              className="fixed pointer-events-none z-40"
-              style={{
-                left: activeSlot.anchorRect.left,
-                top: activeSlot.anchorRect.top,
-                width: activeSlot.anchorRect.width,
-                height: activeSlot.anchorRect.height,
-                // Visual placeholder like Google Calendar
-                background: "var(--ds-accent)",
-                opacity: 0.3,
-                borderRadius: "4px",
-              }}
-            />
-          </PopoverAnchor>
-        )}
-        <PopoverContent
-          side="right"
-          sideOffset={8}
-          align="start"
-          collisionPadding={16}
-          className="w-auto p-0"
-        >
-          {activeSlot && (
+      {/* Event creation popover using Floating UI */}
+      <FloatingPortal>
+        {isCreationOpen && creationData && (
+          <div
+            ref={creationRefs.setFloating}
+            style={creationStyles}
+            className="z-50"
+          >
             <EventCreationForm
-              date={activeSlot.date}
-              hour={activeSlot.hour}
-              onClose={closePopover}
+              date={creationData.date}
+              hour={creationData.hour}
+              onClose={closeCreationPopover}
             />
-          )}
-        </PopoverContent>
-      </Popover>
-
-      {/* Event details popover */}
-      <Popover open={!!selectedEvent} onOpenChange={(open) => !open && closeEventDetails()}>
-        {selectedEvent && (
-          <PopoverAnchor asChild>
-            <div
-              className="fixed pointer-events-none z-40"
-              style={{
-                left: selectedEvent.anchorRect.left,
-                top: selectedEvent.anchorRect.top,
-                width: selectedEvent.anchorRect.width,
-                height: selectedEvent.anchorRect.height,
-              }}
-            />
-          </PopoverAnchor>
+          </div>
         )}
-        <PopoverContent
-          side="right"
-          sideOffset={8}
-          align="start"
-          collisionPadding={16}
-          className="w-auto p-0"
-        >
-          {selectedEvent && (
+      </FloatingPortal>
+
+      {/* Event details popover using Floating UI */}
+      <FloatingPortal>
+        {isDetailsOpen && selectedEvent && (
+          <div
+            ref={detailsRefs.setFloating}
+            style={detailsStyles}
+            className="z-50"
+          >
             <EventDetailsPopover
-              event={selectedEvent.event}
-              onClose={closeEventDetails}
+              event={selectedEvent}
+              onClose={closeDetailsPopover}
               onDelete={
-                !selectedEvent.event.source || selectedEvent.event.source.type === "manual"
+                !selectedEvent.source || selectedEvent.source.type === "manual"
                   ? handleDeleteEvent
                   : undefined
               }
             />
-          )}
-        </PopoverContent>
-      </Popover>
+          </div>
+        )}
+      </FloatingPortal>
     </div>
   );
 }

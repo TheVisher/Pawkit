@@ -12,7 +12,7 @@ interface AllDaySectionProps {
   weekDays: Date[];
   eventsByDate: Map<string, CalendarEvent[]>;
   holidaysByDate: Map<string, ResolvedHoliday>;
-  onEventClick?: (event: CalendarEvent, eventRect: DOMRect) => void;
+  onEventClick?: (event: CalendarEvent, element: HTMLElement) => void;
   onDayClick?: (date: Date) => void;
   onEventReschedule?: (eventId: string, newDate: string, sourceType?: string, targetHour?: number) => void;
 }
@@ -186,16 +186,15 @@ export function AllDaySection({
                       }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                        onEventClick?.(event, rect);
+                        onEventClick?.(event, e.currentTarget as HTMLElement);
                       }}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                          onEventClick?.(event, rect);
+                          onEventClick?.(event, e.currentTarget as HTMLElement);
                         }
                       }}
+                      data-event
                     >
                       {isTodo && <CheckSquare size={10} className="flex-shrink-0" />}
                       {isCard && event.url && (
