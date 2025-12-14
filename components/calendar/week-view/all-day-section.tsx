@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { format, isToday } from "date-fns";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { TIME_LABEL_WIDTH } from "@/lib/utils/time-grid";
@@ -21,6 +21,9 @@ interface AllDaySectionProps {
     startTime?: string;
     endTime?: string;
   } | null;
+  // Callbacks for all-day drag-to-create
+  onAllDayDragStart?: () => void;
+  onAllDayDragEnd?: (startDayIndex: number, endDayIndex: number) => void;
 }
 
 const EVENT_HEIGHT = 22; // Height of each all-day event
@@ -38,9 +41,19 @@ export function AllDaySection({
   onDayClick,
   onEventReschedule,
   multiDayDragPreview,
+  onAllDayDragStart,
+  onAllDayDragEnd,
 }: AllDaySectionProps) {
-  // Track drag state for visual feedback
+  // Track drag state for visual feedback (existing event drag)
   const [dragOverDay, setDragOverDay] = useState<number | null>(null);
+
+  // Track drag-to-create state for all-day events
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [allDayDrag, setAllDayDrag] = useState<{
+    startDayIndex: number;
+    currentDayIndex: number;
+    isDragging: boolean;
+  } | null>(null);
 
   const handleDragStart = (e: React.DragEvent, event: CalendarEvent) => {
     e.dataTransfer.setData("eventId", event.id);
@@ -72,6 +85,61 @@ export function AllDaySection({
       onEventReschedule(eventId, newDate, sourceType, -1);
     }
   };
+
+  // Pointer handlers for drag-to-create all-day events
+  const handlePointerDown = (e: React.PointerEvent, dayIndex: number) => {
+    // Only left click
+    if (e.button !== 0) return;
+    // Don't start drag if clicking on an event
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-event]")) return;
+
+    e.preventDefault();
+    onAllDayDragStart?.();
+
+    setAllDayDrag({
+      startDayIndex: dayIndex,
+      currentDayIndex: dayIndex,
+      isDragging: true,
+    });
+
+    // Capture pointer on the grid for cross-day tracking
+    gridRef.current?.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!allDayDrag?.isDragging) return;
+    if (!gridRef.current) return;
+
+    // Calculate which day column based on position
+    const gridRect = gridRef.current.getBoundingClientRect();
+    const relativeX = e.clientX - gridRect.left;
+    const columnWidth = gridRect.width / 7;
+    const dayIndex = Math.max(0, Math.min(6, Math.floor(relativeX / columnWidth)));
+
+    if (dayIndex !== allDayDrag.currentDayIndex) {
+      setAllDayDrag(prev => prev ? { ...prev, currentDayIndex: dayIndex } : null);
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (!allDayDrag?.isDragging) return;
+
+    const startDay = Math.min(allDayDrag.startDayIndex, allDayDrag.currentDayIndex);
+    const endDay = Math.max(allDayDrag.startDayIndex, allDayDrag.currentDayIndex);
+
+    // Notify parent to create all-day event
+    onAllDayDragEnd?.(startDay, endDay);
+
+    setAllDayDrag(null);
+    gridRef.current?.releasePointerCapture(e.pointerId);
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent) => {
+    setAllDayDrag(null);
+    gridRef.current?.releasePointerCapture(e.pointerId);
+  };
+
   // Get all-day events for each day
   const allDayByDay = useMemo(() => {
     return weekDays.map((day) => {
@@ -126,8 +194,15 @@ export function AllDaySection({
 
         {/* Day columns */}
         <div
+          ref={gridRef}
           className="flex-1 grid grid-cols-7"
-          style={{ borderLeft: "1px solid var(--border-subtle)" }}
+          style={{
+            borderLeft: "1px solid var(--border-subtle)",
+            touchAction: "none", // Prevent touch scrolling during drag
+          }}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
         >
           {weekDays.map((day, dayIndex) => {
             const allDayEvents = allDayByDay[dayIndex];
@@ -139,28 +214,39 @@ export function AllDaySection({
             const hasMore = totalItems > MAX_VISIBLE_EVENTS;
             const visibleEvents = allDayEvents.slice(0, MAX_VISIBLE_EVENTS - (holiday ? 1 : 0));
 
-            // Check if this day is within multi-day drag range
-            const isInDragRange = multiDayDragPreview &&
+            // Check if this day is within multi-day drag range (from time grid)
+            const isInTimeDragRange = multiDayDragPreview &&
               dayIndex >= multiDayDragPreview.startDayIndex &&
               dayIndex <= multiDayDragPreview.endDayIndex;
-            const isStartOfDrag = multiDayDragPreview && dayIndex === multiDayDragPreview.startDayIndex;
-            const isEndOfDrag = multiDayDragPreview && dayIndex === multiDayDragPreview.endDayIndex;
+
+            // Check if this day is within all-day drag range (local drag)
+            const allDayMin = allDayDrag ? Math.min(allDayDrag.startDayIndex, allDayDrag.currentDayIndex) : -1;
+            const allDayMax = allDayDrag ? Math.max(allDayDrag.startDayIndex, allDayDrag.currentDayIndex) : -1;
+            const isInAllDayDragRange = allDayDrag?.isDragging && dayIndex >= allDayMin && dayIndex <= allDayMax;
+
+            // Combined drag range check
+            const isInDragRange = isInTimeDragRange || isInAllDayDragRange;
+            const isStartOfDrag = (multiDayDragPreview && dayIndex === multiDayDragPreview.startDayIndex) ||
+              (isInAllDayDragRange && dayIndex === allDayMin);
+            const isEndOfDrag = (multiDayDragPreview && dayIndex === multiDayDragPreview.endDayIndex) ||
+              (isInAllDayDragRange && dayIndex === allDayMax);
 
             return (
               <div
                 key={dayIndex}
                 className={`px-1 py-2 space-y-1 cursor-pointer transition-colors relative ${
                   isCurrentDay ? "bg-accent/5" : dragOverDay === dayIndex ? "bg-accent/20" : "hover:bg-white/5"
-                }`}
+                } ${allDayDrag?.isDragging ? "select-none" : ""}`}
                 style={{
                   borderLeft: dayIndex > 0 ? "1px solid var(--border-subtle)" : "none",
                 }}
-                onClick={() => onDayClick?.(day)}
+                onClick={() => !allDayDrag && onDayClick?.(day)}
+                onPointerDown={(e) => handlePointerDown(e, dayIndex)}
                 onDragOver={(e) => handleDragOver(e, dayIndex)}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, day)}
               >
-                {/* Multi-day drag preview */}
+                {/* Multi-day drag preview (from time grid or all-day drag) */}
                 {isInDragRange && (
                   <div
                     className="absolute inset-x-0 top-2 h-5 pointer-events-none z-10"
@@ -177,9 +263,9 @@ export function AllDaySection({
                   >
                     {isStartOfDrag && (
                       <span className="text-[10px] font-medium text-white px-2 leading-5">
-                        {multiDayDragPreview.startTime
+                        {multiDayDragPreview?.startTime
                           ? `${multiDayDragPreview.startTime} - ${multiDayDragPreview.endTime || ""}`
-                          : "New Event"}
+                          : "All Day"}
                       </span>
                     )}
                   </div>

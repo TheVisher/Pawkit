@@ -123,6 +123,7 @@ export function TimeGrid({
     endTime?: string;
     isMultiDay?: boolean;
     endDate?: Date;
+    isAllDay?: boolean;
   } | null>(null);
 
   // Visual preview state - stores the clicked slot element for showing preview
@@ -139,6 +140,12 @@ export function TimeGrid({
     endTime?: string;
     startSlot?: number;  // 0-47 (30-min slots)
     endSlot?: number;
+  } | null>(null);
+
+  // All-day drag state (for dragging in the all-day section)
+  const [allDayDrag, setAllDayDrag] = useState<{
+    startDayIndex: number;
+    endDayIndex: number;
   } | null>(null);
 
   // Event details popover state
@@ -279,6 +286,7 @@ export function TimeGrid({
     setCreationData(null);
     setPreviewElement(null);
     setMultiDayDrag(null);
+    setAllDayDrag(null); // Clear all-day drag state too
     // Signal all DayColumns to clear their persistent preview
     setClearPreviewTrigger(prev => prev + 1);
   };
@@ -375,6 +383,43 @@ export function TimeGrid({
       // Single day drag that ended up not spanning multiple days - clear state
       setMultiDayDrag(null);
     }
+  };
+
+  // Handle all-day drag start (from AllDaySection)
+  const handleAllDayDragStart = () => {
+    // Clear any existing time-slot drag state
+    setMultiDayDrag(null);
+    setClearPreviewTrigger(prev => prev + 1);
+  };
+
+  // Handle all-day drag end (from AllDaySection)
+  const handleAllDayDragEnd = (startDayIndex: number, endDayIndex: number) => {
+    const startDay = Math.min(startDayIndex, endDayIndex);
+    const endDay = Math.max(startDayIndex, endDayIndex);
+
+    const startDate = weekDays[startDay];
+    const endDate = weekDays[endDay];
+
+    // Find an element to anchor the popover - use the all-day section
+    const allDaySection = containerRef.current?.querySelector('[data-all-day-section]') as HTMLElement | undefined;
+    if (allDaySection) {
+      creationRefs.setReference(allDaySection);
+    } else if (containerRef.current) {
+      creationRefs.setReference(containerRef.current);
+    }
+
+    // Store the drag range for visual preview
+    setAllDayDrag({ startDayIndex: startDay, endDayIndex: endDay });
+
+    // Open creation form for all-day event
+    setCreationData({
+      date: startDate,
+      startTime: "00:00", // Required by interface but ignored for all-day events
+      isMultiDay: startDay !== endDay,
+      endDate: startDay !== endDay ? endDate : undefined,
+      isAllDay: true, // Pre-check the "All day" checkbox
+    });
+    setIsCreationOpen(true);
   };
 
   const closeDetailsPopover = () => {
@@ -566,7 +611,12 @@ export function TimeGrid({
         onEventClick={handleEventClickInternal}
         onDayClick={onDayClick}
         onEventReschedule={onEventReschedule}
-        multiDayDragPreview={null} // Time-grid drags show preview in time slots, not all-day
+        multiDayDragPreview={allDayDrag ? {
+          startDayIndex: allDayDrag.startDayIndex,
+          endDayIndex: allDayDrag.endDayIndex,
+        } : null}
+        onAllDayDragStart={handleAllDayDragStart}
+        onAllDayDragEnd={handleAllDayDragEnd}
       />
 
       {/* Scrollable time grid */}
@@ -679,6 +729,7 @@ export function TimeGrid({
               endTime={creationData.endTime}
               isMultiDay={creationData.isMultiDay}
               endDate={creationData.endDate}
+              isAllDay={creationData.isAllDay}
               onClose={closeCreationPopover}
             />
           </div>
