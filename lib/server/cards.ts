@@ -40,6 +40,8 @@ function mapCard(card: Card): CardDTO {
     updatedAt: card.updatedAt.toISOString(),
     deletedAt: card.deletedAt?.toISOString() ?? null,
     scheduledDate: card.scheduledDate?.toISOString() ?? null,
+    scheduledStartTime: card.scheduledStartTime ?? null,
+    scheduledEndTime: card.scheduledEndTime ?? null,
     // File card fields
     isFileCard: card.isFileCard ?? false,
     fileId: card.fileId ?? undefined,

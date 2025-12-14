@@ -96,6 +96,8 @@ export type PrismaCard = {
   inDen: boolean;
   encryptedContent: string | null;
   scheduledDate: Date | null;
+  scheduledStartTime: string | null;  // Time in "HH:MM" format
+  scheduledEndTime: string | null;    // Time in "HH:MM" format
   createdAt: Date;
   updatedAt: Date;
   userId: string;
@@ -164,6 +166,8 @@ export type CardModel = {
   inDen: boolean;
   encryptedContent: string | null;
   scheduledDate: string | null;
+  scheduledStartTime: string | null;  // Time in "HH:MM" format
+  scheduledEndTime: string | null;    // Time in "HH:MM" format
   createdAt: string;
   updatedAt: string;
 
