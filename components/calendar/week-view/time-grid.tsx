@@ -141,10 +141,18 @@ export function TimeGrid({
     placement: "right-start",
     middleware: [
       offset(8),
-      flip({ fallbackPlacements: ["left-start", "bottom-start", "top-start"] }),
-      shift({ padding: 24, crossAxis: true }),
+      flip({
+        fallbackPlacements: ["left-start", "bottom-start", "top-start"],
+        boundary: containerRef.current || undefined,
+      }),
+      shift({
+        padding: 16,
+        crossAxis: true,
+        boundary: containerRef.current || undefined,
+      }),
       size({
-        padding: 24,
+        padding: 16,
+        boundary: containerRef.current || undefined,
         apply({ availableWidth, availableHeight, elements }) {
           Object.assign(elements.floating.style, {
             maxWidth: `${Math.min(availableWidth, 400)}px`,
@@ -166,10 +174,18 @@ export function TimeGrid({
     placement: "right-start",
     middleware: [
       offset(8),
-      flip({ fallbackPlacements: ["left-start", "bottom-start", "top-start"] }),
-      shift({ padding: 24, crossAxis: true }),
+      flip({
+        fallbackPlacements: ["left-start", "bottom-start", "top-start"],
+        boundary: containerRef.current || undefined,
+      }),
+      shift({
+        padding: 16,
+        crossAxis: true,
+        boundary: containerRef.current || undefined,
+      }),
       size({
-        padding: 24,
+        padding: 16,
+        boundary: containerRef.current || undefined,
         apply({ availableWidth, availableHeight, elements }) {
           Object.assign(elements.floating.style, {
             maxWidth: `${Math.min(availableWidth, 400)}px`,
