@@ -118,7 +118,7 @@ export function DayColumn({
               borderTop: slotIndex > 0
                 ? isHourStart
                   ? "1px solid var(--border-subtle)"
-                  : "1px dashed rgba(255,255,255,0.1)"
+                  : "1px dashed rgba(255,255,255,0.05)"
                 : "none",
             }}
             onClick={(e) => handleTimeSlotClick(e, slotIndex)}

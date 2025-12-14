@@ -33,6 +33,11 @@ import { EVENT_COLORS } from "@/lib/types/calendar";
 function EventPreview({ element }: { element: HTMLElement }) {
   const [rect, setRect] = useState(() => element.getBoundingClientRect());
 
+  // Update rect when element changes (user clicks different slot)
+  useEffect(() => {
+    setRect(element.getBoundingClientRect());
+  }, [element]);
+
   // Update position on scroll/resize
   useEffect(() => {
     const updateRect = () => setRect(element.getBoundingClientRect());
