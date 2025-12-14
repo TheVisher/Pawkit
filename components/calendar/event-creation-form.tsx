@@ -12,6 +12,7 @@ interface EventCreationFormProps {
   endTime?: string; // Optional pre-filled end time (from drag-to-create)
   isMultiDay?: boolean; // True if creating multi-day event
   endDate?: Date; // End date for multi-day events
+  isAllDay?: boolean; // True if creating all-day event (from all-day drag)
   onClose: () => void;
   onSave?: () => void;
 }
@@ -40,6 +41,7 @@ export function EventCreationForm({
   endTime: initialEndTime,
   isMultiDay: initialIsMultiDay = false,
   endDate: initialEndDate,
+  isAllDay: initialIsAllDay = false,
   onClose,
   onSave,
 }: EventCreationFormProps) {
@@ -54,7 +56,7 @@ export function EventCreationForm({
   );
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime || calculateEndTime(initialStartTime));
-  const [isAllDay, setIsAllDay] = useState(false); // Don't auto-set to all-day anymore
+  const [isAllDay, setIsAllDay] = useState(initialIsAllDay); // Use prop to pre-set all-day
   const [isMultiDay, setIsMultiDay] = useState(initialIsMultiDay);
   const [color, setColor] = useState<string>(EVENT_COLORS.purple);
   const [description, setDescription] = useState("");
