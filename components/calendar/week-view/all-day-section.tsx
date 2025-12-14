@@ -15,6 +15,10 @@ interface AllDaySectionProps {
   onEventClick?: (event: CalendarEvent, element: HTMLElement) => void;
   onDayClick?: (date: Date) => void;
   onEventReschedule?: (eventId: string, newDate: string, sourceType?: string, targetHour?: number) => void;
+  multiDayDragPreview?: {
+    startDayIndex: number;
+    endDayIndex: number;
+  } | null;
 }
 
 const EVENT_HEIGHT = 22; // Height of each all-day event
@@ -31,6 +35,7 @@ export function AllDaySection({
   onEventClick,
   onDayClick,
   onEventReschedule,
+  multiDayDragPreview,
 }: AllDaySectionProps) {
   // Track drag state for visual feedback
   const [dragOverDay, setDragOverDay] = useState<number | null>(null);
@@ -96,6 +101,7 @@ export function AllDaySection({
   return (
     <div
       className="flex-shrink-0"
+      data-all-day-section
       style={{
         minHeight: sectionHeight,
         borderBottom: "1px solid var(--border-subtle)",
@@ -131,10 +137,17 @@ export function AllDaySection({
             const hasMore = totalItems > MAX_VISIBLE_EVENTS;
             const visibleEvents = allDayEvents.slice(0, MAX_VISIBLE_EVENTS - (holiday ? 1 : 0));
 
+            // Check if this day is within multi-day drag range
+            const isInDragRange = multiDayDragPreview &&
+              dayIndex >= multiDayDragPreview.startDayIndex &&
+              dayIndex <= multiDayDragPreview.endDayIndex;
+            const isStartOfDrag = multiDayDragPreview && dayIndex === multiDayDragPreview.startDayIndex;
+            const isEndOfDrag = multiDayDragPreview && dayIndex === multiDayDragPreview.endDayIndex;
+
             return (
               <div
                 key={dayIndex}
-                className={`px-1 py-2 space-y-1 cursor-pointer transition-colors ${
+                className={`px-1 py-2 space-y-1 cursor-pointer transition-colors relative ${
                   isCurrentDay ? "bg-accent/5" : dragOverDay === dayIndex ? "bg-accent/20" : "hover:bg-white/5"
                 }`}
                 style={{
@@ -145,6 +158,28 @@ export function AllDaySection({
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, day)}
               >
+                {/* Multi-day drag preview */}
+                {isInDragRange && (
+                  <div
+                    className="absolute inset-x-0 top-2 h-5 pointer-events-none z-10"
+                    style={{
+                      background: "var(--ds-accent)",
+                      opacity: 0.6,
+                      marginLeft: isStartOfDrag ? 4 : 0,
+                      marginRight: isEndOfDrag ? 4 : 0,
+                      borderTopLeftRadius: isStartOfDrag ? 4 : 0,
+                      borderBottomLeftRadius: isStartOfDrag ? 4 : 0,
+                      borderTopRightRadius: isEndOfDrag ? 4 : 0,
+                      borderBottomRightRadius: isEndOfDrag ? 4 : 0,
+                    }}
+                  >
+                    {isStartOfDrag && (
+                      <span className="text-[10px] font-medium text-white px-2 leading-5">
+                        New Event
+                      </span>
+                    )}
+                  </div>
+                )}
                 {/* Holiday first */}
                 {holiday && (
                   <div
