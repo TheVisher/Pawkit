@@ -81,7 +81,7 @@ export function useNotificationScheduler() {
           instance.event.isAllDay
         );
 
-        scheduleNotification(
+        const scheduled = scheduleNotification(
           notificationId,
           "event",
           instance.event.id,
@@ -93,6 +93,10 @@ export function useNotificationScheduler() {
             window.focus();
           }
         );
+
+        if (scheduled) {
+          console.log(`[Notifications] Scheduled: "${instance.event.title}" at ${notificationTime.toLocaleTimeString()}`);
+        }
       });
     });
   }, [notificationsEnabled, eventReminderMinutes, events, generateRecurrenceInstances]);
@@ -151,10 +155,10 @@ export function useNotificationScheduler() {
   }, [notificationsEnabled, todoNotificationsEnabled, todoReminderTime, todos]);
 
   // Main scheduler function
-  const runScheduler = useCallback(() => {
-    // Prevent running too frequently
+  const runScheduler = useCallback((force = false) => {
+    // Prevent running too frequently (unless forced)
     const now = Date.now();
-    if (now - lastScheduleRef.current < 30000) {
+    if (!force && now - lastScheduleRef.current < 30000) {
       return;
     }
     lastScheduleRef.current = now;
@@ -171,6 +175,13 @@ export function useNotificationScheduler() {
       scheduleTodoNotifications();
     }
   }, [notificationsEnabled, scheduleEventNotifications, scheduleTodoNotifications]);
+
+  // Force reschedule when events or todos change
+  useEffect(() => {
+    if (notificationsEnabled) {
+      runScheduler(true);
+    }
+  }, [events, todos, notificationsEnabled, runScheduler]);
 
   // Run scheduler on mount and when dependencies change
   useEffect(() => {
