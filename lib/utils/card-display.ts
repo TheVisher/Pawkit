@@ -35,27 +35,53 @@ const DOMAIN_NAMES: Record<string, string> = {
   "news.ycombinator.com": "Hacker News",
 };
 
-// URL patterns for social media posts
-const SOCIAL_POST_PATTERNS: { pattern: RegExp; name: string }[] = [
-  { pattern: /^https?:\/\/(www\.)?(twitter\.com|x\.com)\/\w+\/status\//, name: "X Post" },
-  { pattern: /^https?:\/\/(www\.)?instagram\.com\/p\//, name: "Instagram Post" },
-  { pattern: /^https?:\/\/(www\.)?instagram\.com\/reel\//, name: "Instagram Reel" },
-  { pattern: /^https?:\/\/(www\.)?facebook\.com\/.*\/posts\//, name: "Facebook Post" },
-  { pattern: /^https?:\/\/(www\.)?reddit\.com\/r\/\w+\/comments\//, name: "Reddit Post" },
-  { pattern: /^https?:\/\/(www\.)?linkedin\.com\/posts\//, name: "LinkedIn Post" },
-  { pattern: /^https?:\/\/(www\.)?tiktok\.com\/@[\w.]+\/video\//, name: "TikTok" },
-  { pattern: /^https?:\/\/(www\.)?threads\.net\/@[\w.]+\/post\//, name: "Threads Post" },
-];
-
 /**
- * Check if URL is a social media post and return friendly name
+ * Check if URL is a social media post and return friendly name with context
  */
 export function getSocialPostTitle(url: string): string | null {
-  for (const { pattern, name } of SOCIAL_POST_PATTERNS) {
-    if (pattern.test(url)) {
-      return name;
-    }
+  // X/Twitter - extract username
+  const xMatch = url.match(/^https?:\/\/(www\.)?(twitter\.com|x\.com)\/(@?(\w+))\/status\//);
+  if (xMatch) {
+    const username = xMatch[4];
+    return `@${username} on X`;
   }
+
+  // Instagram post
+  const igPostMatch = url.match(/^https?:\/\/(www\.)?instagram\.com\/p\//);
+  if (igPostMatch) return "Instagram Post";
+
+  // Instagram reel
+  const igReelMatch = url.match(/^https?:\/\/(www\.)?instagram\.com\/reel\//);
+  if (igReelMatch) return "Instagram Reel";
+
+  // Reddit - extract subreddit
+  const redditMatch = url.match(/^https?:\/\/(www\.)?reddit\.com\/r\/(\w+)\/comments\//);
+  if (redditMatch) {
+    return `r/${redditMatch[2]}`;
+  }
+
+  // TikTok - extract username
+  const tiktokMatch = url.match(/^https?:\/\/(www\.)?tiktok\.com\/@([\w.]+)\/video\//);
+  if (tiktokMatch) {
+    return `@${tiktokMatch[2]} on TikTok`;
+  }
+
+  // Threads - extract username
+  const threadsMatch = url.match(/^https?:\/\/(www\.)?threads\.net\/@([\w.]+)\/post\//);
+  if (threadsMatch) {
+    return `@${threadsMatch[2]} on Threads`;
+  }
+
+  // Facebook post
+  if (/^https?:\/\/(www\.)?facebook\.com\/.*\/posts\//.test(url)) {
+    return "Facebook Post";
+  }
+
+  // LinkedIn post
+  if (/^https?:\/\/(www\.)?linkedin\.com\/posts\//.test(url)) {
+    return "LinkedIn Post";
+  }
+
   return null;
 }
 

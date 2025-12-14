@@ -20,6 +20,7 @@ import {
   shift,
   autoUpdate,
   FloatingPortal,
+  size,
 } from "@floating-ui/react";
 import { EventCreationForm } from "../event-creation-form";
 import { EventDetailsPopover } from "../event-details-popover";
@@ -141,7 +142,16 @@ export function TimeGrid({
     middleware: [
       offset(8),
       flip({ fallbackPlacements: ["left-start", "bottom-start", "top-start"] }),
-      shift({ padding: 16 }),
+      shift({ padding: 24, crossAxis: true }),
+      size({
+        padding: 24,
+        apply({ availableWidth, availableHeight, elements }) {
+          Object.assign(elements.floating.style, {
+            maxWidth: `${Math.min(availableWidth, 400)}px`,
+            maxHeight: `${Math.min(availableHeight, 500)}px`,
+          });
+        },
+      }),
     ],
     whileElementsMounted: autoUpdate,
   });
@@ -157,7 +167,16 @@ export function TimeGrid({
     middleware: [
       offset(8),
       flip({ fallbackPlacements: ["left-start", "bottom-start", "top-start"] }),
-      shift({ padding: 16 }),
+      shift({ padding: 24, crossAxis: true }),
+      size({
+        padding: 24,
+        apply({ availableWidth, availableHeight, elements }) {
+          Object.assign(elements.floating.style, {
+            maxWidth: `${Math.min(availableWidth, 400)}px`,
+            maxHeight: `${Math.min(availableHeight, 500)}px`,
+          });
+        },
+      }),
     ],
     whileElementsMounted: autoUpdate,
   });
