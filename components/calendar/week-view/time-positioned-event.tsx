@@ -21,8 +21,8 @@ export function TimePositionedEvent({
 }: TimePositionedEventProps) {
   const { event, top, height, left, width, totalColumns } = positionedEvent;
 
-  // Cards are not draggable (they need different handling)
-  const isDraggable = event.source?.type !== "card";
+  // All events are draggable (cards, todos, manual events)
+  const isDraggable = true;
 
   // Determine display mode based on height
   const isCompact = height < 35;
