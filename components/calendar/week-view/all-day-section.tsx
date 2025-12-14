@@ -61,7 +61,8 @@ export function AllDaySection({
     const newDate = format(day, "yyyy-MM-dd");
 
     if (eventId && onEventReschedule) {
-      onEventReschedule(eventId, newDate, sourceType);
+      // Pass -1 as targetHour to indicate "convert to all-day"
+      onEventReschedule(eventId, newDate, sourceType, -1);
     }
   };
   // Get all-day events for each day
