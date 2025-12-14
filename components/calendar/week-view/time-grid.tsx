@@ -135,6 +135,8 @@ export function TimeGrid({
     startDayIndex: number;
     currentDayIndex: number;
     isDragging: boolean;
+    startTime?: string;
+    endTime?: string;
   } | null>(null);
 
   // Event details popover state
@@ -291,7 +293,7 @@ export function TimeGrid({
   };
 
   // Handle multi-day drag move (forwarded from DayColumn when pointer exits column)
-  const handleMultiDayDragMove = (e: PointerEvent) => {
+  const handleMultiDayDragMove = (e: PointerEvent & { _startTime?: string; _endTime?: string }) => {
     if (!multiDayDrag) return;
     if (!gridRef.current) return;
 
@@ -301,20 +303,42 @@ export function TimeGrid({
     const columnWidth = gridRect.width / 7;
     const dayIndex = Math.max(0, Math.min(6, Math.floor(relativeX / columnWidth)));
 
-    // Activate multi-day mode if not already
-    if (!multiDayDrag.isDragging) {
+    // Get time info from the event (passed from DayColumn)
+    const startTime = e._startTime || multiDayDrag.startTime;
+    const endTime = e._endTime || multiDayDrag.endTime;
+
+    // Only activate multi-day mode if drag actually spans different days
+    const isActuallyMultiDay = dayIndex !== multiDayDrag.startDayIndex;
+
+    if (isActuallyMultiDay && !multiDayDrag.isDragging) {
+      // Activate multi-day mode
       setMultiDayDrag({
         startDayIndex: multiDayDrag.startDayIndex,
         currentDayIndex: dayIndex,
         isDragging: true,
+        startTime,
+        endTime,
       });
-    } else if (multiDayDrag.currentDayIndex !== dayIndex) {
-      setMultiDayDrag(prev => prev ? { ...prev, currentDayIndex: dayIndex } : null);
+    } else if (multiDayDrag.isDragging) {
+      // Update current day and time info while dragging
+      setMultiDayDrag(prev => prev ? {
+        ...prev,
+        currentDayIndex: dayIndex,
+        startTime,
+        endTime,
+      } : null);
+    } else {
+      // Not multi-day yet, just update time info
+      setMultiDayDrag(prev => prev ? {
+        ...prev,
+        startTime,
+        endTime,
+      } : null);
     }
   };
 
   // Handle multi-day drag end (forwarded from DayColumn)
-  const handleMultiDayDragEnd = (e: PointerEvent) => {
+  const handleMultiDayDragEnd = (e: PointerEvent & { _startTime?: string; _endTime?: string }) => {
     if (!multiDayDrag?.isDragging) {
       setMultiDayDrag(null);
       return;
@@ -323,12 +347,16 @@ export function TimeGrid({
     const startDay = Math.min(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex);
     const endDay = Math.max(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex);
 
-    // If drag spans multiple days, create multi-day event
+    // If drag spans multiple days, create multi-day event with time info
     if (startDay !== endDay) {
       const startDate = weekDays[startDay];
       const endDate = weekDays[endDay];
 
-      // Find an element in the all-day section to anchor the popover
+      // Get time info from the event (passed from DayColumn)
+      const startTime = e._startTime || multiDayDrag.startTime || "09:00";
+      const endTime = e._endTime || multiDayDrag.endTime || "10:00";
+
+      // Find an element to anchor the popover
       const allDaySection = containerRef.current?.querySelector('[data-all-day-section]');
       if (allDaySection) {
         creationRefs.setReference(allDaySection as HTMLElement);
@@ -336,8 +364,8 @@ export function TimeGrid({
 
       setCreationData({
         date: startDate,
-        startTime: "00:00",
-        endTime: undefined,
+        startTime: startTime,
+        endTime: endTime,
         isMultiDay: true,
         endDate: endDate,
       });
@@ -539,6 +567,8 @@ export function TimeGrid({
             ? {
                 startDayIndex: Math.min(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex),
                 endDayIndex: Math.max(multiDayDrag.startDayIndex, multiDayDrag.currentDayIndex),
+                startTime: multiDayDrag.startTime,
+                endTime: multiDayDrag.endTime,
               }
             : null
         }

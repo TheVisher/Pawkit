@@ -155,48 +155,63 @@ export function DayColumn({
     const rect = columnRef.current?.getBoundingClientRect();
     if (!rect) return;
 
-    // Check if pointer has moved outside column horizontally
-    const isOutsideHorizontally = e.clientX < rect.left || e.clientX > rect.right;
+    // Always track vertical position for time slot
+    const y = e.clientY - rect.top;
+    const currentSlot = Math.max(0, Math.min(47, Math.floor(y / slotHeight)));
+    setDragCreate(prev => prev ? { ...prev, endSlot: currentSlot } : null);
+
+    // Calculate time info for current selection
+    const startSlot = Math.min(dragCreate.startSlot, currentSlot);
+    const endSlot = Math.max(dragCreate.startSlot, currentSlot);
+    const currentStartTime = slotToTime(startSlot);
+    const currentEndTime = slotToTime(Math.min(endSlot + 1, 48));
+
+    // Check if pointer has moved significantly outside column horizontally
+    // Use 50% of column width as tolerance to avoid accidental multi-day triggers
+    const columnWidth = rect.width;
+    const HORIZONTAL_TOLERANCE = Math.max(50, columnWidth * 0.5);
+    const isOutsideHorizontally = e.clientX < rect.left - HORIZONTAL_TOLERANCE ||
+                                   e.clientX > rect.right + HORIZONTAL_TOLERANCE;
 
     if (isOutsideHorizontally && !isMultiDayMode) {
       // Switch to multi-day mode - delegate to parent
       setIsMultiDayMode(true);
-      // Forward the native pointer event to parent
-      onMultiDayDragMove?.(e.nativeEvent);
-      return;
     }
 
     if (isMultiDayMode) {
-      // In multi-day mode, forward all events to parent
-      onMultiDayDragMove?.(e.nativeEvent);
-      return;
+      // Forward events to parent for multi-day tracking, with time info
+      const eventWithTime = Object.assign(e.nativeEvent, {
+        _startTime: currentStartTime,
+        _endTime: currentEndTime,
+      });
+      onMultiDayDragMove?.(eventWithTime);
     }
-
-    // Normal vertical drag within column
-    const y = e.clientY - rect.top;
-    const currentSlot = Math.max(0, Math.min(47, Math.floor(y / slotHeight)));
-
-    setDragCreate(prev => prev ? { ...prev, endSlot: currentSlot } : null);
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
     if (!dragCreate?.isDragging) return;
 
-    // If in multi-day mode, delegate to parent
+    const startSlot = Math.min(dragCreate.startSlot, dragCreate.endSlot);
+    const endSlot = Math.max(dragCreate.startSlot, dragCreate.endSlot);
+    const startTime = slotToTime(startSlot);
+    const endTime = slotToTime(Math.min(endSlot + 1, 48));
+
+    // If in multi-day mode, delegate to parent with time info
     if (isMultiDayMode) {
-      onMultiDayDragEnd?.(e.nativeEvent);
+      // Pass time slot info along with the event
+      const eventWithTime = Object.assign(e.nativeEvent, {
+        _startTime: startTime,
+        _endTime: endTime,
+        _startSlot: startSlot,
+        _endSlot: endSlot,
+      });
+      onMultiDayDragEnd?.(eventWithTime);
       setDragCreate(null);
       setIsMultiDayMode(false);
       startSlotElementRef.current = null;
       columnRef.current?.releasePointerCapture(e.pointerId);
       return;
     }
-
-    const startSlot = Math.min(dragCreate.startSlot, dragCreate.endSlot);
-    const endSlot = Math.max(dragCreate.startSlot, dragCreate.endSlot);
-
-    const startTime = slotToTime(startSlot);
-    const endTime = slotToTime(Math.min(endSlot + 1, 48)); // +1 to include end slot, clamp to 24:00
 
     // Use the stored slot element for positioning (not e.currentTarget which is the column)
     const element = startSlotElementRef.current;
