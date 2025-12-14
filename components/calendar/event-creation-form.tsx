@@ -54,12 +54,17 @@ export function EventCreationForm({
   );
   const [startTime, setStartTime] = useState(initialStartTime);
   const [endTime, setEndTime] = useState(initialEndTime || calculateEndTime(initialStartTime));
-  const [isAllDay, setIsAllDay] = useState(initialIsMultiDay); // Auto-set to all-day for multi-day
+  const [isAllDay, setIsAllDay] = useState(false); // Don't auto-set to all-day anymore
   const [isMultiDay, setIsMultiDay] = useState(initialIsMultiDay);
   const [color, setColor] = useState<string>(EVENT_COLORS.purple);
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+
+  // Calculate number of days for multi-day events
+  const dayCount = isMultiDay && eventEndDate
+    ? Math.ceil((new Date(eventEndDate).getTime() - new Date(eventDate).getTime()) / (1000 * 60 * 60 * 24)) + 1
+    : 1;
 
   // Focus title input on mount
   useEffect(() => {
@@ -78,17 +83,37 @@ export function EventCreationForm({
 
     setIsSaving(true);
     try {
-      await addEvent({
-        title: title.trim(),
-        date: eventDate,
-        endDate: isMultiDay ? eventEndDate : undefined,
-        startTime: isAllDay ? null : startTime,
-        endTime: isAllDay ? null : endTime,
-        isAllDay: isAllDay || isMultiDay, // Multi-day events are always all-day
-        color,
-        description: description.trim() || null,
-        location: location.trim() || null,
-      });
+      if (isMultiDay && !isAllDay) {
+        // Create separate events for each day with the same time
+        const startDateObj = new Date(eventDate);
+        const endDateObj = new Date(eventEndDate);
+
+        for (let d = new Date(startDateObj); d <= endDateObj; d.setDate(d.getDate() + 1)) {
+          await addEvent({
+            title: title.trim(),
+            date: format(d, "yyyy-MM-dd"),
+            startTime: startTime,
+            endTime: endTime,
+            isAllDay: false,
+            color,
+            description: description.trim() || null,
+            location: location.trim() || null,
+          });
+        }
+      } else {
+        // Single event (or all-day multi-day event)
+        await addEvent({
+          title: title.trim(),
+          date: eventDate,
+          endDate: isMultiDay && isAllDay ? eventEndDate : undefined,
+          startTime: isAllDay ? null : startTime,
+          endTime: isAllDay ? null : endTime,
+          isAllDay,
+          color,
+          description: description.trim() || null,
+          location: location.trim() || null,
+        });
+      }
 
       onSave?.();
       onClose();
@@ -227,8 +252,8 @@ export function EventCreationForm({
               />
             )}
 
-            {/* Time row - only show for single-day non-all-day events */}
-            {!isAllDay && !isMultiDay && (
+            {/* Time row - show for all non-all-day events */}
+            {!isAllDay && (
               <div className="flex gap-2">
                 <input
                   type="time"
@@ -263,32 +288,35 @@ export function EventCreationForm({
               </div>
             )}
 
-            {/* All day toggle - only show for single-day events */}
-            {!isMultiDay && (
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isAllDay}
-                  onChange={(e) => setIsAllDay(e.target.checked)}
-                  className="rounded"
-                  style={{ accentColor: "var(--ds-accent)" }}
-                />
-                <span
-                  className="text-sm"
-                  style={{ color: "var(--text-secondary)" }}
-                >
-                  All day
-                </span>
-              </label>
-            )}
+            {/* All day toggle */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isAllDay}
+                onChange={(e) => setIsAllDay(e.target.checked)}
+                className="rounded"
+                style={{ accentColor: "var(--ds-accent)" }}
+              />
+              <span
+                className="text-sm"
+                style={{ color: "var(--text-secondary)" }}
+              >
+                All day
+              </span>
+            </label>
 
-            {/* Multi-day indicator */}
+            {/* Multi-day info */}
             {isMultiDay && (
               <div
-                className="text-xs"
-                style={{ color: "var(--text-muted)" }}
+                className="text-xs p-2 rounded-md"
+                style={{
+                  background: "var(--ds-accent-subtle)",
+                  color: "var(--text-secondary)",
+                }}
               >
-                Multi-day event (all day)
+                {isAllDay
+                  ? `Creates 1 all-day event spanning ${dayCount} days`
+                  : `Creates ${dayCount} events (one per day at ${startTime})`}
               </div>
             )}
           </div>

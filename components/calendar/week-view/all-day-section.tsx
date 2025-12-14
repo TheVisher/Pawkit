@@ -18,6 +18,8 @@ interface AllDaySectionProps {
   multiDayDragPreview?: {
     startDayIndex: number;
     endDayIndex: number;
+    startTime?: string;
+    endTime?: string;
   } | null;
 }
 
@@ -175,7 +177,9 @@ export function AllDaySection({
                   >
                     {isStartOfDrag && (
                       <span className="text-[10px] font-medium text-white px-2 leading-5">
-                        New Event
+                        {multiDayDragPreview.startTime
+                          ? `${multiDayDragPreview.startTime} - ${multiDayDragPreview.endTime || ""}`
+                          : "New Event"}
                       </span>
                     )}
                   </div>
