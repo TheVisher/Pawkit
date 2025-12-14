@@ -39,17 +39,21 @@ export function useNotificationScheduler() {
   // Schedule notifications for events
   const scheduleEventNotifications = useCallback(() => {
     if (!notificationsEnabled || eventReminderMinutes === 0) {
+      console.log(`[Notifications] Skipping events - enabled: ${notificationsEnabled}, reminder: ${eventReminderMinutes}`);
       return;
     }
 
     const permission = getNotificationPermission();
     if (permission !== "granted") {
+      console.log(`[Notifications] Permission not granted: ${permission}`);
       return;
     }
 
     const now = new Date();
     const rangeStart = format(now, "yyyy-MM-dd");
     const rangeEnd = format(addDays(now, 1), "yyyy-MM-dd"); // Next 24 hours
+
+    console.log(`[Notifications] Checking ${events.length} events for range ${rangeStart} to ${rangeEnd}`);
 
     // Get events in range including recurrence instances
     events.forEach((event) => {
@@ -164,6 +168,7 @@ export function useNotificationScheduler() {
     lastScheduleRef.current = now;
 
     if (!isNotificationSupported()) {
+      console.log("[Notifications] Browser doesn't support notifications");
       return;
     }
 
@@ -171,10 +176,13 @@ export function useNotificationScheduler() {
     cancelAllNotifications();
 
     if (notificationsEnabled) {
+      console.log(`[Notifications] Scheduler running. Events: ${events.length}, Reminder: ${eventReminderMinutes}min`);
       scheduleEventNotifications();
       scheduleTodoNotifications();
+    } else {
+      console.log("[Notifications] Disabled - skipping");
     }
-  }, [notificationsEnabled, scheduleEventNotifications, scheduleTodoNotifications]);
+  }, [notificationsEnabled, scheduleEventNotifications, scheduleTodoNotifications, events.length, eventReminderMinutes]);
 
   // Force reschedule when events or todos change
   useEffect(() => {
