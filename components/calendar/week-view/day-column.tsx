@@ -9,7 +9,7 @@ interface DayColumnProps {
   events: CalendarEvent[];
   hourHeight?: number;
   onEventClick?: (event: CalendarEvent, element: HTMLElement) => void;
-  onTimeSlotClick?: (hour: number, element: HTMLElement) => void;
+  onTimeSlotClick?: (startTime: string, element: HTMLElement) => void;
   onEventDrop?: (eventId: string, sourceType: string, targetHour: number) => void;
   isFirst?: boolean;
 }
@@ -80,9 +80,12 @@ export function DayColumn({
     }
   };
 
-  const handleTimeSlotClick = (e: React.MouseEvent, hour: number) => {
-    // Pass the element for Floating UI anchoring
-    onTimeSlotClick?.(hour, e.currentTarget as HTMLElement);
+  const handleTimeSlotClick = (e: React.MouseEvent, slotIndex: number) => {
+    // Convert slot index to time string (48 slots = 30-min increments)
+    const hour = Math.floor(slotIndex / 2);
+    const minutes = (slotIndex % 2) * 30;
+    const startTime = `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+    onTimeSlotClick?.(startTime, e.currentTarget as HTMLElement);
   };
 
   return (
@@ -99,33 +102,29 @@ export function DayColumn({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {/* Hour gridlines */}
-      {Array.from({ length: 24 }, (_, hour) => (
-        <div
-          key={hour}
-          data-time-slot
-          className="absolute left-0 right-0 cursor-pointer hover:bg-white/5 transition-colors"
-          style={{
-            top: hour * hourHeight,
-            height: hourHeight,
-            borderTop: hour > 0 ? "1px solid var(--border-subtle)" : "none",
-          }}
-          onClick={(e) => handleTimeSlotClick(e, hour)}
-        />
-      ))}
+      {/* 30-minute time slots (48 slots per day) */}
+      {Array.from({ length: 48 }, (_, slotIndex) => {
+        const isHourStart = slotIndex % 2 === 0;
+        const slotHeight = hourHeight / 2;
 
-      {/* Half-hour lines (lighter) */}
-      {Array.from({ length: 24 }, (_, hour) => (
-        <div
-          key={`half-${hour}`}
-          className="absolute left-0 right-0 pointer-events-none"
-          style={{
-            top: hour * hourHeight + hourHeight / 2,
-            borderTop: "1px dashed var(--border-subtle)",
-            opacity: 0.3,
-          }}
-        />
-      ))}
+        return (
+          <div
+            key={slotIndex}
+            data-time-slot
+            className="absolute left-0 right-0 cursor-pointer hover:bg-white/5 transition-colors"
+            style={{
+              top: slotIndex * slotHeight,
+              height: slotHeight,
+              borderTop: slotIndex > 0
+                ? isHourStart
+                  ? "1px solid var(--border-subtle)"
+                  : "1px dashed rgba(255,255,255,0.1)"
+                : "none",
+            }}
+            onClick={(e) => handleTimeSlotClick(e, slotIndex)}
+          />
+        );
+      })}
 
       {/* Positioned events */}
       {positionedEvents.map((pe) => (

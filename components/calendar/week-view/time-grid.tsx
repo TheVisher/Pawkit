@@ -24,6 +24,62 @@ import {
 import { EventCreationForm } from "../event-creation-form";
 import { EventDetailsPopover } from "../event-details-popover";
 import { useEventStore } from "@/lib/hooks/use-event-store";
+import { EVENT_COLORS } from "@/lib/types/calendar";
+
+/**
+ * Visual preview component that shows at the clicked slot position
+ * Styled to look like an event being created
+ */
+function EventPreview({ element }: { element: HTMLElement }) {
+  const [rect, setRect] = useState(() => element.getBoundingClientRect());
+
+  // Update position on scroll/resize
+  useEffect(() => {
+    const updateRect = () => setRect(element.getBoundingClientRect());
+
+    // Use requestAnimationFrame for smooth updates
+    let rafId: number;
+    const handleScroll = () => {
+      rafId = requestAnimationFrame(updateRect);
+    };
+
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", updateRect);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", updateRect);
+      cancelAnimationFrame(rafId);
+    };
+  }, [element]);
+
+  return (
+    <div
+      className="fixed pointer-events-none z-40 rounded-md overflow-hidden"
+      style={{
+        left: rect.left + 2,
+        top: rect.top,
+        width: rect.width - 4,
+        height: rect.height,
+        background: EVENT_COLORS.purple,
+        opacity: 0.8,
+        border: "1px solid rgba(255, 255, 255, 0.2)",
+        boxShadow: "0 2px 8px rgba(168, 85, 247, 0.4)",
+      }}
+    >
+      <div className="px-2 py-1">
+        <div className="text-[10px] font-medium text-white opacity-80">
+          (No title)
+        </div>
+      </div>
+      {/* Left color stripe */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-1 rounded-l"
+        style={{ background: "rgba(255, 255, 255, 0.3)" }}
+      />
+    </div>
+  );
+}
 
 interface TimeGridProps {
   weekDays: Date[];
@@ -57,8 +113,11 @@ export function TimeGrid({
   const [isCreationOpen, setIsCreationOpen] = useState(false);
   const [creationData, setCreationData] = useState<{
     date: Date;
-    hour: number;
+    startTime: string;
   } | null>(null);
+
+  // Visual preview state - stores the clicked slot element for showing preview
+  const [previewElement, setPreviewElement] = useState<HTMLElement | null>(null);
 
   // Event details popover state
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
@@ -99,20 +158,22 @@ export function TimeGrid({
   });
 
   // Handle time slot click - pass the element for anchoring
-  const handleTimeSlotClick = (date: Date, hour: number, element: HTMLElement) => {
+  const handleTimeSlotClick = (date: Date, startTime: string, element: HTMLElement) => {
     // Close any open details popover
     setIsDetailsOpen(false);
     setSelectedEvent(null);
 
     // Set the clicked element as the reference for positioning
     creationRefs.setReference(element);
-    setCreationData({ date, hour });
+    setCreationData({ date, startTime });
+    setPreviewElement(element);
     setIsCreationOpen(true);
   };
 
   const closeCreationPopover = () => {
     setIsCreationOpen(false);
     setCreationData(null);
+    setPreviewElement(null);
   };
 
   const closeDetailsPopover = () => {
@@ -318,7 +379,7 @@ export function TimeGrid({
                   events={dayEvents}
                   hourHeight={hourHeight}
                   onEventClick={handleEventClickInternal}
-                  onTimeSlotClick={(hour, element) => handleTimeSlotClick(day, hour, element)}
+                  onTimeSlotClick={(startTime, element) => handleTimeSlotClick(day, startTime, element)}
                   onEventDrop={(eventId, sourceType, targetHour) => {
                     onEventReschedule?.(eventId, dateStr, sourceType, targetHour);
                   }}
@@ -336,6 +397,13 @@ export function TimeGrid({
         </div>
       </div>
 
+      {/* Visual preview when creating event */}
+      <FloatingPortal>
+        {isCreationOpen && previewElement && (
+          <EventPreview element={previewElement} />
+        )}
+      </FloatingPortal>
+
       {/* Event creation popover using Floating UI */}
       <FloatingPortal>
         {isCreationOpen && creationData && (
@@ -346,7 +414,7 @@ export function TimeGrid({
           >
             <EventCreationForm
               date={creationData.date}
-              hour={creationData.hour}
+              startTime={creationData.startTime}
               onClose={closeCreationPopover}
             />
           </div>
