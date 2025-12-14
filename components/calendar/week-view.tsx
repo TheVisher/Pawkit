@@ -289,8 +289,13 @@ export function WeekView({
       if (event) {
         const updates: { date: string; startTime?: string | null; endTime?: string | null; isAllDay?: boolean } = { date: newDate };
 
-        // If targetHour is provided, set the time (convert all-day to timed if needed)
-        if (targetHour !== undefined) {
+        // targetHour === -1 means "convert to all-day"
+        if (targetHour === -1) {
+          updates.isAllDay = true;
+          updates.startTime = null;
+          updates.endTime = null;
+        } else if (targetHour !== undefined && targetHour >= 0) {
+          // If targetHour is provided, set the time (convert all-day to timed if needed)
           // Calculate event duration in minutes (default 30 min for all-day events)
           let durationMinutes = 30;
           if (event.startTime && event.endTime) {
