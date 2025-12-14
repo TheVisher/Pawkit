@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useNotificationScheduler } from "@/lib/hooks/use-notification-scheduler";
 
 /**
@@ -7,6 +8,26 @@ import { useNotificationScheduler } from "@/lib/hooks/use-notification-scheduler
  * Should be placed in the app layout to run app-wide.
  */
 export function NotificationScheduler() {
-  useNotificationScheduler();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    console.log("[NotificationScheduler] Component mounted");
+    setMounted(true);
+  }, []);
+
+  // Only run the scheduler after mounting on client
+  if (mounted) {
+    return <NotificationSchedulerInner />;
+  }
+
+  return null;
+}
+
+function NotificationSchedulerInner() {
+  try {
+    useNotificationScheduler();
+  } catch (error) {
+    console.error("[NotificationScheduler] Error:", error);
+  }
   return null;
 }
