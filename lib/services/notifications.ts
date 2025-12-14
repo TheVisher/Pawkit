@@ -80,9 +80,9 @@ export function showNotification(
   }
 
   try {
+    console.warn(`[Notifications] Showing notification: "${title}"`);
     const notification = new Notification(title, {
-      icon: "/icons/icon-192x192.png",
-      badge: "/icons/icon-72x72.png",
+      icon: "/icons/favicon-96x96.png",
       ...options,
     });
 
@@ -97,9 +97,10 @@ export function showNotification(
     // Auto-close after 10 seconds
     setTimeout(() => notification.close(), 10000);
 
+    console.warn(`[Notifications] Notification displayed successfully`);
     return notification;
   } catch (error) {
-    console.error("Failed to show notification:", error);
+    console.error("[Notifications] Failed to show notification:", error);
     return null;
   }
 }
