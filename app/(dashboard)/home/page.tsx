@@ -193,8 +193,8 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Main content - fills viewport without scrolling */}
-      <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
+      {/* Main container - MUST fit viewport without scrolling */}
+      <div className="h-[calc(100vh-80px)] flex flex-col gap-3 overflow-hidden">
         {/* Welcome Banner for new users */}
         <WelcomeBanner className="shrink-0" />
 
@@ -203,13 +203,12 @@ export default function HomePage() {
           <HomeHeader userName={displayName} />
         </div>
 
-        {/* Main Flex Layout */}
-        <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden">
-          {/* Top Section: Today/Inbox/Rediscover + Calendar - fixed height */}
-          <div className="flex gap-4 shrink-0">
-            {/* Left Stack: Today + Inbox/Rediscover row */}
-            <div className="flex-[2] flex flex-col gap-4 min-w-0">
-              {/* Today Card */}
+        {/* Top Section: ~40% height - Today/Inbox/Rediscover + Calendar */}
+        <div className="flex gap-3 shrink-0" style={{ height: '38vh' }}>
+          {/* Left Stack: Today + Inbox/Rediscover row */}
+          <div className="flex-[2] flex flex-col gap-3 min-w-0">
+            {/* Today Card */}
+            <div className="flex-1 min-h-0">
               <TodayCard
                 events={today.events}
                 scheduledCards={today.scheduledCards}
@@ -218,76 +217,76 @@ export default function HomePage() {
                 onToggleTodo={toggleTodo}
                 onOpenDailyNote={handleOpenDailyNote}
               />
-
-              {/* Inbox + Rediscover row */}
-              <div className="flex gap-4">
-                <div className="flex-1 min-w-0">
-                  <InboxCard
-                    inboxItems={inboxItems}
-                    inboxCount={inboxCount}
-                  />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <RediscoverCard
-                    rediscoverCount={rediscoverCount}
-                    rediscoverItems={rediscoverItems}
-                  />
-                </div>
-              </div>
             </div>
 
-            {/* Week Calendar - stretches to match left stack height */}
-            <div className="flex-1 min-w-0">
-              <WeekCalendar
-                weekDays={weekDays}
-                onDayClick={setSelectedDay}
-              />
+            {/* Inbox + Rediscover row */}
+            <div className="flex gap-3 shrink-0" style={{ height: '120px' }}>
+              <div className="flex-1 min-w-0">
+                <InboxCard
+                  inboxItems={inboxItems}
+                  inboxCount={inboxCount}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <RediscoverCard
+                  rediscoverCount={rediscoverCount}
+                  rediscoverItems={rediscoverItems}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Bottom Section - fills remaining space */}
-          {(pinnedPawkits.length > 0 || recentItems.length > 0) && (
-            <div className="flex gap-4 flex-1 min-h-0">
-              {/* Pinned Pawkits - 1/3 width */}
-              {pinnedPawkits.length > 0 && (
-                <div className="flex-1 min-w-0 min-h-0">
-                  <PinnedPawkits pawkits={pinnedPawkits} />
-                </div>
-              )}
-
-              {/* Recent Items - 2/3 width */}
-              {recentItems.length > 0 && (
-                <div className={`min-h-0 ${pinnedPawkits.length > 0 ? "flex-[2] min-w-0" : "flex-1 min-w-0"}`}>
-                  <RecentItems items={recentItems} />
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Empty state for new users */}
-          {cards.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-gray-700 bg-gray-950/50 p-8 text-center flex-1">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
-                <span className="text-3xl" aria-hidden="true">🐾</span>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-200 mb-2">Welcome to Pawkit!</h3>
-              <p className="text-sm text-gray-400 mb-4 max-w-md mx-auto">
-                Start building your collection by saving links, articles, and notes.
-              </p>
-              <div className="flex flex-wrap justify-center gap-3 text-xs text-gray-500">
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
-                  <span>📎</span> Paste URL above
-                </span>
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
-                  <span>🔌</span> Use browser extension
-                </span>
-                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
-                  <span>📝</span> Create a note
-                </span>
-              </div>
-            </div>
-          )}
+          {/* Week Calendar */}
+          <div className="flex-1 min-w-0">
+            <WeekCalendar
+              weekDays={weekDays}
+              onDayClick={setSelectedDay}
+            />
+          </div>
         </div>
+
+        {/* Bottom Section - fills remaining ~50% */}
+        {(pinnedPawkits.length > 0 || recentItems.length > 0) && (
+          <div className="flex gap-3 flex-1 min-h-0">
+            {/* Pinned Pawkits - 1/3 width */}
+            {pinnedPawkits.length > 0 && (
+              <div className="w-80 shrink-0">
+                <PinnedPawkits pawkits={pinnedPawkits} />
+              </div>
+            )}
+
+            {/* Recent Items - fills remaining width */}
+            {recentItems.length > 0 && (
+              <div className="flex-1 min-w-0 min-h-0">
+                <RecentItems items={recentItems} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Empty state for new users */}
+        {cards.length === 0 && (
+          <div className="rounded-xl border border-dashed border-gray-700 bg-gray-950/50 p-6 text-center flex-1">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
+              <span className="text-2xl" aria-hidden="true">🐾</span>
+            </div>
+            <h3 className="text-base font-semibold text-gray-200 mb-1">Welcome to Pawkit!</h3>
+            <p className="text-xs text-gray-400 mb-3 max-w-md mx-auto">
+              Start building your collection by saving links, articles, and notes.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-500">
+              <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-800/50">
+                <span>📎</span> Paste URL
+              </span>
+              <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-800/50">
+                <span>🔌</span> Extension
+              </span>
+              <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-800/50">
+                <span>📝</span> Note
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Day Details Modal */}
