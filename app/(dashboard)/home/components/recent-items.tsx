@@ -17,12 +17,12 @@ export function RecentItems({ items }: RecentItemsProps) {
     return null;
   }
 
-  // Limit to 4 items for cleaner layout
-  const displayItems = items.slice(0, 4);
+  // Limit to 6 items (2 rows x 3 columns)
+  const displayItems = items.slice(0, 6);
 
   return (
     <div
-      className="rounded-xl p-5"
+      className="rounded-xl p-5 h-full flex flex-col"
       style={{
         background: 'var(--bg-surface-2)',
         boxShadow: 'var(--shadow-2)',
@@ -41,7 +41,7 @@ export function RecentItems({ items }: RecentItemsProps) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-3 gap-4 flex-1">
         {displayItems.map((item) => {
           const isNote = item.type === 'md-note' || item.type === 'text-note';
           const isFileCard = item.type === 'file';

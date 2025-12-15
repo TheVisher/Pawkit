@@ -242,14 +242,23 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Pinned Pawkits - full width */}
-          {pinnedPawkits.length > 0 && (
-            <PinnedPawkits pawkits={pinnedPawkits} />
-          )}
+          {/* Bottom Section - Pinned Pawkits and Recent Items side by side */}
+          {(pinnedPawkits.length > 0 || recentItems.length > 0) && (
+            <div className="flex gap-5">
+              {/* Pinned Pawkits - 1/3 width */}
+              {pinnedPawkits.length > 0 && (
+                <div className="flex-1 min-w-0">
+                  <PinnedPawkits pawkits={pinnedPawkits} />
+                </div>
+              )}
 
-          {/* Recent Items - full width */}
-          {recentItems.length > 0 && (
-            <RecentItems items={recentItems} />
+              {/* Recent Items - 2/3 width */}
+              {recentItems.length > 0 && (
+                <div className={pinnedPawkits.length > 0 ? "flex-[2] min-w-0" : "flex-1 min-w-0"}>
+                  <RecentItems items={recentItems} />
+                </div>
+              )}
+            </div>
           )}
 
           {/* Empty state for new users */}
