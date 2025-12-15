@@ -193,50 +193,29 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Main container - MUST fit viewport without scrolling */}
-      <div className="h-[calc(100vh-80px)] flex flex-col gap-3 overflow-hidden">
+      {/* Main container - natural height, allows scrolling */}
+      <div className="flex flex-col gap-4 pb-6">
         {/* Welcome Banner for new users */}
-        <WelcomeBanner className="shrink-0" />
+        <WelcomeBanner />
 
         {/* Header */}
-        <div className="shrink-0">
-          <HomeHeader userName={displayName} />
-        </div>
+        <HomeHeader userName={displayName} />
 
-        {/* Top Section: ~40% height - Today/Inbox/Rediscover + Calendar */}
-        <div className="flex gap-3 shrink-0" style={{ height: '38vh' }}>
-          {/* Left Stack: Today + Inbox/Rediscover row */}
-          <div className="flex-[2] flex flex-col gap-3 min-w-0">
-            {/* Today Card */}
-            <div className="flex-1 min-h-0">
-              <TodayCard
-                events={today.events}
-                scheduledCards={today.scheduledCards}
-                dailyNote={today.dailyNote}
-                groupedTodos={groupedTodos}
-                onToggleTodo={toggleTodo}
-                onOpenDailyNote={handleOpenDailyNote}
-              />
-            </div>
-
-            {/* Inbox + Rediscover row */}
-            <div className="flex gap-3 shrink-0" style={{ height: '120px' }}>
-              <div className="flex-1 min-w-0">
-                <InboxCard
-                  inboxItems={inboxItems}
-                  inboxCount={inboxCount}
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <RediscoverCard
-                  rediscoverCount={rediscoverCount}
-                  rediscoverItems={rediscoverItems}
-                />
-              </div>
-            </div>
+        {/* Top Section: Today + Calendar side by side */}
+        <div className="flex gap-4">
+          {/* Left: Today Card */}
+          <div className="flex-[2] min-w-0">
+            <TodayCard
+              events={today.events}
+              scheduledCards={today.scheduledCards}
+              dailyNote={today.dailyNote}
+              groupedTodos={groupedTodos}
+              onToggleTodo={toggleTodo}
+              onOpenDailyNote={handleOpenDailyNote}
+            />
           </div>
 
-          {/* Week Calendar */}
+          {/* Right: Week Calendar */}
           <div className="flex-1 min-w-0">
             <WeekCalendar
               weekDays={weekDays}
@@ -245,19 +224,35 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Bottom Section - fills remaining ~50% */}
+        {/* Middle Section: Inbox + Rediscover side by side */}
+        <div className="flex gap-4">
+          <div className="flex-1 min-w-0">
+            <InboxCard
+              inboxItems={inboxItems}
+              inboxCount={inboxCount}
+            />
+          </div>
+          <div className="flex-1 min-w-0">
+            <RediscoverCard
+              rediscoverCount={rediscoverCount}
+              rediscoverItems={rediscoverItems}
+            />
+          </div>
+        </div>
+
+        {/* Bottom Section: Pinned Pawkits + Recent Items side by side */}
         {(pinnedPawkits.length > 0 || recentItems.length > 0) && (
-          <div className="flex gap-3 flex-1 min-h-0">
-            {/* Pinned Pawkits - 1/3 width */}
+          <div className="flex gap-4">
+            {/* Pinned Pawkits - fixed width */}
             {pinnedPawkits.length > 0 && (
-              <div className="w-80 shrink-0">
+              <div className="w-64 shrink-0">
                 <PinnedPawkits pawkits={pinnedPawkits} />
               </div>
             )}
 
             {/* Recent Items - fills remaining width */}
             {recentItems.length > 0 && (
-              <div className="flex-1 min-w-0 min-h-0">
+              <div className="flex-1 min-w-0">
                 <RecentItems items={recentItems} />
               </div>
             )}
@@ -266,7 +261,7 @@ export default function HomePage() {
 
         {/* Empty state for new users */}
         {cards.length === 0 && (
-          <div className="rounded-xl border border-dashed border-gray-700 bg-gray-950/50 p-6 text-center flex-1">
+          <div className="rounded-xl border border-dashed border-gray-700 bg-gray-950/50 p-6 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
               <span className="text-2xl" aria-hidden="true">🐾</span>
             </div>
