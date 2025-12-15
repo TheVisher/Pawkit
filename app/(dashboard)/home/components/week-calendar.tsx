@@ -15,7 +15,7 @@ export function WeekCalendar({ weekDays, onDayClick }: WeekCalendarProps) {
 
   return (
     <div
-      className="rounded-xl p-4"
+      className="rounded-xl p-4 h-full flex flex-col"
       style={{
         background: 'var(--bg-surface-2)',
         boxShadow: 'var(--shadow-2)',
@@ -39,7 +39,7 @@ export function WeekCalendar({ weekDays, onDayClick }: WeekCalendarProps) {
         </Link>
       </div>
 
-      <div className="space-y-1">
+      <div className="flex-1 flex flex-col justify-between">
         {weekDays.map((day) => (
           <button
             key={day.dateStr}

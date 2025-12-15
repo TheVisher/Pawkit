@@ -193,89 +193,89 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="flex flex-1 flex-col gap-6 pb-16 min-h-full max-w-6xl mx-auto">
+      <div className="flex flex-1 flex-col gap-4 pb-16 min-h-full">
         {/* Welcome Banner for new users */}
         <WelcomeBanner className="mb-2" />
 
         {/* Header */}
         <HomeHeader userName={displayName} />
 
-        {/* Main Grid Layout */}
-        <div className="grid grid-cols-3 gap-4 auto-rows-min">
-          {/* Today Card - spans 2 columns */}
-          <div className="col-span-2">
-            <TodayCard
-              events={today.events}
-              scheduledCards={today.scheduledCards}
-              dailyNote={today.dailyNote}
-              groupedTodos={groupedTodos}
-              onToggleTodo={toggleTodo}
-              onOpenDailyNote={handleOpenDailyNote}
-            />
-          </div>
+        {/* Main Flex Layout */}
+        <div className="flex flex-col gap-4 flex-1">
+          {/* Top Section: Today/Inbox/Rediscover + Calendar */}
+          <div className="flex gap-4">
+            {/* Left Stack: Today + Inbox/Rediscover row */}
+            <div className="flex-[2] flex flex-col gap-4 min-w-0">
+              {/* Today Card */}
+              <TodayCard
+                events={today.events}
+                scheduledCards={today.scheduledCards}
+                dailyNote={today.dailyNote}
+                groupedTodos={groupedTodos}
+                onToggleTodo={toggleTodo}
+                onOpenDailyNote={handleOpenDailyNote}
+              />
 
-          {/* Week Calendar - spans 2 rows */}
-          <div className="row-span-2">
-            <WeekCalendar
-              weekDays={weekDays}
-              onDayClick={setSelectedDay}
-            />
-          </div>
+              {/* Inbox + Rediscover row */}
+              <div className="flex gap-4">
+                <div className="flex-1 min-w-0">
+                  <InboxCard
+                    inboxItems={inboxItems}
+                    inboxCount={inboxCount}
+                  />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <RediscoverCard
+                    rediscoverCount={rediscoverCount}
+                    rediscoverItems={rediscoverItems}
+                  />
+                </div>
+              </div>
+            </div>
 
-          {/* Inbox */}
-          <div>
-            <InboxCard
-              inboxItems={inboxItems}
-              inboxCount={inboxCount}
-            />
-          </div>
-
-          {/* Rediscover */}
-          <div>
-            <RediscoverCard
-              rediscoverCount={rediscoverCount}
-              rediscoverItems={rediscoverItems}
-            />
+            {/* Week Calendar - stretches to match left stack height */}
+            <div className="flex-1 min-w-0">
+              <WeekCalendar
+                weekDays={weekDays}
+                onDayClick={setSelectedDay}
+              />
+            </div>
           </div>
 
           {/* Pinned Pawkits - full width */}
           {pinnedPawkits.length > 0 && (
-            <div className="col-span-3">
-              <PinnedPawkits pawkits={pinnedPawkits} />
-            </div>
+            <PinnedPawkits pawkits={pinnedPawkits} />
           )}
 
           {/* Recent Items - full width */}
           {recentItems.length > 0 && (
-            <div className="col-span-3">
-              <RecentItems items={recentItems} />
+            <RecentItems items={recentItems} />
+          )}
+
+          {/* Empty state for new users */}
+          {cards.length === 0 && (
+            <div className="rounded-2xl border border-dashed border-gray-700 bg-gray-950/50 p-8 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
+                <span className="text-3xl" aria-hidden="true">🐾</span>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-200 mb-2">Welcome to Pawkit!</h3>
+              <p className="text-sm text-gray-400 mb-4 max-w-md mx-auto">
+                Start building your collection by saving links, articles, and notes.
+              </p>
+              <div className="flex flex-wrap justify-center gap-3 text-xs text-gray-500">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
+                  <span>📎</span> Paste URL above
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
+                  <span>🔌</span> Use browser extension
+                </span>
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
+                  <span>📝</span> Create a note
+                </span>
+              </div>
             </div>
           )}
         </div>
-
-        {/* Empty state for new users */}
-        {cards.length === 0 && (
-          <div className="col-span-3 rounded-2xl border border-dashed border-gray-700 bg-gray-950/50 p-8 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
-              <span className="text-3xl" aria-hidden="true">🐾</span>
-            </div>
-            <h3 className="text-lg font-semibold text-gray-200 mb-2">Welcome to Pawkit!</h3>
-            <p className="text-sm text-gray-400 mb-4 max-w-md mx-auto">
-              Start building your collection by saving links, articles, and notes.
-            </p>
-            <div className="flex flex-wrap justify-center gap-3 text-xs text-gray-500">
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
-                <span>📎</span> Paste URL above
-              </span>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
-                <span>🔌</span> Use browser extension
-              </span>
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-800/50">
-                <span>📝</span> Create a note
-              </span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Day Details Modal */}

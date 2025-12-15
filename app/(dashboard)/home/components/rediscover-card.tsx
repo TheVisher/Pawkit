@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { RefreshCw, ArrowRight, X } from "lucide-react";
+import { RefreshCw, ArrowRight, Sparkles } from "lucide-react";
 import { CardModel } from "@/lib/types";
 
 interface RediscoverCardProps {
@@ -10,33 +9,8 @@ interface RediscoverCardProps {
   rediscoverItems: CardModel[];
 }
 
-const DISMISS_KEY = "pawkit-rediscover-dismissed";
-
 export function RediscoverCard({ rediscoverCount, rediscoverItems }: RediscoverCardProps) {
   const router = useRouter();
-  const [isDismissed, setIsDismissed] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const dismissed = localStorage.getItem(DISMISS_KEY);
-    if (dismissed) {
-      const dismissedAt = new Date(dismissed);
-      const now = new Date();
-      // Reset dismissal after 7 days
-      if (now.getTime() - dismissedAt.getTime() > 7 * 24 * 60 * 60 * 1000) {
-        localStorage.removeItem(DISMISS_KEY);
-      } else {
-        setIsDismissed(true);
-      }
-    }
-  }, []);
-
-  const handleDismiss = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    localStorage.setItem(DISMISS_KEY, new Date().toISOString());
-    setIsDismissed(true);
-  };
 
   const handleStart = () => {
     // Navigate to dig-up feature or random item
@@ -46,22 +20,45 @@ export function RediscoverCard({ rediscoverCount, rediscoverItems }: RediscoverC
     }
   };
 
-  // Don't show if dismissed or no items
-  if (!mounted || isDismissed || rediscoverCount === 0) {
-    return null;
+  // Empty state - no items to rediscover yet
+  if (rediscoverCount === 0) {
+    return (
+      <div
+        className="rounded-xl p-4 h-full"
+        style={{
+          background: 'var(--bg-surface-2)',
+          boxShadow: 'var(--shadow-2)',
+          border: '1px solid var(--border-subtle)',
+          borderTopColor: 'var(--border-highlight-top)',
+          borderLeftColor: 'var(--border-highlight-left)',
+        }}
+      >
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center">
+            <RefreshCw className="w-3.5 h-3.5 text-purple-400" />
+          </div>
+          <h2 className="font-semibold text-sm text-foreground">Rediscover</h2>
+        </div>
+
+        <div className="text-center py-4">
+          <Sparkles className="w-8 h-8 text-purple-400 mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">Nothing to rediscover yet</p>
+          <p className="text-[10px] text-muted-foreground/60">Items saved 2+ months ago will appear here</p>
+        </div>
+      </div>
+    );
   }
 
+  // Has items to rediscover
   return (
-    <div className="rounded-xl bg-gradient-to-br from-purple-500/15 to-cyan-500/15 p-4 border border-purple-500/30 relative">
-      {/* Dismiss button */}
-      <button
-        onClick={handleDismiss}
-        className="absolute top-2 right-2 p-1 rounded-full hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
-        aria-label="Dismiss"
-      >
-        <X className="w-3.5 h-3.5" />
-      </button>
-
+    <div
+      className="rounded-xl p-4 h-full"
+      style={{
+        background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%)',
+        boxShadow: 'var(--shadow-2)',
+        border: '1px solid rgba(168, 85, 247, 0.3)',
+      }}
+    >
       <div className="flex items-center gap-2 mb-3">
         <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center">
           <RefreshCw className="w-3.5 h-3.5 text-purple-400" />
@@ -75,7 +72,7 @@ export function RediscoverCard({ rediscoverCount, rediscoverItems }: RediscoverC
       </div>
 
       <p className="text-xs text-muted-foreground/80 mb-3">
-        Revisit forgotten bookmarks and rediscover valuable content from your collection.
+        Revisit forgotten bookmarks and rediscover valuable content.
       </p>
 
       <button
