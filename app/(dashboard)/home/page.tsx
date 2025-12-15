@@ -193,7 +193,7 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="flex flex-1 flex-col gap-4 pb-16 min-h-full">
+      <div className="flex flex-1 flex-col gap-6 pb-16 min-h-full">
         {/* Welcome Banner for new users */}
         <WelcomeBanner className="mb-2" />
 
@@ -201,11 +201,11 @@ export default function HomePage() {
         <HomeHeader userName={displayName} />
 
         {/* Main Flex Layout */}
-        <div className="flex flex-col gap-4 flex-1">
+        <div className="flex flex-col gap-5 flex-1">
           {/* Top Section: Today/Inbox/Rediscover + Calendar */}
-          <div className="flex gap-4">
+          <div className="flex gap-5">
             {/* Left Stack: Today + Inbox/Rediscover row */}
-            <div className="flex-[2] flex flex-col gap-4 min-w-0">
+            <div className="flex-[2] flex flex-col gap-5 min-w-0">
               {/* Today Card */}
               <TodayCard
                 events={today.events}
@@ -217,7 +217,7 @@ export default function HomePage() {
               />
 
               {/* Inbox + Rediscover row */}
-              <div className="flex gap-4">
+              <div className="flex gap-5">
                 <div className="flex-1 min-w-0">
                   <InboxCard
                     inboxItems={inboxItems}

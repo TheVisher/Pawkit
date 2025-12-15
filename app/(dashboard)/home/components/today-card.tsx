@@ -38,7 +38,7 @@ export function TodayCard({
 
   return (
     <div
-      className="rounded-xl p-4"
+      className="rounded-xl p-5"
       style={{
         background: 'var(--bg-surface-2)',
         boxShadow: 'var(--shadow-2)',

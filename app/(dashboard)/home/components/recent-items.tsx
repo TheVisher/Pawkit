@@ -17,9 +17,12 @@ export function RecentItems({ items }: RecentItemsProps) {
     return null;
   }
 
+  // Limit to 4 items for cleaner layout
+  const displayItems = items.slice(0, 4);
+
   return (
     <div
-      className="rounded-xl p-4"
+      className="rounded-xl p-5"
       style={{
         background: 'var(--bg-surface-2)',
         boxShadow: 'var(--shadow-2)',
@@ -28,7 +31,7 @@ export function RecentItems({ items }: RecentItemsProps) {
         borderLeftColor: 'var(--border-highlight-left)',
       }}
     >
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-foreground">Recent Items</h2>
         <Link
           href="/library"
@@ -38,8 +41,8 @@ export function RecentItems({ items }: RecentItemsProps) {
         </Link>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
-        {items.map((item) => {
+      <div className="grid grid-cols-4 gap-4">
+        {displayItems.map((item) => {
           const isNote = item.type === 'md-note' || item.type === 'text-note';
           const isFileCard = item.type === 'file';
           const domain = item.domain || (item.url ? new URL(item.url).hostname : null);
@@ -54,11 +57,11 @@ export function RecentItems({ items }: RecentItemsProps) {
                 borderColor: 'var(--border-subtle)',
               }}
             >
-              {/* Image/Preview area */}
-              <div className="aspect-video overflow-hidden relative bg-surface">
+              {/* Image/Preview area - slightly taller */}
+              <div className="aspect-[16/10] overflow-hidden relative bg-surface">
                 {isNote ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-surface-soft">
-                    <FileText className="w-8 h-8 text-accent/50" />
+                    <FileText className="w-10 h-10 text-accent/50" />
                   </div>
                 ) : isFileCard ? (
                   <CardImage
@@ -80,18 +83,18 @@ export function RecentItems({ items }: RecentItemsProps) {
                 )}
               </div>
 
-              {/* Content */}
-              <div className="p-2.5">
-                <h3 className="text-xs font-medium text-foreground line-clamp-1 group-hover:text-accent transition-colors">
+              {/* Content - slightly more padding */}
+              <div className="p-3">
+                <h3 className="text-sm font-medium text-foreground line-clamp-1 group-hover:text-accent transition-colors">
                   {item.title || domain || item.url}
                 </h3>
                 {domain && !isNote && (
-                  <p className="text-[10px] text-muted-foreground truncate">
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
                     {domain}
                   </p>
                 )}
                 {isNote && item.content && (
-                  <p className="text-[10px] text-muted-foreground line-clamp-1">
+                  <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
                     {item.content.replace(/[#*_~`\[\]]/g, '').substring(0, 50)}
                   </p>
                 )}
