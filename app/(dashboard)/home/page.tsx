@@ -201,10 +201,11 @@ export default function HomePage() {
         {/* Header */}
         <HomeHeader userName={displayName} />
 
-        {/* Top Section: Today + Calendar side by side */}
+        {/* Top Section - Interlocking: Left column + Calendar spanning full height */}
         <div className="flex gap-4">
-          {/* Left: Today Card */}
-          <div className="flex-[2] min-w-0">
+          {/* LEFT COLUMN - Today stacked above Inbox+Rediscover */}
+          <div className="flex-1 flex flex-col gap-4 min-w-0">
+            {/* Today Card - natural height based on content */}
             <TodayCard
               events={today.events}
               scheduledCards={today.scheduledCards}
@@ -213,29 +214,29 @@ export default function HomePage() {
               onToggleTodo={toggleTodo}
               onOpenDailyNote={handleOpenDailyNote}
             />
+
+            {/* Inbox + Rediscover row */}
+            <div className="flex gap-4">
+              <div className="flex-1 min-w-0">
+                <InboxCard
+                  inboxItems={inboxItems}
+                  inboxCount={inboxCount}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <RediscoverCard
+                  rediscoverCount={rediscoverCount}
+                  rediscoverItems={rediscoverItems}
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Right: Week Calendar */}
-          <div className="flex-1 min-w-0">
+          {/* RIGHT COLUMN - Calendar spans full height of left column */}
+          <div className="w-72 shrink-0">
             <WeekCalendar
               weekDays={weekDays}
               onDayClick={setSelectedDay}
-            />
-          </div>
-        </div>
-
-        {/* Middle Section: Inbox + Rediscover side by side */}
-        <div className="flex gap-4">
-          <div className="flex-1 min-w-0">
-            <InboxCard
-              inboxItems={inboxItems}
-              inboxCount={inboxCount}
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <RediscoverCard
-              rediscoverCount={rediscoverCount}
-              rediscoverItems={rediscoverItems}
             />
           </div>
         </div>
@@ -245,7 +246,7 @@ export default function HomePage() {
           <div className="flex gap-4">
             {/* Pinned Pawkits - fixed width */}
             {pinnedPawkits.length > 0 && (
-              <div className="w-64 shrink-0">
+              <div className="w-56 shrink-0">
                 <PinnedPawkits pawkits={pinnedPawkits} />
               </div>
             )}
