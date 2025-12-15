@@ -22,7 +22,7 @@ export function RecentItems({ items }: RecentItemsProps) {
 
   return (
     <div
-      className="rounded-xl p-4 h-full flex flex-col min-h-0"
+      className="rounded-xl p-3 h-full flex flex-col"
       style={{
         background: 'var(--bg-surface-2)',
         boxShadow: 'var(--shadow-2)',
@@ -31,18 +31,18 @@ export function RecentItems({ items }: RecentItemsProps) {
         borderLeftColor: 'var(--border-highlight-left)',
       }}
     >
-      <div className="flex items-center justify-between mb-3 shrink-0">
-        <h2 className="font-semibold text-foreground">Recent Items</h2>
+      <div className="flex items-center justify-between mb-2 shrink-0">
+        <h2 className="font-semibold text-sm text-foreground">Recent Items</h2>
         <Link
           href="/library"
-          className="text-xs text-muted-foreground hover:text-accent transition-colors flex items-center gap-0.5"
+          className="text-[10px] text-muted-foreground hover:text-accent transition-colors flex items-center gap-0.5"
         >
           View all <ChevronRight className="w-3 h-3" />
         </Link>
       </div>
 
-      {/* Grid that fills remaining space */}
-      <div className="grid grid-cols-3 grid-rows-2 gap-3 flex-1 min-h-0 overflow-hidden">
+      {/* 3x2 Grid with fixed aspect-ratio cards */}
+      <div className="grid grid-cols-3 gap-2 flex-1 min-h-0 overflow-hidden content-start">
         {displayItems.map((item) => {
           const isNote = item.type === 'md-note' || item.type === 'text-note';
           const isFileCard = item.type === 'file';
@@ -52,17 +52,17 @@ export function RecentItems({ items }: RecentItemsProps) {
             <button
               key={item.id}
               onClick={() => openCardDetails(item.id)}
-              className="card-hover group relative cursor-pointer rounded-xl overflow-hidden text-left flex flex-col min-h-0"
+              className="card-hover group cursor-pointer rounded-lg overflow-hidden text-left flex flex-col"
               style={{
                 background: 'var(--bg-surface-1)',
                 borderColor: 'var(--border-subtle)',
               }}
             >
-              {/* Image/Preview area - fills available space */}
-              <div className="flex-1 min-h-0 overflow-hidden relative bg-surface">
+              {/* Image with fixed aspect ratio */}
+              <div className="aspect-[4/3] overflow-hidden relative bg-surface">
                 {isNote ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-surface-soft">
-                    <FileText className="w-8 h-8 text-accent/50" />
+                    <FileText className="w-6 h-6 text-accent/50" />
                   </div>
                 ) : isFileCard ? (
                   <CardImage
@@ -78,25 +78,20 @@ export function RecentItems({ items }: RecentItemsProps) {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-surface-soft text-muted-foreground/50 text-xs">
+                  <div className="absolute inset-0 flex items-center justify-center bg-surface-soft text-muted-foreground/50 text-[10px]">
                     No preview
                   </div>
                 )}
               </div>
 
-              {/* Content - fixed height footer */}
-              <div className="p-2.5 shrink-0">
-                <h3 className="text-xs font-medium text-foreground line-clamp-1 group-hover:text-accent transition-colors">
+              {/* Compact title footer */}
+              <div className="p-1.5 shrink-0">
+                <h3 className="text-[10px] font-medium text-foreground line-clamp-1 group-hover:text-accent transition-colors">
                   {item.title || domain || item.url}
                 </h3>
                 {domain && !isNote && (
-                  <p className="text-[10px] text-muted-foreground truncate">
+                  <p className="text-[9px] text-muted-foreground truncate">
                     {domain}
-                  </p>
-                )}
-                {isNote && item.content && (
-                  <p className="text-[10px] text-muted-foreground line-clamp-1">
-                    {item.content.replace(/[#*_~`\[\]]/g, '').substring(0, 40)}
                   </p>
                 )}
               </div>
