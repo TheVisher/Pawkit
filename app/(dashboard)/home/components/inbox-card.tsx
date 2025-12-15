@@ -21,7 +21,16 @@ export function InboxCard({ inboxItems, inboxCount }: InboxCardProps) {
   // Empty inbox state
   if (inboxCount === 0) {
     return (
-      <div className="rounded-xl border border-subtle bg-surface p-4">
+      <div
+        className="rounded-xl p-4"
+        style={{
+          background: 'var(--bg-surface-2)',
+          boxShadow: 'var(--shadow-2)',
+          border: '1px solid var(--border-subtle)',
+          borderTopColor: 'var(--border-highlight-top)',
+          borderLeftColor: 'var(--border-highlight-left)',
+        }}
+      >
         <div className="flex items-center gap-2 mb-3">
           <div className="w-7 h-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
             <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
@@ -40,7 +49,16 @@ export function InboxCard({ inboxItems, inboxCount }: InboxCardProps) {
 
   // Inbox with items
   return (
-    <div className="rounded-xl border border-subtle bg-surface p-4">
+    <div
+      className="rounded-xl p-4"
+      style={{
+        background: 'var(--bg-surface-2)',
+        boxShadow: 'var(--shadow-2)',
+        border: '1px solid var(--border-subtle)',
+        borderTopColor: 'var(--border-highlight-top)',
+        borderLeftColor: 'var(--border-highlight-left)',
+      }}
+    >
       <div className="flex items-center gap-2 mb-3">
         <div className="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center">
           <Inbox className="w-3.5 h-3.5 text-blue-400" />

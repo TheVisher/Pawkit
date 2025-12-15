@@ -10,7 +10,16 @@ interface StatsCardProps {
 
 export function StatsCard({ savedThisWeek, processedThisWeek, streak = 0 }: StatsCardProps) {
   return (
-    <div className="rounded-xl border border-subtle bg-surface p-4">
+    <div
+      className="rounded-xl p-4"
+      style={{
+        background: 'var(--bg-surface-2)',
+        boxShadow: 'var(--shadow-2)',
+        border: '1px solid var(--border-subtle)',
+        borderTopColor: 'var(--border-highlight-top)',
+        borderLeftColor: 'var(--border-highlight-left)',
+      }}
+    >
       <div className="flex items-center gap-2 mb-3">
         <div className="w-7 h-7 rounded-lg bg-pink-500/20 flex items-center justify-center">
           <TrendingUp className="w-3.5 h-3.5 text-pink-400" />

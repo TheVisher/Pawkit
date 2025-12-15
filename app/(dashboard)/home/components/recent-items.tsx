@@ -18,7 +18,16 @@ export function RecentItems({ items }: RecentItemsProps) {
   }
 
   return (
-    <div className="rounded-xl border border-subtle bg-surface p-4">
+    <div
+      className="rounded-xl p-4"
+      style={{
+        background: 'var(--bg-surface-2)',
+        boxShadow: 'var(--shadow-2)',
+        border: '1px solid var(--border-subtle)',
+        borderTopColor: 'var(--border-highlight-top)',
+        borderLeftColor: 'var(--border-highlight-left)',
+      }}
+    >
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold text-foreground">Recent Items</h2>
         <Link
@@ -39,7 +48,11 @@ export function RecentItems({ items }: RecentItemsProps) {
             <button
               key={item.id}
               onClick={() => openCardDetails(item.id)}
-              className="group text-left bg-surface-soft rounded-xl overflow-hidden hover:ring-1 hover:ring-accent/30 transition-all"
+              className="card-hover group relative cursor-pointer rounded-xl overflow-hidden text-left"
+              style={{
+                background: 'var(--bg-surface-1)',
+                borderColor: 'var(--border-subtle)',
+              }}
             >
               {/* Image/Preview area */}
               <div className="aspect-video overflow-hidden relative bg-surface">
@@ -50,14 +63,14 @@ export function RecentItems({ items }: RecentItemsProps) {
                 ) : isFileCard ? (
                   <CardImage
                     card={item}
-                    className="w-full h-full object-cover opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all"
+                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
                     loading="lazy"
                   />
                 ) : item.image ? (
                   <img
                     src={item.image}
                     alt={item.title ?? ''}
-                    className="w-full h-full object-cover opacity-70 group-hover:opacity-100 group-hover:scale-105 transition-all"
+                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300"
                     loading="lazy"
                   />
                 ) : (
