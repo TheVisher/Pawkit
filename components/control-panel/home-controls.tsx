@@ -1,6 +1,5 @@
 "use client";
 
-import { TodosSection } from "./todos-section";
 import { StatsCard } from "@/app/(dashboard)/home/components/sidebar/stats-card";
 import { ContinueCard } from "@/app/(dashboard)/home/components/sidebar/continue-card";
 import { OnThisDay } from "@/app/(dashboard)/home/components/sidebar/on-this-day";
@@ -11,9 +10,6 @@ export function HomeControls() {
 
   return (
     <>
-      {/* Todos Section - Always at top */}
-      <TodosSection />
-
       {/* This Week Stats */}
       <div className="px-4 pb-4">
         <StatsCard

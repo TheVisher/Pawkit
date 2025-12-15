@@ -15,7 +15,7 @@ export function WeekCalendar({ weekDays, onDayClick }: WeekCalendarProps) {
 
   return (
     <div
-      className="rounded-xl p-4 h-full flex flex-col"
+      className="rounded-xl p-5 h-full flex flex-col"
       style={{
         background: 'var(--bg-surface-2)',
         boxShadow: 'var(--shadow-2)',
