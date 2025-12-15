@@ -201,11 +201,10 @@ export default function HomePage() {
         {/* Header */}
         <HomeHeader userName={displayName} />
 
-        {/* Top Section - Interlocking: Left column + Calendar spanning full height */}
-        <div className="flex gap-4">
-          {/* LEFT COLUMN - Today stacked above Inbox+Rediscover */}
-          <div className="flex-1 flex flex-col gap-4 min-w-0">
-            {/* Today Card - natural height based on content */}
+        {/* TOP SECTION - CSS Grid for interlocking layout */}
+        <div className="grid grid-cols-3 gap-4">
+          {/* Today - spans 2 columns, row 1 */}
+          <div className="col-span-2">
             <TodayCard
               events={today.events}
               scheduledCards={today.scheduledCards}
@@ -214,46 +213,42 @@ export default function HomePage() {
               onToggleTodo={toggleTodo}
               onOpenDailyNote={handleOpenDailyNote}
             />
-
-            {/* Inbox + Rediscover row */}
-            <div className="flex gap-4">
-              <div className="flex-1 min-w-0">
-                <InboxCard
-                  inboxItems={inboxItems}
-                  inboxCount={inboxCount}
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <RediscoverCard
-                  rediscoverCount={rediscoverCount}
-                  rediscoverItems={rediscoverItems}
-                />
-              </div>
-            </div>
           </div>
 
-          {/* RIGHT COLUMN - Calendar spans full height of left column */}
-          <div className="w-72 shrink-0">
+          {/* This Week Calendar - spans 2 ROWS */}
+          <div className="row-span-2">
             <WeekCalendar
               weekDays={weekDays}
               onDayClick={setSelectedDay}
             />
           </div>
+
+          {/* Inbox - row 2, col 1 */}
+          <InboxCard
+            inboxItems={inboxItems}
+            inboxCount={inboxCount}
+          />
+
+          {/* Rediscover - row 2, col 2 */}
+          <RediscoverCard
+            rediscoverCount={rediscoverCount}
+            rediscoverItems={rediscoverItems}
+          />
         </div>
 
-        {/* Bottom Section: Pinned Pawkits + Recent Items side by side */}
+        {/* BOTTOM SECTION - Pinned + Recent */}
         {(pinnedPawkits.length > 0 || recentItems.length > 0) && (
-          <div className="flex gap-4">
-            {/* Pinned Pawkits - fixed width */}
+          <div className="grid grid-cols-3 gap-4">
+            {/* Pinned Pawkits - 1 column */}
             {pinnedPawkits.length > 0 && (
-              <div className="w-56 shrink-0">
+              <div>
                 <PinnedPawkits pawkits={pinnedPawkits} />
               </div>
             )}
 
-            {/* Recent Items - fills remaining width */}
+            {/* Recent Items - 2 columns */}
             {recentItems.length > 0 && (
-              <div className="flex-1 min-w-0">
+              <div className={pinnedPawkits.length > 0 ? "col-span-2" : "col-span-3"}>
                 <RecentItems items={recentItems} />
               </div>
             )}
