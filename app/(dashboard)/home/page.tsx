@@ -193,19 +193,22 @@ export default function HomePage() {
 
   return (
     <>
-      <div className="flex flex-1 flex-col gap-6 pb-16 min-h-full">
+      {/* Main content - fills viewport without scrolling */}
+      <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-hidden">
         {/* Welcome Banner for new users */}
-        <WelcomeBanner className="mb-2" />
+        <WelcomeBanner className="shrink-0" />
 
         {/* Header */}
-        <HomeHeader userName={displayName} />
+        <div className="shrink-0">
+          <HomeHeader userName={displayName} />
+        </div>
 
         {/* Main Flex Layout */}
-        <div className="flex flex-col gap-5 flex-1">
-          {/* Top Section: Today/Inbox/Rediscover + Calendar */}
-          <div className="flex gap-5">
+        <div className="flex flex-col gap-4 flex-1 min-h-0 overflow-hidden">
+          {/* Top Section: Today/Inbox/Rediscover + Calendar - fixed height */}
+          <div className="flex gap-4 shrink-0">
             {/* Left Stack: Today + Inbox/Rediscover row */}
-            <div className="flex-[2] flex flex-col gap-5 min-w-0">
+            <div className="flex-[2] flex flex-col gap-4 min-w-0">
               {/* Today Card */}
               <TodayCard
                 events={today.events}
@@ -217,7 +220,7 @@ export default function HomePage() {
               />
 
               {/* Inbox + Rediscover row */}
-              <div className="flex gap-5">
+              <div className="flex gap-4">
                 <div className="flex-1 min-w-0">
                   <InboxCard
                     inboxItems={inboxItems}
@@ -242,19 +245,19 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Bottom Section - Pinned Pawkits and Recent Items side by side */}
+          {/* Bottom Section - fills remaining space */}
           {(pinnedPawkits.length > 0 || recentItems.length > 0) && (
-            <div className="flex gap-5">
+            <div className="flex gap-4 flex-1 min-h-0">
               {/* Pinned Pawkits - 1/3 width */}
               {pinnedPawkits.length > 0 && (
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 min-h-0">
                   <PinnedPawkits pawkits={pinnedPawkits} />
                 </div>
               )}
 
               {/* Recent Items - 2/3 width */}
               {recentItems.length > 0 && (
-                <div className={pinnedPawkits.length > 0 ? "flex-[2] min-w-0" : "flex-1 min-w-0"}>
+                <div className={`min-h-0 ${pinnedPawkits.length > 0 ? "flex-[2] min-w-0" : "flex-1 min-w-0"}`}>
                   <RecentItems items={recentItems} />
                 </div>
               )}
@@ -263,7 +266,7 @@ export default function HomePage() {
 
           {/* Empty state for new users */}
           {cards.length === 0 && (
-            <div className="rounded-2xl border border-dashed border-gray-700 bg-gray-950/50 p-8 text-center">
+            <div className="rounded-2xl border border-dashed border-gray-700 bg-gray-950/50 p-8 text-center flex-1">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-accent/10">
                 <span className="text-3xl" aria-hidden="true">🐾</span>
               </div>
