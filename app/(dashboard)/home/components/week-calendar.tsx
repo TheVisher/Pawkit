@@ -14,7 +14,16 @@ export function WeekCalendar({ weekDays, onDayClick }: WeekCalendarProps) {
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
 
   return (
-    <div className="rounded-xl border border-subtle bg-surface p-4">
+    <div
+      className="rounded-xl p-4"
+      style={{
+        background: 'var(--bg-surface-2)',
+        boxShadow: 'var(--shadow-2)',
+        border: '1px solid var(--border-subtle)',
+        borderTopColor: 'var(--border-highlight-top)',
+        borderLeftColor: 'var(--border-highlight-left)',
+      }}
+    >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center">
