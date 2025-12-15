@@ -22,7 +22,7 @@ export function InboxCard({ inboxItems, inboxCount }: InboxCardProps) {
   if (inboxCount === 0) {
     return (
       <div
-        className="rounded-xl p-4"
+        className="rounded-xl p-4 h-full"
         style={{
           background: 'var(--bg-surface-2)',
           boxShadow: 'var(--shadow-2)',
@@ -50,7 +50,7 @@ export function InboxCard({ inboxItems, inboxCount }: InboxCardProps) {
   // Inbox with items
   return (
     <div
-      className="rounded-xl p-4"
+      className="rounded-xl p-4 h-full"
       style={{
         background: 'var(--bg-surface-2)',
         boxShadow: 'var(--shadow-2)',
