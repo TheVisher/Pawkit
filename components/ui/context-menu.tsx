@@ -80,6 +80,7 @@ const ContextMenuContent = React.forwardRef<
         border: '1px solid var(--border-subtle)',
         borderTopColor: 'var(--border-highlight-top)',
         borderLeftColor: 'var(--border-highlight-left)',
+        backdropFilter: 'blur(20px)',
       }}
       {...props}
     />
