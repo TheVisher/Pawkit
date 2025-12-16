@@ -1067,8 +1067,11 @@ export const useDataStore = create<DataStore>((set, get) => ({
       const collection = flatCollections.find(c => c.id === id);
 
       if (collection) {
+        // Strip children property - it's computed when building tree, not stored
+        const { children, ...collectionWithoutChildren } = collection;
+
         const updatedCollection = {
-          ...collection,
+          ...collectionWithoutChildren,
           ...updates,
           updatedAt: new Date().toISOString()
         };
