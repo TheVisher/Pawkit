@@ -28,6 +28,7 @@ function LibraryPageContent() {
   const viewParam = searchParams.get("view") || "normal";
   const daysParam = searchParams.get("days") || "30";
   const mode = searchParams.get("mode") || "normal";
+  const filter = searchParams.get("filter") || undefined;
 
   // Rediscover mode state from store
   const rediscoverStore = useRediscoverStore();
@@ -201,8 +202,19 @@ function LibraryPageContent() {
       });
     }
 
+    // Inbox filter - show only unorganized items (no tags, no collections, not scheduled, URL type)
+    if (filter === "inbox") {
+      filtered = filtered.filter(card => {
+        const hasNoCollections = !card.collections || card.collections.length === 0;
+        const hasNoTags = !card.tags || card.tags.length === 0;
+        const isNotScheduled = !card.scheduledDate;
+        const isUrl = card.type === 'url';
+        return hasNoCollections && hasNoTags && isNotScheduled && isUrl;
+      });
+    }
+
     return filtered;
-  }, [cards, collections, q, collection, tag, status, contentTypeFilter]);
+  }, [cards, collections, q, collection, tag, status, contentTypeFilter, filter]);
 
   // Debug: Log content type filter and card types (after items is computed)
   useEffect(() => {
