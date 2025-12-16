@@ -17,9 +17,17 @@ function LoginForm() {
   const [success, setSuccess] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
-  const { signIn } = useAuth()
+  const { signIn, user, loading: authLoading } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // If user is already authenticated (e.g., session from verifyOtp), redirect to home
+  useEffect(() => {
+    if (!authLoading && user) {
+      const returnUrl = searchParams.get('returnUrl') || '/home'
+      router.push(returnUrl)
+    }
+  }, [user, authLoading, router, searchParams])
 
   // Check for verification success or error from email confirmation
   useEffect(() => {
