@@ -197,7 +197,7 @@ export default function HomePage() {
   return (
     <>
       {/* Main container - MUST fill viewport exactly, no scrolling */}
-      <div className="h-full flex flex-col gap-4 overflow-hidden">
+      <div className="h-full flex flex-col gap-4 overflow-visible">
         {/* Welcome Banner for new users */}
         <WelcomeBanner className="shrink-0" />
 
@@ -239,7 +239,7 @@ export default function HomePage() {
           </div>
 
           {/* Rediscover + On This Day - row 2, col 2 (split into two cards) */}
-          <div className="min-h-0 grid grid-cols-2 gap-3">
+          <div className="min-h-0 grid grid-cols-2 gap-4">
             <RediscoverCard
               rediscoverCount={rediscoverCount}
               rediscoverItems={rediscoverItems}

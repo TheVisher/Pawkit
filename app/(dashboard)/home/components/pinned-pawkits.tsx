@@ -1,9 +1,12 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Folder, FileText } from "lucide-react";
+import { Folder, FileText, Plus, ChevronDown } from "lucide-react";
 import { PinnedPawkit } from "../hooks/use-home-data";
+import { useDataStore } from "@/lib/stores/data-store";
+import { CollectionNode } from "@/lib/types";
 
 interface PinnedPawkitsProps {
   pawkits: PinnedPawkit[];
@@ -19,15 +22,66 @@ const previewPositions = [
   { left: '60%', top: 10, rotate: 4, zIndex: 1 },
 ];
 
+const MAX_PINNED = 8;
+
 export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
   const router = useRouter();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  const { collections, updateCollection } = useDataStore();
+
+  // Flatten collections to get all pawkits
+  const flattenCollections = (nodes: CollectionNode[]): CollectionNode[] => {
+    return nodes.reduce<CollectionNode[]>((acc, node) => {
+      acc.push(node);
+      if (node.children && Array.isArray(node.children) && node.children.length > 0) {
+        acc.push(...flattenCollections(node.children));
+      }
+      return acc;
+    }, []);
+  };
+
+  // Get unpinned pawkits (exclude system collections and already pinned)
+  const pinnedIds = new Set(pawkits.map(p => p.id));
+  const unpinnedPawkits = flattenCollections(collections).filter(
+    c => !c.isSystem && !pinnedIds.has(c.id)
+  );
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showDropdown]);
+
+  const handlePinPawkit = async (collection: CollectionNode) => {
+    await updateCollection(collection.id, { pinned: true });
+    setShowDropdown(false);
+  };
 
   if (pawkits.length === 0) {
     return null;
   }
 
+  const hasRoom = pawkits.length < MAX_PINNED;
+  const hasUnpinnedOptions = unpinnedPawkits.length > 0;
+
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden">
+    <div className="h-full flex flex-col min-h-0 overflow-visible">
       <div className="flex justify-between items-center mb-3 shrink-0">
         <h2 className="font-medium text-sm text-foreground">Pinned Pawkits</h2>
         <Link
@@ -39,8 +93,8 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
       </div>
 
       {/* 2-column grid of portrait cards - rows stretch to fill height */}
-      <div className="flex-1 grid grid-cols-2 grid-rows-4 gap-3 overflow-hidden">
-        {pawkits.slice(0, 8).map((pawkit) => (
+      <div className="flex-1 grid grid-cols-2 grid-rows-4 gap-3 overflow-visible">
+        {pawkits.slice(0, MAX_PINNED).map((pawkit) => (
           <button
             key={pawkit.id}
             onClick={() => router.push(`/pawkits/${pawkit.slug}`)}
@@ -118,6 +172,49 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
             </div>
           </button>
         ))}
+
+        {/* Placeholder card for adding more pinned pawkits */}
+        {hasRoom && hasUnpinnedOptions && (
+          <div className="relative">
+            <button
+              ref={buttonRef}
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="w-full h-full rounded-xl p-3 transition-all flex flex-col items-center justify-center gap-2 border-2 border-dashed border-subtle/50 hover:border-accent/30 hover:bg-accent/5 group"
+            >
+              <div className="w-8 h-8 rounded-lg bg-surface-soft flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                <Plus size={16} className="text-muted-foreground group-hover:text-accent transition-colors" />
+              </div>
+              <span className="text-xs text-muted-foreground group-hover:text-accent transition-colors">
+                Pin a Pawkit
+              </span>
+            </button>
+
+            {/* Dropdown */}
+            {showDropdown && (
+              <div
+                ref={dropdownRef}
+                className="absolute top-full left-0 right-0 mt-2 z-50 rounded-xl border border-subtle bg-surface-soft/95 backdrop-blur-lg shadow-lg max-h-48 overflow-y-auto"
+              >
+                {unpinnedPawkits.length === 0 ? (
+                  <div className="p-3 text-xs text-muted-foreground text-center">
+                    No pawkits to pin
+                  </div>
+                ) : (
+                  unpinnedPawkits.map((collection) => (
+                    <button
+                      key={collection.id}
+                      onClick={() => handlePinPawkit(collection)}
+                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent/10 transition-colors text-left"
+                    >
+                      <Folder size={14} className="text-accent flex-shrink-0" />
+                      <span className="text-xs text-foreground truncate">{collection.name}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
