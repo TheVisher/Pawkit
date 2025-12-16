@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 import { PawkitActions } from "./pawkit-actions";
 import { useViewSettingsStore } from "@/lib/hooks/view-settings-store";
 import { useMemo } from "react";
-import { Inbox, Pin, Folder } from "lucide-react";
+import { Inbox, Pin, Folder, KanbanSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { MuuriGridComponent, MuuriItem } from "@/components/library/muuri-grid";
+import { isBoard } from "@/lib/types/board";
 
 type CollectionPreviewCard = {
   id: string;
@@ -22,6 +23,7 @@ type CollectionPreviewCard = {
   coverImage?: string | null;
   createdAt?: string;
   updatedAt?: string;
+  metadata?: Record<string, unknown>;
   cards: Array<{
     id: string;
     title?: string | null;
@@ -118,7 +120,15 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
                           ? 'bg-accent/30 text-accent'
                           : 'bg-accent/20 text-accent'
                       }`}>
-                        {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : <Folder size={16} className="text-accent" />}
+                        {collection.isSystem ? (
+                          <Inbox size={16} />
+                        ) : collection.isPrivate ? (
+                          '🔒'
+                        ) : isBoard(collection) ? (
+                          <KanbanSquare size={16} className="text-purple-400" />
+                        ) : (
+                          <Folder size={16} className="text-accent" />
+                        )}
                       </span>
                       <span className="text-sm text-foreground font-medium truncate min-w-0 flex-1">{collection.name}</span>
                       {collection.isPinned && <Pin size={14} className="text-accent flex-shrink-0" />}
@@ -234,7 +244,15 @@ export function CollectionsGrid({ collections, allPawkits = [], layout = "grid" 
                         ? 'bg-accent/30 text-accent'
                         : 'bg-accent/20 text-accent'
                     }`}>
-                      {collection.isSystem ? <Inbox size={16} /> : collection.isPrivate ? '🔒' : <Folder size={16} className="text-accent" />}
+                      {collection.isSystem ? (
+                        <Inbox size={16} />
+                      ) : collection.isPrivate ? (
+                        '🔒'
+                      ) : isBoard(collection) ? (
+                        <KanbanSquare size={16} className="text-purple-400" />
+                      ) : (
+                        <Folder size={16} className="text-accent" />
+                      )}
                     </span>
                     <span className={collection.useCoverAsBackground && collection.coverImage ? 'text-white font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]' : ''}>
                       {collection.name}

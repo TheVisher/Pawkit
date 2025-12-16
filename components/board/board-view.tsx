@@ -56,8 +56,12 @@ export function BoardView({
     return grouped;
   }, [cards, boardConfig.columns]);
 
+  // Calculate if we should show uncategorized column
+  const showUncategorized = cardsByColumn["uncategorized"]?.length > 0;
+  const totalColumns = boardConfig.columns.length + (showUncategorized ? 1 : 0);
+
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
+    <div className="flex gap-4 pb-4 min-h-[600px]">
       {/* Render each column */}
       {boardConfig.columns.map((column) => (
         <BoardColumnComponent
@@ -66,16 +70,18 @@ export function BoardView({
           cards={cardsByColumn[column.tag] || []}
           onCardClick={onCardClick}
           onAddCard={onAddCard}
+          totalColumns={totalColumns}
         />
       ))}
 
       {/* Uncategorized column if there are cards without status */}
-      {cardsByColumn["uncategorized"]?.length > 0 && (
+      {showUncategorized && (
         <BoardColumnComponent
           column={{ tag: "uncategorized", label: "No Status", color: "gray" }}
           cards={cardsByColumn["uncategorized"]}
           onCardClick={onCardClick}
           onAddCard={onAddCard}
+          totalColumns={totalColumns}
         />
       )}
     </div>
@@ -87,13 +93,15 @@ interface BoardColumnComponentProps {
   cards: CardDTO[];
   onCardClick?: (card: CardDTO) => void;
   onAddCard?: (columnTag: string) => void;
+  totalColumns: number;
 }
 
 function BoardColumnComponent({
   column,
   cards,
   onCardClick,
-  onAddCard
+  onAddCard,
+  totalColumns
 }: BoardColumnComponentProps) {
   // Get column accent color
   const getColumnColor = (color?: string) => {
@@ -123,21 +131,21 @@ function BoardColumnComponent({
   };
 
   return (
-    <div className="flex-shrink-0 w-72">
+    <div className="flex-1 min-w-[280px] max-w-[400px]">
       {/* Column Header */}
-      <div className={`rounded-t-lg px-3 py-2 border ${getColumnColor(column.color)}`}>
+      <div className={`rounded-t-xl px-4 py-3 border ${getColumnColor(column.color)}`}>
         <div className="flex items-center justify-between">
-          <h3 className={`font-medium text-sm ${getHeaderColor(column.color)}`}>
+          <h3 className={`font-semibold text-sm ${getHeaderColor(column.color)}`}>
             {column.label}
           </h3>
-          <span className="text-xs text-muted-foreground bg-surface-soft px-2 py-0.5 rounded-full">
+          <span className="text-xs text-muted-foreground bg-surface/80 px-2.5 py-1 rounded-full font-medium">
             {cards.length}
           </span>
         </div>
       </div>
 
       {/* Column Content */}
-      <div className="bg-surface-soft/50 border border-t-0 border-subtle rounded-b-lg p-2 min-h-[400px] space-y-2">
+      <div className="bg-surface-soft/30 border border-t-0 border-subtle rounded-b-xl p-3 min-h-[500px] space-y-3">
         {cards.map((card) => (
           <BoardCard
             key={card.id}
