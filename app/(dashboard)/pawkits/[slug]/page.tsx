@@ -7,9 +7,11 @@ import { DEFAULT_LAYOUT, LAYOUTS, LayoutMode } from "@/lib/constants";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePawkitActions } from "@/lib/contexts/pawkit-actions-context";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
-import { Folder, ChevronRight, ChevronDown, Image as ImageIcon } from "lucide-react";
+import { Folder, ChevronRight, ChevronDown, Image as ImageIcon, KanbanSquare } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import { CollectionsGrid } from "@/components/pawkits/grid";
+import { BoardView } from "@/components/board/board-view";
+import { isBoard, getBoardConfig } from "@/lib/types/board";
 import type { CollectionNode } from "@/lib/types";
 
 function CollectionPageContent() {
@@ -357,7 +359,11 @@ function CollectionPageContent() {
             <div className="absolute bottom-6 left-6 right-6 z-10">
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface/80 backdrop-blur-sm border border-white/20">
-                  <Folder className="h-5 w-5 text-white" />
+                  {isBoard(currentCollection) ? (
+                    <KanbanSquare className="h-5 w-5 text-purple-400" />
+                  ) : (
+                    <Folder className="h-5 w-5 text-white" />
+                  )}
                 </div>
                 <h1 className="text-3xl font-semibold text-white drop-shadow-lg">{currentCollection.name}</h1>
               </div>
@@ -486,7 +492,11 @@ function CollectionPageContent() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
-                <Folder className="h-5 w-5 text-accent" />
+                {isBoard(currentCollection) ? (
+                  <KanbanSquare className="h-5 w-5 text-purple-400" />
+                ) : (
+                  <Folder className="h-5 w-5 text-accent" />
+                )}
               </div>
               <div>
                 <h1 className="text-2xl font-semibold text-foreground">{currentCollection.name}</h1>
@@ -540,25 +550,44 @@ function CollectionPageContent() {
           </div>
         )}
 
-        {/* Cards Section */}
-        {items.length > 0 && (
-          <div className="mb-3">
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-4">
-              <span>Cards ({items.length})</span>
+        {/* Content Section - Board View or Regular Cards */}
+        {isBoard(currentCollection) ? (
+          <>
+            {/* Board View */}
+            <div className="mb-3">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-4">
+                <span>Board ({items.length} cards)</span>
+              </div>
             </div>
-          </div>
-        )}
+            <BoardView
+              cards={items}
+              boardConfig={getBoardConfig(currentCollection)}
+              collectionSlug={slug}
+            />
+          </>
+        ) : (
+          <>
+            {/* Regular Cards Section */}
+            {items.length > 0 && (
+              <div className="mb-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-4">
+                  <span>Cards ({items.length})</span>
+                </div>
+              </div>
+            )}
 
-        <LibraryWorkspace
-          initialCards={items}
-          initialNextCursor={undefined}
-          initialQuery={{ q, collection: slug, status, layout }}
-          collectionsTree={collections}
-          collectionName={currentCollection.name}
-          storageKey={`pawkit-${slug}-layout`}
-          hideControls={true}
-          area="pawkit"
-        />
+            <LibraryWorkspace
+              initialCards={items}
+              initialNextCursor={undefined}
+              initialQuery={{ q, collection: slug, status, layout }}
+              collectionsTree={collections}
+              collectionName={currentCollection.name}
+              storageKey={`pawkit-${slug}-layout`}
+              hideControls={true}
+              area="pawkit"
+            />
+          </>
+        )}
       </div>
 
       {/* Create Sub-Pawkit Modal */}
