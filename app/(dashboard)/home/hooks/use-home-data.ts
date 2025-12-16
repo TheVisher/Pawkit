@@ -101,7 +101,7 @@ export function useHomeData() {
 
     return flattenCollections(collections)
       .filter(c => c.pinned)
-      .slice(0, 6)
+      .slice(0, 8)
       .map(c => {
         const pawkitCards = activeCards.filter(card =>
           card.collections?.includes(c.slug)
