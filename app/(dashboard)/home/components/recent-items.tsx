@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileText } from "lucide-react";
+import { FileText, Link2, Clipboard } from "lucide-react";
 import { CardModel } from "@/lib/types";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { CardImage } from "@/components/cards/card-image";
@@ -13,12 +13,38 @@ interface RecentItemsProps {
 export function RecentItems({ items }: RecentItemsProps) {
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
 
-  if (items.length === 0) {
-    return null;
-  }
-
   // Show 6 items (2 rows x 3 columns) - keeps layout from scrolling
   const displayItems = items.slice(0, 6);
+
+  // Empty state for new users
+  if (items.length === 0) {
+    return (
+      <div className="h-full flex flex-col min-h-0 overflow-visible">
+        <div className="flex justify-between items-center mb-3 shrink-0">
+          <h2 className="font-medium text-sm text-foreground">Recent Items</h2>
+        </div>
+
+        {/* Empty state placeholder */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="rounded-xl p-6 border-2 border-dashed border-subtle/50 text-center max-w-sm">
+            <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mx-auto mb-3">
+              <Link2 size={24} className="text-accent" />
+            </div>
+            <h3 className="text-sm font-medium text-foreground mb-1">
+              Save your first bookmark
+            </h3>
+            <p className="text-xs text-muted-foreground mb-3">
+              Paste a URL anywhere in the app or use the browser extension
+            </p>
+            <div className="flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/70">
+              <Clipboard size={10} />
+              <span>Ctrl/Cmd + V to paste</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-visible">
