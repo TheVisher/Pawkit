@@ -1,14 +1,21 @@
 "use client";
 
-import { TodosSection } from "./todos-section";
+import { ContinueCard } from "@/app/(dashboard)/home/components/sidebar/continue-card";
+import { OnThisDayCard } from "@/app/(dashboard)/home/components/on-this-day-card";
+import { useHomeData } from "@/app/(dashboard)/home/hooks/use-home-data";
 
 export function HomeControls() {
+  const { continueItems, cards } = useHomeData();
+
   return (
     <>
-      {/* Todos Section - Always at top */}
-      <TodosSection />
+      {/* On This Day */}
+      <OnThisDayCard allCards={cards} />
 
-      {/* Future: Home-specific sections like stats, tips, etc. can be added here */}
+      {/* Continue Reading */}
+      {continueItems.length > 0 && (
+        <ContinueCard items={continueItems} />
+      )}
     </>
   );
 }

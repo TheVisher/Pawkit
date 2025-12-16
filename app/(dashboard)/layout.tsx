@@ -347,6 +347,20 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       setCommandPaletteInitialValue("");
       setShowCommandPalette(true);
     },
+    onPaste: async () => {
+      // Read from clipboard using async API and open command palette
+      if (!showCommandPalette) {
+        try {
+          const text = await navigator.clipboard.readText();
+          if (text) {
+            setCommandPaletteInitialValue(text);
+            setShowCommandPalette(true);
+          }
+        } catch (err) {
+          // Clipboard access denied or empty - silently ignore
+        }
+      }
+    },
     onEscape: () => {
       // Priority: Close modals first, then bulk operations (handled by BulkOperationsPanel), then right panel, then left panel
       if (showCommandPalette) {
