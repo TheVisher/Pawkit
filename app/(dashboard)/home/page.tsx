@@ -201,7 +201,7 @@ export default function HomePage() {
         </div>
 
         {/* Content wrapper - centered, doesn't stretch to fill */}
-        <div className="flex-1 flex flex-col gap-4 min-h-0">
+        <div className="flex-1 flex flex-col gap-4 min-h-0 w-fit mx-auto">
           {/* TOP SECTION - Today + Calendar/Stats side by side */}
           <div className="flex gap-4 min-h-0">
             {/* Left: Today card */}
