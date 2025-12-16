@@ -181,7 +181,7 @@ export async function createCollection(userId: string, payload: unknown) {
         name: parsed.name,
         parentId: parsed.parentId ?? null,
         slug,
-        metadata: parsed.metadata ?? undefined,
+        metadata: parsed.metadata as Prisma.InputJsonValue ?? undefined,
         user: { connect: { id: userId } }
       }
     });
@@ -212,7 +212,7 @@ export async function createCollection(userId: string, payload: unknown) {
             name: parsed.name,
             parentId: parsed.parentId ?? null,
             slug: newSlug,
-            metadata: parsed.metadata ?? undefined,
+            metadata: parsed.metadata as Prisma.InputJsonValue ?? undefined,
             user: { connect: { id: userId } }
           }
         });
