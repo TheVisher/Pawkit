@@ -17,7 +17,7 @@ import { PinnedPawkits } from "./components/pinned-pawkits";
 import { RecentItems } from "./components/recent-items";
 import { WelcomeBanner } from "@/components/onboarding/welcome-banner";
 import { GlowButton } from "@/components/ui/glow-button";
-import { CalendarIcon, Clock, FileText, Flag } from "lucide-react";
+import { CalendarIcon, Clock, FileText, Flag, Sparkles, Link, Puzzle, StickyNote } from "lucide-react";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { CardModel } from "@/lib/types";
 
@@ -263,23 +263,23 @@ export default function HomePage() {
 
         {/* Empty state for new users */}
         {cards.length === 0 && (
-          <div className="rounded-xl border border-dashed border-gray-700 bg-gray-950/50 p-6 text-center">
+          <div className="rounded-xl border border-dashed border-subtle bg-surface-soft/50 p-6 text-center">
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
-              <span className="text-2xl" aria-hidden="true">🐾</span>
+              <Sparkles className="w-6 h-6 text-accent" />
             </div>
-            <h3 className="text-base font-semibold text-gray-200 mb-1">Welcome to Pawkit!</h3>
-            <p className="text-xs text-gray-400 mb-3 max-w-md mx-auto">
+            <h3 className="text-base font-semibold text-foreground mb-1">Welcome to Pawkit!</h3>
+            <p className="text-xs text-muted-foreground mb-3 max-w-md mx-auto">
               Start building your collection by saving links, articles, and notes.
             </p>
-            <div className="flex flex-wrap justify-center gap-2 text-xs text-gray-500">
-              <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-800/50">
-                <span>📎</span> Paste URL
+            <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-surface border border-subtle">
+                <Link className="w-3 h-3" /> Paste URL
               </span>
-              <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-800/50">
-                <span>🔌</span> Extension
+              <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-surface border border-subtle">
+                <Puzzle className="w-3 h-3" /> Extension
               </span>
-              <span className="flex items-center gap-1 px-2 py-1 rounded-full bg-gray-800/50">
-                <span>📝</span> Note
+              <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-surface border border-subtle">
+                <StickyNote className="w-3 h-3" /> Note
               </span>
             </div>
           </div>

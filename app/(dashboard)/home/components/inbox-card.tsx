@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles, Inbox } from "lucide-react";
 import { CardModel } from "@/lib/types";
 
 interface InboxCardProps {
@@ -28,10 +28,13 @@ export function InboxCard({ inboxItems, inboxCount }: InboxCardProps) {
         }}
       >
         <h2 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2 shrink-0">
-          <span>📥</span> Inbox
+          <div className="w-6 h-6 rounded-lg bg-blue-500/20 flex items-center justify-center">
+            <Inbox className="w-3 h-3 text-blue-400" />
+          </div>
+          Inbox
         </h2>
         <div className="flex-1 flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-emerald-400 shrink-0" />
+          <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
           <div>
             <p className="text-sm text-muted-foreground">All caught up!</p>
             <p className="text-xs text-muted-foreground/60">You&apos;ve organized everything</p>
@@ -52,7 +55,10 @@ export function InboxCard({ inboxItems, inboxCount }: InboxCardProps) {
       }}
     >
       <h2 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2 shrink-0">
-        <span>📥</span> Inbox
+        <div className="w-6 h-6 rounded-lg bg-blue-500/20 flex items-center justify-center">
+          <Inbox className="w-3 h-3 text-blue-400" />
+        </div>
+        Inbox
       </h2>
 
       <div className="flex-1 min-h-0">
