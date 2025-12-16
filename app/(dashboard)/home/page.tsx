@@ -18,7 +18,7 @@ import { PinnedPawkits } from "./components/pinned-pawkits";
 import { RecentItems } from "./components/recent-items";
 import { WelcomeBanner } from "@/components/onboarding/welcome-banner";
 import { GlowButton } from "@/components/ui/glow-button";
-import { CalendarIcon, Clock, FileText, Flag, Sparkles, Link, Puzzle, StickyNote } from "lucide-react";
+import { CalendarIcon, Clock, FileText, Flag } from "lucide-react";
 import { CalendarEvent } from "@/lib/types/calendar";
 import { CardModel } from "@/lib/types";
 
@@ -46,7 +46,6 @@ export default function HomePage() {
 
   // Home data hook - all computed data
   const {
-    cards,
     groupedTodos,
     inboxItems,
     inboxCount,
@@ -249,47 +248,19 @@ export default function HomePage() {
         </div>
 
         {/* BOTTOM SECTION - ~60% of remaining space */}
-        {(pinnedPawkits.length > 0 || recentItems.length > 0) && (
-          <div className="grid grid-cols-3 gap-4 min-h-0 flex-[6]">
-            {/* Pinned Pawkits - 1 column */}
-            {pinnedPawkits.length > 0 && (
-              <div className="min-h-0 flex flex-col">
-                <PinnedPawkits pawkits={pinnedPawkits} />
-              </div>
-            )}
-
-            {/* Recent Items - 2 columns */}
-            {recentItems.length > 0 && (
-              <div className={`min-h-0 flex flex-col ${pinnedPawkits.length > 0 ? "col-span-2" : "col-span-3"}`}>
-                <RecentItems items={recentItems} />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Empty state for new users */}
-        {cards.length === 0 && (
-          <div className="rounded-xl border border-dashed border-subtle bg-surface-soft/50 p-6 text-center">
-            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent/10">
-              <Sparkles className="w-6 h-6 text-accent" />
+        <div className="grid grid-cols-3 gap-4 min-h-0 flex-[6]">
+          {/* Pinned Pawkits - 1 column */}
+          {pinnedPawkits.length > 0 && (
+            <div className="min-h-0 flex flex-col">
+              <PinnedPawkits pawkits={pinnedPawkits} />
             </div>
-            <h3 className="text-base font-semibold text-foreground mb-1">Welcome to Pawkit!</h3>
-            <p className="text-xs text-muted-foreground mb-3 max-w-md mx-auto">
-              Start building your collection by saving links, articles, and notes.
-            </p>
-            <div className="flex flex-wrap justify-center gap-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-surface border border-subtle">
-                <Link className="w-3 h-3" /> Paste URL
-              </span>
-              <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-surface border border-subtle">
-                <Puzzle className="w-3 h-3" /> Extension
-              </span>
-              <span className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-surface border border-subtle">
-                <StickyNote className="w-3 h-3" /> Note
-              </span>
-            </div>
+          )}
+
+          {/* Recent Items - spans remaining columns (has empty state for new users) */}
+          <div className={`min-h-0 flex flex-col ${pinnedPawkits.length > 0 ? "col-span-2" : "col-span-3"}`}>
+            <RecentItems items={recentItems} />
           </div>
-        )}
+        </div>
       </div>
 
       {/* Day Details Modal */}
