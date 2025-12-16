@@ -1070,9 +1070,10 @@ export const useDataStore = create<DataStore>((set, get) => ({
         // Strip children property - it's computed when building tree, not stored
         const { children, ...collectionWithoutChildren } = collection;
 
-        const updatedCollection = {
+        const updatedCollection: CollectionNode = {
           ...collectionWithoutChildren,
           ...updates,
+          children: [], // Required by type but not stored - will be rebuilt from parentId
           updatedAt: new Date().toISOString()
         };
 
