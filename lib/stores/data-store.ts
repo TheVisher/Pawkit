@@ -187,7 +187,7 @@ type DataStore = {
   addCard: (cardData: Partial<CardDTO>) => Promise<void>;
   updateCard: (id: string, updates: Partial<CardDTO>) => Promise<void>;
   deleteCard: (id: string, options?: { deleteLinkedEvents?: boolean; skipEventCheck?: boolean; deleteFromBackup?: boolean }) => Promise<void>;
-  addCollection: (collectionData: { name: string; parentId?: string | null }) => Promise<void>;
+  addCollection: (collectionData: { name: string; parentId?: string | null; metadata?: Record<string, unknown> }) => Promise<void>;
   updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; isPrivate?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; coverImage?: string | null; coverImagePosition?: number | null; metadata?: Record<string, unknown> }) => Promise<void>;
   deleteCollection: (id: string, deleteCards?: boolean, deleteSubPawkits?: boolean) => Promise<void>;
   refresh: () => Promise<void>;
@@ -978,7 +978,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
   /**
    * Add collection: Save to local first, then sync
    */
-  addCollection: async (collectionData: { name: string; parentId?: string | null }) => {
+  addCollection: async (collectionData: { name: string; parentId?: string | null; metadata?: Record<string, unknown> }) => {
     // Mark device as active
     markDeviceActive();
 
@@ -996,6 +996,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
       updatedAt: new Date().toISOString(),
       userId: '',
       children: [],
+      metadata: collectionData.metadata,
     };
 
     try {
