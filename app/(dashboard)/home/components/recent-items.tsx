@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Link2, Clipboard } from "lucide-react";
+import { FileText, Link2, Clipboard, Plus } from "lucide-react";
 import { CardModel } from "@/lib/types";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { CardImage } from "@/components/cards/card-image";
@@ -59,7 +59,7 @@ export function RecentItems({ items }: RecentItemsProps) {
         </Link>
       </div>
 
-      {/* Horizontal row of cards - fills remaining height and stretches to fill width */}
+      {/* Horizontal row of cards - fills remaining height with min/max constraints */}
       <div className="flex gap-3 overflow-hidden flex-1">
         {displayItems.map((item) => {
           const isNote = item.type === 'md-note' || item.type === 'text-note';
@@ -70,7 +70,7 @@ export function RecentItems({ items }: RecentItemsProps) {
             <button
               key={item.id}
               onClick={() => openCardDetails(item.id)}
-              className="group flex-1 min-w-0 text-left rounded-xl overflow-hidden transition-all hover:border-accent/30 flex flex-col"
+              className="group flex-1 min-w-[160px] max-w-[280px] text-left rounded-xl overflow-hidden transition-all hover:border-accent/30 flex flex-col"
               style={{
                 background: 'var(--bg-surface-2)',
                 boxShadow: 'var(--shadow-2)',
@@ -117,6 +117,27 @@ export function RecentItems({ items }: RecentItemsProps) {
             </button>
           );
         })}
+
+        {/* Ghost placeholder cards for remaining slots */}
+        {Array.from({ length: MAX_VISIBLE - displayItems.length }).map((_, index) => (
+          <div
+            key={`ghost-${index}`}
+            className="flex-1 min-w-[160px] max-w-[280px] rounded-xl overflow-hidden flex flex-col border border-dashed border-subtle/30 opacity-40"
+          >
+            {/* Thumbnail placeholder */}
+            <div className="flex-1 min-h-[120px] flex items-center justify-center bg-surface-soft/30">
+              <div className="w-10 h-10 rounded-lg bg-surface-soft/50 flex items-center justify-center">
+                <Link2 size={20} className="text-muted-foreground/50" />
+              </div>
+            </div>
+
+            {/* Title placeholder */}
+            <div className="p-3 shrink-0">
+              <div className="h-4 w-3/4 bg-surface-soft/50 rounded" />
+              <div className="h-3 w-1/2 bg-surface-soft/30 rounded mt-1.5" />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
