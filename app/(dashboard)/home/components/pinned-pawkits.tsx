@@ -2,11 +2,19 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Folder, FileText } from "lucide-react";
 import { PinnedPawkit } from "../hooks/use-home-data";
 
 interface PinnedPawkitsProps {
   pawkits: PinnedPawkit[];
 }
+
+// Preview positions - scattered/fanned like /pawkits page
+const previewPositions = [
+  { left: 8, top: 0, rotate: -6, zIndex: 3 },
+  { left: 36, top: 4, rotate: 4, zIndex: 2 },
+  { left: 64, top: 2, rotate: 2, zIndex: 1 },
+];
 
 export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
   const router = useRouter();
@@ -27,46 +35,80 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
         </Link>
       </div>
 
-      {/* Cards container - natural flow, NOT flex-1 */}
-      <div className="space-y-3 overflow-y-auto">
-        {pawkits.slice(0, 3).map((pawkit) => (
+      {/* 2-column grid of portrait cards */}
+      <div className="grid grid-cols-2 gap-3 overflow-y-auto auto-rows-max">
+        {pawkits.slice(0, 4).map((pawkit) => (
           <button
             key={pawkit.id}
             onClick={() => router.push(`/pawkits/${pawkit.slug}`)}
-            className="w-full text-left rounded-xl p-3 h-24 transition-all hover:border-accent/30 flex flex-col"
-            style={{
-              background: 'var(--bg-surface-2)',
-              boxShadow: 'var(--shadow-2)',
-              border: '1px solid var(--border-subtle)',
-            }}
+            className="group w-full text-left rounded-xl p-3 transition-all hover:border-accent/30 flex flex-col border-2 border-accent/20 bg-surface/80"
           >
-            {/* Header: Icon + Name + Count */}
-            <div className="flex items-center gap-2 shrink-0">
-              <div className="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center text-accent font-medium text-xs">
-                {pawkit.name[0]}
+            {/* Header row: icon, name, count */}
+            <div className="flex items-center justify-between mb-2 shrink-0">
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                <div className="w-6 h-6 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
+                  <Folder size={14} className="text-accent" />
+                </div>
+                <span className="font-medium text-xs text-foreground truncate">{pawkit.name}</span>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm text-foreground truncate">{pawkit.name}</p>
-                <p className="text-[10px] text-muted-foreground">{pawkit.count} item{pawkit.count === 1 ? "" : "s"}</p>
-              </div>
+              <span className="text-[10px] text-muted-foreground flex-shrink-0 ml-1">
+                {pawkit.count}
+              </span>
             </div>
 
-            {/* Thumbnail stack */}
-            <div className="flex gap-1.5 mt-2 flex-1 min-h-0 items-end">
-              {pawkit.previewItems.slice(0, 3).map((item) => (
-                <div key={item.id} className="w-10 h-10 rounded-md bg-surface-soft overflow-hidden shrink-0">
-                  {item.image ? (
-                    <img src={item.image} alt="" className="w-full h-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[8px] text-muted-foreground">
-                      {(item.title || "").slice(0, 3)}
-                    </div>
-                  )}
-                </div>
-              ))}
+            {/* Thumbnail previews - stacked/fanned */}
+            <div className="relative h-16 mt-1">
+              {pawkit.previewItems.slice(0, 3).map((item, i) => {
+                const pos = previewPositions[i];
+                return (
+                  <div
+                    key={item.id}
+                    className="absolute rounded-lg overflow-hidden border border-subtle/50 shadow-sm transition-transform group-hover:scale-105"
+                    style={{
+                      width: '52px',
+                      height: '52px',
+                      left: `${pos.left}px`,
+                      top: `${pos.top}px`,
+                      zIndex: pos.zIndex,
+                      transform: `rotate(${pos.rotate}deg)`,
+                    }}
+                  >
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-surface-soft flex items-center justify-center">
+                        <FileText size={14} className="text-muted-foreground" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* +N more indicator */}
               {pawkit.count > 3 && (
-                <div className="w-10 h-10 rounded-md bg-surface-soft/50 flex items-center justify-center text-[10px] text-muted-foreground shrink-0">
+                <div
+                  className="absolute rounded-lg bg-surface-soft/80 border border-subtle/50 flex items-center justify-center text-[10px] text-muted-foreground"
+                  style={{
+                    width: '52px',
+                    height: '52px',
+                    left: `${3 * 28}px`,
+                    top: `${3 * 2}px`,
+                    zIndex: 0,
+                  }}
+                >
                   +{pawkit.count - 3}
+                </div>
+              )}
+
+              {/* Empty state */}
+              {pawkit.previewItems.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-lg border border-dashed border-subtle bg-surface-soft/60 text-[10px] text-muted-foreground">
+                  Empty
                 </div>
               )}
             </div>
