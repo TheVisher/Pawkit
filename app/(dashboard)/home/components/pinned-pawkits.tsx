@@ -90,7 +90,8 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
       </div>
 
       {/* Horizontal row of pawkit cards - stretch to fill with min/max constraints */}
-      <div className="flex gap-3 overflow-hidden">
+      {/* p-1 -m-1 gives room for shadows without clipping */}
+      <div className="flex gap-3 p-1 -m-1">
         {pawkits.slice(0, MAX_VISIBLE).map((pawkit) => (
           <button
             key={pawkit.id}
