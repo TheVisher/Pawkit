@@ -28,7 +28,7 @@ import { useEventStore } from "@/lib/hooks/use-event-store";
 import { useFileStore } from "@/lib/stores/file-store";
 import { createPortal } from "react-dom";
 import { useRef } from "react";
-import { addCollectionWithHierarchy, removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
+import { removeCollectionWithHierarchy } from "@/lib/utils/collection-hierarchy";
 import { MuuriGridComponent, MuuriItem, type MuuriGridRef } from "@/components/library/muuri-grid";
 import { useDragStore } from "@/lib/stores/drag-store";
 
@@ -630,12 +630,16 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
   const handleAddToPawkit = useCallback((cardId: string, slug: string) => {
     const card = cards.find(c => c.id === cardId);
     if (!card) return;
-    const collections = addCollectionWithHierarchy(card.collections || [], slug, allCollections);
+    // Only add the specific pawkit clicked, not parent hierarchy (matches drag-and-drop behavior)
+    const currentCollections = card.collections || [];
+    const collections = currentCollections.includes(slug)
+      ? currentCollections
+      : [...currentCollections, slug];
     updateCardInStore(cardId, { collections });
     setCards((prev) =>
       prev.map((c) => (c.id === cardId ? { ...c, collections } : c))
     );
-  }, [cards, allCollections, updateCardInStore, setCards]);
+  }, [cards, updateCardInStore, setCards]);
 
   const handleDeleteCard = useCallback(async (cardId: string) => {
     await deleteCardFromStore(cardId);
