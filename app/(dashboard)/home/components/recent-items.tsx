@@ -60,7 +60,8 @@ export function RecentItems({ items }: RecentItemsProps) {
       </div>
 
       {/* Horizontal row of cards - fills remaining height with min/max constraints */}
-      <div className="flex gap-3 overflow-hidden flex-1">
+      {/* p-1 -m-1 gives room for shadows without clipping */}
+      <div className="flex gap-3 flex-1 p-1 -m-1">
         {displayItems.map((item) => {
           const isNote = item.type === 'md-note' || item.type === 'text-note';
           const isFileCard = item.type === 'file';
