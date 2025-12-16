@@ -11,7 +11,8 @@ import { Folder, ChevronRight, ChevronDown, Image as ImageIcon, KanbanSquare } f
 import { GlowButton } from "@/components/ui/glow-button";
 import { CollectionsGrid } from "@/components/pawkits/grid";
 import { BoardView } from "@/components/board/board-view";
-import { isBoard, getBoardConfig } from "@/lib/types/board";
+import { QuickAddCardModal } from "@/components/board/quick-add-card-modal";
+import { isBoard, getBoardConfig, BoardColumn } from "@/lib/types/board";
 import type { CollectionNode } from "@/lib/types";
 
 function CollectionPageContent() {
@@ -38,6 +39,10 @@ function CollectionPageContent() {
   const inputRef = useRef<HTMLInputElement>(null);
   const dragPositionRef = useRef(50); // Store live drag position
   const [subPawkitsExpanded, setSubPawkitsExpanded] = useState(true); // Sub-pawkits section state
+
+  // Board quick add card state
+  const [showQuickAddCard, setShowQuickAddCard] = useState(false);
+  const [quickAddColumn, setQuickAddColumn] = useState<BoardColumn | null>(null);
 
   const { setPawkitActions } = usePawkitActions();
 
@@ -554,16 +559,49 @@ function CollectionPageContent() {
         {/* Content Section - Board View or Regular Cards */}
         {isBoard(currentCollection) ? (
           <>
-            {/* Board View */}
-            <div className="mb-3">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-4">
-                <span>Board ({items.length} cards)</span>
+            {/* Board View Header with Quick Stats */}
+            <div className="mb-4">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="font-medium text-muted-foreground">
+                  {items.length} card{items.length !== 1 ? 's' : ''}
+                </span>
+                {/* Quick stats for each column */}
+                <div className="flex items-center gap-3">
+                  {getBoardConfig(currentCollection).columns.map((col) => {
+                    const count = items.filter(card =>
+                      card.tags?.includes(col.tag)
+                    ).length;
+                    return (
+                      <span key={col.tag} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span className={`w-2 h-2 rounded-full ${
+                          col.tag.includes('done') ? 'bg-green-500' :
+                          col.tag.includes('doing') || col.tag.includes('progress') ? 'bg-yellow-500' :
+                          col.tag.includes('todo') ? 'bg-blue-500' :
+                          'bg-gray-500'
+                        }`} />
+                        {col.label}: {count}
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
             </div>
             <BoardView
               cards={items}
               boardConfig={getBoardConfig(currentCollection)}
               collectionSlug={slug}
+              onCardClick={(card) => {
+                // Open card in the right panel
+                router.push(`/pawkits/${slug}?card=${card.id}`);
+              }}
+              onAddCard={(columnTag) => {
+                // Find the column by tag
+                const boardConfig = getBoardConfig(currentCollection);
+                const column = boardConfig.columns.find(c => c.tag === columnTag)
+                  || { tag: columnTag, label: columnTag === "uncategorized" ? "No Status" : columnTag };
+                setQuickAddColumn(column);
+                setShowQuickAddCard(true);
+              }}
             />
           </>
         ) : (
@@ -863,6 +901,20 @@ function CollectionPageContent() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Quick Add Card Modal for Boards */}
+      {showQuickAddCard && quickAddColumn && (
+        <QuickAddCardModal
+          open={showQuickAddCard}
+          onClose={() => {
+            setShowQuickAddCard(false);
+            setQuickAddColumn(null);
+          }}
+          collectionSlug={slug}
+          statusTag={quickAddColumn.tag}
+          columnLabel={quickAddColumn.label}
+        />
       )}
 
     </>
