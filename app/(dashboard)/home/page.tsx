@@ -12,8 +12,6 @@ import { HomeHeader } from "./components/home-header";
 import { TodayCard } from "./components/today-card";
 import { WeekCalendar } from "./components/week-calendar";
 import { InboxStatsCard } from "./components/inbox-stats-card";
-import { RediscoverCard } from "./components/rediscover-card";
-import { OnThisDayCard } from "./components/on-this-day-card";
 import { PinnedPawkits } from "./components/pinned-pawkits";
 import { RecentItems } from "./components/recent-items";
 import { WelcomeBanner } from "@/components/onboarding/welcome-banner";
@@ -46,7 +44,6 @@ export default function HomePage() {
 
   // Home data hook - all computed data
   const {
-    cards,
     groupedTodos,
     inboxItems,
     inboxCount,
@@ -203,10 +200,10 @@ export default function HomePage() {
           <HomeHeader userName={displayName} />
         </div>
 
-        {/* TOP SECTION - ~40% of remaining space */}
-        <div className="grid grid-cols-3 gap-4 min-h-0 flex-[4]">
-          {/* Today - spans 2 columns, row 1 */}
-          <div className="col-span-2 min-h-0">
+        {/* TOP SECTION - Today + Calendar/Stats */}
+        <div className="grid grid-cols-2 gap-4 min-h-0 flex-[4]">
+          {/* Left column: Today (spans both rows) */}
+          <div className="row-span-2 min-h-0">
             <TodayCard
               events={today.events}
               scheduledCards={today.scheduledCards}
@@ -217,15 +214,15 @@ export default function HomePage() {
             />
           </div>
 
-          {/* This Week Calendar - spans 2 ROWS */}
-          <div className="row-span-2 min-h-0">
+          {/* Right column top: This Week Calendar */}
+          <div className="min-h-0">
             <WeekCalendar
               weekDays={weekDays}
               onDayClick={setSelectedDay}
             />
           </div>
 
-          {/* Inbox + This Week Stats - row 2, col 1 */}
+          {/* Right column bottom: Inbox + This Week Stats */}
           <div className="min-h-0">
             <InboxStatsCard
               inboxItems={inboxItems}
@@ -234,25 +231,19 @@ export default function HomePage() {
               processedThisWeek={thisWeekStats.processedThisWeek}
             />
           </div>
-
-          {/* Rediscover + On This Day - row 2, col 2 (split into two cards) */}
-          <div className="min-h-0 grid grid-cols-2 gap-4">
-            <RediscoverCard allCards={cards} />
-            <OnThisDayCard allCards={cards} />
-          </div>
         </div>
 
-        {/* BOTTOM SECTION - ~60% of remaining space */}
-        <div className="grid grid-cols-3 gap-4 min-h-0 flex-[6]">
-          {/* Pinned Pawkits - 1 column */}
+        {/* BOTTOM SECTION - Horizontal rows, not stretched full width */}
+        <div className="flex flex-col gap-4 min-h-0 flex-[5]">
+          {/* Pinned Pawkits - horizontal row */}
           {pinnedPawkits.length > 0 && (
-            <div className="min-h-0 flex flex-col">
+            <div className="min-h-0 shrink-0">
               <PinnedPawkits pawkits={pinnedPawkits} />
             </div>
           )}
 
-          {/* Recent Items - spans remaining columns (has empty state for new users) */}
-          <div className={`min-h-0 flex flex-col ${pinnedPawkits.length > 0 ? "col-span-2" : "col-span-3"}`}>
+          {/* Recent Items - horizontal row (has empty state for new users) */}
+          <div className="min-h-0 flex-1">
             <RecentItems items={recentItems} />
           </div>
         </div>
