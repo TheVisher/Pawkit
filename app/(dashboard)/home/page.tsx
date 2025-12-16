@@ -193,18 +193,20 @@ export default function HomePage() {
 
   return (
     <>
-      {/* Main container - natural height, allows scrolling */}
-      <div className="flex flex-col gap-4 pb-6">
+      {/* Main container - MUST fill viewport exactly, no scrolling */}
+      <div className="h-full flex flex-col gap-4 overflow-hidden">
         {/* Welcome Banner for new users */}
-        <WelcomeBanner />
+        <WelcomeBanner className="shrink-0" />
 
-        {/* Header */}
-        <HomeHeader userName={displayName} />
+        {/* Header - fixed height */}
+        <div className="shrink-0">
+          <HomeHeader userName={displayName} />
+        </div>
 
-        {/* TOP SECTION - CSS Grid for interlocking layout */}
-        <div className="grid grid-cols-3 gap-4">
+        {/* TOP SECTION - ~40% of remaining space */}
+        <div className="grid grid-cols-3 gap-4 min-h-0 flex-[4]">
           {/* Today - spans 2 columns, row 1 */}
-          <div className="col-span-2">
+          <div className="col-span-2 min-h-0">
             <TodayCard
               events={today.events}
               scheduledCards={today.scheduledCards}
@@ -216,7 +218,7 @@ export default function HomePage() {
           </div>
 
           {/* This Week Calendar - spans 2 ROWS */}
-          <div className="row-span-2">
+          <div className="row-span-2 min-h-0">
             <WeekCalendar
               weekDays={weekDays}
               onDayClick={setSelectedDay}
@@ -224,31 +226,35 @@ export default function HomePage() {
           </div>
 
           {/* Inbox - row 2, col 1 */}
-          <InboxCard
-            inboxItems={inboxItems}
-            inboxCount={inboxCount}
-          />
+          <div className="min-h-0">
+            <InboxCard
+              inboxItems={inboxItems}
+              inboxCount={inboxCount}
+            />
+          </div>
 
           {/* Rediscover - row 2, col 2 */}
-          <RediscoverCard
-            rediscoverCount={rediscoverCount}
-            rediscoverItems={rediscoverItems}
-          />
+          <div className="min-h-0">
+            <RediscoverCard
+              rediscoverCount={rediscoverCount}
+              rediscoverItems={rediscoverItems}
+            />
+          </div>
         </div>
 
-        {/* BOTTOM SECTION - Pinned + Recent */}
+        {/* BOTTOM SECTION - ~60% of remaining space */}
         {(pinnedPawkits.length > 0 || recentItems.length > 0) && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-4 min-h-0 flex-[6]">
             {/* Pinned Pawkits - 1 column */}
             {pinnedPawkits.length > 0 && (
-              <div>
+              <div className="min-h-0 flex flex-col">
                 <PinnedPawkits pawkits={pinnedPawkits} />
               </div>
             )}
 
             {/* Recent Items - 2 columns */}
             {recentItems.length > 0 && (
-              <div className={pinnedPawkits.length > 0 ? "col-span-2" : "col-span-3"}>
+              <div className={`min-h-0 flex flex-col ${pinnedPawkits.length > 0 ? "col-span-2" : "col-span-3"}`}>
                 <RecentItems items={recentItems} />
               </div>
             )}
