@@ -38,13 +38,13 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
         </Link>
       </div>
 
-      {/* 2-column grid of portrait cards - fills available height */}
-      <div className="flex-1 grid grid-cols-2 gap-3 overflow-y-auto auto-rows-max content-start">
+      {/* 2-column grid of portrait cards - rows stretch to fill height */}
+      <div className="flex-1 grid grid-cols-2 grid-rows-4 gap-3 overflow-hidden">
         {pawkits.slice(0, 8).map((pawkit) => (
           <button
             key={pawkit.id}
             onClick={() => router.push(`/pawkits/${pawkit.slug}`)}
-            className="group w-full text-left rounded-xl p-3 transition-all hover:border-accent/30 flex flex-col border-2 border-accent/20 bg-surface/80"
+            className="group w-full h-full text-left rounded-xl p-3 transition-all hover:border-accent/30 flex flex-col border-2 border-accent/20 bg-surface/80"
           >
             {/* Header row: icon, name, count */}
             <div className="flex items-center justify-between mb-2 shrink-0">
@@ -59,8 +59,8 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
               </span>
             </div>
 
-            {/* Thumbnail previews - stacked/fanned */}
-            <div className="relative h-20 mt-1">
+            {/* Thumbnail previews - stacked/fanned, grows to fill card */}
+            <div className="relative flex-1 min-h-[60px] mt-1">
               {pawkit.previewItems.slice(0, 6).map((item, i) => {
                 const pos = previewPositions[i];
                 return (
