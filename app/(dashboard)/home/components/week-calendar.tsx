@@ -15,19 +15,17 @@ export function WeekCalendar({ weekDays, onDayClick }: WeekCalendarProps) {
 
   return (
     <div
-      className="rounded-xl p-5 h-full flex flex-col"
+      className="h-full rounded-xl p-4 flex flex-col min-h-0 overflow-hidden"
       style={{
         background: 'var(--bg-surface-2)',
         boxShadow: 'var(--shadow-2)',
         border: '1px solid var(--border-subtle)',
-        borderTopColor: 'var(--border-highlight-top)',
-        borderLeftColor: 'var(--border-highlight-left)',
       }}
     >
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center">
-            <Calendar className="w-3.5 h-3.5 text-blue-400" />
+          <div className="w-6 h-6 rounded-lg bg-blue-500/20 flex items-center justify-center">
+            <Calendar className="w-3 h-3 text-blue-400" />
           </div>
           <h2 className="font-semibold text-sm text-foreground">This Week</h2>
         </div>
@@ -39,7 +37,7 @@ export function WeekCalendar({ weekDays, onDayClick }: WeekCalendarProps) {
         </Link>
       </div>
 
-      <div className="flex-1 flex flex-col justify-between">
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col justify-between">
         {weekDays.map((day) => (
           <button
             key={day.dateStr}

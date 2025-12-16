@@ -38,37 +38,35 @@ export function TodayCard({
 
   return (
     <div
-      className="rounded-xl p-5"
+      className="h-full rounded-xl p-4 flex flex-col min-h-0"
       style={{
         background: 'var(--bg-surface-2)',
         boxShadow: 'var(--shadow-2)',
         border: '1px solid var(--border-subtle)',
-        borderTopColor: 'var(--border-highlight-top)',
-        borderLeftColor: 'var(--border-highlight-left)',
       }}
     >
-      <div className="flex items-center gap-2 mb-4">
-        <div className="w-7 h-7 rounded-lg bg-accent/20 flex items-center justify-center">
-          <Clock className="w-3.5 h-3.5 text-accent" />
+      <div className="flex items-center gap-2 mb-3 shrink-0">
+        <div className="w-6 h-6 rounded-lg bg-accent/20 flex items-center justify-center">
+          <Clock className="w-3 h-3 text-accent" />
         </div>
         <h2 className="font-semibold text-sm text-foreground">Today</h2>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3 flex-1 min-h-0">
         {/* Events Panel */}
-        <div className="bg-surface-soft rounded-lg p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+        <div className="bg-surface-soft rounded-lg p-3 flex flex-col min-h-0">
+          <div className="flex items-center gap-1.5 mb-2 shrink-0">
+            <Clock className="w-3 h-3 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Events</span>
           </div>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5">
             {events.length === 0 ? (
-              <p className="text-xs text-muted-foreground/60">No events today</p>
+              <p className="text-xs text-muted-foreground/60">No events</p>
             ) : (
-              events.slice(0, 4).map((event) => (
+              events.slice(0, 3).map((event) => (
                 <div key={event.id} className="flex items-center gap-2">
                   <div
-                    className="w-0.5 h-5 rounded-full flex-shrink-0"
+                    className="w-0.5 h-4 rounded-full flex-shrink-0"
                     style={{ backgroundColor: event.color || 'var(--ds-accent)' }}
                   />
                   <div className="min-w-0">
@@ -88,16 +86,16 @@ export function TodayCard({
         </div>
 
         {/* Scheduled Panel */}
-        <div className="bg-surface-soft rounded-lg p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Bookmark className="w-3.5 h-3.5 text-muted-foreground" />
+        <div className="bg-surface-soft rounded-lg p-3 flex flex-col min-h-0">
+          <div className="flex items-center gap-1.5 mb-2 shrink-0">
+            <Bookmark className="w-3 h-3 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Scheduled</span>
           </div>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5">
             {scheduledCards.length === 0 ? (
-              <p className="text-xs text-muted-foreground/60">Nothing scheduled</p>
+              <p className="text-xs text-muted-foreground/60">Nothing</p>
             ) : (
-              scheduledCards.slice(0, 4).map((card) => (
+              scheduledCards.slice(0, 3).map((card) => (
                 <button
                   key={card.id}
                   onClick={() => openCardDetails(card.id)}
@@ -107,7 +105,7 @@ export function TodayCard({
                     <img
                       src={card.image}
                       alt=""
-                      className="w-6 h-6 rounded object-cover flex-shrink-0"
+                      className="w-5 h-5 rounded object-cover flex-shrink-0"
                     />
                   )}
                   <p className="text-xs font-medium text-foreground truncate flex-1">
@@ -120,24 +118,24 @@ export function TodayCard({
         </div>
 
         {/* Todos Panel */}
-        <div className="bg-surface-soft rounded-lg p-3">
-          <div className="flex items-center gap-1.5 mb-2">
-            <CheckSquare className="w-3.5 h-3.5 text-muted-foreground" />
+        <div className="bg-surface-soft rounded-lg p-3 flex flex-col min-h-0">
+          <div className="flex items-center gap-1.5 mb-2 shrink-0">
+            <CheckSquare className="w-3 h-3 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Todos</span>
           </div>
-          <div className="space-y-2 max-h-32 overflow-y-auto">
+          <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5">
             {todayTodos.length === 0 ? (
-              <p className="text-xs text-muted-foreground/60">All caught up!</p>
+              <p className="text-xs text-muted-foreground/60">All done!</p>
             ) : (
-              todayTodos.slice(0, 4).map((todo) => (
+              todayTodos.slice(0, 3).map((todo) => (
                 <label key={todo.id} className="flex items-start gap-2 cursor-pointer group">
                   <input
                     type="checkbox"
                     checked={todo.completed}
                     onChange={() => onToggleTodo(todo.id)}
-                    className="mt-0.5 rounded border-subtle text-accent focus:ring-accent/50"
+                    className="mt-0.5 rounded border-subtle text-accent focus:ring-accent/50 w-3 h-3"
                   />
-                  <span className={`text-xs ${todo.completed ? 'line-through text-muted-foreground/60' : 'text-foreground'}`}>
+                  <span className={`text-xs leading-tight ${todo.completed ? 'line-through text-muted-foreground/60' : 'text-foreground'}`}>
                     {todo.text}
                   </span>
                 </label>
@@ -150,7 +148,7 @@ export function TodayCard({
       {/* Daily Note Button */}
       <button
         onClick={onOpenDailyNote}
-        className="mt-4 w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent text-xs font-medium transition-colors"
+        className="mt-3 shrink-0 w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent text-xs font-medium transition-colors"
       >
         <FileText className="w-3.5 h-3.5" />
         {dailyNote ? "Open today's note" : "Create today's note"}

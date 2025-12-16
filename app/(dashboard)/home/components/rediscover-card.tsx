@@ -23,18 +23,20 @@ export function RediscoverCard({ rediscoverCount, rediscoverItems }: RediscoverC
   if (rediscoverCount === 0) {
     return (
       <div
-        className="rounded-xl p-5"
+        className="h-full rounded-xl p-4 flex flex-col min-h-0"
         style={{
           background: 'var(--bg-surface-2)',
           boxShadow: 'var(--shadow-2)',
           border: '1px solid var(--border-subtle)',
         }}
       >
-        <h2 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2">
+        <h2 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2 shrink-0">
           <span>🔄</span> Rediscover
         </h2>
-        <p className="text-sm text-muted-foreground">Nothing yet</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">Items 2+ months old appear here</p>
+        <div className="flex-1">
+          <p className="text-sm text-muted-foreground">Nothing yet</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">Items 2+ months old appear here</p>
+        </div>
       </div>
     );
   }
@@ -42,23 +44,25 @@ export function RediscoverCard({ rediscoverCount, rediscoverItems }: RediscoverC
   // Has items
   return (
     <div
-      className="rounded-xl p-5"
+      className="h-full rounded-xl p-4 flex flex-col min-h-0"
       style={{
         background: 'var(--bg-surface-2)',
         boxShadow: 'var(--shadow-2)',
         border: '1px solid var(--border-subtle)',
       }}
     >
-      <h2 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2">
+      <h2 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2 shrink-0">
         <span>🔄</span> Rediscover
       </h2>
 
-      <p className="text-4xl font-bold text-purple-400">{rediscoverCount}</p>
-      <p className="text-sm text-muted-foreground mb-4">from 2+ months ago</p>
+      <div className="flex-1 min-h-0">
+        <p className="text-3xl font-bold text-purple-400">{rediscoverCount}</p>
+        <p className="text-sm text-muted-foreground">from 2+ months ago</p>
+      </div>
 
       <button
         onClick={handleStart}
-        className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-lg bg-purple-500/20 text-purple-400 text-sm font-medium hover:bg-purple-500/30 transition-colors"
+        className="shrink-0 w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-purple-500/20 text-purple-400 text-sm font-medium hover:bg-purple-500/30 transition-colors"
       >
         Explore <ArrowRight className="w-4 h-4" />
       </button>
