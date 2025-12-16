@@ -17,11 +17,11 @@ export function RecentItems({ items }: RecentItemsProps) {
     return null;
   }
 
-  // Show 6 items (2 rows x 3 columns)
-  const displayItems = items.slice(0, 6);
+  // Show up to 9 items (3 rows x 3 columns) to match Pinned Pawkits height
+  const displayItems = items.slice(0, 9);
 
   return (
-    <div className="flex flex-col min-h-0 overflow-hidden">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden">
       <div className="flex justify-between items-center mb-3 shrink-0">
         <h2 className="font-medium text-sm text-foreground">Recent Items</h2>
         <Link
@@ -32,8 +32,8 @@ export function RecentItems({ items }: RecentItemsProps) {
         </Link>
       </div>
 
-      {/* Grid with fixed card sizes - auto-rows-max prevents growing */}
-      <div className="grid grid-cols-3 gap-3 auto-rows-max overflow-y-auto">
+      {/* Grid with fixed card sizes - fills available height */}
+      <div className="flex-1 grid grid-cols-3 gap-3 auto-rows-max content-start overflow-y-auto">
         {displayItems.map((item) => {
           const isNote = item.type === 'md-note' || item.type === 'text-note';
           const isFileCard = item.type === 'file';

@@ -27,7 +27,7 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
   }
 
   return (
-    <div className="flex flex-col min-h-0 overflow-hidden">
+    <div className="h-full flex flex-col min-h-0 overflow-hidden">
       <div className="flex justify-between items-center mb-3 shrink-0">
         <h2 className="font-medium text-sm text-foreground">Pinned Pawkits</h2>
         <Link
@@ -38,9 +38,9 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
         </Link>
       </div>
 
-      {/* 2-column grid of portrait cards */}
-      <div className="grid grid-cols-2 gap-3 overflow-y-auto auto-rows-max">
-        {pawkits.slice(0, 4).map((pawkit) => (
+      {/* 2-column grid of portrait cards - fills available height */}
+      <div className="flex-1 grid grid-cols-2 gap-3 overflow-y-auto auto-rows-max content-start">
+        {pawkits.slice(0, 8).map((pawkit) => (
           <button
             key={pawkit.id}
             onClick={() => router.push(`/pawkits/${pawkit.slug}`)}
