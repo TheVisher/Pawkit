@@ -200,6 +200,7 @@ export type CollectionNode = {
   isSystem?: boolean;
   hidePreview?: boolean; // Hide card preview tiles on pawkit card
   useCoverAsBackground?: boolean; // Use cover image as pawkit card background
+  metadata?: Record<string, unknown>; // For board config, etc. (use PawkitMetadata from lib/types/board.ts)
   userId: string;
   createdAt: string;
   updatedAt: string;
