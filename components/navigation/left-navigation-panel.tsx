@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Folder, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, HelpCircle, Search, type LucideIcon } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Folder, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, HelpCircle, Search, KanbanSquare, type LucideIcon } from "lucide-react";
 import { shallow } from "zustand/shallow";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -25,6 +25,8 @@ import { type CollectionNode, type CardType, type CardModel, type NoteFolderNode
 import { useNoteFolderStore } from "@/lib/stores/note-folder-store";
 import { CreateNoteModal } from "@/components/modals/create-note-modal";
 import { ConfirmDeleteModal } from "@/components/modals/confirm-delete-modal";
+import { CreateBoardModal } from "@/components/modals/create-board-modal";
+import { isBoard, BoardColumn, PawkitMetadata } from "@/lib/types/board";
 import {
   DndContext,
   closestCenter,
@@ -124,6 +126,10 @@ export function LeftNavigationPanel({
   // Delete confirmation modal state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<CollectionNode | null>(null);
+
+  // Board creation modal state
+  const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
+  const [createBoardParentId, setCreateBoardParentId] = useState<string | null>(null);
 
   // Get pinned note IDs and active card first (needed for selective subscription)
   const pinnedNoteIds = useSettingsStore((state) => state.pinnedNoteIds);
@@ -555,6 +561,52 @@ export function LeftNavigationPanel({
     }
   };
 
+  // Create new board
+  const handleCreateBoard = async (name: string, columns: BoardColumn[]) => {
+    // Generate tags from column labels
+    const columnTags = columns.map((col) => ({
+      ...col,
+      tag: `status:${col.label.toLowerCase().replace(/\s+/g, '-')}`,
+    }));
+
+    const metadata: PawkitMetadata = {
+      type: "board",
+      boardConfig: {
+        columns: columnTags,
+      },
+    };
+
+    try {
+      // Create the collection first
+      await addCollection({ name, parentId: createBoardParentId || undefined });
+
+      // Find the newly created collection by slug
+      const findBySlugInTree = (slug: string, list: CollectionNode[]): CollectionNode | undefined => {
+        for (const item of list) {
+          if (item.slug === slug) return item;
+          const child = findBySlugInTree(slug, item.children ?? []);
+          if (child) return child;
+        }
+        return undefined;
+      };
+
+      const slug = name.toLowerCase().replace(/\s+/g, '-');
+
+      // Use store collections (freshly updated) to find the new collection
+      const freshCollections = useDataStore.getState().collections;
+      const newCollection = findBySlugInTree(slug, freshCollections);
+
+      if (newCollection) {
+        await updateCollection(newCollection.id, { metadata: metadata as Record<string, unknown> });
+      }
+
+      useToastStore.getState().success("Board created");
+    } catch (error) {
+      useToastStore.getState().error("Failed to create board");
+      throw error;
+    }
+  };
+
   const handleRenameCollection = async () => {
     const trimmedName = renameValue.trim();
     if (!trimmedName || !renameCollectionId || renamingCollection) return;
@@ -806,6 +858,14 @@ export function LeftNavigationPanel({
           setShowCreatePawkitModal(true);
         },
       },
+      {
+        label: "New Board",
+        icon: KanbanSquare,
+        onClick: () => {
+          setCreateBoardParentId(collection.id);
+          setShowCreateBoardModal(true);
+        },
+      },
       { type: "separator" as const },
       {
         label: "Rename",
@@ -890,7 +950,11 @@ export function LeftNavigationPanel({
                 boxShadow: '0 0 12px var(--ds-accent-muted)',
               } : undefined}
             >
-              <FolderOpen size={iconSize} className="flex-shrink-0" />
+              {isBoard(collection) ? (
+                <KanbanSquare size={iconSize} className="flex-shrink-0 text-purple-400" />
+              ) : (
+                <FolderOpen size={iconSize} className="flex-shrink-0" />
+              )}
               <span className="flex-1 text-left truncate">{collection.name}</span>
 
               {/* Action buttons - only show when card modal is open */}
@@ -1846,6 +1910,17 @@ export function LeftNavigationPanel({
         title="Delete Pawkit?"
         message="Are you sure you want to delete this pawkit?"
         itemName={collectionToDelete?.name}
+      />
+
+      {/* Create Board Modal */}
+      <CreateBoardModal
+        open={showCreateBoardModal}
+        onClose={() => {
+          setShowCreateBoardModal(false);
+          setCreateBoardParentId(null);
+        }}
+        onSubmit={handleCreateBoard}
+        parentId={createBoardParentId || undefined}
       />
 
       {/* Create Folder Modal */}
