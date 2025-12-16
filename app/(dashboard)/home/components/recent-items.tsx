@@ -10,7 +10,7 @@ interface RecentItemsProps {
   items: CardModel[];
 }
 
-const MAX_VISIBLE = 6;
+const MAX_VISIBLE = 5;
 
 export function RecentItems({ items }: RecentItemsProps) {
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
@@ -48,7 +48,7 @@ export function RecentItems({ items }: RecentItemsProps) {
   }
 
   return (
-    <div className="flex flex-col min-h-0">
+    <div className="flex flex-col min-h-0 h-full">
       <div className="flex justify-between items-center mb-3 shrink-0">
         <h2 className="font-medium text-sm text-foreground">Recent Items</h2>
         <Link
@@ -59,8 +59,8 @@ export function RecentItems({ items }: RecentItemsProps) {
         </Link>
       </div>
 
-      {/* Horizontal row of cards */}
-      <div className="flex gap-3 overflow-visible">
+      {/* Horizontal row of cards - fills remaining height */}
+      <div className="flex gap-3 overflow-visible flex-1">
         {displayItems.map((item) => {
           const isNote = item.type === 'md-note' || item.type === 'text-note';
           const isFileCard = item.type === 'file';
@@ -70,18 +70,18 @@ export function RecentItems({ items }: RecentItemsProps) {
             <button
               key={item.id}
               onClick={() => openCardDetails(item.id)}
-              className="group flex-shrink-0 w-[140px] text-left rounded-xl overflow-hidden transition-all hover:border-accent/30"
+              className="group flex-shrink-0 w-[200px] text-left rounded-xl overflow-hidden transition-all hover:border-accent/30 flex flex-col"
               style={{
                 background: 'var(--bg-surface-2)',
                 boxShadow: 'var(--shadow-2)',
                 border: '1px solid var(--border-subtle)',
               }}
             >
-              {/* Thumbnail */}
-              <div className="aspect-video overflow-hidden relative bg-surface">
+              {/* Thumbnail - fills available space */}
+              <div className="flex-1 min-h-[120px] overflow-hidden relative bg-surface">
                 {isNote ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-surface-soft">
-                    <FileText className="w-5 h-5 text-accent/50" />
+                    <FileText className="w-8 h-8 text-accent/50" />
                   </div>
                 ) : isFileCard ? (
                   <CardImage
@@ -97,19 +97,19 @@ export function RecentItems({ items }: RecentItemsProps) {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center bg-surface-soft text-muted-foreground/50 text-[10px]">
+                  <div className="absolute inset-0 flex items-center justify-center bg-surface-soft text-muted-foreground/50 text-xs">
                     No preview
                   </div>
                 )}
               </div>
 
               {/* Title */}
-              <div className="p-2">
-                <p className="text-xs font-medium text-foreground line-clamp-1 group-hover:text-accent transition-colors">
+              <div className="p-3 shrink-0">
+                <p className="text-sm font-medium text-foreground line-clamp-1 group-hover:text-accent transition-colors">
                   {item.title || domain || item.url}
                 </p>
                 {domain && !isNote && (
-                  <p className="text-[10px] text-muted-foreground truncate">
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
                     {domain}
                   </p>
                 )}
