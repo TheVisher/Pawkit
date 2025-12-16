@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Folder, FileText, Plus, ChevronDown } from "lucide-react";
+import { Folder, FileText, Plus } from "lucide-react";
 import { PinnedPawkit } from "../hooks/use-home-data";
 import { useDataStore } from "@/lib/stores/data-store";
 import { CollectionNode } from "@/lib/types";
@@ -12,17 +12,15 @@ interface PinnedPawkitsProps {
   pawkits: PinnedPawkit[];
 }
 
-// Preview positions - use percentages to spread across card width
+// Preview positions for stacked thumbnails
 const previewPositions = [
-  { left: '0%', top: 0, rotate: -6, zIndex: 6 },
-  { left: '12%', top: 6, rotate: 3, zIndex: 5 },
-  { left: '24%', top: 2, rotate: -3, zIndex: 4 },
-  { left: '36%', top: 8, rotate: 5, zIndex: 3 },
-  { left: '48%', top: 4, rotate: -2, zIndex: 2 },
-  { left: '60%', top: 10, rotate: 4, zIndex: 1 },
+  { left: 0, top: 0, rotate: -4, zIndex: 4 },
+  { left: 16, top: 4, rotate: 2, zIndex: 3 },
+  { left: 32, top: 2, rotate: -2, zIndex: 2 },
+  { left: 48, top: 6, rotate: 3, zIndex: 1 },
 ];
 
-const MAX_PINNED = 8;
+const MAX_VISIBLE = 6;
 
 export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
   const router = useRouter();
@@ -77,54 +75,50 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
     return null;
   }
 
-  const hasRoom = pawkits.length < MAX_PINNED;
+  const hasRoom = pawkits.length < MAX_VISIBLE;
   const hasUnpinnedOptions = unpinnedPawkits.length > 0;
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-visible">
+    <div className="flex flex-col min-h-0">
       <div className="flex justify-between items-center mb-3 shrink-0">
         <h2 className="font-medium text-sm text-foreground">Pinned Pawkits</h2>
         <Link
           href="/pawkits"
           className="text-xs text-muted-foreground hover:text-accent transition-colors"
         >
-          Manage
+          View all
         </Link>
       </div>
 
-      {/* 2-column grid of portrait cards - rows stretch to fill height */}
-      <div className="flex-1 grid grid-cols-2 grid-rows-4 gap-3 overflow-visible">
-        {pawkits.slice(0, MAX_PINNED).map((pawkit) => (
+      {/* Horizontal row of pawkit cards */}
+      <div className="flex gap-3 overflow-visible">
+        {pawkits.slice(0, MAX_VISIBLE).map((pawkit) => (
           <button
             key={pawkit.id}
             onClick={() => router.push(`/pawkits/${pawkit.slug}`)}
-            className="group w-full h-full text-left rounded-xl p-3 transition-all hover:border-accent/30 flex flex-col border-2 border-accent/20 bg-surface/80"
+            className="group flex-shrink-0 w-[140px] text-left rounded-xl p-3 transition-all hover:border-accent/30 flex flex-col border border-subtle bg-surface/80"
           >
-            {/* Header row: icon, name, count */}
-            <div className="flex items-center justify-between mb-2 shrink-0">
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <div className="w-6 h-6 rounded-lg bg-accent/20 flex items-center justify-center flex-shrink-0">
-                  <Folder size={14} className="text-accent" />
-                </div>
-                <span className="font-medium text-xs text-foreground truncate">{pawkit.name}</span>
+            {/* Header: icon + name */}
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-5 h-5 rounded-md bg-accent/20 flex items-center justify-center flex-shrink-0">
+                <Folder size={12} className="text-accent" />
               </div>
-              <span className="text-[10px] text-muted-foreground flex-shrink-0 ml-1">
-                {pawkit.count}
-              </span>
+              <span className="font-medium text-xs text-foreground truncate flex-1">{pawkit.name}</span>
+              <span className="text-[10px] text-muted-foreground">{pawkit.count}</span>
             </div>
 
-            {/* Thumbnail previews - stacked/fanned, grows to fill card */}
-            <div className="relative flex-1 min-h-[60px] mt-1">
-              {pawkit.previewItems.slice(0, 6).map((item, i) => {
+            {/* Stacked thumbnail previews */}
+            <div className="relative h-[56px]">
+              {pawkit.previewItems.slice(0, 4).map((item, i) => {
                 const pos = previewPositions[i];
                 return (
                   <div
                     key={item.id}
-                    className="absolute rounded-lg overflow-hidden border border-subtle/50 shadow-md transition-transform group-hover:scale-105"
+                    className="absolute rounded-md overflow-hidden border border-subtle/50 shadow-sm transition-transform group-hover:scale-105"
                     style={{
-                      width: '54px',
-                      height: '54px',
-                      left: pos.left,
+                      width: '40px',
+                      height: '40px',
+                      left: `${pos.left}px`,
                       top: `${pos.top}px`,
                       zIndex: pos.zIndex,
                       transform: `rotate(${pos.rotate}deg)`,
@@ -139,33 +133,32 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
                       />
                     ) : (
                       <div className="w-full h-full bg-surface-soft flex items-center justify-center">
-                        <FileText size={12} className="text-muted-foreground" />
+                        <FileText size={10} className="text-muted-foreground" />
                       </div>
                     )}
                   </div>
                 );
               })}
 
-              {/* +N more indicator - inline at end of stack */}
-              {pawkit.count > pawkit.previewItems.length && (
+              {/* +N more */}
+              {pawkit.count > 4 && (
                 <div
-                  className="absolute rounded-lg bg-surface-soft/90 border border-subtle/50 flex items-center justify-center text-xs font-medium text-muted-foreground shadow-md"
+                  className="absolute rounded-md bg-surface-soft/90 border border-subtle/50 flex items-center justify-center text-[10px] font-medium text-muted-foreground"
                   style={{
-                    width: '54px',
-                    height: '54px',
-                    left: `${12 * pawkit.previewItems.length}%`,
-                    top: `${(pawkit.previewItems.length % 2) * 6 + 4}px`,
+                    width: '40px',
+                    height: '40px',
+                    left: '64px',
+                    top: '4px',
                     zIndex: 0,
-                    transform: `rotate(${pawkit.previewItems.length % 2 === 0 ? -3 : 3}deg)`,
                   }}
                 >
-                  +{pawkit.count - pawkit.previewItems.length}
+                  +{pawkit.count - 4}
                 </div>
               )}
 
               {/* Empty state */}
               {pawkit.previewItems.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center rounded-lg border border-dashed border-subtle bg-surface-soft/60 text-[10px] text-muted-foreground">
+                <div className="absolute inset-0 flex items-center justify-center rounded-md border border-dashed border-subtle bg-surface-soft/60 text-[10px] text-muted-foreground">
                   Empty
                 </div>
               )}
@@ -173,52 +166,52 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
           </button>
         ))}
 
-        {/* Placeholder card for adding more pinned pawkits */}
+        {/* Add more button */}
         {hasRoom && hasUnpinnedOptions && (
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <button
               ref={buttonRef}
               onClick={() => setShowDropdown(!showDropdown)}
-              className="w-full h-full rounded-xl p-3 transition-all flex flex-col items-center justify-center gap-2 border-2 border-dashed border-subtle/50 hover:border-accent/30 hover:bg-accent/5 group"
+              className="w-[100px] h-full rounded-xl p-3 transition-all flex flex-col items-center justify-center gap-2 border border-dashed border-subtle/50 hover:border-accent/30 hover:bg-accent/5 group"
             >
-              <div className="w-8 h-8 rounded-lg bg-surface-soft flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Plus size={16} className="text-muted-foreground group-hover:text-accent transition-colors" />
+              <div className="w-6 h-6 rounded-md bg-surface-soft flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                <Plus size={14} className="text-muted-foreground group-hover:text-accent transition-colors" />
               </div>
-              <span className="text-xs text-muted-foreground group-hover:text-accent transition-colors">
-                Pin a Pawkit
+              <span className="text-[10px] text-muted-foreground group-hover:text-accent transition-colors">
+                Pin Pawkit
               </span>
             </button>
 
-            {/* Dropdown - appears above since placeholder is at bottom */}
+            {/* Dropdown */}
             {showDropdown && (
-              <div
-                ref={dropdownRef}
-                className="absolute bottom-full left-0 right-0 mb-2 z-50 max-h-48 overflow-y-auto scrollbar-minimal p-1.5"
-                style={{
-                  background: 'var(--bg-surface-1)',
-                  borderRadius: 'var(--radius-lg)',
-                  boxShadow: 'var(--shadow-3)',
-                  border: '1px solid var(--border-subtle)',
-                  backdropFilter: 'blur(20px)',
-                }}
-              >
-                {unpinnedPawkits.length === 0 ? (
-                  <div className="p-3 text-xs text-muted-foreground text-center">
-                    No pawkits to pin
-                  </div>
-                ) : (
-                  unpinnedPawkits.map((collection) => (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowDropdown(false)}
+                />
+                <div
+                  ref={dropdownRef}
+                  className="absolute bottom-full left-0 mb-2 z-50 w-48 max-h-48 overflow-y-auto scrollbar-minimal p-1.5"
+                  style={{
+                    background: 'var(--bg-surface-1)',
+                    borderRadius: 'var(--radius-lg)',
+                    boxShadow: 'var(--shadow-3)',
+                    border: '1px solid var(--border-subtle)',
+                    backdropFilter: 'blur(20px)',
+                  }}
+                >
+                  {unpinnedPawkits.map((collection) => (
                     <button
                       key={collection.id}
                       onClick={() => handlePinPawkit(collection)}
-                      className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent/10 transition-colors text-left"
+                      className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-accent/10 transition-colors text-left rounded-md"
                     >
-                      <Folder size={14} className="text-accent flex-shrink-0" />
+                      <Folder size={12} className="text-accent flex-shrink-0" />
                       <span className="text-xs text-foreground truncate">{collection.name}</span>
                     </button>
-                  ))
-                )}
-              </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
