@@ -21,8 +21,8 @@ export function RecentItems({ items }: RecentItemsProps) {
   const displayItems = items.slice(0, 6);
 
   return (
-    <div className="h-full flex flex-col min-h-0">
-      <div className="flex justify-between items-center mb-2 shrink-0">
+    <div className="flex flex-col min-h-0 overflow-hidden">
+      <div className="flex justify-between items-center mb-3 shrink-0">
         <h2 className="font-medium text-sm text-foreground">Recent Items</h2>
         <Link
           href="/library"
@@ -32,8 +32,8 @@ export function RecentItems({ items }: RecentItemsProps) {
         </Link>
       </div>
 
-      {/* 3x2 grid that fills available space */}
-      <div className="flex-1 min-h-0 grid grid-cols-3 grid-rows-2 gap-2">
+      {/* Grid with fixed card sizes - auto-rows-max prevents growing */}
+      <div className="grid grid-cols-3 gap-3 auto-rows-max overflow-y-auto">
         {displayItems.map((item) => {
           const isNote = item.type === 'md-note' || item.type === 'text-note';
           const isFileCard = item.type === 'file';
@@ -43,15 +43,15 @@ export function RecentItems({ items }: RecentItemsProps) {
             <button
               key={item.id}
               onClick={() => openCardDetails(item.id)}
-              className="group text-left rounded-xl overflow-hidden transition-all hover:border-accent/30 flex flex-col min-h-0"
+              className="group text-left rounded-xl overflow-hidden transition-all hover:border-accent/30"
               style={{
                 background: 'var(--bg-surface-2)',
                 boxShadow: 'var(--shadow-2)',
                 border: '1px solid var(--border-subtle)',
               }}
             >
-              {/* Image fills available space */}
-              <div className="flex-1 min-h-0 overflow-hidden relative bg-surface">
+              {/* Fixed aspect ratio image - doesn't grow */}
+              <div className="aspect-video overflow-hidden relative bg-surface">
                 {isNote ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-surface-soft">
                     <FileText className="w-6 h-6 text-accent/50" />
@@ -77,7 +77,7 @@ export function RecentItems({ items }: RecentItemsProps) {
               </div>
 
               {/* Title footer - fixed height */}
-              <div className="p-2 shrink-0">
+              <div className="p-2">
                 <p className="text-xs font-medium text-foreground line-clamp-1 group-hover:text-accent transition-colors">
                   {item.title || domain || item.url}
                 </p>

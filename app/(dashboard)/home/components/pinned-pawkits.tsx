@@ -16,8 +16,8 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
   }
 
   return (
-    <div className="h-full flex flex-col min-h-0">
-      <div className="flex justify-between items-center mb-2 shrink-0">
+    <div className="flex flex-col min-h-0 overflow-hidden">
+      <div className="flex justify-between items-center mb-3 shrink-0">
         <h2 className="font-medium text-sm text-foreground">Pinned Pawkits</h2>
         <Link
           href="/pawkits"
@@ -27,13 +27,13 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
         </Link>
       </div>
 
-      {/* Cards that fill available space equally */}
-      <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
+      {/* Cards container - natural flow, NOT flex-1 */}
+      <div className="space-y-3 overflow-y-auto">
         {pawkits.slice(0, 3).map((pawkit) => (
           <button
             key={pawkit.id}
             onClick={() => router.push(`/pawkits/${pawkit.slug}`)}
-            className="flex-1 min-h-0 w-full text-left rounded-xl p-3 transition-all hover:border-accent/30 flex flex-col"
+            className="w-full text-left rounded-xl p-3 h-24 transition-all hover:border-accent/30 flex flex-col"
             style={{
               background: 'var(--bg-surface-2)',
               boxShadow: 'var(--shadow-2)',
