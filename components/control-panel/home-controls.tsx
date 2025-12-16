@@ -11,24 +11,18 @@ export function HomeControls() {
   return (
     <>
       {/* This Week Stats */}
-      <div className="px-4 pb-4">
-        <StatsCard
-          savedThisWeek={thisWeekStats.savedThisWeek}
-          processedThisWeek={thisWeekStats.processedThisWeek}
-        />
-      </div>
+      <StatsCard
+        savedThisWeek={thisWeekStats.savedThisWeek}
+        processedThisWeek={thisWeekStats.processedThisWeek}
+      />
 
       {/* Continue Reading */}
       {continueItems.length > 0 && (
-        <div className="px-4 pb-4">
-          <ContinueCard items={continueItems} />
-        </div>
+        <ContinueCard items={continueItems} />
       )}
 
       {/* On This Day */}
-      <div className="px-4 pb-4">
-        <OnThisDay item={onThisDayItem} />
-      </div>
+      <OnThisDay item={onThisDayItem} />
     </>
   );
 }
