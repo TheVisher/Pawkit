@@ -59,8 +59,8 @@ export function RecentItems({ items }: RecentItemsProps) {
         </Link>
       </div>
 
-      {/* Horizontal row of cards - fills remaining height */}
-      <div className="flex gap-3 overflow-visible flex-1">
+      {/* Horizontal row of cards - fills remaining height and stretches to fill width */}
+      <div className="flex gap-3 overflow-hidden flex-1">
         {displayItems.map((item) => {
           const isNote = item.type === 'md-note' || item.type === 'text-note';
           const isFileCard = item.type === 'file';
@@ -70,7 +70,7 @@ export function RecentItems({ items }: RecentItemsProps) {
             <button
               key={item.id}
               onClick={() => openCardDetails(item.id)}
-              className="group flex-shrink-0 w-[200px] text-left rounded-xl overflow-hidden transition-all hover:border-accent/30 flex flex-col"
+              className="group flex-1 min-w-0 text-left rounded-xl overflow-hidden transition-all hover:border-accent/30 flex flex-col"
               style={{
                 background: 'var(--bg-surface-2)',
                 boxShadow: 'var(--shadow-2)',
