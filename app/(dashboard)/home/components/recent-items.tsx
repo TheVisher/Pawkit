@@ -17,8 +17,8 @@ export function RecentItems({ items }: RecentItemsProps) {
     return null;
   }
 
-  // Show up to 9 items (3 rows x 3 columns) to match Pinned Pawkits height
-  const displayItems = items.slice(0, 9);
+  // Show 6 items (2 rows x 3 columns) - keeps layout from scrolling
+  const displayItems = items.slice(0, 6);
 
   return (
     <div className="h-full flex flex-col min-h-0 overflow-hidden">
