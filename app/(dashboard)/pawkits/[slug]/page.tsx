@@ -202,7 +202,8 @@ function CollectionPageContent() {
         hidePreview: child.hidePreview,
         useCoverAsBackground: child.useCoverAsBackground,
         coverImage: child.coverImage,
-        hasChildren: child.children && child.children.length > 0
+        hasChildren: child.children && child.children.length > 0,
+        metadata: child.metadata
       };
     });
   }, [currentCollection, cards]);
