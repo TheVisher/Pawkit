@@ -213,8 +213,8 @@ export function BoardView({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      {/* Scrollable container for mobile */}
-      <div className="flex gap-3 md:gap-4 pb-4 min-h-[500px] md:min-h-[600px] overflow-x-auto snap-x snap-mandatory md:snap-none -mx-4 px-4 md:mx-0 md:px-0">
+      {/* Scrollable container for mobile, centered on desktop */}
+      <div className="flex justify-center gap-3 md:gap-4 pb-4 min-h-[500px] md:min-h-[600px] overflow-x-auto snap-x snap-mandatory md:snap-none -mx-4 px-4 md:mx-0 md:px-0">
         {/* Render each column */}
         {boardConfig.columns.map((column) => (
           <DroppableColumn
