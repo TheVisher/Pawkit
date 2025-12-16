@@ -1,24 +1,69 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useKitStore } from "@/lib/hooks/use-kit-store";
-import { FileText, Link2, Clock, Bot } from "lucide-react";
+import { FileText, Link2, Clock, Bot, ChevronDown } from "lucide-react";
 import { BacklinksPanel } from "@/components/notes/backlinks-panel";
 import { AttachmentsSection } from "@/components/modals/attachments-section";
 import { KitSidebarEmbed } from "@/components/kit/kit-sidebar-embed";
+import { isBoard, getBoardConfig, getStatusFromTags, updateStatusTag } from "@/lib/types/board";
+import type { CollectionNode } from "@/lib/types";
 
 export function CardDetailsPanel() {
   const router = useRouter();
   const activeCardId = usePanelStore((state) => state.activeCardId);
   const setActiveCardId = usePanelStore((state) => state.setActiveCardId);
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
-  const { cards, updateCard } = useDataStore();
+  const { cards, collections, updateCard } = useDataStore();
 
   // Find the active card
   const card = cards.find((c) => c.id === activeCardId);
+
+  // Find if card belongs to a board collection and get board config
+  const boardInfo = useMemo(() => {
+    if (!card?.collections?.length) return null;
+
+    // Helper to find collection by slug recursively
+    const findCollection = (nodes: CollectionNode[], slug: string): CollectionNode | null => {
+      for (const node of nodes) {
+        if (node.slug === slug) return node;
+        if (node.children) {
+          const found = findCollection(node.children, slug);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    // Find the first board collection this card belongs to
+    for (const collectionSlug of card.collections) {
+      const collection = findCollection(collections, collectionSlug);
+      if (collection && isBoard(collection)) {
+        return {
+          collection,
+          config: getBoardConfig(collection),
+          currentStatus: getStatusFromTags(card.tags || [])
+        };
+      }
+    }
+    return null;
+  }, [card, collections]);
+
+  // Status dropdown state
+  const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+
+  // Handle status change
+  const handleStatusChange = async (newStatus: string) => {
+    if (!card) return;
+    const newTags = newStatus === "uncategorized"
+      ? (card.tags || []).filter(t => !t.startsWith("status:"))
+      : updateStatusTag(card.tags || [], newStatus);
+    await updateCard(card.id, { tags: newTags });
+    setIsStatusDropdownOpen(false);
+  };
 
   // Internal tab state
   const [activeTab, setActiveTab] = useState<"notes" | "links" | "schedule" | "ai">("notes");
@@ -149,8 +194,104 @@ export function CardDetailsPanel() {
     { id: "ai" as const, icon: Bot, label: "AI Chat" },
   ];
 
+  // Get status color for the dropdown button
+  const getStatusColor = (status: string | null) => {
+    if (!status) return { bg: "bg-gray-500/20", text: "text-gray-400", label: "No Status" };
+    const column = boardInfo?.config.columns.find(c => c.tag === status);
+    if (!column) return { bg: "bg-gray-500/20", text: "text-gray-400", label: status };
+
+    const colorMap: Record<string, { bg: string; text: string }> = {
+      red: { bg: "bg-red-500/20", text: "text-red-400" },
+      orange: { bg: "bg-orange-500/20", text: "text-orange-400" },
+      yellow: { bg: "bg-yellow-500/20", text: "text-yellow-400" },
+      green: { bg: "bg-green-500/20", text: "text-green-400" },
+      blue: { bg: "bg-blue-500/20", text: "text-blue-400" },
+      purple: { bg: "bg-purple-500/20", text: "text-purple-400" },
+      gray: { bg: "bg-gray-500/20", text: "text-gray-400" },
+    };
+
+    const colors = colorMap[column.color || "gray"] || colorMap.gray;
+    return { ...colors, label: column.label };
+  };
+
   return (
     <div className="flex-1 min-h-0 flex flex-col">
+      {/* Board Status Section - Only shows for cards in board collections */}
+      {boardInfo && (
+        <div className="flex-shrink-0 px-4 pt-4 pb-2 border-b border-white/10">
+          <label className="block text-xs font-medium text-muted-foreground mb-2">Status</label>
+          <div className="relative">
+            <button
+              onClick={() => setIsStatusDropdownOpen(!isStatusDropdownOpen)}
+              className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 ${getStatusColor(boardInfo.currentStatus).bg} transition-colors hover:bg-white/10`}
+            >
+              <span className={`text-sm font-medium ${getStatusColor(boardInfo.currentStatus).text}`}>
+                {getStatusColor(boardInfo.currentStatus).label}
+              </span>
+              <ChevronDown
+                size={16}
+                className={`text-muted-foreground transition-transform ${isStatusDropdownOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {/* Dropdown Menu */}
+            {isStatusDropdownOpen && (
+              <>
+                {/* Backdrop to close dropdown */}
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setIsStatusDropdownOpen(false)}
+                />
+                <div className="absolute top-full left-0 right-0 mt-1 py-1 rounded-lg border border-white/10 bg-surface/95 backdrop-blur-lg shadow-xl z-50">
+                  {boardInfo.config.columns.map((column) => {
+                    const isSelected = boardInfo.currentStatus === column.tag;
+                    const colorMap: Record<string, string> = {
+                      red: "text-red-400",
+                      orange: "text-orange-400",
+                      yellow: "text-yellow-400",
+                      green: "text-green-400",
+                      blue: "text-blue-400",
+                      purple: "text-purple-400",
+                      gray: "text-gray-400",
+                    };
+                    const textColor = colorMap[column.color || "gray"] || "text-accent";
+
+                    return (
+                      <button
+                        key={column.tag}
+                        onClick={() => handleStatusChange(column.tag)}
+                        className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 transition-colors flex items-center gap-2 ${
+                          isSelected ? 'bg-white/5' : ''
+                        }`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${column.color === 'red' ? 'bg-red-400' : column.color === 'orange' ? 'bg-orange-400' : column.color === 'yellow' ? 'bg-yellow-400' : column.color === 'green' ? 'bg-green-400' : column.color === 'blue' ? 'bg-blue-400' : column.color === 'purple' ? 'bg-purple-400' : 'bg-gray-400'}`} />
+                        <span className={textColor}>{column.label}</span>
+                        {isSelected && (
+                          <span className="ml-auto text-accent">✓</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {/* No Status option */}
+                  <button
+                    onClick={() => handleStatusChange("uncategorized")}
+                    className={`w-full px-3 py-2 text-left text-sm hover:bg-white/10 transition-colors flex items-center gap-2 ${
+                      !boardInfo.currentStatus ? 'bg-white/5' : ''
+                    }`}
+                  >
+                    <span className="w-2 h-2 rounded-full bg-gray-500" />
+                    <span className="text-gray-400">No Status</span>
+                    {!boardInfo.currentStatus && (
+                      <span className="ml-auto text-accent">✓</span>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* AI Tab - Outside scrollable area, has its own scroll and needs shadow room */}
       {activeTab === "ai" && (
         <div className="flex-1 min-h-0">
