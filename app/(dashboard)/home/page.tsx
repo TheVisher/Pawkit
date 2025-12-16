@@ -200,12 +200,12 @@ export default function HomePage() {
           <HomeHeader userName={displayName} />
         </div>
 
-        {/* Content wrapper - centered, doesn't stretch to fill */}
-        <div className="flex-1 flex flex-col gap-4 min-h-0 w-fit mx-auto">
+        {/* Content wrapper - centered with max width, responsive */}
+        <div className="flex-1 flex flex-col gap-4 min-h-0 w-full max-w-[1200px] mx-auto">
           {/* TOP SECTION - Today + Calendar/Stats side by side */}
           <div className="flex gap-4 min-h-0">
-            {/* Left: Today card */}
-            <div className="w-[520px] shrink-0">
+            {/* Left: Today card - flexible width */}
+            <div className="flex-[45] min-w-0">
               <TodayCard
                 events={today.events}
                 scheduledCards={today.scheduledCards}
@@ -216,8 +216,8 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Right: Calendar + Stats stacked */}
-            <div className="flex flex-col gap-4 min-h-0 w-[580px] shrink-0">
+            {/* Right: Calendar + Stats stacked - flexible width */}
+            <div className="flex flex-col gap-4 min-h-0 flex-[55] min-w-0">
               <div className="flex-1 min-h-0">
                 <WeekCalendar
                   weekDays={weekDays}
