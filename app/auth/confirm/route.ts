@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const token_hash = requestUrl.searchParams.get('token_hash')
   const type = requestUrl.searchParams.get('type')
-  const next = requestUrl.searchParams.get('next') ?? '/home'
 
   // Handle email confirmation
   if (token_hash && type) {
@@ -18,8 +17,9 @@ export async function GET(request: NextRequest) {
     })
 
     if (!error) {
-      // Email verified successfully - redirect to home with success message
-      const redirectUrl = new URL(next, requestUrl.origin)
+      // Email verified successfully - redirect to login so user can sign in
+      // Note: verifyOtp() confirms the email but doesn't establish a session
+      const redirectUrl = new URL('/login', requestUrl.origin)
       redirectUrl.searchParams.set('verified', 'true')
       return NextResponse.redirect(redirectUrl)
     }
