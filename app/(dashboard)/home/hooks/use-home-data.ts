@@ -109,7 +109,7 @@ export function useHomeData() {
         return {
           ...c,
           count: pawkitCards.length,
-          previewItems: pawkitCards.filter(card => card.image).slice(0, 2)
+          previewItems: pawkitCards.filter(card => card.image).slice(0, 6)
         };
       });
   }, [collections, activeCards]);
