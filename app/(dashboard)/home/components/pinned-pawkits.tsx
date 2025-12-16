@@ -193,7 +193,7 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
             {showDropdown && (
               <div
                 ref={dropdownRef}
-                className="absolute bottom-full left-0 right-0 mb-2 z-50 rounded-xl border border-subtle bg-surface-soft/95 backdrop-blur-lg shadow-lg max-h-48 overflow-y-auto"
+                className="absolute bottom-full left-0 right-0 mb-2 z-50 rounded-xl border border-white/10 bg-[#1a1a2e]/95 backdrop-blur-xl shadow-2xl max-h-48 overflow-y-auto scrollbar-minimal"
               >
                 {unpinnedPawkits.length === 0 ? (
                   <div className="p-3 text-xs text-muted-foreground text-center">
