@@ -1,14 +1,15 @@
 "use client";
 
 import { CardDTO } from "@/lib/server/cards";
-import { Link2, FileText, StickyNote } from "lucide-react";
+import { Link2, FileText, StickyNote, GripVertical } from "lucide-react";
 
 interface BoardCardProps {
   card: CardDTO;
   onClick?: () => void;
+  isDragging?: boolean;
 }
 
-export function BoardCard({ card, onClick }: BoardCardProps) {
+export function BoardCard({ card, onClick, isDragging }: BoardCardProps) {
   // Get card type icon
   const getCardIcon = () => {
     if (card.type === "md-note" || card.type === "text-note") {
@@ -26,14 +27,26 @@ export function BoardCard({ card, onClick }: BoardCardProps) {
   // Get preview text (from notes or description)
   const previewText = card.notes || card.description;
 
+  // Safely parse URL domain
+  const getDomain = (url: string) => {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
+  };
+
   return (
     <div
       onClick={onClick}
-      className="bg-surface border border-subtle rounded-lg p-3 cursor-pointer hover:border-accent/50 hover:shadow-lg hover:shadow-accent/5 transition-all group"
+      className={`bg-surface border border-subtle rounded-lg p-3 cursor-pointer hover:border-accent/50 hover:shadow-lg hover:shadow-accent/5 transition-all group ${
+        isDragging ? "shadow-2xl ring-2 ring-accent/50 border-accent" : ""
+      }`}
     >
       {/* Card Header */}
       <div className="flex items-start gap-2">
-        <div className="mt-0.5 flex-shrink-0">
+        <div className="mt-0.5 flex-shrink-0 flex items-center gap-1">
+          <GripVertical size={12} className="text-muted-foreground/50 opacity-0 group-hover:opacity-100 transition-opacity" />
           {getCardIcon()}
         </div>
         <div className="flex-1 min-w-0">
@@ -86,7 +99,7 @@ export function BoardCard({ card, onClick }: BoardCardProps) {
       {/* URL domain for bookmarks */}
       {card.type === "url" && card.url && (
         <div className="mt-2 text-[10px] text-muted-foreground truncate">
-          {new URL(card.url).hostname}
+          {getDomain(card.url)}
         </div>
       )}
     </div>

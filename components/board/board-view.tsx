@@ -1,10 +1,24 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 import { CardDTO } from "@/lib/server/cards";
-import { BoardColumn, BoardConfig, getStatusFromTags } from "@/lib/types/board";
+import { BoardColumn, BoardConfig, getStatusFromTags, updateStatusTag } from "@/lib/types/board";
 import { BoardCard } from "./board-card";
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragStartEvent,
+  DragEndEvent,
+  DragOverEvent,
+  useDroppable,
+} from "@dnd-kit/core";
+import { useDataStore } from "@/lib/stores/data-store";
+import { useToastStore } from "@/lib/stores/toast-store";
 
 interface BoardViewProps {
   cards: CardDTO[];
@@ -21,6 +35,20 @@ export function BoardView({
   onCardClick,
   onAddCard
 }: BoardViewProps) {
+  const { updateCard } = useDataStore();
+  const toast = useToastStore();
+  const [activeCard, setActiveCard] = useState<CardDTO | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
+  // Configure sensors for drag detection
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    })
+  );
+
   // Group cards by their status tag
   const cardsByColumn = useMemo(() => {
     const grouped: Record<string, CardDTO[]> = {};
@@ -60,49 +88,132 @@ export function BoardView({
   const showUncategorized = cardsByColumn["uncategorized"]?.length > 0;
   const totalColumns = boardConfig.columns.length + (showUncategorized ? 1 : 0);
 
-  return (
-    <div className="flex gap-4 pb-4 min-h-[600px]">
-      {/* Render each column */}
-      {boardConfig.columns.map((column) => (
-        <BoardColumnComponent
-          key={column.tag}
-          column={column}
-          cards={cardsByColumn[column.tag] || []}
-          onCardClick={onCardClick}
-          onAddCard={onAddCard}
-          totalColumns={totalColumns}
-        />
-      ))}
+  // Handle drag start
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const card = cards.find(c => c.id === active.id);
+    if (card) {
+      setActiveCard(card);
+    }
+  };
 
-      {/* Uncategorized column if there are cards without status */}
-      {showUncategorized && (
-        <BoardColumnComponent
-          column={{ tag: "uncategorized", label: "No Status", color: "gray" }}
-          cards={cardsByColumn["uncategorized"]}
-          onCardClick={onCardClick}
-          onAddCard={onAddCard}
-          totalColumns={totalColumns}
-        />
-      )}
-    </div>
+  // Handle drag over (for visual feedback)
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event;
+    setOverId(over?.id as string || null);
+  };
+
+  // Handle drag end
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    setActiveCard(null);
+    setOverId(null);
+
+    if (!over) return;
+
+    const cardId = active.id as string;
+    const targetColumnTag = over.id as string;
+
+    // Find the card
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+
+    // Get current status tag
+    const currentStatusTag = getStatusFromTags(card.tags || []);
+
+    // If dropping in the same column, do nothing
+    if (currentStatusTag === targetColumnTag) return;
+
+    // If dropping from uncategorized to uncategorized, do nothing
+    if (!currentStatusTag && targetColumnTag === "uncategorized") return;
+
+    try {
+      // Update the card's tags
+      const newTags = targetColumnTag === "uncategorized"
+        ? (card.tags || []).filter(t => !t.startsWith("status:"))
+        : updateStatusTag(card.tags || [], targetColumnTag);
+
+      await updateCard(cardId, { tags: newTags });
+
+      // Find column label for toast
+      const targetColumn = boardConfig.columns.find(c => c.tag === targetColumnTag);
+      const columnLabel = targetColumn?.label || (targetColumnTag === "uncategorized" ? "No Status" : targetColumnTag);
+
+      toast.success(`Moved to ${columnLabel}`);
+    } catch (error) {
+      toast.error("Failed to move card");
+    }
+  };
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCorners}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="flex gap-4 pb-4 min-h-[600px]">
+        {/* Render each column */}
+        {boardConfig.columns.map((column) => (
+          <DroppableColumn
+            key={column.tag}
+            column={column}
+            cards={cardsByColumn[column.tag] || []}
+            onCardClick={onCardClick}
+            onAddCard={onAddCard}
+            totalColumns={totalColumns}
+            isOver={overId === column.tag}
+          />
+        ))}
+
+        {/* Uncategorized column if there are cards without status */}
+        {showUncategorized && (
+          <DroppableColumn
+            column={{ tag: "uncategorized", label: "No Status", color: "gray" }}
+            cards={cardsByColumn["uncategorized"]}
+            onCardClick={onCardClick}
+            onAddCard={onAddCard}
+            totalColumns={totalColumns}
+            isOver={overId === "uncategorized"}
+          />
+        )}
+      </div>
+
+      {/* Drag Overlay - Shows the card being dragged */}
+      <DragOverlay>
+        {activeCard ? (
+          <div className="opacity-90 rotate-3 scale-105">
+            <BoardCard card={activeCard} isDragging />
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
 
-interface BoardColumnComponentProps {
+interface DroppableColumnProps {
   column: BoardColumn;
   cards: CardDTO[];
   onCardClick?: (card: CardDTO) => void;
   onAddCard?: (columnTag: string) => void;
   totalColumns: number;
+  isOver: boolean;
 }
 
-function BoardColumnComponent({
+function DroppableColumn({
   column,
   cards,
   onCardClick,
   onAddCard,
-  totalColumns
-}: BoardColumnComponentProps) {
+  totalColumns,
+  isOver
+}: DroppableColumnProps) {
+  const { setNodeRef, isOver: isOverDroppable } = useDroppable({
+    id: column.tag,
+  });
+
   // Get column accent color
   const getColumnColor = (color?: string) => {
     switch (color) {
@@ -130,6 +241,8 @@ function BoardColumnComponent({
     }
   };
 
+  const showDropIndicator = isOver || isOverDroppable;
+
   return (
     <div className="flex-1 min-w-[280px] max-w-[400px]">
       {/* Column Header */}
@@ -144,15 +257,29 @@ function BoardColumnComponent({
         </div>
       </div>
 
-      {/* Column Content */}
-      <div className="bg-surface-soft/30 border border-t-0 border-subtle rounded-b-xl p-3 min-h-[500px] space-y-3">
+      {/* Column Content - Droppable Zone */}
+      <div
+        ref={setNodeRef}
+        className={`bg-surface-soft/30 border border-t-0 border-subtle rounded-b-xl p-3 min-h-[500px] space-y-3 transition-all duration-200 ${
+          showDropIndicator
+            ? "bg-accent/10 border-accent/30 ring-2 ring-accent/20 ring-inset"
+            : ""
+        }`}
+      >
         {cards.map((card) => (
-          <BoardCard
+          <DraggableBoardCard
             key={card.id}
             card={card}
             onClick={() => onCardClick?.(card)}
           />
         ))}
+
+        {/* Drop indicator when empty and dragging over */}
+        {cards.length === 0 && showDropIndicator && (
+          <div className="h-24 rounded-lg border-2 border-dashed border-accent/40 bg-accent/5 flex items-center justify-center">
+            <span className="text-xs text-accent/60">Drop here</span>
+          </div>
+        )}
 
         {/* Add Card Button */}
         {onAddCard && (
@@ -165,6 +292,36 @@ function BoardColumnComponent({
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+// Draggable wrapper for BoardCard
+import { useDraggable } from "@dnd-kit/core";
+
+interface DraggableBoardCardProps {
+  card: CardDTO;
+  onClick?: () => void;
+}
+
+function DraggableBoardCard({ card, onClick }: DraggableBoardCardProps) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: card.id,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`touch-none ${isDragging ? "opacity-50" : ""}`}
+      style={{ cursor: isDragging ? "grabbing" : "grab" }}
+    >
+      <BoardCard
+        card={card}
+        onClick={onClick}
+        isDragging={isDragging}
+      />
     </div>
   );
 }
