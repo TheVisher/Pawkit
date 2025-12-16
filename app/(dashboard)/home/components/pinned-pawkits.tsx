@@ -9,14 +9,14 @@ interface PinnedPawkitsProps {
   pawkits: PinnedPawkit[];
 }
 
-// Preview positions - scattered/fanned across the card, up to 6
+// Preview positions - use percentages to spread across card width
 const previewPositions = [
-  { left: 0, top: 0, rotate: -6, zIndex: 6 },
-  { left: 28, top: 4, rotate: 3, zIndex: 5 },
-  { left: 56, top: 0, rotate: -3, zIndex: 4 },
-  { left: 84, top: 6, rotate: 5, zIndex: 3 },
-  { left: 112, top: 2, rotate: -2, zIndex: 2 },
-  { left: 140, top: 8, rotate: 4, zIndex: 1 },
+  { left: '0%', top: 0, rotate: -6, zIndex: 6 },
+  { left: '12%', top: 6, rotate: 3, zIndex: 5 },
+  { left: '24%', top: 2, rotate: -3, zIndex: 4 },
+  { left: '36%', top: 8, rotate: 5, zIndex: 3 },
+  { left: '48%', top: 4, rotate: -2, zIndex: 2 },
+  { left: '60%', top: 10, rotate: 4, zIndex: 1 },
 ];
 
 export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
@@ -70,7 +70,7 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
                     style={{
                       width: '54px',
                       height: '54px',
-                      left: `${pos.left}px`,
+                      left: pos.left,
                       top: `${pos.top}px`,
                       zIndex: pos.zIndex,
                       transform: `rotate(${pos.rotate}deg)`,
@@ -92,19 +92,20 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
                 );
               })}
 
-              {/* +N more indicator */}
-              {pawkit.count > 6 && (
+              {/* +N more indicator - inline at end of stack */}
+              {pawkit.count > pawkit.previewItems.length && (
                 <div
-                  className="absolute rounded-lg bg-surface-soft/90 border border-subtle/50 flex items-center justify-center text-[10px] text-muted-foreground shadow-md"
+                  className="absolute rounded-lg bg-surface-soft/90 border border-subtle/50 flex items-center justify-center text-xs font-medium text-muted-foreground shadow-md"
                   style={{
                     width: '54px',
                     height: '54px',
-                    right: '4px',
-                    bottom: '4px',
+                    left: `${12 * pawkit.previewItems.length}%`,
+                    top: `${(pawkit.previewItems.length % 2) * 6 + 4}px`,
                     zIndex: 0,
+                    transform: `rotate(${pawkit.previewItems.length % 2 === 0 ? -3 : 3}deg)`,
                   }}
                 >
-                  +{pawkit.count - 6}
+                  +{pawkit.count - pawkit.previewItems.length}
                 </div>
               )}
 
