@@ -205,7 +205,7 @@ export default function HomePage() {
           {/* TOP SECTION - Today + Calendar/Stats side by side */}
           <div className="flex gap-4 min-h-0">
             {/* Left: Today card */}
-            <div className="w-[420px] shrink-0">
+            <div className="w-[520px] shrink-0">
               <TodayCard
                 events={today.events}
                 scheduledCards={today.scheduledCards}
@@ -217,7 +217,7 @@ export default function HomePage() {
             </div>
 
             {/* Right: Calendar + Stats stacked */}
-            <div className="flex flex-col gap-4 min-h-0 w-[460px] shrink-0">
+            <div className="flex flex-col gap-4 min-h-0 w-[580px] shrink-0">
               <div className="flex-1 min-h-0">
                 <WeekCalendar
                   weekDays={weekDays}
@@ -236,7 +236,7 @@ export default function HomePage() {
           </div>
 
           {/* BOTTOM SECTION - Horizontal rows */}
-          <div className="flex flex-col gap-4 min-h-0">
+          <div className="flex flex-col gap-4 min-h-0 flex-1">
             {/* Pinned Pawkits - horizontal row */}
             {pinnedPawkits.length > 0 && (
               <div className="min-h-0 shrink-0">
@@ -244,8 +244,8 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Recent Items - horizontal row (has empty state for new users) */}
-            <div className="min-h-0 shrink-0">
+            {/* Recent Items - horizontal row, fills remaining space */}
+            <div className="min-h-0 flex-1">
               <RecentItems items={recentItems} />
             </div>
           </div>

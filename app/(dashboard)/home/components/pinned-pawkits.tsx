@@ -12,15 +12,15 @@ interface PinnedPawkitsProps {
   pawkits: PinnedPawkit[];
 }
 
-// Preview positions for stacked thumbnails
+// Preview positions for stacked thumbnails (scaled up for larger cards)
 const previewPositions = [
   { left: 0, top: 0, rotate: -4, zIndex: 4 },
-  { left: 16, top: 4, rotate: 2, zIndex: 3 },
-  { left: 32, top: 2, rotate: -2, zIndex: 2 },
-  { left: 48, top: 6, rotate: 3, zIndex: 1 },
+  { left: 24, top: 6, rotate: 2, zIndex: 3 },
+  { left: 48, top: 3, rotate: -2, zIndex: 2 },
+  { left: 72, top: 9, rotate: 3, zIndex: 1 },
 ];
 
-const MAX_VISIBLE = 6;
+const MAX_VISIBLE = 4;
 
 export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
   const router = useRouter();
@@ -96,28 +96,28 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
           <button
             key={pawkit.id}
             onClick={() => router.push(`/pawkits/${pawkit.slug}`)}
-            className="group flex-shrink-0 w-[140px] text-left rounded-xl p-3 transition-all hover:border-accent/30 flex flex-col border border-subtle bg-surface/80"
+            className="group flex-shrink-0 w-[260px] text-left rounded-xl p-4 transition-all hover:border-accent/30 flex flex-col border border-subtle bg-surface/80"
           >
             {/* Header: icon + name */}
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 rounded-md bg-accent/20 flex items-center justify-center flex-shrink-0">
-                <Folder size={12} className="text-accent" />
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-md bg-accent/20 flex items-center justify-center flex-shrink-0">
+                <Folder size={14} className="text-accent" />
               </div>
-              <span className="font-medium text-xs text-foreground truncate flex-1">{pawkit.name}</span>
-              <span className="text-[10px] text-muted-foreground">{pawkit.count}</span>
+              <span className="font-medium text-sm text-foreground truncate flex-1">{pawkit.name}</span>
+              <span className="text-xs text-muted-foreground">{pawkit.count}</span>
             </div>
 
             {/* Stacked thumbnail previews */}
-            <div className="relative h-[56px]">
+            <div className="relative h-[80px]">
               {pawkit.previewItems.slice(0, 4).map((item, i) => {
                 const pos = previewPositions[i];
                 return (
                   <div
                     key={item.id}
-                    className="absolute rounded-md overflow-hidden border border-subtle/50 shadow-sm transition-transform group-hover:scale-105"
+                    className="absolute rounded-lg overflow-hidden border border-subtle/50 shadow-sm transition-transform group-hover:scale-105"
                     style={{
-                      width: '40px',
-                      height: '40px',
+                      width: '60px',
+                      height: '60px',
                       left: `${pos.left}px`,
                       top: `${pos.top}px`,
                       zIndex: pos.zIndex,
@@ -133,7 +133,7 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
                       />
                     ) : (
                       <div className="w-full h-full bg-surface-soft flex items-center justify-center">
-                        <FileText size={10} className="text-muted-foreground" />
+                        <FileText size={14} className="text-muted-foreground" />
                       </div>
                     )}
                   </div>
@@ -143,12 +143,12 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
               {/* +N more */}
               {pawkit.count > 4 && (
                 <div
-                  className="absolute rounded-md bg-surface-soft/90 border border-subtle/50 flex items-center justify-center text-[10px] font-medium text-muted-foreground"
+                  className="absolute rounded-lg bg-surface-soft/90 border border-subtle/50 flex items-center justify-center text-xs font-medium text-muted-foreground"
                   style={{
-                    width: '40px',
-                    height: '40px',
-                    left: '64px',
-                    top: '4px',
+                    width: '60px',
+                    height: '60px',
+                    left: '96px',
+                    top: '6px',
                     zIndex: 0,
                   }}
                 >
@@ -158,7 +158,7 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
 
               {/* Empty state */}
               {pawkit.previewItems.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center rounded-md border border-dashed border-subtle bg-surface-soft/60 text-[10px] text-muted-foreground">
+                <div className="absolute inset-0 flex items-center justify-center rounded-lg border border-dashed border-subtle bg-surface-soft/60 text-xs text-muted-foreground">
                   Empty
                 </div>
               )}
@@ -172,12 +172,12 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
             <button
               ref={buttonRef}
               onClick={() => setShowDropdown(!showDropdown)}
-              className="w-[100px] h-full rounded-xl p-3 transition-all flex flex-col items-center justify-center gap-2 border border-dashed border-subtle/50 hover:border-accent/30 hover:bg-accent/5 group"
+              className="w-[140px] h-full rounded-xl p-4 transition-all flex flex-col items-center justify-center gap-3 border border-dashed border-subtle/50 hover:border-accent/30 hover:bg-accent/5 group"
             >
-              <div className="w-6 h-6 rounded-md bg-surface-soft flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Plus size={14} className="text-muted-foreground group-hover:text-accent transition-colors" />
+              <div className="w-8 h-8 rounded-md bg-surface-soft flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                <Plus size={18} className="text-muted-foreground group-hover:text-accent transition-colors" />
               </div>
-              <span className="text-[10px] text-muted-foreground group-hover:text-accent transition-colors">
+              <span className="text-xs text-muted-foreground group-hover:text-accent transition-colors">
                 Pin Pawkit
               </span>
             </button>
