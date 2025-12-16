@@ -200,12 +200,12 @@ export default function HomePage() {
           <HomeHeader userName={displayName} />
         </div>
 
-        {/* Content wrapper - limit width to ~65% */}
-        <div className="flex-1 flex flex-col gap-4 min-h-0 w-[65%]">
-          {/* TOP SECTION - Today + Calendar/Stats */}
-          <div className="grid grid-cols-2 gap-4 min-h-0 flex-[4]">
-            {/* Left column: Today (spans both rows) */}
-            <div className="row-span-2 min-h-0">
+        {/* Content wrapper - centered, doesn't stretch to fill */}
+        <div className="flex-1 flex flex-col gap-4 min-h-0">
+          {/* TOP SECTION - Today + Calendar/Stats side by side */}
+          <div className="flex gap-4 min-h-0">
+            {/* Left: Today card */}
+            <div className="w-[280px] shrink-0">
               <TodayCard
                 events={today.events}
                 scheduledCards={today.scheduledCards}
@@ -216,27 +216,27 @@ export default function HomePage() {
               />
             </div>
 
-            {/* Right column top: This Week Calendar */}
-            <div className="min-h-0">
-              <WeekCalendar
-                weekDays={weekDays}
-                onDayClick={setSelectedDay}
-              />
-            </div>
-
-            {/* Right column bottom: Inbox + This Week Stats */}
-            <div className="min-h-0">
-              <InboxStatsCard
-                inboxItems={inboxItems}
-                inboxCount={inboxCount}
-                savedThisWeek={thisWeekStats.savedThisWeek}
-                processedThisWeek={thisWeekStats.processedThisWeek}
-              />
+            {/* Right: Calendar + Stats stacked */}
+            <div className="flex flex-col gap-4 min-h-0 w-[280px] shrink-0">
+              <div className="flex-1 min-h-0">
+                <WeekCalendar
+                  weekDays={weekDays}
+                  onDayClick={setSelectedDay}
+                />
+              </div>
+              <div className="shrink-0">
+                <InboxStatsCard
+                  inboxItems={inboxItems}
+                  inboxCount={inboxCount}
+                  savedThisWeek={thisWeekStats.savedThisWeek}
+                  processedThisWeek={thisWeekStats.processedThisWeek}
+                />
+              </div>
             </div>
           </div>
 
           {/* BOTTOM SECTION - Horizontal rows */}
-          <div className="flex flex-col gap-4 min-h-0 flex-[5]">
+          <div className="flex flex-col gap-4 min-h-0">
             {/* Pinned Pawkits - horizontal row */}
             {pinnedPawkits.length > 0 && (
               <div className="min-h-0 shrink-0">
@@ -245,7 +245,7 @@ export default function HomePage() {
             )}
 
             {/* Recent Items - horizontal row (has empty state for new users) */}
-            <div className="min-h-0 flex-1">
+            <div className="min-h-0 shrink-0">
               <RecentItems items={recentItems} />
             </div>
           </div>
