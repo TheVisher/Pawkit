@@ -52,7 +52,7 @@ export function TodayCard({
         <h2 className="font-semibold text-sm text-foreground">Today</h2>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 flex-1 min-h-0">
+      <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto">
         {/* Events Panel */}
         <div className="bg-surface-soft rounded-lg p-3 flex flex-col min-h-0">
           <div className="flex items-center gap-1.5 mb-2 shrink-0">
