@@ -75,7 +75,6 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
     return null;
   }
 
-  const hasRoom = pawkits.length < MAX_VISIBLE;
   const hasUnpinnedOptions = unpinnedPawkits.length > 0;
 
   return (
@@ -90,13 +89,13 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
         </Link>
       </div>
 
-      {/* Horizontal row of pawkit cards - stretch to fill */}
+      {/* Horizontal row of pawkit cards - stretch to fill with min/max constraints */}
       <div className="flex gap-3 overflow-hidden">
         {pawkits.slice(0, MAX_VISIBLE).map((pawkit) => (
           <button
             key={pawkit.id}
             onClick={() => router.push(`/pawkits/${pawkit.slug}`)}
-            className="group flex-1 min-w-0 text-left rounded-xl p-4 transition-all hover:border-accent/30 flex flex-col border border-subtle bg-surface/80"
+            className="group flex-1 min-w-[200px] max-w-[320px] text-left rounded-xl p-4 transition-all hover:border-accent/30 flex flex-col border border-subtle bg-surface/80"
           >
             {/* Header: icon + name */}
             <div className="flex items-center gap-2 mb-3">
@@ -166,55 +165,66 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
           </button>
         ))}
 
-        {/* Add more button */}
-        {hasRoom && hasUnpinnedOptions && (
-          <div className="relative flex-1 min-w-0 max-w-[200px]">
-            <button
-              ref={buttonRef}
-              onClick={() => setShowDropdown(!showDropdown)}
-              className="w-full h-full rounded-xl p-4 transition-all flex flex-col items-center justify-center gap-3 border border-dashed border-subtle/50 hover:border-accent/30 hover:bg-accent/5 group"
-            >
-              <div className="w-8 h-8 rounded-md bg-surface-soft flex items-center justify-center group-hover:bg-accent/20 transition-colors">
-                <Plus size={18} className="text-muted-foreground group-hover:text-accent transition-colors" />
-              </div>
-              <span className="text-xs text-muted-foreground group-hover:text-accent transition-colors">
-                Pin Pawkit
-              </span>
-            </button>
-
-            {/* Dropdown */}
-            {showDropdown && (
+        {/* Ghost placeholder cards for remaining slots */}
+        {Array.from({ length: MAX_VISIBLE - pawkits.length }).map((_, index) => (
+          <div key={`ghost-${index}`} className="relative flex-1 min-w-[200px] max-w-[320px]">
+            {/* First ghost slot has the dropdown, others are just placeholders */}
+            {index === 0 && hasUnpinnedOptions ? (
               <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setShowDropdown(false)}
-                />
-                <div
-                  ref={dropdownRef}
-                  className="absolute bottom-full left-0 mb-2 z-50 w-48 max-h-48 overflow-y-auto scrollbar-minimal p-1.5"
-                  style={{
-                    background: 'var(--bg-surface-1)',
-                    borderRadius: 'var(--radius-lg)',
-                    boxShadow: 'var(--shadow-3)',
-                    border: '1px solid var(--border-subtle)',
-                    backdropFilter: 'blur(20px)',
-                  }}
+                <button
+                  ref={buttonRef}
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  className="w-full h-full rounded-xl p-4 transition-all flex flex-col items-center justify-center gap-3 border border-dashed border-subtle/50 hover:border-accent/30 hover:bg-accent/5 group"
                 >
-                  {unpinnedPawkits.map((collection) => (
-                    <button
-                      key={collection.id}
-                      onClick={() => handlePinPawkit(collection)}
-                      className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-accent/10 transition-colors text-left rounded-md"
+                  <div className="w-8 h-8 rounded-md bg-surface-soft flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+                    <Plus size={18} className="text-muted-foreground group-hover:text-accent transition-colors" />
+                  </div>
+                  <span className="text-xs text-muted-foreground group-hover:text-accent transition-colors">
+                    Pin Pawkit
+                  </span>
+                </button>
+
+                {/* Dropdown */}
+                {showDropdown && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowDropdown(false)}
+                    />
+                    <div
+                      ref={dropdownRef}
+                      className="absolute bottom-full left-0 mb-2 z-50 w-48 max-h-48 overflow-y-auto scrollbar-minimal p-1.5"
+                      style={{
+                        background: 'var(--bg-surface-1)',
+                        borderRadius: 'var(--radius-lg)',
+                        boxShadow: 'var(--shadow-3)',
+                        border: '1px solid var(--border-subtle)',
+                        backdropFilter: 'blur(20px)',
+                      }}
                     >
-                      <Folder size={12} className="text-accent flex-shrink-0" />
-                      <span className="text-xs text-foreground truncate">{collection.name}</span>
-                    </button>
-                  ))}
-                </div>
+                      {unpinnedPawkits.map((collection) => (
+                        <button
+                          key={collection.id}
+                          onClick={() => handlePinPawkit(collection)}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 hover:bg-accent/10 transition-colors text-left rounded-md"
+                        >
+                          <Folder size={12} className="text-accent flex-shrink-0" />
+                          <span className="text-xs text-foreground truncate">{collection.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </>
+            ) : (
+              <div className="w-full h-full rounded-xl p-4 flex flex-col items-center justify-center gap-3 border border-dashed border-subtle/30 opacity-40">
+                <div className="w-8 h-8 rounded-md bg-surface-soft/50 flex items-center justify-center">
+                  <Folder size={18} className="text-muted-foreground/50" />
+                </div>
+              </div>
             )}
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
