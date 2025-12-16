@@ -11,8 +11,9 @@ import { useHomeData, WeekDay } from "./hooks/use-home-data";
 import { HomeHeader } from "./components/home-header";
 import { TodayCard } from "./components/today-card";
 import { WeekCalendar } from "./components/week-calendar";
-import { InboxCard } from "./components/inbox-card";
+import { InboxStatsCard } from "./components/inbox-stats-card";
 import { RediscoverCard } from "./components/rediscover-card";
+import { OnThisDayCard } from "./components/on-this-day-card";
 import { PinnedPawkits } from "./components/pinned-pawkits";
 import { RecentItems } from "./components/recent-items";
 import { WelcomeBanner } from "@/components/onboarding/welcome-banner";
@@ -53,6 +54,8 @@ export default function HomePage() {
     pinnedPawkits,
     weekDays,
     today,
+    thisWeekStats,
+    onThisDayItem,
     rediscoverItems,
     rediscoverCount,
   } = useHomeData();
@@ -225,20 +228,23 @@ export default function HomePage() {
             />
           </div>
 
-          {/* Inbox - row 2, col 1 */}
+          {/* Inbox + This Week Stats - row 2, col 1 */}
           <div className="min-h-0">
-            <InboxCard
+            <InboxStatsCard
               inboxItems={inboxItems}
               inboxCount={inboxCount}
+              savedThisWeek={thisWeekStats.savedThisWeek}
+              processedThisWeek={thisWeekStats.processedThisWeek}
             />
           </div>
 
-          {/* Rediscover - row 2, col 2 */}
-          <div className="min-h-0">
+          {/* Rediscover + On This Day - row 2, col 2 (split into two cards) */}
+          <div className="min-h-0 grid grid-cols-2 gap-3">
             <RediscoverCard
               rediscoverCount={rediscoverCount}
               rediscoverItems={rediscoverItems}
             />
+            <OnThisDayCard item={onThisDayItem} />
           </div>
         </div>
 
