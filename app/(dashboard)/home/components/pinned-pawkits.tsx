@@ -12,12 +12,12 @@ interface PinnedPawkitsProps {
   pawkits: PinnedPawkit[];
 }
 
-// Preview positions for stacked thumbnails (scaled up for larger cards)
+// Preview positions for stacked thumbnails - spread out more
 const previewPositions = [
-  { left: 0, top: 0, rotate: -4, zIndex: 4 },
-  { left: 24, top: 6, rotate: 2, zIndex: 3 },
-  { left: 48, top: 3, rotate: -2, zIndex: 2 },
-  { left: 72, top: 9, rotate: 3, zIndex: 1 },
+  { left: 0, top: 8, rotate: -6, zIndex: 4 },
+  { left: 40, top: 0, rotate: 3, zIndex: 3 },
+  { left: 80, top: 10, rotate: -3, zIndex: 2 },
+  { left: 120, top: 4, rotate: 5, zIndex: 1 },
 ];
 
 const MAX_VISIBLE = 4;
@@ -106,8 +106,8 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
               <span className="text-xs text-muted-foreground">{pawkit.count}</span>
             </div>
 
-            {/* Stacked thumbnail previews */}
-            <div className="relative h-[80px]">
+            {/* Stacked thumbnail previews - spread out */}
+            <div className="relative h-[70px]">
               {pawkit.previewItems.slice(0, 4).map((item, i) => {
                 const pos = previewPositions[i];
                 return (
@@ -115,8 +115,8 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
                     key={item.id}
                     className="absolute rounded-lg overflow-hidden border border-subtle/50 shadow-sm transition-transform group-hover:scale-105"
                     style={{
-                      width: '60px',
-                      height: '60px',
+                      width: '50px',
+                      height: '50px',
                       left: `${pos.left}px`,
                       top: `${pos.top}px`,
                       zIndex: pos.zIndex,
@@ -132,28 +132,12 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
                       />
                     ) : (
                       <div className="w-full h-full bg-surface-soft flex items-center justify-center">
-                        <FileText size={14} className="text-muted-foreground" />
+                        <FileText size={12} className="text-muted-foreground" />
                       </div>
                     )}
                   </div>
                 );
               })}
-
-              {/* +N more */}
-              {pawkit.count > 4 && (
-                <div
-                  className="absolute rounded-lg bg-surface-soft/90 border border-subtle/50 flex items-center justify-center text-xs font-medium text-muted-foreground"
-                  style={{
-                    width: '60px',
-                    height: '60px',
-                    left: '96px',
-                    top: '6px',
-                    zIndex: 0,
-                  }}
-                >
-                  +{pawkit.count - 4}
-                </div>
-              )}
 
               {/* Empty state */}
               {pawkit.previewItems.length === 0 && (
