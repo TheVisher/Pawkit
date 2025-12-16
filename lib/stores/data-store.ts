@@ -188,7 +188,7 @@ type DataStore = {
   updateCard: (id: string, updates: Partial<CardDTO>) => Promise<void>;
   deleteCard: (id: string, options?: { deleteLinkedEvents?: boolean; skipEventCheck?: boolean; deleteFromBackup?: boolean }) => Promise<void>;
   addCollection: (collectionData: { name: string; parentId?: string | null }) => Promise<void>;
-  updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; isPrivate?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; coverImage?: string | null; coverImagePosition?: number | null }) => Promise<void>;
+  updateCollection: (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; isPrivate?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; coverImage?: string | null; coverImagePosition?: number | null; metadata?: Record<string, unknown> }) => Promise<void>;
   deleteCollection: (id: string, deleteCards?: boolean, deleteSubPawkits?: boolean) => Promise<void>;
   refresh: () => Promise<void>;
   drainQueue: () => Promise<void>;
@@ -1042,7 +1042,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
     }
   },
 
-  updateCollection: async (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; isPrivate?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; coverImage?: string | null; coverImagePosition?: number | null }) => {
+  updateCollection: async (id: string, updates: { name?: string; parentId?: string | null; pinned?: boolean; isPrivate?: boolean; hidePreview?: boolean; useCoverAsBackground?: boolean; coverImage?: string | null; coverImagePosition?: number | null; metadata?: Record<string, unknown> }) => {
     // Mark device as active
     markDeviceActive();
 

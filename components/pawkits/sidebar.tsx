@@ -3,11 +3,13 @@
 import { useEffect, useState, useRef, Suspense } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Folder, Lock, FolderPlus, Edit3, ArrowUpDown, Trash2 } from "lucide-react";
+import { Folder, Lock, FolderPlus, Edit3, ArrowUpDown, Trash2, KanbanSquare } from "lucide-react";
 import { CollectionNode } from "@/lib/types";
 import { useDataStore } from "@/lib/stores/data-store";
 import { GenericContextMenu, ContextMenuItemConfig } from "@/components/ui/generic-context-menu";
 import { ConfirmDeleteModal } from "@/components/modals/confirm-delete-modal";
+import { CreateBoardModal } from "@/components/modals/create-board-modal";
+import { isBoard, BoardColumn, PawkitMetadata, DEFAULT_BOARD_COLUMNS } from "@/lib/types/board";
 
 export type CollectionsSidebarProps = {
   tree: CollectionNode[];
@@ -32,6 +34,8 @@ function CollectionsSidebarContent({
   const [error, setError] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [collectionToDelete, setCollectionToDelete] = useState<CollectionNode | null>(null);
+  const [showCreateBoardModal, setShowCreateBoardModal] = useState(false);
+  const [createBoardParentId, setCreateBoardParentId] = useState<string | undefined>(undefined);
 
   // Initialize from localStorage or default to false
   const [isCollectionsExpanded, setIsCollectionsExpanded] = useState(() => {
@@ -44,7 +48,7 @@ function CollectionsSidebarContent({
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { addCollection, updateCollection, deleteCollection: deleteCollectionFromStore } = useDataStore();
+  const { addCollection, updateCollection, deleteCollection: deleteCollectionFromStore, collections: storeCollections } = useDataStore();
 
   // Save collections expansion state to localStorage whenever it changes
   useEffect(() => {
@@ -64,6 +68,60 @@ function CollectionsSidebarContent({
       setError(null);
     } catch (err) {
       setError("Unable to create collection");
+    }
+  };
+
+  const openCreateBoardModal = (parentId?: string) => {
+    if (!showManagementControls) return;
+    setCreateBoardParentId(parentId);
+    setShowCreateBoardModal(true);
+  };
+
+  const createBoard = async (name: string, columns: BoardColumn[]) => {
+    if (!showManagementControls) return;
+
+    // Generate tags from column labels
+    const columnTags = columns.map((col) => ({
+      ...col,
+      tag: `status:${col.label.toLowerCase().replace(/\s+/g, '-')}`,
+    }));
+
+    const metadata: PawkitMetadata = {
+      type: "board",
+      boardConfig: {
+        columns: columnTags,
+      },
+    };
+
+    try {
+      // Create the collection first
+      await addCollection({ name, parentId: createBoardParentId });
+
+      // Find the newly created collection by slug
+      // Helper to search tree recursively
+      const findBySlugInTree = (slug: string, list: CollectionNode[]): CollectionNode | undefined => {
+        for (const item of list) {
+          if (item.slug === slug) return item;
+          const child = findBySlugInTree(slug, item.children ?? []);
+          if (child) return child;
+        }
+        return undefined;
+      };
+
+      const slug = name.toLowerCase().replace(/\s+/g, '-');
+
+      // Use store collections (freshly updated) to find the new collection
+      const freshCollections = useDataStore.getState().collections;
+      const newCollection = findBySlugInTree(slug, freshCollections);
+
+      if (newCollection) {
+        await updateCollection(newCollection.id, { metadata: metadata as Record<string, unknown> });
+      }
+
+      setError(null);
+    } catch (err) {
+      setError("Unable to create board");
+      throw err;
     }
   };
 
@@ -175,17 +233,18 @@ function CollectionsSidebarContent({
               key={node.id}
               node={node}
               depth={0}
-            activeSlug={activeSlug}
-            selectedSlug={selectedSlug}
-            onDragOver={onDragOver}
-            onSelect={handleSelect}
-            onCreate={createCollection}
-            onRename={renameCollection}
-            onMove={moveCollection}
-            onDelete={deleteCollection}
-            showManagementControls={showManagementControls}
-          />
-        ))}
+              activeSlug={activeSlug}
+              selectedSlug={selectedSlug}
+              onDragOver={onDragOver}
+              onSelect={handleSelect}
+              onCreate={createCollection}
+              onCreateBoard={openCreateBoardModal}
+              onRename={renameCollection}
+              onMove={moveCollection}
+              onDelete={deleteCollection}
+              showManagementControls={showManagementControls}
+            />
+          ))}
         </nav>
       )}
 
@@ -201,6 +260,17 @@ function CollectionsSidebarContent({
         message="Are you sure you want to delete this pawkit?"
         itemName={collectionToDelete?.name}
       />
+
+      {/* Create Board Modal */}
+      <CreateBoardModal
+        open={showCreateBoardModal}
+        onClose={() => {
+          setShowCreateBoardModal(false);
+          setCreateBoardParentId(undefined);
+        }}
+        onSubmit={createBoard}
+        parentId={createBoardParentId}
+      />
     </div>
   );
 }
@@ -213,6 +283,7 @@ type CollectionItemProps = {
   onDragOver?: (slug: string | null) => void;
   onSelect: (slug: string | null) => void;
   onCreate: (parentId?: string) => void;
+  onCreateBoard: (parentId?: string) => void;
   onRename: (node: CollectionNode) => void;
   onMove: (node: CollectionNode) => void;
   onDelete: (node: CollectionNode) => void;
@@ -227,6 +298,7 @@ function CollectionItem({
   onDragOver,
   onSelect,
   onCreate,
+  onCreateBoard,
   onRename,
   onMove,
   onDelete,
@@ -269,6 +341,11 @@ function CollectionItem({
           icon: FolderPlus,
           onClick: () => onCreate(node.id),
         },
+        {
+          label: "New Board",
+          icon: KanbanSquare,
+          onClick: () => onCreateBoard(node.id),
+        },
         { type: "separator" },
         {
           label: "Rename",
@@ -310,7 +387,13 @@ function CollectionItem({
             </button>
           )}
           <button className="flex-1 truncate text-left text-gray-300 flex items-center gap-2" onClick={() => onSelect(node.slug)}>
-            {node.isPrivate ? <Lock size={14} className="flex-shrink-0" /> : <Folder size={14} className="flex-shrink-0" />}
+            {isBoard(node) ? (
+              <KanbanSquare size={14} className="flex-shrink-0 text-purple-400" />
+            ) : node.isPrivate ? (
+              <Lock size={14} className="flex-shrink-0" />
+            ) : (
+              <Folder size={14} className="flex-shrink-0" />
+            )}
             {node.name}
           </button>
         </div>
@@ -327,6 +410,7 @@ function CollectionItem({
               onDragOver={onDragOver}
               onSelect={onSelect}
               onCreate={onCreate}
+              onCreateBoard={onCreateBoard}
               onRename={onRename}
               onMove={onMove}
               onDelete={onDelete}
