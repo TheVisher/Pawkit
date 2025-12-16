@@ -60,8 +60,8 @@ export function RecentItems({ items }: RecentItemsProps) {
       </div>
 
       {/* Horizontal row of cards - fills remaining height with min/max constraints */}
-      {/* p-1 -m-1 gives room for shadows without clipping */}
-      <div className="flex gap-3 flex-1 p-1 -m-1">
+      {/* p-2 -m-2 gives room for shadows and hover lift without clipping */}
+      <div className="flex gap-3 flex-1 p-2 -m-2">
         {displayItems.map((item) => {
           const isNote = item.type === 'md-note' || item.type === 'text-note';
           const isFileCard = item.type === 'file';
@@ -71,12 +71,7 @@ export function RecentItems({ items }: RecentItemsProps) {
             <button
               key={item.id}
               onClick={() => openCardDetails(item.id)}
-              className="group flex-1 min-w-[160px] max-w-[280px] text-left rounded-xl overflow-hidden transition-all hover:border-accent/30 flex flex-col"
-              style={{
-                background: 'var(--bg-surface-2)',
-                boxShadow: 'var(--shadow-2)',
-                border: '1px solid var(--border-subtle)',
-              }}
+              className="card-hover group flex-1 min-w-[160px] max-w-[280px] text-left flex flex-col"
             >
               {/* Thumbnail - fills available space */}
               <div className="flex-1 min-h-[120px] overflow-hidden relative bg-surface">
