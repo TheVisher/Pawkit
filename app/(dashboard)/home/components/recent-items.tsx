@@ -21,7 +21,7 @@ export function RecentItems({ items }: RecentItemsProps) {
   const displayItems = items.slice(0, 6);
 
   return (
-    <div className="h-full flex flex-col min-h-0 overflow-hidden">
+    <div className="h-full flex flex-col min-h-0 overflow-visible">
       <div className="flex justify-between items-center mb-3 shrink-0">
         <h2 className="font-medium text-sm text-foreground">Recent Items</h2>
         <Link
@@ -33,7 +33,7 @@ export function RecentItems({ items }: RecentItemsProps) {
       </div>
 
       {/* Grid with fixed card sizes - fills available height */}
-      <div className="flex-1 grid grid-cols-3 gap-3 auto-rows-max content-start overflow-y-auto">
+      <div className="flex-1 grid grid-cols-3 gap-3 auto-rows-max content-start overflow-visible">
         {displayItems.map((item) => {
           const isNote = item.type === 'md-note' || item.type === 'text-note';
           const isFileCard = item.type === 'file';

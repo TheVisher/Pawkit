@@ -33,7 +33,7 @@ export function InboxStatsCard({
       }}
     >
       {/* Two inner panels side by side */}
-      <div className="flex-1 grid grid-cols-2 gap-3 min-h-0">
+      <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
         {/* Inbox Panel */}
         <div className="bg-surface-soft rounded-lg p-3 flex flex-col min-h-0">
           <div className="flex items-center gap-1.5 mb-2 shrink-0">
