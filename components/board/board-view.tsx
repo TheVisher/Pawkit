@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { CardDTO } from "@/lib/server/cards";
 import { BoardColumn, BoardConfig, getStatusFromTags, updateStatusTag } from "@/lib/types/board";
 import { BoardCard } from "./board-card";
@@ -39,6 +39,65 @@ export function BoardView({
   const toast = useToastStore();
   const [activeCard, setActiveCard] = useState<CardDTO | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+
+  // Track collapsed columns (typically Done column)
+  const [collapsedColumns, setCollapsedColumns] = useState<Set<string>>(() => {
+    // Load from localStorage
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(`board-${collectionSlug}-collapsed`);
+      if (saved) {
+        try {
+          return new Set(JSON.parse(saved));
+        } catch {
+          return new Set();
+        }
+      }
+    }
+    return new Set();
+  });
+
+  // Save collapsed state to localStorage
+  useEffect(() => {
+    localStorage.setItem(
+      `board-${collectionSlug}-collapsed`,
+      JSON.stringify([...collapsedColumns])
+    );
+  }, [collapsedColumns, collectionSlug]);
+
+  // Toggle column collapse
+  const toggleColumnCollapse = useCallback((columnTag: string) => {
+    setCollapsedColumns(prev => {
+      const next = new Set(prev);
+      if (next.has(columnTag)) {
+        next.delete(columnTag);
+      } else {
+        next.add(columnTag);
+      }
+      return next;
+    });
+  }, []);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // 'n' key to add card to first column (To Do)
+      if (e.key === 'n' && !e.metaKey && !e.ctrlKey) {
+        e.preventDefault();
+        const firstColumn = boardConfig.columns[0];
+        if (firstColumn && onAddCard) {
+          onAddCard(firstColumn.tag);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [boardConfig.columns, onAddCard]);
 
   // Configure sensors for drag detection
   const sensors = useSensors(
@@ -154,7 +213,8 @@ export function BoardView({
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex gap-4 pb-4 min-h-[600px]">
+      {/* Scrollable container for mobile */}
+      <div className="flex gap-3 md:gap-4 pb-4 min-h-[500px] md:min-h-[600px] overflow-x-auto snap-x snap-mandatory md:snap-none -mx-4 px-4 md:mx-0 md:px-0">
         {/* Render each column */}
         {boardConfig.columns.map((column) => (
           <DroppableColumn
@@ -165,6 +225,8 @@ export function BoardView({
             onAddCard={onAddCard}
             totalColumns={totalColumns}
             isOver={overId === column.tag}
+            isCollapsed={collapsedColumns.has(column.tag)}
+            onToggleCollapse={() => toggleColumnCollapse(column.tag)}
           />
         ))}
 
@@ -177,6 +239,8 @@ export function BoardView({
             onAddCard={onAddCard}
             totalColumns={totalColumns}
             isOver={overId === "uncategorized"}
+            isCollapsed={collapsedColumns.has("uncategorized")}
+            onToggleCollapse={() => toggleColumnCollapse("uncategorized")}
           />
         )}
       </div>
@@ -200,6 +264,8 @@ interface DroppableColumnProps {
   onAddCard?: (columnTag: string) => void;
   totalColumns: number;
   isOver: boolean;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
 function DroppableColumn({
@@ -208,11 +274,16 @@ function DroppableColumn({
   onCardClick,
   onAddCard,
   totalColumns,
-  isOver
+  isOver,
+  isCollapsed,
+  onToggleCollapse
 }: DroppableColumnProps) {
   const { setNodeRef, isOver: isOverDroppable } = useDroppable({
     id: column.tag,
   });
+
+  // Check if this is a "done" type column
+  const isDoneColumn = column.tag.includes('done') || column.tag.includes('complete');
 
   // Get column accent color
   const getColumnColor = (color?: string) => {
@@ -243,15 +314,55 @@ function DroppableColumn({
 
   const showDropIndicator = isOver || isOverDroppable;
 
+  // When collapsed, show minimal version
+  if (isCollapsed) {
+    return (
+      <div
+        ref={setNodeRef}
+        className="flex-shrink-0 w-12 md:w-14 snap-start"
+      >
+        {/* Collapsed Column */}
+        <div
+          className={`h-full rounded-xl border ${getColumnColor(column.color)} cursor-pointer hover:opacity-80 transition-opacity ${
+            showDropIndicator ? "ring-2 ring-accent/40" : ""
+          }`}
+          onClick={onToggleCollapse}
+        >
+          <div className="p-2 h-full flex flex-col items-center">
+            <ChevronRight size={14} className={`${getHeaderColor(column.color)} mb-2`} />
+            <span className={`text-xs font-semibold ${getHeaderColor(column.color)} [writing-mode:vertical-rl] rotate-180`}>
+              {column.label}
+            </span>
+            <span className="mt-auto text-xs text-muted-foreground bg-surface/80 px-1.5 py-0.5 rounded-full font-medium">
+              {cards.length}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 min-w-[280px] max-w-[400px]">
+    <div className="flex-shrink-0 w-[280px] md:w-[320px] lg:flex-1 lg:min-w-[280px] lg:max-w-[400px] snap-start">
       {/* Column Header */}
-      <div className={`rounded-t-xl px-4 py-3 border ${getColumnColor(column.color)}`}>
-        <div className="flex items-center justify-between">
-          <h3 className={`font-semibold text-sm ${getHeaderColor(column.color)}`}>
-            {column.label}
-          </h3>
-          <span className="text-xs text-muted-foreground bg-surface/80 px-2.5 py-1 rounded-full font-medium">
+      <div className={`rounded-t-xl px-3 md:px-4 py-2.5 md:py-3 border ${getColumnColor(column.color)}`}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Collapse button for Done column */}
+            {isDoneColumn && (
+              <button
+                onClick={onToggleCollapse}
+                className="p-0.5 rounded hover:bg-white/10 transition-colors flex-shrink-0"
+                title="Collapse column"
+              >
+                <ChevronDown size={14} className={getHeaderColor(column.color)} />
+              </button>
+            )}
+            <h3 className={`font-semibold text-sm truncate ${getHeaderColor(column.color)}`}>
+              {column.label}
+            </h3>
+          </div>
+          <span className="text-xs text-muted-foreground bg-surface/80 px-2 md:px-2.5 py-0.5 md:py-1 rounded-full font-medium flex-shrink-0">
             {cards.length}
           </span>
         </div>
@@ -260,7 +371,7 @@ function DroppableColumn({
       {/* Column Content - Droppable Zone */}
       <div
         ref={setNodeRef}
-        className={`bg-surface-soft/30 border border-t-0 border-subtle rounded-b-xl p-3 min-h-[500px] space-y-3 transition-all duration-200 ${
+        className={`bg-surface-soft/30 border border-t-0 border-subtle rounded-b-xl p-2 md:p-3 min-h-[400px] md:min-h-[500px] space-y-2 md:space-y-3 transition-all duration-200 ${
           showDropIndicator
             ? "bg-accent/10 border-accent/30 ring-2 ring-accent/20 ring-inset"
             : ""
@@ -276,7 +387,7 @@ function DroppableColumn({
 
         {/* Drop indicator when empty and dragging over */}
         {cards.length === 0 && showDropIndicator && (
-          <div className="h-24 rounded-lg border-2 border-dashed border-accent/40 bg-accent/5 flex items-center justify-center">
+          <div className="h-20 md:h-24 rounded-lg border-2 border-dashed border-accent/40 bg-accent/5 flex items-center justify-center">
             <span className="text-xs text-accent/60">Drop here</span>
           </div>
         )}
@@ -288,7 +399,8 @@ function DroppableColumn({
             className="w-full py-2 px-3 rounded-lg border border-dashed border-subtle text-muted-foreground hover:text-foreground hover:border-accent/50 hover:bg-accent/5 transition-colors flex items-center justify-center gap-2 text-sm"
           >
             <Plus size={14} />
-            Add card
+            <span className="hidden sm:inline">Add card</span>
+            <span className="sm:hidden">Add</span>
           </button>
         )}
       </div>

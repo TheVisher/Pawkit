@@ -560,49 +560,95 @@ function CollectionPageContent() {
         {isBoard(currentCollection) ? (
           <>
             {/* Board View Header with Quick Stats */}
-            <div className="mb-4">
-              <div className="flex items-center gap-4 text-sm">
-                <span className="font-medium text-muted-foreground">
-                  {items.length} card{items.length !== 1 ? 's' : ''}
-                </span>
-                {/* Quick stats for each column */}
-                <div className="flex items-center gap-3">
-                  {getBoardConfig(currentCollection).columns.map((col) => {
-                    const count = items.filter(card =>
-                      card.tags?.includes(col.tag)
-                    ).length;
-                    return (
-                      <span key={col.tag} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <span className={`w-2 h-2 rounded-full ${
-                          col.tag.includes('done') ? 'bg-green-500' :
-                          col.tag.includes('doing') || col.tag.includes('progress') ? 'bg-yellow-500' :
-                          col.tag.includes('todo') ? 'bg-blue-500' :
-                          'bg-gray-500'
-                        }`} />
-                        {col.label}: {count}
-                      </span>
-                    );
-                  })}
+            <div className="mb-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-4 text-sm flex-wrap">
+                  <span className="font-medium text-muted-foreground">
+                    {items.length} card{items.length !== 1 ? 's' : ''}
+                  </span>
+                  {/* Quick stats for each column */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {getBoardConfig(currentCollection).columns.map((col) => {
+                      const count = items.filter(card =>
+                        card.tags?.includes(col.tag)
+                      ).length;
+                      return (
+                        <span key={col.tag} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <span className={`w-2 h-2 rounded-full ${
+                            col.tag.includes('done') ? 'bg-green-500' :
+                            col.tag.includes('doing') || col.tag.includes('progress') ? 'bg-yellow-500' :
+                            col.tag.includes('todo') ? 'bg-blue-500' :
+                            'bg-gray-500'
+                          }`} />
+                          {col.label}: {count}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+                {/* Keyboard shortcut hint */}
+                <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground/60">
+                  <kbd className="px-1.5 py-0.5 rounded bg-surface-soft border border-subtle text-[10px] font-mono">n</kbd>
+                  <span>new card</span>
                 </div>
               </div>
+
+              {/* Currently Doing Summary */}
+              {(() => {
+                const doingColumn = getBoardConfig(currentCollection).columns.find(
+                  col => col.tag.includes('doing') || col.tag.includes('progress')
+                );
+                if (!doingColumn) return null;
+
+                const doingCards = items.filter(card => card.tags?.includes(doingColumn.tag));
+                if (doingCards.length === 0) return null;
+
+                return (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                    <span className="text-xs font-medium text-yellow-500">Currently working on:</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {doingCards.slice(0, 3).map((card) => (
+                        <span key={card.id} className="text-xs text-foreground bg-surface px-2 py-0.5 rounded">
+                          {card.title || 'Untitled'}
+                        </span>
+                      ))}
+                      {doingCards.length > 3 && (
+                        <span className="text-xs text-yellow-500">+{doingCards.length - 3} more</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
-            <BoardView
-              cards={items}
-              boardConfig={getBoardConfig(currentCollection)}
-              collectionSlug={slug}
-              onCardClick={(card) => {
-                // Open card in the right panel
-                router.push(`/pawkits/${slug}?card=${card.id}`);
-              }}
-              onAddCard={(columnTag) => {
-                // Find the column by tag
-                const boardConfig = getBoardConfig(currentCollection);
-                const column = boardConfig.columns.find(c => c.tag === columnTag)
-                  || { tag: columnTag, label: columnTag === "uncategorized" ? "No Status" : columnTag };
-                setQuickAddColumn(column);
-                setShowQuickAddCard(true);
-              }}
-            />
+
+            {/* Empty State */}
+            {items.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 px-4 rounded-2xl border border-dashed border-subtle bg-surface-soft/30">
+                <KanbanSquare className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">No cards yet</h3>
+                <p className="text-sm text-muted-foreground text-center max-w-sm mb-4">
+                  Start adding cards to organize your work. Click the &quot;Add card&quot; button in any column to get started.
+                </p>
+              </div>
+            ) : (
+              <BoardView
+                cards={items}
+                boardConfig={getBoardConfig(currentCollection)}
+                collectionSlug={slug}
+                onCardClick={(card) => {
+                  // Open card in the right panel
+                  router.push(`/pawkits/${slug}?card=${card.id}`);
+                }}
+                onAddCard={(columnTag) => {
+                  // Find the column by tag
+                  const boardConfig = getBoardConfig(currentCollection);
+                  const column = boardConfig.columns.find(c => c.tag === columnTag)
+                    || { tag: columnTag, label: columnTag === "uncategorized" ? "No Status" : columnTag };
+                  setQuickAddColumn(column);
+                  setShowQuickAddCard(true);
+                }}
+              />
+            )}
           </>
         ) : (
           <>
