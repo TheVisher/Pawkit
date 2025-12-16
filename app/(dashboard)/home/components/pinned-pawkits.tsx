@@ -11,12 +11,12 @@ interface PinnedPawkitsProps {
 
 // Preview positions - scattered/fanned across the card, up to 6
 const previewPositions = [
-  { left: 0, top: 0, rotate: -8, zIndex: 6 },
-  { left: 22, top: 6, rotate: 3, zIndex: 5 },
-  { left: 44, top: 2, rotate: -4, zIndex: 4 },
-  { left: 66, top: 8, rotate: 6, zIndex: 3 },
-  { left: 88, top: 4, rotate: -2, zIndex: 2 },
-  { left: 110, top: 10, rotate: 4, zIndex: 1 },
+  { left: 0, top: 0, rotate: -6, zIndex: 6 },
+  { left: 28, top: 4, rotate: 3, zIndex: 5 },
+  { left: 56, top: 0, rotate: -3, zIndex: 4 },
+  { left: 84, top: 6, rotate: 5, zIndex: 3 },
+  { left: 112, top: 2, rotate: -2, zIndex: 2 },
+  { left: 140, top: 8, rotate: 4, zIndex: 1 },
 ];
 
 export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
@@ -68,8 +68,8 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
                     key={item.id}
                     className="absolute rounded-lg overflow-hidden border border-subtle/50 shadow-md transition-transform group-hover:scale-105"
                     style={{
-                      width: '44px',
-                      height: '44px',
+                      width: '54px',
+                      height: '54px',
                       left: `${pos.left}px`,
                       top: `${pos.top}px`,
                       zIndex: pos.zIndex,
@@ -97,10 +97,10 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
                 <div
                   className="absolute rounded-lg bg-surface-soft/90 border border-subtle/50 flex items-center justify-center text-[10px] text-muted-foreground shadow-md"
                   style={{
-                    width: '44px',
-                    height: '44px',
-                    right: '0px',
-                    bottom: '0px',
+                    width: '54px',
+                    height: '54px',
+                    right: '4px',
+                    bottom: '4px',
                     zIndex: 0,
                   }}
                 >
