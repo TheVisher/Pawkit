@@ -46,6 +46,7 @@ export default function HomePage() {
 
   // Home data hook - all computed data
   const {
+    cards,
     groupedTodos,
     inboxItems,
     inboxCount,
@@ -54,9 +55,6 @@ export default function HomePage() {
     weekDays,
     today,
     thisWeekStats,
-    onThisDayItem,
-    rediscoverItems,
-    rediscoverCount,
   } = useHomeData();
 
   // Initialize event store
@@ -239,11 +237,8 @@ export default function HomePage() {
 
           {/* Rediscover + On This Day - row 2, col 2 (split into two cards) */}
           <div className="min-h-0 grid grid-cols-2 gap-4">
-            <RediscoverCard
-              rediscoverCount={rediscoverCount}
-              rediscoverItems={rediscoverItems}
-            />
-            <OnThisDayCard item={onThisDayItem} />
+            <RediscoverCard allCards={cards} />
+            <OnThisDayCard allCards={cards} />
           </div>
         </div>
 
