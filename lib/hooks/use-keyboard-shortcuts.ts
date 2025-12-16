@@ -24,6 +24,7 @@ interface UseKeyboardShortcutsOptions {
   onSearch?: () => void;
   onEscape?: () => void;
   onHelp?: () => void;
+  onPaste?: () => void;
   enableNavigation?: boolean;
 }
 
@@ -64,6 +65,14 @@ export function useKeyboardShortcuts(options: UseKeyboardShortcutsOptions = {}) 
       if ((e.metaKey || e.ctrlKey) && e.key === "t" && !isInput) {
         e.preventDefault();
         options.onTodayNote?.();
+        return;
+      }
+
+      // Quick Paste (Cmd/Ctrl + V) - only when not in input
+      if ((e.metaKey || e.ctrlKey) && e.key === "v" && !isInput) {
+        // Don't prevent default - let the paste event fire naturally
+        // But trigger our callback to handle it
+        options.onPaste?.();
         return;
       }
 
