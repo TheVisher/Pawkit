@@ -181,6 +181,7 @@ export async function createCollection(userId: string, payload: unknown) {
         name: parsed.name,
         parentId: parsed.parentId ?? null,
         slug,
+        metadata: parsed.metadata ?? undefined,
         user: { connect: { id: userId } }
       }
     });
@@ -204,13 +205,14 @@ export async function createCollection(userId: string, payload: unknown) {
       }
       
       const newSlug = `${slug}-${Date.now()}`;
-      
+
       try {
         const createdWithNewSlug = await prisma.collection.create({
           data: {
             name: parsed.name,
             parentId: parsed.parentId ?? null,
             slug: newSlug,
+            metadata: parsed.metadata ?? undefined,
             user: { connect: { id: userId } }
           }
         });

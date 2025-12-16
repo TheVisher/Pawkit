@@ -104,6 +104,7 @@ model Collection {
   isPrivate            Boolean   @default(false) // Private pawkits isolate cards from Library/Timeline/Search
   isSystem             Boolean   @default(false) // System pawkits cannot be deleted/renamed
   passwordHash         String?   // Optional per-pawkit password protection
+  metadata             Json?     // Flexible metadata (board config, custom settings, etc.)
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
   userId               String
