@@ -200,51 +200,54 @@ export default function HomePage() {
           <HomeHeader userName={displayName} />
         </div>
 
-        {/* TOP SECTION - Today + Calendar/Stats */}
-        <div className="grid grid-cols-2 gap-4 min-h-0 flex-[4]">
-          {/* Left column: Today (spans both rows) */}
-          <div className="row-span-2 min-h-0">
-            <TodayCard
-              events={today.events}
-              scheduledCards={today.scheduledCards}
-              dailyNote={today.dailyNote}
-              groupedTodos={groupedTodos}
-              onToggleTodo={toggleTodo}
-              onOpenDailyNote={handleOpenDailyNote}
-            />
-          </div>
-
-          {/* Right column top: This Week Calendar */}
-          <div className="min-h-0">
-            <WeekCalendar
-              weekDays={weekDays}
-              onDayClick={setSelectedDay}
-            />
-          </div>
-
-          {/* Right column bottom: Inbox + This Week Stats */}
-          <div className="min-h-0">
-            <InboxStatsCard
-              inboxItems={inboxItems}
-              inboxCount={inboxCount}
-              savedThisWeek={thisWeekStats.savedThisWeek}
-              processedThisWeek={thisWeekStats.processedThisWeek}
-            />
-          </div>
-        </div>
-
-        {/* BOTTOM SECTION - Horizontal rows, not stretched full width */}
-        <div className="flex flex-col gap-4 min-h-0 flex-[5]">
-          {/* Pinned Pawkits - horizontal row */}
-          {pinnedPawkits.length > 0 && (
-            <div className="min-h-0 shrink-0">
-              <PinnedPawkits pawkits={pinnedPawkits} />
+        {/* Content wrapper - limit width to ~65% */}
+        <div className="flex-1 flex flex-col gap-4 min-h-0 w-[65%]">
+          {/* TOP SECTION - Today + Calendar/Stats */}
+          <div className="grid grid-cols-2 gap-4 min-h-0 flex-[4]">
+            {/* Left column: Today (spans both rows) */}
+            <div className="row-span-2 min-h-0">
+              <TodayCard
+                events={today.events}
+                scheduledCards={today.scheduledCards}
+                dailyNote={today.dailyNote}
+                groupedTodos={groupedTodos}
+                onToggleTodo={toggleTodo}
+                onOpenDailyNote={handleOpenDailyNote}
+              />
             </div>
-          )}
 
-          {/* Recent Items - horizontal row (has empty state for new users) */}
-          <div className="min-h-0 flex-1">
-            <RecentItems items={recentItems} />
+            {/* Right column top: This Week Calendar */}
+            <div className="min-h-0">
+              <WeekCalendar
+                weekDays={weekDays}
+                onDayClick={setSelectedDay}
+              />
+            </div>
+
+            {/* Right column bottom: Inbox + This Week Stats */}
+            <div className="min-h-0">
+              <InboxStatsCard
+                inboxItems={inboxItems}
+                inboxCount={inboxCount}
+                savedThisWeek={thisWeekStats.savedThisWeek}
+                processedThisWeek={thisWeekStats.processedThisWeek}
+              />
+            </div>
+          </div>
+
+          {/* BOTTOM SECTION - Horizontal rows */}
+          <div className="flex flex-col gap-4 min-h-0 flex-[5]">
+            {/* Pinned Pawkits - horizontal row */}
+            {pinnedPawkits.length > 0 && (
+              <div className="min-h-0 shrink-0">
+                <PinnedPawkits pawkits={pinnedPawkits} />
+              </div>
+            )}
+
+            {/* Recent Items - horizontal row (has empty state for new users) */}
+            <div className="min-h-0 flex-1">
+              <RecentItems items={recentItems} />
+            </div>
           </div>
         </div>
       </div>
