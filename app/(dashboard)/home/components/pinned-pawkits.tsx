@@ -90,13 +90,13 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
       </div>
 
       {/* Horizontal row of pawkit cards - stretch to fill with min/max constraints */}
-      {/* p-1 -m-1 gives room for shadows without clipping */}
-      <div className="flex gap-3 p-1 -m-1">
+      {/* p-2 -m-2 gives room for shadows and hover lift without clipping */}
+      <div className="flex gap-3 p-2 -m-2">
         {pawkits.slice(0, MAX_VISIBLE).map((pawkit) => (
           <button
             key={pawkit.id}
             onClick={() => router.push(`/pawkits/${pawkit.slug}`)}
-            className="group flex-1 min-w-[200px] max-w-[320px] text-left rounded-xl p-4 transition-all hover:border-accent/30 flex flex-col border border-subtle bg-surface/80"
+            className="card-hover group flex-1 min-w-[200px] max-w-[320px] text-left p-4 flex flex-col"
           >
             {/* Header: icon + name */}
             <div className="flex items-center gap-2 mb-3">
