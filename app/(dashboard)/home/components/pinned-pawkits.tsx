@@ -9,13 +9,6 @@ interface PinnedPawkitsProps {
   pawkits: PinnedPawkit[];
 }
 
-// Preview positions - scattered/fanned like /pawkits page
-const previewPositions = [
-  { left: 8, top: 0, rotate: -6, zIndex: 3 },
-  { left: 36, top: 4, rotate: 4, zIndex: 2 },
-  { left: 64, top: 2, rotate: 2, zIndex: 1 },
-];
-
 export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
   const router = useRouter();
 
@@ -56,62 +49,52 @@ export function PinnedPawkits({ pawkits }: PinnedPawkitsProps) {
               </span>
             </div>
 
-            {/* Thumbnail previews - stacked/fanned */}
-            <div className="relative h-16 mt-1">
-              {pawkit.previewItems.slice(0, 3).map((item, i) => {
-                const pos = previewPositions[i];
-                return (
-                  <div
-                    key={item.id}
-                    className="absolute rounded-lg overflow-hidden border border-subtle/50 shadow-sm transition-transform group-hover:scale-105"
-                    style={{
-                      width: '52px',
-                      height: '52px',
-                      left: `${pos.left}px`,
-                      top: `${pos.top}px`,
-                      zIndex: pos.zIndex,
-                      transform: `rotate(${pos.rotate}deg)`,
-                    }}
-                  >
-                    {item.image ? (
-                      <img
-                        src={item.image}
-                        alt=""
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-surface-soft flex items-center justify-center">
-                        <FileText size={14} className="text-muted-foreground" />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* +N more indicator */}
-              {pawkit.count > 3 && (
+            {/* Thumbnail grid - 3 columns, up to 2 rows */}
+            <div className="grid grid-cols-3 gap-1.5 mt-1">
+              {pawkit.previewItems.slice(0, 6).map((item) => (
                 <div
-                  className="absolute rounded-lg bg-surface-soft/80 border border-subtle/50 flex items-center justify-center text-[10px] text-muted-foreground"
-                  style={{
-                    width: '52px',
-                    height: '52px',
-                    left: `${3 * 28}px`,
-                    top: `${3 * 2}px`,
-                    zIndex: 0,
-                  }}
+                  key={item.id}
+                  className="aspect-square rounded-md overflow-hidden border border-subtle/50 shadow-sm transition-transform group-hover:scale-105"
                 >
-                  +{pawkit.count - 3}
+                  {item.image ? (
+                    <img
+                      src={item.image}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-surface-soft flex items-center justify-center">
+                      <FileText size={12} className="text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {/* +N more indicator - only if more than 6 items */}
+              {pawkit.count > 6 && pawkit.previewItems.length >= 6 && (
+                <div className="aspect-square rounded-md bg-surface-soft/80 border border-subtle/50 flex items-center justify-center text-[10px] text-muted-foreground">
+                  +{pawkit.count - 6}
                 </div>
               )}
 
-              {/* Empty state */}
-              {pawkit.previewItems.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center rounded-lg border border-dashed border-subtle bg-surface-soft/60 text-[10px] text-muted-foreground">
-                  Empty
-                </div>
+              {/* Fill empty slots with placeholders if less than 3 items */}
+              {pawkit.previewItems.length > 0 && pawkit.previewItems.length < 3 && (
+                Array.from({ length: 3 - pawkit.previewItems.length }).map((_, i) => (
+                  <div
+                    key={`empty-${i}`}
+                    className="aspect-square rounded-md bg-surface-soft/40 border border-dashed border-subtle/30"
+                  />
+                ))
               )}
             </div>
+
+            {/* Empty state */}
+            {pawkit.previewItems.length === 0 && (
+              <div className="flex items-center justify-center rounded-lg border border-dashed border-subtle bg-surface-soft/60 text-[10px] text-muted-foreground h-16">
+                Empty
+              </div>
+            )}
           </button>
         ))}
       </div>
