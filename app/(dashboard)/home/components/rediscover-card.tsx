@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, History } from "lucide-react";
 import { CardModel } from "@/lib/types";
 
 interface RediscoverCardProps {
@@ -31,7 +31,10 @@ export function RediscoverCard({ rediscoverCount, rediscoverItems }: RediscoverC
         }}
       >
         <h2 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2 shrink-0">
-          <span>🔄</span> Rediscover
+          <div className="w-6 h-6 rounded-lg bg-purple-500/20 flex items-center justify-center">
+            <History className="w-3 h-3 text-purple-400" />
+          </div>
+          Rediscover
         </h2>
         <div className="flex-1">
           <p className="text-sm text-muted-foreground">Nothing yet</p>
@@ -52,7 +55,10 @@ export function RediscoverCard({ rediscoverCount, rediscoverItems }: RediscoverC
       }}
     >
       <h2 className="font-medium text-sm text-foreground mb-2 flex items-center gap-2 shrink-0">
-        <span>🔄</span> Rediscover
+        <div className="w-6 h-6 rounded-lg bg-purple-500/20 flex items-center justify-center">
+          <History className="w-3 h-3 text-purple-400" />
+        </div>
+        Rediscover
       </h2>
 
       <div className="flex-1 min-h-0">
