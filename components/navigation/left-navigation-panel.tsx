@@ -577,28 +577,12 @@ export function LeftNavigationPanel({
     };
 
     try {
-      // Create the collection first
-      await addCollection({ name, parentId: createBoardParentId || undefined });
-
-      // Find the newly created collection by slug
-      const findBySlugInTree = (slug: string, list: CollectionNode[]): CollectionNode | undefined => {
-        for (const item of list) {
-          if (item.slug === slug) return item;
-          const child = findBySlugInTree(slug, item.children ?? []);
-          if (child) return child;
-        }
-        return undefined;
-      };
-
-      const slug = name.toLowerCase().replace(/\s+/g, '-');
-
-      // Use store collections (freshly updated) to find the new collection
-      const freshCollections = useDataStore.getState().collections;
-      const newCollection = findBySlugInTree(slug, freshCollections);
-
-      if (newCollection) {
-        await updateCollection(newCollection.id, { metadata: metadata as Record<string, unknown> });
-      }
+      // Create the collection with metadata in one step
+      await addCollection({
+        name,
+        parentId: createBoardParentId || undefined,
+        metadata: metadata as Record<string, unknown>
+      });
 
       useToastStore.getState().success("Board created");
     } catch (error) {
