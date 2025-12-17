@@ -154,9 +154,8 @@ export function BoardView({
     return grouped;
   }, [cards, boardConfig.columns]);
 
-  // Calculate if we should show uncategorized column
-  const showUncategorized = cardsByColumn["uncategorized"]?.length > 0;
-  const totalColumns = boardConfig.columns.length + (showUncategorized ? 1 : 0);
+  // Total columns includes "No Status" which is always shown first
+  const totalColumns = boardConfig.columns.length + 1;
 
   // Handle drag start
   const handleDragStart = (event: DragStartEvent) => {
@@ -226,7 +225,19 @@ export function BoardView({
     >
       {/* Scrollable container for mobile, centered on desktop */}
       <div className="flex justify-center gap-3 md:gap-4 pb-4 min-h-[500px] md:min-h-[600px] overflow-x-auto snap-x snap-mandatory md:snap-none -mx-4 px-4 md:mx-0 md:px-0">
-        {/* Render each column */}
+        {/* No Status column first - for cards without status tags */}
+        <DroppableColumn
+          column={{ tag: "uncategorized", label: "No Status", color: "gray" }}
+          cards={cardsByColumn["uncategorized"] || []}
+          onCardClick={onCardClick}
+          onAddCard={onAddCard}
+          totalColumns={totalColumns}
+          isOver={overId === "uncategorized"}
+          isCollapsed={collapsedColumns.has("uncategorized")}
+          onToggleCollapse={() => toggleColumnCollapse("uncategorized")}
+        />
+
+        {/* Render configured columns */}
         {boardConfig.columns.map((column) => (
           <DroppableColumn
             key={column.tag}
@@ -240,20 +251,6 @@ export function BoardView({
             onToggleCollapse={() => toggleColumnCollapse(column.tag)}
           />
         ))}
-
-        {/* Uncategorized column if there are cards without status */}
-        {showUncategorized && (
-          <DroppableColumn
-            column={{ tag: "uncategorized", label: "No Status", color: "gray" }}
-            cards={cardsByColumn["uncategorized"]}
-            onCardClick={onCardClick}
-            onAddCard={onAddCard}
-            totalColumns={totalColumns}
-            isOver={overId === "uncategorized"}
-            isCollapsed={collapsedColumns.has("uncategorized")}
-            onToggleCollapse={() => toggleColumnCollapse("uncategorized")}
-          />
-        )}
 
         {/* Add Column Button */}
         {onColumnsChange && (
