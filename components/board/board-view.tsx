@@ -9,7 +9,7 @@ import { AddColumnButton } from "./add-column-button";
 import {
   DndContext,
   DragOverlay,
-  closestCorners,
+  pointerWithin,
   PointerSensor,
   useSensor,
   useSensors,
@@ -248,7 +248,7 @@ export function BoardView({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
@@ -292,24 +292,22 @@ export function BoardView({
 
       {/* Drag Overlay - Shows the card being dragged */}
       <DragOverlay
-        dropAnimation={{
-          duration: 200,
-          easing: 'ease-out',
-        }}
+        dropAnimation={null}
         zIndex={1000}
       >
         {activeCard ? (
           <div
             className="pointer-events-none"
             style={{
-              transform: 'scale(0.85)',
-              transformOrigin: 'top left',
+              width: '280px',
               opacity: 0.95,
-              filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4))',
+              filter: 'drop-shadow(0 12px 32px rgba(0, 0, 0, 0.5))',
               cursor: 'grabbing',
             }}
           >
-            <BoardCard card={activeCard} isDragging isDragOverlay />
+            <div style={{ transform: 'scale(0.5)', transformOrigin: 'top left' }}>
+              <BoardCard card={activeCard} isDragging isDragOverlay />
+            </div>
           </div>
         ) : null}
       </DragOverlay>
