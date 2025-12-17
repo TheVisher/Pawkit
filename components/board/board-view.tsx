@@ -17,9 +17,28 @@ import {
   DragEndEvent,
   DragOverEvent,
   useDroppable,
+  Modifier,
 } from "@dnd-kit/core";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useToastStore } from "@/lib/stores/toast-store";
+
+// Custom modifier to compensate for scale transform offset
+// When scaling to 50%, the grab point shifts, so we need to adjust
+const adjustForScale: Modifier = ({ transform, draggingNodeRect }) => {
+  if (!draggingNodeRect) return transform;
+
+  // The card is scaled to 50%, which shifts the visual position
+  // We need to pull it back toward the cursor
+  const scale = 0.5;
+  const offsetX = draggingNodeRect.width * (1 - scale) * 0.5;
+  const offsetY = draggingNodeRect.height * (1 - scale) * 0.5;
+
+  return {
+    ...transform,
+    x: transform.x - offsetX,
+    y: transform.y - offsetY,
+  };
+};
 
 interface BoardViewProps {
   cards: CardDTO[];
@@ -294,20 +313,20 @@ export function BoardView({
       <DragOverlay
         dropAnimation={null}
         zIndex={1000}
+        modifiers={[adjustForScale]}
       >
         {activeCard ? (
           <div
             className="pointer-events-none"
             style={{
-              width: '280px',
+              transform: 'scale(0.5)',
+              transformOrigin: 'center center',
               opacity: 0.95,
               filter: 'drop-shadow(0 12px 32px rgba(0, 0, 0, 0.5))',
               cursor: 'grabbing',
             }}
           >
-            <div style={{ transform: 'scale(0.5)', transformOrigin: 'top left' }}>
-              <BoardCard card={activeCard} isDragging isDragOverlay />
-            </div>
+            <BoardCard card={activeCard} isDragging isDragOverlay />
           </div>
         ) : null}
       </DragOverlay>
