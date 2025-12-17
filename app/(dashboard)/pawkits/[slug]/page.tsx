@@ -359,12 +359,25 @@ function CollectionPageContent() {
                 backgroundImage: `url(${currentCollection.coverImage})`,
                 backgroundSize: 'cover',
                 backgroundPosition: `center ${coverImagePosition}%`,
-                maskImage: 'linear-gradient(to bottom, black 75%, transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to bottom, black 75%, transparent 100%)',
               }}
             />
-            {/* Subtle gradient for text readability at bottom */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/50" />
+            {/* Gradual fade to background - multi-stop for smooth transition */}
+            <div
+              className="absolute inset-x-0 bottom-0 h-64 pointer-events-none"
+              style={{
+                background: `linear-gradient(to bottom,
+                  transparent 0%,
+                  hsl(var(--background) / 0.05) 15%,
+                  hsl(var(--background) / 0.15) 30%,
+                  hsl(var(--background) / 0.35) 50%,
+                  hsl(var(--background) / 0.6) 70%,
+                  hsl(var(--background) / 0.85) 85%,
+                  hsl(var(--background)) 100%
+                )`,
+              }}
+            />
+            {/* Light overlay at top for contrast */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-transparent pointer-events-none" />
 
             {/* Overlaid Title and Breadcrumb */}
             <div className="absolute bottom-4 left-6 right-6 z-10">

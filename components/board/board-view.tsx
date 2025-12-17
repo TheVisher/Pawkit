@@ -298,18 +298,33 @@ function DroppableColumn({
   // Check if this is a "done" type column
   const isDoneColumn = column.tag.includes('done') || column.tag.includes('complete');
 
-  // Get column accent color (subtle tints - 5-8% opacity)
+  // Get column header color (background + border for header)
   const getColumnColor = (color?: string) => {
     switch (color) {
-      case "red": return "bg-red-500/[0.06] border-red-500/20";
-      case "orange": return "bg-orange-500/[0.06] border-orange-500/20";
-      case "yellow": return "bg-yellow-500/[0.06] border-yellow-500/20";
-      case "amber": return "bg-amber-500/[0.06] border-amber-500/20";
-      case "green": return "bg-green-500/[0.06] border-green-500/20";
-      case "blue": return "bg-blue-500/[0.06] border-blue-500/20";
-      case "purple": return "bg-purple-500/[0.06] border-purple-500/20";
-      case "gray": return "bg-gray-500/[0.05] border-gray-500/20";
-      default: return "bg-accent/[0.06] border-accent/20";
+      case "red": return "bg-red-500/[0.08] border-red-500/20";
+      case "orange": return "bg-orange-500/[0.08] border-orange-500/20";
+      case "yellow": return "bg-yellow-500/[0.08] border-yellow-500/20";
+      case "amber": return "bg-amber-500/[0.08] border-amber-500/20";
+      case "green": return "bg-green-500/[0.08] border-green-500/20";
+      case "blue": return "bg-blue-500/[0.08] border-blue-500/20";
+      case "purple": return "bg-purple-500/[0.08] border-purple-500/20";
+      case "gray": return "bg-gray-500/[0.06] border-gray-500/20";
+      default: return "bg-accent/[0.08] border-accent/20";
+    }
+  };
+
+  // Get column content background tint (subtle - 5% opacity)
+  const getContentBg = (color?: string) => {
+    switch (color) {
+      case "red": return "bg-red-500/[0.04]";
+      case "orange": return "bg-orange-500/[0.04]";
+      case "yellow": return "bg-yellow-500/[0.04]";
+      case "amber": return "bg-amber-500/[0.04]";
+      case "green": return "bg-green-500/[0.04]";
+      case "blue": return "bg-blue-500/[0.04]";
+      case "purple": return "bg-purple-500/[0.04]";
+      case "gray": return "bg-gray-500/[0.03]";
+      default: return "bg-surface-soft/30";
     }
   };
 
@@ -386,9 +401,9 @@ function DroppableColumn({
       {/* Column Content - Droppable Zone */}
       <div
         ref={setNodeRef}
-        className={`bg-surface-soft/30 border border-t-0 border-subtle rounded-b-xl p-2 md:p-3 min-h-[400px] md:min-h-[500px] space-y-2 md:space-y-3 transition-all duration-200 ${
+        className={`${getContentBg(column.color)} border border-t-0 border-subtle rounded-b-xl p-2 md:p-3 min-h-[400px] md:min-h-[500px] space-y-2 md:space-y-3 transition-all duration-200 ${
           showDropIndicator
-            ? "bg-accent/10 border-accent/30 ring-2 ring-accent/20 ring-inset"
+            ? "!bg-accent/10 border-accent/30 ring-2 ring-accent/20 ring-inset"
             : ""
         }`}
       >

@@ -172,9 +172,9 @@ export interface BoardConfig {
 }
 
 export const DEFAULT_BOARD_COLUMNS: BoardColumn[] = [
-  { tag: "status:todo", label: "To Do" },
-  { tag: "status:doing", label: "In Progress" },
-  { tag: "status:done", label: "Done" }
+  { tag: "status:todo", label: "To Do", color: "purple" },
+  { tag: "status:doing", label: "In Progress", color: "amber" },
+  { tag: "status:done", label: "Done", color: "green" }
 ];
 
 export function getBoardConfig(pawkit: { metadata?: PawkitMetadata | Record<string, unknown> }): BoardConfig {
