@@ -352,7 +352,7 @@ function CollectionPageContent() {
       <div className="space-y-4">
         {/* Cover Image Banner */}
         {currentCollection.coverImage ? (
-          <div className="relative w-[calc(100%+3rem)] h-80 -mx-6 -mt-6 mb-0 overflow-hidden group rounded-t-2xl">
+          <div className="relative w-[calc(100%+3rem)] h-96 -mx-6 -mt-6 -mb-20 overflow-visible group rounded-t-2xl">
             <div
               className="w-full h-full"
               style={{
@@ -361,25 +361,26 @@ function CollectionPageContent() {
                 backgroundPosition: `center ${coverImagePosition}%`,
               }}
             />
-            {/* Full-height gradient fade - starts at 40% from top, very gradual */}
+            {/* Gradient fade that extends BELOW the image into content area */}
             <div
-              className="absolute inset-0 pointer-events-none"
+              className="absolute inset-x-0 top-0 pointer-events-none"
               style={{
+                height: '130%',
                 background: `linear-gradient(to bottom,
                   transparent 0%,
-                  transparent 35%,
-                  hsl(var(--background) / 0.1) 45%,
-                  hsl(var(--background) / 0.25) 55%,
-                  hsl(var(--background) / 0.5) 65%,
-                  hsl(var(--background) / 0.75) 75%,
-                  hsl(var(--background) / 0.9) 85%,
-                  hsl(var(--background)) 95%,
+                  transparent 30%,
+                  hsl(var(--background) / 0.05) 40%,
+                  hsl(var(--background) / 0.15) 50%,
+                  hsl(var(--background) / 0.35) 60%,
+                  hsl(var(--background) / 0.6) 70%,
+                  hsl(var(--background) / 0.85) 80%,
+                  hsl(var(--background)) 90%,
                   hsl(var(--background)) 100%
                 )`,
               }}
             />
             {/* Light overlay at top for contrast */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/15 to-transparent pointer-events-none" style={{ height: '50%' }} />
+            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-black/15 to-transparent pointer-events-none" />
 
             {/* Overlaid Title and Breadcrumb */}
             <div className="absolute bottom-4 left-6 right-6 z-10">
