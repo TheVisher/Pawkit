@@ -249,7 +249,7 @@ export function BoardView({
       <DragOverlay>
         {activeCard ? (
           <div className="opacity-90 rotate-3 scale-105">
-            <BoardCard card={activeCard} isDragging />
+            <BoardCard card={activeCard} isDragging isDragOverlay />
           </div>
         ) : null}
       </DragOverlay>
