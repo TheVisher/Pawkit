@@ -352,7 +352,7 @@ function CollectionPageContent() {
       <div className="space-y-4">
         {/* Cover Image Banner */}
         {currentCollection.coverImage ? (
-          <div className="relative w-[calc(100%+3rem)] -mx-6 -mt-6 group">
+          <div className="relative w-[calc(100%+3rem)] -mx-6 -mt-6 -mb-16 group">
             {/* Image with mask fade - image fades to transparent, background shows through */}
             <div className="relative h-[22rem] rounded-t-2xl overflow-hidden">
               <div
