@@ -352,19 +352,31 @@ function CollectionPageContent() {
       <div className="space-y-4">
         {/* Cover Image Banner */}
         {currentCollection.coverImage ? (
-          <div className="relative w-[calc(100%+3rem)] h-72 -mx-6 -mt-6 mb-0 overflow-hidden group rounded-t-2xl">
-            <div
-              className="w-full h-full"
-              style={{
-                backgroundImage: `url(${currentCollection.coverImage})`,
-                backgroundSize: 'cover',
-                backgroundPosition: `center ${coverImagePosition}%`,
-              }}
-            />
-            {/* Gradient fade to background - defined in globals.css */}
-            <div className="cover-fade" />
-            {/* Light overlay at top for contrast */}
-            <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-black/10 to-transparent pointer-events-none" />
+          <div className="relative w-[calc(100%+3rem)] -mx-6 -mt-6 -mb-12 group">
+            {/* Image container with rounded corners - clips the image only */}
+            <div className="relative h-72 overflow-hidden rounded-t-2xl">
+              <div
+                className="w-full h-full"
+                style={{
+                  backgroundImage: `url(${currentCollection.coverImage})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: `center ${coverImagePosition}%`,
+                }}
+              />
+              {/* Light overlay at top for contrast */}
+              <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-black/10 to-transparent pointer-events-none" />
+            </div>
+
+            {/* Gradient fade OUTSIDE the clipped container - extends into content area */}
+            <div className="absolute inset-x-0 bottom-0 h-48 pointer-events-none z-[1]" style={{
+              background: `linear-gradient(to bottom,
+                rgba(10, 10, 10, 0) 0%,
+                rgba(10, 10, 10, 0.15) 25%,
+                rgba(10, 10, 10, 0.4) 50%,
+                rgba(10, 10, 10, 0.7) 75%,
+                rgba(10, 10, 10, 1) 100%
+              )`
+            }} />
 
             {/* Overlaid Title and Breadcrumb */}
             <div className="absolute bottom-4 left-6 right-6 z-10">
