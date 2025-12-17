@@ -361,8 +361,8 @@ function CollectionPageContent() {
                   backgroundImage: `url(${currentCollection.coverImage})`,
                   backgroundSize: 'cover',
                   backgroundPosition: `center ${coverImagePosition}%`,
-                  maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
+                  maskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, transparent 100%)',
                 }}
               />
               {/* Light overlay at top for contrast */}
@@ -542,8 +542,10 @@ function CollectionPageContent() {
           </div>
         )}
 
-        {/* View Tabs - Below cover/title */}
-        <ViewTabs layout={layout} onLayoutChange={handleLayoutChange} />
+        {/* View Tabs - Below cover/title, relative z-20 to be above cover */}
+        <div className="relative z-20">
+          <ViewTabs layout={layout} onLayoutChange={handleLayoutChange} />
+        </div>
 
         {/* Sub-Pawkits Section */}
         {subPawkitsGridItems.length > 0 && (
