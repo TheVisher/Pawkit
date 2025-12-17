@@ -1,38 +1,61 @@
 /**
- * Board Type Definitions
+ * Kanban View Type Definitions
  *
- * Kanban board support for Pawkits. Boards are Collections (Pawkits)
- * with type: "board" in their metadata. Cards are assigned to columns
- * via status tags (e.g., "status:todo", "status:doing", "status:done").
+ * Kanban is a view mode for Pawkits (like Grid, List, Masonry).
+ * Cards are assigned to columns via status tags (e.g., "status:todo").
+ * Column configuration is stored in Pawkit metadata.kanbanColumns.
  */
 
-// Board column configuration
-export interface BoardColumn {
-  tag: string;      // e.g., "status:todo"
-  label: string;    // e.g., "To Do"
-  color?: string;   // optional, for column header accent
-}
+// Column color options for tinted backgrounds
+export type KanbanColumnColor = "gray" | "purple" | "amber" | "green" | "red" | "blue";
 
-// Board-specific configuration stored in Collection.metadata
-export interface BoardConfig {
-  columns: BoardColumn[];
-  showDoneAfterDays?: number;   // Auto-hide done items older than X days
-  defaultTags?: string[];       // Auto-apply to new cards in this board
+// Kanban column configuration
+export interface KanbanColumn {
+  id: string;                    // Unique column ID
+  tag: string | null;            // Status tag (e.g., "status:todo") or null for "Unsorted"
+  label: string;                 // Display label (e.g., "To Do")
+  color?: KanbanColumnColor;     // Column accent/tint color
 }
 
 // Extended Pawkit (Collection) metadata
 export interface PawkitMetadata {
-  type?: "default" | "board";    // undefined = "default"
-  boardConfig?: BoardConfig;
-  // Additional metadata fields can be added here
+  // Legacy field - will be removed after migration
+  type?: "default" | "board";
+  boardConfig?: {
+    columns: { tag: string; label: string; color?: string }[];
+  };
+
+  // New kanban columns config
+  kanbanColumns?: KanbanColumn[];
 }
 
-// Default columns for new boards
-export const DEFAULT_BOARD_COLUMNS: BoardColumn[] = [
-  { tag: "status:todo", label: "To Do" },
-  { tag: "status:doing", label: "In Progress" },
-  { tag: "status:done", label: "Done" }
+// Default columns for Kanban view
+export const DEFAULT_KANBAN_COLUMNS: KanbanColumn[] = [
+  { id: "unsorted", tag: null, label: "Unsorted", color: "gray" },
+  { id: "todo", tag: "status:todo", label: "To Do", color: "purple" },
+  { id: "doing", tag: "status:doing", label: "In Progress", color: "amber" },
+  { id: "done", tag: "status:done", label: "Done", color: "green" },
 ];
+
+// Column background tints (5-8% opacity)
+export const COLUMN_TINTS: Record<KanbanColumnColor, string> = {
+  gray: "bg-gray-500/5",
+  purple: "bg-purple-500/6",
+  amber: "bg-amber-500/6",
+  green: "bg-green-500/6",
+  red: "bg-red-500/6",
+  blue: "bg-blue-500/6",
+};
+
+// Column header accent colors
+export const COLUMN_HEADER_COLORS: Record<KanbanColumnColor, string> = {
+  gray: "text-gray-400",
+  purple: "text-purple-400",
+  amber: "text-amber-400",
+  green: "text-green-400",
+  red: "text-red-400",
+  blue: "text-blue-400",
+};
 
 // Status tag constants
 export const STATUS_TAGS = {
@@ -89,13 +112,71 @@ export function updateStatusTag(tags: string[], newStatus: string): string[] {
   return [...filtered, newStatus];
 }
 
-// Type guard: Check if a Pawkit/Collection is a board
+// Helper to remove all status tags (for moving to Unsorted)
+export function removeStatusTags(tags: string[]): string[] {
+  return tags.filter(t => !t.startsWith("status:"));
+}
+
+// Helper to get kanban columns from Pawkit metadata (with migration support)
+export function getKanbanColumns(metadata?: PawkitMetadata | Record<string, unknown>): KanbanColumn[] {
+  const meta = metadata as PawkitMetadata | undefined;
+
+  // New format: kanbanColumns
+  if (meta?.kanbanColumns && meta.kanbanColumns.length > 0) {
+    return meta.kanbanColumns;
+  }
+
+  // Legacy format: boardConfig.columns (migrate on the fly)
+  if (meta?.type === "board" && meta.boardConfig?.columns) {
+    const legacyColumns = meta.boardConfig.columns;
+    // Convert legacy columns and prepend Unsorted
+    const converted: KanbanColumn[] = legacyColumns.map((col, index) => ({
+      id: col.tag.replace("status:", "") || `column-${index}`,
+      tag: col.tag,
+      label: col.label,
+      color: (col.color as KanbanColumnColor) || undefined,
+    }));
+
+    // Add Unsorted at the beginning if not present
+    const hasUnsorted = converted.some(c => c.tag === null || c.id === "unsorted");
+    if (!hasUnsorted) {
+      converted.unshift({ id: "unsorted", tag: null, label: "Unsorted", color: "gray" });
+    }
+
+    return converted;
+  }
+
+  // Default columns
+  return DEFAULT_KANBAN_COLUMNS;
+}
+
+// Legacy helper - kept for backwards compatibility during migration
+// TODO: Remove after migration is complete
 export function isBoard(pawkit: { metadata?: PawkitMetadata | Record<string, unknown> }): boolean {
   const metadata = pawkit.metadata as PawkitMetadata | undefined;
   return metadata?.type === "board";
 }
 
-// Helper to get board config with defaults
+// Legacy helper - kept for backwards compatibility during migration
+// TODO: Remove after migration is complete
+export interface BoardColumn {
+  tag: string;
+  label: string;
+  color?: string;
+}
+
+export interface BoardConfig {
+  columns: BoardColumn[];
+  showDoneAfterDays?: number;
+  defaultTags?: string[];
+}
+
+export const DEFAULT_BOARD_COLUMNS: BoardColumn[] = [
+  { tag: "status:todo", label: "To Do" },
+  { tag: "status:doing", label: "In Progress" },
+  { tag: "status:done", label: "Done" }
+];
+
 export function getBoardConfig(pawkit: { metadata?: PawkitMetadata | Record<string, unknown> }): BoardConfig {
   const metadata = pawkit.metadata as PawkitMetadata | undefined;
   if (!isBoard(pawkit) || !metadata?.boardConfig) {

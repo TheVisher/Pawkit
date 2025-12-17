@@ -5,6 +5,7 @@ import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { CardDTO } from "@/lib/server/cards";
 import { BoardColumn, BoardConfig, getStatusFromTags, updateStatusTag } from "@/lib/types/board";
 import { BoardCard } from "./board-card";
+import { AddColumnButton } from "./add-column-button";
 import {
   DndContext,
   DragOverlay,
@@ -26,6 +27,7 @@ interface BoardViewProps {
   collectionSlug: string;
   onCardClick?: (card: CardDTO) => void;
   onAddCard?: (columnTag: string) => void;
+  onColumnsChange?: (columns: BoardColumn[]) => void;
 }
 
 export function BoardView({
@@ -33,7 +35,8 @@ export function BoardView({
   boardConfig,
   collectionSlug,
   onCardClick,
-  onAddCard
+  onAddCard,
+  onColumnsChange
 }: BoardViewProps) {
   const { updateCard } = useDataStore();
   const toast = useToastStore();
@@ -98,6 +101,14 @@ export function BoardView({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [boardConfig.columns, onAddCard]);
+
+  // Handle adding a new column
+  const handleAddColumn = useCallback((newColumn: BoardColumn) => {
+    if (onColumnsChange) {
+      onColumnsChange([...boardConfig.columns, newColumn]);
+      toast.success(`Added "${newColumn.label}" column`);
+    }
+  }, [boardConfig.columns, onColumnsChange, toast]);
 
   // Configure sensors for drag detection
   const sensors = useSensors(
@@ -243,6 +254,11 @@ export function BoardView({
             onToggleCollapse={() => toggleColumnCollapse("uncategorized")}
           />
         )}
+
+        {/* Add Column Button */}
+        {onColumnsChange && (
+          <AddColumnButton onAddColumn={handleAddColumn} />
+        )}
       </div>
 
       {/* Drag Overlay - Shows the card being dragged */}
@@ -285,17 +301,18 @@ function DroppableColumn({
   // Check if this is a "done" type column
   const isDoneColumn = column.tag.includes('done') || column.tag.includes('complete');
 
-  // Get column accent color
+  // Get column accent color (subtle tints - 5-8% opacity)
   const getColumnColor = (color?: string) => {
     switch (color) {
-      case "red": return "bg-red-500/20 border-red-500/30";
-      case "orange": return "bg-orange-500/20 border-orange-500/30";
-      case "yellow": return "bg-yellow-500/20 border-yellow-500/30";
-      case "green": return "bg-green-500/20 border-green-500/30";
-      case "blue": return "bg-blue-500/20 border-blue-500/30";
-      case "purple": return "bg-purple-500/20 border-purple-500/30";
-      case "gray": return "bg-gray-500/20 border-gray-500/30";
-      default: return "bg-accent/10 border-accent/20";
+      case "red": return "bg-red-500/[0.06] border-red-500/20";
+      case "orange": return "bg-orange-500/[0.06] border-orange-500/20";
+      case "yellow": return "bg-yellow-500/[0.06] border-yellow-500/20";
+      case "amber": return "bg-amber-500/[0.06] border-amber-500/20";
+      case "green": return "bg-green-500/[0.06] border-green-500/20";
+      case "blue": return "bg-blue-500/[0.06] border-blue-500/20";
+      case "purple": return "bg-purple-500/[0.06] border-purple-500/20";
+      case "gray": return "bg-gray-500/[0.05] border-gray-500/20";
+      default: return "bg-accent/[0.06] border-accent/20";
     }
   };
 
@@ -304,6 +321,7 @@ function DroppableColumn({
       case "red": return "text-red-400";
       case "orange": return "text-orange-400";
       case "yellow": return "text-yellow-400";
+      case "amber": return "text-amber-400";
       case "green": return "text-green-400";
       case "blue": return "text-blue-400";
       case "purple": return "text-purple-400";
