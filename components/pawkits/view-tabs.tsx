@@ -17,8 +17,8 @@ const viewOptions: { value: LayoutMode; label: string; icon: React.ElementType }
 
 export function ViewTabs({ layout, onLayoutChange }: ViewTabsProps) {
   return (
-    <div className="flex items-center gap-1 px-4 py-2 border-b border-subtle bg-surface/50 backdrop-blur-sm">
-      <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-surface-soft/50">
+    <div className="flex items-center gap-1 px-4 py-1.5">
+      <div className="flex items-center gap-0.5">
         {viewOptions.map((option) => {
           const Icon = option.icon;
           const isActive = layout === option.value;
@@ -28,11 +28,11 @@ export function ViewTabs({ layout, onLayoutChange }: ViewTabsProps) {
               key={option.value}
               onClick={() => onLayoutChange(option.value)}
               className={`
-                flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium
+                flex items-center gap-1.5 px-2.5 py-1 rounded-md text-sm
                 transition-all duration-200
                 ${isActive
-                  ? "bg-accent text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-surface-soft"
+                  ? "text-foreground bg-surface-soft/80"
+                  : "text-muted-foreground hover:text-foreground"
                 }
               `}
             >

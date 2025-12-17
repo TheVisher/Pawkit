@@ -352,30 +352,31 @@ function CollectionPageContent() {
       <div className="space-y-4">
         {/* Cover Image Banner */}
         {currentCollection.coverImage ? (
-          <div className="relative w-[calc(100%+3rem)] h-96 -mx-6 -mt-6 mb-0 overflow-hidden group rounded-t-2xl">
+          <div className="relative w-[calc(100%+3rem)] h-80 -mx-6 -mt-6 mb-0 overflow-hidden group rounded-t-2xl">
             <div
               className="w-full h-full"
               style={{
                 backgroundImage: `url(${currentCollection.coverImage})`,
                 backgroundSize: 'cover',
                 backgroundPosition: `center ${coverImagePosition}%`,
-                maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
-                WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                maskImage: 'linear-gradient(to bottom, black 75%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 75%, transparent 100%)',
               }}
             />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
+            {/* Subtle gradient for text readability at bottom */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-transparent to-black/50" />
 
             {/* Overlaid Title and Breadcrumb */}
-            <div className="absolute bottom-6 left-6 right-6 z-10">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface/80 backdrop-blur-sm border border-white/20">
+            <div className="absolute bottom-4 left-6 right-6 z-10">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 backdrop-blur-sm border border-white/20">
                   {layout === "kanban" ? (
-                    <KanbanSquare className="h-5 w-5 text-purple-400" />
+                    <KanbanSquare className="h-4 w-4 text-purple-300" />
                   ) : (
-                    <Folder className="h-5 w-5 text-white" />
+                    <Folder className="h-4 w-4 text-white" />
                   )}
                 </div>
-                <h1 className="text-3xl font-semibold text-white drop-shadow-lg">{currentCollection.name}</h1>
+                <h1 className="text-2xl font-semibold text-white drop-shadow-lg">{currentCollection.name}</h1>
               </div>
 
               {/* Breadcrumb Navigation */}
@@ -566,68 +567,16 @@ function CollectionPageContent() {
         {/* Content Section - Kanban View or Regular Cards */}
         {layout === "kanban" ? (
           <>
-            {/* Kanban View Header with Quick Stats */}
-            <div className="mb-4 space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
-                <div className="flex items-center gap-4 text-sm flex-wrap">
-                  <span className="font-medium text-muted-foreground">
-                    {items.length} card{items.length !== 1 ? 's' : ''}
-                  </span>
-                  {/* Quick stats for each column */}
-                  <div className="flex items-center gap-3 flex-wrap">
-                    {getKanbanColumns(currentCollection.metadata).map((col) => {
-                      const count = col.tag === null
-                        ? items.filter(card => !card.tags?.some(t => t.startsWith("status:"))).length
-                        : items.filter(card => card.tags?.includes(col.tag!)).length;
-                      return (
-                        <span key={col.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <span className={`w-2 h-2 rounded-full ${
-                            col.color === 'green' ? 'bg-green-500' :
-                            col.color === 'amber' ? 'bg-amber-500' :
-                            col.color === 'purple' ? 'bg-purple-500' :
-                            col.color === 'red' ? 'bg-red-500' :
-                            col.color === 'blue' ? 'bg-blue-500' :
-                            'bg-gray-500'
-                          }`} />
-                          {col.label}: {count}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-                {/* Keyboard shortcut hint */}
-                <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground/60">
-                  <kbd className="px-1.5 py-0.5 rounded bg-surface-soft border border-subtle text-[10px] font-mono">n</kbd>
-                  <span>new card</span>
-                </div>
+            {/* Minimal Kanban Header */}
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">
+                {items.length} card{items.length !== 1 ? 's' : ''}
+              </span>
+              {/* Keyboard shortcut hint */}
+              <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground/50">
+                <kbd className="px-1 py-0.5 rounded bg-surface-soft/50 text-[10px] font-mono">n</kbd>
+                <span>add card</span>
               </div>
-
-              {/* Currently Doing Summary */}
-              {(() => {
-                const doingColumn = getKanbanColumns(currentCollection.metadata).find(
-                  col => col.tag?.includes('doing') || col.tag?.includes('progress')
-                );
-                if (!doingColumn || !doingColumn.tag) return null;
-
-                const doingCards = items.filter(card => card.tags?.includes(doingColumn.tag!));
-                if (doingCards.length === 0) return null;
-
-                return (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                    <span className="text-xs font-medium text-amber-500">Currently working on:</span>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {doingCards.slice(0, 3).map((card) => (
-                        <span key={card.id} className="text-xs text-foreground bg-surface px-2 py-0.5 rounded">
-                          {card.title || 'Untitled'}
-                        </span>
-                      ))}
-                      {doingCards.length > 3 && (
-                        <span className="text-xs text-amber-500">+{doingCards.length - 3} more</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
             </div>
 
             {/* Empty State */}
