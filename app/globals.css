@@ -466,6 +466,7 @@ textarea:focus-visible {
 
     /* Light mode colors */
     --background: 0 0% 100%;
+    --background-rgb: 255, 255, 255;
     --foreground: 240 10% 10%;
     --surface: 0 0% 98%;
     --surface-muted: 240 5% 94%;
@@ -504,6 +505,7 @@ textarea:focus-visible {
 
     /* Dark mode colors - neutral grays matching design system */
     --background: 0 0% 4%;
+    --background-rgb: 10, 10, 10;
     --foreground: 0 0% 95%;
     --surface: 0 0% 11%;
     --surface-muted: 0 0% 15%;
