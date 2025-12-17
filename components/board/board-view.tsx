@@ -298,47 +298,37 @@ function DroppableColumn({
   // Check if this is a "done" type column
   const isDoneColumn = column.tag.includes('done') || column.tag.includes('complete');
 
-  // Get column header color (background + border for header)
+  // Get column header background (grey shades)
   const getColumnColor = (color?: string) => {
     switch (color) {
-      case "red": return "bg-red-500/[0.08] border-red-500/20";
-      case "orange": return "bg-orange-500/[0.08] border-orange-500/20";
-      case "yellow": return "bg-yellow-500/[0.08] border-yellow-500/20";
-      case "amber": return "bg-amber-500/[0.08] border-amber-500/20";
-      case "green": return "bg-green-500/[0.08] border-green-500/20";
-      case "blue": return "bg-blue-500/[0.08] border-blue-500/20";
-      case "purple": return "bg-purple-500/[0.08] border-purple-500/20";
-      case "gray": return "bg-gray-500/[0.06] border-gray-500/20";
-      default: return "bg-accent/[0.08] border-accent/20";
+      case "none": return "bg-transparent border-subtle";
+      case "light": return "bg-white/[0.03] border-white/10";
+      case "medium": return "bg-white/[0.06] border-white/10";
+      case "dark": return "bg-white/[0.09] border-white/10";
+      case "darker": return "bg-white/[0.12] border-white/10";
+      // Legacy color support (maps to grey shades)
+      case "gray": return "bg-transparent border-subtle";
+      case "purple": return "bg-white/[0.03] border-white/10";
+      case "amber": return "bg-white/[0.06] border-white/10";
+      case "green": return "bg-white/[0.09] border-white/10";
+      default: return "bg-white/[0.03] border-white/10";
     }
   };
 
-  // Get column content background tint (subtle - 5% opacity)
+  // Get column content background (grey shades - slightly lighter than header)
   const getContentBg = (color?: string) => {
     switch (color) {
-      case "red": return "bg-red-500/[0.04]";
-      case "orange": return "bg-orange-500/[0.04]";
-      case "yellow": return "bg-yellow-500/[0.04]";
-      case "amber": return "bg-amber-500/[0.04]";
-      case "green": return "bg-green-500/[0.04]";
-      case "blue": return "bg-blue-500/[0.04]";
-      case "purple": return "bg-purple-500/[0.04]";
-      case "gray": return "bg-gray-500/[0.03]";
-      default: return "bg-surface-soft/30";
-    }
-  };
-
-  const getHeaderColor = (color?: string) => {
-    switch (color) {
-      case "red": return "text-red-400";
-      case "orange": return "text-orange-400";
-      case "yellow": return "text-yellow-400";
-      case "amber": return "text-amber-400";
-      case "green": return "text-green-400";
-      case "blue": return "text-blue-400";
-      case "purple": return "text-purple-400";
-      case "gray": return "text-gray-400";
-      default: return "text-accent";
+      case "none": return "bg-transparent";
+      case "light": return "bg-white/[0.02]";
+      case "medium": return "bg-white/[0.04]";
+      case "dark": return "bg-white/[0.06]";
+      case "darker": return "bg-white/[0.08]";
+      // Legacy color support
+      case "gray": return "bg-transparent";
+      case "purple": return "bg-white/[0.02]";
+      case "amber": return "bg-white/[0.04]";
+      case "green": return "bg-white/[0.06]";
+      default: return "bg-white/[0.02]";
     }
   };
 
@@ -359,8 +349,8 @@ function DroppableColumn({
           onClick={onToggleCollapse}
         >
           <div className="p-2 h-full flex flex-col items-center">
-            <ChevronRight size={14} className={`${getHeaderColor(column.color)} mb-2`} />
-            <span className={`text-xs font-semibold ${getHeaderColor(column.color)} [writing-mode:vertical-rl] rotate-180`}>
+            <ChevronRight size={14} className="text-muted-foreground mb-2" />
+            <span className="text-xs font-semibold text-foreground [writing-mode:vertical-rl] rotate-180">
               {column.label}
             </span>
             <span className="mt-auto text-xs text-muted-foreground bg-surface/80 px-1.5 py-0.5 rounded-full font-medium">
@@ -385,10 +375,10 @@ function DroppableColumn({
                 className="p-0.5 rounded hover:bg-white/10 transition-colors flex-shrink-0"
                 title="Collapse column"
               >
-                <ChevronDown size={14} className={getHeaderColor(column.color)} />
+                <ChevronDown size={14} className="text-muted-foreground" />
               </button>
             )}
-            <h3 className={`font-semibold text-sm truncate ${getHeaderColor(column.color)}`}>
+            <h3 className="font-semibold text-sm truncate text-foreground">
               {column.label}
             </h3>
           </div>
