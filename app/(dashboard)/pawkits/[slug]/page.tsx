@@ -22,6 +22,7 @@ function CollectionPageContent() {
   const pathname = usePathname();
   const slug = params.slug as string;
   const setContentType = usePanelStore((state) => state.setContentType);
+  const openCardDetails = usePanelStore((state) => state.openCardDetails);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showRenamePawkitModal, setShowRenamePawkitModal] = useState(false);
@@ -636,8 +637,8 @@ function CollectionPageContent() {
                 boardConfig={getBoardConfig(currentCollection)}
                 collectionSlug={slug}
                 onCardClick={(card) => {
-                  // Open card in the right panel
-                  router.push(`/pawkits/${slug}?card=${card.id}`);
+                  // Open card detail panel
+                  openCardDetails(card.id);
                 }}
                 onAddCard={(columnTag) => {
                   // Find the column by tag
