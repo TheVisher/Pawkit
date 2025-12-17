@@ -180,8 +180,10 @@ export const DEFAULT_BOARD_COLUMNS: BoardColumn[] = [
 
 export function getBoardConfig(pawkit: { metadata?: PawkitMetadata | Record<string, unknown> }): BoardConfig {
   const metadata = pawkit.metadata as PawkitMetadata | undefined;
-  if (!isBoard(pawkit) || !metadata?.boardConfig) {
-    return { columns: DEFAULT_BOARD_COLUMNS };
+  // Return saved boardConfig if it exists, otherwise use defaults
+  // Works for both "board" type pawkits and pawkits using kanban view
+  if (metadata?.boardConfig?.columns) {
+    return metadata.boardConfig;
   }
-  return metadata.boardConfig;
+  return { columns: DEFAULT_BOARD_COLUMNS };
 }
