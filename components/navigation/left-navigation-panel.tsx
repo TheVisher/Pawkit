@@ -842,6 +842,20 @@ export function LeftNavigationPanel({
           setShowCreatePawkitModal(true);
         },
       },
+      {
+        label: collection.pinned ? "Unpin from Quick Access" : "Pin to Quick Access",
+        icon: collection.pinned ? PinOff : Pin,
+        onClick: async () => {
+          try {
+            await updateCollection(collection.id, { pinned: !collection.pinned });
+            useToastStore.getState().success(
+              collection.pinned ? "Unpinned from Quick Access" : "Pinned to Quick Access"
+            );
+          } catch (err) {
+            useToastStore.getState().error("Failed to update pin status");
+          }
+        },
+      },
       { type: "separator" as const },
       {
         label: "Rename",
