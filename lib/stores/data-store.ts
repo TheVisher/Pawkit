@@ -1049,13 +1049,32 @@ export const useDataStore = create<DataStore>((set, get) => ({
 
     try {
       // STEP 1: Update local storage FIRST (local-first!)
-      const collections = await localDb.getAllCollections();
-      const collection = collections.find(c => c.id === id);
+      // Get collections as tree, then flatten to find nested collections
+      const collectionTree = await localDb.getAllCollections();
+
+      // Flatten tree to find collection by ID (including nested children)
+      const flattenTree = (nodes: CollectionNode[]): CollectionNode[] => {
+        const result: CollectionNode[] = [];
+        for (const node of nodes) {
+          result.push(node);
+          if (node.children && node.children.length > 0) {
+            result.push(...flattenTree(node.children));
+          }
+        }
+        return result;
+      };
+
+      const flatCollections = flattenTree(collectionTree);
+      const collection = flatCollections.find(c => c.id === id);
 
       if (collection) {
-        const updatedCollection = {
-          ...collection,
+        // Strip children property - it's computed when building tree, not stored
+        const { children, ...collectionWithoutChildren } = collection;
+
+        const updatedCollection: CollectionNode = {
+          ...collectionWithoutChildren,
           ...updates,
+          children: [], // Required by type but not stored - will be rebuilt from parentId
           updatedAt: new Date().toISOString()
         };
 

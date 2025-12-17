@@ -10,7 +10,7 @@ import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { LibraryWorkspace } from "@/components/library/workspace";
 import { sortCards } from "@/lib/utils/sort-cards";
 import { format } from "date-fns";
-import { Library, Settings } from "lucide-react";
+import { Library, Settings, Inbox, X } from "lucide-react";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { FileDropZone } from "@/components/files/file-drop-zone";
 import { WelcomeBanner } from "@/components/onboarding/welcome-banner";
@@ -52,6 +52,8 @@ export function LibraryView({
 }: LibraryViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const filter = searchParams.get("filter");
+  const isInboxFilter = filter === "inbox";
   const selectedIds = useSelection((state) => state.selectedIds);
   const toggleSelection = useSelection((state) => state.toggle);
   const selectExclusive = useSelection((state) => state.selectExclusive);
@@ -310,12 +312,30 @@ export function LibraryView({
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
-              <Library className="h-5 w-5 text-accent" />
+            <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${isInboxFilter ? 'bg-blue-500/10' : 'bg-accent/10'}`}>
+              {isInboxFilter ? (
+                <Inbox className="h-5 w-5 text-blue-400" />
+              ) : (
+                <Library className="h-5 w-5 text-accent" />
+              )}
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-foreground">Library</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold text-foreground">
+                  {isInboxFilter ? "Inbox" : "Library"}
+                </h1>
+                {isInboxFilter && (
+                  <button
+                    onClick={() => router.push("/library")}
+                    className="p-1 rounded-md hover:bg-surface-soft text-muted-foreground hover:text-foreground transition-colors"
+                    title="Clear inbox filter"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
+                {isInboxFilter && "Unorganized items · "}
                 {viewMode === "timeline"
                   ? `${timelineGroups.reduce((sum, g) => sum + g.cards.length, 0)} card(s)`
                   : `${sortedCards.length} card(s)`}
