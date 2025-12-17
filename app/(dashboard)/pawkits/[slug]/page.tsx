@@ -611,21 +611,26 @@ function CollectionPageContent() {
                   setShowQuickAddCard(true);
                 }}
                 onColumnsChange={async (columns) => {
-                  // Save updated columns to collection metadata
+                  // Save updated columns to collection metadata.boardConfig.columns
                   try {
+                    const currentMetadata = currentCollection.metadata as Record<string, unknown> || {};
+                    const currentBoardConfig = (currentMetadata.boardConfig as Record<string, unknown>) || {};
+
                     await updateCollection(currentCollection.id, {
                       metadata: {
-                        ...currentCollection.metadata,
-                        kanbanColumns: columns.map(col => ({
-                          id: col.tag.replace("status:", ""),
-                          tag: col.tag,
-                          label: col.label,
-                          color: col.color,
-                        })),
+                        ...currentMetadata,
+                        boardConfig: {
+                          ...currentBoardConfig,
+                          columns: columns.map(col => ({
+                            tag: col.tag,
+                            label: col.label,
+                            color: col.color,
+                          })),
+                        },
                       },
                     });
-                  } catch {
-                    // Error handling via toast in BoardView
+                  } catch (err) {
+                    console.error("Failed to save columns:", err);
                   }
                 }}
               />
