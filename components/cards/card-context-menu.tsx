@@ -11,7 +11,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { FolderPlus, Trash2, FolderMinus, RefreshCw, Pin, PinOff, ImageIcon, FolderInput, FileText } from "lucide-react";
+import { FolderPlus, Trash2, FolderMinus, RefreshCw, Pin, PinOff, ImageIcon, FolderInput, FileText, Calendar, X } from "lucide-react";
 import { CollectionNode, CardType, NoteFolderNode } from "@/lib/types";
 import { useNoteFolderStore } from "@/lib/stores/note-folder-store";
 
@@ -34,6 +34,9 @@ type CardContextMenuWrapperProps = {
   // Note folder organization (notes only)
   currentFolderId?: string | null;
   onMoveToFolder?: (folderId: string | null) => void;
+  // Due date
+  scheduledDate?: string | null;
+  onSetDueDate?: (date: string | null) => void;
 };
 
 export function CardContextMenuWrapper({
@@ -52,11 +55,36 @@ export function CardContextMenuWrapper({
   onSetThumbnail,
   currentFolderId,
   onMoveToFolder,
+  scheduledDate,
+  onSetDueDate,
 }: CardContextMenuWrapperProps) {
   const [collections, setCollections] = useState<CollectionNode[]>([]);
   const [loading, setLoading] = useState(false);
 
   const isNote = cardType === 'md-note' || cardType === 'text-note';
+
+  // Quick date options for due dates
+  const getQuickDateOptions = () => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+    return [
+      { label: "Today", date: formatDate(today) },
+      { label: "Tomorrow", date: formatDate(tomorrow) },
+      { label: "Next Week", date: formatDate(nextWeek) },
+    ];
+  };
+
+  // Format current due date for display
+  const formatDueDate = (date: string) => {
+    const d = new Date(date);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  };
 
   // Use the note folder store for reactive folder tree
   const { getFolderTree, fetchFolders } = useNoteFolderStore();
@@ -257,6 +285,38 @@ export function CardContextMenuWrapper({
               </ContextMenuItem>
             )}
           </>
+        )}
+
+        {/* 4. Set Due Date */}
+        {onSetDueDate && (
+          <ContextMenuSub>
+            <ContextMenuSubTrigger>
+              <Calendar className="mr-2 h-4 w-4" />
+              {scheduledDate ? `Due: ${formatDueDate(scheduledDate)}` : "Set Due Date"}
+            </ContextMenuSubTrigger>
+            <ContextMenuSubContent>
+              {getQuickDateOptions().map((opt) => (
+                <ContextMenuItem
+                  key={opt.label}
+                  onClick={() => onSetDueDate(opt.date)}
+                >
+                  {opt.label}
+                </ContextMenuItem>
+              ))}
+              {scheduledDate && (
+                <>
+                  <ContextMenuSeparator />
+                  <ContextMenuItem
+                    onClick={() => onSetDueDate(null)}
+                    className="text-rose-400"
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Clear Due Date
+                  </ContextMenuItem>
+                </>
+              )}
+            </ContextMenuSubContent>
+          </ContextMenuSub>
         )}
 
         {/* Remove from Pawkits submenu */}

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { useKitStore } from "@/lib/hooks/use-kit-store";
-import { FileText, Link2, Clock, Bot, ChevronDown } from "lucide-react";
+import { FileText, Link2, Clock, Bot, ChevronDown, Calendar, X } from "lucide-react";
 import { BacklinksPanel } from "@/components/notes/backlinks-panel";
 import { AttachmentsSection } from "@/components/modals/attachments-section";
 import { KitSidebarEmbed } from "@/components/kit/kit-sidebar-embed";
@@ -55,6 +55,9 @@ export function CardDetailsPanel() {
   // Status dropdown state
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
 
+  // Due date picker state
+  const [isDueDatePickerOpen, setIsDueDatePickerOpen] = useState(false);
+
   // Handle status change
   const handleStatusChange = async (newStatus: string) => {
     if (!card) return;
@@ -63,6 +66,74 @@ export function CardDetailsPanel() {
       : updateStatusTag(card.tags || [], newStatus);
     await updateCard(card.id, { tags: newTags });
     setIsStatusDropdownOpen(false);
+  };
+
+  // Handle due date change (quick set)
+  const handleSetDueDate = async (date: string | null) => {
+    if (!card) return;
+    const isoDate = date ? `${date}T12:00:00.000Z` : null;
+    await updateCard(card.id, { scheduledDate: isoDate });
+    setIsDueDatePickerOpen(false);
+  };
+
+  // Format due date for display
+  const getDueDateDisplay = () => {
+    if (!card?.scheduledDate) return null;
+
+    const due = new Date(card.scheduledDate);
+    const now = new Date();
+
+    // Reset time to compare just dates
+    const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const diffTime = dueDay.getTime() - today.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    let text: string;
+    if (diffDays === 0) {
+      text = "Today";
+    } else if (diffDays === 1) {
+      text = "Tomorrow";
+    } else if (diffDays === -1) {
+      text = "Yesterday";
+    } else {
+      text = due.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: due.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+      });
+    }
+
+    let className: string;
+    if (diffDays < 0) {
+      className = "text-red-400";
+    } else if (diffDays === 0) {
+      className = "text-amber-400 font-medium";
+    } else if (diffDays <= 2) {
+      className = "text-amber-400";
+    } else {
+      className = "text-foreground";
+    }
+
+    return { text, className, isOverdue: diffDays < 0 };
+  };
+
+  // Get quick date options
+  const getQuickDateOptions = () => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const nextWeek = new Date(today);
+    nextWeek.setDate(nextWeek.getDate() + 7);
+
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+
+    return [
+      { label: "Today", date: formatDate(today) },
+      { label: "Tomorrow", date: formatDate(tomorrow) },
+      { label: "Next Week", date: formatDate(nextWeek) },
+    ];
   };
 
   // Internal tab state
@@ -291,6 +362,92 @@ export function CardDetailsPanel() {
           </div>
         </div>
       )}
+
+      {/* Due Date Section - Shows for all cards */}
+      <div className="flex-shrink-0 px-4 py-3 border-b border-white/10">
+        <label className="block text-xs font-medium text-muted-foreground mb-2">Due Date</label>
+        <div className="relative">
+          {(() => {
+            const dueDateDisplay = getDueDateDisplay();
+            return (
+              <button
+                onClick={() => setIsDueDatePickerOpen(!isDueDatePickerOpen)}
+                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-white/10 bg-white/5 transition-colors hover:bg-white/10`}
+              >
+                <div className="flex items-center gap-2">
+                  <Calendar size={14} className="text-muted-foreground" />
+                  {dueDateDisplay ? (
+                    <span className={`text-sm ${dueDateDisplay.className}`}>
+                      {dueDateDisplay.text}
+                      {dueDateDisplay.isOverdue && " (overdue)"}
+                    </span>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">Set due date</span>
+                  )}
+                </div>
+                {card?.scheduledDate && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSetDueDate(null);
+                    }}
+                    className="p-1 rounded hover:bg-white/10 text-muted-foreground hover:text-foreground"
+                    title="Clear due date"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </button>
+            );
+          })()}
+
+          {/* Due Date Picker Dropdown */}
+          {isDueDatePickerOpen && (
+            <>
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setIsDueDatePickerOpen(false)}
+              />
+              <div className="absolute top-full left-0 right-0 mt-1 p-3 rounded-lg border border-white/10 bg-surface/95 backdrop-blur-lg shadow-xl z-50 space-y-3">
+                {/* Quick Options */}
+                <div className="flex gap-2">
+                  {getQuickDateOptions().map((opt) => (
+                    <button
+                      key={opt.label}
+                      onClick={() => handleSetDueDate(opt.date)}
+                      className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md bg-white/5 hover:bg-white/10 text-foreground transition-colors"
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Date Picker */}
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1.5">Pick a date</label>
+                  <input
+                    type="date"
+                    value={card?.scheduledDate ? card.scheduledDate.split('T')[0] : ''}
+                    onChange={(e) => handleSetDueDate(e.target.value || null)}
+                    className="w-full rounded-lg bg-white/5 px-3 py-2 text-sm text-foreground border border-white/10 focus:border-accent focus:outline-none"
+                  />
+                </div>
+
+                {/* Clear Button */}
+                {card?.scheduledDate && (
+                  <button
+                    onClick={() => handleSetDueDate(null)}
+                    className="w-full px-3 py-1.5 text-xs text-muted-foreground hover:text-red-400 transition-colors"
+                  >
+                    Clear due date
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* AI Tab - Outside scrollable area, has its own scroll and needs shadow room */}
       {activeTab === "ai" && (
