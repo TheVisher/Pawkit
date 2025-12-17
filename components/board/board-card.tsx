@@ -1,11 +1,64 @@
 "use client";
 
 import { CardDTO } from "@/lib/server/cards";
-import { Link2, FileText, StickyNote, GripVertical } from "lucide-react";
+import { Link2, FileText, StickyNote, GripVertical, Calendar, AlertCircle } from "lucide-react";
 import { CardContextMenuWrapper } from "@/components/cards/card-context-menu";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useToastStore } from "@/lib/stores/toast-store";
+
+// Due date formatting and styling
+function getDueDateInfo(scheduledDate: string | null | undefined) {
+  if (!scheduledDate) return null;
+
+  const due = new Date(scheduledDate);
+  const now = new Date();
+
+  // Reset time to compare just dates
+  const dueDay = new Date(due.getFullYear(), due.getMonth(), due.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const diffTime = dueDay.getTime() - today.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+  // Format the display text
+  let text: string;
+  if (diffDays === 0) {
+    text = "Today";
+  } else if (diffDays === 1) {
+    text = "Tomorrow";
+  } else if (diffDays === -1) {
+    text = "Yesterday";
+  } else {
+    // Show date: "Dec 20" or "Dec 20, 2025" if different year
+    text = due.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: due.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+    });
+  }
+
+  // Determine styling based on urgency
+  let className: string;
+  let isOverdue = false;
+
+  if (diffDays < 0) {
+    // Overdue
+    className = "text-red-400";
+    isOverdue = true;
+  } else if (diffDays === 0) {
+    // Due today
+    className = "text-amber-400 font-medium";
+  } else if (diffDays <= 2) {
+    // Due soon (within 2 days)
+    className = "text-amber-400";
+  } else {
+    // Normal
+    className = "text-muted-foreground";
+  }
+
+  return { text, className, isOverdue };
+}
 
 interface BoardCardProps {
   card: CardDTO;
@@ -112,6 +165,12 @@ export function BoardCard({ card, onClick, isDragging, isDragOverlay }: BoardCar
       .success(folderId ? "Moved to folder" : "Removed from folder");
   };
 
+  const handleSetDueDate = async (date: string | null) => {
+    const isoDate = date ? `${date}T12:00:00.000Z` : null;
+    await updateCard(card.id, { scheduledDate: isoDate });
+    useToastStore.getState().success(date ? "Due date set" : "Due date cleared");
+  };
+
   // For drag overlay, render without context menu wrapper
   const cardContent = (
     <div
@@ -179,6 +238,19 @@ export function BoardCard({ card, onClick, isDragging, isDragOverlay }: BoardCar
           {getDomain(card.url)}
         </div>
       )}
+
+      {/* Due Date */}
+      {(() => {
+        const dueDateInfo = getDueDateInfo(card.scheduledDate);
+        if (!dueDateInfo) return null;
+        return (
+          <div className={`flex items-center gap-1.5 text-xs mt-2 ${dueDateInfo.className}`}>
+            <Calendar className="w-3 h-3" />
+            <span>{dueDateInfo.text}</span>
+            {dueDateInfo.isOverdue && <AlertCircle className="w-3 h-3" />}
+          </div>
+        );
+      })()}
     </div>
   );
 
@@ -203,6 +275,8 @@ export function BoardCard({ card, onClick, isDragging, isDragOverlay }: BoardCar
       onUnpinFromSidebar={isNote ? handleUnpinFromSidebar : undefined}
       currentFolderId={card.noteFolderId}
       onMoveToFolder={isNote ? handleMoveToFolder : undefined}
+      scheduledDate={card.scheduledDate}
+      onSetDueDate={handleSetDueDate}
     >
       {cardContent}
     </CardContextMenuWrapper>
