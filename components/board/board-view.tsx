@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback } from "react";
-import { Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, ChevronDown, ChevronRight, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { CardDTO } from "@/lib/server/cards";
 import { BoardColumn, BoardConfig, getStatusFromTags, updateStatusTag } from "@/lib/types/board";
 import { BoardCard } from "./board-card";
@@ -108,6 +108,36 @@ export function BoardView({
       onColumnsChange([...boardConfig.columns, newColumn]);
       toast.success(`Added "${newColumn.label}" column`);
     }
+  }, [boardConfig.columns, onColumnsChange, toast]);
+
+  // Handle deleting a column
+  const handleDeleteColumn = useCallback((columnTag: string, cardCount: number) => {
+    if (!onColumnsChange) return;
+
+    if (cardCount > 0) {
+      const confirmed = window.confirm(
+        `This column has ${cardCount} card(s). Deleting it will move them to "No Status". Continue?`
+      );
+      if (!confirmed) return;
+    }
+
+    const newColumns = boardConfig.columns.filter(col => col.tag !== columnTag);
+    onColumnsChange(newColumns);
+    toast.success("Column deleted");
+  }, [boardConfig.columns, onColumnsChange, toast]);
+
+  // Handle renaming a column
+  const handleRenameColumn = useCallback((columnTag: string, currentLabel: string) => {
+    if (!onColumnsChange) return;
+
+    const newLabel = window.prompt("Rename column:", currentLabel);
+    if (!newLabel || newLabel.trim() === "" || newLabel === currentLabel) return;
+
+    const newColumns = boardConfig.columns.map(col =>
+      col.tag === columnTag ? { ...col, label: newLabel.trim() } : col
+    );
+    onColumnsChange(newColumns);
+    toast.success("Column renamed");
   }, [boardConfig.columns, onColumnsChange, toast]);
 
   // Configure sensors for drag detection
@@ -249,6 +279,8 @@ export function BoardView({
             isOver={overId === column.tag}
             isCollapsed={collapsedColumns.has(column.tag)}
             onToggleCollapse={() => toggleColumnCollapse(column.tag)}
+            onDeleteColumn={onColumnsChange ? handleDeleteColumn : undefined}
+            onRenameColumn={onColumnsChange ? handleRenameColumn : undefined}
           />
         ))}
 
@@ -279,6 +311,8 @@ interface DroppableColumnProps {
   isOver: boolean;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  onDeleteColumn?: (columnTag: string, cardCount: number) => void;
+  onRenameColumn?: (columnTag: string, currentLabel: string) => void;
 }
 
 function DroppableColumn({
@@ -289,8 +323,11 @@ function DroppableColumn({
   totalColumns,
   isOver,
   isCollapsed,
-  onToggleCollapse
+  onToggleCollapse,
+  onDeleteColumn,
+  onRenameColumn
 }: DroppableColumnProps) {
+  const [showMenu, setShowMenu] = useState(false);
   const { setNodeRef, isOver: isOverDroppable } = useDroppable({
     id: column.tag,
   });
@@ -382,9 +419,59 @@ function DroppableColumn({
               {column.label}
             </h3>
           </div>
-          <span className="text-xs text-muted-foreground bg-surface/80 px-2 md:px-2.5 py-0.5 md:py-1 rounded-full font-medium flex-shrink-0">
-            {cards.length}
-          </span>
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground bg-surface/80 px-2 md:px-2.5 py-0.5 md:py-1 rounded-full font-medium flex-shrink-0">
+              {cards.length}
+            </span>
+            {/* Column menu - only show for non-uncategorized columns when handlers are available */}
+            {column.tag !== "uncategorized" && (onDeleteColumn || onRenameColumn) && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowMenu(!showMenu)}
+                  className="p-1 rounded hover:bg-white/10 transition-colors text-muted-foreground hover:text-foreground"
+                  title="Column options"
+                >
+                  <MoreHorizontal size={14} />
+                </button>
+                {showMenu && (
+                  <>
+                    {/* Backdrop to close menu */}
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowMenu(false)}
+                    />
+                    {/* Dropdown menu */}
+                    <div className="absolute right-0 top-full mt-1 z-20 bg-surface border border-subtle rounded-lg shadow-lg py-1 min-w-[140px]">
+                      {onRenameColumn && (
+                        <button
+                          onClick={() => {
+                            setShowMenu(false);
+                            onRenameColumn(column.tag, column.label);
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm text-foreground hover:bg-surface-soft flex items-center gap-2 transition-colors"
+                        >
+                          <Pencil size={14} />
+                          Rename
+                        </button>
+                      )}
+                      {onDeleteColumn && (
+                        <button
+                          onClick={() => {
+                            setShowMenu(false);
+                            onDeleteColumn(column.tag, cards.length);
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 flex items-center gap-2 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
