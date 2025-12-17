@@ -352,32 +352,22 @@ function CollectionPageContent() {
       <div className="space-y-4">
         {/* Cover Image Banner */}
         {currentCollection.coverImage ? (
-          <div className="relative w-[calc(100%+3rem)] -mx-6 -mt-6 -mb-12 group">
-            {/* Image container with rounded corners - clips the image only */}
-            <div className="relative h-72 overflow-hidden rounded-t-2xl">
+          <div className="relative w-[calc(100%+3rem)] -mx-6 -mt-6 group">
+            {/* Image with mask fade - image fades to transparent, background shows through */}
+            <div className="relative h-72 rounded-t-2xl overflow-hidden">
               <div
                 className="w-full h-full"
                 style={{
                   backgroundImage: `url(${currentCollection.coverImage})`,
                   backgroundSize: 'cover',
                   backgroundPosition: `center ${coverImagePosition}%`,
+                  maskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
                 }}
               />
               {/* Light overlay at top for contrast */}
-              <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-black/10 to-transparent pointer-events-none" />
+              <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/20 to-transparent pointer-events-none" />
             </div>
-
-            {/* Gradient fade - extends BELOW container into content area */}
-            <div className="absolute inset-x-0 -bottom-12 h-64 pointer-events-none z-[5]" style={{
-              background: `linear-gradient(to bottom,
-                rgba(10, 10, 10, 0) 0%,
-                rgba(10, 10, 10, 0.1) 20%,
-                rgba(10, 10, 10, 0.3) 40%,
-                rgba(10, 10, 10, 0.55) 60%,
-                rgba(10, 10, 10, 0.8) 80%,
-                rgba(10, 10, 10, 1) 100%
-              )`
-            }} />
 
             {/* Overlaid Title and Breadcrumb */}
             <div className="absolute bottom-4 left-6 right-6 z-10">
@@ -552,10 +542,8 @@ function CollectionPageContent() {
           </div>
         )}
 
-        {/* View Tabs - Below cover/title, z-index to be above gradient */}
-        <div className="relative z-10">
-          <ViewTabs layout={layout} onLayoutChange={handleLayoutChange} />
-        </div>
+        {/* View Tabs - Below cover/title */}
+        <ViewTabs layout={layout} onLayoutChange={handleLayoutChange} />
 
         {/* Sub-Pawkits Section */}
         {subPawkitsGridItems.length > 0 && (
