@@ -8,21 +8,21 @@ interface AddColumnButtonProps {
   onAddColumn: (column: BoardColumn) => void;
 }
 
-type ColumnColor = "gray" | "purple" | "blue" | "green" | "amber" | "red";
+// Grey shade options for column backgrounds
+type ColumnColor = "none" | "light" | "medium" | "dark" | "darker";
 
 const COLOR_OPTIONS: { value: ColumnColor; label: string; className: string }[] = [
-  { value: "gray", label: "Gray", className: "bg-gray-500" },
-  { value: "purple", label: "Purple", className: "bg-purple-500" },
-  { value: "blue", label: "Blue", className: "bg-blue-500" },
-  { value: "green", label: "Green", className: "bg-green-500" },
-  { value: "amber", label: "Amber", className: "bg-amber-500" },
-  { value: "red", label: "Red", className: "bg-red-500" },
+  { value: "none", label: "None", className: "bg-transparent border-2 border-dashed border-gray-500" },
+  { value: "light", label: "Light", className: "bg-white/[0.03]" },
+  { value: "medium", label: "Medium", className: "bg-white/[0.06]" },
+  { value: "dark", label: "Dark", className: "bg-white/[0.09]" },
+  { value: "darker", label: "Darker", className: "bg-white/[0.12]" },
 ];
 
 export function AddColumnButton({ onAddColumn }: AddColumnButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState("");
-  const [color, setColor] = useState<ColumnColor>("purple");
+  const [color, setColor] = useState<ColumnColor>("light");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +38,7 @@ export function AddColumnButton({ onAddColumn }: AddColumnButtonProps) {
     });
 
     setName("");
-    setColor("purple");
+    setColor("light");
     setIsOpen(false);
   };
 

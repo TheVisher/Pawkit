@@ -171,10 +171,11 @@ export interface BoardConfig {
   defaultTags?: string[];
 }
 
+// Grey shade colors: none, light, medium, dark, darker
 export const DEFAULT_BOARD_COLUMNS: BoardColumn[] = [
-  { tag: "status:todo", label: "To Do", color: "purple" },
-  { tag: "status:doing", label: "In Progress", color: "amber" },
-  { tag: "status:done", label: "Done", color: "green" }
+  { tag: "status:todo", label: "To Do", color: "light" },
+  { tag: "status:doing", label: "In Progress", color: "medium" },
+  { tag: "status:done", label: "Done", color: "dark" }
 ];
 
 export function getBoardConfig(pawkit: { metadata?: PawkitMetadata | Record<string, unknown> }): BoardConfig {
