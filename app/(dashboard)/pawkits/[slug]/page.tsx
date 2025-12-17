@@ -361,23 +361,25 @@ function CollectionPageContent() {
                 backgroundPosition: `center ${coverImagePosition}%`,
               }}
             />
-            {/* Gradual fade to background - multi-stop for smooth transition */}
+            {/* Full-height gradient fade - starts at 40% from top, very gradual */}
             <div
-              className="absolute inset-x-0 bottom-0 h-64 pointer-events-none"
+              className="absolute inset-0 pointer-events-none"
               style={{
                 background: `linear-gradient(to bottom,
                   transparent 0%,
-                  hsl(var(--background) / 0.05) 15%,
-                  hsl(var(--background) / 0.15) 30%,
-                  hsl(var(--background) / 0.35) 50%,
-                  hsl(var(--background) / 0.6) 70%,
-                  hsl(var(--background) / 0.85) 85%,
+                  transparent 35%,
+                  hsl(var(--background) / 0.1) 45%,
+                  hsl(var(--background) / 0.25) 55%,
+                  hsl(var(--background) / 0.5) 65%,
+                  hsl(var(--background) / 0.75) 75%,
+                  hsl(var(--background) / 0.9) 85%,
+                  hsl(var(--background)) 95%,
                   hsl(var(--background)) 100%
                 )`,
               }}
             />
             {/* Light overlay at top for contrast */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/15 to-transparent pointer-events-none" style={{ height: '50%' }} />
 
             {/* Overlaid Title and Breadcrumb */}
             <div className="absolute bottom-4 left-6 right-6 z-10">
