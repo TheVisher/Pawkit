@@ -489,21 +489,8 @@ function CollectionPageContent() {
             )}
           </div>
         ) : (
-          <button
-            onClick={() => {
-              setCoverImageUrl("");
-              setShowCoverImageModal(true);
-            }}
-            className="w-full h-64 -mx-6 -mt-6 mb-6 border-2 border-dashed border-subtle flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-foreground hover:border-accent/50 transition-colors group"
-          >
-            <ImageIcon size={24} className="group-hover:text-accent transition-colors" />
-            <span className="text-sm">Add Cover Image</span>
-          </button>
-        )}
-
-        {/* Title section - only show if no cover image (otherwise it's in the overlay) */}
-        {!currentCollection.coverImage && (
-          <div className="flex items-center justify-between">
+          /* Title section - when no cover image */
+          <div className="flex items-center justify-between group/header -mt-2">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
                 {layout === "kanban" ? (
@@ -513,7 +500,20 @@ function CollectionPageContent() {
                 )}
               </div>
               <div>
-                <h1 className="text-2xl font-semibold text-foreground">{currentCollection.name}</h1>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-semibold text-foreground">{currentCollection.name}</h1>
+                  {/* Add cover image hint - shows on hover */}
+                  <button
+                    onClick={() => {
+                      setCoverImageUrl("");
+                      setShowCoverImageModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-surface-soft opacity-0 group-hover/header:opacity-100 transition-all"
+                  >
+                    <ImageIcon size={12} />
+                    <span>Add cover</span>
+                  </button>
+                </div>
 
                 {/* Breadcrumb Navigation */}
                 {breadcrumbs.length > 1 && (
