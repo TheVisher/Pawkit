@@ -291,9 +291,24 @@ export function BoardView({
       </div>
 
       {/* Drag Overlay - Shows the card being dragged */}
-      <DragOverlay>
+      <DragOverlay
+        dropAnimation={{
+          duration: 200,
+          easing: 'ease-out',
+        }}
+        zIndex={1000}
+      >
         {activeCard ? (
-          <div className="opacity-90 rotate-3 scale-105">
+          <div
+            className="pointer-events-none"
+            style={{
+              transform: 'scale(0.85)',
+              transformOrigin: 'top left',
+              opacity: 0.95,
+              filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4))',
+              cursor: 'grabbing',
+            }}
+          >
             <BoardCard card={activeCard} isDragging isDragOverlay />
           </div>
         ) : null}
