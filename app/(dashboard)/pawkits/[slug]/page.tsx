@@ -574,8 +574,8 @@ function CollectionPageContent() {
           <>
             {/* Minimal Kanban Header */}
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {items.length} card{items.length !== 1 ? 's' : ''}
+              <span className="text-sm font-medium text-muted-foreground">
+                Cards ({items.length})
               </span>
               {/* Keyboard shortcut hint */}
               <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground/50">
