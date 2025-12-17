@@ -369,8 +369,8 @@ function CollectionPageContent() {
               <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-black/20 to-transparent pointer-events-none" />
             </div>
 
-            {/* Overlaid Title and Breadcrumb */}
-            <div className="absolute bottom-4 left-6 right-6 z-10">
+            {/* Overlaid Title and Breadcrumb - positioned higher to account for -mb-16 */}
+            <div className="absolute bottom-20 left-6 right-6 z-10">
               <div className="flex items-center gap-3 mb-1">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 backdrop-blur-sm border border-white/20">
                   {layout === "kanban" ? (
