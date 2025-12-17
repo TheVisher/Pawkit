@@ -354,15 +354,15 @@ function CollectionPageContent() {
         {currentCollection.coverImage ? (
           <div className="relative w-[calc(100%+3rem)] -mx-6 -mt-6 group">
             {/* Image with mask fade - image fades to transparent, background shows through */}
-            <div className="relative h-72 rounded-t-2xl overflow-hidden">
+            <div className="relative h-[22rem] rounded-t-2xl overflow-hidden">
               <div
                 className="w-full h-full"
                 style={{
                   backgroundImage: `url(${currentCollection.coverImage})`,
                   backgroundSize: 'cover',
                   backgroundPosition: `center ${coverImagePosition}%`,
-                  maskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
-                  WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
+                  maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
+                  WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
                 }}
               />
               {/* Light overlay at top for contrast */}
