@@ -10,9 +10,10 @@ import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { Folder, ChevronRight, ChevronDown, Image as ImageIcon, KanbanSquare } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
 import { CollectionsGrid } from "@/components/pawkits/grid";
+import { ViewTabs } from "@/components/pawkits/view-tabs";
 import { BoardView } from "@/components/board/board-view";
 import { QuickAddCardModal } from "@/components/board/quick-add-card-modal";
-import { isBoard, getBoardConfig, BoardColumn } from "@/lib/types/board";
+import { isBoard, getBoardConfig, getKanbanColumns, BoardColumn, KanbanColumn } from "@/lib/types/board";
 import type { CollectionNode } from "@/lib/types";
 
 function CollectionPageContent() {
@@ -358,6 +359,8 @@ function CollectionPageContent() {
                 backgroundImage: `url(${currentCollection.coverImage})`,
                 backgroundSize: 'cover',
                 backgroundPosition: `center ${coverImagePosition}%`,
+                maskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, black 60%, transparent 100%)',
               }}
             />
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background" />
@@ -366,7 +369,7 @@ function CollectionPageContent() {
             <div className="absolute bottom-6 left-6 right-6 z-10">
               <div className="flex items-center gap-3 mb-2">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface/80 backdrop-blur-sm border border-white/20">
-                  {isBoard(currentCollection) ? (
+                  {layout === "kanban" ? (
                     <KanbanSquare className="h-5 w-5 text-purple-400" />
                   ) : (
                     <Folder className="h-5 w-5 text-white" />
@@ -499,7 +502,7 @@ function CollectionPageContent() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/10">
-                {isBoard(currentCollection) ? (
+                {layout === "kanban" ? (
                   <KanbanSquare className="h-5 w-5 text-purple-400" />
                 ) : (
                   <Folder className="h-5 w-5 text-accent" />
@@ -535,6 +538,9 @@ function CollectionPageContent() {
           </div>
         )}
 
+        {/* View Tabs - Below cover/title */}
+        <ViewTabs layout={layout} onLayoutChange={handleLayoutChange} />
+
         {/* Sub-Pawkits Section */}
         {subPawkitsGridItems.length > 0 && (
           <div className="mb-8">
@@ -557,10 +563,10 @@ function CollectionPageContent() {
           </div>
         )}
 
-        {/* Content Section - Board View or Regular Cards */}
-        {isBoard(currentCollection) ? (
+        {/* Content Section - Kanban View or Regular Cards */}
+        {layout === "kanban" ? (
           <>
-            {/* Board View Header with Quick Stats */}
+            {/* Kanban View Header with Quick Stats */}
             <div className="mb-4 space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-4 text-sm flex-wrap">
@@ -569,16 +575,18 @@ function CollectionPageContent() {
                   </span>
                   {/* Quick stats for each column */}
                   <div className="flex items-center gap-3 flex-wrap">
-                    {getBoardConfig(currentCollection).columns.map((col) => {
-                      const count = items.filter(card =>
-                        card.tags?.includes(col.tag)
-                      ).length;
+                    {getKanbanColumns(currentCollection.metadata).map((col) => {
+                      const count = col.tag === null
+                        ? items.filter(card => !card.tags?.some(t => t.startsWith("status:"))).length
+                        : items.filter(card => card.tags?.includes(col.tag!)).length;
                       return (
-                        <span key={col.tag} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <span key={col.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <span className={`w-2 h-2 rounded-full ${
-                            col.tag.includes('done') ? 'bg-green-500' :
-                            col.tag.includes('doing') || col.tag.includes('progress') ? 'bg-yellow-500' :
-                            col.tag.includes('todo') ? 'bg-blue-500' :
+                            col.color === 'green' ? 'bg-green-500' :
+                            col.color === 'amber' ? 'bg-amber-500' :
+                            col.color === 'purple' ? 'bg-purple-500' :
+                            col.color === 'red' ? 'bg-red-500' :
+                            col.color === 'blue' ? 'bg-blue-500' :
                             'bg-gray-500'
                           }`} />
                           {col.label}: {count}
@@ -596,17 +604,17 @@ function CollectionPageContent() {
 
               {/* Currently Doing Summary */}
               {(() => {
-                const doingColumn = getBoardConfig(currentCollection).columns.find(
-                  col => col.tag.includes('doing') || col.tag.includes('progress')
+                const doingColumn = getKanbanColumns(currentCollection.metadata).find(
+                  col => col.tag?.includes('doing') || col.tag?.includes('progress')
                 );
-                if (!doingColumn) return null;
+                if (!doingColumn || !doingColumn.tag) return null;
 
-                const doingCards = items.filter(card => card.tags?.includes(doingColumn.tag));
+                const doingCards = items.filter(card => card.tags?.includes(doingColumn.tag!));
                 if (doingCards.length === 0) return null;
 
                 return (
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                    <span className="text-xs font-medium text-yellow-500">Currently working on:</span>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <span className="text-xs font-medium text-amber-500">Currently working on:</span>
                     <div className="flex items-center gap-2 flex-wrap">
                       {doingCards.slice(0, 3).map((card) => (
                         <span key={card.id} className="text-xs text-foreground bg-surface px-2 py-0.5 rounded">
@@ -614,7 +622,7 @@ function CollectionPageContent() {
                         </span>
                       ))}
                       {doingCards.length > 3 && (
-                        <span className="text-xs text-yellow-500">+{doingCards.length - 3} more</span>
+                        <span className="text-xs text-amber-500">+{doingCards.length - 3} more</span>
                       )}
                     </div>
                   </div>
@@ -642,11 +650,29 @@ function CollectionPageContent() {
                 }}
                 onAddCard={(columnTag) => {
                   // Find the column by tag
-                  const boardConfig = getBoardConfig(currentCollection);
-                  const column = boardConfig.columns.find(c => c.tag === columnTag)
-                    || { tag: columnTag, label: columnTag === "uncategorized" ? "No Status" : columnTag };
-                  setQuickAddColumn(column);
+                  const kanbanColumns = getKanbanColumns(currentCollection.metadata);
+                  const column = kanbanColumns.find(c => c.tag === columnTag)
+                    || { id: "temp", tag: columnTag, label: columnTag === null ? "Unsorted" : columnTag };
+                  setQuickAddColumn({ tag: column.tag || "", label: column.label });
                   setShowQuickAddCard(true);
+                }}
+                onColumnsChange={async (columns) => {
+                  // Save updated columns to collection metadata
+                  try {
+                    await updateCollection(currentCollection.id, {
+                      metadata: {
+                        ...currentCollection.metadata,
+                        kanbanColumns: columns.map(col => ({
+                          id: col.tag.replace("status:", ""),
+                          tag: col.tag,
+                          label: col.label,
+                          color: col.color,
+                        })),
+                      },
+                    });
+                  } catch {
+                    // Error handling via toast in BoardView
+                  }
                 }}
               />
             )}
