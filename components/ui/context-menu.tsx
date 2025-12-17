@@ -50,7 +50,9 @@ const ContextMenuSubContent = React.forwardRef<
       className
     )}
     style={{
-      background: 'var(--bg-surface-1)',
+      background: 'rgba(var(--bg-surface-1-rgb, 28, 28, 32), 0.85)',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
       borderRadius: 'var(--radius-lg)',
       boxShadow: 'var(--shadow-3)',
       border: '1px solid var(--border-subtle)',
@@ -74,7 +76,9 @@ const ContextMenuContent = React.forwardRef<
         className
       )}
       style={{
-        background: 'var(--bg-surface-1)',
+        background: 'rgba(var(--bg-surface-1-rgb, 28, 28, 32), 0.85)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         borderRadius: 'var(--radius-lg)',
         boxShadow: 'var(--shadow-3)',
         border: '1px solid var(--border-subtle)',

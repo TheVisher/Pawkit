@@ -842,14 +842,6 @@ export function LeftNavigationPanel({
           setShowCreatePawkitModal(true);
         },
       },
-      {
-        label: "New Board",
-        icon: KanbanSquare,
-        onClick: () => {
-          setCreateBoardParentId(collection.id);
-          setShowCreateBoardModal(true);
-        },
-      },
       { type: "separator" as const },
       {
         label: "Rename",
