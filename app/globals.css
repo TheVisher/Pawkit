@@ -1558,3 +1558,20 @@ body.muuri-dragging [data-content-panel] {
 .scrollbar-auto-hide:hover::-webkit-scrollbar-thumb {
   background: hsl(var(--foreground) / 0.2);
 }
+
+/* Cover image fade gradient - fades to background color */
+.cover-fade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    transparent 40%,
+    hsl(var(--background) / 0.15) 55%,
+    hsl(var(--background) / 0.4) 70%,
+    hsl(var(--background) / 0.7) 82%,
+    hsl(var(--background) / 0.9) 92%,
+    hsl(var(--background)) 100%
+  );
+}

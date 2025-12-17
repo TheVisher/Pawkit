@@ -361,21 +361,8 @@ function CollectionPageContent() {
                 backgroundPosition: `center ${coverImagePosition}%`,
               }}
             />
-            {/* Gradient fade within the cover image */}
-            <div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: `linear-gradient(to bottom,
-                  transparent 0%,
-                  transparent 40%,
-                  rgba(var(--background-rgb), 0.1) 50%,
-                  rgba(var(--background-rgb), 0.3) 60%,
-                  rgba(var(--background-rgb), 0.6) 75%,
-                  rgba(var(--background-rgb), 0.85) 88%,
-                  rgb(var(--background-rgb)) 100%
-                )`,
-              }}
-            />
+            {/* Gradient fade to background - defined in globals.css */}
+            <div className="cover-fade" />
             {/* Light overlay at top for contrast */}
             <div className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-black/10 to-transparent pointer-events-none" />
 
