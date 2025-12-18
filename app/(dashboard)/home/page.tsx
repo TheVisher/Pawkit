@@ -191,7 +191,7 @@ export default function HomePage() {
   return (
     <>
       {/* Main container - MUST fill viewport exactly, no scrolling */}
-      <div className="h-full flex flex-col gap-4 overflow-visible">
+      <div className="h-full flex flex-col gap-4 overflow-hidden">
         {/* Welcome Banner for new users */}
         <WelcomeBanner className="shrink-0" />
 
@@ -201,7 +201,7 @@ export default function HomePage() {
         </div>
 
         {/* Content wrapper - centered with max width, responsive */}
-        <div className="flex-1 flex flex-col gap-4 min-h-0 w-full max-w-[1200px] mx-auto">
+        <div className="flex-1 flex flex-col gap-4 min-h-0 w-full max-w-[1200px] mx-auto overflow-hidden">
           {/* TOP SECTION - Today + Calendar/Stats side by side */}
           <div className="flex gap-4 min-h-0">
             {/* Left: Today card - flexible width */}
