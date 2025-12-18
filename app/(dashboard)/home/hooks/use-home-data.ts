@@ -233,18 +233,6 @@ export function useHomeData() {
     });
   }, [activeCards]);
 
-  // Continue reading - recently opened items (using lastViewed if available, otherwise most recent)
-  const continueItems = useMemo(() => {
-    // For now, return recent items that have been created more than a day ago
-    // In future, this should track lastOpenedAt
-    const oneDayAgo = new Date();
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
-
-    return activeCards
-      .filter(c => c.type === 'url' && new Date(c.createdAt) < oneDayAgo)
-      .slice(0, 3);
-  }, [activeCards]);
-
   // Rediscover - items from 2+ months ago
   const rediscoverItems = useMemo(() => {
     const twoMonthsAgo = new Date();
@@ -270,7 +258,6 @@ export function useHomeData() {
     today,
     thisWeekStats,
     onThisDayItem,
-    continueItems,
     rediscoverItems,
     rediscoverCount: rediscoverItems.length,
   };

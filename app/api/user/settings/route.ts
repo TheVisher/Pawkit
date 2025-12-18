@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
 import { handleApiError } from "@/lib/utils/api-error";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { prisma } from "@/lib/server/prisma";
@@ -6,15 +7,34 @@ import { unauthorized, success, rateLimited } from "@/lib/utils/api-responses";
 import { rateLimit } from "@/lib/utils/rate-limit";
 import { logger } from "@/lib/utils/logger";
 
-// Recent history item type for user settings
-interface RecentHistoryItem {
-  id: string;
-  title: string;
-  type: "card" | "note";
-  url?: string;
-  image?: string;
-  timestamp: number;
-}
+// Recent History validation
+const RecentHistoryItemSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  type: z.enum(['card', 'note']),
+  url: z.string().optional(),
+  image: z.string().optional(),
+  timestamp: z.number(),
+});
+
+const RecentHistorySchema = z.array(RecentHistoryItemSchema).max(20);
+
+// Display Settings validation - partial with defaults for backwards compatibility
+const DisplaySettingsValueSchema = z.object({
+  showCardTitles: z.boolean().default(true),
+  showCardUrls: z.boolean().default(true),
+  showCardTags: z.boolean().default(true),
+  cardPadding: z.number().min(0).max(4).default(2),
+}).partial().passthrough();
+
+const AreaSchema = z.enum(['library', 'home', 'den', 'pawkit', 'notes']);
+const DisplaySettingsSchema = z.record(AreaSchema, DisplaySettingsValueSchema);
+
+// Pinned Note IDs validation
+const PinnedNoteIdsSchema = z.array(z.string()).max(10);
+
+// Recent history item type for user settings (kept for type inference)
+type RecentHistoryItem = z.infer<typeof RecentHistoryItemSchema>;
 
 // Settings with optional recentHistory field (may not exist in older records)
 interface SettingsWithHistory {
@@ -68,22 +88,39 @@ export async function GET() {
     let pinnedNoteIds: string[] = [];
     let recentHistory: RecentHistoryItem[] = [];
 
+    // Parse and validate displaySettings
     try {
-      displaySettings = settings.displaySettings ? JSON.parse(settings.displaySettings) : {};
+      const displaySettingsParsed = settings.displaySettings ? JSON.parse(settings.displaySettings) : {};
+      const displaySettingsResult = DisplaySettingsSchema.safeParse(displaySettingsParsed);
+      displaySettings = displaySettingsResult.success ? displaySettingsResult.data : {};
+      if (!displaySettingsResult.success) {
+        console.error('[API GET /api/user/settings] Invalid display settings:', displaySettingsResult.error);
+      }
     } catch {
       displaySettings = {};
     }
 
+    // Parse and validate pinnedNoteIds
     try {
-      pinnedNoteIds = settings.pinnedNoteIds ? JSON.parse(settings.pinnedNoteIds) : [];
+      const pinnedNoteIdsParsed = settings.pinnedNoteIds ? JSON.parse(settings.pinnedNoteIds) : [];
+      const pinnedNoteIdsResult = PinnedNoteIdsSchema.safeParse(pinnedNoteIdsParsed);
+      pinnedNoteIds = pinnedNoteIdsResult.success ? pinnedNoteIdsResult.data : [];
+      if (!pinnedNoteIdsResult.success) {
+        console.error('[API GET /api/user/settings] Invalid pinned note IDs:', pinnedNoteIdsResult.error);
+      }
     } catch {
       pinnedNoteIds = [];
     }
 
+    // Parse and validate recentHistory
     try {
-      // Safe parsing for recentHistory - field might not exist if migration not run
       const settingsWithHistory = settings as SettingsWithHistory;
-      recentHistory = settingsWithHistory.recentHistory ? JSON.parse(settingsWithHistory.recentHistory) : [];
+      const recentHistoryParsed = settingsWithHistory.recentHistory ? JSON.parse(settingsWithHistory.recentHistory) : [];
+      const recentHistoryResult = RecentHistorySchema.safeParse(recentHistoryParsed);
+      recentHistory = recentHistoryResult.success ? recentHistoryResult.data : [];
+      if (!recentHistoryResult.success) {
+        console.error('[API GET /api/user/settings] Invalid recent history:', recentHistoryResult.error);
+      }
     } catch {
       recentHistory = [];
     }
@@ -200,20 +237,33 @@ export async function PATCH(request: Request) {
     if (body.defaultView !== undefined) updateData.defaultView = body.defaultView;
     if (body.defaultSort !== undefined) updateData.defaultSort = body.defaultSort;
 
-    // JSON fields - stringify them
+    // JSON fields - validate with Zod before stringify
     if (body.displaySettings !== undefined) {
-      updateData.displaySettings = JSON.stringify(body.displaySettings);
+      const result = DisplaySettingsSchema.safeParse(body.displaySettings);
+      if (!result.success) {
+        console.error('[API PATCH] Invalid displaySettings:', result.error);
+        return NextResponse.json({ error: 'Invalid display settings format' }, { status: 400 });
+      }
+      updateData.displaySettings = JSON.stringify(result.data);
     }
+
     if (body.pinnedNoteIds !== undefined) {
-      // Validate and limit to max 10 items
-      const notes = Array.isArray(body.pinnedNoteIds) ? body.pinnedNoteIds.slice(0, 10) : [];
-      updateData.pinnedNoteIds = JSON.stringify(notes);
-      logger.debug('[API PATCH /api/user/settings] Updating pinnedNoteIds:', notes);
+      const result = PinnedNoteIdsSchema.safeParse(body.pinnedNoteIds);
+      if (!result.success) {
+        console.error('[API PATCH] Invalid pinnedNoteIds:', result.error);
+        return NextResponse.json({ error: 'Invalid pinned note IDs format' }, { status: 400 });
+      }
+      updateData.pinnedNoteIds = JSON.stringify(result.data);
+      logger.debug('[API PATCH /api/user/settings] Updating pinnedNoteIds:', result.data);
     }
+
     if (body.recentHistory !== undefined) {
-      // Validate and limit to max 20 items
-      const history = Array.isArray(body.recentHistory) ? body.recentHistory.slice(0, 20) : [];
-      updateData.recentHistory = JSON.stringify(history);
+      const result = RecentHistorySchema.safeParse(body.recentHistory);
+      if (!result.success) {
+        console.error('[API PATCH] Invalid recentHistory:', result.error);
+        return NextResponse.json({ error: 'Invalid recent history format' }, { status: 400 });
+      }
+      updateData.recentHistory = JSON.stringify(result.data);
     }
 
     // Upsert settings (create if doesn't exist, update if it does)
@@ -226,26 +276,44 @@ export async function PATCH(request: Request) {
       update: updateData
     });
 
-    // Parse JSON fields for response with safe fallbacks
+    // Parse JSON fields for response with Zod validation
     let displaySettings: Record<string, unknown> = {};
     let pinnedNoteIds: string[] = [];
     let recentHistory: RecentHistoryItem[] = [];
 
+    // Parse and validate displaySettings
     try {
-      displaySettings = settings.displaySettings ? JSON.parse(settings.displaySettings) : {};
+      const displaySettingsParsed = settings.displaySettings ? JSON.parse(settings.displaySettings) : {};
+      const displaySettingsResult = DisplaySettingsSchema.safeParse(displaySettingsParsed);
+      displaySettings = displaySettingsResult.success ? displaySettingsResult.data : {};
+      if (!displaySettingsResult.success) {
+        console.error('[API PATCH /api/user/settings] Invalid display settings:', displaySettingsResult.error);
+      }
     } catch {
       displaySettings = {};
     }
 
+    // Parse and validate pinnedNoteIds
     try {
-      pinnedNoteIds = settings.pinnedNoteIds ? JSON.parse(settings.pinnedNoteIds) : [];
+      const pinnedNoteIdsParsed = settings.pinnedNoteIds ? JSON.parse(settings.pinnedNoteIds) : [];
+      const pinnedNoteIdsResult = PinnedNoteIdsSchema.safeParse(pinnedNoteIdsParsed);
+      pinnedNoteIds = pinnedNoteIdsResult.success ? pinnedNoteIdsResult.data : [];
+      if (!pinnedNoteIdsResult.success) {
+        console.error('[API PATCH /api/user/settings] Invalid pinned note IDs:', pinnedNoteIdsResult.error);
+      }
     } catch {
       pinnedNoteIds = [];
     }
 
+    // Parse and validate recentHistory
     try {
       const settingsWithHistory = settings as SettingsWithHistory;
-      recentHistory = settingsWithHistory.recentHistory ? JSON.parse(settingsWithHistory.recentHistory) : [];
+      const recentHistoryParsed = settingsWithHistory.recentHistory ? JSON.parse(settingsWithHistory.recentHistory) : [];
+      const recentHistoryResult = RecentHistorySchema.safeParse(recentHistoryParsed);
+      recentHistory = recentHistoryResult.success ? recentHistoryResult.data : [];
+      if (!recentHistoryResult.success) {
+        console.error('[API PATCH /api/user/settings] Invalid recent history:', recentHistoryResult.error);
+      }
     } catch {
       recentHistory = [];
     }
