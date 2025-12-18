@@ -73,8 +73,8 @@ export function RecentItems({ items }: RecentItemsProps) {
               onClick={() => openCardDetails(item.id)}
               className="card-hover group flex-1 min-w-[160px] max-w-[280px] text-left flex flex-col"
             >
-              {/* Thumbnail - fills available space */}
-              <div className="flex-1 min-h-[120px] overflow-hidden relative bg-surface">
+              {/* Thumbnail - capped height to prevent tall images from overflowing */}
+              <div className="flex-1 min-h-[120px] max-h-[180px] overflow-hidden relative bg-surface">
                 {isNote ? (
                   <div className="absolute inset-0 flex items-center justify-center bg-surface-soft">
                     <FileText className="w-8 h-8 text-accent/50" />
@@ -121,7 +121,7 @@ export function RecentItems({ items }: RecentItemsProps) {
             className="flex-1 min-w-[160px] max-w-[280px] rounded-xl overflow-hidden flex flex-col border border-dashed border-subtle/30 opacity-40"
           >
             {/* Thumbnail placeholder */}
-            <div className="flex-1 min-h-[120px] flex items-center justify-center bg-surface-soft/30">
+            <div className="flex-1 min-h-[120px] max-h-[180px] flex items-center justify-center bg-surface-soft/30">
               <div className="w-10 h-10 rounded-lg bg-surface-soft/50 flex items-center justify-center">
                 <Link2 size={20} className="text-muted-foreground/50" />
               </div>

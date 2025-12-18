@@ -1,5 +1,9 @@
+import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import type { OldCardAgeThreshold, CardType, CardStatus, CardModel, PrismaCard } from "@/lib/types";
+
+const CardTypeSchema = z.enum(["url", "md-note", "text-note", "file"]);
+const CardStatusSchema = z.enum(["PENDING", "READY", "ERROR"]);
 // Use PrismaCard instead of Card from @prisma/client when Prisma client is not generated
 type Card = PrismaCard;
 import { prisma } from "@/lib/server/prisma";
@@ -31,8 +35,8 @@ function serializeCollections(collections: string[]): string | null {
 function mapCard(card: Card): CardDTO {
   return {
     ...card,
-    type: card.type as CardType,
-    status: card.status as CardStatus,
+    type: CardTypeSchema.parse(card.type),
+    status: CardStatusSchema.parse(card.status),
     tags: parseJsonArray(card.tags),
     collections: parseJsonArray(card.collections),
     metadata: parseJsonObject(card.metadata),
