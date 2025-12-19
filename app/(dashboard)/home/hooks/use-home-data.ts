@@ -114,13 +114,56 @@ export function useHomeData() {
       });
   }, [collections, activeCards]);
 
-  // Get current week days
-  const weekDays = useMemo((): WeekDay[] => {
+  // Pre-compute week date range once to avoid recalculating
+  const weekDateRange = useMemo(() => {
     const now = new Date();
     const weekStart = startOfWeek(now, { weekStartsOn });
+    const weekEnd = addDays(weekStart, 6);
+    return {
+      now,
+      weekStart,
+      weekEnd,
+      startStr: format(weekStart, 'yyyy-MM-dd'),
+      endStr: format(weekEnd, 'yyyy-MM-dd'),
+      todayStr: format(now, 'yyyy-MM-dd'),
+    };
+  }, [weekStartsOn]);
 
+  // Pre-compute ALL recurrence instances for the week ONCE
+  // This is the key optimization - instead of calling generateRecurrenceInstances 7 times
+  // (once per day), we call it once for the entire week range
+  const weekRecurrencesByDate = useMemo(() => {
+    const recurrenceMap = new Map<string, CalendarEvent[]>();
+
+    // Initialize all 7 days with empty arrays
+    for (let i = 0; i < 7; i++) {
+      const date = addDays(weekDateRange.weekStart, i);
+      const dateStr = format(date, 'yyyy-MM-dd');
+      recurrenceMap.set(dateStr, []);
+    }
+
+    // Generate all recurrences for the week in one call per event
+    events.forEach(event => {
+      const instances = generateRecurrenceInstances(
+        event,
+        weekDateRange.startStr,
+        weekDateRange.endStr
+      );
+      instances.forEach(inst => {
+        const dateStr = inst.event.date;
+        if (dateStr && recurrenceMap.has(dateStr)) {
+          recurrenceMap.get(dateStr)!.push(inst.event);
+        }
+      });
+    });
+
+    return recurrenceMap;
+  }, [events, generateRecurrenceInstances, weekDateRange]);
+
+  // Get current week days - now uses pre-computed recurrences
+  const weekDays = useMemo((): WeekDay[] => {
     return Array.from({ length: 7 }, (_, i) => {
-      const date = addDays(weekStart, i);
+      const date = addDays(weekDateRange.weekStart, i);
       const dateStr = format(date, 'yyyy-MM-dd');
 
       // Get cards scheduled for this day
@@ -130,11 +173,8 @@ export function useHomeData() {
         !card.collections?.includes('the-den')
       );
 
-      // Get events for this day
-      const dayEvents = events.flatMap(event => {
-        const instances = generateRecurrenceInstances(event, dateStr, dateStr);
-        return instances.map(inst => inst.event);
-      });
+      // Get events for this day from pre-computed map
+      const dayEvents = weekRecurrencesByDate.get(dateStr) || [];
 
       // Get daily note for this day
       const dailyNote = activeCards.find(card => {
@@ -155,18 +195,14 @@ export function useHomeData() {
         dailyNote,
       };
     });
-  }, [activeCards, events, generateRecurrenceInstances, weekStartsOn]);
+  }, [activeCards, weekDateRange, weekRecurrencesByDate]);
 
-  // Today's data
+  // Today's data - reuses pre-computed recurrences
   const today = useMemo(() => {
-    const todayDate = new Date();
-    const todayStr = format(todayDate, 'yyyy-MM-dd');
+    const { now: todayDate, todayStr } = weekDateRange;
 
-    // Today's events
-    const todayEvents = events.flatMap(event => {
-      const instances = generateRecurrenceInstances(event, todayStr, todayStr);
-      return instances.map(inst => inst.event);
-    }).sort((a, b) => {
+    // Today's events from pre-computed map, sorted
+    const todayEvents = (weekRecurrencesByDate.get(todayStr) || []).slice().sort((a, b) => {
       if (a.isAllDay && !b.isAllDay) return -1;
       if (!a.isAllDay && b.isAllDay) return 1;
       if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
@@ -193,7 +229,7 @@ export function useHomeData() {
       scheduledCards: scheduledForToday,
       dailyNote,
     };
-  }, [activeCards, events, generateRecurrenceInstances]);
+  }, [activeCards, weekDateRange, weekRecurrencesByDate]);
 
   // Grouped todos
   const groupedTodos = useMemo(() => groupTodosByCategory(todos), [todos]);
