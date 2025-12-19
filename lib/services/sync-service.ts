@@ -664,10 +664,10 @@ class SyncService {
                 await localDb.markCardSynced(card.id, serverCard.updatedAt);
                 result.pushed.cards++;
               } else {
-                // Add to retry queue
+                // Add to retry queue - use tempId for CREATE operations
                 await syncQueue.enqueue({
                   type: 'CREATE_CARD',
-                  targetId: card.id,
+                  tempId: card.id,
                   payload: card,
                 });
                 result.errors.push(`Failed to create card ${card.id}: HTTP ${createResponse.status}, queued for retry`);
@@ -684,12 +684,19 @@ class SyncService {
           }
         } catch (error) {
           // Add to retry queue on network/unexpected errors
-          await syncQueue.enqueue({
-            type: card.id.startsWith('temp_') ? 'CREATE_CARD' : 'UPDATE_CARD',
-            tempId: card.id.startsWith('temp_') ? card.id : undefined,
-            targetId: !card.id.startsWith('temp_') ? card.id : undefined,
-            payload: card,
-          });
+          if (card.id.startsWith('temp_')) {
+            await syncQueue.enqueue({
+              type: 'CREATE_CARD',
+              tempId: card.id,
+              payload: card,
+            });
+          } else {
+            await syncQueue.enqueue({
+              type: 'UPDATE_CARD',
+              targetId: card.id,
+              payload: card,
+            });
+          }
           result.errors.push(`Failed to push card ${card.id}: ${error instanceof Error ? error.message : 'Unknown error'}, queued for retry`);
         }
       }
@@ -759,10 +766,10 @@ class SyncService {
                 await localDb.markCollectionSynced(collection.id, serverCollection.updatedAt);
                 result.pushed.collections++;
               } else {
-                // Add to retry queue
+                // Add to retry queue - use tempId for CREATE operations
                 await syncQueue.enqueue({
                   type: 'CREATE_COLLECTION',
-                  targetId: collection.id,
+                  tempId: collection.id,
                   payload: {
                     name: collection.name,
                     parentId: collection.parentId,
@@ -782,15 +789,22 @@ class SyncService {
           }
         } catch (error) {
           // Add to retry queue on network/unexpected errors
-          await syncQueue.enqueue({
-            type: collection.id.startsWith('temp_') ? 'CREATE_COLLECTION' : 'UPDATE_COLLECTION',
-            tempId: collection.id.startsWith('temp_') ? collection.id : undefined,
-            targetId: !collection.id.startsWith('temp_') ? collection.id : undefined,
-            payload: collection.id.startsWith('temp_') ? {
-              name: collection.name,
-              parentId: collection.parentId,
-            } : collection,
-          });
+          if (collection.id.startsWith('temp_')) {
+            await syncQueue.enqueue({
+              type: 'CREATE_COLLECTION',
+              tempId: collection.id,
+              payload: {
+                name: collection.name,
+                parentId: collection.parentId,
+              },
+            });
+          } else {
+            await syncQueue.enqueue({
+              type: 'UPDATE_COLLECTION',
+              targetId: collection.id,
+              payload: collection,
+            });
+          }
           result.errors.push(`Failed to push collection ${collection.id}: ${error instanceof Error ? error.message : 'Unknown error'}, queued for retry`);
         }
       }
