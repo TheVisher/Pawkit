@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useDataStore } from "@/lib/stores/data-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { CardModel, CollectionNode } from "@/lib/types";
 import { Tag, Edit2, Trash2, Merge, Search } from "lucide-react";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -18,7 +20,9 @@ interface TagInfo {
 }
 
 export default function TagsPage() {
+  const pathname = usePathname();
   const { cards, collections } = useDataStore();
+  const setLibraryControls = usePanelStore((state) => state.setLibraryControls);
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<TagInfo | null>(null);
@@ -27,6 +31,11 @@ export default function TagsPage() {
   const [deleteConfirmTag, setDeleteConfirmTag] = useState<TagInfo | null>(null);
   const router = useRouter();
   const toast = useToastStore();
+
+  // Set library controls when this page loads (tags are related to library)
+  useEffect(() => {
+    setLibraryControls();
+  }, [setLibraryControls, pathname]);
 
   useEffect(() => {
     // Build a set of private collection SLUGS for fast lookup (cards store slugs, not IDs)

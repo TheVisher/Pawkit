@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, ChangeEvent } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import {
   Settings,
   Palette,
@@ -470,6 +472,8 @@ function FilenConnectModal({ open, onClose }: { open: boolean; onClose: () => vo
 }
 
 export default function SettingsPage() {
+  const pathname = usePathname();
+  const setLibraryControls = usePanelStore((state) => state.setLibraryControls);
   const [showFilenModal, setShowFilenModal] = useState(false);
   const [gdriveLoading, setGdriveLoading] = useState(false);
   const [dropboxLoading, setDropboxLoading] = useState(false);
@@ -479,6 +483,11 @@ export default function SettingsPage() {
   const [deletingSampleData, setDeletingSampleData] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const importFileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Set sidebar content type when this page loads
+  useEffect(() => {
+    setLibraryControls();
+  }, [setLibraryControls, pathname]);
 
   // Connector states
   const filenState = useConnectorStore((state) => state.filen);

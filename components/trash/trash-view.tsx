@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { CardDTO } from "@/lib/server/cards";
 import { CollectionDTO } from "@/lib/server/collections";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { localDb } from "@/lib/services/local-storage";
 import { FileText, Folder } from "lucide-react";
@@ -11,6 +11,7 @@ import { useSettingsStore } from "@/lib/hooks/settings-store";
 import { useDataStore } from "@/lib/stores/data-store";
 import { useToastStore } from "@/lib/stores/toast-store";
 import { useFileStore } from "@/lib/stores/file-store";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 
 type CardTrashItem = CardDTO & { itemType: "card" };
 type PawkitTrashItem = CollectionDTO & { itemType: "pawkit" };
@@ -22,6 +23,7 @@ type TrashViewProps = {
 };
 
 export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashViewProps) {
+  const pathname = usePathname();
   const [filter, setFilter] = useState<"all" | "cards" | "pawkits">("all");
   const [loading, setLoading] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; itemType: "card" | "pawkit"; name: string } | null>(null);
@@ -30,6 +32,12 @@ export function TrashView({ cards: serverCards, pawkits: serverPawkits }: TrashV
   const [localPawkits, setLocalPawkits] = useState<CollectionDTO[]>([]);
   const router = useRouter();
   const serverSync = useSettingsStore((state) => state.serverSync);
+  const setLibraryControls = usePanelStore((state) => state.setLibraryControls);
+
+  // Set sidebar content type when this page loads
+  useEffect(() => {
+    setLibraryControls();
+  }, [setLibraryControls, pathname]);
   const refreshDataStore = useDataStore((state) => state.refresh);
   const toast = useToastStore();
   const files = useFileStore((state) => state.files);

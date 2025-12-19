@@ -1,6 +1,17 @@
 "use client";
 
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
+
 export default function ChangelogPage() {
+  const pathname = usePathname();
+  const setLibraryControls = usePanelStore((state) => state.setLibraryControls);
+
+  // Set sidebar content type when this page loads
+  useEffect(() => {
+    setLibraryControls();
+  }, [setLibraryControls, pathname]);
   const changes = [
     {
       dateRange: "December 8, 2025",
