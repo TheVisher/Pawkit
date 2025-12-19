@@ -56,7 +56,12 @@ export async function PATCH(
       return notFound('Folder not found');
     }
 
-    const updateData: { name?: string; parentId?: string | null; position?: number } = {};
+    const updateData: { name?: string; parentId?: string | null; position?: number; isPrivate?: boolean } = {};
+
+    // Update privacy setting
+    if (body.isPrivate !== undefined) {
+      updateData.isPrivate = Boolean(body.isPrivate);
+    }
 
     // Rename
     if (body.name !== undefined) {

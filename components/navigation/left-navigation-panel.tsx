@@ -110,6 +110,7 @@ export function LeftNavigationPanel({
     setSelectedFolder,
     toggleFolderExpanded,
     getFolderTree,
+    setFolderPrivate,
   } = noteFolderStore;
   const [showCreateFolderModal, setShowCreateFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
@@ -1120,6 +1121,20 @@ export function LeftNavigationPanel({
           setShowCreateFolderModal(true);
         },
       },
+      {
+        label: folder.isPrivate ? "Make Public" : "Make Private",
+        icon: folder.isPrivate ? Eye : EyeOff,
+        onClick: async () => {
+          try {
+            await setFolderPrivate(folder.id, !folder.isPrivate);
+            useToastStore.getState().success(
+              folder.isPrivate ? "Folder is now public" : "Folder is now private"
+            );
+          } catch (err) {
+            useToastStore.getState().error("Failed to update privacy setting");
+          }
+        },
+      },
       { type: "separator" as const },
       {
         label: "Rename",
@@ -1185,6 +1200,11 @@ export function LeftNavigationPanel({
             >
               <Folder size={iconSize} className="flex-shrink-0" />
               <span className="flex-1 text-left truncate">{folder.name}</span>
+              {folder.isPrivate && (
+                <span title="Private folder">
+                  <EyeOff size={12} className="flex-shrink-0 text-muted-foreground opacity-60" />
+                </span>
+              )}
               {noteCounts.counts[folder.id] > 0 && (
                 <span className="text-xs text-muted-foreground ml-auto">
                   ({noteCounts.counts[folder.id]})

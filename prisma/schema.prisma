@@ -276,6 +276,7 @@ model NoteFolder {
   name      String
   parentId  String?  // Self-reference for nested folders
   position  Int      @default(0) // For ordering within parent
+  isPrivate Boolean  @default(false) // Private folders hide notes from main views
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
