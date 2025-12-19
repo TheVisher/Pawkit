@@ -866,8 +866,22 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               }
               // Add class to body for z-index handling
               document.body.classList.add('muuri-dragging');
+
+              // Scale the inner content to match Kanban drag preview (50%)
+              const content = item.getElement().querySelector('.muuri-item-content') as HTMLElement;
+              if (content) {
+                content.style.transform = 'scale(0.5)';
+                content.style.transformOrigin = 'top left';
+              }
             }}
             onDragEnd={(item) => {
+              // Reset the scale transform
+              const content = item.getElement().querySelector('.muuri-item-content') as HTMLElement;
+              if (content) {
+                content.style.transform = '';
+                content.style.transformOrigin = '';
+              }
+
               // Check if we should drop into a pawkit
               const dragState = useDragStore.getState();
               if (dragState.hoveredPawkitSlug && dragState.draggedCardId) {

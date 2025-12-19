@@ -1407,15 +1407,6 @@ textarea:focus-visible {
   filter: drop-shadow(0 12px 32px rgba(0, 0, 0, 0.5));
 }
 
-/* Scale the inner content during drag instead of the muuri-item wrapper */
-/* Matches Kanban board drag preview at 50% scale */
-/* Element gets moved to body via dragContainer, so target both locations */
-.muuri-item.muuri-item-dragging .muuri-item-content,
-body > .muuri-item.muuri-item-dragging .muuri-item-content {
-  transform: scale(0.5) !important;
-  transform-origin: top left;
-}
-
 /* When dragged to body via dragContainer, ensure it's above everything */
 body > .muuri-item.muuri-item-dragging {
   z-index: 99999 !important;
