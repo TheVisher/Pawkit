@@ -29,13 +29,17 @@ function formatTime12h(time24: string): string {
   return `${hours12}:${minutes.toString().padStart(2, '0')} ${period}`;
 }
 
+// Module-level cache to avoid fetching user profile on every navigation
+let cachedDisplayName: string | null = null;
+let hasFetchedProfile = false;
+
 export default function HomePage() {
   const pathname = usePathname();
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const setHomeControls = usePanelStore((state) => state.setHomeControls);
   const activeCardId = usePanelStore((state) => state.activeCardId);
 
-  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(cachedDisplayName);
   const [selectedDay, setSelectedDay] = useState<WeekDay | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -77,17 +81,22 @@ export default function HomePage() {
     return () => setIsMounted(false);
   }, []);
 
-  // Fetch user profile
+  // Fetch user profile - only once per session (cached in module)
   useEffect(() => {
+    if (hasFetchedProfile) return;
+
     const fetchProfile = async () => {
       try {
         const response = await fetch('/api/user');
         if (response.ok) {
           const data = await response.json();
+          cachedDisplayName = data.displayName;
+          hasFetchedProfile = true;
           setDisplayName(data.displayName);
         }
       } catch (error) {
-        // Silently fail
+        // Silently fail, but mark as fetched to avoid retries
+        hasFetchedProfile = true;
       }
     };
     fetchProfile();

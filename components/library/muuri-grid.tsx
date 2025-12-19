@@ -190,7 +190,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       alignBottom = false,
       dragEnabled = false,
       dragHandle,
-      layoutDuration = 300,
+      layoutDuration = 100,
       layoutEasing = "ease-out",
       onDragStart,
       onDragEnd,
