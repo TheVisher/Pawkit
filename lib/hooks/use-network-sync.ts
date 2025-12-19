@@ -23,6 +23,7 @@ import { syncService } from "@/lib/services/sync-service";
  */
 export function useNetworkSync(isAuthReady: boolean = true) {
   const drainQueue = useDataStore((state) => state.drainQueue);
+  const retryPendingMetadata = useDataStore((state) => state.retryPendingMetadata);
   const syncEvents = useEventStore((state) => state.sync);
   const serverSync = useSettingsStore((state) => state.serverSync);
   const autoSyncOnReconnect = useSettingsStore((state) => state.autoSyncOnReconnect);
@@ -65,6 +66,10 @@ export function useNetworkSync(isAuthReady: boolean = true) {
           drainQueue(),
           syncEvents(),
         ]);
+
+        // After syncing, retry metadata fetch for PENDING cards
+        // This handles cards created offline that need metadata
+        await retryPendingMetadata();
       } catch (error) {
       } finally {
         isDrainingRef.current = false;
@@ -125,5 +130,5 @@ export function useNetworkSync(isAuthReady: boolean = true) {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(intervalId);
     };
-  }, [drainQueue, syncEvents, serverSync, autoSyncOnReconnect, isAuthReady]);
+  }, [drainQueue, retryPendingMetadata, syncEvents, serverSync, autoSyncOnReconnect, isAuthReady]);
 }

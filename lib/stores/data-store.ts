@@ -192,6 +192,7 @@ type DataStore = {
   deleteCollection: (id: string, deleteCards?: boolean, deleteSubPawkits?: boolean) => Promise<void>;
   refresh: () => Promise<void>;
   drainQueue: () => Promise<void>;
+  retryPendingMetadata: () => Promise<void>;
   exportData: () => Promise<void>;
   importData: (file: File) => Promise<void>;
 };
@@ -1252,6 +1253,62 @@ export const useDataStore = create<DataStore>((set, get) => ({
    */
   drainQueue: async () => {
     await get().sync();
+  },
+
+  /**
+   * Retry metadata fetch for PENDING URL cards
+   * Called when coming back online to fetch metadata for cards created while offline
+   */
+  retryPendingMetadata: async () => {
+    const { cards } = get();
+
+    // Find URL cards with PENDING status that need metadata
+    const pendingCards = cards.filter(
+      card => card.type === 'url' &&
+              card.status === 'PENDING' &&
+              card.url &&
+              !card.id.startsWith('temp_') // Only retry for synced cards
+    );
+
+    if (pendingCards.length === 0) {
+      return;
+    }
+
+    console.log(`[DataStore] Retrying metadata for ${pendingCards.length} pending cards`);
+
+    // Fetch metadata for each pending card (in parallel with limit)
+    const results = await Promise.allSettled(
+      pendingCards.map(async (card) => {
+        try {
+          const response = await fetch(`/api/cards/${card.id}/fetch-metadata`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: card.url }),
+          });
+
+          if (response.ok) {
+            // Fetch updated card
+            const updatedCardRes = await fetch(`/api/cards/${card.id}`);
+            if (updatedCardRes.ok) {
+              const updatedCard = await updatedCardRes.json();
+              await localDb.saveCard(updatedCard, { fromServer: true });
+
+              // Update state
+              set((state) => ({
+                cards: state.cards.map(c => c.id === card.id ? updatedCard : c),
+              }));
+
+              console.log(`[DataStore] Metadata fetched for card ${card.id}`);
+            }
+          }
+        } catch (error) {
+          console.warn(`[DataStore] Failed to fetch metadata for card ${card.id}:`, error);
+        }
+      })
+    );
+
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    console.log(`[DataStore] Metadata retry complete: ${succeeded}/${pendingCards.length} succeeded`);
   },
 
   /**
