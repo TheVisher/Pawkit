@@ -1408,8 +1408,9 @@ textarea:focus-visible {
 }
 
 /* Scale the inner content during drag instead of the muuri-item wrapper */
+/* Matches Kanban board drag preview at 50% scale */
 .muuri-item.muuri-item-dragging .muuri-item-content {
-  transform: scale(0.6);
+  transform: scale(0.5);
   transform-origin: top left;
   transition: transform 0.15s ease-out;
 }
