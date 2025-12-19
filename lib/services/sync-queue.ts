@@ -1,5 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { CardDTO } from '@/lib/server/cards';
+import { localDb } from '@/lib/services/local-storage';
 
 // Default workspace ID (matches local-storage.ts)
 export const DEFAULT_WORKSPACE_ID = 'default';
@@ -511,6 +512,33 @@ class SyncQueue {
         }
 
         if (response.ok) {
+          // Handle CREATE operations - update local storage with server response
+          if (operation.type === 'CREATE_CARD' && operation.tempId) {
+            try {
+              const serverCard = await response.json();
+              // Update link references if this was a temp card
+              if (operation.tempId.startsWith('temp_')) {
+                await localDb.updateLinkReferences(operation.tempId, serverCard.id);
+              }
+              // Replace temp card with server card in local storage
+              await localDb.permanentlyDeleteCard(operation.tempId);
+              await localDb.saveCard(serverCard, { fromServer: true });
+              console.log(`[SyncQueue] Replaced temp card ${operation.tempId} with server card ${serverCard.id}`);
+            } catch (parseError) {
+              console.warn('[SyncQueue] Failed to update local storage after CREATE_CARD:', parseError);
+            }
+          } else if (operation.type === 'CREATE_COLLECTION' && operation.tempId) {
+            try {
+              const serverCollection = await response.json();
+              // Replace temp collection with server collection
+              await localDb.permanentlyDeleteCollection(operation.tempId);
+              await localDb.saveCollection(serverCollection, { fromServer: true });
+              console.log(`[SyncQueue] Replaced temp collection ${operation.tempId} with server collection ${serverCollection.id}`);
+            } catch (parseError) {
+              console.warn('[SyncQueue] Failed to update local storage after CREATE_COLLECTION:', parseError);
+            }
+          }
+
           await this.remove(operation.id);
           success++;
         } else {
