@@ -247,6 +247,7 @@ export type NoteFolder = {
   name: string;
   parentId: string | null;
   position: number;
+  isPrivate: boolean; // Private folders hide notes from main views
   createdAt: string;
   updatedAt: string;
 };

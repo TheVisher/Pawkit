@@ -23,6 +23,7 @@ interface NoteFolderState {
   renameFolder: (id: string, name: string) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
   moveFolder: (id: string, newParentId: string | null) => Promise<void>;
+  setFolderPrivate: (id: string, isPrivate: boolean) => Promise<void>;
 
   // UI state management
   setSelectedFolder: (id: string | null) => void;
@@ -99,6 +100,7 @@ export const useNoteFolderStore = create<NoteFolderState>()(
           name,
           parentId: parentId || null,
           position: maxPosition,
+          isPrivate: false,
           createdAt: now,
           updatedAt: now,
         };
@@ -261,6 +263,36 @@ export const useNoteFolderStore = create<NoteFolderState>()(
           set(state => ({
             folders: state.folders.map(f => f.id === id ? folder : f),
             error: 'Failed to move folder',
+          }));
+        }
+      },
+
+      setFolderPrivate: async (id: string, isPrivate: boolean) => {
+        const folder = get().folders.find(f => f.id === id);
+        if (!folder) return;
+
+        // Optimistic update
+        set(state => ({
+          folders: state.folders.map(f =>
+            f.id === id ? { ...f, isPrivate, updatedAt: new Date().toISOString() } : f
+          ),
+        }));
+
+        try {
+          const response = await fetch(`/api/note-folders/${id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isPrivate }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to update folder privacy');
+          }
+        } catch (error) {
+          // Revert on error
+          set(state => ({
+            folders: state.folders.map(f => f.id === id ? folder : f),
+            error: 'Failed to update folder privacy',
           }));
         }
       },
