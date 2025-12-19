@@ -868,9 +868,10 @@ function CardGalleryContent({ cards, nextCursor, layout, onLayoutChange, setCard
               document.body.classList.add('muuri-dragging');
 
               // Scale the inner content to match Kanban drag preview (50%)
+              // Also offset it from the cursor so you can see drop targets
               const content = item.getElement().querySelector('.muuri-item-content') as HTMLElement;
               if (content) {
-                content.style.transform = 'scale(0.5)';
+                content.style.transform = 'scale(0.5) translate(40px, 40px)';
                 content.style.transformOrigin = 'top left';
               }
             }}
