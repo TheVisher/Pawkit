@@ -952,7 +952,7 @@ export const useDataStore = create<DataStore>((set, get) => ({
         await syncQueue.enqueue({
           type: 'DELETE_CARD',
           targetId: id,
-          payload: {}, // Empty payload for DELETE operations
+          payload: { id }, // DeleteCardPayload requires the id
         });
 
         // Try immediate sync

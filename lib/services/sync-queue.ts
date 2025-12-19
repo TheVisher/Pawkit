@@ -5,16 +5,18 @@ import { CardDTO } from '@/lib/server/cards';
 export const DEFAULT_WORKSPACE_ID = 'default';
 
 // Operation types that can be queued
-type OperationType = 'CREATE_CARD' | 'UPDATE_CARD' | 'DELETE_CARD' | 'CREATE_COLLECTION' | 'UPDATE_COLLECTION' | 'DELETE_COLLECTION';
+export type OperationType = 'CREATE_CARD' | 'UPDATE_CARD' | 'DELETE_CARD' | 'CREATE_COLLECTION' | 'UPDATE_COLLECTION' | 'DELETE_COLLECTION';
 
 // Operation-specific payload types
-export type CreateCardPayload = Partial<CardDTO> & { url?: string; title?: string };
+// Note: CreateCardPayload is just Partial<CardDTO> - the url/title are already in CardDTO
+export type CreateCardPayload = Partial<CardDTO>;
 export type UpdateCardPayload = Partial<CardDTO>;
 export type DeleteCardPayload = { id: string };
 export type CreateCollectionPayload = { name: string; parentId?: string | null };
 export type UpdateCollectionPayload = { id: string; name?: string; parentId?: string | null };
 export type DeleteCollectionPayload = { id: string };
 
+// Legacy union type (kept for backwards compatibility)
 export type QueueOperationPayload =
   | CreateCardPayload
   | UpdateCardPayload
@@ -23,16 +25,128 @@ export type QueueOperationPayload =
   | UpdateCollectionPayload
   | DeleteCollectionPayload;
 
-// Queue operation structure
-export interface QueueOperation {
-  id: string; // Unique operation ID
-  type: OperationType;
-  payload: QueueOperationPayload;
-  tempId?: string; // For CREATE operations, the temporary ID used optimistically
-  targetId?: string; // For UPDATE/DELETE operations, the card ID
+// Base fields shared by all operations (used internally for storage)
+interface BaseOperationFields {
+  id: string;
   timestamp: number;
   retries: number;
   status: 'pending' | 'processing' | 'failed';
+}
+
+// Discriminated union types for type-safe operations
+export type CreateCardOperation = BaseOperationFields & {
+  type: 'CREATE_CARD';
+  payload: CreateCardPayload;
+  tempId: string;
+  targetId?: undefined;
+};
+
+export type UpdateCardOperation = BaseOperationFields & {
+  type: 'UPDATE_CARD';
+  payload: UpdateCardPayload;
+  targetId: string;
+  tempId?: undefined;
+};
+
+export type DeleteCardOperation = BaseOperationFields & {
+  type: 'DELETE_CARD';
+  payload: DeleteCardPayload;
+  targetId: string;
+  tempId?: undefined;
+};
+
+export type CreateCollectionOperation = BaseOperationFields & {
+  type: 'CREATE_COLLECTION';
+  payload: CreateCollectionPayload;
+  tempId: string;
+  targetId?: undefined;
+};
+
+export type UpdateCollectionOperation = BaseOperationFields & {
+  type: 'UPDATE_COLLECTION';
+  payload: UpdateCollectionPayload;
+  targetId: string;
+  tempId?: undefined;
+};
+
+export type DeleteCollectionOperation = BaseOperationFields & {
+  type: 'DELETE_COLLECTION';
+  payload: DeleteCollectionPayload;
+  targetId: string;
+  tempId?: undefined;
+};
+
+// Discriminated union of all operation types
+export type QueueOperation =
+  | CreateCardOperation
+  | UpdateCardOperation
+  | DeleteCardOperation
+  | CreateCollectionOperation
+  | UpdateCollectionOperation
+  | DeleteCollectionOperation;
+
+// Input types for enqueue (without auto-generated fields)
+type EnqueueInput<T extends QueueOperation> = Omit<T, 'id' | 'timestamp' | 'retries' | 'status'>;
+
+export type CreateCardInput = EnqueueInput<CreateCardOperation>;
+export type UpdateCardInput = EnqueueInput<UpdateCardOperation>;
+export type DeleteCardInput = EnqueueInput<DeleteCardOperation>;
+export type CreateCollectionInput = EnqueueInput<CreateCollectionOperation>;
+export type UpdateCollectionInput = EnqueueInput<UpdateCollectionOperation>;
+export type DeleteCollectionInput = EnqueueInput<DeleteCollectionOperation>;
+
+export type QueueOperationInput =
+  | CreateCardInput
+  | UpdateCardInput
+  | DeleteCardInput
+  | CreateCollectionInput
+  | UpdateCollectionInput
+  | DeleteCollectionInput;
+
+// Type-safe builder functions to prevent type/payload mismatches
+export function createCardOp(tempId: string, payload: CreateCardPayload): CreateCardInput {
+  return { type: 'CREATE_CARD', tempId, payload };
+}
+
+export function updateCardOp(targetId: string, payload: UpdateCardPayload): UpdateCardInput {
+  return { type: 'UPDATE_CARD', targetId, payload };
+}
+
+export function deleteCardOp(targetId: string, payload: DeleteCardPayload = { id: targetId }): DeleteCardInput {
+  return { type: 'DELETE_CARD', targetId, payload };
+}
+
+export function createCollectionOp(tempId: string, payload: CreateCollectionPayload): CreateCollectionInput {
+  return { type: 'CREATE_COLLECTION', tempId, payload };
+}
+
+export function updateCollectionOp(targetId: string, payload: UpdateCollectionPayload): UpdateCollectionInput {
+  return { type: 'UPDATE_COLLECTION', targetId, payload };
+}
+
+export function deleteCollectionOp(targetId: string, payload: DeleteCollectionPayload = { id: targetId }): DeleteCollectionInput {
+  return { type: 'DELETE_COLLECTION', targetId, payload };
+}
+
+// Type guards for narrowing operation types
+export function isCreateCardOp(op: QueueOperation): op is CreateCardOperation {
+  return op.type === 'CREATE_CARD';
+}
+
+export function isUpdateCardOp(op: QueueOperation): op is UpdateCardOperation {
+  return op.type === 'UPDATE_CARD';
+}
+
+export function isDeleteCardOp(op: QueueOperation): op is DeleteCardOperation {
+  return op.type === 'DELETE_CARD';
+}
+
+export function isCardOperation(op: QueueOperation): op is CreateCardOperation | UpdateCardOperation | DeleteCardOperation {
+  return op.type === 'CREATE_CARD' || op.type === 'UPDATE_CARD' || op.type === 'DELETE_CARD';
+}
+
+export function isCollectionOperation(op: QueueOperation): op is CreateCollectionOperation | UpdateCollectionOperation | DeleteCollectionOperation {
+  return op.type === 'CREATE_COLLECTION' || op.type === 'UPDATE_COLLECTION' || op.type === 'DELETE_COLLECTION';
 }
 
 // IndexedDB schema
@@ -153,7 +267,7 @@ class SyncQueue {
   }
 
   // Add operation to queue
-  async enqueue(operation: Omit<QueueOperation, 'id' | 'timestamp' | 'retries' | 'status'>): Promise<string> {
+  async enqueue(operation: QueueOperationInput): Promise<string> {
     if (!this.db) {
       throw new Error('[SyncQueue] Database not initialized. Call init(userId, workspaceId) first.');
     }
@@ -329,9 +443,10 @@ class SyncQueue {
     for (const operation of pending) {
       try {
         // Skip file cards - they're local-only and should never be synced
+        // With discriminated unions, payload is automatically narrowed based on type
         if (operation.type === 'CREATE_CARD' || operation.type === 'UPDATE_CARD') {
-          const payload = operation.payload as CreateCardPayload | UpdateCardPayload;
-          const isFileCard = payload.type === 'file' || payload.isFileCard === true;
+          // TypeScript now knows operation.payload is CreateCardPayload | UpdateCardPayload
+          const isFileCard = operation.payload.type === 'file' || operation.payload.isFileCard === true;
           if (isFileCard) {
             console.log('[SyncQueue] Skipping file card operation:', operation.id);
             await this.remove(operation.id);
@@ -389,7 +504,9 @@ class SyncQueue {
             break;
 
           default:
-            throw new Error(`Unknown operation type: ${operation.type}`);
+            // TypeScript exhaustive check - all types handled above
+            const _exhaustiveCheck: never = operation;
+            throw new Error(`Unknown operation type: ${(_exhaustiveCheck as QueueOperation).type}`);
         }
 
         if (response.ok) {
