@@ -437,29 +437,12 @@ export const useViewSettingsStore = create<ViewSettingsState>()(
         }
       },
 
-      // USER SWITCHING: Reset and reload view settings for new user/workspace
-      _switchUser: async (userId: string, workspaceId: string) => {
-
-        // Reset to defaults
-        set({
-          settings: createDefaultSettings(),
-          isLoading: false,
-        });
-
-        // Try to load from user-specific localStorage
-        const key = `view-settings-storage-${userId}-${workspaceId}`;
-        try {
-          const stored = localStorage.getItem(key);
-          if (stored) {
-            const parsed = JSON.parse(stored);
-            if (parsed.state && parsed.state.settings) {
-              set({ settings: parsed.state.settings });
-            }
-          }
-        } catch (error) {
-        }
-
-        // Initialize (only loads from server if first time)
+      // USER SWITCHING: Initialize view settings for user/workspace
+      // Note: Settings are persisted globally via Zustand persist middleware to 'view-settings-storage'
+      // We don't reset to defaults here - that would overwrite the user's saved settings!
+      _switchUser: async (_userId: string, _workspaceId: string) => {
+        // The persist middleware already loaded settings from 'view-settings-storage' on store creation
+        // We just need to handle first-time setup (fetching from server if needed)
         await get().initializeSettings();
       },
     }),
