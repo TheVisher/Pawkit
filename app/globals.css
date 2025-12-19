@@ -52,9 +52,10 @@
   --font-bold: 700;
 
   /* === TRANSITIONS === */
-  --transition-fast: 0.1s ease;
-  --transition-base: 0.15s ease;
-  --transition-slow: 0.25s ease;
+  /* Instant-feel interactions - prioritize responsiveness */
+  --transition-fast: 0.05s ease-out;
+  --transition-base: 0.075s ease-out;
+  --transition-slow: 0.15s ease-out;
 }
 
 /* === DARK MODE (Default) === */
@@ -656,6 +657,22 @@ textarea:focus-visible {
   .transition-base { transition: all var(--transition-base); }
   .transition-slow { transition: all var(--transition-slow); }
 
+  /* Global instant-feel overrides for interactive elements */
+  /* Override Tailwind's duration-200/300 classes for interactive elements */
+  button,
+  a,
+  [role="button"],
+  [role="tab"],
+  [role="menuitem"],
+  .cursor-pointer {
+    transition-duration: 50ms !important;
+  }
+
+  /* Keep layout/panel transitions smooth but faster */
+  .transition-all {
+    transition-duration: 75ms;
+  }
+
   /* Note card with paper fold effect (like MyMind) */
   .note-card-fold {
     position: relative;
@@ -706,7 +723,8 @@ textarea:focus-visible {
     border: 1px solid var(--border-subtle);
     border-top-color: var(--border-highlight-top);
     border-left-color: var(--border-highlight-left);
-    transition: transform var(--transition-base), box-shadow var(--transition-base), border-color var(--transition-base);
+    /* Instant response - no transform animations */
+    transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
   }
 
   .card-hover::after {
@@ -717,11 +735,11 @@ textarea:focus-visible {
     pointer-events: none;
     background: linear-gradient(180deg, hsla(var(--accent) / 0) 0%, hsla(var(--accent) / 0.12) 55%, hsla(var(--accent) / 0.42) 100%);
     opacity: 0;
-    transition: opacity var(--transition-base);
+    transition: opacity var(--transition-fast);
   }
 
   .card-hover:hover {
-    transform: translateY(-4px);
+    /* Removed lift effect for instant feel */
     box-shadow: var(--glow-hover), var(--shadow-3);
     border-color: hsl(0 0% 100% / 0.1);
   }
@@ -731,7 +749,6 @@ textarea:focus-visible {
   }
 
   .card-hover:active {
-    transform: translateY(-1px);
     box-shadow: var(--shadow-1);
   }
 
@@ -949,13 +966,12 @@ textarea:focus-visible {
   padding: 2px 6px;
   font-size: 0.75rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
 .pawkit-calendar .rbc-event:hover {
   background-color: hsla(var(--accent) / 0.3);
   border-color: hsla(var(--accent) / 0.6);
-  transform: translateY(-1px);
 }
 
 /* Daily note pills - custom styling and positioning */
@@ -1021,7 +1037,7 @@ textarea:focus-visible {
   border-radius: 0.5rem;
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
 .pawkit-calendar .rbc-toolbar button:hover {
@@ -1343,7 +1359,7 @@ textarea:focus-visible {
   border: none;
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-1);
-  transition: all var(--transition-base);
+  transition: background var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .ds-btn-primary:hover {
@@ -1361,7 +1377,7 @@ textarea:focus-visible {
   color: var(--text-primary);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  transition: all var(--transition-base);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
 .ds-btn-secondary:hover {
@@ -1374,7 +1390,7 @@ textarea:focus-visible {
   color: var(--text-secondary);
   border: none;
   border-radius: var(--radius-md);
-  transition: all var(--transition-base);
+  transition: background var(--transition-fast), color var(--transition-fast);
 }
 
 .ds-btn-ghost:hover {
@@ -1475,17 +1491,17 @@ body.muuri-dragging [data-content-panel] {
   opacity: 1;
 }
 
-/* Serendipity action buttons */
+/* Serendipity action buttons - instant response */
 .serendipity-action-btn {
-  transition: all 0.2s ease;
+  transition: background var(--transition-fast), opacity var(--transition-fast);
 }
 
 .serendipity-action-btn:hover {
-  transform: scale(1.05);
+  opacity: 0.9;
 }
 
 .serendipity-action-btn:active {
-  transform: scale(0.98);
+  opacity: 0.8;
 }
 
 /* ========================================
