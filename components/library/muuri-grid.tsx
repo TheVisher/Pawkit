@@ -446,18 +446,28 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
           grid.add(elementsToAdd, { index: 0, layout: false });
         }
 
-        // Trigger layout if anything changed
-        if (itemsToRemove.length > 0 || elementsToAdd.length > 0) {
+        // Trigger layout if anything changed OR if order changed
+        const needsLayout = itemsToRemove.length > 0 || elementsToAdd.length > 0;
+
+        if (needsLayout) {
           grid.refreshItems();
-          grid.refreshSortData();
-          grid.synchronize();
-          grid.layout();
-        } else {
-          // Even if no items added/removed, sync order if cardIds changed
-          // This handles reordering when navigating back to library
-          grid.synchronize();
-          grid.layout();
         }
+
+        // Always re-sort Muuri items to match the cardIds order from React
+        // This ensures new items appear in the correct position (e.g., at top for updatedAt DESC)
+        const cardIdOrder = (cardIds || '').split(',').filter(Boolean);
+        if (cardIdOrder.length > 0) {
+          grid.sort((a, b) => {
+            const aId = a.getElement().dataset.cardId || '';
+            const bId = b.getElement().dataset.cardId || '';
+            const aIndex = cardIdOrder.indexOf(aId);
+            const bIndex = cardIdOrder.indexOf(bId);
+            // Items not in cardIds go to the end
+            return (aIndex === -1 ? Infinity : aIndex) - (bIndex === -1 ? Infinity : bIndex);
+          }, { layout: false });
+        }
+
+        grid.layout();
       }, 16);  // Reduced from 50ms - one frame is enough for React to finish rendering
 
       return () => {
