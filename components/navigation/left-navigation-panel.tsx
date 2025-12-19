@@ -1099,7 +1099,8 @@ export function LeftNavigationPanel({
   const renderNoteFolderTree = (folder: NoteFolderNode, depth: number = 0) => {
     const hasChildren = folder.children && folder.children.length > 0;
     const isExpanded = expandedFolderIds.has(folder.id);
-    const isSelected = selectedFolderId === folder.id;
+    // Only show selected state when actually on the Notes page
+    const isSelected = selectedFolderId === folder.id && pathname === "/notes";
     const isFolderHovered = hoveredCreatePawkit === `folder-${folder.id}`;
     const isDragTarget = isDraggingCard && dragHoveredFolder === folder.id;
 
@@ -1161,9 +1162,7 @@ export function LeftNavigationPanel({
     const folderContent = (
       <div key={folder.id}>
         <div
-          className={`flex items-center gap-1 group/folder rounded-lg transition-all ${
-            isDragTarget ? 'ring-2 ring-accent ring-offset-2 ring-offset-background' : ''
-          }`}
+          className="flex items-center gap-1 group/folder rounded-lg transition-all"
           onMouseEnter={() => {
             setHoveredCreatePawkit(`folder-${folder.id}`);
             if (isDraggingCard) {
@@ -1183,7 +1182,7 @@ export function LeftNavigationPanel({
               className={`
                 w-full flex items-center gap-2 ${padding} rounded-lg ${textSize} transition-all overflow-hidden
                 ${isDragTarget
-                  ? "bg-accent/20 text-accent font-medium"
+                  ? "text-foreground"
                   : isSelected
                     ? "font-medium"
                     : "text-muted-foreground hover:text-foreground hover:bg-white/5"
@@ -1196,6 +1195,10 @@ export function LeftNavigationPanel({
                 border: '1px solid var(--border-subtle)',
                 borderTopColor: 'var(--border-highlight-top)',
                 borderLeftColor: 'var(--border-highlight-left)',
+              } : isDragTarget ? {
+                background: 'var(--ds-accent-subtle)',
+                border: '2px dashed var(--ds-accent)',
+                boxShadow: '0 0 12px var(--ds-accent-muted)',
               } : undefined}
             >
               <Folder size={iconSize} className="flex-shrink-0" />
