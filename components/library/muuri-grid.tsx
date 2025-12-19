@@ -449,8 +449,13 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
         // Trigger layout if anything changed
         if (itemsToRemove.length > 0 || elementsToAdd.length > 0) {
           grid.refreshItems();
-          grid.refreshSortData();  // Update sort indices to match current DOM order
-          grid.synchronize();      // Ensure Muuri's item order matches DOM order
+          grid.refreshSortData();
+          grid.synchronize();
+          grid.layout();
+        } else {
+          // Even if no items added/removed, sync order if cardIds changed
+          // This handles reordering when navigating back to library
+          grid.synchronize();
           grid.layout();
         }
       }, 16);  // Reduced from 50ms - one frame is enough for React to finish rendering
