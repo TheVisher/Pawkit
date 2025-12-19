@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { Home, Library, FileText, Calendar, Tag, Folder, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, HelpCircle, KanbanSquare, type LucideIcon } from "lucide-react";
+import { Home, Library, FileText, Calendar, Tag, Folder, FolderOpen, ChevronRight, Layers, X, ArrowUpRight, ArrowDownLeft, Clock, CalendarDays, CalendarClock, Flame, Plus, Check, Minus, Pin, PinOff, GripVertical, FolderPlus, Edit3, ArrowUpDown, Trash2, Sparkles, Cloud, HelpCircle, KanbanSquare, Eye, EyeOff, type LucideIcon } from "lucide-react";
 import { shallow } from "zustand/shallow";
 import { PanelSection } from "@/components/control-panel/control-panel";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -856,6 +856,20 @@ export function LeftNavigationPanel({
           }
         },
       },
+      {
+        label: collection.isPrivate ? "Make Public" : "Make Private",
+        icon: collection.isPrivate ? Eye : EyeOff,
+        onClick: async () => {
+          try {
+            await updateCollection(collection.id, { isPrivate: !collection.isPrivate });
+            useToastStore.getState().success(
+              collection.isPrivate ? "Collection is now public" : "Collection is now private"
+            );
+          } catch (err) {
+            useToastStore.getState().error("Failed to update privacy setting");
+          }
+        },
+      },
       { type: "separator" as const },
       {
         label: "Rename",
@@ -946,6 +960,11 @@ export function LeftNavigationPanel({
                 <FolderOpen size={iconSize} className="flex-shrink-0" />
               )}
               <span className="flex-1 text-left truncate">{collection.name}</span>
+              {collection.isPrivate && (
+                <span title="Private collection">
+                  <EyeOff size={12} className="flex-shrink-0 text-muted-foreground opacity-60" />
+                </span>
+              )}
 
               {/* Action buttons - only show when card modal is open */}
               {activeCard && (
