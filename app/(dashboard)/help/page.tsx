@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import {
   HelpCircle,
   Command,
@@ -177,6 +180,14 @@ function KeyboardKey({ children }: { children: React.ReactNode }) {
 }
 
 export default function HelpPage() {
+  const pathname = usePathname();
+  const setLibraryControls = usePanelStore((state) => state.setLibraryControls);
+
+  // Set sidebar content type when this page loads
+  useEffect(() => {
+    setLibraryControls();
+  }, [setLibraryControls, pathname]);
+
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}

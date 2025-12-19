@@ -17,7 +17,7 @@ function LibraryPageContent() {
   const pathname = usePathname();
   const updateViewSettings = useViewSettingsStore((state) => state.updateSettings);
   const viewSettings = useViewSettingsStore((state) => state.getSettings("library"));
-  const setContentType = usePanelStore((state) => state.setContentType);
+  const setLibraryControls = usePanelStore((state) => state.setLibraryControls);
 
   const q = searchParams.get("q") || undefined;
   const collection = searchParams.get("collection") || undefined;
@@ -60,8 +60,8 @@ function LibraryPageContent() {
   // Set the right panel content to show library controls
   // Include pathname to ensure this runs on every navigation to this page
   useEffect(() => {
-    setContentType("library-controls");
-  }, [setContentType, pathname]);
+    setLibraryControls();
+  }, [setLibraryControls, pathname]);
 
   // Check if tag filter exists in any card, if not clear it
   useEffect(() => {

@@ -1,6 +1,19 @@
+"use client";
+
+import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { usePanelStore } from "@/lib/hooks/use-panel-store";
 import { Star } from "lucide-react";
 
 export default function FavoritesPage() {
+  const pathname = usePathname();
+  const setLibraryControls = usePanelStore((state) => state.setLibraryControls);
+
+  // Set sidebar content type when this page loads
+  useEffect(() => {
+    setLibraryControls();
+  }, [setLibraryControls, pathname]);
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">

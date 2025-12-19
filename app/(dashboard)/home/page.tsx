@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { usePathname } from "next/navigation";
 import { format } from "date-fns";
 import { useDataStore } from "@/lib/stores/data-store";
 import { usePanelStore } from "@/lib/hooks/use-panel-store";
@@ -29,6 +30,7 @@ function formatTime12h(time24: string): string {
 }
 
 export default function HomePage() {
+  const pathname = usePathname();
   const openCardDetails = usePanelStore((state) => state.openCardDetails);
   const setHomeControls = usePanelStore((state) => state.setHomeControls);
   const activeCardId = usePanelStore((state) => state.activeCardId);
@@ -62,9 +64,10 @@ export default function HomePage() {
   }, [eventsInitialized, initializeEvents]);
 
   // Set Home controls when this page loads
+  // Include pathname to ensure this runs on every navigation to this page
   useEffect(() => {
     setHomeControls();
-  }, [setHomeControls]);
+  }, [setHomeControls, pathname]);
 
   // Track mount state for portal
   useEffect(() => {
