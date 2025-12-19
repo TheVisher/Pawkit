@@ -5,16 +5,78 @@ import { CardDTO } from '@/lib/server/cards';
 export const DEFAULT_WORKSPACE_ID = 'default';
 
 // Operation types that can be queued
-type OperationType = 'CREATE_CARD' | 'UPDATE_CARD' | 'DELETE_CARD' | 'CREATE_COLLECTION' | 'UPDATE_COLLECTION' | 'DELETE_COLLECTION';
+export type OperationType = 'CREATE_CARD' | 'UPDATE_CARD' | 'DELETE_CARD' | 'CREATE_COLLECTION' | 'UPDATE_COLLECTION' | 'DELETE_COLLECTION';
 
 // Operation-specific payload types
-export type CreateCardPayload = Partial<CardDTO> & { url?: string; title?: string };
+export type CreateCardPayload = Partial<CardDTO>;
 export type UpdateCardPayload = Partial<CardDTO>;
 export type DeleteCardPayload = { id: string };
 export type CreateCollectionPayload = { name: string; parentId?: string | null };
 export type UpdateCollectionPayload = { id: string; name?: string; parentId?: string | null };
 export type DeleteCollectionPayload = { id: string };
 
+// Base fields shared by all operations
+interface BaseOperationFields {
+  id: string;
+  timestamp: number;
+  retries: number;
+  status: 'pending' | 'processing' | 'failed';
+}
+
+// Card Operations - discriminated union
+export type CreateCardOperation = BaseOperationFields & {
+  type: 'CREATE_CARD';
+  payload: CreateCardPayload;
+  tempId: string;
+  targetId?: undefined;
+};
+
+export type UpdateCardOperation = BaseOperationFields & {
+  type: 'UPDATE_CARD';
+  payload: UpdateCardPayload;
+  targetId: string;
+  tempId?: undefined;
+};
+
+export type DeleteCardOperation = BaseOperationFields & {
+  type: 'DELETE_CARD';
+  payload: DeleteCardPayload;
+  targetId: string;
+  tempId?: undefined;
+};
+
+// Collection Operations - discriminated union
+export type CreateCollectionOperation = BaseOperationFields & {
+  type: 'CREATE_COLLECTION';
+  payload: CreateCollectionPayload;
+  tempId: string;
+  targetId?: undefined;
+};
+
+export type UpdateCollectionOperation = BaseOperationFields & {
+  type: 'UPDATE_COLLECTION';
+  payload: UpdateCollectionPayload;
+  targetId: string;
+  tempId?: undefined;
+};
+
+export type DeleteCollectionOperation = BaseOperationFields & {
+  type: 'DELETE_COLLECTION';
+  payload: DeleteCollectionPayload;
+  targetId: string;
+  tempId?: undefined;
+};
+
+// Discriminated union of all operations
+export type QueueOperation =
+  | CreateCardOperation
+  | UpdateCardOperation
+  | DeleteCardOperation
+  | CreateCollectionOperation
+  | UpdateCollectionOperation
+  | DeleteCollectionOperation;
+
+// Legacy payload union (for backward compatibility)
 export type QueueOperationPayload =
   | CreateCardPayload
   | UpdateCardPayload
@@ -23,16 +85,70 @@ export type QueueOperationPayload =
   | UpdateCollectionPayload
   | DeleteCollectionPayload;
 
-// Queue operation structure
-export interface QueueOperation {
-  id: string; // Unique operation ID
-  type: OperationType;
-  payload: QueueOperationPayload;
-  tempId?: string; // For CREATE operations, the temporary ID used optimistically
-  targetId?: string; // For UPDATE/DELETE operations, the card ID
-  timestamp: number;
-  retries: number;
-  status: 'pending' | 'processing' | 'failed';
+// Input types for enqueue (without runtime-generated fields)
+export type CreateCardInput = { type: 'CREATE_CARD'; tempId: string; payload: CreateCardPayload };
+export type UpdateCardInput = { type: 'UPDATE_CARD'; targetId: string; payload: UpdateCardPayload };
+export type DeleteCardInput = { type: 'DELETE_CARD'; targetId: string; payload: DeleteCardPayload };
+export type CreateCollectionInput = { type: 'CREATE_COLLECTION'; tempId: string; payload: CreateCollectionPayload };
+export type UpdateCollectionInput = { type: 'UPDATE_COLLECTION'; targetId: string; payload: UpdateCollectionPayload };
+export type DeleteCollectionInput = { type: 'DELETE_COLLECTION'; targetId: string; payload: DeleteCollectionPayload };
+
+export type QueueOperationInput =
+  | CreateCardInput
+  | UpdateCardInput
+  | DeleteCardInput
+  | CreateCollectionInput
+  | UpdateCollectionInput
+  | DeleteCollectionInput;
+
+// Type-safe builder functions
+export function createCardOp(tempId: string, payload: CreateCardPayload): CreateCardInput {
+  return { type: 'CREATE_CARD', tempId, payload };
+}
+
+export function updateCardOp(targetId: string, payload: UpdateCardPayload): UpdateCardInput {
+  return { type: 'UPDATE_CARD', targetId, payload };
+}
+
+export function deleteCardOp(targetId: string): DeleteCardInput {
+  return { type: 'DELETE_CARD', targetId, payload: { id: targetId } };
+}
+
+export function createCollectionOp(tempId: string, payload: CreateCollectionPayload): CreateCollectionInput {
+  return { type: 'CREATE_COLLECTION', tempId, payload };
+}
+
+export function updateCollectionOp(targetId: string, payload: UpdateCollectionPayload): UpdateCollectionInput {
+  return { type: 'UPDATE_COLLECTION', targetId, payload };
+}
+
+export function deleteCollectionOp(targetId: string): DeleteCollectionInput {
+  return { type: 'DELETE_COLLECTION', targetId, payload: { id: targetId } };
+}
+
+// Type guards for runtime narrowing
+export function isCreateCardOp(op: QueueOperation): op is CreateCardOperation {
+  return op.type === 'CREATE_CARD';
+}
+
+export function isUpdateCardOp(op: QueueOperation): op is UpdateCardOperation {
+  return op.type === 'UPDATE_CARD';
+}
+
+export function isDeleteCardOp(op: QueueOperation): op is DeleteCardOperation {
+  return op.type === 'DELETE_CARD';
+}
+
+export function isCreateCollectionOp(op: QueueOperation): op is CreateCollectionOperation {
+  return op.type === 'CREATE_COLLECTION';
+}
+
+export function isUpdateCollectionOp(op: QueueOperation): op is UpdateCollectionOperation {
+  return op.type === 'UPDATE_COLLECTION';
+}
+
+export function isDeleteCollectionOp(op: QueueOperation): op is DeleteCollectionOperation {
+  return op.type === 'DELETE_COLLECTION';
 }
 
 // IndexedDB schema
@@ -153,7 +269,7 @@ class SyncQueue {
   }
 
   // Add operation to queue
-  async enqueue(operation: Omit<QueueOperation, 'id' | 'timestamp' | 'retries' | 'status'>): Promise<string> {
+  async enqueue(operation: QueueOperationInput): Promise<string> {
     if (!this.db) {
       throw new Error('[SyncQueue] Database not initialized. Call init(userId, workspaceId) first.');
     }
@@ -163,20 +279,19 @@ class SyncQueue {
     const duplicate = existing.find(op => {
       // Same operation type
       if (op.type !== operation.type) return false;
+      if (op.status !== 'pending' && op.status !== 'processing') return false;
 
       // For updates/deletes, check if targeting same resource
-      if ((op.type === 'UPDATE_CARD' || op.type === 'DELETE_CARD' ||
-           op.type === 'UPDATE_COLLECTION' || op.type === 'DELETE_COLLECTION') &&
-          op.targetId === operation.targetId &&
-          (op.status === 'pending' || op.status === 'processing')) {
-        return true;
+      if (op.type === 'UPDATE_CARD' || op.type === 'DELETE_CARD' ||
+          op.type === 'UPDATE_COLLECTION' || op.type === 'DELETE_COLLECTION') {
+        // TypeScript now knows op has targetId and operation has same type
+        return op.targetId === (operation as typeof op).targetId;
       }
 
       // For creates, check if same temp ID (prevents duplicate creates)
-      if ((op.type === 'CREATE_CARD' || op.type === 'CREATE_COLLECTION') &&
-          op.tempId === operation.tempId &&
-          (op.status === 'pending' || op.status === 'processing')) {
-        return true;
+      if (op.type === 'CREATE_CARD' || op.type === 'CREATE_COLLECTION') {
+        // TypeScript now knows op has tempId and operation has same type
+        return op.tempId === (operation as typeof op).tempId;
       }
 
       return false;
@@ -330,8 +445,8 @@ class SyncQueue {
       try {
         // Skip file cards - they're local-only and should never be synced
         if (operation.type === 'CREATE_CARD' || operation.type === 'UPDATE_CARD') {
-          const payload = operation.payload as CreateCardPayload | UpdateCardPayload;
-          const isFileCard = payload.type === 'file' || payload.isFileCard === true;
+          // TypeScript now narrows operation.payload to CreateCardPayload | UpdateCardPayload
+          const isFileCard = operation.payload.type === 'file' || operation.payload.isFileCard === true;
           if (isFileCard) {
             console.log('[SyncQueue] Skipping file card operation:', operation.id);
             await this.remove(operation.id);
@@ -388,8 +503,11 @@ class SyncQueue {
             });
             break;
 
-          default:
-            throw new Error(`Unknown operation type: ${operation.type}`);
+          default: {
+            // Exhaustive check - TypeScript will error if a case is missing
+            const _exhaustiveCheck: never = operation;
+            throw new Error(`Unknown operation type: ${(_exhaustiveCheck as QueueOperation).type}`);
+          }
         }
 
         if (response.ok) {

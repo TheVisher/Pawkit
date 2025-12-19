@@ -165,7 +165,7 @@ export async function testFailedPushRetry(runner: TestRunner) {
   console.log('\n🔄 TEST SUITE 3: Failed Push Retry\n');
 
   await runner.test('Should initialize sync queue', async () => {
-    await syncQueue.init();
+    await syncQueue.init('test-user');
     const pending = await syncQueue.getPending();
 
     runner.assert(
@@ -184,7 +184,7 @@ export async function testFailedPushRetry(runner: TestRunner) {
     await localDb.saveCard(tempCard, { fromServer: false });
 
     // Clear queue before test
-    await syncQueue.init();
+    await syncQueue.init('test-user');
     const beforeCount = (await syncQueue.getPending()).length;
 
     // Try to sync (will fail if server is not mocked)
@@ -204,7 +204,7 @@ export async function testFailedPushRetry(runner: TestRunner) {
   });
 
   await runner.test('Should process sync queue on next sync', async () => {
-    await syncQueue.init();
+    await syncQueue.init('test-user');
 
     // Queue should be processed during sync
     const result = await syncService.sync();
@@ -238,8 +238,10 @@ export async function testFailedPushRetry(runner: TestRunner) {
     await localDb.deleteCard(tempCard.id);
 
     if (queuedOp) {
+      // Type assertion - we know this is a CREATE_CARD operation with a card payload
+      const payload = queuedOp.payload as { title?: string };
       runner.assert(
-        queuedOp.payload?.title === tempCard.title,
+        payload.title === tempCard.title,
         'Queued operation should preserve card data'
       );
     } else {
