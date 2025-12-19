@@ -1402,11 +1402,16 @@ textarea:focus-visible {
   cursor: grabbing;
   /* Allow mouse events to pass through to elements beneath (e.g., pawkits for drop) */
   pointer-events: none;
-  /* Match Kanban drag preview: 50% scale, offset to right of cursor */
-  transform: scale(0.5) !important;
-  transform-origin: top left;
-  opacity: 0.95;
+  /* Visual feedback while dragging - can't use transform scale as Muuri uses transform for positioning */
+  opacity: 0.9;
   filter: drop-shadow(0 12px 32px rgba(0, 0, 0, 0.5));
+}
+
+/* Scale the inner content during drag instead of the muuri-item wrapper */
+.muuri-item.muuri-item-dragging .muuri-item-content {
+  transform: scale(0.6);
+  transform-origin: top left;
+  transition: transform 0.15s ease-out;
 }
 
 /* When dragged to body via dragContainer, ensure it's above everything */
