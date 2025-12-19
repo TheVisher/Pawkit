@@ -9,7 +9,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export function createClient() {
   return createBrowserClient(
-    supabaseUrl,
-    supabaseAnonKey
+    supabaseUrl!,
+    supabaseAnonKey!
   )
 }
