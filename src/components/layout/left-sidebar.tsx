@@ -9,7 +9,6 @@ import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useCollections } from '@/lib/stores/data-store';
 import { getClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
@@ -80,7 +79,7 @@ export function LeftSidebar() {
       <Separator className="bg-zinc-800" />
 
       {/* Navigation */}
-      <ScrollArea className="flex-1 px-2 py-4">
+      <div className="flex-1 overflow-y-auto px-2 py-4">
         <nav className="space-y-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -132,7 +131,7 @@ export function LeftSidebar() {
             </div>
           </>
         )}
-      </ScrollArea>
+      </div>
 
       <Separator className="bg-zinc-800" />
 
