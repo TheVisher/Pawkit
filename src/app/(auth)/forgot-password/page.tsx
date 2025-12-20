@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -9,10 +9,15 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function ForgotPasswordPage() {
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,6 +38,26 @@ export default function ForgotPasswordPage() {
     setSuccess(true);
     setIsLoading(false);
   };
+
+  // Show skeleton until mounted to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <Card className="border-zinc-800 bg-zinc-900/50">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl text-zinc-100">Reset password</CardTitle>
+          <CardDescription className="text-zinc-400">
+            Enter your email to receive a reset link
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="h-10 bg-zinc-800 rounded-md animate-pulse" />
+            <div className="h-10 bg-zinc-800 rounded-md animate-pulse" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (success) {
     return (

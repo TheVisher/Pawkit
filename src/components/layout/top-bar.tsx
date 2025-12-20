@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Search, LayoutGrid, List, ArrowUpDown, Plus } from 'lucide-react';
 import { useLayout, useSorting } from '@/lib/stores/view-store';
 import { useCommandPalette } from '@/lib/stores/ui-store';
@@ -20,9 +21,18 @@ const sortOptions = [
 ];
 
 export function TopBar() {
+  const [mounted, setMounted] = useState(false);
   const layout = useLayout();
   const { sortBy, toggleSortOrder } = useSorting();
   const { toggle: toggleCommandPalette } = useCommandPalette();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Use default values during SSR to match initial client render
+  const currentLayout = mounted ? layout : 'masonry';
+  const currentSortBy = mounted ? sortBy : 'updatedAt';
 
   return (
     <header className="flex h-14 items-center justify-between gap-4 border-b border-zinc-800 bg-zinc-900/50 px-4">
@@ -46,7 +56,7 @@ export function TopBar() {
             size="icon"
             className={cn(
               'h-7 w-7',
-              layout === 'grid'
+              currentLayout === 'grid'
                 ? 'bg-zinc-700 text-zinc-100'
                 : 'text-zinc-400 hover:text-zinc-100 hover:bg-transparent'
             )}
@@ -58,7 +68,7 @@ export function TopBar() {
             size="icon"
             className={cn(
               'h-7 w-7',
-              layout === 'list'
+              currentLayout === 'list'
                 ? 'bg-zinc-700 text-zinc-100'
                 : 'text-zinc-400 hover:text-zinc-100 hover:bg-transparent'
             )}
@@ -77,7 +87,7 @@ export function TopBar() {
             >
               <ArrowUpDown className="h-4 w-4" />
               <span className="text-xs">
-                {sortOptions.find((o) => o.value === sortBy)?.label ?? 'Sort'}
+                {sortOptions.find((o) => o.value === currentSortBy)?.label ?? 'Sort'}
               </span>
             </Button>
           </DropdownMenuTrigger>
@@ -88,7 +98,7 @@ export function TopBar() {
                 onClick={toggleSortOrder}
                 className={cn(
                   'text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100',
-                  sortBy === option.value && 'text-purple-400'
+                  currentSortBy === option.value && 'text-purple-400'
                 )}
               >
                 {option.label}

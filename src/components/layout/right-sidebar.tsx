@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Filter, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRightSidebar } from '@/lib/stores/ui-store';
 import { Button } from '@/components/ui/button';
@@ -8,9 +9,17 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 export function RightSidebar() {
+  const [mounted, setMounted] = useState(false);
   const { isOpen, toggle } = useRightSidebar();
 
-  if (!isOpen) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Use default values during SSR to match initial client render
+  const sidebarOpen = mounted ? isOpen : false;
+
+  if (!sidebarOpen) {
     return (
       <aside className="w-10 flex flex-col items-center border-l border-zinc-800 bg-zinc-900/50 py-4">
         <Button

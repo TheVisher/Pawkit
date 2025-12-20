@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Library, Calendar, Trash2, ChevronLeft, ChevronRight, LogOut, Settings, FolderOpen } from 'lucide-react';
@@ -28,11 +29,16 @@ const navItems = [
 ];
 
 export function LeftSidebar() {
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { isOpen, toggle } = useLeftSidebar();
   const workspace = useCurrentWorkspace();
   const collections = useCollections();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleSignOut = async () => {
     const supabase = getClient();
@@ -41,16 +47,19 @@ export function LeftSidebar() {
     router.refresh();
   };
 
+  // Use default values during SSR to match initial client render
+  const sidebarOpen = mounted ? isOpen : true;
+
   return (
     <aside
       className={cn(
         'relative flex flex-col border-r border-zinc-800 bg-zinc-900/50 transition-all duration-200',
-        isOpen ? 'w-64' : 'w-16'
+        sidebarOpen ? 'w-64' : 'w-16'
       )}
     >
       {/* Logo */}
       <div className="flex h-14 items-center justify-between px-4">
-        {isOpen && (
+        {sidebarOpen && (
           <Link href="/home" className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-lg bg-purple-600 flex items-center justify-center">
               <span className="text-white font-bold text-sm">P</span>
@@ -64,7 +73,7 @@ export function LeftSidebar() {
           onClick={toggle}
           className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
         >
-          {isOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </Button>
       </div>
 
@@ -87,14 +96,14 @@ export function LeftSidebar() {
                 )}
               >
                 <item.icon className="h-5 w-5 shrink-0" />
-                {isOpen && <span>{item.label}</span>}
+                {sidebarOpen && <span>{item.label}</span>}
               </Link>
             );
           })}
         </nav>
 
         {/* Pawkits Section */}
-        {isOpen && (
+        {sidebarOpen && (
           <>
             <Separator className="my-4 bg-zinc-800" />
             <div className="px-3 py-2">
@@ -135,7 +144,7 @@ export function LeftSidebar() {
               variant="ghost"
               className={cn(
                 'w-full justify-start gap-3 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100',
-                !isOpen && 'justify-center px-0'
+                !sidebarOpen && 'justify-center px-0'
               )}
             >
               <Avatar className="h-8 w-8">
@@ -143,7 +152,7 @@ export function LeftSidebar() {
                   {workspace?.name?.charAt(0).toUpperCase() ?? 'U'}
                 </AvatarFallback>
               </Avatar>
-              {isOpen && (
+              {sidebarOpen && (
                 <span className="truncate text-sm">{workspace?.name ?? 'Workspace'}</span>
               )}
             </Button>
