@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Library, Calendar, Trash2, LogOut, Settings, FolderOpen, Pin, PinOff, X } from 'lucide-react';
+import { Home, Library, Calendar, Trash2, LogOut, Settings, FolderOpen, ArrowDownLeft, ArrowUpRight, X } from 'lucide-react';
 import { useLeftSidebar } from '@/lib/stores/ui-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useCollections } from '@/lib/stores/data-store';
@@ -77,16 +77,13 @@ export function LeftSidebar() {
                   variant="ghost"
                   size="icon"
                   onClick={toggleAnchored}
-                  className={cn(
-                    'h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2',
-                    anchored && 'text-[var(--color-accent)]'
-                  )}
+                  className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
                 >
-                  {anchored ? <Pin className="h-3.5 w-3.5" /> : <PinOff className="h-3.5 w-3.5" />}
+                  {anchored ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <p>{anchored ? 'Unpin sidebar' : 'Pin sidebar'}</p>
+                <p>{anchored ? 'Float panel' : 'Anchor panel'}</p>
               </TooltipContent>
             </Tooltip>
             <Tooltip>

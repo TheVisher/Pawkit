@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useLayoutAnchors } from '@/lib/stores/ui-store';
+import { useLeftSidebar, useRightSidebar } from '@/lib/stores/ui-store';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightSidebar } from '@/components/layout/right-sidebar';
 import { TopBar } from '@/components/layout/top-bar';
@@ -23,6 +24,14 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const [mounted, setMounted] = useState(false);
   const initStarted = useRef(false);
 
+  // Hover state for revealing closed sidebars
+  const [leftHovered, setLeftHovered] = useState(false);
+  const [rightHovered, setRightHovered] = useState(false);
+
+  // Timeout refs for delayed hide (gives user time to move mouse onto panel)
+  const leftHideTimeout = useRef<NodeJS.Timeout | null>(null);
+  const rightHideTimeout = useRef<NodeJS.Timeout | null>(null);
+
   const setUser = useAuthStore((s) => s.setUser);
   const setLoading = useAuthStore((s) => s.setLoading);
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
@@ -33,6 +42,10 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
 
   // Layout anchor state for visual merging
   const { leftOpen, rightOpen, leftAnchored, rightAnchored } = useLayoutAnchors();
+
+  // Get setOpen functions for hover-to-open behavior
+  const { setOpen: setLeftOpen } = useLeftSidebar();
+  const { setOpen: setRightOpen } = useRightSidebar();
 
   useEffect(() => {
     setMounted(true);
@@ -82,8 +95,54 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const isLeftAnchored = mounted ? leftAnchored : false;
   const isRightAnchored = mounted ? rightAnchored : false;
 
+  // Handlers for hover with delayed hide
+  const handleLeftMouseEnter = useCallback(() => {
+    // Cancel any pending hide
+    if (leftHideTimeout.current) {
+      clearTimeout(leftHideTimeout.current);
+      leftHideTimeout.current = null;
+    }
+    if (!isLeftOpen) setLeftHovered(true);
+  }, [isLeftOpen]);
+
+  const handleLeftMouseLeave = useCallback(() => {
+    // Delay hiding to give user time to move mouse onto panel
+    leftHideTimeout.current = setTimeout(() => {
+      setLeftHovered(false);
+    }, 400);
+  }, []);
+
+  const handleRightMouseEnter = useCallback(() => {
+    // Cancel any pending hide
+    if (rightHideTimeout.current) {
+      clearTimeout(rightHideTimeout.current);
+      rightHideTimeout.current = null;
+    }
+    if (!isRightOpen) setRightHovered(true);
+  }, [isRightOpen]);
+
+  const handleRightMouseLeave = useCallback(() => {
+    // Delay hiding to give user time to move mouse onto panel
+    rightHideTimeout.current = setTimeout(() => {
+      setRightHovered(false);
+    }, 400);
+  }, []);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (leftHideTimeout.current) clearTimeout(leftHideTimeout.current);
+      if (rightHideTimeout.current) clearTimeout(rightHideTimeout.current);
+    };
+  }, []);
+
+  // Sidebar visibility includes hover state (visible if open OR hovered)
+  const isLeftVisible = isLeftOpen || leftHovered;
+  const isRightVisible = isRightOpen || rightHovered;
+
   // Compute anchor visual states
   // When anchored, panels "merge" by removing gap and shared border radius
+  // Only merge if actually open (not just hovered)
   const leftMerged = isLeftOpen && isLeftAnchored;
   const rightMerged = isRightOpen && isRightAnchored;
 
@@ -95,24 +154,42 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     );
   }
 
-  // Panel base styles - V1 Glass mode (transparent + blur)
+  // Panel base styles - Glass mode with backdrop blur (same for all panels, all states)
   const panelBase = cn(
     'flex-col overflow-hidden',
     'bg-[hsl(0_0%_12%/0.70)]',
     'backdrop-blur-[12px] backdrop-saturate-[1.2]',
     'border border-white/10',
-    'shadow-[0_4px_8px_hsl(0_0%_0%/0.5),0_8px_16px_hsl(0_0%_0%/0.3),0_0_0_1px_hsl(0_0%_100%/0.05)]'
+    'transition-all duration-300 ease-out'
   );
+
+  // Floating sidebar shadow (all directions for floating panels)
+  const floatingShadow = 'shadow-[0_8px_16px_hsl(0_0%_0%/0.5),0_16px_32px_hsl(0_0%_0%/0.3),0_0_0_1px_hsl(0_0%_100%/0.08)]';
+
+  // Inset shadow for center panel edges (makes sidebars appear elevated)
+  const leftInsetShadow = 'shadow-[inset_8px_0_12px_-4px_hsl(0_0%_0%/0.5)]';
+  const rightInsetShadow = 'shadow-[inset_-8px_0_12px_-4px_hsl(0_0%_0%/0.5)]';
+  const bothInsetShadow = 'shadow-[inset_8px_0_12px_-4px_hsl(0_0%_0%/0.5),inset_-8px_0_12px_-4px_hsl(0_0%_0%/0.5)]';
+
+  // Full screen mode - when LEFT sidebar is anchored (V1 behavior)
+  const isFullScreen = leftMerged;
+
+  // Determine if sidebars should take up space in layout (open) or float over (hovered only)
+  const leftInFlow = isLeftOpen; // Only in flow when actually open, not just hovered
+  const rightInFlow = isRightOpen && !leftMerged; // In flow when open and not in leftMerged mode
 
   return (
     <div className="h-screen w-screen bg-bg-base text-text-primary">
       {/* Mobile bottom nav - only shows < 768px */}
       <MobileNav className="md:hidden fixed bottom-0 left-0 right-0 z-50" />
 
-      {/* Main layout with padding to show splotchy purple gradient background */}
+      {/* Main layout with padding to show purple gradient background */}
       <div
-        className="h-full p-0 md:p-3 lg:p-4 pb-16 md:pb-3 lg:pb-4"
+        className="h-full pb-16 md:pb-0"
         style={{
+          // Animate padding for smooth full-screen transition
+          padding: isFullScreen ? 0 : 16,
+          transition: 'padding 300ms ease-out',
           backgroundColor: '#0a0814',
           backgroundImage: `
             radial-gradient(1200px circle at 12% 0%, rgba(122, 92, 250, 0.28), rgba(10, 8, 20, 0)),
@@ -123,65 +200,116 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
           backgroundAttachment: 'fixed'
         }}
       >
-        {/* Inner flex container for the 3 floating panels */}
-        <div className="h-full flex">
+        {/* LEFT EDGE HOVER ZONE - Uses padding area when left sidebar is closed */}
+        {!isLeftOpen && (
+          <div
+            className="hidden lg:block fixed top-0 bottom-0 z-50"
+            style={{ left: 0, width: 16 }}
+            onMouseEnter={handleLeftMouseEnter}
+            onMouseLeave={handleLeftMouseLeave}
+          />
+        )}
 
-          {/* LEFT SIDEBAR - Floating panel, hidden on mobile/tablet */}
-          {isLeftOpen && (
-            <aside
-              className={cn(
-                'hidden lg:flex w-[325px] shrink-0',
-                panelBase,
-                // Full rounded when floating, partial when merged
-                leftMerged
-                  ? 'rounded-l-2xl rounded-r-none border-r-0'
-                  : 'rounded-2xl mr-4'
-              )}
-            >
-              <LeftSidebar />
-            </aside>
+        {/* RIGHT EDGE HOVER ZONE - Uses padding area when right sidebar is closed */}
+        {!isRightOpen && (
+          <div
+            className="hidden xl:block fixed top-0 bottom-0 z-50"
+            style={{ right: 0, width: 16 }}
+            onMouseEnter={handleRightMouseEnter}
+            onMouseLeave={handleRightMouseLeave}
+          />
+        )}
+
+        {/* LEFT SIDEBAR - Fixed position, slides in/out */}
+        <aside
+          className={cn(
+            'hidden lg:flex fixed w-[325px] z-40',
+            panelBase,
+            // Always floating shadow when visible (since it's fixed position)
+            isLeftVisible && !leftMerged && floatingShadow,
+            // No shadow when merged (inset on center handles depth)
+            // Rounding based on anchor state
+            isFullScreen
+              ? 'rounded-none'
+              : leftMerged
+                ? 'rounded-l-2xl rounded-r-none'
+                : 'rounded-2xl'
           )}
+          style={{
+            top: leftMerged ? 0 : 16,
+            left: leftMerged ? 0 : 16,
+            bottom: leftMerged ? 0 : 16,
+            // Slide completely off-screen when not visible
+            transform: isLeftVisible ? 'translateX(0)' : 'translateX(calc(-100% - 16px))',
+            transition: 'transform 300ms ease-out, top 300ms ease-out, left 300ms ease-out, bottom 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
+          }}
+          onMouseEnter={handleLeftMouseEnter}
+          onMouseLeave={handleLeftMouseLeave}
+        >
+          <LeftSidebar />
+        </aside>
 
-          {/* CENTER - Floating panel, full width on mobile */}
-          <main
-            className={cn(
-              'flex-1 min-w-0 flex flex-col',
-              panelBase,
-              // Dynamic rounding based on anchor state
-              leftMerged && rightMerged
-                ? 'rounded-none border-l-0 border-r-0'
-                : leftMerged && !rightMerged
-                  ? 'rounded-l-none rounded-r-2xl border-l-0'
-                  : !leftMerged && rightMerged
-                    ? 'rounded-l-2xl rounded-r-none border-r-0'
-                    : 'rounded-2xl',
-              // Gap to right sidebar when right is open but not merged
-              isRightOpen && !rightMerged && 'mr-4'
-            )}
-          >
-            <TopBar />
-            <div className="flex-1 overflow-auto">
-              {children}
-            </div>
-          </main>
-
-          {/* RIGHT SIDEBAR - Floating panel, hidden on mobile/tablet */}
-          {isRightOpen && (
-            <aside
-              className={cn(
-                'hidden xl:flex w-[325px] shrink-0',
-                panelBase,
-                // Full rounded when floating, partial when merged
-                rightMerged
-                  ? 'rounded-r-2xl rounded-l-none border-l-0'
+        {/* CENTER CONTENT - Flex panel that expands when sidebars close */}
+        <main
+          className={cn(
+            'h-full flex flex-col',
+            panelBase,
+            // Inset shadows on edges where sidebars are merged (makes sidebars appear elevated)
+            leftMerged && rightMerged
+              ? bothInsetShadow
+              : leftMerged
+                ? leftInsetShadow
+                : rightMerged
+                  ? rightInsetShadow
+                  : floatingShadow,
+            // Dynamic rounding based on anchor state
+            isFullScreen && rightMerged
+              ? 'rounded-none'
+              : leftMerged && !rightMerged
+                ? 'rounded-l-none rounded-r-2xl'
+                : !leftMerged && rightMerged
+                  ? 'rounded-l-2xl rounded-r-none'
                   : 'rounded-2xl'
-              )}
-            >
-              <RightSidebar />
-            </aside>
           )}
+          style={{
+            // Left margin: account for left sidebar when it's in flow (open, not just hovered)
+            marginLeft: leftInFlow ? (leftMerged ? 325 : 341) : 0,
+            // Right margin: account for right sidebar when it's in flow
+            marginRight: rightInFlow ? (rightMerged ? 325 : 341) : 0,
+            transition: 'margin 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
+          }}
+        >
+          <TopBar />
+          <div className="flex-1 overflow-auto">
+            {children}
+          </div>
+        </main>
 
-        </div>
+        {/* RIGHT SIDEBAR - Fixed position, slides in/out */}
+        <aside
+          className={cn(
+            'hidden xl:flex fixed w-[325px] z-40',
+            panelBase,
+            // Floating shadow when visible and not merged
+            isRightVisible && !rightMerged && floatingShadow,
+            // Rounding based on anchor state
+            rightMerged
+              ? 'rounded-r-2xl rounded-l-none'
+              : 'rounded-2xl'
+          )}
+          style={{
+            top: rightMerged ? 0 : 16,
+            right: rightMerged ? 0 : 16,
+            bottom: rightMerged ? 0 : 16,
+            // Slide completely off-screen when not visible
+            transform: isRightVisible ? 'translateX(0)' : 'translateX(calc(100% + 16px))',
+            transition: 'transform 300ms ease-out, top 300ms ease-out, right 300ms ease-out, bottom 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
+          }}
+          onMouseEnter={handleRightMouseEnter}
+          onMouseLeave={handleRightMouseLeave}
+        >
+          <RightSidebar />
+        </aside>
       </div>
 
       <AddCardModal />

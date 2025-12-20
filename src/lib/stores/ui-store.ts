@@ -1,29 +1,31 @@
 /**
  * UI Store
  * Manages UI state like sidebars, modals, and layout preferences
+ * Persists layout preferences to localStorage
  */
 
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 
 type CardSize = 'small' | 'medium' | 'large';
 type ModalType = 'card-detail' | 'create-card' | 'create-collection' | 'settings' | 'task' | null;
 
 interface UIState {
-  // Sidebar state
+  // Sidebar state (persisted)
   leftSidebarOpen: boolean;
   rightSidebarOpen: boolean;
   leftSidebarAnchored: boolean;
   rightSidebarAnchored: boolean;
 
-  // Display preferences
+  // Display preferences (persisted)
   cardSize: CardSize;
 
-  // Modal state
+  // Modal state (not persisted)
   activeModal: ModalType;
   modalData: Record<string, unknown> | null;
 
-  // Command palette
+  // Command palette (not persisted)
   commandPaletteOpen: boolean;
 
   // Actions
@@ -40,48 +42,63 @@ interface UIState {
   setCommandPaletteOpen: (open: boolean) => void;
 }
 
-export const useUIStore = create<UIState>((set) => ({
-  // Initial state
-  leftSidebarOpen: true,
-  rightSidebarOpen: false,
-  leftSidebarAnchored: true,
-  rightSidebarAnchored: false,
-  cardSize: 'medium',
-  activeModal: null,
-  modalData: null,
-  commandPaletteOpen: false,
+export const useUIStore = create<UIState>()(
+  persist(
+    (set) => ({
+      // Initial state
+      leftSidebarOpen: true,
+      rightSidebarOpen: false,
+      leftSidebarAnchored: true,
+      rightSidebarAnchored: false,
+      cardSize: 'medium',
+      activeModal: null,
+      modalData: null,
+      commandPaletteOpen: false,
 
-  // Sidebar actions
-  toggleLeftSidebar: () =>
-    set((state) => ({ leftSidebarOpen: !state.leftSidebarOpen })),
+      // Sidebar actions
+      toggleLeftSidebar: () =>
+        set((state) => ({ leftSidebarOpen: !state.leftSidebarOpen })),
 
-  toggleRightSidebar: () =>
-    set((state) => ({ rightSidebarOpen: !state.rightSidebarOpen })),
+      toggleRightSidebar: () =>
+        set((state) => ({ rightSidebarOpen: !state.rightSidebarOpen })),
 
-  setLeftSidebarOpen: (open) => set({ leftSidebarOpen: open }),
+      setLeftSidebarOpen: (open) => set({ leftSidebarOpen: open }),
 
-  setRightSidebarOpen: (open) => set({ rightSidebarOpen: open }),
+      setRightSidebarOpen: (open) => set({ rightSidebarOpen: open }),
 
-  toggleLeftSidebarAnchored: () =>
-    set((state) => ({ leftSidebarAnchored: !state.leftSidebarAnchored })),
+      toggleLeftSidebarAnchored: () =>
+        set((state) => ({ leftSidebarAnchored: !state.leftSidebarAnchored })),
 
-  toggleRightSidebarAnchored: () =>
-    set((state) => ({ rightSidebarAnchored: !state.rightSidebarAnchored })),
+      toggleRightSidebarAnchored: () =>
+        set((state) => ({ rightSidebarAnchored: !state.rightSidebarAnchored })),
 
-  // Display actions
-  setCardSize: (size) => set({ cardSize: size }),
+      // Display actions
+      setCardSize: (size) => set({ cardSize: size }),
 
-  // Modal actions
-  openModal: (modal, data) => set({ activeModal: modal, modalData: data ?? null }),
+      // Modal actions
+      openModal: (modal, data) => set({ activeModal: modal, modalData: data ?? null }),
 
-  closeModal: () => set({ activeModal: null, modalData: null }),
+      closeModal: () => set({ activeModal: null, modalData: null }),
 
-  // Command palette actions
-  toggleCommandPalette: () =>
-    set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
+      // Command palette actions
+      toggleCommandPalette: () =>
+        set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
 
-  setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
-}));
+      setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
+    }),
+    {
+      name: 'pawkit-ui-preferences',
+      // Only persist layout preferences, not transient state
+      partialize: (state) => ({
+        leftSidebarOpen: state.leftSidebarOpen,
+        rightSidebarOpen: state.rightSidebarOpen,
+        leftSidebarAnchored: state.leftSidebarAnchored,
+        rightSidebarAnchored: state.rightSidebarAnchored,
+        cardSize: state.cardSize,
+      }),
+    }
+  )
+);
 
 // =============================================================================
 // SELECTORS
