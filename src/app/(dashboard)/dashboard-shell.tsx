@@ -4,14 +4,17 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
+import { LeftSidebar } from '@/components/layout/left-sidebar';
+import { RightSidebar } from '@/components/layout/right-sidebar';
+import { TopBar } from '@/components/layout/top-bar';
 
-interface DashboardProviderProps {
+interface DashboardShellProps {
   userId: string;
   userEmail: string;
   children: React.ReactNode;
 }
 
-export function DashboardProvider({ userId, userEmail, children }: DashboardProviderProps) {
+export function DashboardShell({ userId, userEmail, children }: DashboardShellProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const initStarted = useRef(false);
 
@@ -28,7 +31,7 @@ export function DashboardProvider({ userId, userEmail, children }: DashboardProv
       if (initStarted.current) return;
       initStarted.current = true;
 
-      // Set user info in auth store (simplified - just id and email)
+      // Set user info in auth store
       setUser({ id: userId, email: userEmail } as never);
       setLoading(false);
 
@@ -68,5 +71,16 @@ export function DashboardProvider({ userId, userEmail, children }: DashboardProv
     );
   }
 
-  return <>{children}</>;
+  return (
+    <div className="flex h-screen bg-zinc-950 text-zinc-100">
+      <LeftSidebar />
+      <div className="flex-1 flex flex-col min-w-0">
+        <TopBar />
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
+      </div>
+      <RightSidebar />
+    </div>
+  );
 }
