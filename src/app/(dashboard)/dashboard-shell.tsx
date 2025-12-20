@@ -217,12 +217,18 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
 
   // Determine if sidebars should take up space in layout (open) or float over (hovered only)
   const leftInFlow = isLeftOpen; // Only in flow when actually open, not just hovered
-  const rightInFlow = isRightOpen && !leftMerged; // In flow when open and not in leftMerged mode
+  // In fullscreen mode, right is only in flow when anchored (merged)
+  // Otherwise it floats over the center panel
+  const rightInFlow = isFullScreen ? rightMerged : isRightOpen;
 
   // Extra inset when floating (hovered but not open) to create gap from center panel
   const floatingInset = 8;
   const leftEdgeOffset = leftMerged ? 0 : (isLeftOpen ? 16 : 16 + floatingInset);
-  const rightEdgeOffset = rightMerged ? 0 : (isRightOpen ? 16 : 16 + floatingInset);
+  // Right panel only goes to 0 offset when in full screen mode (left anchored)
+  // Otherwise it attaches to center panel at 16px offset
+  const rightEdgeOffset = rightMerged
+    ? (isFullScreen ? 0 : 16)
+    : (isRightOpen ? 16 : 16 + floatingInset);
 
   return (
     <div className="h-screen w-screen bg-bg-base text-text-primary">
@@ -320,6 +326,8 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
             // Left margin: account for left sidebar when it's in flow (open, not just hovered)
             marginLeft: leftInFlow ? (leftMerged ? 325 : 341) : 0,
             // Right margin: account for right sidebar when it's in flow
+            // When merged: 325 (flush with sidebar, container padding provides offset when not fullscreen)
+            // When not merged: 341 (sidebar width + 16px gap)
             marginRight: rightInFlow ? (rightMerged ? 325 : 341) : 0,
             transition: 'margin 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
           }}
@@ -337,9 +345,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
             panelBase,
             // Always apply shadow when not merged (slides with panel during animation)
             !rightMerged && floatingShadow,
-            // Rounding based on anchor state
+            // Rounding based on anchor state and full screen mode
             rightMerged
-              ? 'rounded-r-2xl rounded-l-none'
+              ? (isFullScreen ? 'rounded-none' : 'rounded-r-2xl rounded-l-none')
               : 'rounded-2xl'
           )}
           style={{
