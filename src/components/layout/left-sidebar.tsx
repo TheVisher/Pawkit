@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Library, Calendar, Trash2, ChevronLeft, ChevronRight, LogOut, Settings, FolderOpen } from 'lucide-react';
+import { Home, Library, Calendar, Trash2, LogOut, Settings, FolderOpen, Pin, PinOff, X } from 'lucide-react';
 import { useLeftSidebar } from '@/lib/stores/ui-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useCollections } from '@/lib/stores/data-store';
@@ -19,6 +19,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 const navItems = [
   { href: '/home', label: 'Home', icon: Home },
@@ -31,7 +37,7 @@ export function LeftSidebar() {
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { isOpen, toggle } = useLeftSidebar();
+  const { isAnchored, toggleAnchored, setOpen } = useLeftSidebar();
   const workspace = useCurrentWorkspace();
   const collections = useCollections();
 
@@ -46,37 +52,61 @@ export function LeftSidebar() {
     router.refresh();
   };
 
+  const handleClose = () => {
+    setOpen(false);
+  };
+
   // Use default values during SSR to match initial client render
-  const sidebarOpen = mounted ? isOpen : true;
+  const anchored = mounted ? isAnchored : false;
 
   return (
-    <aside
-      className={cn(
-        'relative flex flex-col border-r border-zinc-800 bg-zinc-900/50 transition-all duration-200',
-        sidebarOpen ? 'w-64' : 'w-16'
-      )}
-    >
-      {/* Logo */}
-      <div className="flex h-14 items-center justify-between px-4">
-        {sidebarOpen && (
-          <Link href="/home" className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-purple-600 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">P</span>
-            </div>
-            <span className="font-semibold text-zinc-100">Pawkit</span>
-          </Link>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggle}
-          className="h-8 w-8 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
-        >
-          {sidebarOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-        </Button>
+    <div className="h-full flex flex-col">
+      {/* Header with anchor/close buttons - uses border-b to align with TopBar */}
+      <div className="flex h-14 items-center justify-between px-4 border-b border-border-subtle">
+        <Link href="/home" className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-[var(--color-accent)] flex items-center justify-center">
+            <span className="text-white font-bold text-sm">P</span>
+          </div>
+          <span className="font-semibold text-text-primary">Pawkit</span>
+        </Link>
+        <div className="flex items-center gap-1">
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleAnchored}
+                  className={cn(
+                    'h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2',
+                    anchored && 'text-[var(--color-accent)]'
+                  )}
+                >
+                  {anchored ? <Pin className="h-3.5 w-3.5" /> : <PinOff className="h-3.5 w-3.5" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>{anchored ? 'Unpin sidebar' : 'Pin sidebar'}</p>
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleClose}
+                  className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>Close sidebar</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
-
-      <Separator className="bg-zinc-800" />
 
       {/* Navigation */}
       <div className="flex-1 overflow-y-auto px-2 py-4">
@@ -90,50 +120,46 @@ export function LeftSidebar() {
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
                   isActive
-                    ? 'bg-purple-600/20 text-purple-400'
-                    : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'
+                    ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
+                    : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
                 )}
               >
                 <item.icon className="h-5 w-5 shrink-0" />
-                {sidebarOpen && <span>{item.label}</span>}
+                <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
         {/* Pawkits Section */}
-        {sidebarOpen && (
-          <>
-            <Separator className="my-4 bg-zinc-800" />
-            <div className="px-3 py-2">
-              <h3 className="text-xs font-medium uppercase text-zinc-500 mb-2">Pawkits</h3>
-              {collections.length === 0 ? (
-                <p className="text-xs text-zinc-500 italic">No pawkits yet</p>
-              ) : (
-                <div className="space-y-1">
-                  {collections.slice(0, 10).map((collection) => (
-                    <Link
-                      key={collection.id}
-                      href={`/pawkit/${collection.slug}`}
-                      className={cn(
-                        'flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors',
-                        pathname === `/pawkit/${collection.slug}`
-                          ? 'bg-purple-600/20 text-purple-400'
-                          : 'text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100'
-                      )}
-                    >
-                      <FolderOpen className="h-4 w-4 shrink-0" />
-                      <span className="truncate">{collection.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
+        <Separator className="my-4 bg-border-subtle" />
+        <div className="px-3 py-2">
+          <h3 className="text-xs font-medium uppercase text-text-muted mb-2">Pawkits</h3>
+          {collections.length === 0 ? (
+            <p className="text-xs text-text-muted italic">No pawkits yet</p>
+          ) : (
+            <div className="space-y-1">
+              {collections.slice(0, 10).map((collection) => (
+                <Link
+                  key={collection.id}
+                  href={`/pawkit/${collection.slug}`}
+                  className={cn(
+                    'flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors',
+                    pathname === `/pawkit/${collection.slug}`
+                      ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
+                      : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
+                  )}
+                >
+                  <FolderOpen className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{collection.name}</span>
+                </Link>
+              ))}
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
 
-      <Separator className="bg-zinc-800" />
+      <Separator className="bg-border-subtle" />
 
       {/* User Menu */}
       <div className="p-2">
@@ -141,30 +167,25 @@ export function LeftSidebar() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className={cn(
-                'w-full justify-start gap-3 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100',
-                !sidebarOpen && 'justify-center px-0'
-              )}
+              className="w-full justify-start gap-3 text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary"
             >
               <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-zinc-700 text-zinc-300 text-xs">
+                <AvatarFallback className="bg-bg-surface-3 text-text-secondary text-xs">
                   {workspace?.name?.charAt(0).toUpperCase() ?? 'U'}
                 </AvatarFallback>
               </Avatar>
-              {sidebarOpen && (
-                <span className="truncate text-sm">{workspace?.name ?? 'Workspace'}</span>
-              )}
+              <span className="truncate text-sm">{workspace?.name ?? 'Workspace'}</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56 bg-zinc-900 border-zinc-800">
-            <DropdownMenuItem className="text-zinc-300 focus:bg-zinc-800 focus:text-zinc-100">
+          <DropdownMenuContent align="start" className="w-56 bg-bg-surface-1 border-border-subtle">
+            <DropdownMenuItem className="text-text-secondary focus:bg-bg-surface-2 focus:text-text-primary">
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-zinc-800" />
+            <DropdownMenuSeparator className="bg-border-subtle" />
             <DropdownMenuItem
               onClick={handleSignOut}
-              className="text-red-400 focus:bg-zinc-800 focus:text-red-400"
+              className="text-red-400 focus:bg-bg-surface-2 focus:text-red-400"
             >
               <LogOut className="mr-2 h-4 w-4" />
               Sign out
@@ -172,6 +193,6 @@ export function LeftSidebar() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-    </aside>
+    </div>
   );
 }

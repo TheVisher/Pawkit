@@ -115,6 +115,42 @@
   --sidebar-ring: oklch(0.552 0.016 285.938);
 }
 
+/* =============================================================================
+   PAWKIT THEMING SYSTEM
+   ============================================================================= */
+
+:root {
+  /* Accent color */
+  --hue-accent: 270;
+  --sat-accent: 60%;
+  --color-accent: hsl(var(--hue-accent) var(--sat-accent) 55%);
+  --color-accent-hover: hsl(var(--hue-accent) var(--sat-accent) 65%);
+}
+
+/* Dark theme semantic colors */
+:root, .dark {
+  --color-bg-base: hsl(0 0% 4%);
+  --color-bg-surface-1: hsl(0 0% 9%);
+  --color-bg-surface-2: hsl(0 0% 13%);
+  --color-bg-surface-3: hsl(0 0% 17%);
+
+  --color-text-primary: hsl(0 0% 95%);
+  --color-text-secondary: hsl(0 0% 70%);
+  --color-text-muted: hsl(0 0% 50%);
+
+  --color-border-subtle: hsl(0 0% 15%);
+  --color-border-default: hsl(0 0% 20%);
+
+  /* Panel border highlights for depth */
+  --color-border-highlight-top: hsl(0 0% 100% / 0.08);
+  --color-border-highlight-left: hsl(0 0% 100% / 0.05);
+
+  /* Purple glow shadows */
+  --shadow-1: 0 2px 8px hsl(270 50% 15% / 0.4);
+  --shadow-2: 0 4px 16px hsl(270 50% 15% / 0.5), 0 0 32px hsl(270 50% 30% / 0.2);
+  --shadow-3: 0 8px 32px hsl(270 50% 15% / 0.6), 0 0 48px hsl(270 50% 30% / 0.3);
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
