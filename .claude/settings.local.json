@@ -58,7 +58,13 @@
       "Bash(npm search:*)",
       "Skill(pawkit-cloud-providers)",
       "WebSearch",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(git -C /Users/minivish/Pawkit show main:lib/hooks/use-panel-store.ts)",
+      "Bash(git -C /Users/minivish/Pawkit show main:components/navigation/left-navigation-panel.tsx)",
+      "Bash(git -C /Users/minivish/Pawkit show main:components/control-panel/control-panel.tsx)",
+      "Bash(git -C /Users/minivish/Pawkit show main:components/layout/content-panel.tsx)",
+      "Bash(git -C /Users/minivish/Pawkit ls-tree:*)",
+      "Bash(git -C /Users/minivish/Pawkit show main:app/\\\\\\(dashboard\\\\\\)/layout.tsx)"
     ],
     "deny": [],
     "ask": []

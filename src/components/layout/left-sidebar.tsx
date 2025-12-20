@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Library, Calendar, Trash2, LogOut, Settings, FolderOpen, ArrowDownLeft, ArrowUpRight, X } from 'lucide-react';
+import { Home, Library, Calendar, Trash2, LogOut, Settings, FolderOpen, ArrowLeftToLine, ArrowRightFromLine, Maximize2, Minimize2 } from 'lucide-react';
 import { useLeftSidebar } from '@/lib/stores/ui-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useCollections } from '@/lib/stores/data-store';
@@ -37,7 +37,7 @@ export function LeftSidebar() {
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const { isAnchored, toggleAnchored, setOpen } = useLeftSidebar();
+  const { isOpen, isAnchored, toggleAnchored, setOpen } = useLeftSidebar();
   const workspace = useCurrentWorkspace();
   const collections = useCollections();
 
@@ -52,12 +52,13 @@ export function LeftSidebar() {
     router.refresh();
   };
 
-  const handleClose = () => {
-    setOpen(false);
+  const handleToggleOpen = () => {
+    setOpen(!isOpen);
   };
 
   // Use default values during SSR to match initial client render
   const anchored = mounted ? isAnchored : false;
+  const open = mounted ? isOpen : true;
 
   return (
     <div className="h-full flex flex-col">
@@ -79,7 +80,7 @@ export function LeftSidebar() {
                   onClick={toggleAnchored}
                   className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
                 >
-                  {anchored ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
+                  {anchored ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -91,14 +92,14 @@ export function LeftSidebar() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={handleClose}
+                  onClick={handleToggleOpen}
                   className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
                 >
-                  <X className="h-3.5 w-3.5" />
+                  {open ? <ArrowLeftToLine className="h-5 w-5" /> : <ArrowRightFromLine className="h-5 w-5" />}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <p>Close sidebar</p>
+                <p>{open ? 'Close sidebar' : 'Open sidebar'}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -121,7 +122,7 @@ export function LeftSidebar() {
                     : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
                 )}
               >
-                <item.icon className="h-5 w-5 shrink-0" />
+                <item.icon className="h-6 w-6 shrink-0" />
                 <span>{item.label}</span>
               </Link>
             );
@@ -147,7 +148,7 @@ export function LeftSidebar() {
                       : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
                   )}
                 >
-                  <FolderOpen className="h-4 w-4 shrink-0" />
+                  <FolderOpen className="h-5 w-5 shrink-0" />
                   <span className="truncate">{collection.name}</span>
                 </Link>
               ))}
