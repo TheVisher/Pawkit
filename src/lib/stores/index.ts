@@ -78,3 +78,15 @@ export {
   selectViewIsLoading,
   selectDisplaySettings,
 } from './view-store';
+
+// Sync
+export {
+  useSyncStore,
+  selectSyncStatus,
+  selectLastSyncTime,
+  selectPendingCount,
+  selectLastError,
+  selectIsSyncing,
+  selectIsOffline,
+} from './sync-store';
+export type { SyncStatus } from './sync-store';
