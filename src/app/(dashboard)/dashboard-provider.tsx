@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
@@ -13,8 +13,10 @@ interface DashboardProviderProps {
 
 export function DashboardProvider({ userId, userEmail, children }: DashboardProviderProps) {
   const [isInitialized, setIsInitialized] = useState(false);
+  const initStarted = useRef(false);
 
-  const initialize = useAuthStore((s) => s.initialize);
+  const setUser = useAuthStore((s) => s.setUser);
+  const setLoading = useAuthStore((s) => s.setLoading);
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
   const createWorkspace = useWorkspaceStore((s) => s.createWorkspace);
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
@@ -23,15 +25,19 @@ export function DashboardProvider({ userId, userEmail, children }: DashboardProv
 
   useEffect(() => {
     async function init() {
-      // Initialize auth state
-      initialize({ id: userId, email: userEmail } as never, null);
+      if (initStarted.current) return;
+      initStarted.current = true;
 
-      // Load workspaces
+      // Set user info in auth store (simplified - just id and email)
+      setUser({ id: userId, email: userEmail } as never);
+      setLoading(false);
+
+      // Load workspaces from Dexie
       await loadWorkspaces(userId);
     }
 
     init();
-  }, [userId, userEmail, initialize, loadWorkspaces]);
+  }, [userId, userEmail, setUser, setLoading, loadWorkspaces]);
 
   useEffect(() => {
     async function ensureWorkspace() {
