@@ -12,6 +12,8 @@ generator client {
 
 datasource db {
   provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
   extensions = [vector] // For future AI embeddings
 }
 
@@ -324,6 +326,10 @@ model Todo {
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  // Soft delete
+  deleted   Boolean   @default(false)
+  deletedAt DateTime?
 
   @@index([workspaceId])
   @@index([workspaceId, completed])
