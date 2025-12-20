@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 
 type CardSize = 'small' | 'medium' | 'large';
 type ModalType = 'card-detail' | 'create-card' | 'create-collection' | 'settings' | 'task' | null;
@@ -100,45 +101,55 @@ export const selectCommandPaletteOpen = (state: UIState) => state.commandPalette
 // =============================================================================
 
 export function useLeftSidebar() {
-  return useUIStore((state) => ({
-    isOpen: state.leftSidebarOpen,
-    isAnchored: state.leftSidebarAnchored,
-    toggle: state.toggleLeftSidebar,
-    setOpen: state.setLeftSidebarOpen,
-    toggleAnchored: state.toggleLeftSidebarAnchored,
-  }));
+  return useUIStore(
+    useShallow((state) => ({
+      isOpen: state.leftSidebarOpen,
+      isAnchored: state.leftSidebarAnchored,
+      toggle: state.toggleLeftSidebar,
+      setOpen: state.setLeftSidebarOpen,
+      toggleAnchored: state.toggleLeftSidebarAnchored,
+    }))
+  );
 }
 
 export function useRightSidebar() {
-  return useUIStore((state) => ({
-    isOpen: state.rightSidebarOpen,
-    isAnchored: state.rightSidebarAnchored,
-    toggle: state.toggleRightSidebar,
-    setOpen: state.setRightSidebarOpen,
-    toggleAnchored: state.toggleRightSidebarAnchored,
-  }));
+  return useUIStore(
+    useShallow((state) => ({
+      isOpen: state.rightSidebarOpen,
+      isAnchored: state.rightSidebarAnchored,
+      toggle: state.toggleRightSidebar,
+      setOpen: state.setRightSidebarOpen,
+      toggleAnchored: state.toggleRightSidebarAnchored,
+    }))
+  );
 }
 
 export function useCardSize() {
-  return useUIStore((state) => ({
-    size: state.cardSize,
-    setSize: state.setCardSize,
-  }));
+  return useUIStore(
+    useShallow((state) => ({
+      size: state.cardSize,
+      setSize: state.setCardSize,
+    }))
+  );
 }
 
 export function useModal() {
-  return useUIStore((state) => ({
-    activeModal: state.activeModal,
-    modalData: state.modalData,
-    open: state.openModal,
-    close: state.closeModal,
-  }));
+  return useUIStore(
+    useShallow((state) => ({
+      activeModal: state.activeModal,
+      modalData: state.modalData,
+      open: state.openModal,
+      close: state.closeModal,
+    }))
+  );
 }
 
 export function useCommandPalette() {
-  return useUIStore((state) => ({
-    isOpen: state.commandPaletteOpen,
-    toggle: state.toggleCommandPalette,
-    setOpen: state.setCommandPaletteOpen,
-  }));
+  return useUIStore(
+    useShallow((state) => ({
+      isOpen: state.commandPaletteOpen,
+      toggle: state.toggleCommandPalette,
+      setOpen: state.setCommandPaletteOpen,
+    }))
+  );
 }

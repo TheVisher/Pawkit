@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { Filter, Tag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useRightSidebar } from '@/lib/stores/ui-store';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
@@ -51,7 +50,7 @@ export function RightSidebar() {
 
       <Separator className="bg-zinc-800" />
 
-      <ScrollArea className="flex-1 px-4 py-4">
+      <div className="flex-1 overflow-y-auto px-4 py-4">
         {/* Filters Section */}
         <div className="space-y-4">
           <div>
@@ -87,7 +86,7 @@ export function RightSidebar() {
             <p className="text-xs text-zinc-500 italic">No tags yet</p>
           </div>
         </div>
-      </ScrollArea>
+      </div>
     </aside>
   );
 }

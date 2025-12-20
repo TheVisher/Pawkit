@@ -4,6 +4,7 @@
  */
 
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import { db, createSyncMetadata, markModified } from '@/lib/db';
 import type { LocalViewSettings } from '@/lib/db';
 
@@ -195,38 +196,44 @@ export const selectDisplaySettings = (state: ViewState) => ({
 // =============================================================================
 
 export function useViewSettings() {
-  return useViewStore((state) => ({
-    layout: state.layout,
-    sortBy: state.sortBy,
-    sortOrder: state.sortOrder,
-    showTitles: state.showTitles,
-    showUrls: state.showUrls,
-    showTags: state.showTags,
-    cardPadding: state.cardPadding,
-  }));
+  return useViewStore(
+    useShallow((state) => ({
+      layout: state.layout,
+      sortBy: state.sortBy,
+      sortOrder: state.sortOrder,
+      showTitles: state.showTitles,
+      showUrls: state.showUrls,
+      showTags: state.showTags,
+      cardPadding: state.cardPadding,
+    }))
+  );
 }
 
 export function useViewActions() {
-  return useViewStore((state) => ({
-    setLayout: state.setLayout,
-    setSortBy: state.setSortBy,
-    setSortOrder: state.setSortOrder,
-    toggleSortOrder: state.toggleSortOrder,
-    setShowTitles: state.setShowTitles,
-    setShowUrls: state.setShowUrls,
-    setShowTags: state.setShowTags,
-    setCardPadding: state.setCardPadding,
-    loadViewSettings: state.loadViewSettings,
-    saveViewSettings: state.saveViewSettings,
-    resetToDefaults: state.resetToDefaults,
-  }));
+  return useViewStore(
+    useShallow((state) => ({
+      setLayout: state.setLayout,
+      setSortBy: state.setSortBy,
+      setSortOrder: state.setSortOrder,
+      toggleSortOrder: state.toggleSortOrder,
+      setShowTitles: state.setShowTitles,
+      setShowUrls: state.setShowUrls,
+      setShowTags: state.setShowTags,
+      setCardPadding: state.setCardPadding,
+      loadViewSettings: state.loadViewSettings,
+      saveViewSettings: state.saveViewSettings,
+      resetToDefaults: state.resetToDefaults,
+    }))
+  );
 }
 
 export function useContentFilter() {
-  return useViewStore((state) => ({
-    filter: state.contentTypeFilter,
-    setFilter: state.setContentTypeFilter,
-  }));
+  return useViewStore(
+    useShallow((state) => ({
+      filter: state.contentTypeFilter,
+      setFilter: state.setContentTypeFilter,
+    }))
+  );
 }
 
 export function useLayout() {
@@ -234,10 +241,12 @@ export function useLayout() {
 }
 
 export function useSorting() {
-  return useViewStore((state) => ({
-    sortBy: state.sortBy,
-    sortOrder: state.sortOrder,
-    setSortBy: state.setSortBy,
-    toggleSortOrder: state.toggleSortOrder,
-  }));
+  return useViewStore(
+    useShallow((state) => ({
+      sortBy: state.sortBy,
+      sortOrder: state.sortOrder,
+      setSortBy: state.setSortBy,
+      toggleSortOrder: state.toggleSortOrder,
+    }))
+  );
 }
