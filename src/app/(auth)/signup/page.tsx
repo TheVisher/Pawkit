@@ -36,7 +36,7 @@ export default function SignupPage() {
     setIsLoading(true);
 
     const supabase = getClient();
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -50,6 +50,14 @@ export default function SignupPage() {
       return;
     }
 
+    // If session exists, email confirmation is disabled - redirect immediately
+    if (data.session) {
+      router.push('/dashboard');
+      router.refresh();
+      return;
+    }
+
+    // No session means confirmation required - show check email message
     setSuccess(true);
     setIsLoading(false);
   };
