@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getClient } from '@/lib/supabase/client';
@@ -14,10 +14,15 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirectTo') ?? '/dashboard';
 
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +62,29 @@ function LoginForm() {
       setIsLoading(false);
     }
   };
+
+  // Show skeleton until mounted to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <Card className="border-zinc-800 bg-zinc-900/50">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl text-zinc-100">Welcome back</CardTitle>
+          <CardDescription className="text-zinc-400">
+            Sign in to your Pawkit account
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="h-10 bg-zinc-800 rounded-md animate-pulse" />
+          <div className="h-4" />
+          <div className="space-y-4">
+            <div className="h-10 bg-zinc-800 rounded-md animate-pulse" />
+            <div className="h-10 bg-zinc-800 rounded-md animate-pulse" />
+            <div className="h-10 bg-zinc-800 rounded-md animate-pulse" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-zinc-800 bg-zinc-900/50">
