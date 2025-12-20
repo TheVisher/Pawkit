@@ -153,3 +153,15 @@ export function useCommandPalette() {
     }))
   );
 }
+
+// Hook for layout-level anchor state (used by dashboard-shell)
+export function useLayoutAnchors() {
+  return useUIStore(
+    useShallow((state) => ({
+      leftOpen: state.leftSidebarOpen,
+      rightOpen: state.rightSidebarOpen,
+      leftAnchored: state.leftSidebarAnchored,
+      rightAnchored: state.rightSidebarAnchored,
+    }))
+  );
+}
