@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Filter, Tag, ArrowDownLeft, ArrowUpRight, X } from 'lucide-react';
+import { Filter, Tag, ArrowRightToLine, ArrowLeftFromLine, Maximize2, Minimize2 } from 'lucide-react';
 import { useRightSidebar } from '@/lib/stores/ui-store';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -15,18 +15,19 @@ import {
 
 export function RightSidebar() {
   const [mounted, setMounted] = useState(false);
-  const { isAnchored, toggleAnchored, setOpen } = useRightSidebar();
+  const { isOpen, isAnchored, toggleAnchored, setOpen } = useRightSidebar();
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const handleClose = () => {
-    setOpen(false);
+  const handleToggleOpen = () => {
+    setOpen(!isOpen);
   };
 
   // Use default values during SSR to match initial client render
   const anchored = mounted ? isAnchored : false;
+  const open = mounted ? isOpen : false;
 
   return (
     <div className="h-full flex flex-col">
@@ -35,20 +36,20 @@ export function RightSidebar() {
         {/* Buttons on left side (mirrored from left panel) */}
         <div className="flex items-center gap-1">
           <TooltipProvider delayDuration={300}>
-            {/* Close Button (first on right panel) */}
+            {/* Open/Close Button (first on right panel) */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={handleClose}
+                  onClick={handleToggleOpen}
                   className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
                 >
-                  <X className="h-4 w-4" />
+                  {open ? <ArrowRightToLine className="h-5 w-5" /> : <ArrowLeftFromLine className="h-5 w-5" />}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <p>Close sidebar</p>
+                <p>{open ? 'Close sidebar' : 'Open sidebar'}</p>
               </TooltipContent>
             </Tooltip>
             {/* Anchor Toggle (second on right panel) */}
@@ -60,7 +61,7 @@ export function RightSidebar() {
                   onClick={toggleAnchored}
                   className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
                 >
-                  {anchored ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
+                  {anchored ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
@@ -77,7 +78,7 @@ export function RightSidebar() {
         <div className="space-y-4">
           <div>
             <div className="flex items-center gap-2 text-text-muted mb-3">
-              <Filter className="h-4 w-4" />
+              <Filter className="h-5 w-5" />
               <span className="text-xs font-medium uppercase">Content Type</span>
             </div>
             <div className="space-y-1">
@@ -102,7 +103,7 @@ export function RightSidebar() {
           {/* Tags Section */}
           <div>
             <div className="flex items-center gap-2 text-text-muted mb-3">
-              <Tag className="h-4 w-4" />
+              <Tag className="h-5 w-5" />
               <span className="text-xs font-medium uppercase">Tags</span>
             </div>
             <p className="text-xs text-text-muted italic">No tags yet</p>

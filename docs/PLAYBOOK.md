@@ -691,7 +691,7 @@ User Action (click, type, drag)
 
 ### Layout Modes
 
-**Floating (unanchored):**
+~~**Floating (unanchored):**~~
 ```
 ┌─────┐   ┌───────────────────┐   ┌─────┐
 │  L  │   │      CENTER       │   │  R  │
@@ -699,7 +699,7 @@ User Action (click, type, drag)
      Background visible between panels
 ```
 
-**Anchored (merged):**
+~~**Anchored (merged):**~~
 ```
 ┌─────────────────────────────────────────┐
 │   L   │        CENTER         │    R    │
@@ -707,7 +707,15 @@ User Action (click, type, drag)
           One unified panel
 ```
 
-Each sidebar can be independently anchored or floating.
+~~Each sidebar can be independently anchored or floating.~~
+
+**Update:** Layout modes are strictly enforced via `globals.css` variables (`--panel-bg`, `--panel-border`, etc.). The 3-panel system must match V1's spacing (16px gaps) and rounding (rounded-2xl).
+
+**🆕 Anchor Behavior:**
+- **Floating:** All panels have gaps and full border-radius
+- **Left Anchored:** Left panel merges with center (no gap, shared edge)
+- **Right Anchored:** Right panel merges with center
+- **Both Anchored:** Single unified panel with outer-edge rounding only
 
 ### Left Sidebar
 
@@ -1677,132 +1685,23 @@ server.setRequestHandler('tools/call', async (request) => {
 
 ### CSS Variables
 
-```css
-/* styles/globals.css */
+**🆕 Update:** See `globals.css` for exact V1 HSL values.
 
-:root {
-  /* Base colors - HSL for easy manipulation */
-  --hue-accent: 270;  /* Purple default */
-  --sat-accent: 60%;
+~~```css~~
+~~/* styles/globals.css */~~
 
-  /* Accent scale */
-  --color-accent: hsl(var(--hue-accent) var(--sat-accent) 55%);
-  --color-accent-hover: hsl(var(--hue-accent) var(--sat-accent) 65%);
-  --color-accent-active: hsl(var(--hue-accent) var(--sat-accent) 45%);
-  --color-accent-muted: hsl(var(--hue-accent) var(--sat-accent) 35%);
-  --color-accent-subtle: hsl(var(--hue-accent) var(--sat-accent) 20%);
+~~:root {~~
+~~  /* Base colors - HSL for easy manipulation */~~
+~~  --hue-accent: 270;  /* Purple default */~~
+~~  --sat-accent: 60%;~~
+~~ ... (omitted for brevity)~~
+~~}~~
+~~```~~
 
-  /* Spacing */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-6: 24px;
-  --space-8: 32px;
-
-  /* Radii */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-
-  /* 🆕 UPDATED: Faster transitions for instant feel (V1 uses 50-75ms) */
-  --transition-fast: 50ms ease-out;   /* ~~100ms ease~~ */
-  --transition-base: 75ms ease-out;   /* ~~150ms ease~~ */
-  --transition-slow: 150ms ease-out;  /* ~~250ms ease~~ */
-}
-
-/* Dark theme (default) */
-:root, [data-theme="dark"] {
-  --color-bg-base: hsl(0 0% 4%);
-  --color-bg-surface-1: hsl(0 0% 7%);   /* 🆕 V1 uses 9% */
-  --color-bg-surface-2: hsl(0 0% 11%);  /* 🆕 V1 uses 14% */
-  --color-bg-surface-3: hsl(0 0% 15%);  /* 🆕 V1 uses 19% */
-  --color-bg-surface-4: hsl(0 0% 19%);  /* 🆕 V1 uses 24% */
-
-  --color-text-primary: hsl(0 0% 95%);
-  --color-text-secondary: hsl(0 0% 70%);
-  --color-text-muted: hsl(0 0% 50%);
-  --color-text-disabled: hsl(0 0% 35%);  /* 🆕 Added from V1 */
-
-  --color-border-subtle: hsl(0 0% 15%);
-  --color-border-default: hsl(0 0% 20%);
-  --color-border-strong: hsl(0 0% 30%);
-
-  /* 🆕 V1 PARITY: Neumorphic highlight borders */
-  --color-border-highlight-top: hsl(0 0% 100% / 0.1);
-  --color-border-highlight-left: hsl(0 0% 100% / 0.08);
-
-  /* Purple glow shadows in dark mode */
-  --shadow-color: var(--hue-accent) 50% 25%;
-  --shadow-1: 0 2px 8px hsl(var(--shadow-color) / 0.25);
-  --shadow-2: 0 4px 16px hsl(var(--shadow-color) / 0.35);
-  --shadow-3: 0 8px 32px hsl(var(--shadow-color) / 0.45);
-  --shadow-4: 0 16px 48px hsl(var(--shadow-color) / 0.55);  /* 🆕 V1 has 4 levels */
-
-  /* 🆕 V1 PARITY: Glow effects for interactions */
-  --glow-hover: 0 0 20px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.4);
-  --glow-focus: 0 0 0 3px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.4);
-  --glow-active: 0 0 30px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.5);
-}
-
-/* Light theme */
-[data-theme="light"] {
-  --color-bg-base: hsl(0 0% 96%);
-  --color-bg-surface-1: hsl(0 0% 100%);
-  --color-bg-surface-2: hsl(0 0% 98%);
-  --color-bg-surface-3: hsl(0 0% 94%);
-  --color-bg-surface-4: hsl(0 0% 90%);
-
-  --color-text-primary: hsl(0 0% 5%);
-  --color-text-secondary: hsl(0 0% 30%);
-  --color-text-muted: hsl(0 0% 50%);
-
-  --color-border-subtle: hsl(0 0% 90%);
-  --color-border-default: hsl(0 0% 85%);
-  --color-border-strong: hsl(0 0% 75%);
-
-  /* Standard shadows in light mode */
-  --shadow-color: 0 0% 0%;
-  --shadow-1: 0 2px 8px hsl(var(--shadow-color) / 0.06);
-  --shadow-2: 0 4px 16px hsl(var(--shadow-color) / 0.10);
-  --shadow-3: 0 8px 32px hsl(var(--shadow-color) / 0.14);
-}
-
-/* Glass style modifier */
-[data-style="glass"] {
-  --glass-bg: hsl(0 0% 100% / 0.05);
-  --glass-border: hsl(0 0% 100% / 0.1);
-  --glass-blur: 12px;
-  --glass-saturate: 1.2;  /* 🆕 V1 has saturate */
-}
-
-/* 🆕 V1 PARITY: Surface tint option (separate from glass) */
-[data-surface-tint="purple"] {
-  --color-bg-base: hsl(270 30% 6%);
-  --color-bg-surface-1: hsl(270 25% 11%);
-  --color-bg-surface-2: hsl(270 20% 16%);
-  --color-bg-surface-3: hsl(270 18% 21%);
-  --color-bg-surface-4: hsl(270 15% 26%);
-
-  /* Enhanced purple glow */
-  --glow-hover: 0 0 24px hsl(270 70% 55% / 0.5), 0 4px 12px hsl(0 0% 0% / 0.4);
-  --glow-active: 0 0 36px hsl(270 70% 55% / 0.6), 0 8px 24px hsl(0 0% 0% / 0.5);
-}
-
-/* 🆕 Glass + Purple combination */
-[data-style="glass"][data-surface-tint="purple"] {
-  --color-bg-surface-1: hsl(270 30% 12% / 0.70);
-  --color-bg-surface-2: hsl(270 25% 18% / 0.75);
-  --color-bg-surface-3: hsl(270 20% 24% / 0.80);
-  --color-bg-surface-4: hsl(270 18% 30% / 0.85);
-}
-
-/* Modern style (default) - solid surfaces */
-[data-style="modern"] {
-  /* Uses default surface colors */
-}
-```
+**🆕 Addition: Style Switching Logic**
+- **Modern Mode (Default):** Uses solid `bg-surface-1` and standard borders.
+- **Glass Mode:** Uses `hsl(0 0% 100% / 0.03)` with `blur(20px)` and `saturate(1.2)` to match V1 high-fidelity translucency.
+- **Persistence:** The `styleMode` ('glass' | 'modern') is managed in `ui-store.ts` and applied as a `data-style` attribute on `documentElement`. Stored in localStorage key: `pawkit_device_preferences`.
 
 ### Accent Color Override
 
@@ -1996,29 +1895,63 @@ ALTER TABLE "Card" ALTER COLUMN "workspaceId" SET NOT NULL;
 
 ## 13. Build Order
 
+
+
 ### Phase 1: Foundation
 
 1. **Project setup**
+
    - Next.js 15 with App Router
+
    - TypeScript strict mode
+
    - Tailwind + shadcn/ui
+
    - Prisma schema with all models
+
    - Dexie schema
 
+
+
 2. **Auth & workspace**
+
    - Supabase auth integration
+
    - Workspace model
+
    - Default workspace creation
+
    - Workspace switcher UI
+
    - **🆕 Extension token auth preservation**
 
+
+
 3. **Core data layer**
+
    - Dexie setup with all tables
+
    - Zustand stores
+
    - Basic CRUD operations
+
    - Sync service (debounced)
+
    - **🆕 Conflict notification store**
+
    - **🆕 Image cache with LRU**
+
+
+
+4. **🆕 V1 Visual Skinning**
+
+   - HSL tokens & Variables
+
+   - Glass/Modern modes
+
+   - Panel styling (shadows, rounding)
+
+
 
 ### Phase 2: Layout & Navigation
 

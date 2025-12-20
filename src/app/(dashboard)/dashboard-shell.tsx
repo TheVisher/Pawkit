@@ -32,6 +32,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const leftHideTimeout = useRef<NodeJS.Timeout | null>(null);
   const rightHideTimeout = useRef<NodeJS.Timeout | null>(null);
 
+  // Ref for the main container to attach pointer move listener
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const setUser = useAuthStore((s) => s.setUser);
   const setLoading = useAuthStore((s) => s.setLoading);
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
@@ -109,7 +112,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     // Delay hiding to give user time to move mouse onto panel
     leftHideTimeout.current = setTimeout(() => {
       setLeftHovered(false);
-    }, 400);
+    }, 550);
   }, []);
 
   const handleRightMouseEnter = useCallback(() => {
@@ -125,7 +128,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     // Delay hiding to give user time to move mouse onto panel
     rightHideTimeout.current = setTimeout(() => {
       setRightHovered(false);
-    }, 400);
+    }, 550);
   }, []);
 
   // Cleanup timeouts on unmount
@@ -135,6 +138,44 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
       if (rightHideTimeout.current) clearTimeout(rightHideTimeout.current);
     };
   }, []);
+
+  // Global pointer move handler - works better with inactive windows on macOS
+  // Checks mouse position to trigger edge hover zones
+  useEffect(() => {
+    const triggerZoneWidth = 20;
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const windowWidth = window.innerWidth;
+      const x = e.clientX;
+
+      // Left edge zone
+      if (x <= triggerZoneWidth && !isLeftOpen) {
+        // Cancel any pending hide
+        if (leftHideTimeout.current) {
+          clearTimeout(leftHideTimeout.current);
+          leftHideTimeout.current = null;
+        }
+        setLeftHovered(true);
+      }
+
+      // Right edge zone
+      if (x >= windowWidth - triggerZoneWidth && !isRightOpen) {
+        // Cancel any pending hide
+        if (rightHideTimeout.current) {
+          clearTimeout(rightHideTimeout.current);
+          rightHideTimeout.current = null;
+        }
+        setRightHovered(true);
+      }
+    };
+
+    // Use document level listener with capture for better event reception
+    document.addEventListener('pointermove', handlePointerMove, { capture: true });
+
+    return () => {
+      document.removeEventListener('pointermove', handlePointerMove, { capture: true });
+    };
+  }, [isLeftOpen, isRightOpen]);
 
   // Sidebar visibility includes hover state (visible if open OR hovered)
   const isLeftVisible = isLeftOpen || leftHovered;
@@ -178,6 +219,11 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const leftInFlow = isLeftOpen; // Only in flow when actually open, not just hovered
   const rightInFlow = isRightOpen && !leftMerged; // In flow when open and not in leftMerged mode
 
+  // Extra inset when floating (hovered but not open) to create gap from center panel
+  const floatingInset = 8;
+  const leftEdgeOffset = leftMerged ? 0 : (isLeftOpen ? 16 : 16 + floatingInset);
+  const rightEdgeOffset = rightMerged ? 0 : (isRightOpen ? 16 : 16 + floatingInset);
+
   return (
     <div className="h-screen w-screen bg-bg-base text-text-primary">
       {/* Mobile bottom nav - only shows < 768px */}
@@ -204,7 +250,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
         {!isLeftOpen && (
           <div
             className="hidden lg:block fixed top-0 bottom-0 z-50"
-            style={{ left: 0, width: 16 }}
+            style={{ left: 0, width: 20 }}
             onMouseEnter={handleLeftMouseEnter}
             onMouseLeave={handleLeftMouseLeave}
           />
@@ -214,7 +260,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
         {!isRightOpen && (
           <div
             className="hidden xl:block fixed top-0 bottom-0 z-50"
-            style={{ right: 0, width: 16 }}
+            style={{ right: 0, width: 20 }}
             onMouseEnter={handleRightMouseEnter}
             onMouseLeave={handleRightMouseLeave}
           />
@@ -225,9 +271,8 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
           className={cn(
             'hidden lg:flex fixed w-[325px] z-40',
             panelBase,
-            // Always floating shadow when visible (since it's fixed position)
-            isLeftVisible && !leftMerged && floatingShadow,
-            // No shadow when merged (inset on center handles depth)
+            // Always apply shadow when not merged (slides with panel during animation)
+            !leftMerged && floatingShadow,
             // Rounding based on anchor state
             isFullScreen
               ? 'rounded-none'
@@ -236,11 +281,11 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
                 : 'rounded-2xl'
           )}
           style={{
-            top: leftMerged ? 0 : 16,
-            left: leftMerged ? 0 : 16,
-            bottom: leftMerged ? 0 : 16,
+            top: leftEdgeOffset,
+            left: leftEdgeOffset,
+            bottom: leftEdgeOffset,
             // Slide completely off-screen when not visible
-            transform: isLeftVisible ? 'translateX(0)' : 'translateX(calc(-100% - 16px))',
+            transform: isLeftVisible ? 'translateX(0)' : 'translateX(calc(-100% - 32px))',
             transition: 'transform 300ms ease-out, top 300ms ease-out, left 300ms ease-out, bottom 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
           }}
           onMouseEnter={handleLeftMouseEnter}
@@ -290,19 +335,19 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
           className={cn(
             'hidden xl:flex fixed w-[325px] z-40',
             panelBase,
-            // Floating shadow when visible and not merged
-            isRightVisible && !rightMerged && floatingShadow,
+            // Always apply shadow when not merged (slides with panel during animation)
+            !rightMerged && floatingShadow,
             // Rounding based on anchor state
             rightMerged
               ? 'rounded-r-2xl rounded-l-none'
               : 'rounded-2xl'
           )}
           style={{
-            top: rightMerged ? 0 : 16,
-            right: rightMerged ? 0 : 16,
-            bottom: rightMerged ? 0 : 16,
+            top: rightEdgeOffset,
+            right: rightEdgeOffset,
+            bottom: rightEdgeOffset,
             // Slide completely off-screen when not visible
-            transform: isRightVisible ? 'translateX(0)' : 'translateX(calc(100% + 16px))',
+            transform: isRightVisible ? 'translateX(0)' : 'translateX(calc(100% + 32px))',
             transition: 'transform 300ms ease-out, top 300ms ease-out, right 300ms ease-out, bottom 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
           }}
           onMouseEnter={handleRightMouseEnter}
