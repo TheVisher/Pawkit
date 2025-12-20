@@ -118,8 +118,25 @@ export class PawkitDB extends Dexie {
   }
 }
 
-// Singleton database instance
-export const db = new PawkitDB();
+// Singleton database instance (lazy initialization for SSR compatibility)
+let _db: PawkitDB | null = null;
+
+function getDB(): PawkitDB {
+  if (typeof window === 'undefined') {
+    throw new Error('Dexie can only be used in the browser');
+  }
+  if (!_db) {
+    _db = new PawkitDB();
+  }
+  return _db;
+}
+
+// Export a proxy that lazily initializes the database
+export const db = new Proxy({} as PawkitDB, {
+  get(_target, prop) {
+    return getDB()[prop as keyof PawkitDB];
+  },
+});
 
 // =============================================================================
 // HELPER FUNCTIONS
