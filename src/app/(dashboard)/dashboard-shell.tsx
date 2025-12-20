@@ -43,8 +43,8 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const loadAll = useDataStore((s) => s.loadAll);
 
-  // Initialize sync engine with current workspace
-  useSync({ workspaceId: currentWorkspace?.id ?? null });
+  // Initialize sync engine (gets workspace from useWorkspaceStore internally)
+  useSync();
 
   // Layout anchor state for visual merging
   const { leftOpen, rightOpen, leftAnchored, rightAnchored } = useLayoutAnchors();
