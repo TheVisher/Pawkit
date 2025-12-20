@@ -4,11 +4,11 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useSync } from '@/lib/hooks/use-sync';
 import { useLayoutAnchors } from '@/lib/stores/ui-store';
 import { useLeftSidebar, useRightSidebar } from '@/lib/stores/ui-store';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightSidebar } from '@/components/layout/right-sidebar';
-import { TopBar } from '@/components/layout/top-bar';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { AddCardModal } from '@/components/modals/add-card-modal';
 import { cn } from '@/lib/utils';
@@ -42,6 +42,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const loadAll = useDataStore((s) => s.loadAll);
+
+  // Initialize sync engine with current workspace
+  useSync({ workspaceId: currentWorkspace?.id ?? null });
 
   // Layout anchor state for visual merging
   const { leftOpen, rightOpen, leftAnchored, rightAnchored } = useLayoutAnchors();
@@ -332,7 +335,6 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
             transition: 'margin 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
           }}
         >
-          <TopBar />
           <div className="flex-1 overflow-auto">
             {children}
           </div>

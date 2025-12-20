@@ -87,14 +87,15 @@ export async function processQueue(): Promise<QueueProcessResult> {
     return result;
   }
 
-  // Get all pending items ordered by creation time
-  const items = await db.syncQueue.orderBy('createdAt').toArray();
+  // Get pending items (exclude failed) ordered by creation time
+  const allItems = await db.syncQueue.orderBy('createdAt').toArray();
+  const items = allItems.filter((item) => (item.retryCount || 0) < MAX_RETRIES);
 
   if (items.length === 0) {
     return result;
   }
 
-  console.log(`[SyncQueue] Processing ${items.length} items`);
+  console.log(`[SyncQueue] Processing ${items.length} pending items (${allItems.length - items.length} failed/parked)`);
 
   // Update pending count in store
   useSyncStore.getState().setPendingCount(items.length);
