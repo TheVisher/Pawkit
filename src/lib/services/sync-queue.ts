@@ -13,6 +13,14 @@ const MAX_RETRIES = 3;
 // Debounce delay for queue processing (ms)
 export const QUEUE_DEBOUNCE_MS = 2000;
 
+/**
+ * Get count of pending (non-failed) items in the queue
+ */
+async function getPendingItemCount(): Promise<number> {
+  const items = await db.syncQueue.toArray();
+  return items.filter((item) => (item.retryCount || 0) < MAX_RETRIES).length;
+}
+
 // =============================================================================
 // API ENDPOINT MAPPING
 // =============================================================================
@@ -126,8 +134,8 @@ export async function processQueue(): Promise<QueueProcessResult> {
     }
   }
 
-  // Final pending count update
-  const remainingCount = await db.syncQueue.count();
+  // Final pending count update (exclude failed items)
+  const remainingCount = await getPendingItemCount();
   useSyncStore.getState().setPendingCount(remainingCount);
 
   console.log(`[SyncQueue] Completed: ${result.processed} processed, ${result.failed} failed`);
@@ -365,8 +373,8 @@ export async function addToQueue(
     createdAt: new Date(),
   });
 
-  // Update pending count
-  const count = await db.syncQueue.count();
+  // Update pending count (new items always have retryCount=0, so count all pending)
+  const count = await getPendingItemCount();
   useSyncStore.getState().setPendingCount(count);
 }
 
@@ -389,7 +397,8 @@ export async function clearFailedItems(): Promise<void> {
 
   await db.syncQueue.bulkDelete(failedIds);
 
-  const count = await db.syncQueue.count();
+  // After clearing failed, remaining are all pending
+  const count = await getPendingItemCount();
   useSyncStore.getState().setPendingCount(count);
 }
 
