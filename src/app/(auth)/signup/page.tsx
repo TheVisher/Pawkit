@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getClient } from '@/lib/supabase/client';
@@ -12,12 +12,17 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 export default function SignupPage() {
   const router = useRouter();
 
+  const [mounted, setMounted] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleEmailSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +84,30 @@ export default function SignupPage() {
       setIsLoading(false);
     }
   };
+
+  // Show skeleton until mounted to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <Card className="border-zinc-800 bg-zinc-900/50">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl text-zinc-100">Create an account</CardTitle>
+          <CardDescription className="text-zinc-400">
+            Get started with Pawkit
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="h-10 bg-zinc-800 rounded-md animate-pulse" />
+          <div className="h-4" />
+          <div className="space-y-4">
+            <div className="h-10 bg-zinc-800 rounded-md animate-pulse" />
+            <div className="h-10 bg-zinc-800 rounded-md animate-pulse" />
+            <div className="h-10 bg-zinc-800 rounded-md animate-pulse" />
+            <div className="h-10 bg-zinc-800 rounded-md animate-pulse" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (success) {
     return (
