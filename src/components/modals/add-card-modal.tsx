@@ -134,6 +134,7 @@ export function AddCardModal() {
         tags: [],
         collections: bookmarkCollection ? [bookmarkCollection] : [],
         pinned: false,
+        isFileCard: false,
       });
 
       closeAddCard();
@@ -160,6 +161,7 @@ export function AddCardModal() {
         tags: [],
         collections: noteCollection ? [noteCollection] : [],
         pinned: false,
+        isFileCard: false,
       });
 
       closeAddCard();
