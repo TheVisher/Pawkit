@@ -59,6 +59,7 @@ function SortableCard({ card, onClick }: SortableCardProps) {
     <div
       ref={setNodeRef}
       style={style}
+      className="w-full"
       {...attributes}
       {...listeners}
     >
