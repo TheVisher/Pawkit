@@ -160,14 +160,14 @@ The omnibar lives in `src/app/(dashboard)/dashboard-shell.tsx`:
 
 ### Required Page Structure
 
-All pages must use `pt-20` (80px top padding) to leave space for the global omnibar:
+Pages use standard `p-6` padding. The header section uses `pt-5 pb-4` to match the original PageHeader spacing, placing the page title at the same vertical level as the centered omnibar:
 
 ```tsx
 export default function AnyViewPage() {
   return (
-    <div className="flex-1 p-6 pt-20">
-      {/* Page header */}
-      <div className="mb-6">
+    <div className="flex-1 p-6">
+      {/* Page header - pt-5 pb-4 matches original PageHeader spacing */}
+      <div className="pt-5 pb-4 mb-2">
         <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
           Page Title
         </h1>
@@ -184,13 +184,14 @@ export default function AnyViewPage() {
 ### DO's and DON'Ts
 
 **DO**:
-- Use `pt-20` on the page's root div to leave space for the omnibar
 - Use `p-6` for standard page padding
+- Use `pt-5 pb-4` on the header section to align with the global omnibar
+- The omnibar floats at the same vertical level as the page title
 
 **DON'T**:
 - Import or use `PageHeader` component (deprecated)
 - Render `Omnibar` or `ToastStack` in individual pages
-- Use any other top padding value (must be exactly `pt-20`)
+- Use `pt-20` or other large top padding (pushes content too far down)
 
 ---
 
