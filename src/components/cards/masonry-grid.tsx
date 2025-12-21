@@ -20,12 +20,10 @@ import { CSS } from '@dnd-kit/utilities';
 import { CardItem } from './card-item';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { cn } from '@/lib/utils';
 
 // Configuration
 const MIN_CARD_WIDTH = 280;
 const GAP = 16;
-const ANIMATION_DURATION = 300; // ms
 
 interface MasonryGridProps {
   cards: LocalCard[];
@@ -50,11 +48,9 @@ function SortableCard({ card, onClick }: SortableCardProps) {
     isDragging,
   } = useSortable({ id: card.id });
 
-  // Only apply transform and transition during actual drag operations
-  // This prevents conflicts with the masonry grid's left/top transitions
   const style: React.CSSProperties = {
-    transform: isDragging ? CSS.Transform.toString(transform) : undefined,
-    transition: isDragging ? transition : 'none',
+    transform: CSS.Transform.toString(transform) || undefined,
+    transition: transition || 'transform 250ms ease',
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 999 : 'auto',
   };
@@ -82,11 +78,9 @@ const CONTENT_PADDING = 56; // Approximate height for title + domain + tags area
  * This is used for initial layout before actual measurements
  */
 function estimateHeight(card: LocalCard, cardWidth: number): number {
-  // For URL cards, always assume they'll have a thumbnail (even if not loaded yet)
-  // This prevents the double-shift when metadata is fetched
-  const willHaveThumbnail = card.type === 'url' || card.image;
-
-  const thumbnailHeight = willHaveThumbnail
+  // For cards with images, use aspect ratio to estimate thumbnail height
+  // We can't know the actual aspect ratio until the image loads, so use default
+  const thumbnailHeight = card.image
     ? cardWidth / DEFAULT_ASPECT_RATIO
     : MIN_THUMBNAIL_HEIGHT;
 
@@ -110,36 +104,6 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [measuredHeights, setMeasuredHeights] = useState<Map<string, number>>(new Map());
   const openCardDetail = useModalStore((s) => s.openCardDetail);
-
-  // Track known card IDs to detect new cards
-  const knownCardIds = useRef<Set<string>>(new Set());
-  const [newCardIds, setNewCardIds] = useState<Set<string>>(new Set());
-
-  // Detect new cards when cards array changes
-  useEffect(() => {
-    const currentIds = new Set(cards.map(c => c.id));
-    const newIds = new Set<string>();
-
-    // Find cards that weren't known before
-    for (const id of currentIds) {
-      if (!knownCardIds.current.has(id)) {
-        newIds.add(id);
-      }
-    }
-
-    // Update known cards
-    knownCardIds.current = currentIds;
-
-    // Mark new cards for animation
-    if (newIds.size > 0) {
-      setNewCardIds(newIds);
-      // Clear the "new" status after animation completes
-      const timer = setTimeout(() => {
-        setNewCardIds(new Set());
-      }, ANIMATION_DURATION + 50);
-      return () => clearTimeout(timer);
-    }
-  }, [cards]);
 
   // Observe container width
   useEffect(() => {
@@ -177,42 +141,42 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
     return (containerWidth - totalGap) / columnCount;
   }, [containerWidth, columnCount]);
 
-  // Calculate masonry positions using sequential column placement
-  // This creates predictable animations when cards are added/removed
+  // Calculate masonry positions
   const { positions, totalHeight } = useMemo(() => {
     if (cards.length === 0) {
       return { positions: new Map<string, { x: number; y: number }>(), totalHeight: 0 };
     }
 
-    // Track height for each column
     const columnHeights = new Array(columnCount).fill(0);
     const posMap = new Map<string, { x: number; y: number }>();
 
-    // Sequential placement: card index determines column
-    // This means when a new card is added at index 0, all cards shift right by one column
-    cards.forEach((card, index) => {
-      // Determine which column based on card index
-      const column = index % columnCount;
+    for (const card of cards) {
+      // Find shortest column
+      let shortestCol = 0;
+      let minHeight = columnHeights[0];
+      for (let i = 1; i < columnCount; i++) {
+        if (columnHeights[i] < minHeight) {
+          minHeight = columnHeights[i];
+          shortestCol = i;
+        }
+      }
 
       // Calculate position
-      const x = column * (cardWidth + GAP);
-      const y = columnHeights[column];
+      const x = shortestCol * (cardWidth + GAP);
+      const y = columnHeights[shortestCol];
 
       posMap.set(card.id, { x, y });
 
       // Update column height
       const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
-      columnHeights[column] += cardHeight + GAP;
-    });
+      columnHeights[shortestCol] += cardHeight + GAP;
+    }
 
     const maxHeight = Math.max(...columnHeights);
     return { positions: posMap, totalHeight: maxHeight > 0 ? maxHeight - GAP : 0 };
   }, [cards, columnCount, cardWidth, measuredHeights]);
 
   // Measure card heights after render and when cards resize (e.g., images load)
-  // Using refs to avoid state updates that cause re-renders/flickering
-  const measurementPendingRef = useRef(false);
-
   useEffect(() => {
     if (containerWidth === 0) return;
 
@@ -220,61 +184,47 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
     if (!container) return;
 
     const measureCards = () => {
-      if (measurementPendingRef.current) return;
-      measurementPendingRef.current = true;
+      const newHeights = new Map<string, number>();
+      const cardElements = container.querySelectorAll('[data-card-id]');
 
-      // Use requestAnimationFrame to batch measurements
-      requestAnimationFrame(() => {
-        const newHeights = new Map<string, number>();
-        const cardElements = container.querySelectorAll('[data-card-id]');
+      cardElements.forEach((el) => {
+        const id = el.getAttribute('data-card-id');
+        if (id) {
+          const rect = el.getBoundingClientRect();
+          if (rect.height > 0) {
+            newHeights.set(id, rect.height);
+          }
+        }
+      });
 
-        cardElements.forEach((el) => {
-          const id = el.getAttribute('data-card-id');
-          if (id) {
-            const rect = el.getBoundingClientRect();
-            if (rect.height > 0) {
-              newHeights.set(id, rect.height);
+      if (newHeights.size > 0) {
+        setMeasuredHeights(prev => {
+          // Only update if heights actually changed
+          let hasChanges = false;
+          for (const [id, h] of newHeights) {
+            if (prev.get(id) !== h) {
+              hasChanges = true;
+              break;
             }
           }
+          if (!hasChanges) return prev;
+
+          const merged = new Map(prev);
+          for (const [id, h] of newHeights) {
+            merged.set(id, h);
+          }
+          return merged;
         });
-
-        if (newHeights.size > 0) {
-          setMeasuredHeights(prev => {
-            // Only update if heights actually changed significantly (> 5px)
-            let hasChanges = false;
-            for (const [id, h] of newHeights) {
-              const prevHeight = prev.get(id);
-              if (!prevHeight || Math.abs(prevHeight - h) > 5) {
-                hasChanges = true;
-                break;
-              }
-            }
-            if (!hasChanges) return prev;
-
-            const merged = new Map(prev);
-            for (const [id, h] of newHeights) {
-              merged.set(id, h);
-            }
-            return merged;
-          });
-        }
-
-        measurementPendingRef.current = false;
-      });
+      }
     };
 
-    // Initial measurement
-    const timer = setTimeout(measureCards, 50);
+    // Initial measurement after a short delay
+    const timer = setTimeout(measureCards, 150);
 
-    // Debounced resize observer - only measure when things actually change
-    let resizeTimeout: NodeJS.Timeout | null = null;
-    const debouncedMeasure = () => {
-      if (resizeTimeout) clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(measureCards, 150);
-    };
-
-    // Observe size changes on card elements (for when images load)
-    const resizeObserver = new ResizeObserver(debouncedMeasure);
+    // Also observe size changes on card elements (for when images load)
+    const resizeObserver = new ResizeObserver(() => {
+      measureCards();
+    });
 
     // Observe all card elements
     const cardElements = container.querySelectorAll('[data-card-id]');
@@ -282,7 +232,6 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
 
     return () => {
       clearTimeout(timer);
-      if (resizeTimeout) clearTimeout(resizeTimeout);
       resizeObserver.disconnect();
     };
   }, [containerWidth, cards]);
@@ -367,23 +316,16 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
                 return null;
               }
 
-              const isNewCard = newCardIds.has(card.id);
-
               return (
                 <div
                   key={card.id}
                   data-card-id={card.id}
-                  className={cn(
-                    // New cards fade in
-                    isNewCard && 'animate-card-enter'
-                  )}
                   style={{
                     position: 'absolute',
                     width: cardWidth,
                     left: pos.x,
                     top: pos.y,
-                    // No position transitions - causes flickering during measurement
-                    // Cards snap to position instantly, new cards use CSS fade-in animation
+                    transition: activeId ? 'none' : 'all 250ms ease',
                   }}
                 >
                   <SortableCard
