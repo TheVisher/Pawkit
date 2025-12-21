@@ -43,6 +43,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const createWorkspace = useWorkspaceStore((s) => s.createWorkspace);
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
+  const workspacesLoading = useWorkspaceStore((s) => s.isLoading);
   const loadAll = useDataStore((s) => s.loadAll);
 
   // Initialize sync engine (gets workspace from useWorkspaceStore internally)
@@ -77,7 +78,10 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
 
   useEffect(() => {
     async function ensureWorkspace() {
-      // Create default workspace if none exists
+      // Wait for workspaces to finish loading before checking
+      if (workspacesLoading) return;
+
+      // Create default workspace if none exists (only after loading completes)
       if (workspaces.length === 0 && !isInitialized) {
         await createWorkspace('My Workspace', userId);
         setIsInitialized(true);
@@ -87,7 +91,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     }
 
     ensureWorkspace();
-  }, [workspaces, userId, createWorkspace, isInitialized]);
+  }, [workspaces, workspacesLoading, userId, createWorkspace, isInitialized]);
 
   useEffect(() => {
     // Load data when workspace is available
