@@ -24,7 +24,6 @@ import { useModalStore } from '@/lib/stores/modal-store';
 // Configuration
 const MIN_CARD_WIDTH = 280;
 const GAP = 16;
-const DEFAULT_CARD_HEIGHT = 240;
 
 interface MasonryGridProps {
   cards: LocalCard[];
@@ -68,13 +67,30 @@ function SortableCard({ card, onClick }: SortableCardProps) {
   );
 }
 
+// Default aspect ratio and minimum height from CardItem
+const DEFAULT_ASPECT_RATIO = 16 / 10;
+const MIN_THUMBNAIL_HEIGHT = 140;
+const CONTENT_PADDING = 56; // Approximate height for title + domain + tags area
+
 /**
  * Estimate card height based on content
+ * This is used for initial layout before actual measurements
  */
-function estimateHeight(card: LocalCard): number {
-  let height = card.image ? 280 : 180;
+function estimateHeight(card: LocalCard, cardWidth: number): number {
+  // For cards with images, use aspect ratio to estimate thumbnail height
+  // We can't know the actual aspect ratio until the image loads, so use default
+  const thumbnailHeight = card.image
+    ? cardWidth / DEFAULT_ASPECT_RATIO
+    : MIN_THUMBNAIL_HEIGHT;
+
+  let height = thumbnailHeight + CONTENT_PADDING;
+
+  // Add extra height for long titles
   if (card.title && card.title.length > 50) height += 24;
+
+  // Add height for tags
   if (card.tags && card.tags.length > 0) height += 28;
+
   return height;
 }
 
@@ -151,7 +167,7 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
       posMap.set(card.id, { x, y });
 
       // Update column height
-      const cardHeight = measuredHeights.get(card.id) || estimateHeight(card);
+      const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
       columnHeights[shortestCol] += cardHeight + GAP;
     }
 
@@ -159,14 +175,14 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
     return { positions: posMap, totalHeight: maxHeight > 0 ? maxHeight - GAP : 0 };
   }, [cards, columnCount, cardWidth, measuredHeights]);
 
-  // Measure card heights after render
+  // Measure card heights after render and when cards resize (e.g., images load)
   useEffect(() => {
     if (containerWidth === 0) return;
 
-    const timer = setTimeout(() => {
-      const container = containerRef.current;
-      if (!container) return;
+    const container = containerRef.current;
+    if (!container) return;
 
+    const measureCards = () => {
       const newHeights = new Map<string, number>();
       const cardElements = container.querySelectorAll('[data-card-id]');
 
@@ -182,6 +198,16 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
 
       if (newHeights.size > 0) {
         setMeasuredHeights(prev => {
+          // Only update if heights actually changed
+          let hasChanges = false;
+          for (const [id, h] of newHeights) {
+            if (prev.get(id) !== h) {
+              hasChanges = true;
+              break;
+            }
+          }
+          if (!hasChanges) return prev;
+
           const merged = new Map(prev);
           for (const [id, h] of newHeights) {
             merged.set(id, h);
@@ -189,9 +215,24 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
           return merged;
         });
       }
-    }, 150);
+    };
 
-    return () => clearTimeout(timer);
+    // Initial measurement after a short delay
+    const timer = setTimeout(measureCards, 150);
+
+    // Also observe size changes on card elements (for when images load)
+    const resizeObserver = new ResizeObserver(() => {
+      measureCards();
+    });
+
+    // Observe all card elements
+    const cardElements = container.querySelectorAll('[data-card-id]');
+    cardElements.forEach((el) => resizeObserver.observe(el));
+
+    return () => {
+      clearTimeout(timer);
+      resizeObserver.disconnect();
+    };
   }, [containerWidth, cards]);
 
   // DnD sensors
