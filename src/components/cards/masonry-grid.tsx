@@ -20,12 +20,11 @@ import { CSS } from '@dnd-kit/utilities';
 import { CardItem } from './card-item';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
-import {
-  calculateColumnCount,
-  calculateCardWidth,
-  calculateMasonryLayout,
-  estimateCardHeight,
-} from '@/lib/utils/masonry';
+
+// Configuration
+const MIN_CARD_WIDTH = 280;
+const GAP = 16;
+const DEFAULT_CARD_HEIGHT = 240;
 
 interface MasonryGridProps {
   cards: LocalCard[];
@@ -35,13 +34,12 @@ interface MasonryGridProps {
 interface SortableCardProps {
   card: LocalCard;
   onClick: () => void;
-  isDragging: boolean;
 }
 
 /**
  * Sortable wrapper for individual cards
  */
-function SortableCard({ card, onClick, isDragging: isParentDragging }: SortableCardProps) {
+function SortableCard({ card, onClick }: SortableCardProps) {
   const {
     attributes,
     listeners,
@@ -56,7 +54,6 @@ function SortableCard({ card, onClick, isDragging: isParentDragging }: SortableC
     transition: transition || 'transform 250ms ease',
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 999 : 'auto',
-    cursor: isParentDragging ? 'grabbing' : 'grab',
   };
 
   return (
@@ -72,13 +69,23 @@ function SortableCard({ card, onClick, isDragging: isParentDragging }: SortableC
 }
 
 /**
+ * Estimate card height based on content
+ */
+function estimateHeight(card: LocalCard): number {
+  let height = card.image ? 280 : 180;
+  if (card.title && card.title.length > 50) height += 24;
+  if (card.tags && card.tags.length > 0) height += 28;
+  return height;
+}
+
+/**
  * Masonry grid layout with drag-and-drop support
  */
 export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [cardHeights, setCardHeights] = useState<Map<string, number>>(new Map());
+  const [measuredHeights, setMeasuredHeights] = useState<Map<string, number>>(new Map());
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   // Observe container width
@@ -86,97 +93,114 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
     const container = containerRef.current;
     if (!container) return;
 
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        setContainerWidth(entry.contentRect.width);
+    const updateWidth = () => {
+      const width = container.offsetWidth;
+      if (width > 0) {
+        setContainerWidth(width);
       }
+    };
+
+    // Initial measurement
+    updateWidth();
+
+    const observer = new ResizeObserver(() => {
+      updateWidth();
     });
 
     observer.observe(container);
-    setContainerWidth(container.offsetWidth);
-
     return () => observer.disconnect();
   }, []);
 
-  // Calculate layout dimensions
-  const columnCount = useMemo(
-    () => calculateColumnCount(containerWidth),
-    [containerWidth]
-  );
+  // Calculate columns and card width
+  const columnCount = useMemo(() => {
+    if (containerWidth <= 0) return 1;
+    const cols = Math.floor((containerWidth + GAP) / (MIN_CARD_WIDTH + GAP));
+    return Math.max(1, cols);
+  }, [containerWidth]);
 
-  const cardWidth = useMemo(
-    () => calculateCardWidth(containerWidth, columnCount),
-    [containerWidth, columnCount]
-  );
+  const cardWidth = useMemo(() => {
+    if (containerWidth <= 0) return MIN_CARD_WIDTH;
+    const totalGap = (columnCount - 1) * GAP;
+    return (containerWidth - totalGap) / columnCount;
+  }, [containerWidth, columnCount]);
 
-  // Build card dimensions array using estimates
-  const cardDimensions = useMemo(() => {
-    return cards.map((card) => ({
-      id: card.id,
-      height: cardHeights.get(card.id) || estimateCardHeight(card),
-    }));
-  }, [cards, cardHeights]);
-
-  // Calculate layout positions
-  const layout = useMemo(() => {
-    if (columnCount <= 0 || cardWidth <= 0) {
-      return { positions: [], columnHeights: [], totalHeight: 0 };
+  // Calculate masonry positions
+  const { positions, totalHeight } = useMemo(() => {
+    if (cards.length === 0) {
+      return { positions: new Map<string, { x: number; y: number }>(), totalHeight: 0 };
     }
-    return calculateMasonryLayout(cardDimensions, columnCount, cardWidth);
-  }, [cardDimensions, columnCount, cardWidth]);
 
-  // Create position map for quick lookup
-  const positionMap = useMemo(() => {
-    return new Map(layout.positions.map((p) => [p.id, p]));
-  }, [layout.positions]);
+    const columnHeights = new Array(columnCount).fill(0);
+    const posMap = new Map<string, { x: number; y: number }>();
+
+    for (const card of cards) {
+      // Find shortest column
+      let shortestCol = 0;
+      let minHeight = columnHeights[0];
+      for (let i = 1; i < columnCount; i++) {
+        if (columnHeights[i] < minHeight) {
+          minHeight = columnHeights[i];
+          shortestCol = i;
+        }
+      }
+
+      // Calculate position
+      const x = shortestCol * (cardWidth + GAP);
+      const y = columnHeights[shortestCol];
+
+      posMap.set(card.id, { x, y });
+
+      // Update column height
+      const cardHeight = measuredHeights.get(card.id) || estimateHeight(card);
+      columnHeights[shortestCol] += cardHeight + GAP;
+    }
+
+    const maxHeight = Math.max(...columnHeights);
+    return { positions: posMap, totalHeight: maxHeight > 0 ? maxHeight - GAP : 0 };
+  }, [cards, columnCount, cardWidth, measuredHeights]);
 
   // Measure card heights after render
-  const measureCardHeights = useCallback(() => {
-    const container = containerRef.current;
-    if (!container) return;
+  useEffect(() => {
+    if (containerWidth === 0) return;
 
-    const newHeights = new Map<string, number>();
-    const cardElements = container.querySelectorAll('[data-card-id]');
+    const timer = setTimeout(() => {
+      const container = containerRef.current;
+      if (!container) return;
 
-    cardElements.forEach((el) => {
-      const id = el.getAttribute('data-card-id');
-      if (id) {
-        newHeights.set(id, el.getBoundingClientRect().height);
-      }
-    });
+      const newHeights = new Map<string, number>();
+      const cardElements = container.querySelectorAll('[data-card-id]');
 
-    if (newHeights.size > 0) {
-      setCardHeights((prev) => {
-        // Only update if heights changed
-        let changed = false;
-        for (const [id, height] of newHeights) {
-          if (prev.get(id) !== height) {
-            changed = true;
-            break;
+      cardElements.forEach((el) => {
+        const id = el.getAttribute('data-card-id');
+        if (id) {
+          const rect = el.getBoundingClientRect();
+          if (rect.height > 0) {
+            newHeights.set(id, rect.height);
           }
         }
-        return changed ? new Map([...prev, ...newHeights]) : prev;
       });
-    }
-  }, []);
 
-  // Measure heights on mount and when cards change
-  useEffect(() => {
-    // Give React time to render the cards
-    const timer = setTimeout(measureCardHeights, 100);
+      if (newHeights.size > 0) {
+        setMeasuredHeights(prev => {
+          const merged = new Map(prev);
+          for (const [id, h] of newHeights) {
+            merged.set(id, h);
+          }
+          return merged;
+        });
+      }
+    }, 150);
+
     return () => clearTimeout(timer);
-  }, [cards.length, measureCardHeights]);
+  }, [containerWidth, cards]);
 
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8, // Require 8px movement before drag starts
-      },
+      activationConstraint: { distance: 8 },
     })
   );
 
-  // DnD handlers
   const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   }, []);
@@ -186,18 +210,15 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
       const { active, over } = event;
       setActiveId(null);
 
-      if (over && active.id !== over.id) {
+      if (over && active.id !== over.id && onReorder) {
         const oldIndex = cards.findIndex((c) => c.id === active.id);
         const newIndex = cards.findIndex((c) => c.id === over.id);
 
         if (oldIndex !== -1 && newIndex !== -1) {
-          // Create new order
           const newOrder = [...cards];
           const [removed] = newOrder.splice(oldIndex, 1);
           newOrder.splice(newIndex, 0, removed);
-
-          // Notify parent of reorder
-          onReorder?.(newOrder.map((c) => c.id));
+          onReorder(newOrder.map((c) => c.id));
         }
       }
     },
@@ -208,33 +229,14 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
     setActiveId(null);
   }, []);
 
-  // Get active card for drag overlay
   const activeCard = useMemo(
     () => cards.find((c) => c.id === activeId),
     [cards, activeId]
   );
 
-  // Card IDs for sortable context
   const cardIds = useMemo(() => cards.map((c) => c.id), [cards]);
 
-  // Don't render until we have container width
-  if (containerWidth === 0) {
-    return (
-      <div ref={containerRef} className="w-full">
-        {/* Skeleton loading */}
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {cards.slice(0, 8).map((card) => (
-            <div
-              key={card.id}
-              className="h-48 rounded-2xl animate-pulse"
-              style={{ background: 'var(--bg-surface-2)' }}
-            />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
+  // Always render the container with ref, but show skeleton or content
   return (
     <DndContext
       sensors={sensors}
@@ -248,38 +250,53 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
           ref={containerRef}
           className="relative w-full"
           style={{
-            height: layout.totalHeight || 'auto',
-            minHeight: 200,
+            minHeight: containerWidth === 0 ? 400 : Math.max(200, totalHeight),
+            height: containerWidth === 0 ? 'auto' : totalHeight || 'auto',
           }}
         >
-          {cards.map((card) => {
-            const position = positionMap.get(card.id);
-            if (!position) return null;
-
-            return (
-              <div
-                key={card.id}
-                data-card-id={card.id}
-                style={{
-                  position: 'absolute',
-                  width: cardWidth,
-                  left: position.x,
-                  top: position.y,
-                  transition: activeId ? 'none' : 'all 250ms ease',
-                }}
-              >
-                <SortableCard
-                  card={card}
-                  onClick={() => openCardDetail(card.id)}
-                  isDragging={!!activeId}
+          {containerWidth === 0 ? (
+            // Skeleton while measuring
+            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {cards.slice(0, 8).map((card) => (
+                <div
+                  key={card.id}
+                  className="h-48 rounded-2xl animate-pulse"
+                  style={{ background: 'var(--bg-surface-2)' }}
                 />
-              </div>
-            );
-          })}
+              ))}
+            </div>
+          ) : (
+            // Masonry layout
+            cards.map((card) => {
+              const pos = positions.get(card.id);
+              if (!pos) {
+                console.warn('No position for card:', card.id);
+                return null;
+              }
+
+              return (
+                <div
+                  key={card.id}
+                  data-card-id={card.id}
+                  style={{
+                    position: 'absolute',
+                    width: cardWidth,
+                    left: pos.x,
+                    top: pos.y,
+                    transition: activeId ? 'none' : 'all 250ms ease',
+                  }}
+                >
+                  <SortableCard
+                    card={card}
+                    onClick={() => openCardDetail(card.id)}
+                  />
+                </div>
+              );
+            })
+          )}
         </div>
       </SortableContext>
 
-      {/* Drag overlay */}
       <DragOverlay adjustScale={false}>
         {activeCard && (
           <div style={{ width: cardWidth }}>
