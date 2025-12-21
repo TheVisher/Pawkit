@@ -139,35 +139,38 @@ className={cn(
 
 **CRITICAL: The omnibar is globally positioned in `dashboard-shell.tsx` and NEVER rendered in individual pages.**
 
-The omnibar (with + button for adding content, search, and toast notifications) is fixed at the top center of the viewport, rendered once in the dashboard shell. This ensures:
-- Pixel-perfect positioning across ALL views
-- No duplicate omnibar instances
+The omnibar (with + button for adding content, search, and toast notifications) is absolutely positioned at the top center of the CENTER PANEL (not the viewport). This ensures:
+- Pixel-perfect positioning relative to content area
+- Proper centering when sidebars open/close
 - Consistent user experience when navigating
 
 ### Omnibar Location
 
-The omnibar lives in `src/app/(dashboard)/dashboard-shell.tsx`:
+The omnibar lives in `src/app/(dashboard)/dashboard-shell.tsx`, inside the main content's scroll container:
 
 ```tsx
-{/* GLOBAL OMNIBAR - Fixed at top center, same position on all views */}
-<div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-  <div className="relative pointer-events-auto">
-    <Omnibar isCompact={false} />
-    <ToastStack isCompact={false} />
+<div className="flex-1 overflow-auto relative">
+  {/* OMNIBAR - Absolute positioned at top center of content area */}
+  <div className="absolute top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+    <div className="pointer-events-auto">
+      <Omnibar isCompact={false} />
+      <ToastStack isCompact={false} />
+    </div>
   </div>
+  {children}
 </div>
 ```
 
 ### Required Page Structure
 
-Pages use standard `p-6` padding. The header section uses `pt-5 pb-4` to match the original PageHeader spacing, placing the page title at the same vertical level as the centered omnibar:
+Pages must use the EXACT same header structure as the original PageHeader: `pt-5 pb-4 px-6 min-h-[76px]`. This places the page title at the same vertical level as the centered omnibar:
 
 ```tsx
 export default function AnyViewPage() {
   return (
-    <div className="flex-1 p-6">
-      {/* Page header - pt-5 pb-4 matches original PageHeader spacing */}
-      <div className="pt-5 pb-4 mb-2">
+    <div className="flex-1">
+      {/* Header row - matches original PageHeader: pt-5 pb-4 px-6 min-h-[76px] */}
+      <div className="pt-5 pb-4 px-6 min-h-[76px]">
         <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
           Page Title
         </h1>
@@ -175,7 +178,9 @@ export default function AnyViewPage() {
       </div>
 
       {/* Page content */}
-      {/* ... */}
+      <div className="px-6 pb-6">
+        {/* ... */}
+      </div>
     </div>
   );
 }
@@ -184,14 +189,15 @@ export default function AnyViewPage() {
 ### DO's and DON'Ts
 
 **DO**:
-- Use `p-6` for standard page padding
-- Use `pt-5 pb-4` on the header section to align with the global omnibar
-- The omnibar floats at the same vertical level as the page title
+- Use `pt-5 pb-4 px-6 min-h-[76px]` for the header row (exact PageHeader values)
+- Use `px-6 pb-6` for page content sections
+- Keep `flex-1` on the root container
 
 **DON'T**:
 - Import or use `PageHeader` component (deprecated)
 - Render `Omnibar` or `ToastStack` in individual pages
-- Use `pt-20` or other large top padding (pushes content too far down)
+- Use `p-6` on root (splits padding incorrectly)
+- Use different header padding values (breaks alignment)
 
 ---
 

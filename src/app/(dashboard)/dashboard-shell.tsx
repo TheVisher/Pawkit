@@ -337,7 +337,14 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
             transition: 'margin 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
           }}
         >
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-auto relative">
+            {/* OMNIBAR - Absolute positioned at top center of content area */}
+            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+              <div className="pointer-events-auto">
+                <Omnibar isCompact={false} />
+                <ToastStack isCompact={false} />
+              </div>
+            </div>
             {children}
           </div>
         </main>
@@ -370,14 +377,6 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
       </div>
 
       <AddCardModal />
-
-      {/* GLOBAL OMNIBAR - Fixed at top center, same position on all views */}
-      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-        <div className="relative pointer-events-auto">
-          <Omnibar isCompact={false} />
-          <ToastStack isCompact={false} />
-        </div>
-      </div>
     </div>
   );
 }
