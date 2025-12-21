@@ -5,6 +5,7 @@ import { Link2, FileText, Loader2 } from 'lucide-react';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCurrentWorkspaceId, useCollections } from '@/lib/stores';
+import { useToast } from '@/lib/stores/toast-store';
 import {
   Dialog,
   DialogContent,
@@ -29,6 +30,7 @@ export function AddCardModal() {
   const createCard = useDataStore((state) => state.createCard);
   const workspaceId = useCurrentWorkspaceId();
   const collections = useCollections();
+  const { success, error } = useToast();
 
   // Bookmark form state
   const [bookmarkUrl, setBookmarkUrl] = useState('');
@@ -137,9 +139,11 @@ export function AddCardModal() {
         isFileCard: false,
       });
 
+      success('Bookmark saved');
       closeAddCard();
-    } catch (error) {
-      console.error('Failed to save bookmark:', error);
+    } catch (err) {
+      console.error('Failed to save bookmark:', err);
+      error('Failed to save bookmark');
     } finally {
       setIsSaving(false);
     }
@@ -164,9 +168,11 @@ export function AddCardModal() {
         isFileCard: false,
       });
 
+      success('Note created');
       closeAddCard();
-    } catch (error) {
-      console.error('Failed to save note:', error);
+    } catch (err) {
+      console.error('Failed to save note:', err);
+      error('Failed to save note');
     } finally {
       setIsSaving(false);
     }
