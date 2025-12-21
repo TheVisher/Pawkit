@@ -92,22 +92,11 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
           boxShadow: 'var(--card-shadow, 0 2px 8px rgba(0, 0, 0, 0.08))',
         }}
       >
-        {/* Colored blur background effect - uses thumbnail as blurred background */}
-        {hasImage && (
-          <div className="absolute inset-0 overflow-hidden rounded-2xl">
-            <Image
-              src={card.image!}
-              alt=""
-              fill
-              sizes="(max-width: 768px) 100vw, 300px"
-              className="object-cover scale-110 blur-3xl opacity-30 saturate-150"
-              onError={() => setImageError(true)}
-            />
-          </div>
-        )}
+        {/* NOTE: Colored blur background effect removed - was causing flickering
+            If we want to restore it later, use CSS background-image instead of a second Image component */}
 
         {/* Card content container */}
-        <div className="relative flex flex-col backdrop-blur-sm">
+        <div className="relative flex flex-col">
           {/* Thumbnail / Image */}
           <div
             className="relative overflow-hidden"
