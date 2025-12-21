@@ -244,3 +244,35 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ==========================================================================
+   MASONRY CARD ANIMATIONS
+   ========================================================================== */
+
+/* New card entrance animation - fade in only (position handled separately) */
+@keyframes card-enter {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-card-enter {
+  animation: card-enter 350ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Scale effect applied to the card content, not the positioned wrapper */
+.animate-card-enter > * {
+  animation: card-scale 350ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes card-scale {
+  0% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
