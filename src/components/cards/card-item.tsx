@@ -60,6 +60,7 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
         style={{
           background: 'var(--bg-surface-2)',
           border: '1px solid var(--border-subtle)',
+          boxShadow: 'var(--card-shadow, 0 2px 8px rgba(0, 0, 0, 0.08))',
         }}
       >
         {/* Colored blur background effect - uses thumbnail as blurred background */}
@@ -237,6 +238,7 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
       style={{
         background: 'var(--bg-surface-2)',
         border: '1px solid var(--border-subtle)',
+        boxShadow: 'var(--card-shadow, 0 2px 8px rgba(0, 0, 0, 0.08))',
       }}
     >
       {/* Favicon / Icon */}
