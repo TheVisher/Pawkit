@@ -360,12 +360,12 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
                   style={{
                     position: 'absolute',
                     width: cardWidth,
-                    // Use transform for GPU-accelerated positioning
-                    transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+                    left: pos.x,
+                    top: pos.y,
                     // Smooth transitions for existing cards, none during drag
                     transition: activeId
                       ? 'none'
-                      : `transform ${ANIMATION_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+                      : `left ${ANIMATION_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1), top ${ANIMATION_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`,
                     // New cards start invisible for animation
                     ...(isNewCard && { animationDuration: `${ANIMATION_DURATION}ms` }),
                   }}
