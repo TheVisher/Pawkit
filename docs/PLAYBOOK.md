@@ -117,6 +117,7 @@ These decisions were made during V2 planning and differ from V1 patterns:
 | **Framework** | Next.js 15 (App Router) | Current stable, RSC support |
 | **Language** | TypeScript (strict) | Type safety, better DX |
 | **Runtime** | React 19 | Latest features |
+| **ORM** | Prisma 5.22.0 | **Strict Version:** Works reliably with Next.js without requiring Accelerate/driver adapters by default. |
 
 ### UI & Styling
 
@@ -669,6 +670,15 @@ User Action (click, type, drag)
 7. 🆕 Coordinate with other tabs via BroadcastChannel
 ```
 
+### User Management
+
+**Status:** JIT Sync Pattern.
+
+To handle the gap between Supabase Auth (managed) and Prisma (public schema), we currently use a **Just-in-Time (JIT) Upsert** strategy:
+- When creating a Workspace (`POST /api/workspaces`), we first `upsert` the user record into `public.User`.
+- This ensures foreign key constraints are met without complex webhooks.
+- **Future Optimization:** Move this logic to a Supabase Database Trigger (`auth.users` -> `public.User`) for better performance and reliability.
+
 ### Workspace Isolation
 
 - All queries filter by `workspaceId`
@@ -687,35 +697,39 @@ User Action (click, type, drag)
 
 ---
 
-## 6. UI Structure
+### UI Structure
+
+#### Icon System (V2 Convention)
+
+To maintain a high-density, professional look, V2 uses specific Lucide icon patterns:
+- **Main Navigation Icons:** 24px (`h-6 w-6`)
+- **Header Action Icons:** 20px (`h-5 w-5`)
+- **List Item Icons:** 16px (`h-4 w-4`)
+- **Stroke Weight:** Default (2px) unless otherwise specified.
+
+**Action Mapping:**
+- **Anchor Panel:** `Maximize2`
+- **Float Panel:** `Minimize2`
+- **Close Sidebar (Left):** `ArrowLeftToLine`
+- **Open Sidebar (Left):** `ArrowRightFromLine`
+- **Close Sidebar (Right):** `ArrowRightToLine`
+- **Open Sidebar (Right):** `ArrowLeftFromLine`
 
 ### Layout Modes
 
-~~**Floating (unanchored):**~~
-```
-┌─────┐   ┌───────────────────┐   ┌─────┐
-│  L  │   │      CENTER       │   │  R  │
-└─────┘   └───────────────────┘   └─────┘
-     Background visible between panels
-```
-
-~~**Anchored (merged):**~~
-```
-┌─────────────────────────────────────────┐
-│   L   │        CENTER         │    R    │
-└─────────────────────────────────────────┘
-          One unified panel
-```
-
-~~Each sidebar can be independently anchored or floating.~~
-
-**Update:** Layout modes are strictly enforced via `globals.css` variables (`--panel-bg`, `--panel-border`, etc.). The 3-panel system must match V1's spacing (16px gaps) and rounding (rounded-2xl).
+**Standard Metrics (V1 Parity):**
+- **Panel Gaps:** 16px (when floating)
+- **Panel Rounding:** `rounded-2xl` (16px)
+- **Header Spacing:** `pt-5 pb-4 px-6 min-h-[76px]`
+- **Content Padding:** `px-6 pb-6`
+- **Omnibar Position:** Centered horizontally in the content area (`absolute left-1/2 -translate-x-1/2`), 20px from top (`top-5`).
 
 **🆕 Anchor Behavior:**
-- **Floating:** All panels have gaps and full border-radius
-- **Left Anchored:** Left panel merges with center (no gap, shared edge)
-- **Right Anchored:** Right panel merges with center
-- **Both Anchored:** Single unified panel with outer-edge rounding only
+- **Floating:** All panels have 16px gaps and full border-radius.
+- **Left Anchored:** Left panel merges with center (no gap, shared edge, `rounded-none` on shared side).
+- **Right Anchored:** Right panel merges with center.
+- **Both Anchored:** Single unified panel with outer-edge rounding only.
+- **Full Screen Mode:** Activated when the Left Sidebar is anchored. Removes outer layout padding.
 
 ### Left Sidebar
 
@@ -846,6 +860,16 @@ PAWKIT ────────────────────[▼]
 │ [+] [ Search Pawkit...                    ] [⌘K] [?] │
 └──────────────────────────────────────────────────────┘
 ```
+
+**🆕 Omnibar-Toast System (Signature Feature)**
+
+The Omnibar doubles as the global toast/notification container.
+1. **Morphing:** When a notification triggers, the Omnibar morphs from a Search input into a Toast display.
+2. **Elastic Entry:** New toasts "push through" the bar with an elastic, high-energy animation.
+3. **Spring Stack:** Multiple toasts "pop out" below the bar using spring physics.
+4. **Directional Growth:** The stack grows downward from the top-center.
+5. **Auto-Fade:** Oldest toasts fade out based on a 5s duration or manual dismissal.
+6. **Implementation:** Powered by `framer-motion` for spring/elastic physics.
 
 **+ Menu:**
 ```
@@ -1132,7 +1156,44 @@ src/
 
 ---
 
-## 8. Sync System
+### Sync System
+
+**Status:** Local-first engine implemented (Dexie + Queue). Server-side sync pending.
+
+**Implementation Plan (5 Phases):**
+
+| Phase | What | Objective |
+|-------|------|-----------|
+| **1** | **API Routes** | Create Next.js API routes for `cards`, `collections`, `workspaces`, `events`, `todos`. Must use Supabase Auth for RLS. |
+| **2** | **Sync Service** | Implement the background worker (`lib/services/sync-service.ts`) to consume the Dexie `syncQueue` and call the API. |
+| **3** | **Delta Sync** | Build `/api/sync/delta` to fetch only changed items since `lastSyncTime`. |
+| **4** | **Initial Sync** | Implement the merge logic to hydrate Dexie from the server on fresh app load. |
+| **5** | **Conflict Resolution** | Implement "Active Device Priority" and metadata scoring logic. |
+
+**Priority:** Cards First. Get Card sync working end-to-end before moving to other entities.
+
+### API Strategy & Security (Standard Pattern)
+
+All API routes (`cards`, `collections`, `events`) must adhere to this strict pattern:
+
+1.  **Auth First:**
+    *   Call `supabase.auth.getUser()` immediately.
+    *   If no session, return `401 Unauthorized`.
+    *   **Always** derive `userId` from the session, never the request body.
+
+2.  **Workspace Isolation:**
+    *   Every query MUST filter by `workspaceId`.
+    *   Verify the session `userId` actually belongs to the target `workspaceId`.
+
+3.  **Privacy (404 over 403):**
+    *   If a resource exists but belongs to another user, return `404 Not Found`. Do not leak existence via `403`.
+
+4.  **Standard Endpoints:**
+    *   `GET /api/[resource]`: List with filters (`workspaceId`, `since` timestamp for delta).
+    *   `POST /api/[resource]`: Create new.
+    *   `GET /api/[resource]/[id]`: Fetch single.
+    *   `PATCH /api/[resource]/[id]`: Update partial.
+    *   `DELETE /api/[resource]/[id]`: **Soft delete** only (`deleted: true`).
 
 ### Dexie Schema
 
@@ -1703,6 +1764,20 @@ server.setRequestHandler('tools/call', async (request) => {
 - **Glass Mode:** Uses `hsl(0 0% 100% / 0.03)` with `blur(20px)` and `saturate(1.2)` to match V1 high-fidelity translucency.
 - **Persistence:** The `styleMode` ('glass' | 'modern') is managed in `ui-store.ts` and applied as a `data-style` attribute on `documentElement`. Stored in localStorage key: `pawkit_device_preferences`.
 
+### Glass Morphism Standard (V2 Signature)
+
+To maintain visibility against dark backgrounds while preserving the "glass" feel, use these specific opacity values:
+
+| Element | Class Utility | Notes |
+|---------|---------------|-------|
+| **Modal/Panel Base** | `bg-[hsl(0_0%_12%/0.70)]` | 70% opacity + `backdrop-blur-[12px]` |
+| **Input/Container** | `bg-white/10` | 10% opacity for contrast |
+| **Border** | `border-white/15` | 15% opacity for definition |
+| **Focus State** | `focus:border-white/25` | 25% opacity on focus |
+| **Hover State** | `hover:bg-white/15` | Slight brightening |
+
+**Do NOT use solid colors (`bg-zinc-900`) for internal containers.** Always use `white/XX` alpha values to allow the background blur to shine through.
+
 ### Accent Color Override
 
 ```typescript
@@ -1972,6 +2047,7 @@ ALTER TABLE "Card" ALTER COLUMN "workspaceId" SET NOT NULL;
    - Search input
    - + menu with all creation options
    - Command palette (⌘K)
+   - **🆕 Omnibar-Toast System:** Elastic morphing and spring-physics notification stack (`framer-motion`)
 
 ### Phase 3: Views
 
