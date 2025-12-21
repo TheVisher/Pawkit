@@ -662,40 +662,28 @@ User Action (click, type, drag)
 
 ```
 1. Check authentication (Supabase session)
-2. Get/create default workspace
-3. Load ALL data from Dexie for current workspace
-4. Render UI immediately (no loading state)
-5. Start background sync
-6. Subscribe to Supabase Realtime (optional)
-7. 🆕 Coordinate with other tabs via BroadcastChannel
+2. Sync User: Upsert user record into public.User (JIT Sync)
+3. Workspace Recovery:
+   - Check local Dexie for workspaces.
+   - If empty, fetch from server (/api/workspaces).
+   - If server has data, hydrate Dexie and set current workspace.
+   - Only if both are empty, create ONE default workspace.
+4. Load ALL data from Dexie for current workspace
+5. Render UI immediately (no loading state)
+6. Start background sync
+7. Coordinate with other tabs via BroadcastChannel
 ```
 
 ### User Management
 
-**Status:** JIT Sync Pattern.
+**Strategy:** Just-in-Time (JIT) Sync.
 
-To handle the gap between Supabase Auth (managed) and Prisma (public schema), we currently use a **Just-in-Time (JIT) Upsert** strategy:
-- When creating a Workspace (`POST /api/workspaces`), we first `upsert` the user record into `public.User`.
-- This ensures foreign key constraints are met without complex webhooks.
-- **Future Optimization:** Move this logic to a Supabase Database Trigger (`auth.users` -> `public.User`) for better performance and reliability.
+To bridge the gap between Supabase Auth and our Prisma schema, we use a JIT sync pattern:
+- The `DashboardShell` ensures a `public.User` record exists during the first workspace check.
+- This satisfies foreign key constraints for all subsequent content creation.
+- A `workspaceEnsured` ref guard prevents double-initialization in React Strict Mode.
 
 ### Workspace Isolation
-
-- All queries filter by `workspaceId`
-- Switching workspace = clear Zustand + reload from Dexie
-- URL reflects workspace: `/w/{workspace-slug}/library`
-- Each workspace has completely isolated data
-
-### Offline Behavior
-
-- All CRUD operations work offline
-- Operations queued in sync queue
-- When online, queue processes
-- Conflict resolution: last-write-wins by `updatedAt`
-- **🆕 Active device awareness (device used in last hour gets priority)**
-- **🆕 Metadata quality scoring (better metadata wins even if older)**
-
----
 
 ### UI Structure
 

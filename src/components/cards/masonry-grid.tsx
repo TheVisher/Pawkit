@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   DndContext,
   DragOverlay,
-  closestCenter,
+  pointerWithin,
   PointerSensor,
   useSensor,
   useSensors,
   DragStartEvent,
   DragEndEvent,
-  DragMoveEvent,
+  DragOverEvent,
 } from '@dnd-kit/core';
 import { snapCenterToCursor } from '@dnd-kit/modifiers';
 import {
@@ -293,7 +294,7 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
     setOverId(null);
   }, []);
 
-  const handleDragOver = useCallback((event: DragMoveEvent) => {
+  const handleDragOver = useCallback((event: DragOverEvent) => {
     const { over } = event;
     // Update overId to show drop indicator
     setOverId(over?.id as string | null);
@@ -336,7 +337,7 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
@@ -396,25 +397,29 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
         </div>
       </SortableContext>
 
-      <DragOverlay
-        adjustScale={false}
-        dropAnimation={null}
-        modifiers={[snapCenterToCursor]}
-      >
-        {activeCard && (
-          <div
-            style={{
-              width: cardWidth * 0.6, // 60% of original size
-              opacity: 0.85,
-              transform: 'rotate(-2deg)', // Slight tilt for visual feedback
-              pointerEvents: 'none',
-              filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4))',
-            }}
-          >
-            <CardItem card={activeCard} variant="grid" />
-          </div>
-        )}
-      </DragOverlay>
+      {typeof document !== 'undefined' && createPortal(
+        <DragOverlay
+          adjustScale={false}
+          dropAnimation={null}
+          modifiers={[snapCenterToCursor]}
+          style={{ zIndex: 9999 }}
+        >
+          {activeCard && (
+            <div
+              style={{
+                width: cardWidth * 0.6, // 60% of original size
+                opacity: 0.85,
+                transform: 'rotate(-2deg)', // Slight tilt for visual feedback
+                pointerEvents: 'none',
+                filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4))',
+              }}
+            >
+              <CardItem card={activeCard} variant="grid" />
+            </div>
+          )}
+        </DragOverlay>,
+        document.body
+      )}
     </DndContext>
   );
 }
