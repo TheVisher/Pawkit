@@ -109,25 +109,28 @@ export const updateEventSchema = z.object({
  */
 export const listEventsQuerySchema = z.object({
   workspaceId: z.string().min(1, 'Workspace ID is required'),
-  since: z.string().datetime().optional(),
+  since: z.string().datetime().optional().nullable(),
   deleted: z
     .string()
     .transform((v) => v === 'true')
-    .optional(),
+    .optional()
+    .nullable(),
   // Date range filtering for calendar views
-  startDate: z.string().regex(datePattern, 'Start date must be YYYY-MM-DD format').optional(),
-  endDate: z.string().regex(datePattern, 'End date must be YYYY-MM-DD format').optional(),
+  startDate: z.string().regex(datePattern, 'Start date must be YYYY-MM-DD format').optional().nullable(),
+  endDate: z.string().regex(datePattern, 'End date must be YYYY-MM-DD format').optional().nullable(),
   limit: z
     .string()
     .transform((v) => parseInt(v, 10))
     .pipe(z.number().min(1).max(500)) // Higher limit for calendar month views
-    .optional(),
+    .optional()
+    .nullable(),
   offset: z
     .string()
     .transform((v) => parseInt(v, 10))
     .pipe(z.number().min(0))
-    .optional(),
-});
+    .optional()
+    .nullable(),
+}).passthrough();
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;

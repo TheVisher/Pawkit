@@ -148,23 +148,26 @@ export const updateCardSchema = z.object({
  */
 export const listCardsQuerySchema = z.object({
   workspaceId: z.string().min(1, 'Workspace ID is required'),
-  since: z.string().datetime().optional(),
+  since: z.string().datetime().optional().nullable(),
   deleted: z
     .string()
     .transform((v) => v === 'true')
-    .optional(),
-  type: CardType.optional(),
+    .optional()
+    .nullable(),
+  type: CardType.optional().nullable(),
   limit: z
     .string()
     .transform((v) => parseInt(v, 10))
     .pipe(z.number().min(1).max(100))
-    .optional(),
+    .optional()
+    .nullable(),
   offset: z
     .string()
     .transform((v) => parseInt(v, 10))
     .pipe(z.number().min(0))
-    .optional(),
-});
+    .optional()
+    .nullable(),
+}).passthrough();
 
 export type CreateCardInput = z.infer<typeof createCardSchema>;
 export type UpdateCardInput = z.infer<typeof updateCardSchema>;
