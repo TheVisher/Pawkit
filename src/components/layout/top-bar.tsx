@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, LayoutGrid, List, ArrowUpDown, Plus } from 'lucide-react';
-import { useLayout, useSorting } from '@/lib/stores/view-store';
+import { Search, LayoutGrid, List, Columns, ArrowUpDown, Plus } from 'lucide-react';
+import { useLayout, useSorting, useViewStore } from '@/lib/stores/view-store';
 import { useCommandPalette } from '@/lib/stores/ui-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ const sortOptions = [
 export function TopBar() {
   const [mounted, setMounted] = useState(false);
   const layout = useLayout();
+  const setLayout = useViewStore((state) => state.setLayout);
   const { sortBy, toggleSortOrder } = useSorting();
   const { toggle: toggleCommandPalette } = useCommandPalette();
   const openAddCard = useModalStore((state) => state.openAddCard);
@@ -56,6 +57,22 @@ export function TopBar() {
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => setLayout('masonry')}
+            title="Masonry layout"
+            className={cn(
+              'h-7 w-7',
+              currentLayout === 'masonry'
+                ? 'bg-bg-surface-3 text-text-primary'
+                : 'text-text-muted hover:text-text-primary hover:bg-transparent'
+            )}
+          >
+            <Columns className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLayout('grid')}
+            title="Grid layout"
             className={cn(
               'h-7 w-7',
               currentLayout === 'grid'
@@ -68,6 +85,8 @@ export function TopBar() {
           <Button
             variant="ghost"
             size="icon"
+            onClick={() => setLayout('list')}
+            title="List layout"
             className={cn(
               'h-7 w-7',
               currentLayout === 'list'
