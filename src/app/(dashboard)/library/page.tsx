@@ -108,15 +108,14 @@ export default function LibraryPage() {
     return (
       <div className="flex-1">
         <div className="pt-5 pb-4 px-6 min-h-[76px]">
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Library</h1>
-          <p style={{ color: 'var(--text-muted)' }} className="mt-1">All your saved content</p>
+          <h1 className="text-2xl font-semibold text-primary">Library</h1>
+          <p className="mt-1 text-muted">All your saved content</p>
         </div>
         <div className="px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => (
             <div
               key={i}
-              className="h-48 rounded-2xl animate-pulse"
-              style={{ background: 'var(--bg-surface-2)' }}
+              className="h-48 rounded-2xl animate-pulse bg-surface-2"
             />
           ))}
         </div>
@@ -128,8 +127,8 @@ export default function LibraryPage() {
     <div className="flex-1">
       {/* Header row - matches original PageHeader: pt-5 pb-4 px-6 min-h-[76px] */}
       <div className="pt-5 pb-4 px-6 min-h-[76px]">
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Library</h1>
-        <p style={{ color: 'var(--text-muted)' }} className="mt-1">
+        <h1 className="text-2xl font-semibold text-primary">Library</h1>
+        <p className="mt-1 text-muted">
           {activeCards.length === 0
             ? 'All your saved content'
             : `${filteredCards.length} item${filteredCards.length === 1 ? '' : 's'}`}
@@ -176,20 +175,17 @@ export default function LibraryPage() {
         ) : filteredCards.length === 0 ? (
           // Show filtered empty state
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-              style={{ background: 'var(--bg-surface-2)' }}
-            >
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 bg-surface-2">
               {currentTab === 'notes' ? (
-                <FileText className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
+                <FileText className="w-8 h-8 text-muted" />
               ) : (
-                <Bookmark className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
+                <Bookmark className="w-8 h-8 text-muted" />
               )}
             </div>
-            <p style={{ color: 'var(--text-secondary)' }} className="font-medium">
+            <p className="font-medium text-secondary">
               No {currentTab === 'notes' ? 'notes' : 'bookmarks'} yet
             </p>
-            <p style={{ color: 'var(--text-muted)' }} className="text-sm mt-1">
+            <p className="text-sm mt-1 text-muted">
               {currentTab === 'notes'
                 ? 'Create a note to get started'
                 : 'Save a URL to get started'}
@@ -218,32 +214,17 @@ function TabButton({ active, onClick, icon: Icon, label, count }: TabButtonProps
       onClick={onClick}
       className={cn(
         'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200',
-        'border backdrop-blur-sm'
+        'border backdrop-blur-sm',
+        active ? 'tab-active' : 'tab-inactive'
       )}
-      style={
-        active
-          ? {
-              background: 'linear-gradient(to bottom, var(--bg-surface-3) 0%, var(--bg-surface-2) 100%)',
-              boxShadow: 'var(--raised-shadow), 0 0 20px hsla(var(--accent-h) var(--accent-s) 50% / 0.3)',
-              border: '1px solid hsla(var(--accent-h) var(--accent-s) 50% / 0.5)',
-              color: 'var(--ds-accent)',
-            }
-          : {
-              background: 'var(--bg-surface-1)',
-              boxShadow: 'var(--inset-shadow)',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--text-secondary)',
-            }
-      }
     >
       <Icon className="w-4 h-4" />
       <span>{label}</span>
       <span
         className={cn(
-          'px-1.5 py-0.5 text-xs rounded-md',
+          'px-1.5 py-0.5 text-xs rounded-md bg-surface-2',
           active ? 'opacity-80' : 'opacity-60'
         )}
-        style={{ background: 'var(--bg-surface-2)' }}
       >
         {count}
       </span>

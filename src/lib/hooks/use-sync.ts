@@ -21,6 +21,9 @@ import {
 } from '@/lib/services/sync-service';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { createClient } from '@/lib/supabase/client';
+import { createModuleLogger } from '@/lib/utils/logger';
+
+const log = createModuleLogger('useSync');
 
 interface UseSyncOptions {
   /**
@@ -115,7 +118,7 @@ export function useSync(options: UseSyncOptions = {}): UseSyncReturn {
   // Handle online/offline events
   useEffect(() => {
     const handleOnline = () => {
-      console.log('[useSync] Online');
+      log.debug('Online');
       useSyncStore.getState().goOnline();
 
       if (syncOnOnline) {
@@ -125,7 +128,7 @@ export function useSync(options: UseSyncOptions = {}): UseSyncReturn {
     };
 
     const handleOffline = () => {
-      console.log('[useSync] Offline');
+      log.debug('Offline');
       useSyncStore.getState().goOffline();
     };
 
@@ -149,7 +152,7 @@ export function useSync(options: UseSyncOptions = {}): UseSyncReturn {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        console.log('[useSync] Tab visible, syncing...');
+        log.debug('Tab visible, syncing...');
         deltaSync();
       }
     };
@@ -168,7 +171,7 @@ export function useSync(options: UseSyncOptions = {}): UseSyncReturn {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event) => {
         if (event === 'SIGNED_OUT') {
-          console.log('[useSync] User signed out, clearing local data');
+          log.info('User signed out, clearing local data');
           clearLocalData();
         }
       }

@@ -21,6 +21,9 @@ import type {
 import { useSyncStore } from '@/lib/stores/sync-store';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { processQueue, QUEUE_DEBOUNCE_MS } from './sync-queue';
+import { createModuleLogger } from '@/lib/utils/logger';
+
+const log = createModuleLogger('SyncService');
 
 // =============================================================================
 // CONSTANTS
@@ -178,12 +181,12 @@ class SyncService {
    */
   async fullSync(): Promise<void> {
     if (!this.workspaceId) {
-      console.warn('[SyncService] No workspace ID set, skipping sync');
+      log.warn('No workspace ID set, skipping sync');
       return;
     }
 
     if (this.isSyncing) {
-      console.log('[SyncService] Sync already in progress, skipping');
+      log.debug('Sync already in progress, skipping');
       return;
     }
 
@@ -192,7 +195,7 @@ class SyncService {
       return;
     }
 
-    console.log('[SyncService] Starting full sync');
+    log.info('Starting full sync');
     this.isSyncing = true;
     useSyncStore.getState().startSync();
 
@@ -213,10 +216,10 @@ class SyncService {
 
       useSyncStore.getState().finishSync(true);
       useToastStore.getState().toast({ type: 'success', message: 'Sync complete' });
-      console.log('[SyncService] Full sync complete');
+      log.info('Full sync complete');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      console.error('[SyncService] Full sync failed:', message);
+      log.error('Full sync failed:', message);
       useSyncStore.getState().finishSync(false, message);
       useToastStore.getState().toast({ type: 'error', message: `Sync failed: ${message}` });
     } finally {
@@ -229,12 +232,12 @@ class SyncService {
    */
   async deltaSync(): Promise<void> {
     if (!this.workspaceId) {
-      console.warn('[SyncService] No workspace ID set, skipping sync');
+      log.warn('No workspace ID set, skipping sync');
       return;
     }
 
     if (this.isSyncing) {
-      console.log('[SyncService] Sync already in progress, skipping');
+      log.debug('Sync already in progress, skipping');
       return;
     }
 
@@ -247,11 +250,11 @@ class SyncService {
 
     // If no last sync, do full sync
     if (!lastSync) {
-      console.log('[SyncService] No last sync time, performing full sync');
+      log.info('No last sync time, performing full sync');
       return this.fullSync();
     }
 
-    console.log('[SyncService] Starting delta sync since', lastSync.toISOString());
+    log.info('Starting delta sync since', lastSync.toISOString());
     this.isSyncing = true;
     useSyncStore.getState().startSync();
 
@@ -272,10 +275,10 @@ class SyncService {
 
       useSyncStore.getState().finishSync(true);
       useToastStore.getState().toast({ type: 'success', message: 'Sync complete' });
-      console.log('[SyncService] Delta sync complete');
+      log.info('Delta sync complete');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      console.error('[SyncService] Delta sync failed:', message);
+      log.error('Delta sync failed:', message);
       useSyncStore.getState().finishSync(false, message);
       useToastStore.getState().toast({ type: 'error', message: `Sync failed: ${message}` });
     } finally {
@@ -347,7 +350,7 @@ class SyncService {
       url.searchParams.set('since', since.toISOString());
     }
 
-    console.log(`[SyncService] Pulling ${entity}...`);
+    log.debug(`Pulling ${entity}...`);
 
     const response = await fetch(url.toString(), {
       credentials: 'include',
@@ -363,7 +366,7 @@ class SyncService {
     const data = await response.json();
     const items = data[entity] || [];
 
-    console.log(`[SyncService] Received ${items.length} ${entity}`);
+    log.debug(`Received ${items.length} ${entity}`);
 
     // Upsert items to local database
     await this.upsertItems(entity, items);
@@ -389,7 +392,7 @@ class SyncService {
 
       // Skip if we have pending local changes (LWW - local wins if pending)
       if (pendingIds.has(serverItem.id)) {
-        console.log(`[SyncService] Skipping ${entity}/${serverItem.id} (pending local changes)`);
+        log.debug(`Skipping ${entity}/${serverItem.id} (pending local changes)`);
         continue;
       }
 
@@ -517,7 +520,7 @@ class SyncService {
     switch (type) {
       case 'sync-complete':
         // Another tab completed sync, refresh our data from IndexedDB
-        console.log('[SyncService] Another tab completed sync');
+        log.debug('Another tab completed sync');
         // Stores will reactively update from Dexie changes
         break;
 
@@ -541,7 +544,7 @@ class SyncService {
    * Clear all local data (on logout)
    */
   async clearLocalData(): Promise<void> {
-    console.log('[SyncService] Clearing local data');
+    log.info('Clearing local data');
 
     await db.transaction(
       'rw',

@@ -6,6 +6,15 @@
 import { create } from 'zustand';
 import type { User, Session } from '@supabase/supabase-js';
 
+/**
+ * Minimal user info for cases where we only have id/email from server props
+ * (e.g., DashboardShell receives these from the layout server component)
+ */
+export interface BasicUserInfo {
+  id: string;
+  email: string;
+}
+
 interface AuthState {
   // State
   user: User | null;
@@ -16,6 +25,7 @@ interface AuthState {
 
   // Actions
   setUser: (user: User | null) => void;
+  setBasicUserInfo: (info: BasicUserInfo) => void;
   setSession: (session: Session | null) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
@@ -33,6 +43,21 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   // Actions
   setUser: (user) => set({ user }),
+
+  // Set minimal user info when full User object isn't available
+  // Creates a partial User-like object that satisfies common usage patterns
+  setBasicUserInfo: ({ id, email }) =>
+    set({
+      user: {
+        id,
+        email,
+        // Required Supabase User fields with sensible defaults
+        app_metadata: {},
+        user_metadata: {},
+        aud: 'authenticated',
+        created_at: new Date().toISOString(),
+      } as User,
+    }),
 
   setSession: (session) => set({ session }),
 

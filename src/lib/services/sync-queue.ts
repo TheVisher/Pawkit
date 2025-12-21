@@ -7,6 +7,9 @@ import { db } from '@/lib/db';
 import type { SyncQueueItem } from '@/lib/db';
 import { useSyncStore } from '@/lib/stores/sync-store';
 import { useDataStore } from '@/lib/stores/data-store';
+import { createModuleLogger } from '@/lib/utils/logger';
+
+const log = createModuleLogger('SyncQueue');
 
 // Maximum retry attempts before marking as failed
 const MAX_RETRIES = 3;
@@ -84,7 +87,7 @@ export async function processQueue(): Promise<QueueProcessResult> {
 
   // Check if online
   if (!navigator.onLine) {
-    console.log('[SyncQueue] Offline, skipping queue processing');
+    log.debug('Offline, skipping queue processing');
     return result;
   }
 
@@ -96,7 +99,7 @@ export async function processQueue(): Promise<QueueProcessResult> {
     return result;
   }
 
-  console.log(`[SyncQueue] Processing ${items.length} pending items (${allItems.length - items.length} failed/parked)`);
+  log.debug(`Processing ${items.length} pending items (${allItems.length - items.length} failed/parked)`);
 
   // Update pending count in store
   useSyncStore.getState().setPendingCount(items.length);
@@ -111,7 +114,7 @@ export async function processQueue(): Promise<QueueProcessResult> {
       useSyncStore.getState().setPendingCount(items.length - result.processed - result.failed);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      console.error(`[SyncQueue] Failed to process item ${item.id}:`, errorMessage);
+      log.error(`Failed to process item ${item.id}:`, errorMessage);
 
       // Increment retry count
       const newRetryCount = (item.retryCount || 0) + 1;
@@ -140,7 +143,7 @@ export async function processQueue(): Promise<QueueProcessResult> {
   const remainingCount = await getPendingItemCount();
   useSyncStore.getState().setPendingCount(remainingCount);
 
-  console.log(`[SyncQueue] Completed: ${result.processed} processed, ${result.failed} failed`);
+  log.debug(`Completed: ${result.processed} processed, ${result.failed} failed`);
 
   return result;
 }
@@ -155,7 +158,7 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
   // Get API endpoint
   const { url, method } = getApiEndpoint(entityType, operation, entityId);
 
-  console.log(`[SyncQueue] ${method} ${url} (${entityType}/${operation})`);
+  log.debug(`${method} ${url} (${entityType}/${operation})`);
 
   // Prepare request body
   let body: string | undefined;
