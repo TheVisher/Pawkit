@@ -34,9 +34,9 @@
 - [x] **Omnibar-Toast System (Phase 3.2):** Elastic animations, spring stack physics, and sync status integration.
 - [x] **Metadata Scraper Service (Phase 3.4):** Automated OpenGraph extraction with YouTube support and image validation.
 - [x] **Masonry Layout (Phase 3.5):** Custom left-to-right dense packing algorithm with `dnd-kit` integration and responsive resizing.
+- [x] **Drag-and-Drop Persistence (Phase 3.6):** Persistent manual sorting in Dexie, portal-based overlays, and conflict-free absolute positioning.
 
 ### In Progress 🔄
-- [ ] **Drag-and-Drop Persistence (Phase 3.6):** Custom ordering, reorder persistence in Dexie, and sort conflict resolution.
 - [ ] Collection Management (Create/Edit Pawkits)
 
 ### Not Started ⬜
@@ -53,6 +53,21 @@
 ---
 
 ## Session Log
+
+### Dec 20, 2025 - Mid-Project Health Check & Cleanup
+- **Codebase Sanitization:** Removed 300+ lines of dead code (`TopBar`, `PageHeader`, etc.).
+- **Theme Centralization:** Refactored hardcoded gradients in `DashboardShell` to use CSS variables, ensuring 100% theme support (Light/Dark).
+- **Type Safety:** Fixed `as never` type casting in Auth Store by introducing a strict `BasicUserInfo` interface.
+- **Logging:** Replaced chatty console logs with a dev-only `logger` utility.
+- **Stability:** Confirmed the Workspace Logic self-healing mechanism is working perfectly.
+
+### Dec 20, 2025 - Drag-and-Drop & Layout Stability
+- **DnD Persistence:** Completed Phase 3.6. Implemented a robust manual sorting system that persists to Dexie and Sync.
+- **Bug Resolution:** 
+  - Fixed a 100px cursor offset by isolating `dnd-kit` transforms from absolute masonry positioning.
+  - Resolved clipping issues by porting the `DragOverlay` to `document.body`.
+  - Switched to `pointerWithin` collision detection for better accuracy in dense masonry grids.
+- **Visual Polish:** Added a 60% scale, 85% opacity, and -2 degree tilt effect to dragged items for premium feel.
 
 ### Dec 20, 2025 - Masonry & Performance Polish
 - **Flicker Resolution:** Identified and resolved a major UI flickering issue caused by Zustand array reference changes triggering global re-renders. 
