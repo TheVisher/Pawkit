@@ -20,10 +20,12 @@ import { CSS } from '@dnd-kit/utilities';
 import { CardItem } from './card-item';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
+import { cn } from '@/lib/utils';
 
 // Configuration
 const MIN_CARD_WIDTH = 280;
 const GAP = 16;
+const ANIMATION_DURATION = 350; // ms
 
 interface MasonryGridProps {
   cards: LocalCard[];
@@ -104,6 +106,36 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [measuredHeights, setMeasuredHeights] = useState<Map<string, number>>(new Map());
   const openCardDetail = useModalStore((s) => s.openCardDetail);
+
+  // Track known card IDs to detect new cards
+  const knownCardIds = useRef<Set<string>>(new Set());
+  const [newCardIds, setNewCardIds] = useState<Set<string>>(new Set());
+
+  // Detect new cards when cards array changes
+  useEffect(() => {
+    const currentIds = new Set(cards.map(c => c.id));
+    const newIds = new Set<string>();
+
+    // Find cards that weren't known before
+    for (const id of currentIds) {
+      if (!knownCardIds.current.has(id)) {
+        newIds.add(id);
+      }
+    }
+
+    // Update known cards
+    knownCardIds.current = currentIds;
+
+    // Mark new cards for animation
+    if (newIds.size > 0) {
+      setNewCardIds(newIds);
+      // Clear the "new" status after animation completes
+      const timer = setTimeout(() => {
+        setNewCardIds(new Set());
+      }, ANIMATION_DURATION + 50);
+      return () => clearTimeout(timer);
+    }
+  }, [cards]);
 
   // Observe container width
   useEffect(() => {
@@ -316,16 +348,27 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
                 return null;
               }
 
+              const isNewCard = newCardIds.has(card.id);
+
               return (
                 <div
                   key={card.id}
                   data-card-id={card.id}
+                  className={cn(
+                    // New cards fade in with scale
+                    isNewCard && 'animate-card-enter'
+                  )}
                   style={{
                     position: 'absolute',
                     width: cardWidth,
-                    left: pos.x,
-                    top: pos.y,
-                    transition: activeId ? 'none' : 'all 250ms ease',
+                    // Use transform for GPU-accelerated positioning
+                    transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+                    // Smooth transitions for existing cards, none during drag
+                    transition: activeId
+                      ? 'none'
+                      : `transform ${ANIMATION_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+                    // New cards start invisible for animation
+                    ...(isNewCard && { animationDuration: `${ANIMATION_DURATION}ms` }),
                   }}
                 >
                   <SortableCard
