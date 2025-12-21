@@ -12,6 +12,7 @@ import {
   DragEndEvent,
   DragMoveEvent,
 } from '@dnd-kit/core';
+import { snapCenterToCursor } from '@dnd-kit/modifiers';
 import {
   SortableContext,
   useSortable,
@@ -395,7 +396,11 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
         </div>
       </SortableContext>
 
-      <DragOverlay adjustScale={false} dropAnimation={null}>
+      <DragOverlay
+        adjustScale={false}
+        dropAnimation={null}
+        modifiers={[snapCenterToCursor]}
+      >
         {activeCard && (
           <div
             style={{
