@@ -331,8 +331,12 @@ class SyncService {
 
     // Build URL with query params
     const url = new URL(endpoints[entity], window.location.origin);
-    url.searchParams.set('workspaceId', this.workspaceId);
-    url.searchParams.set('deleted', 'true'); // Include deleted for cleanup
+
+    // Workspaces endpoint doesn't need workspaceId (fetches by auth user)
+    if (entity !== 'workspaces') {
+      url.searchParams.set('workspaceId', this.workspaceId);
+      url.searchParams.set('deleted', 'true'); // Include deleted for cleanup
+    }
 
     if (since) {
       url.searchParams.set('since', since.toISOString());
