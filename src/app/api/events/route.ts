@@ -66,7 +66,11 @@ export async function GET(request: Request) {
       );
     }
 
-    const { workspaceId, since, deleted, startDate, endDate, limit = 100, offset = 0 } = queryResult.data;
+    const { workspaceId, since, deleted, startDate, endDate, limit, offset } = queryResult.data;
+
+    // Handle null values from searchParams (null coalescing, not default values)
+    const effectiveLimit = limit ?? 100;
+    const effectiveOffset = offset ?? 0;
 
     // 3. Verify workspace belongs to user
     const workspace = await prisma.workspace.findFirst({
@@ -105,8 +109,8 @@ export async function GET(request: Request) {
         { date: 'asc' },
         { startTime: 'asc' },
       ],
-      take: limit,
-      skip: offset,
+      take: effectiveLimit,
+      skip: effectiveOffset,
     });
 
     // 5. Return events
@@ -114,8 +118,8 @@ export async function GET(request: Request) {
       events,
       meta: {
         count: events.length,
-        limit,
-        offset,
+        limit: effectiveLimit,
+        offset: effectiveOffset,
       },
     });
   } catch (error) {

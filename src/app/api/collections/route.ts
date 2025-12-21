@@ -64,7 +64,11 @@ export async function GET(request: Request) {
       );
     }
 
-    const { workspaceId, since, deleted, parentId, limit = 100, offset = 0 } = queryResult.data;
+    const { workspaceId, since, deleted, parentId, limit, offset } = queryResult.data;
+
+    // Handle null values from searchParams (null coalescing, not default values)
+    const effectiveLimit = limit ?? 100;
+    const effectiveOffset = offset ?? 0;
 
     // 3. Verify workspace belongs to user
     const workspace = await prisma.workspace.findFirst({
@@ -92,15 +96,15 @@ export async function GET(request: Request) {
         ...(since && {
           updatedAt: { gt: new Date(since) },
         }),
-        // Filter by parent if specified
-        ...(parentId !== undefined && { parentId: parentId || null }),
+        // Filter by parent if specified (check != null to handle both null and undefined)
+        ...(parentId != null && { parentId: parentId || null }),
       },
       orderBy: [
         { position: 'asc' },
         { createdAt: 'desc' },
       ],
-      take: limit,
-      skip: offset,
+      take: effectiveLimit,
+      skip: effectiveOffset,
     });
 
     // 5. Return collections
@@ -108,8 +112,8 @@ export async function GET(request: Request) {
       collections,
       meta: {
         count: collections.length,
-        limit,
-        offset,
+        limit: effectiveLimit,
+        offset: effectiveOffset,
       },
     });
   } catch (error) {
