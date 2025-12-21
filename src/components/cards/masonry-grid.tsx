@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
 // Configuration
 const MIN_CARD_WIDTH = 280;
 const GAP = 16;
-const ANIMATION_DURATION = 350; // ms
+const ANIMATION_DURATION = 300; // ms
 
 interface MasonryGridProps {
   cards: LocalCard[];
@@ -207,6 +207,10 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
     return { positions: posMap, totalHeight: maxHeight > 0 ? maxHeight - GAP : 0 };
   }, [cards, columnCount, cardWidth, measuredHeights]);
 
+  // Track if we're in the middle of measuring to prevent transition flicker
+  const [isMeasuring, setIsMeasuring] = useState(false);
+  const measureTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Measure card heights after render and when cards resize (e.g., images load)
   useEffect(() => {
     if (containerWidth === 0) return;
@@ -230,10 +234,11 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
 
       if (newHeights.size > 0) {
         setMeasuredHeights(prev => {
-          // Only update if heights actually changed
+          // Only update if heights actually changed significantly (> 5px)
           let hasChanges = false;
           for (const [id, h] of newHeights) {
-            if (prev.get(id) !== h) {
+            const prevHeight = prev.get(id);
+            if (!prevHeight || Math.abs(prevHeight - h) > 5) {
               hasChanges = true;
               break;
             }
@@ -247,15 +252,32 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
           return merged;
         });
       }
+
+      // End measuring phase after a short delay
+      if (measureTimeoutRef.current) {
+        clearTimeout(measureTimeoutRef.current);
+      }
+      measureTimeoutRef.current = setTimeout(() => {
+        setIsMeasuring(false);
+      }, 100);
     };
+
+    // Start measuring phase
+    setIsMeasuring(true);
 
     // Initial measurement after a short delay
     const timer = setTimeout(measureCards, 150);
 
-    // Also observe size changes on card elements (for when images load)
-    const resizeObserver = new ResizeObserver(() => {
-      measureCards();
-    });
+    // Debounced resize observer callback
+    let resizeTimeout: NodeJS.Timeout | null = null;
+    const debouncedMeasure = () => {
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      setIsMeasuring(true);
+      resizeTimeout = setTimeout(measureCards, 100);
+    };
+
+    // Observe size changes on card elements (for when images load)
+    const resizeObserver = new ResizeObserver(debouncedMeasure);
 
     // Observe all card elements
     const cardElements = container.querySelectorAll('[data-card-id]');
@@ -263,6 +285,8 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
 
     return () => {
       clearTimeout(timer);
+      if (resizeTimeout) clearTimeout(resizeTimeout);
+      if (measureTimeoutRef.current) clearTimeout(measureTimeoutRef.current);
       resizeObserver.disconnect();
     };
   }, [containerWidth, cards]);
@@ -362,8 +386,8 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
                     width: cardWidth,
                     left: pos.x,
                     top: pos.y,
-                    // Smooth transitions for existing cards, none during drag
-                    transition: activeId
+                    // Disable transitions during drag or measurement to prevent flicker
+                    transition: (activeId || isMeasuring || isNewCard)
                       ? 'none'
                       : `left ${ANIMATION_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1), top ${ANIMATION_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`,
                     // New cards start invisible for animation
