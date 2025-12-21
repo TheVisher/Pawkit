@@ -36,6 +36,7 @@
 - [x] **Masonry Layout (Phase 3.5):** Custom left-to-right dense packing algorithm with `dnd-kit` integration and responsive resizing.
 
 ### In Progress 🔄
+- [ ] **Drag-and-Drop Persistence (Phase 3.6):** Custom ordering, reorder persistence in Dexie, and sort conflict resolution.
 - [ ] Collection Management (Create/Edit Pawkits)
 
 ### Not Started ⬜
@@ -52,6 +53,11 @@
 ---
 
 ## Session Log
+
+### Dec 20, 2025 - Masonry & Performance Polish
+- **Flicker Resolution:** Identified and resolved a major UI flickering issue caused by Zustand array reference changes triggering global re-renders. 
+- **Memoization Standard:** Implemented `React.memo` with custom deep-comparison logic for `CardItem` and `SortableCard`. This ensures only the modified card re-renders during metadata updates or sync status changes.
+- **Architectural win:** Decoupled layout stability from data layer updates, resulting in 60fps animations during library interaction.
 
 ### Dec 20, 2025 - Views & Masonry
 - **Masonry Layout:** Implemented a custom "Shortest Column First" masonry algorithm in `lib/utils/masonry.ts` that preserves left-to-right reading order.

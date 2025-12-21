@@ -14,9 +14,8 @@ import {
 import {
   SortableContext,
   useSortable,
-  rectSortingStrategy,
+  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { CardItem } from './card-item';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
@@ -35,31 +34,33 @@ interface SortableCardProps {
   onClick: () => void;
 }
 
+interface SortableCardInnerProps extends SortableCardProps {
+  isDraggingThis: boolean;
+}
+
 /**
  * Sortable wrapper for individual cards
  * Memoized to prevent re-renders when other cards in the list change
+ *
+ * IMPORTANT: We do NOT apply dnd-kit transforms here because we use
+ * absolute positioning. Transforms would conflict and cause offset issues.
+ * The DragOverlay handles the visual dragging instead.
  */
-const SortableCard = memo(function SortableCard({ card, onClick }: SortableCardProps) {
+const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis }: SortableCardInnerProps) {
   const {
     attributes,
     listeners,
     setNodeRef,
-    transform,
-    transition,
-    isDragging,
   } = useSortable({ id: card.id });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform) || undefined,
-    transition: transition || 'transform 250ms ease',
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 999 : 'auto',
-  };
 
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={{
+        // Hide the original card while dragging - DragOverlay shows it instead
+        opacity: isDraggingThis ? 0.3 : 1,
+        cursor: 'grab',
+      }}
       className="w-full"
       {...attributes}
       {...listeners}
@@ -80,6 +81,7 @@ const SortableCard = memo(function SortableCard({ card, onClick }: SortableCardP
     prevProps.card.pinned === nextProps.card.pinned &&
     prevProps.card._synced === nextProps.card._synced &&
     prevProps.card.status === nextProps.card.status &&
+    prevProps.isDraggingThis === nextProps.isDraggingThis &&
     JSON.stringify(prevProps.card.tags) === JSON.stringify(nextProps.card.tags)
   );
 });
@@ -303,7 +305,7 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <SortableContext items={cardIds} strategy={rectSortingStrategy}>
+      <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
         <div
           ref={containerRef}
           className="relative w-full"
@@ -347,6 +349,7 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
                   <SortableCard
                     card={card}
                     onClick={() => openCardDetail(card.id)}
+                    isDraggingThis={activeId === card.id}
                   />
                 </div>
               );
