@@ -2,6 +2,7 @@
 
 import { CardItem } from './card-item';
 import type { LocalCard } from '@/lib/db';
+import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
 
 interface CardGridProps {
@@ -10,6 +11,7 @@ interface CardGridProps {
 }
 
 export function CardGrid({ cards, layout }: CardGridProps) {
+  const openCardDetail = useModalStore((s) => s.openCardDetail);
   const isListView = layout === 'list';
 
   return (
@@ -25,10 +27,7 @@ export function CardGrid({ cards, layout }: CardGridProps) {
           key={card.id}
           card={card}
           variant={isListView ? 'list' : 'grid'}
-          onClick={() => {
-            // Log card ID for now - detail modal comes in next task
-            console.log('Card clicked:', card.id, card.title || 'Untitled');
-          }}
+          onClick={() => openCardDetail(card.id)}
         />
       ))}
     </div>

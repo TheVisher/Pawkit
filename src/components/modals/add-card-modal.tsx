@@ -180,23 +180,23 @@ export function AddCardModal() {
 
   return (
     <Dialog open={isAddCardOpen} onOpenChange={(open) => !open && closeAddCard()}>
-      <DialogContent className="sm:max-w-[500px] bg-zinc-900/95 backdrop-blur-xl border-zinc-800 shadow-2xl">
+      <DialogContent className="sm:max-w-[500px] bg-[var(--glass-panel-bg)] backdrop-blur-[var(--glass-blur)] backdrop-saturate-[var(--glass-saturate)] border-[var(--glass-border)] shadow-[var(--glass-shadow)]">
         <DialogHeader>
-          <DialogTitle className="text-xl text-zinc-100">Add New</DialogTitle>
+          <DialogTitle className="text-xl text-text-primary">Add New</DialogTitle>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-2">
-          <TabsList className="grid w-full grid-cols-2 bg-zinc-800/50">
+          <TabsList className="grid w-full grid-cols-2 bg-[var(--glass-bg)] border border-[var(--glass-border)]">
             <TabsTrigger
               value="bookmark"
-              className="data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100"
+              className="data-[state=active]:bg-[var(--glass-bg-hover)] data-[state=active]:text-text-primary text-text-secondary"
             >
               <Link2 className="h-4 w-4 mr-2" />
               Bookmark
             </TabsTrigger>
             <TabsTrigger
               value="note"
-              className="data-[state=active]:bg-zinc-700 data-[state=active]:text-zinc-100"
+              className="data-[state=active]:bg-[var(--glass-bg-hover)] data-[state=active]:text-text-primary text-text-secondary"
             >
               <FileText className="h-4 w-4 mr-2" />
               Note
@@ -206,7 +206,7 @@ export function AddCardModal() {
           {/* Bookmark Tab */}
           <TabsContent value="bookmark" className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="url" className="text-zinc-300">
+              <Label htmlFor="url" className="text-text-secondary">
                 URL
               </Label>
               <Input
@@ -217,12 +217,12 @@ export function AddCardModal() {
                 onChange={(e) => setBookmarkUrl(e.target.value)}
                 onPaste={handleUrlPaste}
                 onKeyDown={handleUrlKeyDown}
-                className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+                className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary placeholder:text-text-muted focus:border-[var(--glass-border-hover)] focus:ring-2 focus:ring-[var(--ds-accent)]/30"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-zinc-300">
+              <Label htmlFor="title" className="text-text-secondary">
                 Title
               </Label>
               <div className="relative">
@@ -232,30 +232,30 @@ export function AddCardModal() {
                   value={bookmarkTitle}
                   onChange={(e) => setBookmarkTitle(e.target.value)}
                   disabled={isFetchingMetadata}
-                  className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+                  className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary placeholder:text-text-muted focus:border-[var(--glass-border-hover)] focus:ring-2 focus:ring-[var(--ds-accent)]/30"
                 />
                 {isFetchingMetadata && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
+                    <Loader2 className="h-4 w-4 animate-spin text-text-muted" />
                   </div>
                 )}
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="collection" className="text-zinc-300">
+              <Label htmlFor="collection" className="text-text-secondary">
                 Collection (optional)
               </Label>
               <Select value={bookmarkCollection} onValueChange={setBookmarkCollection}>
-                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                <SelectTrigger className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary">
                   <SelectValue placeholder="Select a collection" />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-800">
+                <SelectContent className="bg-[var(--glass-panel-bg)] backdrop-blur-[var(--glass-blur)] border-[var(--glass-border)]">
                   {collections.map((collection) => (
                     <SelectItem
                       key={collection.id}
                       value={collection.slug}
-                      className="text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100"
+                      className="text-text-secondary focus:bg-[var(--glass-bg)] focus:text-text-primary"
                     >
                       {collection.name}
                     </SelectItem>
@@ -268,14 +268,14 @@ export function AddCardModal() {
               <Button
                 variant="ghost"
                 onClick={closeAddCard}
-                className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                className="text-text-secondary hover:text-text-primary hover:bg-[var(--glass-bg)]"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSaveBookmark}
                 disabled={!bookmarkUrl || isSaving}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
+                className="bg-[var(--ds-accent)]/20 border border-[var(--ds-accent)]/50 text-[var(--ds-accent)] hover:bg-[var(--ds-accent)]/30 shadow-[0_0_15px_hsla(var(--accent-h)_var(--accent-s)_50%/0.3)]"
               >
                 {isSaving ? (
                   <>
@@ -292,7 +292,7 @@ export function AddCardModal() {
           {/* Note Tab */}
           <TabsContent value="note" className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="note-title" className="text-zinc-300">
+              <Label htmlFor="note-title" className="text-text-secondary">
                 Title
               </Label>
               <Input
@@ -300,12 +300,12 @@ export function AddCardModal() {
                 placeholder="Note title"
                 value={noteTitle}
                 onChange={(e) => setNoteTitle(e.target.value)}
-                className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+                className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary placeholder:text-text-muted focus:border-[var(--glass-border-hover)] focus:ring-2 focus:ring-[var(--ds-accent)]/30"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="note-content" className="text-zinc-300">
+              <Label htmlFor="note-content" className="text-text-secondary">
                 Content
               </Label>
               <Textarea
@@ -314,24 +314,24 @@ export function AddCardModal() {
                 value={noteContent}
                 onChange={(e) => setNoteContent(e.target.value)}
                 rows={6}
-                className="bg-zinc-800 border-zinc-700 text-zinc-100 placeholder:text-zinc-500 resize-none"
+                className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary placeholder:text-text-muted focus:border-[var(--glass-border-hover)] focus:ring-2 focus:ring-[var(--ds-accent)]/30 resize-none"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="note-collection" className="text-zinc-300">
+              <Label htmlFor="note-collection" className="text-text-secondary">
                 Collection (optional)
               </Label>
               <Select value={noteCollection} onValueChange={setNoteCollection}>
-                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                <SelectTrigger className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary">
                   <SelectValue placeholder="Select a collection" />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-900 border-zinc-800">
+                <SelectContent className="bg-[var(--glass-panel-bg)] backdrop-blur-[var(--glass-blur)] border-[var(--glass-border)]">
                   {collections.map((collection) => (
                     <SelectItem
                       key={collection.id}
                       value={collection.slug}
-                      className="text-zinc-100 focus:bg-zinc-800 focus:text-zinc-100"
+                      className="text-text-secondary focus:bg-[var(--glass-bg)] focus:text-text-primary"
                     >
                       {collection.name}
                     </SelectItem>
@@ -344,14 +344,14 @@ export function AddCardModal() {
               <Button
                 variant="ghost"
                 onClick={closeAddCard}
-                className="text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
+                className="text-text-secondary hover:text-text-primary hover:bg-[var(--glass-bg)]"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSaveNote}
                 disabled={!noteTitle || isSaving}
-                className="bg-purple-600 hover:bg-purple-700 text-white"
+                className="bg-[var(--ds-accent)]/20 border border-[var(--ds-accent)]/50 text-[var(--ds-accent)] hover:bg-[var(--ds-accent)]/30 shadow-[0_0_15px_hsla(var(--accent-h)_var(--accent-s)_50%/0.3)]"
               >
                 {isSaving ? (
                   <>

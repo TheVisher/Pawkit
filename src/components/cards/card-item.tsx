@@ -70,6 +70,7 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
               src={card.image!}
               alt=""
               fill
+              sizes="(max-width: 768px) 100vw, 300px"
               className="object-cover scale-110 blur-3xl opacity-30 saturate-150"
               onError={() => setImageError(true)}
             />
@@ -85,6 +86,8 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
                 src={card.image!}
                 alt={card.title || 'Card thumbnail'}
                 fill
+                sizes="(max-width: 768px) 100vw, 300px"
+                priority
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
                 onError={() => setImageError(true)}
               />
@@ -123,18 +126,20 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
               </div>
             )}
 
-            {/* Syncing indicator */}
+            {/* Syncing indicator - compact spinner, expands on hover */}
             {isSyncing && (
               <div
-                className="absolute top-2 left-2 flex items-center gap-1.5 px-2 py-1 rounded-full text-xs"
+                className="absolute top-2 left-2 flex items-center gap-1.5 px-1.5 py-1.5 rounded-full text-xs transition-all duration-200 hover:px-2.5 hover:gap-1.5 group/sync"
                 style={{
                   background: 'rgba(0, 0, 0, 0.6)',
                   backdropFilter: 'blur(8px)',
                   color: 'var(--text-secondary)',
                 }}
               >
-                <Loader2 className="h-3 w-3 animate-spin" />
-                <span>Syncing</span>
+                <Loader2 className="h-3 w-3 animate-spin shrink-0" />
+                <span className="max-w-0 overflow-hidden whitespace-nowrap transition-all duration-200 group-hover/sync:max-w-[60px]">
+                  Syncing
+                </span>
               </div>
             )}
           </div>

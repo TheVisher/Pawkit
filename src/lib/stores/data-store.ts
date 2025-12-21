@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { db, createSyncMetadata, markModified, markDeleted } from '@/lib/db';
 import type { LocalCard, LocalCollection, SyncQueueItem } from '@/lib/db';
 import { scheduleQueueProcess } from '@/lib/services/sync-service';
+import { queueMetadataFetch } from '@/lib/services/metadata-service';
 
 interface DataState {
   // State
@@ -76,9 +77,13 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   createCard: async (cardData) => {
+    // For URL cards, set status to PENDING for metadata fetching
+    const isUrlCard = cardData.type === 'url' && cardData.url;
+
     const card: LocalCard = {
       ...cardData,
       id: crypto.randomUUID(),
+      status: isUrlCard ? 'PENDING' : 'READY',
       createdAt: new Date(),
       updatedAt: new Date(),
       ...createSyncMetadata(),
@@ -99,6 +104,14 @@ export const useDataStore = create<DataState>((set, get) => ({
       retryCount: 0,
       createdAt: new Date(),
     });
+
+    // Queue metadata fetch for URL cards (fire-and-forget)
+    if (isUrlCard) {
+      // Use setTimeout to ensure card is saved before metadata fetch
+      setTimeout(() => {
+        queueMetadataFetch(card.id);
+      }, 100);
+    }
 
     return card;
   },

@@ -119,19 +119,84 @@
 
 ---
 
-## PANEL GLASS EFFECT
+## GLASS MORPHISM CSS VARIABLES
 
-All panels use the same glass morphism base:
+**CRITICAL: Always use CSS variables for glass styling - NEVER hardcode values.**
 
+All glass styling uses CSS variables defined in `src/app/globals.css`. This allows changing the look and feel of the entire app by modifying a few values.
+
+### Glass Variables (defined in globals.css)
+
+```css
+/* Glass backgrounds - layered opacity for depth */
+--glass-bg: hsl(0 0% 100% / 0.10);           /* Internal elements (inputs, buttons) */
+--glass-bg-hover: hsl(0 0% 100% / 0.15);     /* Hover state */
+--glass-bg-active: hsl(0 0% 100% / 0.20);    /* Active/pressed state */
+
+/* Glass panel/modal background (darker base) */
+--glass-panel-bg: hsl(0 0% 12% / 0.70);      /* Panels, modals, dropdowns */
+
+/* Glass borders */
+--glass-border: hsl(0 0% 100% / 0.15);       /* Default border */
+--glass-border-hover: hsl(0 0% 100% / 0.25); /* Hover state border */
+
+/* Glass blur effect */
+--glass-blur: 12px;
+--glass-saturate: 1.2;
+
+/* Glass shadow (for panels/modals) */
+--glass-shadow: 0 8px 16px hsl(0 0% 0% / 0.5), 0 16px 32px hsl(0 0% 0% / 0.3);
+```
+
+### Usage in Components
+
+**Panel/Modal Container:**
 ```tsx
 className={cn(
-  'bg-[hsl(0_0%_12%/0.70)]',
-  'backdrop-blur-[12px] backdrop-saturate-[1.2]',
-  'border border-white/10',
-  'shadow-[0_8px_16px_hsl(0_0%_0%/0.5),0_16px_32px_hsl(0_0%_0%/0.3),0_0_0_1px_hsl(0_0%_100%/0.08)]',
+  'bg-[var(--glass-panel-bg)]',
+  'backdrop-blur-[var(--glass-blur)] backdrop-saturate-[var(--glass-saturate)]',
+  'border border-[var(--glass-border)]',
+  'shadow-[var(--glass-shadow)]',
   'rounded-2xl'
 )}
 ```
+
+**Internal Elements (inputs, buttons, tags):**
+```tsx
+className={cn(
+  'bg-[var(--glass-bg)]',
+  'border border-[var(--glass-border)]',
+  'hover:bg-[var(--glass-bg-hover)]',
+  'focus:border-[var(--glass-border-hover)]'
+)}
+```
+
+**Dropdown Menu Items:**
+```tsx
+className="hover:bg-[var(--glass-bg)] focus:bg-[var(--glass-bg)]"
+```
+
+### DO's and DON'Ts
+
+**DO**:
+- Use `var(--glass-panel-bg)` for panels, modals, dropdowns
+- Use `var(--glass-bg)` for internal elements
+- Use `var(--glass-border)` for all glass borders
+- Use `var(--glass-blur)` for backdrop blur values
+
+**DON'T**:
+- ❌ `bg-white/10` - Use `bg-[var(--glass-bg)]`
+- ❌ `bg-white/15` - Use `bg-[var(--glass-bg-hover)]`
+- ❌ `border-white/10` - Use `border-[var(--glass-border)]`
+- ❌ `bg-[hsl(0_0%_12%/0.70)]` - Use `bg-[var(--glass-panel-bg)]`
+- ❌ `backdrop-blur-[12px]` - Use `backdrop-blur-[var(--glass-blur)]`
+
+### Benefits
+
+1. **One change updates everywhere** - Modify opacity in globals.css, all components update
+2. **Theme switching ready** - Can add `[data-style="solid"]` variant later
+3. **Consistency enforced** - Variables ensure identical values across components
+4. **Easy debugging** - View all glass values in one place
 
 ---
 

@@ -6,6 +6,7 @@
 import { db } from '@/lib/db';
 import type { SyncQueueItem } from '@/lib/db';
 import { useSyncStore } from '@/lib/stores/sync-store';
+import { useDataStore } from '@/lib/stores/data-store';
 
 // Maximum retry attempts before marking as failed
 const MAX_RETRIES = 3;
@@ -284,7 +285,7 @@ function prepareForServer(
 }
 
 /**
- * Mark an entity as synced in local database
+ * Mark an entity as synced in local database and update Zustand store
  */
 async function markEntitySynced(entityType: EntityType, entityId: string): Promise<void> {
   const updates = {
@@ -298,9 +299,21 @@ async function markEntitySynced(entityType: EntityType, entityId: string): Promi
       break;
     case 'collection':
       await db.collections.update(entityId, updates);
+      // Update Zustand store for collections
+      useDataStore.setState((state) => ({
+        collections: state.collections.map((c) =>
+          c.id === entityId ? { ...c, _synced: true } : c
+        ),
+      }));
       break;
     case 'card':
       await db.cards.update(entityId, updates);
+      // Update Zustand store for cards
+      useDataStore.setState((state) => ({
+        cards: state.cards.map((c) =>
+          c.id === entityId ? { ...c, _synced: true } : c
+        ),
+      }));
       break;
     case 'event':
       await db.calendarEvents.update(entityId, updates);

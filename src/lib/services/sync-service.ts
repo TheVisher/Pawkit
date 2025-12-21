@@ -19,6 +19,7 @@ import type {
   LocalTodo,
 } from '@/lib/db';
 import { useSyncStore } from '@/lib/stores/sync-store';
+import { useToastStore } from '@/lib/stores/toast-store';
 import { processQueue, QUEUE_DEBOUNCE_MS } from './sync-queue';
 
 // =============================================================================
@@ -211,11 +212,13 @@ class SyncService {
       this.broadcast({ type: 'sync-complete' });
 
       useSyncStore.getState().finishSync(true);
+      useToastStore.getState().toast({ type: 'success', message: 'Sync complete' });
       console.log('[SyncService] Full sync complete');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('[SyncService] Full sync failed:', message);
       useSyncStore.getState().finishSync(false, message);
+      useToastStore.getState().toast({ type: 'error', message: `Sync failed: ${message}` });
     } finally {
       this.isSyncing = false;
     }
@@ -268,11 +271,13 @@ class SyncService {
       this.broadcast({ type: 'sync-complete' });
 
       useSyncStore.getState().finishSync(true);
+      useToastStore.getState().toast({ type: 'success', message: 'Sync complete' });
       console.log('[SyncService] Delta sync complete');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       console.error('[SyncService] Delta sync failed:', message);
       useSyncStore.getState().finishSync(false, message);
+      useToastStore.getState().toast({ type: 'error', message: `Sync failed: ${message}` });
     } finally {
       this.isSyncing = false;
     }

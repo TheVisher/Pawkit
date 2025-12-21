@@ -127,7 +127,7 @@ export function Omnibar({ isCompact }: OmnibarProps) {
   // Don't render until mounted to prevent hydration issues
   if (!mounted) {
     return (
-      <div className="h-12 w-[400px] rounded-2xl bg-[hsl(0_0%_12%/0.70)] backdrop-blur-xl" />
+      <div className="h-12 w-[400px] rounded-2xl bg-[var(--glass-panel-bg)] backdrop-blur-[var(--glass-blur)]" />
     );
   }
 
@@ -137,22 +137,35 @@ export function Omnibar({ isCompact }: OmnibarProps) {
     <motion.div
       className={cn(
         'relative flex items-center gap-1',
-        'bg-[hsl(0_0%_12%/0.70)] backdrop-blur-xl',
-        'border border-white/10',
-        'shadow-[0_8px_16px_hsl(0_0%_0%/0.5),0_16px_32px_hsl(0_0%_0%/0.3)]',
-        'rounded-2xl',
-        'transition-[width] duration-300 ease-out'
+        'bg-[var(--glass-panel-bg)] backdrop-blur-[var(--glass-blur)]',
+        'border border-[var(--glass-border)]',
+        'shadow-[var(--glass-shadow)]',
+        'rounded-2xl'
       )}
       initial={false}
       animate={{
         width: isCompact ? 140 : 400,
         height: 48,
-        scaleY: isEjecting ? 1.02 : 1,
+        // Elastic "bounce" when ejecting a toast
+        scaleY: isEjecting ? 1.04 : 1,
+        scaleX: isEjecting ? 0.98 : 1,
       }}
       transition={{
         width: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
         height: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
-        scaleY: { duration: 0.15, ease: 'easeOut' },
+        // Elastic spring for the "push through" effect
+        scaleY: {
+          type: 'spring',
+          stiffness: 500,
+          damping: 15,
+          mass: 0.8,
+        },
+        scaleX: {
+          type: 'spring',
+          stiffness: 500,
+          damping: 15,
+          mass: 0.8,
+        },
       }}
       style={{ transformOrigin: 'center bottom' }}
     >
@@ -216,7 +229,7 @@ function IdleContent({
               'flex items-center justify-center shrink-0',
               'w-10 h-10 rounded-xl',
               'text-text-muted hover:text-text-primary',
-              'hover:bg-white/5 active:bg-white/10',
+              'hover:bg-[var(--glass-bg)] active:bg-[var(--glass-bg-hover)]',
               'transition-colors duration-150'
             )}
           >
@@ -225,13 +238,13 @@ function IdleContent({
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="start"
-          className="w-56 bg-[hsl(0_0%_12%/0.95)] backdrop-blur-xl border-white/10"
+          className="w-56"
         >
           {addMenuItems.map((item) => (
             <DropdownMenuItem
               key={item.action}
               onClick={() => onAddAction(item.action)}
-              className="flex items-center gap-3 text-text-secondary hover:text-text-primary focus:bg-white/5"
+              className="flex items-center gap-3 text-text-secondary hover:text-text-primary focus:bg-[var(--glass-bg)]"
             >
               <item.icon className="h-4 w-4" />
               <span className="flex-1">{item.label}</span>
@@ -278,7 +291,7 @@ function ExpandedContent({ onSearchClick }: ExpandedContentProps) {
           'flex items-center flex-1 h-10 px-3 gap-2',
           'rounded-xl',
           'text-text-muted hover:text-text-secondary',
-          'hover:bg-white/5',
+          'hover:bg-[var(--glass-bg)]',
           'transition-colors duration-150',
           'cursor-pointer'
         )}
@@ -294,7 +307,7 @@ function ExpandedContent({ onSearchClick }: ExpandedContentProps) {
           'flex items-center justify-center shrink-0',
           'h-10 px-3 rounded-xl',
           'text-text-muted hover:text-text-primary',
-          'hover:bg-white/5 active:bg-white/10',
+          'hover:bg-[var(--glass-bg)] active:bg-[var(--glass-bg-hover)]',
           'transition-colors duration-150'
         )}
       >
@@ -344,7 +357,7 @@ function CompactButtons({ onSearchClick }: CompactButtonsProps) {
           'flex items-center justify-center',
           'w-10 h-10 rounded-xl',
           'text-text-muted hover:text-text-primary',
-          'hover:bg-white/5 active:bg-white/10',
+          'hover:bg-[var(--glass-bg)] active:bg-[var(--glass-bg-hover)]',
           'transition-colors duration-150'
         )}
       >
@@ -358,7 +371,7 @@ function CompactButtons({ onSearchClick }: CompactButtonsProps) {
           'flex items-center justify-center',
           'w-10 h-10 rounded-xl',
           'text-text-muted hover:text-text-primary',
-          'hover:bg-white/5 active:bg-white/10',
+          'hover:bg-[var(--glass-bg)] active:bg-[var(--glass-bg-hover)]',
           'transition-colors duration-150'
         )}
       >
@@ -387,10 +400,15 @@ function ToastContent({ toast, isCompact, onDismiss }: ToastContentProps) {
   return (
     <motion.div
       className="flex items-center w-full h-full px-3 gap-3"
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
+      initial={{ opacity: 0, scale: 0.85, y: -8 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: -4 }}
+      transition={{
+        type: 'spring',
+        stiffness: 400,
+        damping: 20,
+        mass: 0.8,
+      }}
     >
       {/* Icon */}
       <div className={cn('shrink-0', colorClass)}>
@@ -416,7 +434,7 @@ function ToastContent({ toast, isCompact, onDismiss }: ToastContentProps) {
           }}
           className={cn(
             'shrink-0 px-3 py-1 rounded-lg text-xs font-medium',
-            'bg-white/10 hover:bg-white/15',
+            'bg-[var(--glass-bg)] hover:bg-[var(--glass-bg-hover)]',
             'text-text-primary',
             'transition-colors duration-150'
           )}
@@ -432,7 +450,7 @@ function ToastContent({ toast, isCompact, onDismiss }: ToastContentProps) {
           'shrink-0 flex items-center justify-center',
           'w-7 h-7 rounded-lg',
           'text-text-muted hover:text-text-primary',
-          'hover:bg-white/10',
+          'hover:bg-[var(--glass-bg)]',
           'transition-colors duration-150'
         )}
       >
