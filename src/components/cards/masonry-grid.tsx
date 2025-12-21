@@ -69,7 +69,7 @@ function SortableCard({ card, onClick }: SortableCardProps) {
 
 // Default aspect ratio and minimum height from CardItem
 const DEFAULT_ASPECT_RATIO = 16 / 10;
-const MIN_THUMBNAIL_HEIGHT = 140;
+const MIN_THUMBNAIL_HEIGHT = 180;
 const CONTENT_PADDING = 56; // Approximate height for title + domain + tags area
 
 /**
