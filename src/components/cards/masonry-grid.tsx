@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -37,8 +37,9 @@ interface SortableCardProps {
 
 /**
  * Sortable wrapper for individual cards
+ * Memoized to prevent re-renders when other cards in the list change
  */
-function SortableCard({ card, onClick }: SortableCardProps) {
+const SortableCard = memo(function SortableCard({ card, onClick }: SortableCardProps) {
   const {
     attributes,
     listeners,
@@ -66,7 +67,22 @@ function SortableCard({ card, onClick }: SortableCardProps) {
       <CardItem card={card} variant="grid" onClick={onClick} />
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Only re-render if the card content actually changed
+  // Compare by ID and key fields that affect rendering
+  return (
+    prevProps.card.id === nextProps.card.id &&
+    prevProps.card.title === nextProps.card.title &&
+    prevProps.card.image === nextProps.card.image &&
+    prevProps.card.favicon === nextProps.card.favicon &&
+    prevProps.card.domain === nextProps.card.domain &&
+    prevProps.card.url === nextProps.card.url &&
+    prevProps.card.pinned === nextProps.card.pinned &&
+    prevProps.card._synced === nextProps.card._synced &&
+    prevProps.card.status === nextProps.card.status &&
+    JSON.stringify(prevProps.card.tags) === JSON.stringify(nextProps.card.tags)
+  );
+});
 
 // Default aspect ratio and minimum height from CardItem
 const DEFAULT_ASPECT_RATIO = 16 / 10;
