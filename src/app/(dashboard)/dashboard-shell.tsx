@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { useTheme } from 'next-themes';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
@@ -11,6 +12,7 @@ import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightSidebar } from '@/components/layout/right-sidebar';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { AddCardModal } from '@/components/modals/add-card-modal';
+import { CardDetailModal } from '@/components/modals/card-detail-modal';
 import { Omnibar } from '@/components/layout/omnibar';
 import { ToastStack } from '@/components/layout/toast-stack';
 import { cn } from '@/lib/utils';
@@ -25,6 +27,10 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const [isInitialized, setIsInitialized] = useState(false);
   const [mounted, setMounted] = useState(false);
   const initStarted = useRef(false);
+  const workspaceEnsured = useRef(false); // Prevents double workspace creation in Strict Mode
+
+  // Theme detection for background gradient
+  const { resolvedTheme } = useTheme();
 
   // Hover state for revealing closed sidebars
   const [leftHovered, setLeftHovered] = useState(false);
@@ -41,6 +47,8 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const setLoading = useAuthStore((s) => s.setLoading);
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
   const createWorkspace = useWorkspaceStore((s) => s.createWorkspace);
+  const setWorkspaces = useWorkspaceStore((s) => s.setWorkspaces);
+  const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrentWorkspace);
   const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const workspacesLoading = useWorkspaceStore((s) => s.isLoading);
@@ -80,18 +88,73 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     async function ensureWorkspace() {
       // Wait for workspaces to finish loading before checking
       if (workspacesLoading) return;
+      if (isInitialized) return;
 
-      // Create default workspace if none exists (only after loading completes)
-      if (workspaces.length === 0 && !isInitialized) {
-        await createWorkspace('My Workspace', userId);
-        setIsInitialized(true);
-      } else if (workspaces.length > 0) {
-        setIsInitialized(true);
+      // Ref guard prevents double execution in React Strict Mode
+      if (workspaceEnsured.current) return;
+      workspaceEnsured.current = true;
+
+      // ALWAYS check the server for workspaces (source of truth)
+      // This prevents using stale/orphaned workspace IDs from local storage
+      try {
+        const response = await fetch('/api/workspaces');
+        if (response.ok) {
+          let serverWorkspaces = await response.json();
+          if (serverWorkspaces.length > 0) {
+            // Clean up duplicate workspaces if more than 1 exists (legacy bug fix)
+            if (serverWorkspaces.length > 1) {
+              console.log('[DashboardShell] Found', serverWorkspaces.length, 'workspaces, cleaning up duplicates...');
+              try {
+                const cleanupResponse = await fetch('/api/admin/cleanup-workspaces', {
+                  method: 'POST',
+                  credentials: 'include'
+                });
+                if (cleanupResponse.ok) {
+                  const result = await cleanupResponse.json();
+                  console.log('[DashboardShell] Cleanup result:', result.message);
+                  // Refetch workspaces after cleanup
+                  const refreshResponse = await fetch('/api/workspaces');
+                  if (refreshResponse.ok) {
+                    serverWorkspaces = await refreshResponse.json();
+                  }
+                }
+              } catch (cleanupError) {
+                console.error('[DashboardShell] Failed to cleanup workspaces:', cleanupError);
+              }
+            }
+
+            // Server has workspaces - use them (they are authoritative)
+            console.log('[DashboardShell] Using', serverWorkspaces.length, 'workspace(s) from server');
+
+            // Set workspaces in store
+            setWorkspaces(serverWorkspaces);
+
+            // Set current workspace to default or first
+            const defaultWorkspace = serverWorkspaces.find((w: { isDefault?: boolean }) => w.isDefault) || serverWorkspaces[0];
+            setCurrentWorkspace(defaultWorkspace);
+
+            setIsInitialized(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('[DashboardShell] Failed to fetch workspaces from server:', error);
+        // Fall back to local workspaces if server is unavailable
+        if (workspaces.length > 0) {
+          console.log('[DashboardShell] Using local workspaces as fallback');
+          setIsInitialized(true);
+          return;
+        }
       }
+
+      // No workspaces on server - create the default
+      console.log('[DashboardShell] No workspaces found, creating default...');
+      await createWorkspace('My Workspace', userId);
+      setIsInitialized(true);
     }
 
     ensureWorkspace();
-  }, [workspaces, workspacesLoading, userId, createWorkspace, isInitialized]);
+  }, [workspaces, workspacesLoading, userId, createWorkspace, setWorkspaces, setCurrentWorkspace, isInitialized]);
 
   useEffect(() => {
     // Load data when workspace is available
@@ -205,21 +268,24 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   }
 
   // Panel base styles - Glass mode with backdrop blur (same for all panels, all states)
+  // Uses CSS variables from globals.css for centralized theming
   const panelBase = cn(
     'flex-col overflow-hidden',
-    'bg-[hsl(0_0%_12%/0.70)]',
-    'backdrop-blur-[12px] backdrop-saturate-[1.2]',
-    'border border-white/10',
+    'bg-[var(--glass-panel-bg)]',
+    'backdrop-blur-[var(--glass-blur)] backdrop-saturate-[var(--glass-saturate)]',
+    'border border-[var(--glass-border)]',
     'transition-all duration-300 ease-out'
   );
 
   // Floating sidebar shadow (all directions for floating panels)
-  const floatingShadow = 'shadow-[0_8px_16px_hsl(0_0%_0%/0.5),0_16px_32px_hsl(0_0%_0%/0.3),0_0_0_1px_hsl(0_0%_100%/0.08)]';
+  const floatingShadow = 'shadow-[var(--glass-shadow)]';
 
   // Inset shadow for center panel edges (makes sidebars appear elevated)
-  const leftInsetShadow = 'shadow-[inset_8px_0_12px_-4px_hsl(0_0%_0%/0.5)]';
-  const rightInsetShadow = 'shadow-[inset_-8px_0_12px_-4px_hsl(0_0%_0%/0.5)]';
-  const bothInsetShadow = 'shadow-[inset_8px_0_12px_-4px_hsl(0_0%_0%/0.5),inset_-8px_0_12px_-4px_hsl(0_0%_0%/0.5)]';
+  // Light mode uses softer shadows (0.15), dark mode uses stronger (0.35)
+  const shadowOpacity = resolvedTheme === 'light' ? '0.15' : '0.35';
+  const leftInsetShadow = `shadow-[inset_8px_0_12px_-4px_hsl(0_0%_0%/${shadowOpacity})]`;
+  const rightInsetShadow = `shadow-[inset_-8px_0_12px_-4px_hsl(0_0%_0%/${shadowOpacity})]`;
+  const bothInsetShadow = `shadow-[inset_8px_0_12px_-4px_hsl(0_0%_0%/${shadowOpacity}),inset_-8px_0_12px_-4px_hsl(0_0%_0%/${shadowOpacity})]`;
 
   // Full screen mode - when LEFT sidebar is anchored (V1 behavior)
   const isFullScreen = leftMerged;
@@ -250,14 +316,21 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
         style={{
           // Animate padding for smooth full-screen transition
           padding: isFullScreen ? 0 : 16,
-          transition: 'padding 300ms ease-out',
-          backgroundColor: '#0a0814',
-          backgroundImage: `
-            radial-gradient(1200px circle at 12% 0%, rgba(122, 92, 250, 0.28), rgba(10, 8, 20, 0)),
-            radial-gradient(900px circle at 88% 8%, rgba(122, 92, 250, 0.18), rgba(10, 8, 20, 0)),
-            radial-gradient(600px circle at 25% 90%, rgba(122, 92, 250, 0.14), rgba(10, 8, 20, 0)),
-            linear-gradient(160deg, rgba(10, 8, 20, 0.96), rgba(5, 5, 12, 1))
-          `,
+          transition: 'padding 300ms ease-out, background-color 300ms ease-out',
+          backgroundColor: resolvedTheme === 'light' ? '#f5f0fa' : '#0a0814',
+          backgroundImage: resolvedTheme === 'light'
+            ? `
+              radial-gradient(1200px circle at 12% 0%, rgba(168, 85, 247, 0.15), rgba(245, 240, 250, 0)),
+              radial-gradient(900px circle at 88% 8%, rgba(168, 85, 247, 0.12), rgba(245, 240, 250, 0)),
+              radial-gradient(600px circle at 25% 90%, rgba(168, 85, 247, 0.08), rgba(245, 240, 250, 0)),
+              linear-gradient(160deg, rgba(250, 245, 255, 0.96), rgba(245, 240, 250, 1))
+            `
+            : `
+              radial-gradient(1200px circle at 12% 0%, rgba(122, 92, 250, 0.28), rgba(10, 8, 20, 0)),
+              radial-gradient(900px circle at 88% 8%, rgba(122, 92, 250, 0.18), rgba(10, 8, 20, 0)),
+              radial-gradient(600px circle at 25% 90%, rgba(122, 92, 250, 0.14), rgba(10, 8, 20, 0)),
+              linear-gradient(160deg, rgba(10, 8, 20, 0.96), rgba(5, 5, 12, 1))
+            `,
           backgroundAttachment: 'fixed'
         }}
       >
@@ -381,6 +454,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
       </div>
 
       <AddCardModal />
+      <CardDetailModal />
     </div>
   );
 }

@@ -8,6 +8,18 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  /* Pawkit text hierarchy */
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  /* Pawkit surface backgrounds */
+  --color-bg-base: var(--color-bg-base);
+  --color-bg-surface-1: var(--color-bg-surface-1);
+  --color-bg-surface-2: var(--color-bg-surface-2);
+  --color-bg-surface-3: var(--color-bg-surface-3);
+  /* Pawkit borders */
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-default: var(--color-border-default);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -127,8 +139,8 @@
   --color-accent-hover: hsl(var(--hue-accent) var(--sat-accent) 65%);
 }
 
-/* Dark theme semantic colors */
-:root, .dark {
+/* Dark theme semantic colors - only apply when .dark class is present */
+.dark {
   --color-bg-base: hsl(0 0% 4%);
   --color-bg-surface-1: hsl(0 0% 9%);
   --color-bg-surface-2: hsl(0 0% 13%);
@@ -136,7 +148,7 @@
 
   --color-text-primary: hsl(0 0% 95%);
   --color-text-secondary: hsl(0 0% 70%);
-  --color-text-muted: hsl(0 0% 50%);
+  --color-text-muted: hsl(240 4% 46%); /* zinc-500 - hints, tips, shortcuts, de-emphasized icons */
 
   --color-border-subtle: hsl(0 0% 15%);
   --color-border-default: hsl(0 0% 20%);
@@ -149,6 +161,79 @@
   --shadow-1: 0 2px 8px hsl(270 50% 15% / 0.4);
   --shadow-2: 0 4px 16px hsl(270 50% 15% / 0.5), 0 0 32px hsl(270 50% 30% / 0.2);
   --shadow-3: 0 8px 32px hsl(270 50% 15% / 0.6), 0 0 48px hsl(270 50% 30% / 0.3);
+
+  /* ==========================================================================
+     GLASS MORPHISM TOKENS - DARK MODE
+     Change these values to update glass styling app-wide
+     ========================================================================== */
+
+  /* Glass backgrounds - layered opacity for depth */
+  --glass-bg: hsl(0 0% 100% / 0.10);
+  --glass-bg-hover: hsl(0 0% 100% / 0.15);
+  --glass-bg-active: hsl(0 0% 100% / 0.20);
+
+  /* Glass panel/modal background (darker base) */
+  --glass-panel-bg: hsl(0 0% 12% / 0.70);
+
+  /* Glass borders */
+  --glass-border: hsl(0 0% 100% / 0.15);
+  --glass-border-hover: hsl(0 0% 100% / 0.25);
+
+  /* Glass blur effect */
+  --glass-blur: 12px;
+  --glass-saturate: 1.2;
+
+  /* Glass shadow (for panels/modals) */
+  --glass-shadow: 0 8px 16px hsl(0 0% 0% / 0.5), 0 16px 32px hsl(0 0% 0% / 0.3);
+
+  /* Card shadow - subtle in dark mode */
+  --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Light theme semantic colors */
+.light {
+  --color-bg-base: hsl(0 0% 98%);
+  --color-bg-surface-1: hsl(0 0% 100%);
+  --color-bg-surface-2: hsl(0 0% 96%);
+  --color-bg-surface-3: hsl(0 0% 92%);
+
+  --color-text-primary: hsl(0 0% 9%);
+  --color-text-secondary: hsl(0 0% 35%);
+  --color-text-muted: hsl(0 0% 55%);
+
+  --color-border-subtle: hsl(0 0% 88%);
+  --color-border-default: hsl(0 0% 82%);
+
+  /* Panel border highlights for depth */
+  --color-border-highlight-top: hsl(0 0% 100% / 0.8);
+  --color-border-highlight-left: hsl(0 0% 100% / 0.6);
+
+  /* Purple glow shadows (lighter for light mode) */
+  --shadow-1: 0 2px 8px hsl(270 50% 50% / 0.15);
+  --shadow-2: 0 4px 16px hsl(270 50% 50% / 0.2), 0 0 32px hsl(270 50% 60% / 0.1);
+  --shadow-3: 0 8px 32px hsl(270 50% 50% / 0.25), 0 0 48px hsl(270 50% 60% / 0.15);
+
+  /* ==========================================================================
+     GLASS MORPHISM TOKENS - LIGHT MODE
+     ========================================================================== */
+
+  /* Glass backgrounds - darker overlays on light backgrounds */
+  --glass-bg: hsl(0 0% 0% / 0.04);
+  --glass-bg-hover: hsl(0 0% 0% / 0.07);
+  --glass-bg-active: hsl(0 0% 0% / 0.10);
+
+  /* Glass panel/modal background (light with slight transparency) */
+  --glass-panel-bg: hsl(0 0% 100% / 0.85);
+
+  /* Glass borders */
+  --glass-border: hsl(0 0% 0% / 0.08);
+  --glass-border-hover: hsl(0 0% 0% / 0.15);
+
+  /* Glass shadow (softer for light mode) */
+  --glass-shadow: 0 8px 16px hsl(0 0% 0% / 0.08), 0 16px 32px hsl(0 0% 0% / 0.04);
+
+  /* Card shadow - more visible in light mode to create contrast */
+  --card-shadow: 0 2px 12px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
 }
 
 @layer base {

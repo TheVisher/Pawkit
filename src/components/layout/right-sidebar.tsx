@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Filter, Tag, ArrowRightToLine, ArrowLeftFromLine, Maximize2, Minimize2 } from 'lucide-react';
+import { Filter, Tag, ArrowRightToLine, ArrowLeftFromLine, Maximize2, Minimize2, Moon, Sun, SunMoon } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { useRightSidebar } from '@/lib/stores/ui-store';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -16,6 +17,7 @@ import {
 export function RightSidebar() {
   const [mounted, setMounted] = useState(false);
   const { isOpen, isAnchored, toggleAnchored, setOpen } = useRightSidebar();
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     setMounted(true);
@@ -24,6 +26,33 @@ export function RightSidebar() {
   const handleToggleOpen = () => {
     setOpen(!isOpen);
   };
+
+  // Cycle through themes: system -> dark -> light -> system
+  const cycleTheme = () => {
+    if (theme === 'system') {
+      setTheme('dark');
+    } else if (theme === 'dark') {
+      setTheme('light');
+    } else {
+      setTheme('system');
+    }
+  };
+
+  // Get theme icon and label
+  const getThemeIcon = () => {
+    if (!mounted) return { icon: SunMoon, label: 'System theme' };
+    switch (theme) {
+      case 'dark':
+        return { icon: Moon, label: 'Dark mode' };
+      case 'light':
+        return { icon: Sun, label: 'Light mode' };
+      default:
+        return { icon: SunMoon, label: 'System theme' };
+    }
+  };
+
+  const themeInfo = getThemeIcon();
+  const ThemeIcon = themeInfo.icon;
 
   // Use default values during SSR to match initial client render
   const anchored = mounted ? isAnchored : false;
@@ -66,6 +95,22 @@ export function RightSidebar() {
               </TooltipTrigger>
               <TooltipContent side="bottom">
                 <p>{anchored ? 'Float panel' : 'Anchor panel'}</p>
+              </TooltipContent>
+            </Tooltip>
+            {/* Theme Toggle */}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={cycleTheme}
+                  className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
+                >
+                  <ThemeIcon className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                <p>{themeInfo.label}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
