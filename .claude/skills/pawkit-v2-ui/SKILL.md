@@ -135,61 +135,62 @@ className={cn(
 
 ---
 
-## PAGE HEADER PATTERN
+## GLOBAL OMNIBAR
 
-**CRITICAL: All views MUST use PageHeader to ensure the omnibar is available.**
+**CRITICAL: The omnibar is globally positioned in `dashboard-shell.tsx` and NEVER rendered in individual pages.**
 
-Every page uses the `PageHeader` component with consistent structure:
+The omnibar (with + button for adding content, search, and toast notifications) is fixed at the top center of the viewport, rendered once in the dashboard shell. This ensures:
+- Pixel-perfect positioning across ALL views
+- No duplicate omnibar instances
+- Consistent user experience when navigating
+
+### Omnibar Location
+
+The omnibar lives in `src/app/(dashboard)/dashboard-shell.tsx`:
 
 ```tsx
-<PageHeader>
-  <div className="space-y-0.5">
-    {/* Date row - smaller and muted */}
-    <div className="flex items-center gap-1.5 text-text-muted">
-      <TimeIcon className="h-3.5 w-3.5" />
-      <span className="text-xs">{formattedDate}</span>
-    </div>
-    {/* Title row */}
-    <h1 className="text-2xl font-semibold text-text-primary">
-      {greeting}, <span className="text-[var(--color-accent)]">{username}</span>
-    </h1>
+{/* GLOBAL OMNIBAR - Fixed at top center, same position on all views */}
+<div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+  <div className="relative pointer-events-auto">
+    <Omnibar isCompact={false} />
+    <ToastStack isCompact={false} />
   </div>
-</PageHeader>
+</div>
 ```
 
-The omnibar is centered absolutely within PageHeader.
-
-### Why PageHeader is Required
-
-The omnibar (with + button for adding content, search, and toast notifications) lives inside PageHeader. If a view doesn't use PageHeader, users cannot:
-- Add new bookmarks/notes via the + button
-- Use ⌘⇧B / ⌘⇧N shortcuts
-- See toast notifications
-
 ### Required Page Structure
+
+All pages must use `pt-20` (80px top padding) to leave space for the global omnibar:
 
 ```tsx
 export default function AnyViewPage() {
   return (
-    <div className="flex-1 flex flex-col">
-      <PageHeader>
-        {/* Page title and subtitle */}
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-            Page Title
-          </h1>
-          <p style={{ color: 'var(--text-muted)' }}>Subtitle</p>
-        </div>
-      </PageHeader>
+    <div className="flex-1 p-6 pt-20">
+      {/* Page header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
+          Page Title
+        </h1>
+        <p style={{ color: 'var(--text-muted)' }}>Subtitle</p>
+      </div>
 
       {/* Page content */}
-      <div className="flex-1 p-6">
-        {/* ... */}
-      </div>
+      {/* ... */}
     </div>
   );
 }
 ```
+
+### DO's and DON'Ts
+
+**DO**:
+- Use `pt-20` on the page's root div to leave space for the omnibar
+- Use `p-6` for standard page padding
+
+**DON'T**:
+- Import or use `PageHeader` component (deprecated)
+- Render `Omnibar` or `ToastStack` in individual pages
+- Use any other top padding value (must be exactly `pt-20`)
 
 ---
 

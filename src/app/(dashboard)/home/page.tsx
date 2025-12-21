@@ -1,19 +1,31 @@
 'use client';
 
-import { Bookmark, FolderOpen, FileText, Calendar } from 'lucide-react';
+import { Bookmark, FolderOpen, FileText, Calendar as CalendarIcon, Coffee, Sun, Sunset, Moon } from 'lucide-react';
 import { useCards, useCollections } from '@/lib/stores/data-store';
+import { useAuthStore } from '@/lib/stores/auth-store';
+import { useGreeting } from '@/lib/hooks/use-greeting';
 import { Card, CardContent } from '@/components/ui/card';
 
 const stats = [
   { label: 'Bookmarks', icon: Bookmark, key: 'bookmarks' },
   { label: 'Pawkits', icon: FolderOpen, key: 'pawkits' },
   { label: 'Notes', icon: FileText, key: 'notes' },
-  { label: 'Events', icon: Calendar, key: 'events' },
+  { label: 'Events', icon: CalendarIcon, key: 'events' },
 ];
+
+// Time icon mapping
+const timeIcons = {
+  coffee: Coffee,
+  sun: Sun,
+  sunset: Sunset,
+  moon: Moon,
+};
 
 export default function HomePage() {
   const cards = useCards();
   const collections = useCollections();
+  const user = useAuthStore((s) => s.user);
+  const { message, displayName, formattedDate, timeIcon, mounted } = useGreeting(user?.email);
 
   const counts = {
     bookmarks: cards.filter((c) => c.type === 'url').length,
@@ -22,15 +34,25 @@ export default function HomePage() {
     events: 0, // TODO: calendar events
   };
 
+  const TimeIcon = timeIcons[timeIcon as keyof typeof timeIcons] || Coffee;
+
   return (
-    <div className="p-6 space-y-8">
-      {/* Welcome */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold text-zinc-100">Welcome to Pawkit</h1>
-        <p className="text-zinc-400">
-          Your local-first bookmark manager and knowledge base.
-        </p>
+    <div className="flex-1 p-6 pt-20">
+      {/* Header with greeting */}
+      <div className="mb-6 space-y-0.5">
+        {/* Date row - smaller and muted */}
+        <div className="flex items-center gap-1.5 text-text-muted">
+          <TimeIcon className="h-3.5 w-3.5" />
+          <span className="text-xs">{mounted ? formattedDate : ''}</span>
+        </div>
+        {/* Greeting row */}
+        <h1 className="text-2xl font-semibold text-text-primary">
+          {message}, <span className="text-[var(--color-accent)]">{displayName || 'friend'}</span>
+        </h1>
       </div>
+
+      {/* Page content */}
+      <div className="space-y-6">
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -81,6 +103,7 @@ export default function HomePage() {
               </p>
             </CardContent>
           </Card>
+        </div>
         </div>
       </div>
     </div>

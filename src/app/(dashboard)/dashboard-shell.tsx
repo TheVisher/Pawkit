@@ -11,6 +11,8 @@ import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightSidebar } from '@/components/layout/right-sidebar';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { AddCardModal } from '@/components/modals/add-card-modal';
+import { Omnibar } from '@/components/layout/omnibar';
+import { ToastStack } from '@/components/layout/toast-stack';
 import { cn } from '@/lib/utils';
 
 interface DashboardShellProps {
@@ -368,6 +370,14 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
       </div>
 
       <AddCardModal />
+
+      {/* GLOBAL OMNIBAR - Fixed at top center, same position on all views */}
+      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+        <div className="relative pointer-events-auto">
+          <Omnibar isCompact={false} />
+          <ToastStack isCompact={false} />
+        </div>
+      </div>
     </div>
   );
 }

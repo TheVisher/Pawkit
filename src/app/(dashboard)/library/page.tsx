@@ -6,7 +6,6 @@ import { useViewStore } from '@/lib/stores/view-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { CardGrid } from '@/components/cards/card-grid';
 import { EmptyState } from '@/components/cards/empty-state';
-import { PageHeader } from '@/components/layout/page-header';
 import { Bookmark, FileText, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -74,42 +73,35 @@ export default function LibraryPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex-1 flex flex-col">
-        <PageHeader>
-          <div className="space-y-1">
-            <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Library</h1>
-            <p style={{ color: 'var(--text-muted)' }}>All your saved content</p>
-          </div>
-        </PageHeader>
-        <div className="flex-1 p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => (
-              <div
-                key={i}
-                className="h-48 rounded-2xl animate-pulse"
-                style={{ background: 'var(--bg-surface-2)' }}
-              />
-            ))}
-          </div>
+      <div className="flex-1 p-6 pt-20">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Library</h1>
+          <p style={{ color: 'var(--text-muted)' }} className="mt-1">All your saved content</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <div
+              key={i}
+              className="h-48 rounded-2xl animate-pulse"
+              style={{ background: 'var(--bg-surface-2)' }}
+            />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col">
-      <PageHeader>
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Library</h1>
-          <p style={{ color: 'var(--text-muted)' }}>
-            {activeCards.length === 0
-              ? 'All your saved content'
-              : `${filteredCards.length} item${filteredCards.length === 1 ? '' : 's'}`}
-          </p>
-        </div>
-      </PageHeader>
-
-      <div className="flex-1 p-6">
+    <div className="flex-1 p-6 pt-20">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Library</h1>
+        <p style={{ color: 'var(--text-muted)' }} className="mt-1">
+          {activeCards.length === 0
+            ? 'All your saved content'
+            : `${filteredCards.length} item${filteredCards.length === 1 ? '' : 's'}`}
+        </p>
+      </div>
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
@@ -171,7 +163,6 @@ export default function LibraryPage() {
       ) : (
         <CardGrid cards={sortedCards} layout={layout} />
       )}
-      </div>
     </div>
   );
 }
