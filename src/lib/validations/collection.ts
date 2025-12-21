@@ -79,23 +79,26 @@ export const updateCollectionSchema = z.object({
  */
 export const listCollectionsQuerySchema = z.object({
   workspaceId: z.string().min(1, 'Workspace ID is required'),
-  since: z.string().datetime().optional(),
+  since: z.string().datetime().optional().nullable(),
   deleted: z
     .string()
     .transform((v) => v === 'true')
-    .optional(),
-  parentId: z.string().optional(), // Filter by parent (null for root)
+    .optional()
+    .nullable(),
+  parentId: z.string().optional().nullable(), // Filter by parent (null for root)
   limit: z
     .string()
     .transform((v) => parseInt(v, 10))
     .pipe(z.number().min(1).max(100))
-    .optional(),
+    .optional()
+    .nullable(),
   offset: z
     .string()
     .transform((v) => parseInt(v, 10))
     .pipe(z.number().min(0))
-    .optional(),
-});
+    .optional()
+    .nullable(),
+}).passthrough();
 
 export type CreateCollectionInput = z.infer<typeof createCollectionSchema>;
 export type UpdateCollectionInput = z.infer<typeof updateCollectionSchema>;

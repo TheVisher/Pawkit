@@ -59,33 +59,37 @@ export const updateTodoSchema = z.object({
  */
 export const listTodosQuerySchema = z.object({
   workspaceId: z.string().min(1, 'Workspace ID is required'),
-  since: z.string().datetime().optional(),
+  since: z.string().datetime().optional().nullable(),
   // Include soft-deleted todos (default: false)
   deleted: z
     .string()
     .transform((v) => v === 'true')
-    .optional(),
+    .optional()
+    .nullable(),
   // Filter by completion status
   completed: z
     .string()
     .transform((v) => v === 'true')
-    .optional(),
+    .optional()
+    .nullable(),
   // Filter by priority
-  priority: TodoPriority.optional(),
+  priority: TodoPriority.optional().nullable(),
   // Filter by due date range
-  dueBefore: z.string().datetime().optional(),
-  dueAfter: z.string().datetime().optional(),
+  dueBefore: z.string().datetime().optional().nullable(),
+  dueAfter: z.string().datetime().optional().nullable(),
   limit: z
     .string()
     .transform((v) => parseInt(v, 10))
     .pipe(z.number().min(1).max(100))
-    .optional(),
+    .optional()
+    .nullable(),
   offset: z
     .string()
     .transform((v) => parseInt(v, 10))
     .pipe(z.number().min(0))
-    .optional(),
-});
+    .optional()
+    .nullable(),
+}).passthrough();
 
 export type CreateTodoInput = z.infer<typeof createTodoSchema>;
 export type UpdateTodoInput = z.infer<typeof updateTodoSchema>;
