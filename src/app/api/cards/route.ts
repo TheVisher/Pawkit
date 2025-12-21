@@ -64,7 +64,11 @@ export async function GET(request: Request) {
       );
     }
 
-    const { workspaceId, since, deleted, type, limit = 100, offset = 0 } = queryResult.data;
+    const { workspaceId, since, deleted, type, limit, offset } = queryResult.data;
+
+    // Handle null values from searchParams (null coalescing, not default values)
+    const effectiveLimit = limit ?? 100;
+    const effectiveOffset = offset ?? 0;
 
     // 3. Verify workspace belongs to user
     const workspace = await prisma.workspace.findFirst({
@@ -96,8 +100,8 @@ export async function GET(request: Request) {
         ...(type && { type }),
       },
       orderBy: { updatedAt: 'desc' },
-      take: limit,
-      skip: offset,
+      take: effectiveLimit,
+      skip: effectiveOffset,
     });
 
     // 5. Return cards
@@ -105,8 +109,8 @@ export async function GET(request: Request) {
       cards,
       meta: {
         count: cards.length,
-        limit,
-        offset,
+        limit: effectiveLimit,
+        offset: effectiveOffset,
       },
     });
   } catch (error) {

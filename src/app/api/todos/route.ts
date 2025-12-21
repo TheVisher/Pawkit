@@ -68,7 +68,11 @@ export async function GET(request: Request) {
       );
     }
 
-    const { workspaceId, since, deleted, completed, priority, dueBefore, dueAfter, limit = 100, offset = 0 } = queryResult.data;
+    const { workspaceId, since, deleted, completed, priority, dueBefore, dueAfter, limit, offset } = queryResult.data;
+
+    // Handle null values from searchParams (null coalescing, not default values)
+    const effectiveLimit = limit ?? 100;
+    const effectiveOffset = offset ?? 0;
 
     // 3. Verify workspace belongs to user
     const workspace = await prisma.workspace.findFirst({
@@ -95,8 +99,8 @@ export async function GET(request: Request) {
         ...(since && {
           updatedAt: { gt: new Date(since) },
         }),
-        // Filter by completion status
-        ...(completed !== undefined && { completed }),
+        // Filter by completion status (check != null to handle both null and undefined)
+        ...(completed != null && { completed }),
         // Filter by priority
         ...(priority && { priority }),
         // Filter by due date range
@@ -112,8 +116,8 @@ export async function GET(request: Request) {
         { dueDate: 'asc' },   // Earliest due date first
         { createdAt: 'desc' },
       ],
-      take: limit,
-      skip: offset,
+      take: effectiveLimit,
+      skip: effectiveOffset,
     });
 
     // 5. Return todos
@@ -121,8 +125,8 @@ export async function GET(request: Request) {
       todos,
       meta: {
         count: todos.length,
-        limit,
-        offset,
+        limit: effectiveLimit,
+        offset: effectiveOffset,
       },
     });
   } catch (error) {
