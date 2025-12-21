@@ -37,18 +37,20 @@ export const updateWorkspaceSchema = z.object({
  * Query parameters for GET /api/workspaces
  */
 export const listWorkspacesQuerySchema = z.object({
-  since: z.string().datetime().optional(),
+  since: z.string().datetime().optional().nullable(),
   limit: z
     .string()
     .transform((v) => parseInt(v, 10))
     .pipe(z.number().min(1).max(100))
-    .optional(),
+    .optional()
+    .nullable(),
   offset: z
     .string()
     .transform((v) => parseInt(v, 10))
     .pipe(z.number().min(0))
-    .optional(),
-});
+    .optional()
+    .nullable(),
+}).passthrough(); // Allow extra query params (workspaceId, deleted) to be ignored
 
 export type CreateWorkspaceInput = z.infer<typeof createWorkspaceSchema>;
 export type UpdateWorkspaceInput = z.infer<typeof updateWorkspaceSchema>;
