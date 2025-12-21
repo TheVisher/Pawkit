@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { db, createSyncMetadata, markModified, markDeleted } from '@/lib/db';
 import type { LocalCard, LocalCollection, SyncQueueItem } from '@/lib/db';
+import { scheduleQueueProcess } from '@/lib/services/sync-service';
 
 interface DataState {
   // State
@@ -37,9 +38,11 @@ interface DataState {
   clearData: () => void;
 }
 
-// Helper to queue sync
+// Helper to queue sync and trigger processing
 async function queueSync(item: Omit<SyncQueueItem, 'id'>) {
   await db.syncQueue.add(item);
+  // Schedule queue processing (debounced)
+  scheduleQueueProcess();
 }
 
 export const useDataStore = create<DataState>((set, get) => ({
