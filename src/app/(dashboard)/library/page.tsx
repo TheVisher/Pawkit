@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useViewStore } from '@/lib/stores/view-store';
 import { useModalStore } from '@/lib/stores/modal-store';
@@ -15,6 +15,10 @@ export default function LibraryPage() {
   const cards = useDataStore((state) => state.cards);
   const isLoading = useDataStore((state) => state.isLoading);
   const layout = useViewStore((state) => state.layout);
+  const sortBy = useViewStore((state) => state.sortBy);
+  const sortOrder = useViewStore((state) => state.sortOrder);
+  const cardOrder = useViewStore((state) => state.cardOrder);
+  const reorderCards = useViewStore((state) => state.reorderCards);
   const contentFilter = useViewStore((state) => state.contentTypeFilter);
   const setContentFilter = useViewStore((state) => state.setContentTypeFilter);
   const openAddCard = useModalStore((state) => state.openAddCard);
@@ -48,14 +52,38 @@ export default function LibraryPage() {
     else setContentFilter('md-note'); // Notes filter
   };
 
-  // Sort cards by updatedAt (most recent first)
+  // Sort cards based on current sort settings
   const sortedCards = useMemo(() => {
+    // Manual sort - use cardOrder array
+    if (sortBy === 'manual' && cardOrder.length > 0) {
+      const orderMap = new Map(cardOrder.map((id, index) => [id, index]));
+      return [...filteredCards].sort((a, b) => {
+        const indexA = orderMap.get(a.id) ?? Number.MAX_SAFE_INTEGER;
+        const indexB = orderMap.get(b.id) ?? Number.MAX_SAFE_INTEGER;
+        return indexA - indexB;
+      });
+    }
+
+    // Automatic sorting by field
     return [...filteredCards].sort((a, b) => {
-      const dateA = new Date(a.updatedAt).getTime();
-      const dateB = new Date(b.updatedAt).getTime();
-      return dateB - dateA;
+      let comparison = 0;
+
+      switch (sortBy) {
+        case 'title':
+          comparison = (a.title || '').localeCompare(b.title || '');
+          break;
+        case 'createdAt':
+          comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          break;
+        case 'updatedAt':
+        default:
+          comparison = new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime();
+          break;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
     });
-  }, [filteredCards]);
+  }, [filteredCards, sortBy, sortOrder, cardOrder]);
 
   // Count cards by type
   const counts = useMemo(() => {
@@ -69,6 +97,11 @@ export default function LibraryPage() {
       notes,
     };
   }, [activeCards]);
+
+  // Handle card reorder from drag-and-drop
+  const handleReorder = useCallback((reorderedIds: string[]) => {
+    reorderCards(reorderedIds);
+  }, [reorderCards]);
 
   // Loading state
   if (isLoading) {
@@ -163,7 +196,7 @@ export default function LibraryPage() {
             </p>
           </div>
         ) : (
-          <CardGrid cards={sortedCards} layout={layout} />
+          <CardGrid cards={sortedCards} layout={layout} onReorder={handleReorder} />
         )}
       </div>
     </div>

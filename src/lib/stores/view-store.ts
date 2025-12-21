@@ -18,12 +18,15 @@ interface ViewState {
 
   // View settings (synced to Dexie)
   layout: Layout;
-  sortBy: string;
+  sortBy: string; // 'updatedAt', 'createdAt', 'title', 'manual'
   sortOrder: SortOrder;
   showTitles: boolean;
   showUrls: boolean;
   showTags: boolean;
   cardPadding: number;
+
+  // Manual card order (per-view, stored as array of card IDs)
+  cardOrder: string[];
 
   // Local-only filter (not persisted)
   contentTypeFilter: ContentType;
@@ -43,6 +46,10 @@ interface ViewState {
   setCardPadding: (padding: number) => void;
   setContentTypeFilter: (filter: ContentType) => void;
 
+  // Manual ordering
+  setCardOrder: (ids: string[]) => void;
+  reorderCards: (ids: string[]) => void; // Updates order and switches to manual sort
+
   // Dexie operations
   loadViewSettings: (workspaceId: string, viewKey: string) => Promise<void>;
   saveViewSettings: (workspaceId: string) => Promise<void>;
@@ -57,6 +64,7 @@ const DEFAULT_VIEW_SETTINGS = {
   showUrls: true,
   showTags: true,
   cardPadding: 2,
+  cardOrder: [] as string[],
 };
 
 export const useViewStore = create<ViewState>((set, get) => ({
@@ -89,6 +97,14 @@ export const useViewStore = create<ViewState>((set, get) => ({
 
   setContentTypeFilter: (filter) => set({ contentTypeFilter: filter }),
 
+  // Manual ordering actions
+  setCardOrder: (ids) => set({ cardOrder: ids }),
+
+  reorderCards: (ids) => {
+    // Update card order and switch to manual sort mode
+    set({ cardOrder: ids, sortBy: 'manual' });
+  },
+
   // Load view settings from Dexie
   loadViewSettings: async (workspaceId, viewKey) => {
     set({ isLoading: true, currentView: viewKey });
@@ -108,6 +124,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
           showUrls: settings.showUrls,
           showTags: settings.showTags,
           cardPadding: settings.cardPadding,
+          cardOrder: (settings as { cardOrder?: string[] }).cardOrder || [],
           isLoading: false,
         });
       } else {
@@ -122,7 +139,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
 
   // Save current view settings to Dexie
   saveViewSettings: async (workspaceId) => {
-    const { currentView, layout, sortBy, sortOrder, showTitles, showUrls, showTags, cardPadding } =
+    const { currentView, layout, sortBy, sortOrder, showTitles, showUrls, showTags, cardPadding, cardOrder } =
       get();
 
     try {
@@ -142,12 +159,13 @@ export const useViewStore = create<ViewState>((set, get) => ({
           showUrls,
           showTags,
           cardPadding,
+          cardOrder,
           updatedAt: new Date(),
         });
         await db.viewSettings.put(updated);
       } else {
-        // Create new
-        const newSettings: LocalViewSettings = {
+        // Create new - cast to allow cardOrder field
+        const newSettings = {
           id: crypto.randomUUID(),
           workspaceId,
           viewKey: currentView,
@@ -158,10 +176,11 @@ export const useViewStore = create<ViewState>((set, get) => ({
           showUrls,
           showTags,
           cardPadding,
+          cardOrder,
           createdAt: new Date(),
           updatedAt: new Date(),
           ...createSyncMetadata(),
-        };
+        } as LocalViewSettings & { cardOrder: string[] };
         await db.viewSettings.add(newSettings);
       }
     } catch (error) {
@@ -183,6 +202,7 @@ export const selectSortBy = (state: ViewState) => state.sortBy;
 export const selectSortOrder = (state: ViewState) => state.sortOrder;
 export const selectContentTypeFilter = (state: ViewState) => state.contentTypeFilter;
 export const selectViewIsLoading = (state: ViewState) => state.isLoading;
+export const selectCardOrder = (state: ViewState) => state.cardOrder;
 
 export const selectDisplaySettings = (state: ViewState) => ({
   showTitles: state.showTitles,
@@ -205,6 +225,7 @@ export function useViewSettings() {
       showUrls: state.showUrls,
       showTags: state.showTags,
       cardPadding: state.cardPadding,
+      cardOrder: state.cardOrder,
     }))
   );
 }
@@ -220,6 +241,8 @@ export function useViewActions() {
       setShowUrls: state.setShowUrls,
       setShowTags: state.setShowTags,
       setCardPadding: state.setCardPadding,
+      setCardOrder: state.setCardOrder,
+      reorderCards: state.reorderCards,
       loadViewSettings: state.loadViewSettings,
       saveViewSettings: state.saveViewSettings,
       resetToDefaults: state.resetToDefaults,
