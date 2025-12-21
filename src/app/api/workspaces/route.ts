@@ -116,7 +116,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Parse and validate request body
+    // 2. Ensure User record exists in database (sync from Supabase Auth)
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: { email: user.email ?? '' },
+      create: {
+        id: user.id,
+        email: user.email ?? '',
+        displayName: user.user_metadata?.full_name ?? null,
+      },
+    });
+
+    // 3. Parse and validate request body
     const body = await request.json();
     const validationResult = createWorkspaceSchema.safeParse(body);
 
@@ -132,7 +143,7 @@ export async function POST(request: Request) {
 
     const workspaceData = validationResult.data;
 
-    // 3. Check if workspace with this ID already exists (for sync idempotency)
+    // 4. Check if workspace with this ID already exists (for sync idempotency)
     if (workspaceData.id) {
       const existing = await prisma.workspace.findFirst({
         where: {
@@ -147,7 +158,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. If this is being set as default, unset any existing default
+    // 5. If this is being set as default, unset any existing default
     if (workspaceData.isDefault) {
       await prisma.workspace.updateMany({
         where: {
@@ -160,13 +171,13 @@ export async function POST(request: Request) {
       });
     }
 
-    // 5. Check if this is the user's first workspace (make it default)
+    // 6. Check if this is the user's first workspace (make it default)
     const existingCount = await prisma.workspace.count({
       where: { userId: user.id },
     });
     const shouldBeDefault = existingCount === 0 || workspaceData.isDefault;
 
-    // 6. Create the workspace
+    // 7. Create the workspace
     const workspace = await prisma.workspace.create({
       data: {
         // Use client ID if provided, otherwise Prisma generates one
@@ -178,7 +189,7 @@ export async function POST(request: Request) {
       },
     });
 
-    // 7. Return created workspace
+    // 8. Return created workspace
     return NextResponse.json({ workspace }, { status: 201 });
   } catch (error) {
     console.error('POST /api/workspaces error:', error);
@@ -194,8 +205,13 @@ export async function POST(request: Request) {
       );
     }
 
+    // Return detailed error in development
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Internal server error' },
+      {
+        error: 'Internal server error',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+      },
       { status: 500 }
     );
   }
