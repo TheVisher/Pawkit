@@ -146,6 +146,14 @@
   --color-bg-surface-2: hsl(0 0% 13%);
   --color-bg-surface-3: hsl(0 0% 17%);
 
+  /* Dashboard gradient background */
+  --bg-gradient-base: #0a0814;
+  --bg-gradient-image:
+    radial-gradient(1200px circle at 12% 0%, rgba(122, 92, 250, 0.28), rgba(10, 8, 20, 0)),
+    radial-gradient(900px circle at 88% 8%, rgba(122, 92, 250, 0.18), rgba(10, 8, 20, 0)),
+    radial-gradient(600px circle at 25% 90%, rgba(122, 92, 250, 0.14), rgba(10, 8, 20, 0)),
+    linear-gradient(160deg, rgba(10, 8, 20, 0.96), rgba(5, 5, 12, 1));
+
   --color-text-primary: hsl(0 0% 95%);
   --color-text-secondary: hsl(0 0% 70%);
   --color-text-muted: hsl(240 4% 46%); /* zinc-500 - hints, tips, shortcuts, de-emphasized icons */
@@ -188,6 +196,9 @@
 
   /* Card shadow - subtle in dark mode */
   --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+
+  /* Panel inset shadow opacity (for center panel edges) */
+  --panel-inset-opacity: 0.35;
 }
 
 /* Light theme semantic colors */
@@ -196,6 +207,14 @@
   --color-bg-surface-1: hsl(0 0% 100%);
   --color-bg-surface-2: hsl(0 0% 96%);
   --color-bg-surface-3: hsl(0 0% 92%);
+
+  /* Dashboard gradient background */
+  --bg-gradient-base: #f5f0fa;
+  --bg-gradient-image:
+    radial-gradient(1200px circle at 12% 0%, rgba(168, 85, 247, 0.15), rgba(245, 240, 250, 0)),
+    radial-gradient(900px circle at 88% 8%, rgba(168, 85, 247, 0.12), rgba(245, 240, 250, 0)),
+    radial-gradient(600px circle at 25% 90%, rgba(168, 85, 247, 0.08), rgba(245, 240, 250, 0)),
+    linear-gradient(160deg, rgba(250, 245, 255, 0.96), rgba(245, 240, 250, 1));
 
   --color-text-primary: hsl(0 0% 9%);
   --color-text-secondary: hsl(0 0% 35%);
@@ -234,6 +253,9 @@
 
   /* Card shadow - more visible in light mode to create contrast */
   --card-shadow: 0 2px 12px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
+
+  /* Panel inset shadow opacity (for center panel edges) */
+  --panel-inset-opacity: 0.15;
 }
 
 @layer base {
@@ -242,6 +264,37 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* ==========================================================================
+   SEMANTIC COLOR UTILITIES
+   These provide convenience classes that map to our CSS variable system
+   ========================================================================== */
+@layer utilities {
+  /* Text colors */
+  .text-primary { color: var(--color-text-primary); }
+  .text-secondary { color: var(--color-text-secondary); }
+  .text-muted { color: var(--color-text-muted); }
+
+  /* Background colors */
+  .bg-surface-1 { background: var(--color-bg-surface-1); }
+  .bg-surface-2 { background: var(--color-bg-surface-2); }
+  .bg-surface-3 { background: var(--color-bg-surface-3); }
+
+  /* Tab button states */
+  .tab-active {
+    background: linear-gradient(to bottom, var(--color-bg-surface-3) 0%, var(--color-bg-surface-2) 100%);
+    box-shadow: var(--shadow-1), 0 0 20px oklch(0.6 0.2 270 / 0.3);
+    border-color: oklch(0.6 0.2 270 / 0.5);
+    color: var(--color-accent);
+  }
+
+  .tab-inactive {
+    background: var(--color-bg-surface-1);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+    border-color: var(--color-border-subtle);
+    color: var(--color-text-secondary);
   }
 }
 

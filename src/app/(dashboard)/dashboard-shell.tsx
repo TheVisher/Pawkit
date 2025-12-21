@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useTheme } from 'next-themes';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useSync } from '@/lib/hooks/use-sync';
 import { useLayoutAnchors } from '@/lib/stores/ui-store';
-import { useLeftSidebar, useRightSidebar } from '@/lib/stores/ui-store';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightSidebar } from '@/components/layout/right-sidebar';
 import { MobileNav } from '@/components/layout/mobile-nav';
@@ -16,6 +14,9 @@ import { CardDetailModal } from '@/components/modals/card-detail-modal';
 import { Omnibar } from '@/components/layout/omnibar';
 import { ToastStack } from '@/components/layout/toast-stack';
 import { cn } from '@/lib/utils';
+import { createModuleLogger } from '@/lib/utils/logger';
+
+const log = createModuleLogger('DashboardShell');
 
 interface DashboardShellProps {
   userId: string;
@@ -29,9 +30,6 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const initStarted = useRef(false);
   const workspaceEnsured = useRef(false); // Prevents double workspace creation in Strict Mode
 
-  // Theme detection for background gradient
-  const { resolvedTheme } = useTheme();
-
   // Hover state for revealing closed sidebars
   const [leftHovered, setLeftHovered] = useState(false);
   const [rightHovered, setRightHovered] = useState(false);
@@ -40,10 +38,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const leftHideTimeout = useRef<NodeJS.Timeout | null>(null);
   const rightHideTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // Ref for the main container to attach pointer move listener
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const setUser = useAuthStore((s) => s.setUser);
+  const setBasicUserInfo = useAuthStore((s) => s.setBasicUserInfo);
   const setLoading = useAuthStore((s) => s.setLoading);
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
   const createWorkspace = useWorkspaceStore((s) => s.createWorkspace);
@@ -60,10 +55,6 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   // Layout anchor state for visual merging
   const { leftOpen, rightOpen, leftAnchored, rightAnchored } = useLayoutAnchors();
 
-  // Get setOpen functions for hover-to-open behavior
-  const { setOpen: setLeftOpen } = useLeftSidebar();
-  const { setOpen: setRightOpen } = useRightSidebar();
-
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -74,7 +65,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
       initStarted.current = true;
 
       // Set user info in auth store
-      setUser({ id: userId, email: userEmail } as never);
+      setBasicUserInfo({ id: userId, email: userEmail });
       setLoading(false);
 
       // Load workspaces from Dexie
@@ -82,7 +73,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     }
 
     init();
-  }, [userId, userEmail, setUser, setLoading, loadWorkspaces]);
+  }, [userId, userEmail, setBasicUserInfo, setLoading, loadWorkspaces]);
 
   useEffect(() => {
     async function ensureWorkspace() {
@@ -94,61 +85,42 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
       if (workspaceEnsured.current) return;
       workspaceEnsured.current = true;
 
-      // ALWAYS check the server for workspaces (source of truth)
-      // This prevents using stale/orphaned workspace IDs from local storage
+      // Simple workspace logic:
+      // 1. Fetch workspaces from server
+      // 2. If any exist, use the default one
+      // 3. If none exist, create ONE default workspace
+      // That's it. No magic, no cleanup, no complexity.
+
       try {
         const response = await fetch('/api/workspaces');
         if (response.ok) {
-          let serverWorkspaces = await response.json();
+          const data = await response.json();
+          const serverWorkspaces = data.workspaces || [];
+
           if (serverWorkspaces.length > 0) {
-            // Clean up duplicate workspaces if more than 1 exists (legacy bug fix)
-            if (serverWorkspaces.length > 1) {
-              console.log('[DashboardShell] Found', serverWorkspaces.length, 'workspaces, cleaning up duplicates...');
-              try {
-                const cleanupResponse = await fetch('/api/admin/cleanup-workspaces', {
-                  method: 'POST',
-                  credentials: 'include'
-                });
-                if (cleanupResponse.ok) {
-                  const result = await cleanupResponse.json();
-                  console.log('[DashboardShell] Cleanup result:', result.message);
-                  // Refetch workspaces after cleanup
-                  const refreshResponse = await fetch('/api/workspaces');
-                  if (refreshResponse.ok) {
-                    serverWorkspaces = await refreshResponse.json();
-                  }
-                }
-              } catch (cleanupError) {
-                console.error('[DashboardShell] Failed to cleanup workspaces:', cleanupError);
-              }
-            }
-
-            // Server has workspaces - use them (they are authoritative)
-            console.log('[DashboardShell] Using', serverWorkspaces.length, 'workspace(s) from server');
-
-            // Set workspaces in store
+            // Use existing workspaces
             setWorkspaces(serverWorkspaces);
 
-            // Set current workspace to default or first
+            // Find default workspace, or use first one
             const defaultWorkspace = serverWorkspaces.find((w: { isDefault?: boolean }) => w.isDefault) || serverWorkspaces[0];
             setCurrentWorkspace(defaultWorkspace);
 
+            log.info('Using workspace:', defaultWorkspace.name);
             setIsInitialized(true);
             return;
           }
         }
       } catch (error) {
-        console.error('[DashboardShell] Failed to fetch workspaces from server:', error);
-        // Fall back to local workspaces if server is unavailable
+        log.error('Failed to fetch workspaces:', error);
+        // Fall back to local workspaces if server unavailable
         if (workspaces.length > 0) {
-          console.log('[DashboardShell] Using local workspaces as fallback');
           setIsInitialized(true);
           return;
         }
       }
 
-      // No workspaces on server - create the default
-      console.log('[DashboardShell] No workspaces found, creating default...');
+      // No workspaces exist - create the default (only happens on first signup)
+      log.info('First time user, creating default workspace...');
       await createWorkspace('My Workspace', userId);
       setIsInitialized(true);
     }
@@ -281,11 +253,10 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const floatingShadow = 'shadow-[var(--glass-shadow)]';
 
   // Inset shadow for center panel edges (makes sidebars appear elevated)
-  // Light mode uses softer shadows (0.15), dark mode uses stronger (0.35)
-  const shadowOpacity = resolvedTheme === 'light' ? '0.15' : '0.35';
-  const leftInsetShadow = `shadow-[inset_8px_0_12px_-4px_hsl(0_0%_0%/${shadowOpacity})]`;
-  const rightInsetShadow = `shadow-[inset_-8px_0_12px_-4px_hsl(0_0%_0%/${shadowOpacity})]`;
-  const bothInsetShadow = `shadow-[inset_8px_0_12px_-4px_hsl(0_0%_0%/${shadowOpacity}),inset_-8px_0_12px_-4px_hsl(0_0%_0%/${shadowOpacity})]`;
+  // Uses CSS variable --panel-inset-opacity (0.15 light, 0.35 dark)
+  const leftInsetShadow = 'shadow-[inset_8px_0_12px_-4px_hsl(0_0%_0%/var(--panel-inset-opacity))]';
+  const rightInsetShadow = 'shadow-[inset_-8px_0_12px_-4px_hsl(0_0%_0%/var(--panel-inset-opacity))]';
+  const bothInsetShadow = 'shadow-[inset_8px_0_12px_-4px_hsl(0_0%_0%/var(--panel-inset-opacity)),inset_-8px_0_12px_-4px_hsl(0_0%_0%/var(--panel-inset-opacity))]';
 
   // Full screen mode - when LEFT sidebar is anchored (V1 behavior)
   const isFullScreen = leftMerged;
@@ -317,20 +288,8 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
           // Animate padding for smooth full-screen transition
           padding: isFullScreen ? 0 : 16,
           transition: 'padding 300ms ease-out, background-color 300ms ease-out',
-          backgroundColor: resolvedTheme === 'light' ? '#f5f0fa' : '#0a0814',
-          backgroundImage: resolvedTheme === 'light'
-            ? `
-              radial-gradient(1200px circle at 12% 0%, rgba(168, 85, 247, 0.15), rgba(245, 240, 250, 0)),
-              radial-gradient(900px circle at 88% 8%, rgba(168, 85, 247, 0.12), rgba(245, 240, 250, 0)),
-              radial-gradient(600px circle at 25% 90%, rgba(168, 85, 247, 0.08), rgba(245, 240, 250, 0)),
-              linear-gradient(160deg, rgba(250, 245, 255, 0.96), rgba(245, 240, 250, 1))
-            `
-            : `
-              radial-gradient(1200px circle at 12% 0%, rgba(122, 92, 250, 0.28), rgba(10, 8, 20, 0)),
-              radial-gradient(900px circle at 88% 8%, rgba(122, 92, 250, 0.18), rgba(10, 8, 20, 0)),
-              radial-gradient(600px circle at 25% 90%, rgba(122, 92, 250, 0.14), rgba(10, 8, 20, 0)),
-              linear-gradient(160deg, rgba(10, 8, 20, 0.96), rgba(5, 5, 12, 1))
-            `,
+          backgroundColor: 'var(--bg-gradient-base)',
+          backgroundImage: 'var(--bg-gradient-image)',
           backgroundAttachment: 'fixed'
         }}
       >
@@ -416,11 +375,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
         >
           <div className="flex-1 overflow-auto relative">
             {/* OMNIBAR - Absolute positioned at top center of content area */}
-            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-              <div className="pointer-events-auto">
-                <Omnibar isCompact={false} />
-                <ToastStack isCompact={false} />
-              </div>
+            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-50">
+              <Omnibar isCompact={false} />
+              <ToastStack isCompact={false} />
             </div>
             {children}
           </div>
