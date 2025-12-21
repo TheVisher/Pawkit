@@ -73,12 +73,12 @@ export default function LibraryPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex-1 p-6">
-        <div className="pt-5 pb-4 mb-2">
+      <div className="flex-1">
+        <div className="pt-5 pb-4 px-6 min-h-[76px]">
           <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Library</h1>
           <p style={{ color: 'var(--text-muted)' }} className="mt-1">All your saved content</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => (
             <div
               key={i}
@@ -92,9 +92,9 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="flex-1 p-6">
-      {/* Header - pt-5 pb-4 matches original PageHeader spacing */}
-      <div className="pt-5 pb-4 mb-2">
+    <div className="flex-1">
+      {/* Header row - matches original PageHeader: pt-5 pb-4 px-6 min-h-[76px] */}
+      <div className="pt-5 pb-4 px-6 min-h-[76px]">
         <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Library</h1>
         <p style={{ color: 'var(--text-muted)' }} className="mt-1">
           {activeCards.length === 0
@@ -103,66 +103,69 @@ export default function LibraryPage() {
         </p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-6">
-        <TabButton
-          active={currentTab === 'all'}
-          onClick={() => handleTabChange('all')}
-          icon={Layers}
-          label="All"
-          count={counts.all}
-        />
-        <TabButton
-          active={currentTab === 'bookmarks'}
-          onClick={() => handleTabChange('bookmarks')}
-          icon={Bookmark}
-          label="Bookmarks"
-          count={counts.bookmarks}
-        />
-        <TabButton
-          active={currentTab === 'notes'}
-          onClick={() => handleTabChange('notes')}
-          icon={FileText}
-          label="Notes"
-          count={counts.notes}
-        />
-      </div>
-
-      {/* Content */}
-      {activeCards.length === 0 ? (
-        // Only show empty state when truly no cards exist
-        <EmptyState
-          icon={Bookmark}
-          title="No bookmarks yet"
-          description="Save your first bookmark to get started. Use the + button above or press ⌘⇧B."
-          actionLabel="Add bookmark"
-          onAction={() => openAddCard('bookmark')}
-        />
-      ) : filteredCards.length === 0 ? (
-        // Show filtered empty state
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
-            style={{ background: 'var(--bg-surface-2)' }}
-          >
-            {currentTab === 'notes' ? (
-              <FileText className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
-            ) : (
-              <Bookmark className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
-            )}
-          </div>
-          <p style={{ color: 'var(--text-secondary)' }} className="font-medium">
-            No {currentTab === 'notes' ? 'notes' : 'bookmarks'} yet
-          </p>
-          <p style={{ color: 'var(--text-muted)' }} className="text-sm mt-1">
-            {currentTab === 'notes'
-              ? 'Create a note to get started'
-              : 'Save a URL to get started'}
-          </p>
+      {/* Page content */}
+      <div className="px-6 pb-6">
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          <TabButton
+            active={currentTab === 'all'}
+            onClick={() => handleTabChange('all')}
+            icon={Layers}
+            label="All"
+            count={counts.all}
+          />
+          <TabButton
+            active={currentTab === 'bookmarks'}
+            onClick={() => handleTabChange('bookmarks')}
+            icon={Bookmark}
+            label="Bookmarks"
+            count={counts.bookmarks}
+          />
+          <TabButton
+            active={currentTab === 'notes'}
+            onClick={() => handleTabChange('notes')}
+            icon={FileText}
+            label="Notes"
+            count={counts.notes}
+          />
         </div>
-      ) : (
-        <CardGrid cards={sortedCards} layout={layout} />
-      )}
+
+        {/* Content */}
+        {activeCards.length === 0 ? (
+          // Only show empty state when truly no cards exist
+          <EmptyState
+            icon={Bookmark}
+            title="No bookmarks yet"
+            description="Save your first bookmark to get started. Use the + button above or press ⌘⇧B."
+            actionLabel="Add bookmark"
+            onAction={() => openAddCard('bookmark')}
+          />
+        ) : filteredCards.length === 0 ? (
+          // Show filtered empty state
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+              style={{ background: 'var(--bg-surface-2)' }}
+            >
+              {currentTab === 'notes' ? (
+                <FileText className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
+              ) : (
+                <Bookmark className="w-8 h-8" style={{ color: 'var(--text-muted)' }} />
+              )}
+            </div>
+            <p style={{ color: 'var(--text-secondary)' }} className="font-medium">
+              No {currentTab === 'notes' ? 'notes' : 'bookmarks'} yet
+            </p>
+            <p style={{ color: 'var(--text-muted)' }} className="text-sm mt-1">
+              {currentTab === 'notes'
+                ? 'Create a note to get started'
+                : 'Save a URL to get started'}
+            </p>
+          </div>
+        ) : (
+          <CardGrid cards={sortedCards} layout={layout} />
+        )}
+      </div>
     </div>
   );
 }
