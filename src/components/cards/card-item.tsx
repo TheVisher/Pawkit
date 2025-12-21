@@ -6,8 +6,8 @@ import { Globe, FileText, StickyNote, Pin, Loader2 } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
 import { cn } from '@/lib/utils';
 
-// Minimum height for cards without images
-const MIN_THUMBNAIL_HEIGHT = 140;
+// Minimum height for cards without images (more substantial)
+const MIN_THUMBNAIL_HEIGHT = 180;
 // Default aspect ratio (16:10) until image loads
 const DEFAULT_ASPECT_RATIO = 16 / 10;
 
@@ -132,13 +132,13 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
                   <Image
                     src={card.favicon!}
                     alt=""
-                    width={48}
-                    height={48}
-                    className="rounded-lg"
+                    width={64}
+                    height={64}
+                    className="rounded-xl"
                     onError={() => setImageError(true)}
                   />
                 ) : (
-                  <Icon className="w-12 h-12" style={{ color: 'var(--text-muted)' }} />
+                  <Icon className="w-16 h-16" style={{ color: 'var(--text-muted)' }} />
                 )}
               </div>
             )}
