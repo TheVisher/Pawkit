@@ -74,7 +74,7 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
       <button
         onClick={onClick}
         className={cn(
-          'group relative text-left rounded-2xl overflow-hidden',
+          'group relative w-full text-left rounded-2xl overflow-hidden',
           'transition-all duration-300 ease-out',
           'hover:-translate-y-1',
           'focus:outline-none focus:ring-2 focus:ring-offset-2',
