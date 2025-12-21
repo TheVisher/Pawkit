@@ -15,10 +15,9 @@ export function CardGrid({ cards, layout }: CardGridProps) {
   return (
     <div
       className={cn(
-        'gap-4',
         isListView
-          ? 'flex flex-col'
-          : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+          ? 'flex flex-col gap-2'
+          : 'grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
       )}
     >
       {cards.map((card) => (
@@ -27,8 +26,8 @@ export function CardGrid({ cards, layout }: CardGridProps) {
           card={card}
           variant={isListView ? 'list' : 'grid'}
           onClick={() => {
-            // TODO: Open card detail modal
-            console.log('Card clicked:', card.id, card.title);
+            // Log card ID for now - detail modal comes in next task
+            console.log('Card clicked:', card.id, card.title || 'Untitled');
           }}
         />
       ))}
