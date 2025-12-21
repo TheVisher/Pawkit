@@ -51,9 +51,6 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
   const hasImage = card.image && !imageError;
   const hasFavicon = card.favicon && !imageError;
 
-  // URL cards that don't have image/title yet are likely still loading metadata
-  const isLoadingMetadata = card.type === 'url' && !card.image && !card.title;
-
   // Handle image load to get natural dimensions
   const handleImageLoad = useCallback((event: React.SyntheticEvent<HTMLImageElement>) => {
     const img = event.currentTarget;
@@ -67,8 +64,6 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
   }, []);
 
   // Calculate the aspect ratio to use for the thumbnail container
-  // URL cards always use aspect ratio (even while loading) to prevent layout shift
-  const isUrlCard = card.type === 'url';
   const thumbnailAspectRatio = hasImage
     ? (imageAspectRatio || DEFAULT_ASPECT_RATIO)
     : DEFAULT_ASPECT_RATIO;
@@ -80,8 +75,7 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
         onClick={onClick}
         className={cn(
           'group relative w-full text-left rounded-2xl overflow-hidden',
-          // Only transition transform and shadow - NOT all properties (causes flicker in masonry)
-          'transition-[transform,box-shadow] duration-300 ease-out',
+          'transition-all duration-300 ease-out',
           'hover:-translate-y-1',
           'focus:outline-none focus:ring-2 focus:ring-offset-2',
           'focus:ring-offset-[var(--bg-base)]'
@@ -92,18 +86,28 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
           boxShadow: 'var(--card-shadow, 0 2px 8px rgba(0, 0, 0, 0.08))',
         }}
       >
-        {/* NOTE: Colored blur background effect removed - was causing flickering
-            If we want to restore it later, use CSS background-image instead of a second Image component */}
+        {/* Colored blur background effect - uses thumbnail as blurred background */}
+        {hasImage && (
+          <div className="absolute inset-0 overflow-hidden rounded-2xl">
+            <Image
+              src={card.image!}
+              alt=""
+              fill
+              sizes="(max-width: 768px) 100vw, 300px"
+              className="object-cover scale-110 blur-3xl opacity-30 saturate-150"
+              onError={() => setImageError(true)}
+            />
+          </div>
+        )}
 
         {/* Card content container */}
-        <div className="relative flex flex-col">
+        <div className="relative flex flex-col backdrop-blur-sm">
           {/* Thumbnail / Image */}
           <div
             className="relative overflow-hidden"
             style={{
-              // URL cards always use aspect ratio to prevent layout shift when thumbnail loads
-              aspectRatio: (hasImage || isUrlCard) ? thumbnailAspectRatio : undefined,
-              minHeight: (hasImage || isUrlCard) ? undefined : MIN_THUMBNAIL_HEIGHT,
+              aspectRatio: hasImage ? thumbnailAspectRatio : undefined,
+              minHeight: hasImage ? undefined : MIN_THUMBNAIL_HEIGHT,
             }}
           >
             {hasImage ? (
@@ -119,20 +123,12 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
               />
             ) : (
               <div
-                className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+                className="absolute inset-0 flex items-center justify-center"
                 style={{
                   background: `linear-gradient(135deg, var(--bg-surface-2) 0%, var(--bg-surface-3) 100%)`,
                 }}
               >
-                {isLoadingMetadata ? (
-                  // Show loading state for URL cards fetching metadata
-                  <>
-                    <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--text-muted)' }} />
-                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
-                      Loading preview...
-                    </span>
-                  </>
-                ) : hasFavicon ? (
+                {hasFavicon ? (
                   <Image
                     src={card.favicon!}
                     alt=""
@@ -269,8 +265,7 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
       className={cn(
         'group relative text-left w-full rounded-xl overflow-hidden',
         'flex items-center gap-4 p-3',
-        // Only transition transform and shadow - specific transitions prevent flicker
-        'transition-[transform,box-shadow] duration-200 ease-out',
+        'transition-all duration-200 ease-out',
         'hover:translate-x-1',
         'focus:outline-none focus:ring-2 focus:ring-offset-2',
         'focus:ring-offset-[var(--bg-base)]'
