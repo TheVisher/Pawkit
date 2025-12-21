@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, memo } from 'react';
 import Image from 'next/image';
 import { Globe, FileText, StickyNote, Pin, Loader2 } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
@@ -40,7 +40,10 @@ function getDomain(url: string): string {
   }
 }
 
-export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
+/**
+ * Card item component - memoized to prevent re-renders when other cards change
+ */
+export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
   const [imageError, setImageError] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
   const Icon = getCardIcon(card.type);
@@ -365,4 +368,20 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
       />
     </button>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison to prevent re-renders when card content hasn't changed
+  return (
+    prevProps.card.id === nextProps.card.id &&
+    prevProps.card.title === nextProps.card.title &&
+    prevProps.card.image === nextProps.card.image &&
+    prevProps.card.favicon === nextProps.card.favicon &&
+    prevProps.card.domain === nextProps.card.domain &&
+    prevProps.card.url === nextProps.card.url &&
+    prevProps.card.pinned === nextProps.card.pinned &&
+    prevProps.card._synced === nextProps.card._synced &&
+    prevProps.card.status === nextProps.card.status &&
+    prevProps.card.type === nextProps.card.type &&
+    prevProps.variant === nextProps.variant &&
+    JSON.stringify(prevProps.card.tags) === JSON.stringify(nextProps.card.tags)
+  );
+})
