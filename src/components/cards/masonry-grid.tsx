@@ -175,36 +175,33 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
     return (containerWidth - totalGap) / columnCount;
   }, [containerWidth, columnCount]);
 
-  // Calculate masonry positions
+  // Calculate masonry positions using sequential column placement
+  // This creates predictable animations when cards are added/removed
   const { positions, totalHeight } = useMemo(() => {
     if (cards.length === 0) {
       return { positions: new Map<string, { x: number; y: number }>(), totalHeight: 0 };
     }
 
+    // Track height for each column
     const columnHeights = new Array(columnCount).fill(0);
     const posMap = new Map<string, { x: number; y: number }>();
 
-    for (const card of cards) {
-      // Find shortest column
-      let shortestCol = 0;
-      let minHeight = columnHeights[0];
-      for (let i = 1; i < columnCount; i++) {
-        if (columnHeights[i] < minHeight) {
-          minHeight = columnHeights[i];
-          shortestCol = i;
-        }
-      }
+    // Sequential placement: card index determines column
+    // This means when a new card is added at index 0, all cards shift right by one column
+    cards.forEach((card, index) => {
+      // Determine which column based on card index
+      const column = index % columnCount;
 
       // Calculate position
-      const x = shortestCol * (cardWidth + GAP);
-      const y = columnHeights[shortestCol];
+      const x = column * (cardWidth + GAP);
+      const y = columnHeights[column];
 
       posMap.set(card.id, { x, y });
 
       // Update column height
       const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
-      columnHeights[shortestCol] += cardHeight + GAP;
-    }
+      columnHeights[column] += cardHeight + GAP;
+    });
 
     const maxHeight = Math.max(...columnHeights);
     return { positions: posMap, totalHeight: maxHeight > 0 ? maxHeight - GAP : 0 };
