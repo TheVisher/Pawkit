@@ -80,9 +80,11 @@ const CONTENT_PADDING = 56; // Approximate height for title + domain + tags area
  * This is used for initial layout before actual measurements
  */
 function estimateHeight(card: LocalCard, cardWidth: number): number {
-  // For cards with images, use aspect ratio to estimate thumbnail height
-  // We can't know the actual aspect ratio until the image loads, so use default
-  const thumbnailHeight = card.image
+  // For URL cards, always assume they'll have a thumbnail (even if not loaded yet)
+  // This prevents the double-shift when metadata is fetched
+  const willHaveThumbnail = card.type === 'url' || card.image;
+
+  const thumbnailHeight = willHaveThumbnail
     ? cardWidth / DEFAULT_ASPECT_RATIO
     : MIN_THUMBNAIL_HEIGHT;
 
