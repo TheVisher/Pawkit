@@ -50,9 +50,11 @@ function SortableCard({ card, onClick }: SortableCardProps) {
     isDragging,
   } = useSortable({ id: card.id });
 
+  // Only apply transform and transition during actual drag operations
+  // This prevents conflicts with the masonry grid's left/top transitions
   const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform) || undefined,
-    transition: transition || 'transform 250ms ease',
+    transform: isDragging ? CSS.Transform.toString(transform) : undefined,
+    transition: isDragging ? transition : 'none',
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 999 : 'auto',
   };

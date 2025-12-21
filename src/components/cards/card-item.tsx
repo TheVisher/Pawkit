@@ -80,7 +80,8 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
         onClick={onClick}
         className={cn(
           'group relative w-full text-left rounded-2xl overflow-hidden',
-          'transition-all duration-300 ease-out',
+          // Only transition transform and shadow - NOT all properties (causes flicker in masonry)
+          'transition-[transform,box-shadow] duration-300 ease-out',
           'hover:-translate-y-1',
           'focus:outline-none focus:ring-2 focus:ring-offset-2',
           'focus:ring-offset-[var(--bg-base)]'
@@ -279,7 +280,8 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
       className={cn(
         'group relative text-left w-full rounded-xl overflow-hidden',
         'flex items-center gap-4 p-3',
-        'transition-all duration-200 ease-out',
+        // Only transition transform and shadow - specific transitions prevent flicker
+        'transition-[transform,box-shadow] duration-200 ease-out',
         'hover:translate-x-1',
         'focus:outline-none focus:ring-2 focus:ring-offset-2',
         'focus:ring-offset-[var(--bg-base)]'
