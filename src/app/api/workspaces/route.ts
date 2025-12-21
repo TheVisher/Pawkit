@@ -57,7 +57,9 @@ export async function GET(request: Request) {
       );
     }
 
-    const { since, limit = 100, offset = 0 } = queryResult.data;
+    const { since, limit, offset } = queryResult.data;
+    const effectiveLimit = limit ?? 100;
+    const effectiveOffset = offset ?? 0;
 
     // 3. Fetch workspaces for user
     const workspaces = await prisma.workspace.findMany({
@@ -72,8 +74,8 @@ export async function GET(request: Request) {
         { isDefault: 'desc' }, // Default workspace first
         { createdAt: 'asc' },
       ],
-      take: limit,
-      skip: offset,
+      take: effectiveLimit,
+      skip: effectiveOffset,
     });
 
     // 4. Return workspaces
@@ -81,8 +83,8 @@ export async function GET(request: Request) {
       workspaces,
       meta: {
         count: workspaces.length,
-        limit,
-        offset,
+        limit: effectiveLimit,
+        offset: effectiveOffset,
       },
     });
   } catch (error) {
