@@ -51,6 +51,9 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
   const hasImage = card.image && !imageError;
   const hasFavicon = card.favicon && !imageError;
 
+  // URL cards that don't have image/title yet are likely still loading metadata
+  const isLoadingMetadata = card.type === 'url' && !card.image && !card.title;
+
   // Handle image load to get natural dimensions
   const handleImageLoad = useCallback((event: React.SyntheticEvent<HTMLImageElement>) => {
     const img = event.currentTarget;
@@ -64,6 +67,8 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
   }, []);
 
   // Calculate the aspect ratio to use for the thumbnail container
+  // URL cards always use aspect ratio (even while loading) to prevent layout shift
+  const isUrlCard = card.type === 'url';
   const thumbnailAspectRatio = hasImage
     ? (imageAspectRatio || DEFAULT_ASPECT_RATIO)
     : DEFAULT_ASPECT_RATIO;
@@ -106,8 +111,9 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
           <div
             className="relative overflow-hidden"
             style={{
-              aspectRatio: hasImage ? thumbnailAspectRatio : undefined,
-              minHeight: hasImage ? undefined : MIN_THUMBNAIL_HEIGHT,
+              // URL cards always use aspect ratio to prevent layout shift when thumbnail loads
+              aspectRatio: (hasImage || isUrlCard) ? thumbnailAspectRatio : undefined,
+              minHeight: (hasImage || isUrlCard) ? undefined : MIN_THUMBNAIL_HEIGHT,
             }}
           >
             {hasImage ? (
@@ -123,12 +129,20 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
               />
             ) : (
               <div
-                className="absolute inset-0 flex items-center justify-center"
+                className="absolute inset-0 flex flex-col items-center justify-center gap-2"
                 style={{
                   background: `linear-gradient(135deg, var(--bg-surface-2) 0%, var(--bg-surface-3) 100%)`,
                 }}
               >
-                {hasFavicon ? (
+                {isLoadingMetadata ? (
+                  // Show loading state for URL cards fetching metadata
+                  <>
+                    <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--text-muted)' }} />
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+                      Loading preview...
+                    </span>
+                  </>
+                ) : hasFavicon ? (
                   <Image
                     src={card.favicon!}
                     alt=""
