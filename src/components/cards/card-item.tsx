@@ -1,10 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { Globe, FileText, StickyNote, Pin, Loader2 } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
 import { cn } from '@/lib/utils';
+
+// Minimum height for cards without images
+const MIN_THUMBNAIL_HEIGHT = 140;
+// Default aspect ratio (16:10) until image loads
+const DEFAULT_ASPECT_RATIO = 16 / 10;
 
 interface CardItemProps {
   card: LocalCard;
@@ -37,6 +42,7 @@ function getDomain(url: string): string {
 
 export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
   const [imageError, setImageError] = useState(false);
+  const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
   const Icon = getCardIcon(card.type);
   const domain = card.domain || getDomain(card.url);
   const isListView = variant === 'list';
@@ -44,6 +50,23 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
 
   const hasImage = card.image && !imageError;
   const hasFavicon = card.favicon && !imageError;
+
+  // Handle image load to get natural dimensions
+  const handleImageLoad = useCallback((event: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = event.currentTarget;
+    if (img.naturalWidth && img.naturalHeight) {
+      const ratio = img.naturalWidth / img.naturalHeight;
+      // Clamp aspect ratio to reasonable bounds (0.5 to 2.5)
+      // This prevents super tall or super wide cards
+      const clampedRatio = Math.max(0.5, Math.min(2.5, ratio));
+      setImageAspectRatio(clampedRatio);
+    }
+  }, []);
+
+  // Calculate the aspect ratio to use for the thumbnail container
+  const thumbnailAspectRatio = hasImage
+    ? (imageAspectRatio || DEFAULT_ASPECT_RATIO)
+    : DEFAULT_ASPECT_RATIO;
 
   // Grid view - vertical card with thumbnail on top
   if (!isListView) {
@@ -80,7 +103,13 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
         {/* Card content container */}
         <div className="relative flex flex-col backdrop-blur-sm">
           {/* Thumbnail / Image */}
-          <div className="relative aspect-[16/10] overflow-hidden">
+          <div
+            className="relative overflow-hidden"
+            style={{
+              aspectRatio: hasImage ? thumbnailAspectRatio : undefined,
+              minHeight: hasImage ? undefined : MIN_THUMBNAIL_HEIGHT,
+            }}
+          >
             {hasImage ? (
               <Image
                 src={card.image!}
@@ -90,6 +119,7 @@ export function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
                 priority
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
                 onError={() => setImageError(true)}
+                onLoad={handleImageLoad}
               />
             ) : (
               <div

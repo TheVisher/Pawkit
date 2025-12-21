@@ -33,16 +33,19 @@
 - [x] **Card Detail Modal (Phase 3.3):** Full edit capabilities, Tags, Notes, and Reader Mode with auto-save.
 - [x] **Omnibar-Toast System (Phase 3.2):** Elastic animations, spring stack physics, and sync status integration.
 - [x] **Metadata Scraper Service (Phase 3.4):** Automated OpenGraph extraction with YouTube support and image validation.
+- [x] **Masonry Layout (Phase 3.5):** Custom left-to-right dense packing algorithm with `dnd-kit` integration and responsive resizing.
 
 ### In Progress 🔄
-- [ ] **Masonry Layout:** Custom left-to-right implementation.
+- [ ] Collection Management (Create/Edit Pawkits)
 
 ### Not Started ⬜
-- [ ] Collection Management (Create/Edit Pawkits)
+- [ ] Calendar View
+- [ ] Rediscover View
 
 ---
 
 ### Known Issues / Technical Debt
+- [ ] **Orphaned TopBar:** The `TopBar` component containing view toggles (Masonry/Grid/List) is implemented but not mounted in the `DashboardShell`. Needs integration into `LibraryPage` or the shell header.
 - [ ] **Omnibar Collision Detection:** Omnibar currently centered via absolute positioning; needs logic to switch to compact mode or shift when colliding with header content (e.g., long page titles).
 - [ ] **User Sync Optimization:** Currently using JIT upsert in `api/workspaces`. Should eventually move to Supabase Triggers for cleaner architecture.
 
@@ -50,13 +53,12 @@
 
 ## Session Log
 
-### Dec 20, 2025 - Metadata & Automated Enrichment
-- **Automated Metadata:** Completed Phase 3.4. URLs now automatically fetch titles, images, descriptions, and favicons on save.
-- **Resilience:** Implemented a concurrency-limited queue (max 3) and server-side timeouts to prevent blocking the UI.
-- **YouTube Integration:** Added special handling for high-res YouTube thumbnails.
-- **UI Reactivity:** Updated `SyncQueue` and `CardItem` to ensure immediate visual feedback when metadata is ready or sync completes.
+### Dec 20, 2025 - Views & Masonry
+- **Masonry Layout:** Implemented a custom "Shortest Column First" masonry algorithm in `lib/utils/masonry.ts` that preserves left-to-right reading order.
+- **Unified DnD:** Integrated `dnd-kit` into the `MasonryGrid` component, allowing for future drag-and-drop reordering.
+- **Responsive:** Added `ResizeObserver` logic to dynamically recalculate columns and card widths.
 
-### Dec 20, 2025 - Omnibar & Polish
+### Dec 20, 2025 - Theme System & Light Mode
 - **Signature Feature:** Completed the Omnibar-Toast system.
   - Implemented elastic morphing animations where the search bar transforms into notifications.
   - Built a physics-based toast stack that "pops out" from underneath the bar.
