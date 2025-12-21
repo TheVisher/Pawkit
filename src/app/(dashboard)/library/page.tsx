@@ -73,8 +73,8 @@ export default function LibraryPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="flex-1 p-6 pt-20">
-        <div className="mb-6">
+      <div className="flex-1 p-6">
+        <div className="pt-5 pb-4 mb-2">
           <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Library</h1>
           <p style={{ color: 'var(--text-muted)' }} className="mt-1">All your saved content</p>
         </div>
@@ -92,9 +92,9 @@ export default function LibraryPage() {
   }
 
   return (
-    <div className="flex-1 p-6 pt-20">
-      {/* Header */}
-      <div className="mb-6">
+    <div className="flex-1 p-6">
+      {/* Header - pt-5 pb-4 matches original PageHeader spacing */}
+      <div className="pt-5 pb-4 mb-2">
         <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>Library</h1>
         <p style={{ color: 'var(--text-muted)' }} className="mt-1">
           {activeCards.length === 0

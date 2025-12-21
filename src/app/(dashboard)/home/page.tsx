@@ -37,9 +37,9 @@ export default function HomePage() {
   const TimeIcon = timeIcons[timeIcon as keyof typeof timeIcons] || Coffee;
 
   return (
-    <div className="flex-1 p-6 pt-20">
-      {/* Header with greeting */}
-      <div className="mb-6 space-y-0.5">
+    <div className="flex-1 p-6">
+      {/* Header with greeting - pt-5 matches original PageHeader spacing */}
+      <div className="pt-5 pb-4 mb-2 space-y-0.5">
         {/* Date row - smaller and muted */}
         <div className="flex items-center gap-1.5 text-text-muted">
           <TimeIcon className="h-3.5 w-3.5" />
