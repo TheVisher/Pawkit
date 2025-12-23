@@ -19,7 +19,7 @@ export default function PawkitPage() {
     const isLoading = useDataStore((state) => state.isLoading);
     const { loadViewSettings, reorderCards } = useViewActions();
     const { cardOrder, sortBy } = useViewSettings();
-    const { cardPadding, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
+    const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
     const workspace = useCurrentWorkspace();
 
     // Sort cards based on manual order if 'manual' sort is active or if cardOrder exists
@@ -94,6 +94,7 @@ export default function PawkitPage() {
                         cards={sortedCards}
                         onReorder={reorderCards}
                         cardSize={cardSize}
+                        cardSpacing={cardSpacing}
                         displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
                     />
                 )}

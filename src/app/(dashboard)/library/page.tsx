@@ -30,7 +30,7 @@ export default function LibraryPage() {
   }, [workspace, loadViewSettings]);
 
   // Card display settings
-  const { cardPadding, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
+  const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
 
   // Filter out deleted cards
   const activeCards = useMemo(() => cards.filter((card) => !card._deleted), [cards]);
@@ -114,6 +114,7 @@ export default function LibraryPage() {
             layout={layout}
             onReorder={handleReorder}
             cardSize={cardSize}
+            cardSpacing={cardSpacing}
             displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
           />
         )}

@@ -18,7 +18,7 @@ import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
 
 // Configuration
-const GAP = 16;
+const DEFAULT_GAP = 16;
 
 // Card size configurations - min column widths
 type CardSize = 'small' | 'medium' | 'large' | 'xl';
@@ -33,6 +33,7 @@ interface MasonryGridProps {
   cards: LocalCard[];
   onReorder?: (reorderedIds: string[]) => void;
   cardSize?: CardSize;
+  cardSpacing?: number;
   displaySettings?: Partial<CardDisplaySettings>;
 }
 
@@ -156,7 +157,7 @@ function estimateHeight(card: LocalCard, cardWidth: number): number {
 /**
  * Masonry grid layout with drag-and-drop support
  */
-export function MasonryGrid({ cards, onReorder, cardSize = 'medium', displaySettings }: MasonryGridProps) {
+export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing = DEFAULT_GAP, displaySettings }: MasonryGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -193,15 +194,15 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', displaySett
   // Calculate columns and card width
   const columnCount = useMemo(() => {
     if (containerWidth <= 0) return 1;
-    const cols = Math.floor((containerWidth + GAP) / (minCardWidth + GAP));
+    const cols = Math.floor((containerWidth + cardSpacing) / (minCardWidth + cardSpacing));
     return Math.max(1, cols);
-  }, [containerWidth, minCardWidth]);
+  }, [containerWidth, minCardWidth, cardSpacing]);
 
   const cardWidth = useMemo(() => {
     if (containerWidth <= 0) return minCardWidth;
-    const totalGap = (columnCount - 1) * GAP;
+    const totalGap = (columnCount - 1) * cardSpacing;
     return (containerWidth - totalGap) / columnCount;
-  }, [containerWidth, columnCount, minCardWidth]);
+  }, [containerWidth, columnCount, minCardWidth, cardSpacing]);
 
   // Calculate masonry positions
   const { positions, totalHeight } = useMemo(() => {
@@ -224,19 +225,19 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', displaySett
       }
 
       // Calculate position
-      const x = shortestCol * (cardWidth + GAP);
+      const x = shortestCol * (cardWidth + cardSpacing);
       const y = columnHeights[shortestCol];
 
       posMap.set(card.id, { x, y });
 
       // Update column height
       const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
-      columnHeights[shortestCol] += cardHeight + GAP;
+      columnHeights[shortestCol] += cardHeight + cardSpacing;
     }
 
     const maxHeight = Math.max(...columnHeights);
-    return { positions: posMap, totalHeight: maxHeight > 0 ? maxHeight - GAP : 0 };
-  }, [cards, columnCount, cardWidth, measuredHeights]);
+    return { positions: posMap, totalHeight: maxHeight > 0 ? maxHeight - cardSpacing : 0 };
+  }, [cards, columnCount, cardWidth, measuredHeights, cardSpacing]);
 
   // Measure card heights after render and when cards resize (e.g., images load)
   useEffect(() => {

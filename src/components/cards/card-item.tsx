@@ -34,6 +34,7 @@ interface CardItemProps {
   variant?: 'grid' | 'list';
   onClick?: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
+  uniformHeight?: boolean; // For grid view - crops images to fit uniform aspect ratio
 }
 
 function getCardIcon(type: string) {
@@ -68,6 +69,7 @@ export const CardItem = memo(function CardItem({
   variant = 'grid',
   onClick,
   displaySettings = {},
+  uniformHeight = false,
 }: CardItemProps) {
   const [imageError, setImageError] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
@@ -124,14 +126,20 @@ export const CardItem = memo(function CardItem({
           'transition-all duration-300 ease-out',
           'hover:-translate-y-1',
           'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2',
-          'focus:ring-offset-transparent'
+          'focus:ring-offset-transparent',
+          uniformHeight && 'h-full'
         )}
       >
         {/* Outer card container with configurable blurred padding */}
         <div
-          className="relative overflow-hidden rounded-2xl"
+          className={cn(
+            "relative overflow-hidden rounded-2xl",
+            uniformHeight && "h-full flex flex-col"
+          )}
           style={{
-            padding: `${sidePadding}px ${sidePadding}px ${bottomPadding}px ${sidePadding}px`,
+            padding: uniformHeight
+              ? `${sidePadding}px`
+              : `${sidePadding}px ${sidePadding}px ${bottomPadding}px ${sidePadding}px`,
             boxShadow: 'var(--card-shadow)',
             border: '1px solid rgba(255, 255, 255, 0.08)',
           }}
@@ -164,8 +172,11 @@ export const CardItem = memo(function CardItem({
 
           {/* Inner thumbnail container */}
           <div
-            className="relative overflow-hidden rounded-xl"
-            style={{
+            className={cn(
+              "relative overflow-hidden rounded-xl",
+              uniformHeight && "h-full w-full"
+            )}
+            style={uniformHeight ? undefined : {
               aspectRatio: hasImage ? thumbnailAspectRatio : undefined,
               minHeight: hasImage ? undefined : MIN_THUMBNAIL_HEIGHT,
             }}
@@ -472,6 +483,7 @@ export const CardItem = memo(function CardItem({
     prevSettings.showMetadataFooter === nextSettings.showMetadataFooter &&
     prevSettings.showUrlPill === nextSettings.showUrlPill &&
     prevSettings.showTitles === nextSettings.showTitles &&
-    prevSettings.showTags === nextSettings.showTags
+    prevSettings.showTags === nextSettings.showTags &&
+    prevProps.uniformHeight === nextProps.uniformHeight
   );
 });

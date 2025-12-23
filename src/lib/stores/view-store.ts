@@ -25,6 +25,7 @@ interface ViewState {
   showUrls: boolean;
   showTags: boolean;
   cardPadding: number; // 0-40 pixels
+  cardSpacing: number; // 0-40 pixels (gap between cards)
 
   // Card display settings
   cardSize: CardSize; // small, medium, large, xl
@@ -50,6 +51,7 @@ interface ViewState {
   setShowUrls: (show: boolean) => void;
   setShowTags: (show: boolean) => void;
   setCardPadding: (padding: number) => void;
+  setCardSpacing: (spacing: number) => void;
   setCardSize: (size: CardSize) => void;
   setShowMetadataFooter: (show: boolean) => void;
   setShowUrlPill: (show: boolean) => void;
@@ -73,6 +75,7 @@ const DEFAULT_VIEW_SETTINGS = {
   showUrls: true,
   showTags: true,
   cardPadding: 10, // 0-40 pixels
+  cardSpacing: 16, // 0-40 pixels (gap between cards)
   cardSize: 'medium' as CardSize,
   showMetadataFooter: true,
   showUrlPill: true,
@@ -106,6 +109,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
   setShowTags: (show) => set({ showTags: show }),
 
   setCardPadding: (padding) => set({ cardPadding: Math.max(0, Math.min(40, padding)) }),
+
+  setCardSpacing: (spacing) => set({ cardSpacing: Math.max(0, Math.min(40, spacing)) }),
 
   setCardSize: (size) => set({ cardSize: size }),
 
@@ -149,6 +154,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
           showUrls: s.showUrls,
           showTags: s.showTags,
           cardPadding: s.cardPadding,
+          cardSpacing: s.cardSpacing ?? DEFAULT_VIEW_SETTINGS.cardSpacing,
           cardSize: s.cardSize || DEFAULT_VIEW_SETTINGS.cardSize,
           showMetadataFooter: s.showMetadataFooter ?? DEFAULT_VIEW_SETTINGS.showMetadataFooter,
           showUrlPill: s.showUrlPill ?? DEFAULT_VIEW_SETTINGS.showUrlPill,
@@ -169,7 +175,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
   saveViewSettings: async (workspaceId) => {
     const {
       currentView, layout, sortBy, sortOrder, showTitles, showUrls, showTags,
-      cardPadding, cardSize, showMetadataFooter, showUrlPill, cardOrder
+      cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, cardOrder
     } = get();
 
     try {
@@ -189,6 +195,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
           showUrls,
           showTags,
           cardPadding,
+          cardSpacing,
           cardSize,
           showMetadataFooter,
           showUrlPill,
@@ -209,6 +216,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
           showUrls,
           showTags,
           cardPadding,
+          cardSpacing,
           cardSize,
           showMetadataFooter,
           showUrlPill,
@@ -245,6 +253,7 @@ export const selectDisplaySettings = (state: ViewState) => ({
   showUrls: state.showUrls,
   showTags: state.showTags,
   cardPadding: state.cardPadding,
+  cardSpacing: state.cardSpacing,
   cardSize: state.cardSize,
   showMetadataFooter: state.showMetadataFooter,
   showUrlPill: state.showUrlPill,
@@ -266,6 +275,7 @@ export function useViewSettings() {
       showUrls: state.showUrls,
       showTags: state.showTags,
       cardPadding: state.cardPadding,
+      cardSpacing: state.cardSpacing,
       cardSize: state.cardSize,
       showMetadataFooter: state.showMetadataFooter,
       showUrlPill: state.showUrlPill,
@@ -285,6 +295,7 @@ export function useViewActions() {
       setShowUrls: state.setShowUrls,
       setShowTags: state.setShowTags,
       setCardPadding: state.setCardPadding,
+      setCardSpacing: state.setCardSpacing,
       setCardSize: state.setCardSize,
       setShowMetadataFooter: state.setShowMetadataFooter,
       setShowUrlPill: state.setShowUrlPill,
@@ -302,6 +313,7 @@ export function useCardDisplaySettings() {
   return useViewStore(
     useShallow((state) => ({
       cardPadding: state.cardPadding,
+      cardSpacing: state.cardSpacing,
       cardSize: state.cardSize,
       showMetadataFooter: state.showMetadataFooter,
       showUrlPill: state.showUrlPill,

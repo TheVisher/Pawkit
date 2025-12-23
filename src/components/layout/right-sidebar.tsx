@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { Filter, Tag, ArrowRightToLine, ArrowLeftFromLine, Maximize2, Minimize2, Moon, Sun, SunMoon, Sliders, Home, Calendar, Info } from 'lucide-react';
+import { Filter, Tag, ArrowRightToLine, ArrowLeftFromLine, Maximize2, Minimize2, Moon, Sun, SunMoon, Sliders, Home, Calendar, Info, LayoutGrid, List, LayoutDashboard } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useRightSidebar } from '@/lib/stores/ui-store';
 import { useViewStore, useCardDisplaySettings } from '@/lib/stores/view-store';
@@ -109,8 +109,11 @@ export function RightSidebar() {
   }, [pathname, displayedPathname, mounted]);
 
   // Card display settings (only used when viewConfig.showCardDisplay is true)
-  const { cardPadding, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
+  const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
+  const layout = useViewStore((s) => s.layout);
+  const setLayout = useViewStore((s) => s.setLayout);
   const setCardPadding = useViewStore((s) => s.setCardPadding);
+  const setCardSpacing = useViewStore((s) => s.setCardSpacing);
   const setCardSize = useViewStore((s) => s.setCardSize);
   const setShowMetadataFooter = useViewStore((s) => s.setShowMetadataFooter);
   const setShowUrlPill = useViewStore((s) => s.setShowUrlPill);
@@ -277,142 +280,236 @@ export function RightSidebar() {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Card Size */}
-                  <div>
-                    <label className="text-xs text-text-secondary mb-2 block">Card Size</label>
-                    <div className="grid grid-cols-4 gap-1">
-                      {(['small', 'medium', 'large', 'xl'] as CardSize[]).map((size) => (
+                  {/* View Dropdown - Always visible */}
+                  <div className="group/view relative flex items-center justify-between">
+                    <label className="text-xs text-text-secondary">View</label>
+                    <button className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary transition-colors">
+                      {layout === 'masonry' && <LayoutDashboard className="h-3.5 w-3.5" />}
+                      {layout === 'grid' && <LayoutGrid className="h-3.5 w-3.5" />}
+                      {layout === 'list' && <List className="h-3.5 w-3.5" />}
+                      <span className="capitalize">{layout}</span>
+                    </button>
+                    {/* Hover dropdown */}
+                    <div className="absolute right-0 top-full mt-1 z-50 opacity-0 invisible group-hover/view:opacity-100 group-hover/view:visible transition-all duration-150">
+                      <div
+                        className="py-1 rounded-lg shadow-lg min-w-[120px]"
+                        style={{
+                          background: 'var(--color-bg-surface-2)',
+                          border: '1px solid var(--border-subtle)',
+                        }}
+                      >
                         <button
-                          key={size}
                           onClick={() => {
-                            setCardSize(size);
+                            setLayout('masonry');
                             handleSettingChange();
                           }}
                           className={cn(
-                            'px-2 py-1.5 text-xs rounded-md transition-colors capitalize',
-                            cardSize === size
-                              ? 'bg-[var(--color-accent)] text-white'
-                              : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                            'w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors',
+                            layout === 'masonry'
+                              ? 'text-[var(--color-accent)]'
+                              : 'text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
                           )}
                         >
-                          {size === 'xl' ? 'XL' : size.charAt(0).toUpperCase() + size.slice(1, 3)}
+                          <LayoutDashboard className="h-3.5 w-3.5" />
+                          <span>Masonry</span>
                         </button>
-                      ))}
+                        <button
+                          onClick={() => {
+                            setLayout('grid');
+                            handleSettingChange();
+                          }}
+                          className={cn(
+                            'w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors',
+                            layout === 'grid'
+                              ? 'text-[var(--color-accent)]'
+                              : 'text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                          )}
+                        >
+                          <LayoutGrid className="h-3.5 w-3.5" />
+                          <span>Grid</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setLayout('list');
+                            handleSettingChange();
+                          }}
+                          className={cn(
+                            'w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors',
+                            layout === 'list'
+                              ? 'text-[var(--color-accent)]'
+                              : 'text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                          )}
+                        >
+                          <List className="h-3.5 w-3.5" />
+                          <span>List</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Card Padding Slider */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-xs text-text-secondary">Padding</label>
-                      <span className="text-xs text-text-muted">{cardPadding}px</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="40"
-                      value={cardPadding}
-                      onChange={(e) => {
-                        setCardPadding(Number(e.target.value));
-                        handleSettingChange();
-                      }}
-                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-slider"
-                      style={{
-                        background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${(cardPadding / 40) * 100}%, var(--bg-surface-3) ${(cardPadding / 40) * 100}%, var(--bg-surface-3) 100%)`,
-                      }}
-                    />
-                  </div>
+                  {/* Card options - Hidden in List View since they don't apply */}
+                  {layout !== 'list' && (
+                    <>
+                      {/* Card Size */}
+                      <div>
+                        <label className="text-xs text-text-secondary mb-2 block">Card Size</label>
+                        <div className="grid grid-cols-4 gap-1">
+                          {(['small', 'medium', 'large', 'xl'] as CardSize[]).map((size) => (
+                            <button
+                              key={size}
+                              onClick={() => {
+                                setCardSize(size);
+                                handleSettingChange();
+                              }}
+                              className={cn(
+                                'px-2 py-1.5 text-xs rounded-md transition-colors capitalize',
+                                cardSize === size
+                                  ? 'bg-[var(--color-accent)] text-white'
+                                  : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                              )}
+                            >
+                              {size === 'xl' ? 'XL' : size.charAt(0).toUpperCase() + size.slice(1, 3)}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
 
-                  {/* Toggle Switches */}
-                  <div className="space-y-2">
-                    {/* Show Metadata Footer */}
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs text-text-secondary">Metadata Footer</label>
-                      <button
-                        onClick={() => {
-                          setShowMetadataFooter(!showMetadataFooter);
-                          handleSettingChange();
-                        }}
-                        className={cn(
-                          'relative w-9 h-5 rounded-full transition-colors',
-                          showMetadataFooter ? 'bg-[var(--color-accent)]' : 'bg-bg-surface-3'
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
-                            showMetadataFooter && 'translate-x-4'
-                          )}
+                      {/* Card Padding Slider */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-xs text-text-secondary">Padding</label>
+                          <span className="text-xs text-text-muted">{cardPadding}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="40"
+                          value={cardPadding}
+                          onChange={(e) => {
+                            setCardPadding(Number(e.target.value));
+                            handleSettingChange();
+                          }}
+                          className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-slider"
+                          style={{
+                            background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${(cardPadding / 40) * 100}%, var(--bg-surface-3) ${(cardPadding / 40) * 100}%, var(--bg-surface-3) 100%)`,
+                          }}
                         />
-                      </button>
-                    </div>
+                      </div>
 
-                    {/* Show URL Pill */}
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs text-text-secondary">URL Pill</label>
-                      <button
-                        onClick={() => {
-                          setShowUrlPill(!showUrlPill);
-                          handleSettingChange();
-                        }}
-                        className={cn(
-                          'relative w-9 h-5 rounded-full transition-colors',
-                          showUrlPill ? 'bg-[var(--color-accent)]' : 'bg-bg-surface-3'
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
-                            showUrlPill && 'translate-x-4'
-                          )}
+                      {/* Card Spacing Slider */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-xs text-text-secondary">Spacing</label>
+                          <span className="text-xs text-text-muted">{cardSpacing}px</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="40"
+                          value={cardSpacing}
+                          onChange={(e) => {
+                            setCardSpacing(Number(e.target.value));
+                            handleSettingChange();
+                          }}
+                          className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-slider"
+                          style={{
+                            background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${(cardSpacing / 40) * 100}%, var(--bg-surface-3) ${(cardSpacing / 40) * 100}%, var(--bg-surface-3) 100%)`,
+                          }}
                         />
-                      </button>
-                    </div>
+                      </div>
 
-                    {/* Show Titles */}
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs text-text-secondary">Titles</label>
-                      <button
-                        onClick={() => {
-                          setShowTitles(!showTitles);
-                          handleSettingChange();
-                        }}
-                        className={cn(
-                          'relative w-9 h-5 rounded-full transition-colors',
-                          showTitles ? 'bg-[var(--color-accent)]' : 'bg-bg-surface-3'
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
-                            showTitles && 'translate-x-4'
-                          )}
-                        />
-                      </button>
-                    </div>
+                      {/* Toggle Switches */}
+                      <div className="space-y-2">
+                        {/* Show Metadata Footer */}
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-text-secondary">Metadata Footer</label>
+                          <button
+                            onClick={() => {
+                              setShowMetadataFooter(!showMetadataFooter);
+                              handleSettingChange();
+                            }}
+                            className={cn(
+                              'relative w-9 h-5 rounded-full transition-colors',
+                              showMetadataFooter ? 'bg-[var(--color-accent)]' : 'bg-bg-surface-3'
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
+                                showMetadataFooter && 'translate-x-4'
+                              )}
+                            />
+                          </button>
+                        </div>
 
-                    {/* Show Tags */}
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs text-text-secondary">Tags</label>
-                      <button
-                        onClick={() => {
-                          setShowTags(!showTags);
-                          handleSettingChange();
-                        }}
-                        className={cn(
-                          'relative w-9 h-5 rounded-full transition-colors',
-                          showTags ? 'bg-[var(--color-accent)]' : 'bg-bg-surface-3'
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
-                            showTags && 'translate-x-4'
-                          )}
-                        />
-                      </button>
-                    </div>
-                  </div>
+                        {/* Show URL Pill */}
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-text-secondary">URL Pill</label>
+                          <button
+                            onClick={() => {
+                              setShowUrlPill(!showUrlPill);
+                              handleSettingChange();
+                            }}
+                            className={cn(
+                              'relative w-9 h-5 rounded-full transition-colors',
+                              showUrlPill ? 'bg-[var(--color-accent)]' : 'bg-bg-surface-3'
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
+                                showUrlPill && 'translate-x-4'
+                              )}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Show Titles */}
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-text-secondary">Titles</label>
+                          <button
+                            onClick={() => {
+                              setShowTitles(!showTitles);
+                              handleSettingChange();
+                            }}
+                            className={cn(
+                              'relative w-9 h-5 rounded-full transition-colors',
+                              showTitles ? 'bg-[var(--color-accent)]' : 'bg-bg-surface-3'
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
+                                showTitles && 'translate-x-4'
+                              )}
+                            />
+                          </button>
+                        </div>
+
+                        {/* Show Tags */}
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs text-text-secondary">Tags</label>
+                          <button
+                            onClick={() => {
+                              setShowTags(!showTags);
+                              handleSettingChange();
+                            }}
+                            className={cn(
+                              'relative w-9 h-5 rounded-full transition-colors',
+                              showTags ? 'bg-[var(--color-accent)]' : 'bg-bg-surface-3'
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
+                                showTags && 'translate-x-4'
+                              )}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               <Separator className="bg-border-subtle" />
