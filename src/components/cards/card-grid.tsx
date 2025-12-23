@@ -6,7 +6,7 @@ import { DragOverlay, useDndMonitor, type Modifier } from '@dnd-kit/core';
 import { SortableContext, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CardItem, type CardDisplaySettings } from './card-item';
 import { MasonryGrid } from './masonry-grid';
-import { CardListView } from './card-list-view';
+import { CardListView, type CardGroup } from './card-list-view';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
 
@@ -85,6 +85,8 @@ interface CardGridProps {
   cardSize?: CardSize;
   cardSpacing?: number;
   displaySettings?: Partial<CardDisplaySettings>;
+  groups?: CardGroup[];
+  groupIcon?: React.ComponentType<{ className?: string }>;
 }
 
 export function CardGrid({
@@ -94,6 +96,8 @@ export function CardGrid({
   cardSize = 'medium',
   cardSpacing = 16,
   displaySettings,
+  groups,
+  groupIcon,
 }: CardGridProps) {
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
@@ -165,7 +169,7 @@ export function CardGrid({
 
   // List view - dedicated component
   if (layout === 'list') {
-    return <CardListView cards={cards} onReorder={onReorder} />;
+    return <CardListView cards={cards} groups={groups} groupIcon={groupIcon} onReorder={onReorder} />;
   }
 
   // Grid view - Uniform card sizes with fixed aspect ratio and DnD
