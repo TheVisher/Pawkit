@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Editor } from '@tiptap/react';
 import {
+  Type,
   Heading1,
   Heading2,
   Heading3,
@@ -12,80 +13,95 @@ import {
   Code,
   Minus,
   Quote,
+  Table2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Command {
   id: string;
   label: string;
-  description: string;
+  shortcut: string;
   icon: typeof Heading1;
   action: (editor: Editor) => void;
 }
 
 const commands: Command[] = [
   {
+    id: 'text',
+    label: 'Text',
+    shortcut: '',
+    icon: Type,
+    action: (editor) => editor.chain().focus().setParagraph().run(),
+  },
+  {
     id: 'heading1',
     label: 'Heading 1',
-    description: 'Large section heading',
+    shortcut: '#',
     icon: Heading1,
     action: (editor) => editor.chain().focus().toggleHeading({ level: 1 }).run(),
   },
   {
     id: 'heading2',
     label: 'Heading 2',
-    description: 'Medium section heading',
+    shortcut: '##',
     icon: Heading2,
     action: (editor) => editor.chain().focus().toggleHeading({ level: 2 }).run(),
   },
   {
     id: 'heading3',
     label: 'Heading 3',
-    description: 'Small section heading',
+    shortcut: '###',
     icon: Heading3,
     action: (editor) => editor.chain().focus().toggleHeading({ level: 3 }).run(),
   },
   {
     id: 'bulletlist',
-    label: 'Bullet List',
-    description: 'Create a simple list',
+    label: 'Bulleted list',
+    shortcut: '-',
     icon: List,
     action: (editor) => editor.chain().focus().toggleBulletList().run(),
   },
   {
     id: 'orderedlist',
-    label: 'Numbered List',
-    description: 'Create a numbered list',
+    label: 'Numbered list',
+    shortcut: '1.',
     icon: ListOrdered,
     action: (editor) => editor.chain().focus().toggleOrderedList().run(),
   },
   {
     id: 'checklist',
-    label: 'Checklist',
-    description: 'Create a todo list',
+    label: 'To-do list',
+    shortcut: '[]',
     icon: CheckSquare,
     action: (editor) => editor.chain().focus().toggleTaskList().run(),
   },
   {
-    id: 'code',
-    label: 'Code Block',
-    description: 'Display code with syntax',
-    icon: Code,
-    action: (editor) => editor.chain().focus().toggleCodeBlock().run(),
-  },
-  {
     id: 'blockquote',
     label: 'Quote',
-    description: 'Capture a quotation',
+    shortcut: '>',
     icon: Quote,
     action: (editor) => editor.chain().focus().toggleBlockquote().run(),
   },
   {
     id: 'divider',
     label: 'Divider',
-    description: 'Insert a horizontal line',
+    shortcut: '---',
     icon: Minus,
     action: (editor) => editor.chain().focus().setHorizontalRule().run(),
+  },
+  {
+    id: 'code',
+    label: 'Code block',
+    shortcut: '```',
+    icon: Code,
+    action: (editor) => editor.chain().focus().toggleCodeBlock().run(),
+  },
+  {
+    id: 'table',
+    label: 'Table',
+    shortcut: '',
+    icon: Table2,
+    action: (editor) => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
 ];
 
@@ -253,31 +269,30 @@ export function SlashCommandMenu({ editor }: SlashCommandMenuProps) {
     <div
       ref={menuRef}
       className={cn(
-        'absolute z-50 w-64 max-h-80 overflow-y-auto',
-        'rounded-xl',
+        'absolute z-50 min-w-[220px]',
+        'rounded-lg',
         'bg-[var(--glass-panel-bg)]',
         'backdrop-blur-[var(--glass-blur)] backdrop-saturate-[var(--glass-saturate)]',
         'border border-[var(--glass-border)]',
         'shadow-[var(--glass-shadow)]',
-        'py-2'
+        'py-1.5',
+        // Custom scrollbar - minimal thumb only
+        'max-h-[320px] overflow-y-auto',
+        'scrollbar-thin scrollbar-thumb-[var(--glass-border)] scrollbar-track-transparent'
       )}
       style={{
         top: position.top,
         left: position.left,
       }}
     >
-      {/* Search indicator */}
-      {query && (
-        <div className="px-3 pb-2 mb-2 border-b border-[var(--glass-border)]">
-          <span className="text-xs text-[var(--color-text-muted)]">
-            Filtering: <span className="text-[var(--color-text-primary)]">{query}</span>
-          </span>
-        </div>
-      )}
+      {/* Section header */}
+      <div className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">
+        Basic blocks
+      </div>
 
       {/* Command list */}
       {filteredCommands.length > 0 ? (
-        <div className="space-y-0.5">
+        <div>
           {filteredCommands.map((command, index) => {
             const Icon = command.icon;
             return (
@@ -286,75 +301,71 @@ export function SlashCommandMenu({ editor }: SlashCommandMenuProps) {
                 onClick={() => selectCommand(command)}
                 onMouseEnter={() => setSelectedIndex(index)}
                 className={cn(
-                  'w-full flex items-center gap-3 px-3 py-2 text-left transition-colors',
+                  'w-full flex items-center justify-between gap-3 px-3 py-1.5 text-left transition-colors',
                   index === selectedIndex
                     ? 'bg-[var(--glass-bg-hover)]'
                     : 'hover:bg-[var(--glass-bg)]'
                 )}
               >
-                <div
-                  className={cn(
-                    'flex items-center justify-center w-8 h-8 rounded-lg',
-                    'bg-[var(--glass-bg)] border border-[var(--glass-border)]'
-                  )}
-                >
+                <div className="flex items-center gap-2.5">
                   <Icon
                     className={cn(
-                      'h-4 w-4',
+                      'h-4 w-4 flex-shrink-0',
                       index === selectedIndex
-                        ? 'text-[var(--color-accent)]'
-                        : 'text-[var(--color-text-secondary)]'
+                        ? 'text-[var(--color-text-primary)]'
+                        : 'text-[var(--color-text-muted)]'
                     )}
                   />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div
+                  <span
                     className={cn(
-                      'text-sm font-medium',
+                      'text-sm',
                       index === selectedIndex
                         ? 'text-[var(--color-text-primary)]'
                         : 'text-[var(--color-text-secondary)]'
                     )}
                   >
                     {command.label}
-                  </div>
-                  <div className="text-xs text-[var(--color-text-muted)] truncate">
-                    {command.description}
-                  </div>
+                  </span>
                 </div>
+                {command.shortcut && (
+                  <span className="text-xs text-[var(--color-text-muted)] font-mono">
+                    {command.shortcut}
+                  </span>
+                )}
               </button>
             );
           })}
         </div>
       ) : (
-        <div className="px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">
+        <div className="px-3 py-3 text-center text-sm text-[var(--color-text-muted)]">
           No commands found
         </div>
       )}
 
-      {/* Keyboard hints */}
-      <div className="mt-2 pt-2 px-3 border-t border-[var(--glass-border)]">
-        <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
-          <span className="flex items-center gap-1">
-            <kbd className="px-1.5 py-0.5 rounded bg-[var(--glass-bg)] border border-[var(--glass-border)]">
-              ↑↓
-            </kbd>
-            navigate
-          </span>
-          <span className="flex items-center gap-1">
-            <kbd className="px-1.5 py-0.5 rounded bg-[var(--glass-bg)] border border-[var(--glass-border)]">
-              ↵
-            </kbd>
-            select
-          </span>
-          <span className="flex items-center gap-1">
-            <kbd className="px-1.5 py-0.5 rounded bg-[var(--glass-bg)] border border-[var(--glass-border)]">
-              esc
-            </kbd>
-            close
-          </span>
+      {/* Footer hint */}
+      <div className="mt-1 pt-1.5 px-3 pb-1 border-t border-[var(--glass-border)]">
+        <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)]">
+          <span>Type <span className="font-mono">/</span> to filter</span>
+          <span className="font-mono">esc</span>
         </div>
       </div>
+
+      {/* Minimal scrollbar styles */}
+      <style jsx>{`
+        div::-webkit-scrollbar {
+          width: 4px;
+        }
+        div::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        div::-webkit-scrollbar-thumb {
+          background: var(--glass-border);
+          border-radius: 2px;
+        }
+        div::-webkit-scrollbar-thumb:hover {
+          background: var(--color-text-muted);
+        }
+      `}</style>
     </div>
   );
 }

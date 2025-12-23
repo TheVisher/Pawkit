@@ -1,18 +1,20 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   Filter, Tag, ArrowRightToLine, ArrowLeftFromLine, Maximize2, Minimize2,
   Moon, Sun, SunMoon, Sliders, Home, Calendar, LayoutGrid, List, LayoutDashboard,
   ArrowUpDown, Bookmark, FileText, Video, Image, FileSpreadsheet, Music, HelpCircle,
-  Layers, CalendarDays, Globe, Type, Inbox, FolderMinus, TagsIcon
+  Layers, CalendarDays, Globe, Type, Inbox, FolderMinus, TagsIcon,
+  X, FolderOpen, Link2, Paperclip, MessageSquare
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useRightSidebar } from '@/lib/stores/ui-store';
 import { useViewStore, useCardDisplaySettings } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useModalStore } from '@/lib/stores/modal-store';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -133,13 +135,44 @@ export function RightSidebar() {
   const [mounted, setMounted] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [displayedPathname, setDisplayedPathname] = useState('');
+  const [displayMode, setDisplayMode] = useState<'filters' | 'card-details'>('filters');
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const pathname = usePathname();
   const { isOpen, isAnchored, toggleAnchored, setOpen } = useRightSidebar();
   const { theme, setTheme } = useTheme();
   const workspace = useCurrentWorkspace();
 
+  // Get active card from modal store
+  const activeCardId = useModalStore((s) => s.activeCardId);
+  const allCards = useDataStore((s) => s.cards);
+  const allCollections = useDataStore((s) => s.collections);
+  const activeCard = useMemo(() =>
+    activeCardId ? allCards.find(c => c.id === activeCardId) : null,
+    [activeCardId, allCards]
+  );
+
   // Get view-specific configuration
   const viewConfig = useMemo(() => getViewConfig(displayedPathname || pathname), [displayedPathname, pathname]);
+
+  // Handle transition between filters and card details view
+  useEffect(() => {
+    const targetMode = activeCardId ? 'card-details' : 'filters';
+
+    if (targetMode !== displayMode && mounted) {
+      // Start exit animation
+      setIsTransitioning(true);
+
+      // After exit animation, switch mode and start enter
+      const timer = setTimeout(() => {
+        setDisplayMode(targetMode);
+        setTimeout(() => setIsTransitioning(false), 100);
+      }, 200);
+
+      return () => clearTimeout(timer);
+    } else if (!mounted) {
+      setDisplayMode(targetMode);
+    }
+  }, [activeCardId, displayMode, mounted]);
 
   // Handle view transitions with animation
   useEffect(() => {
@@ -277,7 +310,7 @@ export function RightSidebar() {
                   {open ? <ArrowRightToLine className="h-5 w-5" /> : <ArrowLeftFromLine className="h-5 w-5" />}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">
+              <TooltipContent side="bottom" className={displayMode === 'card-details' ? 'z-[70]' : ''}>
                 <p>{open ? 'Close sidebar' : 'Open sidebar'}</p>
               </TooltipContent>
             </Tooltip>
@@ -293,7 +326,7 @@ export function RightSidebar() {
                   {anchored ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">
+              <TooltipContent side="bottom" className={displayMode === 'card-details' ? 'z-[70]' : ''}>
                 <p>{anchored ? 'Float panel' : 'Anchor panel'}</p>
               </TooltipContent>
             </Tooltip>
@@ -309,26 +342,139 @@ export function RightSidebar() {
                   <ThemeIcon className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom">
+              <TooltipContent side="bottom" className={displayMode === 'card-details' ? 'z-[70]' : ''}>
                 <p>{themeInfo.label}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
-        <span className="text-sm font-medium text-text-secondary">{viewConfig.title}</span>
+        <span className="text-sm font-medium text-text-secondary">
+          {displayMode === 'card-details' ? 'Card Details' : viewConfig.title}
+        </span>
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-4">
-        <div
-          key={displayedPathname}
-          className={cn(
-            'space-y-4 transition-all ease-out',
-            isAnimating
-              ? 'opacity-0 translate-y-2'
-              : 'opacity-100 translate-y-0'
-          )}
-          style={{ transitionDuration: '250ms' }}
-        >
+        {/* Card Details Panel - shown when a card modal is open */}
+        {displayMode === 'card-details' && activeCard && (
+          <div
+            className={cn(
+              'space-y-4 transition-all ease-out',
+              isTransitioning
+                ? 'opacity-0 translate-y-2'
+                : 'opacity-100 translate-y-0'
+            )}
+            style={{ transitionDuration: '250ms' }}
+          >
+            {/* Tags Section */}
+            <div>
+              <div className="flex items-center gap-2 text-text-muted mb-3">
+                <Tag className="h-5 w-5" />
+                <span className="text-xs font-medium uppercase">Tags</span>
+              </div>
+              {activeCard.tags && activeCard.tags.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {activeCard.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2.5 py-1 text-xs rounded-md bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/30"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted italic">No tags</p>
+              )}
+            </div>
+
+            <Separator className="bg-border-subtle" />
+
+            {/* Pawkit (Collection) Section */}
+            <div>
+              <div className="flex items-center gap-2 text-text-muted mb-3">
+                <FolderOpen className="h-5 w-5" />
+                <span className="text-xs font-medium uppercase">Pawkits</span>
+              </div>
+              {activeCard.collections && activeCard.collections.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {activeCard.collections.map((collectionSlug) => {
+                    const collection = allCollections.find(c => c.slug === collectionSlug);
+                    return (
+                      <span
+                        key={collectionSlug}
+                        className="px-2.5 py-1 text-xs rounded-md bg-bg-surface-2 text-text-primary border border-border-subtle"
+                      >
+                        {collection?.name || collectionSlug}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted italic">Not in any Pawkit</p>
+              )}
+            </div>
+
+            <Separator className="bg-border-subtle" />
+
+            {/* Backlinks Section (placeholder for Phase 7.2) */}
+            <div>
+              <div className="flex items-center gap-2 text-text-muted mb-3">
+                <Link2 className="h-5 w-5" />
+                <span className="text-xs font-medium uppercase">Backlinks</span>
+              </div>
+              <p className="text-xs text-text-muted italic">No backlinks yet</p>
+            </div>
+
+            <Separator className="bg-border-subtle" />
+
+            {/* Attachments Section (placeholder) */}
+            <div>
+              <div className="flex items-center gap-2 text-text-muted mb-3">
+                <Paperclip className="h-5 w-5" />
+                <span className="text-xs font-medium uppercase">Attachments</span>
+              </div>
+              <p className="text-xs text-text-muted italic">No attachments</p>
+            </div>
+
+            <Separator className="bg-border-subtle" />
+
+            {/* Kit Chat Section (placeholder) */}
+            <div>
+              <div className="flex items-center gap-2 text-text-muted mb-3">
+                <MessageSquare className="h-5 w-5" />
+                <span className="text-xs font-medium uppercase">Kit Chat</span>
+              </div>
+              <div className="px-3 py-4 rounded-lg bg-bg-surface-2 border border-border-subtle text-center">
+                <p className="text-xs text-text-muted">AI assistant coming soon</p>
+              </div>
+            </div>
+
+            {/* Metadata */}
+            <div className="pt-2 space-y-1 text-xs text-text-muted">
+              <div className="flex justify-between">
+                <span>Created</span>
+                <span>{new Date(activeCard.createdAt).toLocaleDateString()}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Updated</span>
+                <span>{new Date(activeCard.updatedAt).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Filters Panel - shown when no card modal is open */}
+        {displayMode === 'filters' && (
+          <div
+            key={displayedPathname}
+            className={cn(
+              'space-y-4 transition-all ease-out',
+              isAnimating || isTransitioning
+                ? 'opacity-0 translate-y-2'
+                : 'opacity-100 translate-y-0'
+            )}
+            style={{ transitionDuration: '250ms' }}
+          >
           {/* Content Type Filter - Card views only (multi-select) */}
           {viewConfig.showContentFilters && (
             <>
@@ -834,7 +980,8 @@ export function RightSidebar() {
               </p>
             </div>
           )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

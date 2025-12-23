@@ -7,6 +7,7 @@ import Link from '@tiptap/extension-link';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Typography from '@tiptap/extension-typography';
+import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Bold, Italic, Code, Link as LinkIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -83,6 +84,15 @@ export function Editor({
         },
       }),
       Typography,
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: 'tiptap-table',
+        },
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content,
     editable,
@@ -301,21 +311,21 @@ export function Editor({
           pointer-events: none;
         }
 
-        /* Heading placeholders - line-height matches heading styles for cursor alignment */
+        /* Heading placeholders - inherit font-size from parent heading */
         .tiptap h1.is-node-empty::before {
-          font-size: 1.5rem;
+          font-size: inherit;
           font-weight: 600;
-          line-height: 1.2;
+          line-height: inherit;
         }
         .tiptap h2.is-node-empty::before {
-          font-size: 1.25rem;
+          font-size: inherit;
           font-weight: 600;
-          line-height: 1.3;
+          line-height: inherit;
         }
         .tiptap h3.is-node-empty::before {
-          font-size: 1.1rem;
+          font-size: inherit;
           font-weight: 600;
-          line-height: 1.4;
+          line-height: inherit;
         }
 
         /* Task list styling */
@@ -349,15 +359,10 @@ export function Editor({
         .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked {
           background: var(--color-accent);
           border-color: var(--color-accent);
-        }
-
-        .tiptap ul[data-type="taskList"] li > label input[type="checkbox"]:checked::after {
-          content: '\\2713';
-          display: block;
-          color: white;
-          font-size: 0.75rem;
-          text-align: center;
-          line-height: 0.85rem;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+          background-size: 10px;
+          background-position: center;
+          background-repeat: no-repeat;
         }
 
         .tiptap ul[data-type="taskList"] li > div {
@@ -396,6 +401,111 @@ export function Editor({
           border: none;
           border-top: 1px solid var(--glass-border);
           margin: 1.5rem 0;
+        }
+
+        /* Bullet list styling */
+        .tiptap ul:not([data-type="taskList"]) {
+          list-style-type: disc;
+          padding-left: 1.5rem;
+          margin: 0.5rem 0;
+        }
+
+        .tiptap ul:not([data-type="taskList"]) li {
+          padding-left: 0.25rem;
+        }
+
+        .tiptap ul:not([data-type="taskList"]) li::marker {
+          color: var(--color-text-muted);
+        }
+
+        /* Nested bullet lists */
+        .tiptap ul:not([data-type="taskList"]) ul {
+          list-style-type: circle;
+        }
+
+        .tiptap ul:not([data-type="taskList"]) ul ul {
+          list-style-type: square;
+        }
+
+        /* Numbered list styling */
+        .tiptap ol {
+          list-style-type: decimal;
+          padding-left: 1.5rem;
+          margin: 0.5rem 0;
+        }
+
+        .tiptap ol li {
+          padding-left: 0.25rem;
+        }
+
+        .tiptap ol li::marker {
+          color: var(--color-text-muted);
+        }
+
+        /* Blockquote styling */
+        .tiptap blockquote {
+          border-left: 3px solid var(--color-accent);
+          padding-left: 1rem;
+          margin: 1rem 0;
+          color: var(--color-text-secondary);
+          font-style: italic;
+        }
+
+        .tiptap blockquote p {
+          margin: 0;
+        }
+
+        /* Table styling */
+        .tiptap table {
+          border-collapse: collapse;
+          width: 100%;
+          margin: 1rem 0;
+          overflow: hidden;
+        }
+
+        .tiptap table th,
+        .tiptap table td {
+          border: 1px solid var(--glass-border);
+          padding: 0.5rem 0.75rem;
+          text-align: left;
+          vertical-align: top;
+          min-width: 100px;
+        }
+
+        .tiptap table th {
+          background: var(--glass-bg);
+          font-weight: 600;
+          color: var(--color-text-primary);
+        }
+
+        .tiptap table td {
+          color: var(--color-text-secondary);
+        }
+
+        .tiptap table tr:hover td {
+          background: var(--glass-bg);
+        }
+
+        /* Column resize handle */
+        .tiptap .column-resize-handle {
+          position: absolute;
+          right: -2px;
+          top: 0;
+          bottom: 0;
+          width: 4px;
+          background: var(--color-accent);
+          cursor: col-resize;
+          opacity: 0;
+          transition: opacity 0.15s;
+        }
+
+        .tiptap table:hover .column-resize-handle {
+          opacity: 1;
+        }
+
+        /* Selected cells */
+        .tiptap .selectedCell {
+          background: hsla(var(--accent-h) var(--accent-s) 50% / 0.15);
         }
       `}</style>
     </div>
