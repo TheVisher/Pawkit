@@ -1,10 +1,58 @@
 'use client';
 
-import { useState, useCallback, memo } from 'react';
+import { useState, useCallback, useRef, useEffect, memo } from 'react';
 import Image from 'next/image';
 import { Globe, FileText, StickyNote, Pin, Loader2 } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
 import { cn } from '@/lib/utils';
+
+/**
+ * Calculate relative luminance of an RGB color
+ * Returns value between 0 (black) and 1 (white)
+ */
+function getLuminance(r: number, g: number, b: number): number {
+  const [rs, gs, bs] = [r, g, b].map((c) => {
+    c = c / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+/**
+ * Sample average color from an image using canvas
+ */
+function getAverageColor(img: HTMLImageElement): { r: number; g: number; b: number } | null {
+  try {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    // Sample at small size for performance
+    const size = 50;
+    canvas.width = size;
+    canvas.height = size;
+
+    ctx.drawImage(img, 0, 0, size, size);
+    const imageData = ctx.getImageData(0, 0, size, size).data;
+
+    let r = 0, g = 0, b = 0;
+    const pixelCount = size * size;
+
+    for (let i = 0; i < imageData.length; i += 4) {
+      r += imageData[i];
+      g += imageData[i + 1];
+      b += imageData[i + 2];
+    }
+
+    return {
+      r: Math.round(r / pixelCount),
+      g: Math.round(g / pixelCount),
+      b: Math.round(b / pixelCount),
+    };
+  } catch {
+    return null;
+  }
+}
 
 // Minimum height for cards without images (more substantial)
 const MIN_THUMBNAIL_HEIGHT = 180;
@@ -73,6 +121,7 @@ export const CardItem = memo(function CardItem({
 }: CardItemProps) {
   const [imageError, setImageError] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
+  const [isDarkBackground, setIsDarkBackground] = useState(true); // Default to dark (safer for overlays)
   const Icon = getCardIcon(card.type);
   const domain = card.domain || getDomain(card.url);
   const isListView = variant === 'list';
@@ -84,7 +133,7 @@ export const CardItem = memo(function CardItem({
   const hasImage = card.image && !imageError;
   const hasFavicon = card.favicon && !imageError;
 
-  // Handle image load to get natural dimensions
+  // Handle image load to get natural dimensions and calculate background brightness
   const handleImageLoad = useCallback((event: React.SyntheticEvent<HTMLImageElement>) => {
     const img = event.currentTarget;
     if (img.naturalWidth && img.naturalHeight) {
@@ -92,6 +141,19 @@ export const CardItem = memo(function CardItem({
       // Clamp aspect ratio to reasonable bounds (0.5 to 2.5)
       const clampedRatio = Math.max(0.5, Math.min(2.5, ratio));
       setImageAspectRatio(clampedRatio);
+
+      // Calculate average color and determine if background is dark
+      // The blurred background has a 30% black overlay, so we account for that
+      const avgColor = getAverageColor(img);
+      if (avgColor) {
+        // Apply the 30% black overlay effect to the average color
+        const overlayedR = avgColor.r * 0.7;
+        const overlayedG = avgColor.g * 0.7;
+        const overlayedB = avgColor.b * 0.7;
+        const luminance = getLuminance(overlayedR, overlayedG, overlayedB);
+        // If luminance > 0.4, background is light enough to need dark text
+        setIsDarkBackground(luminance <= 0.4);
+      }
     }
   }, []);
 
@@ -279,20 +341,24 @@ export const CardItem = memo(function CardItem({
               className="relative mt-2"
               style={{ paddingLeft: FOOTER_INSET, paddingRight: FOOTER_INSET }}
             >
-              {/* Title */}
+              {/* Title - dynamic color based on background brightness */}
               {settings.showTitles && card.title && (
                 <h3
                   className={cn(
                     'font-medium text-sm line-clamp-2 transition-colors',
                     'group-hover:text-[var(--color-accent)]'
                   )}
-                  style={{ color: 'var(--color-text-primary)' }}
+                  style={{
+                    color: hasImage
+                      ? (isDarkBackground ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.85)')
+                      : 'var(--color-text-primary)',
+                  }}
                 >
                   {card.title}
                 </h3>
               )}
 
-              {/* Tags */}
+              {/* Tags - dynamic color based on background brightness */}
               {settings.showTags && card.tags && card.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                   {card.tags.slice(0, 3).map((tag) => (
@@ -300,8 +366,12 @@ export const CardItem = memo(function CardItem({
                       key={tag}
                       className="px-2 py-0.5 text-[11px] font-medium rounded-md"
                       style={{
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        color: 'rgba(255, 255, 255, 0.8)',
+                        background: hasImage
+                          ? (isDarkBackground ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)')
+                          : 'var(--color-bg-surface-3)',
+                        color: hasImage
+                          ? (isDarkBackground ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.75)')
+                          : 'var(--color-text-secondary)',
                       }}
                     >
                       {tag}
@@ -311,8 +381,12 @@ export const CardItem = memo(function CardItem({
                     <span
                       className="px-2 py-0.5 text-[11px] font-medium rounded-md"
                       style={{
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        color: 'rgba(255, 255, 255, 0.8)',
+                        background: hasImage
+                          ? (isDarkBackground ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)')
+                          : 'var(--color-bg-surface-3)',
+                        color: hasImage
+                          ? (isDarkBackground ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.75)')
+                          : 'var(--color-text-secondary)',
                       }}
                     >
                       +{card.tags.length - 3}

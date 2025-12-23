@@ -262,7 +262,7 @@ function ListRowActions({ card, onEdit }: { card: LocalCard; onEdit: () => void 
               </button>
             </>
           )}
-          <div className="my-1 border-t border-white/5" />
+          <div className="my-1 border-t border-[var(--color-text-muted)]/20" />
           <button
             onClick={handleDelete}
             className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
@@ -317,7 +317,7 @@ function ColumnPicker({
             border: '1px solid var(--border-subtle)',
           }}
         >
-          <div className="px-3 py-1.5 text-xs font-medium text-text-secondary border-b border-white/5 mb-1">
+          <div className="px-3 py-1.5 text-xs font-medium text-text-secondary border-b border-[var(--color-text-muted)]/20 mb-1">
             Toggle Columns
           </div>
           {ALL_COLUMNS.map((col) => {
@@ -344,7 +344,7 @@ function ColumnPicker({
                     'w-4 h-4 rounded border flex items-center justify-center',
                     isVisible
                       ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
-                      : 'border-white/20'
+                      : 'border-[var(--color-text-muted)]/40'
                   )}
                 >
                   {isVisible && <Check className="h-3 w-3 text-white" />}
@@ -563,7 +563,7 @@ function BulkActionBar({
 }) {
   return (
     <div
-      className="sticky bottom-0 z-30 flex items-center gap-3 px-4 py-3 border-t border-white/10"
+      className="sticky bottom-0 z-30 flex items-center gap-3 px-4 py-3 border-t border-[var(--color-text-muted)]/20"
       style={{
         background: 'var(--color-bg-surface-2)',
       }}
@@ -627,7 +627,7 @@ function SortableListRow({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex border-b border-white/5 transition-colors group',
+        'flex border-b border-[var(--color-text-muted)]/15 transition-colors group',
         isDragging && 'opacity-30',
         isDropTarget && 'bg-[var(--color-accent)]/20'
       )}
@@ -759,7 +759,7 @@ function ResizableHeader({
         onMouseDown={handleResizeMouseDown}
         className={cn(
           'absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[3px] cursor-col-resize rounded-full transition-colors',
-          isResizing ? 'bg-[var(--color-accent)]' : 'bg-white/10 hover:bg-[var(--color-accent)]'
+          isResizing ? 'bg-[var(--color-accent)]' : 'bg-[var(--color-text-muted)]/30 hover:bg-[var(--color-accent)]'
         )}
       />
     </div>
@@ -1222,7 +1222,7 @@ export function CardListView({ cards, onReorder }: CardListViewProps) {
       <div className="w-full overflow-x-auto relative">
         {/* Sticky header row */}
         <div
-          className="sticky top-0 z-20 flex border-b border-white/5 text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-surface)]/95 backdrop-blur-sm"
+          className="sticky top-0 z-20 flex border-b border-[var(--color-text-muted)]/20 text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-surface)]/95 backdrop-blur-sm"
           style={{
             minWidth: 'max-content',
           }}
@@ -1237,7 +1237,7 @@ export function CardListView({ cards, onReorder }: CardListViewProps) {
                   ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
                   : someSelected
                     ? 'bg-[var(--color-accent)]/50 border-[var(--color-accent)]'
-                    : 'border-white/20 hover:border-white/40'
+                    : 'border-[var(--color-text-muted)]/40 hover:border-[var(--color-text-muted)]/60'
               )}
             >
               {allSelected && <Check className="h-3 w-3 text-white" />}
@@ -1299,7 +1299,7 @@ export function CardListView({ cards, onReorder }: CardListViewProps) {
                           'w-4 h-4 rounded border flex items-center justify-center transition-colors',
                           isSelected
                             ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
-                            : 'border-white/20 hover:border-white/40'
+                            : 'border-[var(--color-text-muted)]/40 hover:border-[var(--color-text-muted)]/60'
                         )}
                       >
                         {isSelected && <Check className="h-3 w-3 text-white" />}
