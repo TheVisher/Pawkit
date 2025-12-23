@@ -44,6 +44,10 @@ export interface LocalViewSettings extends SyncMetadata {
   cardSize: string;           // small, medium, large, xl
   showMetadataFooter: boolean; // Toggle card footer (title, tags inside card)
   showUrlPill: boolean;       // Toggle URL pill overlay on thumbnail
+  // List view column settings
+  listColumnOrder?: string[];              // Column order (array of column IDs)
+  listColumnWidths?: Record<string, number>;  // Column widths by ID
+  listColumnVisibility?: Record<string, boolean>; // Column visibility by ID
   createdAt: Date;
   updatedAt: Date;
 }
