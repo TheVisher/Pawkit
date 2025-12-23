@@ -35,6 +35,11 @@ interface ViewState {
   // Manual card order (per-view, stored as array of card IDs)
   cardOrder: string[];
 
+  // List view column settings (persisted)
+  listColumnOrder: string[];
+  listColumnWidths: Record<string, number>;
+  listColumnVisibility: Record<string, boolean>;
+
   // Local-only filter (not persisted)
   contentTypeFilter: ContentType;
 
@@ -61,6 +66,11 @@ interface ViewState {
   setCardOrder: (ids: string[]) => void;
   reorderCards: (ids: string[]) => void; // Updates order and switches to manual sort
 
+  // List column settings
+  setListColumnOrder: (order: string[]) => void;
+  setListColumnWidth: (columnId: string, width: number) => void;
+  setListColumnVisibility: (columnId: string, visible: boolean) => void;
+
   // Dexie operations
   loadViewSettings: (workspaceId: string, viewKey: string) => Promise<void>;
   saveViewSettings: (workspaceId: string) => Promise<void>;
@@ -80,6 +90,10 @@ const DEFAULT_VIEW_SETTINGS = {
   showMetadataFooter: true,
   showUrlPill: true,
   cardOrder: [] as string[],
+  // List view column settings
+  listColumnOrder: [] as string[],
+  listColumnWidths: {} as Record<string, number>,
+  listColumnVisibility: {} as Record<string, boolean>,
 };
 
 export const useViewStore = create<ViewState>((set, get) => ({
@@ -128,6 +142,19 @@ export const useViewStore = create<ViewState>((set, get) => ({
     set({ cardOrder: ids, sortBy: 'manual' });
   },
 
+  // List column settings actions
+  setListColumnOrder: (order) => set({ listColumnOrder: order }),
+
+  setListColumnWidth: (columnId, width) =>
+    set((state) => ({
+      listColumnWidths: { ...state.listColumnWidths, [columnId]: width },
+    })),
+
+  setListColumnVisibility: (columnId, visible) =>
+    set((state) => ({
+      listColumnVisibility: { ...state.listColumnVisibility, [columnId]: visible },
+    })),
+
   // Load view settings from Dexie
   loadViewSettings: async (workspaceId, viewKey) => {
     set({ isLoading: true, currentView: viewKey });
@@ -145,6 +172,9 @@ export const useViewStore = create<ViewState>((set, get) => ({
           cardSize?: CardSize;
           showMetadataFooter?: boolean;
           showUrlPill?: boolean;
+          listColumnOrder?: string[];
+          listColumnWidths?: Record<string, number>;
+          listColumnVisibility?: Record<string, boolean>;
         };
         set({
           layout: s.layout as Layout,
@@ -159,6 +189,9 @@ export const useViewStore = create<ViewState>((set, get) => ({
           showMetadataFooter: s.showMetadataFooter ?? DEFAULT_VIEW_SETTINGS.showMetadataFooter,
           showUrlPill: s.showUrlPill ?? DEFAULT_VIEW_SETTINGS.showUrlPill,
           cardOrder: s.cardOrder || [],
+          listColumnOrder: s.listColumnOrder || [],
+          listColumnWidths: s.listColumnWidths || {},
+          listColumnVisibility: s.listColumnVisibility || {},
           isLoading: false,
         });
       } else {
@@ -175,7 +208,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
   saveViewSettings: async (workspaceId) => {
     const {
       currentView, layout, sortBy, sortOrder, showTitles, showUrls, showTags,
-      cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, cardOrder
+      cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, cardOrder,
+      listColumnOrder, listColumnWidths, listColumnVisibility
     } = get();
 
     try {
@@ -200,6 +234,9 @@ export const useViewStore = create<ViewState>((set, get) => ({
           showMetadataFooter,
           showUrlPill,
           cardOrder,
+          listColumnOrder,
+          listColumnWidths,
+          listColumnVisibility,
           updatedAt: new Date(),
         });
         await db.viewSettings.put(updated);
@@ -221,10 +258,18 @@ export const useViewStore = create<ViewState>((set, get) => ({
           showMetadataFooter,
           showUrlPill,
           cardOrder,
+          listColumnOrder,
+          listColumnWidths,
+          listColumnVisibility,
           createdAt: new Date(),
           updatedAt: new Date(),
           ...createSyncMetadata(),
-        } as LocalViewSettings & { cardOrder: string[] };
+        } as LocalViewSettings & {
+          cardOrder: string[];
+          listColumnOrder: string[];
+          listColumnWidths: Record<string, number>;
+          listColumnVisibility: Record<string, boolean>;
+        };
         await db.viewSettings.add(newSettings);
       }
     } catch (error) {
