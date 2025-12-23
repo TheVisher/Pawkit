@@ -13,6 +13,7 @@ import { MobileNav } from '@/components/layout/mobile-nav';
 import { AddCardModal } from '@/components/modals/add-card-modal';
 import { CardDetailModal } from '@/components/modals/card-detail-modal';
 import { CreatePawkitModal } from '@/components/modals/create-pawkit-modal';
+import { useModalStore } from '@/lib/stores/modal-store';
 import { CardsDragHandler } from '@/components/pawkits/cards-drag-handler';
 import { Omnibar } from '@/components/layout/omnibar';
 import { ToastStack } from '@/components/layout/toast-stack';
@@ -69,6 +70,10 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
 
   // Layout anchor state for visual merging
   const { leftOpen, rightOpen, leftAnchored, rightAnchored } = useLayoutAnchors();
+
+  // Check if card detail modal is open (sidebar needs higher z-index to stay above backdrop)
+  const activeCardId = useModalStore((s) => s.activeCardId);
+  const isCardModalOpen = Boolean(activeCardId);
 
   useEffect(() => {
     setMounted(true);
@@ -426,9 +431,11 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
           </main>
 
           {/* RIGHT SIDEBAR - Fixed position, slides in/out */}
+          {/* z-index bumps to 60 when card modal is open so sidebar stays above backdrop */}
           <aside
             className={cn(
-              'hidden xl:flex fixed w-[325px] z-40',
+              'hidden xl:flex fixed w-[325px]',
+              isCardModalOpen ? 'z-[60]' : 'z-40',
               panelBase,
               // Always apply shadow when not merged (slides with panel during animation)
               !rightMerged && floatingShadow,
