@@ -1,7 +1,11 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
+import { createPortal } from 'react-dom';
+import { DragOverlay, useDndMonitor, type Modifier } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CardItem } from './card-item';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
@@ -31,6 +35,22 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+
+// =============================================================================
+// CUSTOM MODIFIER
+// =============================================================================
+
+// Custom modifier that centers the overlay on cursor based on overlay size (not original element)
+const centerOverlayOnCursor: Modifier = ({ transform, draggingNodeRect }) => {
+  if (draggingNodeRect) {
+    return {
+      ...transform,
+      x: transform.x - draggingNodeRect.width / 2,
+      y: transform.y - draggingNodeRect.height / 2,
+    };
+  }
+  return transform;
+};
 
 // =============================================================================
 // TYPES
@@ -586,6 +606,40 @@ function BulkActionBar({
   );
 }
 
+// Sortable row wrapper for DnD - entire row is draggable
+function SortableListRow({
+  card,
+  children,
+  isDragging,
+  isDropTarget,
+}: {
+  card: LocalCard;
+  children: React.ReactNode;
+  isDragging: boolean;
+  isDropTarget: boolean;
+}) {
+  const { attributes, listeners, setNodeRef } = useSortable({
+    id: card.id,
+    data: { type: 'Card', card },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={cn(
+        'flex border-b border-white/5 transition-colors group',
+        isDragging && 'opacity-30',
+        isDropTarget && 'bg-[var(--color-accent)]/20'
+      )}
+      style={{ minWidth: 'max-content' }}
+      {...attributes}
+      {...listeners}
+    >
+      {children}
+    </div>
+  );
+}
+
 function ResizableHeader({
   column,
   label,
@@ -718,9 +772,10 @@ function ResizableHeader({
 
 interface CardListViewProps {
   cards: LocalCard[];
+  onReorder?: (reorderedIds: string[]) => void;
 }
 
-export function CardListView({ cards }: CardListViewProps) {
+export function CardListView({ cards, onReorder }: CardListViewProps) {
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const workspace = useCurrentWorkspace();
   const deleteCard = useDataStore((s) => s.deleteCard);
@@ -743,6 +798,11 @@ export function CardListView({ cards }: CardListViewProps) {
 
   // Drag state for column reordering
   const [draggedColumn, setDraggedColumn] = useState<ColumnId | null>(null);
+
+  // DnD state for row reordering
+  const [activeRowId, setActiveRowId] = useState<string | null>(null);
+  const [overRowId, setOverRowId] = useState<string | null>(null);
+  const [activeDragCard, setActiveDragCard] = useState<LocalCard | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<ColumnId | null>(null);
 
   // Multi-select state
@@ -933,6 +993,51 @@ export function CardListView({ cards }: CardListViewProps) {
     [editingCell]
   );
 
+  // DnD monitor for row reordering
+  useDndMonitor({
+    onDragStart: (event) => {
+      const id = event.active.id as string;
+      // Only handle if this is one of our cards
+      const card = cards.find((c) => c.id === id);
+      if (!card) return;
+      setActiveRowId(id);
+      setOverRowId(null);
+      setActiveDragCard(card);
+    },
+    onDragOver: (event) => {
+      if (!activeRowId) return;
+      setOverRowId(event.over?.id as string | null);
+    },
+    onDragEnd: (event) => {
+      if (!activeRowId) return;
+
+      const { active, over } = event;
+      setActiveRowId(null);
+      setOverRowId(null);
+      setActiveDragCard(null);
+
+      if (over && active.id !== over.id && onReorder) {
+        const oldIndex = cards.findIndex((c) => c.id === active.id);
+        const newIndex = cards.findIndex((c) => c.id === over.id);
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const newOrder = [...cards];
+          const [removed] = newOrder.splice(oldIndex, 1);
+          newOrder.splice(newIndex, 0, removed);
+          onReorder(newOrder.map((c) => c.id));
+        }
+      }
+    },
+    onDragCancel: () => {
+      setActiveRowId(null);
+      setOverRowId(null);
+      setActiveDragCard(null);
+    },
+  });
+
+  // Card IDs for sortable context
+  const cardIds = useMemo(() => cards.map((c) => c.id), [cards]);
+
   // Sort cards
   const sortedCards = [...cards].sort((a, b) => {
     if (!sortColumn) return 0;
@@ -1113,111 +1218,150 @@ export function CardListView({ cards }: CardListViewProps) {
   };
 
   return (
-    <div className="w-full overflow-x-auto relative">
-      {/* Sticky header row */}
-      <div
-        className="sticky top-0 z-20 flex border-b border-white/5 text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-surface)]/95 backdrop-blur-sm"
-        style={{
-          minWidth: 'max-content',
-        }}
-      >
-        {/* Checkbox column header */}
-        <div className="w-12 py-3 px-4 flex-shrink-0 flex items-center">
-          <button
-            onClick={handleSelectAll}
-            className={cn(
-              'w-4 h-4 rounded border flex items-center justify-center transition-colors',
-              allSelected
-                ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
-                : someSelected
-                  ? 'bg-[var(--color-accent)]/50 border-[var(--color-accent)]'
-                  : 'border-white/20 hover:border-white/40'
-            )}
-          >
-            {allSelected && <Check className="h-3 w-3 text-white" />}
-            {someSelected && <Minus className="h-3 w-3 text-white" />}
-          </button>
-        </div>
-        {columnOrder.map((col) => (
-          <ResizableHeader
-            key={col}
-            column={col}
-            label={COLUMN_LABELS[col]}
-            width={columnWidths[col]}
-            onResize={handleResize}
-            sortColumn={sortColumn}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-            onDragStart={handleColumnDragStart}
-            onDragOver={handleColumnDragOver}
-            onDrop={handleColumnDrop}
-            isDragOver={dragOverColumn === col}
-          />
-        ))}
-        {/* Column picker + Actions header */}
-        <div className="py-2 px-2 flex-shrink-0 flex items-center gap-1">
-          <ColumnPicker visibleColumns={columnOrder} onToggleColumn={handleToggleColumn} />
-        </div>
-      </div>
-
-      {/* Data rows */}
-      <div>
-        {sortedCards.map((card) => {
-          const isSelected = selectedIds.has(card.id);
-          return (
-            <div
-              key={card.id}
-              onClick={() => openCardDetail(card.id)}
+    <>
+      <div className="w-full overflow-x-auto relative">
+        {/* Sticky header row */}
+        <div
+          className="sticky top-0 z-20 flex border-b border-white/5 text-xs text-[var(--color-text-muted)] bg-[var(--color-bg-surface)]/95 backdrop-blur-sm"
+          style={{
+            minWidth: 'max-content',
+          }}
+        >
+          {/* Checkbox column header */}
+          <div className="w-12 py-3 px-4 flex-shrink-0 flex items-center">
+            <button
+              onClick={handleSelectAll}
               className={cn(
-                'flex border-b border-white/5 cursor-pointer transition-colors',
-                isSelected
-                  ? 'bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/15'
-                  : 'hover:bg-[var(--bg-surface-2)]'
+                'w-4 h-4 rounded border flex items-center justify-center transition-colors',
+                allSelected
+                  ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
+                  : someSelected
+                    ? 'bg-[var(--color-accent)]/50 border-[var(--color-accent)]'
+                    : 'border-white/20 hover:border-white/40'
               )}
-              style={{ minWidth: 'max-content' }}
             >
-              {/* Checkbox column */}
-              <div className="w-12 py-3 px-4 flex-shrink-0 flex items-center">
-                <button
-                  onClick={(e) => handleToggleSelect(card.id, e)}
-                  className={cn(
-                    'w-4 h-4 rounded border flex items-center justify-center transition-colors',
-                    isSelected
-                      ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
-                      : 'border-white/20 hover:border-white/40'
-                  )}
+              {allSelected && <Check className="h-3 w-3 text-white" />}
+              {someSelected && <Minus className="h-3 w-3 text-white" />}
+            </button>
+          </div>
+          {columnOrder.map((col) => (
+            <ResizableHeader
+              key={col}
+              column={col}
+              label={COLUMN_LABELS[col]}
+              width={columnWidths[col]}
+              onResize={handleResize}
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              onDragStart={handleColumnDragStart}
+              onDragOver={handleColumnDragOver}
+              onDrop={handleColumnDrop}
+              isDragOver={dragOverColumn === col}
+            />
+          ))}
+          {/* Column picker + Actions header */}
+          <div className="py-2 px-2 flex-shrink-0 flex items-center gap-1">
+            <ColumnPicker visibleColumns={columnOrder} onToggleColumn={handleToggleColumn} />
+          </div>
+        </div>
+
+        {/* Data rows with DnD */}
+        <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
+          <div>
+            {sortedCards.map((card) => {
+              const isSelected = selectedIds.has(card.id);
+              const isDragging = activeRowId === card.id;
+              const isDropTarget = overRowId === card.id && activeRowId !== card.id;
+
+              return (
+                <SortableListRow
+                  key={card.id}
+                  card={card}
+                  isDragging={isDragging}
+                  isDropTarget={isDropTarget}
                 >
-                  {isSelected && <Check className="h-3 w-3 text-white" />}
-                </button>
-              </div>
-              {columnOrder.map((col) => (
-                <div
-                  key={col}
-                  className="py-3 px-4 flex-shrink-0 overflow-hidden"
-                  style={{ width: columnWidths[col] }}
-                >
-                  {renderCell(card, col)}
-                </div>
-              ))}
-              {/* Actions */}
-              <div className="py-3 px-4 flex-shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
-                <ListRowActions card={card} onEdit={() => openCardDetail(card.id)} />
-              </div>
-            </div>
-          );
-        })}
+                  {/* Row content - clicking opens modal */}
+                  <div
+                    onClick={() => openCardDetail(card.id)}
+                    className={cn(
+                      'flex flex-1 cursor-pointer transition-colors',
+                      isSelected
+                        ? 'bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/15'
+                        : 'hover:bg-[var(--bg-surface-2)]'
+                    )}
+                  >
+                    {/* Checkbox column */}
+                    <div className="w-12 py-3 px-4 flex-shrink-0 flex items-center">
+                      <button
+                        onClick={(e) => handleToggleSelect(card.id, e)}
+                        className={cn(
+                          'w-4 h-4 rounded border flex items-center justify-center transition-colors',
+                          isSelected
+                            ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
+                            : 'border-white/20 hover:border-white/40'
+                        )}
+                      >
+                        {isSelected && <Check className="h-3 w-3 text-white" />}
+                      </button>
+                    </div>
+                    {columnOrder.map((col) => (
+                      <div
+                        key={col}
+                        className="py-3 px-4 flex-shrink-0 overflow-hidden"
+                        style={{ width: columnWidths[col] }}
+                      >
+                        {renderCell(card, col)}
+                      </div>
+                    ))}
+                    {/* Actions */}
+                    <div className="py-3 px-4 flex-shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
+                      <ListRowActions card={card} onEdit={() => openCardDetail(card.id)} />
+                    </div>
+                  </div>
+                </SortableListRow>
+              );
+            })}
+          </div>
+        </SortableContext>
+
+        {/* Bulk action bar - shown when rows are selected */}
+        {selectedIds.size > 0 && (
+          <BulkActionBar
+            selectedCount={selectedIds.size}
+            onDelete={handleBulkDelete}
+            onAddTags={handleBulkAddTags}
+            onAddToCollection={handleBulkAddToCollection}
+            onClear={handleClearSelection}
+          />
+        )}
       </div>
 
-      {/* Bulk action bar - shown when rows are selected */}
-      {selectedIds.size > 0 && (
-        <BulkActionBar
-          selectedCount={selectedIds.size}
-          onDelete={handleBulkDelete}
-          onAddTags={handleBulkAddTags}
-          onAddToCollection={handleBulkAddToCollection}
-          onClear={handleClearSelection}
-        />
-      )}
-    </div>
+      {/* Drag overlay - shows thumbnail card like masonry view */}
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <DragOverlay
+            adjustScale={false}
+            dropAnimation={null}
+            modifiers={[centerOverlayOnCursor]}
+            style={{ zIndex: 9999 }}
+          >
+            {activeDragCard && (
+              <div
+                style={{
+                  width: 200,
+                  opacity: 0.85,
+                  transform: 'rotate(-2deg)',
+                  pointerEvents: 'none',
+                  filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4))',
+                }}
+              >
+                <CardItem card={activeDragCard} variant="grid" />
+              </div>
+            )}
+          </DragOverlay>,
+          document.body
+        )}
+    </>
   );
 }
