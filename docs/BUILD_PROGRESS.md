@@ -41,9 +41,13 @@
 
 ### In Progress 🔄
 - [ ] **Rediscover View (Phase 6):** Card stack interface and review workflow.
+- [ ] **Contextual Note Editor (Phase 7.2+):** Wiki-links, backlinks panel, image uploads, block drag handles.
 
 ### Not Started ⬜
-- [ ] Rediscover View
+- [ ] **Read-it-Later System:** Progress tracking, reading time, and status filters.
+
+### Recently Completed ✅
+- [x] **Contextual Note Editor Foundation (Phase 7.1):** Tiptap integration, floating toolbar, slash commands, task lists.
 
 ---
 
@@ -55,6 +59,17 @@
 ---
 
 ## Session Log
+
+### Dec 23, 2025 - Contextual Note Editor Foundation (Phase 7.1)
+- **Tiptap Integration:** Implemented a production-ready rich text editor powered by Tiptap with StarterKit, TaskList, Link, and Typography extensions.
+- **Floating Toolbar:** Created a custom selection-based floating toolbar with Bold, Italic, Code, and Link buttons that appears on text selection.
+- **Slash Commands:** Built a command palette that opens on `/` keystroke with support for headings, lists, checklists, code blocks, quotes, and dividers. Includes keyboard navigation and type-to-filter.
+- **Card Detail Modal Integration:**
+  - Note cards (`md-note`, `text-note`, `quick-note`) now use the rich editor for main content with Edit/Preview toggle.
+  - Bookmark cards use the rich editor for the notes field.
+  - All changes auto-save with 500ms debounce.
+- **Styling:** Full CSS variable compliance with glass morphism design. Works in both light and dark modes.
+- **Dependencies Added:** `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-placeholder`, `@tiptap/extension-link`, `@tiptap/extension-task-list`, `@tiptap/extension-task-item`, `@tiptap/extension-typography`.
 
 ### Dec 20, 2025 - Interactive Polish & View Settings
 - **Omnibar Refinement:** Implemented scroll-aware collapse logic. The Omnibar now shrinks to a compact pill after 20px of scroll but automatically expands to show notifications.

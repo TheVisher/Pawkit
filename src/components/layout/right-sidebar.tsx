@@ -2,11 +2,17 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import { Filter, Tag, ArrowRightToLine, ArrowLeftFromLine, Maximize2, Minimize2, Moon, Sun, SunMoon, Sliders, Home, Calendar, Info, LayoutGrid, List, LayoutDashboard } from 'lucide-react';
+import {
+  Filter, Tag, ArrowRightToLine, ArrowLeftFromLine, Maximize2, Minimize2,
+  Moon, Sun, SunMoon, Sliders, Home, Calendar, LayoutGrid, List, LayoutDashboard,
+  ArrowUpDown, Bookmark, FileText, Video, Image, FileSpreadsheet, Music, HelpCircle,
+  Layers, CalendarDays, Globe, Type, Inbox, FolderMinus, TagsIcon
+} from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useRightSidebar } from '@/lib/stores/ui-store';
 import { useViewStore, useCardDisplaySettings } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useDataStore } from '@/lib/stores/data-store';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
@@ -18,6 +24,55 @@ import {
 } from '@/components/ui/tooltip';
 
 type CardSize = 'small' | 'medium' | 'large' | 'xl';
+type ContentType = 'bookmarks' | 'notes' | 'video' | 'images' | 'docs' | 'audio' | 'other';
+type GroupBy = 'none' | 'date' | 'tags' | 'type' | 'domain';
+type DateGrouping = 'smart' | 'day' | 'week' | 'month' | 'year';
+type UnsortedFilter = 'none' | 'no-pawkits' | 'no-tags' | 'both';
+
+// Content type filter definitions with icons (multi-selectable)
+const CONTENT_FILTERS: { id: ContentType; label: string; icon: typeof Bookmark }[] = [
+  { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
+  { id: 'notes', label: 'Notes', icon: FileText },
+  { id: 'video', label: 'Video', icon: Video },
+  { id: 'images', label: 'Images', icon: Image },
+  { id: 'docs', label: 'Docs', icon: FileSpreadsheet },
+  { id: 'audio', label: 'Audio', icon: Music },
+  { id: 'other', label: 'Other', icon: HelpCircle },
+];
+
+// Sort options matching V1
+const SORT_OPTIONS: { id: string; label: string }[] = [
+  { id: 'updatedAt', label: 'Recently Modified' },
+  { id: 'createdAt', label: 'Date Added' },
+  { id: 'title', label: 'Title A-Z' },
+  { id: 'domain', label: 'Domain' },
+];
+
+// Grouping options
+const GROUP_OPTIONS: { id: GroupBy; label: string; icon: typeof Layers }[] = [
+  { id: 'none', label: 'None', icon: Layers },
+  { id: 'date', label: 'Date', icon: CalendarDays },
+  { id: 'tags', label: 'Tags', icon: Tag },
+  { id: 'type', label: 'Type', icon: Type },
+  { id: 'domain', label: 'Domain', icon: Globe },
+];
+
+// Date grouping options (when groupBy === 'date')
+const DATE_GROUP_OPTIONS: { id: DateGrouping; label: string }[] = [
+  { id: 'smart', label: 'Smart' },
+  { id: 'day', label: 'Day' },
+  { id: 'week', label: 'Week' },
+  { id: 'month', label: 'Month' },
+  { id: 'year', label: 'Year' },
+];
+
+// Quick filter options for unsorted/unorganized items
+const UNSORTED_OPTIONS: { id: UnsortedFilter; label: string; icon: typeof Inbox | null }[] = [
+  { id: 'none', label: 'All', icon: null },
+  { id: 'no-pawkits', label: 'No Pawkits', icon: FolderMinus },
+  { id: 'no-tags', label: 'No Tags', icon: TagsIcon },
+  { id: 'both', label: 'Unsorted', icon: Inbox },
+];
 
 // Define which features are available per view type
 type ViewType = 'cards' | 'home' | 'calendar' | 'other';
@@ -111,7 +166,14 @@ export function RightSidebar() {
   // Card display settings (only used when viewConfig.showCardDisplay is true)
   const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
   const layout = useViewStore((s) => s.layout);
+  const sortBy = useViewStore((s) => s.sortBy);
+  const sortOrder = useViewStore((s) => s.sortOrder);
+  const contentTypeFilters = useViewStore((s) => s.contentTypeFilters) as ContentType[];
   const setLayout = useViewStore((s) => s.setLayout);
+  const setSortBy = useViewStore((s) => s.setSortBy);
+  const toggleSortOrder = useViewStore((s) => s.toggleSortOrder);
+  const toggleContentType = useViewStore((s) => s.toggleContentType);
+  const clearContentTypes = useViewStore((s) => s.clearContentTypes);
   const setCardPadding = useViewStore((s) => s.setCardPadding);
   const setCardSpacing = useViewStore((s) => s.setCardSpacing);
   const setCardSize = useViewStore((s) => s.setCardSize);
@@ -120,6 +182,31 @@ export function RightSidebar() {
   const setShowTitles = useViewStore((s) => s.setShowTitles);
   const setShowTags = useViewStore((s) => s.setShowTags);
   const saveViewSettings = useViewStore((s) => s.saveViewSettings);
+  const selectedTags = useViewStore((s) => s.selectedTags);
+  const toggleTag = useViewStore((s) => s.toggleTag);
+  const clearTags = useViewStore((s) => s.clearTags);
+  const unsortedFilter = useViewStore((s) => s.unsortedFilter) as UnsortedFilter;
+  const setUnsortedFilter = useViewStore((s) => s.setUnsortedFilter);
+  const groupBy = useViewStore((s) => s.groupBy) as GroupBy;
+  const dateGrouping = useViewStore((s) => s.dateGrouping) as DateGrouping;
+  const setGroupBy = useViewStore((s) => s.setGroupBy);
+  const setDateGrouping = useViewStore((s) => s.setDateGrouping);
+
+  // Get all cards to extract unique tags
+  const cards = useDataStore((s) => s.cards);
+  const allTags = useMemo(() => {
+    const tagCounts = new Map<string, number>();
+    for (const card of cards) {
+      if (card._deleted) continue;
+      for (const tag of card.tags || []) {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      }
+    }
+    // Sort by count descending, then alphabetically
+    return Array.from(tagCounts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([tag, count]) => ({ tag, count }));
+  }, [cards]);
 
   useEffect(() => {
     setMounted(true);
@@ -242,28 +329,194 @@ export function RightSidebar() {
           )}
           style={{ transitionDuration: '250ms' }}
         >
-          {/* Content Type Filter - Card views only */}
+          {/* Content Type Filter - Card views only (multi-select) */}
+          {viewConfig.showContentFilters && (
+            <>
+              <div>
+                <div className="flex items-center justify-between text-text-muted mb-3">
+                  <div className="flex items-center gap-2">
+                    <Filter className="h-5 w-5" />
+                    <span className="text-xs font-medium uppercase">Content Type</span>
+                  </div>
+                  {contentTypeFilters.length > 0 && (
+                    <button
+                      onClick={clearContentTypes}
+                      className="text-xs text-text-muted hover:text-text-primary transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {CONTENT_FILTERS.map((filter) => {
+                    const Icon = filter.icon;
+                    const isActive = contentTypeFilters.includes(filter.id);
+                    return (
+                      <button
+                        key={filter.id}
+                        onClick={() => toggleContentType(filter.id)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors',
+                          isActive
+                            ? 'bg-[var(--color-accent)] text-white'
+                            : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        <span>{filter.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {contentTypeFilters.length === 0 && (
+                  <p className="text-xs text-text-muted mt-2 italic">All types shown</p>
+                )}
+              </div>
+              <Separator className="bg-border-subtle" />
+            </>
+          )}
+
+          {/* Sort Options - Card views only */}
           {viewConfig.showContentFilters && (
             <>
               <div>
                 <div className="flex items-center gap-2 text-text-muted mb-3">
-                  <Filter className="h-5 w-5" />
-                  <span className="text-xs font-medium uppercase">Content Type</span>
+                  <ArrowUpDown className="h-5 w-5" />
+                  <span className="text-xs font-medium uppercase">Sort By</span>
                 </div>
-                <div className="space-y-1">
-                  {['All', 'Bookmarks', 'Notes', 'Files'].map((filter) => (
-                    <button
-                      key={filter}
-                      className={cn(
-                        'w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors',
-                        filter === 'All'
-                          ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
-                          : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
-                      )}
-                    >
-                      {filter}
-                    </button>
-                  ))}
+                <div className="space-y-0.5">
+                  {SORT_OPTIONS.map((option) => {
+                    const isActive = sortBy === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => {
+                          if (isActive) {
+                            toggleSortOrder();
+                          } else {
+                            setSortBy(option.id);
+                          }
+                          handleSettingChange();
+                        }}
+                        className={cn(
+                          'w-full flex items-center justify-between px-3 py-1.5 text-sm rounded-md transition-colors',
+                          isActive
+                            ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
+                            : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
+                        )}
+                      >
+                        <span>{option.label}</span>
+                        {isActive && (
+                          <span className="text-xs opacity-70">
+                            {sortOrder === 'desc' ? '↓' : '↑'}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <Separator className="bg-border-subtle" />
+            </>
+          )}
+
+          {/* Quick Filter Section - Card views only */}
+          {viewConfig.showContentFilters && (
+            <>
+              <div>
+                <div className="flex items-center gap-2 text-text-muted mb-3">
+                  <Inbox className="h-5 w-5" />
+                  <span className="text-xs font-medium uppercase">Quick Filter</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {UNSORTED_OPTIONS.map((option) => {
+                    const Icon = option.icon;
+                    const isActive = unsortedFilter === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        onClick={() => setUnsortedFilter(option.id)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors',
+                          isActive
+                            ? 'bg-[var(--color-accent)] text-white'
+                            : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                        )}
+                      >
+                        {Icon && <Icon className="h-3.5 w-3.5" />}
+                        <span>{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <Separator className="bg-border-subtle" />
+            </>
+          )}
+
+          {/* Grouping Section - Card views only */}
+          {viewConfig.showContentFilters && (
+            <>
+              <div>
+                <div className="flex items-center gap-2 text-text-muted mb-3">
+                  <Layers className="h-5 w-5" />
+                  <span className="text-xs font-medium uppercase">Group By</span>
+                </div>
+                <div className="space-y-3">
+                  {/* Group by dropdown */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {GROUP_OPTIONS.map((option) => {
+                      const Icon = option.icon;
+                      const isActive = groupBy === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          onClick={() => {
+                            setGroupBy(option.id);
+                            handleSettingChange();
+                          }}
+                          className={cn(
+                            'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors',
+                            isActive
+                              ? 'bg-[var(--color-accent)] text-white'
+                              : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          <span>{option.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Date grouping options (only when groupBy === 'date') */}
+                  {groupBy === 'date' && (
+                    <div>
+                      <label className="text-xs text-text-secondary mb-2 block">Date Range</label>
+                      <div className="grid grid-cols-5 gap-1">
+                        {DATE_GROUP_OPTIONS.map((option) => {
+                          const isActive = dateGrouping === option.id;
+                          return (
+                            <button
+                              key={option.id}
+                              onClick={() => {
+                                setDateGrouping(option.id);
+                                handleSettingChange();
+                              }}
+                              className={cn(
+                                'px-2 py-1.5 text-xs rounded-md transition-colors',
+                                isActive
+                                  ? 'bg-[var(--color-accent)] text-white'
+                                  : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                              )}
+                            >
+                              {option.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
               <Separator className="bg-border-subtle" />
@@ -519,11 +772,44 @@ export function RightSidebar() {
           {/* Tags Section - Card views only */}
           {viewConfig.showTags && (
             <div>
-              <div className="flex items-center gap-2 text-text-muted mb-3">
-                <Tag className="h-5 w-5" />
-                <span className="text-xs font-medium uppercase">Tags</span>
+              <div className="flex items-center justify-between text-text-muted mb-3">
+                <div className="flex items-center gap-2">
+                  <Tag className="h-5 w-5" />
+                  <span className="text-xs font-medium uppercase">Tags</span>
+                </div>
+                {selectedTags.length > 0 && (
+                  <button
+                    onClick={clearTags}
+                    className="text-xs text-text-muted hover:text-text-primary transition-colors"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
-              <p className="text-xs text-text-muted italic">No tags yet</p>
+              {allTags.length === 0 ? (
+                <p className="text-xs text-text-muted italic">No tags yet</p>
+              ) : (
+                <div className="flex flex-wrap gap-1.5">
+                  {allTags.map(({ tag, count }) => {
+                    const isSelected = selectedTags.includes(tag);
+                    return (
+                      <button
+                        key={tag}
+                        onClick={() => toggleTag(tag)}
+                        className={cn(
+                          'px-2 py-1 text-xs rounded-md transition-colors',
+                          isSelected
+                            ? 'bg-[var(--color-accent)] text-white'
+                            : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                        )}
+                      >
+                        {tag}
+                        <span className="ml-1 opacity-60">{count}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

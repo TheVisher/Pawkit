@@ -8,10 +8,88 @@ import { useShallow } from 'zustand/react/shallow';
 import { db, createSyncMetadata, markModified } from '@/lib/db';
 import type { LocalViewSettings } from '@/lib/db';
 
-type Layout = 'grid' | 'masonry' | 'list' | 'timeline' | 'board';
-type SortOrder = 'asc' | 'desc';
-type ContentType = 'all' | 'url' | 'md-note' | 'text-note' | 'quick-note' | 'file';
-type CardSize = 'small' | 'medium' | 'large' | 'xl';
+export type Layout = 'grid' | 'masonry' | 'list' | 'timeline' | 'board';
+export type SortOrder = 'asc' | 'desc';
+// Content type filters - matches V1 categories
+export type ContentType = 'bookmarks' | 'notes' | 'video' | 'images' | 'docs' | 'audio' | 'other';
+export type CardSize = 'small' | 'medium' | 'large' | 'xl';
+// Grouping options
+export type GroupBy = 'none' | 'date' | 'tags' | 'type' | 'domain';
+export type DateGrouping = 'smart' | 'day' | 'week' | 'month' | 'year'; // smart = Today/Yesterday/This Week/etc
+// Unsorted/Quick filters
+export type UnsortedFilter = 'none' | 'no-pawkits' | 'no-tags' | 'both';
+
+// File extensions for uploaded files
+const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v'];
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp', '.ico'];
+const DOC_EXTENSIONS = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.rtf', '.csv'];
+const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.wma'];
+
+/**
+ * Get the content type category for a card
+ */
+function getCardContentType(card: { type: string; url: string; domain?: string }): ContentType {
+  const url = card.url?.toLowerCase() || '';
+
+  // Notes
+  if (['md-note', 'text-note', 'quick-note'].includes(card.type)) {
+    return 'notes';
+  }
+
+  // File uploads - check extensions
+  if (card.type === 'file' || VIDEO_EXTENSIONS.some(ext => url.endsWith(ext))) {
+    if (VIDEO_EXTENSIONS.some(ext => url.endsWith(ext))) return 'video';
+    if (AUDIO_EXTENSIONS.some(ext => url.endsWith(ext))) return 'audio';
+    if (IMAGE_EXTENSIONS.some(ext => url.endsWith(ext))) return 'images';
+    if (DOC_EXTENSIONS.some(ext => url.endsWith(ext))) return 'docs';
+    return 'other'; // Unknown file type
+  }
+
+  // URL bookmarks - check if it's a direct media link
+  if (card.type === 'url') {
+    if (VIDEO_EXTENSIONS.some(ext => url.endsWith(ext))) return 'video';
+    if (AUDIO_EXTENSIONS.some(ext => url.endsWith(ext))) return 'audio';
+    if (IMAGE_EXTENSIONS.some(ext => url.endsWith(ext))) return 'images';
+    if (DOC_EXTENSIONS.some(ext => url.endsWith(ext))) return 'docs';
+    return 'bookmarks'; // Regular web bookmark
+  }
+
+  return 'other';
+}
+
+/**
+ * Check if a card matches any of the selected content type filters
+ */
+export function cardMatchesContentTypes(
+  card: { type: string; url: string; domain?: string },
+  filters: ContentType[]
+): boolean {
+  // No filters selected = show all
+  if (filters.length === 0) return true;
+
+  const cardType = getCardContentType(card);
+  return filters.includes(cardType);
+}
+
+/**
+ * Check if a card matches the unsorted filter criteria
+ */
+export function cardMatchesUnsortedFilter(
+  card: { tags?: string[]; collections?: string[] },
+  filter: UnsortedFilter
+): boolean {
+  if (filter === 'none') return true;
+
+  const hasTags = (card.tags || []).length > 0;
+  const hasPawkits = (card.collections || []).length > 0;
+
+  switch (filter) {
+    case 'no-pawkits': return !hasPawkits;
+    case 'no-tags': return !hasTags;
+    case 'both': return !hasTags && !hasPawkits;
+    default: return true;
+  }
+}
 
 interface ViewState {
   // Current view context
@@ -40,8 +118,14 @@ interface ViewState {
   listColumnWidths: Record<string, number>;
   listColumnVisibility: Record<string, boolean>;
 
-  // Local-only filter (not persisted)
-  contentTypeFilter: ContentType;
+  // Local-only filters (not persisted)
+  contentTypeFilters: ContentType[]; // Multi-select, OR logic
+  selectedTags: string[]; // Filter by these tags (AND logic)
+  unsortedFilter: UnsortedFilter; // Quick filter for unorganized items
+
+  // Grouping (persisted)
+  groupBy: GroupBy;
+  dateGrouping: DateGrouping; // Only used when groupBy === 'date'
 
   // Loading state
   isLoading: boolean;
@@ -60,7 +144,14 @@ interface ViewState {
   setCardSize: (size: CardSize) => void;
   setShowMetadataFooter: (show: boolean) => void;
   setShowUrlPill: (show: boolean) => void;
-  setContentTypeFilter: (filter: ContentType) => void;
+  toggleContentType: (type: ContentType) => void; // Add/remove content type from selection
+  clearContentTypes: () => void;
+  setGroupBy: (groupBy: GroupBy) => void;
+  setDateGrouping: (grouping: DateGrouping) => void;
+  setSelectedTags: (tags: string[]) => void;
+  toggleTag: (tag: string) => void; // Add/remove tag from selection
+  clearTags: () => void;
+  setUnsortedFilter: (filter: UnsortedFilter) => void;
 
   // Manual ordering
   setCardOrder: (ids: string[]) => void;
@@ -90,6 +181,9 @@ const DEFAULT_VIEW_SETTINGS = {
   showMetadataFooter: true,
   showUrlPill: true,
   cardOrder: [] as string[],
+  // Grouping
+  groupBy: 'none' as GroupBy,
+  dateGrouping: 'smart' as DateGrouping,
   // List view column settings
   listColumnOrder: [] as string[],
   listColumnWidths: {} as Record<string, number>,
@@ -100,7 +194,9 @@ export const useViewStore = create<ViewState>((set, get) => ({
   // Initial state
   currentView: 'library',
   ...DEFAULT_VIEW_SETTINGS,
-  contentTypeFilter: 'all',
+  contentTypeFilters: [], // Empty = show all
+  selectedTags: [],
+  unsortedFilter: 'none' as UnsortedFilter,
   isLoading: false,
 
   // View context
@@ -132,7 +228,35 @@ export const useViewStore = create<ViewState>((set, get) => ({
 
   setShowUrlPill: (show) => set({ showUrlPill: show }),
 
-  setContentTypeFilter: (filter) => set({ contentTypeFilter: filter }),
+  toggleContentType: (type) => set((state) => {
+    const current = state.contentTypeFilters;
+    if (current.includes(type)) {
+      return { contentTypeFilters: current.filter(t => t !== type) };
+    } else {
+      return { contentTypeFilters: [...current, type] };
+    }
+  }),
+
+  clearContentTypes: () => set({ contentTypeFilters: [] }),
+
+  setSelectedTags: (tags) => set({ selectedTags: tags }),
+
+  toggleTag: (tag) => set((state) => {
+    const current = state.selectedTags;
+    if (current.includes(tag)) {
+      return { selectedTags: current.filter(t => t !== tag) };
+    } else {
+      return { selectedTags: [...current, tag] };
+    }
+  }),
+
+  clearTags: () => set({ selectedTags: [] }),
+
+  setUnsortedFilter: (filter) => set({ unsortedFilter: filter }),
+
+  setGroupBy: (groupBy) => set({ groupBy }),
+
+  setDateGrouping: (grouping) => set({ dateGrouping: grouping }),
 
   // Manual ordering actions
   setCardOrder: (ids) => set({ cardOrder: ids }),
@@ -175,6 +299,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
           listColumnOrder?: string[];
           listColumnWidths?: Record<string, number>;
           listColumnVisibility?: Record<string, boolean>;
+          groupBy?: GroupBy;
+          dateGrouping?: DateGrouping;
         };
         set({
           layout: s.layout as Layout,
@@ -192,6 +318,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
           listColumnOrder: s.listColumnOrder || [],
           listColumnWidths: s.listColumnWidths || {},
           listColumnVisibility: s.listColumnVisibility || {},
+          groupBy: s.groupBy || DEFAULT_VIEW_SETTINGS.groupBy,
+          dateGrouping: s.dateGrouping || DEFAULT_VIEW_SETTINGS.dateGrouping,
           isLoading: false,
         });
       } else {
@@ -209,7 +337,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
     const {
       currentView, layout, sortBy, sortOrder, showTitles, showUrls, showTags,
       cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, cardOrder,
-      listColumnOrder, listColumnWidths, listColumnVisibility
+      listColumnOrder, listColumnWidths, listColumnVisibility, groupBy, dateGrouping
     } = get();
 
     try {
@@ -237,6 +365,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
           listColumnOrder,
           listColumnWidths,
           listColumnVisibility,
+          groupBy,
+          dateGrouping,
           updatedAt: new Date(),
         });
         await db.viewSettings.put(updated);
@@ -261,6 +391,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
           listColumnOrder,
           listColumnWidths,
           listColumnVisibility,
+          groupBy,
+          dateGrouping,
           createdAt: new Date(),
           updatedAt: new Date(),
           ...createSyncMetadata(),
@@ -269,6 +401,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
           listColumnOrder: string[];
           listColumnWidths: Record<string, number>;
           listColumnVisibility: Record<string, boolean>;
+          groupBy: GroupBy;
+          dateGrouping: DateGrouping;
         };
         await db.viewSettings.add(newSettings);
       }
@@ -278,7 +412,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
   },
 
   // Reset to defaults (without saving)
-  resetToDefaults: () => set({ ...DEFAULT_VIEW_SETTINGS, contentTypeFilter: 'all' }),
+  resetToDefaults: () => set({ ...DEFAULT_VIEW_SETTINGS, contentTypeFilters: [], selectedTags: [] }),
 }));
 
 // =============================================================================
@@ -289,7 +423,7 @@ export const selectCurrentView = (state: ViewState) => state.currentView;
 export const selectLayout = (state: ViewState) => state.layout;
 export const selectSortBy = (state: ViewState) => state.sortBy;
 export const selectSortOrder = (state: ViewState) => state.sortOrder;
-export const selectContentTypeFilter = (state: ViewState) => state.contentTypeFilter;
+export const selectContentTypeFilters = (state: ViewState) => state.contentTypeFilters;
 export const selectViewIsLoading = (state: ViewState) => state.isLoading;
 export const selectCardOrder = (state: ViewState) => state.cardOrder;
 
@@ -305,6 +439,8 @@ export const selectDisplaySettings = (state: ViewState) => ({
 });
 
 export const selectCardSize = (state: ViewState) => state.cardSize;
+export const selectGroupBy = (state: ViewState) => state.groupBy;
+export const selectDateGrouping = (state: ViewState) => state.dateGrouping;
 
 // =============================================================================
 // HOOKS
@@ -371,8 +507,9 @@ export function useCardDisplaySettings() {
 export function useContentFilter() {
   return useViewStore(
     useShallow((state) => ({
-      filter: state.contentTypeFilter,
-      setFilter: state.setContentTypeFilter,
+      filters: state.contentTypeFilters,
+      toggleFilter: state.toggleContentType,
+      clearFilters: state.clearContentTypes,
     }))
   );
 }
@@ -391,3 +528,15 @@ export function useSorting() {
     }))
   );
 }
+
+export function useGrouping() {
+  return useViewStore(
+    useShallow((state) => ({
+      groupBy: state.groupBy,
+      dateGrouping: state.dateGrouping,
+      setGroupBy: state.setGroupBy,
+      setDateGrouping: state.setDateGrouping,
+    }))
+  );
+}
+

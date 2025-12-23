@@ -74,7 +74,7 @@ export {
   selectLayout,
   selectSortBy,
   selectSortOrder,
-  selectContentTypeFilter,
+  selectContentTypeFilters,
   selectViewIsLoading,
   selectDisplaySettings,
 } from './view-store';

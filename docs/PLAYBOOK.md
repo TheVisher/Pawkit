@@ -1956,7 +1956,38 @@ ALTER TABLE "Card" ALTER COLUMN "workspaceId" SET NOT NULL;
 
 ---
 
-## 13. Build Order
+## 13. Roadmap & Future Features
+
+### 1. Read-it-Later System (Priority)
+
+**Goal:** Transform Pawkit into a robust reading companion.
+
+**Schema Updates:**
+```typescript
+interface Card {
+  // ... existing fields
+  wordCount?: number;      // Calculated on scrape
+  readingTime?: number;    // Calculated on scrape (minutes)
+  readProgress?: number;   // 0-100 (from Reader Mode scroll)
+  isRead?: boolean;        // Manual toggle or auto-set at 100% progress
+  lastScrollPosition?: number; // Pixel value
+}
+```
+
+**Implementation Strategy:**
+1.  **Static Analysis:** Calculate `readingTime` (Word Count / 225 WPM) on scrape.
+2.  **Dynamic Tracking:** Track scroll position in Reader Mode.
+3.  **Visuals:**
+    -   **Badges:** Show `⏱️ 5m` on cards.
+    -   **Progress Bar:** Thin line at bottom of thumbnail for `in-progress` items.
+4.  **Filters:** "Unread", "In Progress", "Done".
+
+### 2. Browser Extension Compatibility
+[... existing planned feature content ...]
+
+---
+
+## 14. Build Order
 
 
 
@@ -2128,16 +2159,30 @@ ALTER TABLE "Card" ALTER COLUMN "workspaceId" SET NOT NULL;
     - **🆕 Smart scoring algorithm**
     - **🆕 Tag search with # prefix**
 
-18. **Notes system** (integrated into Library)
-    - Markdown editor
-    - Wiki-links
-    - Backlinks panel (in card detail modal)
-    - **🆕 Daily note templates**
-    - **🆕 Knowledge graph visualization** (accessible from card detail or Library toolbar)
+### Phase 7: Contextual Note Editor
 
-### Phase 7: Integrations
+18. **Foundation (7.1)**
+    - Install Tiptap + extensions
+    - Create `src/components/editor` system
+    - Replace `CardDetailModal` textarea with rich editor
+    - Persist HTML to `card.content`
+    - Slash commands & Markdown shortcuts
 
-19. **Kit AI**
+19. **Intelligence (7.2)**
+    - Inline Tags (`#tag` auto-extraction)
+    - Wiki-links (`[[` search & link)
+    - Backlinks panel ("Mentioned In")
+    - **Block handles** (+ button, ⋮⋮ drag handle)
+    - Kit AI integration (Ask/Summarize/Relate)
+
+20. **Templates & Capture (7.3)**
+    - Quick Note capture
+    - Daily Note (Calendar integration)
+    - Template system (`/template`)
+
+### Phase 8: Integrations
+
+21. **Kit AI**
     - Chat panel
     - Overlay mode
     - Tool execution
@@ -2145,37 +2190,37 @@ ALTER TABLE "Card" ALTER COLUMN "workspaceId" SET NOT NULL;
     - **🆕 Context awareness by view**
     - **🆕 Video/transcript context**
 
-20. **MCP Server**
+22. **MCP Server**
     - Token generation
     - All tools implemented
     - Auth flow
 
-21. **Cloud storage**
+23. **Cloud storage**
     - Filen integration
     - Google Drive
     - Dropbox
     - Connection management UI
 
-### Phase 8: Polish
+### Phase 9: Polish
 
-22. **Theming**
+24. **Theming**
     - Theme toggle
     - Glass/modern toggle
     - Accent color picker
     - Background customization
     - **🆕 Surface tint option**
 
-23. **Mobile responsive**
+25. **Mobile responsive**
     - Single panel layout
     - Bottom navigation
     - Touch interactions
 
-24. **Onboarding**
+26. **Onboarding**
     - Feature selection flow
     - Selective demo data
     - Tour highlights
 
-25. **Migration**
+27. **Migration**
     - V1 user detection
     - Workspace assignment
     - Data verification

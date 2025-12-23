@@ -767,15 +767,45 @@ function ResizableHeader({
 }
 
 // =============================================================================
+// GROUP SEPARATOR
+// =============================================================================
+
+interface GroupSeparatorProps {
+  label: string;
+  count: number;
+  icon?: React.ComponentType<{ className?: string }>;
+}
+
+function GroupSeparator({ label, count, icon: Icon }: GroupSeparatorProps) {
+  return (
+    <div className="flex items-center gap-2 py-3 px-4 bg-[var(--color-bg-surface)]/80 border-b border-[var(--color-text-muted)]/15">
+      {Icon && <Icon className="h-4 w-4 text-[var(--color-text-muted)]" />}
+      <span className="text-sm font-medium text-[var(--color-text-secondary)]">{label}</span>
+      <span className="text-xs text-[var(--color-text-muted)]">
+        {count} item{count === 1 ? '' : 's'}
+      </span>
+    </div>
+  );
+}
+
+// =============================================================================
 // MAIN COMPONENT
 // =============================================================================
 
+export interface CardGroup {
+  key: string;
+  label: string;
+  cards: LocalCard[];
+}
+
 interface CardListViewProps {
   cards: LocalCard[];
+  groups?: CardGroup[];
+  groupIcon?: React.ComponentType<{ className?: string }>;
   onReorder?: (reorderedIds: string[]) => void;
 }
 
-export function CardListView({ cards, onReorder }: CardListViewProps) {
+export function CardListView({ cards, groups, groupIcon, onReorder }: CardListViewProps) {
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const workspace = useCurrentWorkspace();
   const deleteCard = useDataStore((s) => s.deleteCard);
@@ -1269,59 +1299,124 @@ export function CardListView({ cards, onReorder }: CardListViewProps) {
         {/* Data rows with DnD */}
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
           <div>
-            {sortedCards.map((card) => {
-              const isSelected = selectedIds.has(card.id);
-              const isDragging = activeRowId === card.id;
-              const isDropTarget = overRowId === card.id && activeRowId !== card.id;
+            {groups && groups.length > 0 ? (
+              // Render with group separators
+              groups.map((group) => (
+                <div key={group.key}>
+                  {/* Group separator */}
+                  <GroupSeparator label={group.label} count={group.cards.length} icon={groupIcon} />
+                  {/* Group rows */}
+                  {group.cards.map((card) => {
+                    const isSelected = selectedIds.has(card.id);
+                    const isDragging = activeRowId === card.id;
+                    const isDropTarget = overRowId === card.id && activeRowId !== card.id;
 
-              return (
-                <SortableListRow
-                  key={card.id}
-                  card={card}
-                  isDragging={isDragging}
-                  isDropTarget={isDropTarget}
-                >
-                  {/* Row content - clicking opens modal */}
-                  <div
-                    onClick={() => openCardDetail(card.id)}
-                    className={cn(
-                      'flex flex-1 cursor-pointer transition-colors',
-                      isSelected
-                        ? 'bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/15'
-                        : 'hover:bg-[var(--bg-surface-2)]'
-                    )}
+                    return (
+                      <SortableListRow
+                        key={card.id}
+                        card={card}
+                        isDragging={isDragging}
+                        isDropTarget={isDropTarget}
+                      >
+                        {/* Row content - clicking opens modal */}
+                        <div
+                          onClick={() => openCardDetail(card.id)}
+                          className={cn(
+                            'flex flex-1 cursor-pointer transition-colors',
+                            isSelected
+                              ? 'bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/15'
+                              : 'hover:bg-[var(--bg-surface-2)]'
+                          )}
+                        >
+                          {/* Checkbox column */}
+                          <div className="w-12 py-3 px-4 flex-shrink-0 flex items-center">
+                            <button
+                              onClick={(e) => handleToggleSelect(card.id, e)}
+                              className={cn(
+                                'w-4 h-4 rounded border flex items-center justify-center transition-colors',
+                                isSelected
+                                  ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
+                                  : 'border-[var(--color-text-muted)]/40 hover:border-[var(--color-text-muted)]/60'
+                              )}
+                            >
+                              {isSelected && <Check className="h-3 w-3 text-white" />}
+                            </button>
+                          </div>
+                          {columnOrder.map((col) => (
+                            <div
+                              key={col}
+                              className="py-3 px-4 flex-shrink-0 overflow-hidden"
+                              style={{ width: columnWidths[col] }}
+                            >
+                              {renderCell(card, col)}
+                            </div>
+                          ))}
+                          {/* Actions */}
+                          <div className="py-3 px-4 flex-shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
+                            <ListRowActions card={card} onEdit={() => openCardDetail(card.id)} />
+                          </div>
+                        </div>
+                      </SortableListRow>
+                    );
+                  })}
+                </div>
+              ))
+            ) : (
+              // Render without groups (flat list)
+              sortedCards.map((card) => {
+                const isSelected = selectedIds.has(card.id);
+                const isDragging = activeRowId === card.id;
+                const isDropTarget = overRowId === card.id && activeRowId !== card.id;
+
+                return (
+                  <SortableListRow
+                    key={card.id}
+                    card={card}
+                    isDragging={isDragging}
+                    isDropTarget={isDropTarget}
                   >
-                    {/* Checkbox column */}
-                    <div className="w-12 py-3 px-4 flex-shrink-0 flex items-center">
-                      <button
-                        onClick={(e) => handleToggleSelect(card.id, e)}
-                        className={cn(
-                          'w-4 h-4 rounded border flex items-center justify-center transition-colors',
-                          isSelected
-                            ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
-                            : 'border-[var(--color-text-muted)]/40 hover:border-[var(--color-text-muted)]/60'
-                        )}
-                      >
-                        {isSelected && <Check className="h-3 w-3 text-white" />}
-                      </button>
-                    </div>
-                    {columnOrder.map((col) => (
-                      <div
-                        key={col}
-                        className="py-3 px-4 flex-shrink-0 overflow-hidden"
-                        style={{ width: columnWidths[col] }}
-                      >
-                        {renderCell(card, col)}
+                    {/* Row content - clicking opens modal */}
+                    <div
+                      onClick={() => openCardDetail(card.id)}
+                      className={cn(
+                        'flex flex-1 cursor-pointer transition-colors',
+                        isSelected
+                          ? 'bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/15'
+                          : 'hover:bg-[var(--bg-surface-2)]'
+                      )}
+                    >
+                      {/* Checkbox column */}
+                      <div className="w-12 py-3 px-4 flex-shrink-0 flex items-center">
+                        <button
+                          onClick={(e) => handleToggleSelect(card.id, e)}
+                          className={cn(
+                            'w-4 h-4 rounded border flex items-center justify-center transition-colors',
+                            isSelected
+                              ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
+                              : 'border-[var(--color-text-muted)]/40 hover:border-[var(--color-text-muted)]/60'
+                          )}
+                        >
+                          {isSelected && <Check className="h-3 w-3 text-white" />}
+                        </button>
                       </div>
-                    ))}
-                    {/* Actions */}
-                    <div className="py-3 px-4 flex-shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
-                      <ListRowActions card={card} onEdit={() => openCardDetail(card.id)} />
+                      {columnOrder.map((col) => (
+                        <div
+                          key={col}
+                          className="py-3 px-4 flex-shrink-0 overflow-hidden"
+                          style={{ width: columnWidths[col] }}
+                        >
+                          {renderCell(card, col)}
+                        </div>
+                      ))}
+                      {/* Actions */}
+                      <div className="py-3 px-4 flex-shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
+                        <ListRowActions card={card} onEdit={() => openCardDetail(card.id)} />
+                      </div>
                     </div>
-                  </div>
-                </SortableListRow>
-              );
-            })}
+                  </SortableListRow>
+                );
+              })
+            )}
           </div>
         </SortableContext>
 

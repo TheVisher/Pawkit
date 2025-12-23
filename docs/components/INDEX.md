@@ -2,7 +2,7 @@
 
 > Centralized lookup for component documentation in Pawkit V2
 
-**Last Updated**: December 22, 2025
+**Last Updated**: December 23, 2025
 
 ---
 
@@ -20,9 +20,11 @@
 | Component | Has Docs | Location | Complexity | Last Updated | Notes |
 |-----------|----------|----------|------------|--------------|-------|
 | **calendar** | Yes | [calendar.md](./calendar.md) | High | 2025-12-22 | Phase 5 - All views implemented |
-| **cards** | No | — | High | — | card-item.tsx 16KB, masonry-grid.tsx 13KB |
-| **layout** | No | — | High | — | right-sidebar.tsx 17KB, omnibar.tsx 13KB |
-| **modals** | No | — | High | — | card-detail-modal.tsx 15KB |
+| **cards** | Yes | [cards.md](./cards.md) | High | 2025-12-23 | Core visual entity, DnD enabled |
+| **card-list-view** | Yes | [card-list-view.md](./card-list-view.md) | High | 2025-12-23 | Table view with inline edit |
+| **editor** | Yes | [editor.md](./editor.md) | High | 2025-12-23 | Phase 7.1 - Tiptap rich text editor |
+| **layout** | Yes | [layout.md](./layout.md) | High | 2025-12-23 | 3-panel shell, Omnibar, Nav |
+| **modals** | Yes | [modals.md](./modals.md) | High | 2025-12-23 | Global registry, Card Detail editor |
 | **pawkits** | No | — | Medium | — | Tree + drag handlers |
 | **providers** | No | — | Low | — | Single theme-provider.tsx |
 | **ui** | N/A | — | Low | — | shadcn/ui standard - no docs needed |
@@ -42,15 +44,13 @@
 
 ## Documentation Priorities
 
-### Needs Docs (High Complexity)
+### Phase 6 Priority
 
-1. **cards** - Core rendering system, masonry algorithm, DnD integration
-2. **layout** - 3-panel shell, sidebar behavior, responsive logic
-3. **modals** - Card detail editing, auto-save, reader mode
+1. **rediscover** - Upcoming view implementation (Phase 6)
 
-### Phase 5 Priority
+### Maintenance
 
-1. **calendar** - Active development, will expand significantly
+1. **pawkits** - Should be documented next as complexity grows (nested tree logic)
 
 ---
 
@@ -61,12 +61,18 @@ Current component sizes (for monitoring file limits):
 ```
 src/components/
 ├── calendar/
-│   └── calendar-header.tsx          3.8KB
+│   ├── calendar-header.tsx          3.8KB
+│   ├── week-view.tsx                6.5KB
+│   └── agenda-view.tsx              6.2KB
 ├── cards/
 │   ├── card-grid.tsx                 1.6KB
 │   ├── card-item.tsx                16.4KB  ⚠️ Watch limit
 │   ├── empty-state.tsx               1.5KB
 │   └── masonry-grid.tsx             13.8KB  ⚠️ Watch limit
+├── editor/
+│   ├── editor.tsx                   10.0KB  ⚠️ Watch limit
+│   ├── slash-command-menu.tsx        6.0KB
+│   └── index.ts                      0.1KB
 ├── layout/
 │   ├── left-sidebar.tsx              6.5KB
 │   ├── mobile-nav.tsx                1.9KB
@@ -76,7 +82,7 @@ src/components/
 │   └── toast-stack.tsx               5.6KB
 ├── modals/
 │   ├── add-card-modal.tsx           13.8KB  ⚠️ Watch limit
-│   ├── card-detail-modal.tsx        15.2KB  ⚠️ Watch limit
+│   ├── card-detail-modal.tsx        17.5KB  ⚠️ Approaching limit
 │   └── create-pawkit-modal.tsx       6.4KB
 ├── pawkits/
 │   ├── cards-drag-handler.tsx        1.5KB

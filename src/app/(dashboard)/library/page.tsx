@@ -2,13 +2,69 @@
 
 import { useMemo, useCallback, useEffect } from 'react';
 import { useDataStore } from '@/lib/stores/data-store';
-import { useViewStore, useCardDisplaySettings } from '@/lib/stores/view-store';
+import { useViewStore, useCardDisplaySettings, cardMatchesContentTypes, cardMatchesUnsortedFilter } from '@/lib/stores/view-store';
+import type { GroupBy, DateGrouping, UnsortedFilter } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { CardGrid } from '@/components/cards/card-grid';
 import { EmptyState } from '@/components/cards/empty-state';
 import { PageHeader } from '@/components/layout/page-header';
-import { Bookmark } from 'lucide-react';
+import { Bookmark, CalendarDays, Tag, Type, Globe } from 'lucide-react';
+import type { LocalCard } from '@/lib/db';
+
+// Helper to get smart date label (Today, Yesterday, This Week, etc.)
+function getSmartDateLabel(date: Date): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const cardDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffDays = Math.floor((today.getTime() - cardDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return 'This Week';
+  if (diffDays < 14) return 'Last Week';
+  if (diffDays < 30) return 'This Month';
+  if (diffDays < 60) return 'Last Month';
+  if (diffDays < 365) return 'This Year';
+  return 'Older';
+}
+
+// Helper to get date label based on grouping type
+function getDateLabel(date: Date, dateGrouping: DateGrouping): string {
+  switch (dateGrouping) {
+    case 'smart':
+      return getSmartDateLabel(date);
+    case 'day':
+      return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
+    case 'week': {
+      const weekStart = new Date(date);
+      weekStart.setDate(date.getDate() - date.getDay());
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      return `${weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    }
+    case 'month':
+      return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    case 'year':
+      return date.getFullYear().toString();
+    default:
+      return getSmartDateLabel(date);
+  }
+}
+
+// Helper to get content type label
+function getContentTypeLabel(card: LocalCard): string {
+  if (['md-note', 'text-note', 'quick-note'].includes(card.type)) return 'Notes';
+  if (card.type === 'file') return 'Files';
+  if (card.type === 'url') return 'Bookmarks';
+  return 'Other';
+}
+
+interface CardGroup {
+  key: string;
+  label: string;
+  cards: LocalCard[];
+}
 
 export default function LibraryPage() {
   const cards = useDataStore((state) => state.cards);
@@ -17,6 +73,11 @@ export default function LibraryPage() {
   const sortBy = useViewStore((state) => state.sortBy);
   const sortOrder = useViewStore((state) => state.sortOrder);
   const cardOrder = useViewStore((state) => state.cardOrder);
+  const contentTypeFilters = useViewStore((state) => state.contentTypeFilters);
+  const selectedTags = useViewStore((state) => state.selectedTags);
+  const unsortedFilter = useViewStore((state) => state.unsortedFilter) as UnsortedFilter;
+  const groupBy = useViewStore((state) => state.groupBy) as GroupBy;
+  const dateGrouping = useViewStore((state) => state.dateGrouping) as DateGrouping;
   const reorderCards = useViewStore((state) => state.reorderCards);
   const loadViewSettings = useViewStore((state) => state.loadViewSettings);
   const openAddCard = useModalStore((state) => state.openAddCard);
@@ -32,8 +93,21 @@ export default function LibraryPage() {
   // Card display settings
   const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
 
-  // Filter out deleted cards
-  const activeCards = useMemo(() => cards.filter((card) => !card._deleted), [cards]);
+  // Filter out deleted cards and apply content type + tag + unsorted filters
+  const activeCards = useMemo(() => {
+    return cards.filter((card) => {
+      if (card._deleted) return false;
+      if (!cardMatchesContentTypes(card, contentTypeFilters)) return false;
+      // Tag filter - card must have ALL selected tags
+      if (selectedTags.length > 0) {
+        const cardTags = card.tags || [];
+        if (!selectedTags.every(tag => cardTags.includes(tag))) return false;
+      }
+      // Unsorted/Quick filter
+      if (!cardMatchesUnsortedFilter(card, unsortedFilter)) return false;
+      return true;
+    });
+  }, [cards, contentTypeFilters, selectedTags, unsortedFilter]);
 
   // Sort cards based on current sort settings
   const sortedCards = useMemo(() => {
@@ -55,6 +129,9 @@ export default function LibraryPage() {
         case 'title':
           comparison = (a.title || '').localeCompare(b.title || '');
           break;
+        case 'domain':
+          comparison = (a.domain || '').localeCompare(b.domain || '');
+          break;
         case 'createdAt':
           comparison = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
           break;
@@ -68,10 +145,98 @@ export default function LibraryPage() {
     });
   }, [activeCards, sortBy, sortOrder, cardOrder]);
 
+  // Group cards based on groupBy setting
+  const groupedCards = useMemo((): CardGroup[] => {
+    if (groupBy === 'none') {
+      return [{ key: 'all', label: '', cards: sortedCards }];
+    }
+
+    const groups = new Map<string, LocalCard[]>();
+
+    for (const card of sortedCards) {
+      let key: string;
+
+      switch (groupBy) {
+        case 'date': {
+          const date = new Date(card.createdAt);
+          key = getDateLabel(date, dateGrouping);
+          break;
+        }
+        case 'tags': {
+          // Group by first tag, or 'Untagged' if no tags
+          const tags = card.tags || [];
+          key = tags.length > 0 ? tags[0] : 'Untagged';
+          break;
+        }
+        case 'type':
+          key = getContentTypeLabel(card);
+          break;
+        case 'domain':
+          key = card.domain || 'No Domain';
+          break;
+        default:
+          key = 'Other';
+      }
+
+      const existing = groups.get(key) || [];
+      existing.push(card);
+      groups.set(key, existing);
+    }
+
+    // Convert to array and maintain sort order for date groups
+    const result: CardGroup[] = [];
+
+    if (groupBy === 'date') {
+      // For date grouping, maintain chronological order based on sort order
+      const dateOrder = sortOrder === 'desc'
+        ? ['Today', 'Yesterday', 'This Week', 'Last Week', 'This Month', 'Last Month', 'This Year', 'Older']
+        : ['Older', 'This Year', 'Last Month', 'This Month', 'Last Week', 'This Week', 'Yesterday', 'Today'];
+
+      // First add known date groups in order
+      for (const label of dateOrder) {
+        const cards = groups.get(label);
+        if (cards) {
+          result.push({ key: label, label, cards });
+          groups.delete(label);
+        }
+      }
+      // Then add any remaining groups (for non-smart date groupings)
+      for (const [label, cards] of groups) {
+        result.push({ key: label, label, cards });
+      }
+    } else {
+      // For other groupings, sort alphabetically but put 'Untagged'/'No Domain' last
+      const entries = Array.from(groups.entries());
+      entries.sort((a, b) => {
+        if (a[0] === 'Untagged' || a[0] === 'No Domain') return 1;
+        if (b[0] === 'Untagged' || b[0] === 'No Domain') return -1;
+        return a[0].localeCompare(b[0]);
+      });
+      for (const [label, cards] of entries) {
+        result.push({ key: label, label, cards });
+      }
+    }
+
+    return result;
+  }, [sortedCards, groupBy, dateGrouping, sortOrder]);
+
   // Handle card reorder from drag-and-drop
   const handleReorder = useCallback((reorderedIds: string[]) => {
     reorderCards(reorderedIds);
   }, [reorderCards]);
+
+  // Get icon for group header based on groupBy type
+  const getGroupIcon = () => {
+    switch (groupBy) {
+      case 'date': return CalendarDays;
+      case 'tags': return Tag;
+      case 'type': return Type;
+      case 'domain': return Globe;
+      default: return null;
+    }
+  };
+
+  const GroupIcon = getGroupIcon();
 
   // Loading state
   if (isLoading) {
@@ -108,7 +273,7 @@ export default function LibraryPage() {
             actionLabel="Add bookmark"
             onAction={() => openAddCard('bookmark')}
           />
-        ) : (
+        ) : groupBy === 'none' ? (
           <CardGrid
             cards={sortedCards}
             layout={layout}
@@ -117,6 +282,45 @@ export default function LibraryPage() {
             cardSpacing={cardSpacing}
             displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
           />
+        ) : layout === 'list' ? (
+          // List view with grouping - pass groups to single CardGrid for inline separators
+          <CardGrid
+            cards={sortedCards}
+            layout={layout}
+            onReorder={handleReorder}
+            cardSize={cardSize}
+            cardSpacing={cardSpacing}
+            displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+            groups={groupedCards}
+            groupIcon={GroupIcon || undefined}
+          />
+        ) : (
+          // Masonry/Grid view with grouping - separate sections with headers
+          <div className="space-y-8">
+            {groupedCards.map((group) => (
+              <div key={group.key}>
+                {/* Group header */}
+                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-text-muted)]/15">
+                  {GroupIcon && <GroupIcon className="h-4 w-4 text-[var(--color-text-muted)]" />}
+                  <h2 className="text-sm font-medium text-[var(--color-text-secondary)]">
+                    {group.label}
+                  </h2>
+                  <span className="text-xs text-[var(--color-text-muted)]">
+                    {group.cards.length} item{group.cards.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                {/* Group cards */}
+                <CardGrid
+                  cards={group.cards}
+                  layout={layout}
+                  onReorder={handleReorder}
+                  cardSize={cardSize}
+                  cardSpacing={cardSpacing}
+                  displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+                />
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

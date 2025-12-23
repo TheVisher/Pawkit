@@ -13,10 +13,13 @@ import {
   BookOpen,
   ChevronDown,
   ChevronUp,
+  Edit3,
+  Eye,
 } from 'lucide-react';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { cn } from '@/lib/utils';
+import { Editor } from '@/components/editor';
 
 function getCardIcon(type: string) {
   switch (type) {
@@ -41,6 +44,132 @@ function getDomain(url: string): string {
   }
 }
 
+// Sanitized preview component for note content
+function NotePreview({ content }: { content: string }) {
+  const sanitizedHtml = useMemo(() => {
+    if (!content) {
+      return '<p style="color: var(--color-text-muted)">No content yet...</p>';
+    }
+    return DOMPurify.sanitize(content, {
+      ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'blockquote', 'code', 'pre', 'hr', 'input', 'label', 'div', 'span'],
+      ALLOWED_ATTR: ['href', 'src', 'alt', 'title', 'class', 'target', 'rel', 'type', 'checked', 'data-type', 'data-checked', 'style'],
+    });
+  }, [content]);
+
+  return (
+    <div className="p-4 min-h-[200px] note-preview">
+      {/* Content is sanitized via DOMPurify above */}
+      <div dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
+      <style jsx>{`
+        .note-preview {
+          color: var(--color-text-primary);
+          line-height: 1.7;
+        }
+        .note-preview :global(h1) {
+          font-size: 1.5rem;
+          font-weight: 600;
+          margin-top: 1.5rem;
+          margin-bottom: 0.75rem;
+          color: var(--color-text-primary);
+        }
+        .note-preview :global(h2) {
+          font-size: 1.25rem;
+          font-weight: 600;
+          margin-top: 1.25rem;
+          margin-bottom: 0.5rem;
+          color: var(--color-text-primary);
+        }
+        .note-preview :global(h3) {
+          font-size: 1.1rem;
+          font-weight: 600;
+          margin-top: 1rem;
+          margin-bottom: 0.5rem;
+          color: var(--color-text-primary);
+        }
+        .note-preview :global(p) {
+          margin-bottom: 0.75rem;
+        }
+        .note-preview :global(strong),
+        .note-preview :global(b) {
+          font-weight: 600;
+          color: var(--color-text-primary);
+        }
+        .note-preview :global(em),
+        .note-preview :global(i) {
+          font-style: italic;
+        }
+        .note-preview :global(a) {
+          color: var(--color-accent);
+          text-decoration: underline;
+        }
+        .note-preview :global(a:hover) {
+          color: var(--color-accent-hover);
+        }
+        .note-preview :global(code) {
+          background: var(--glass-bg);
+          padding: 0.125rem 0.375rem;
+          border-radius: 0.25rem;
+          font-family: var(--font-mono);
+          font-size: 0.875em;
+          color: var(--color-accent);
+        }
+        .note-preview :global(pre) {
+          background: var(--glass-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: 0.5rem;
+          padding: 0.75rem 1rem;
+          overflow-x: auto;
+          margin: 1rem 0;
+        }
+        .note-preview :global(pre code) {
+          background: none;
+          padding: 0;
+          color: var(--color-text-primary);
+        }
+        .note-preview :global(ul),
+        .note-preview :global(ol) {
+          margin: 0.75rem 0;
+          padding-left: 1.5rem;
+        }
+        .note-preview :global(ul) {
+          list-style-type: disc;
+        }
+        .note-preview :global(ol) {
+          list-style-type: decimal;
+        }
+        .note-preview :global(li) {
+          margin-bottom: 0.25rem;
+        }
+        .note-preview :global(blockquote) {
+          border-left: 3px solid var(--color-accent);
+          padding-left: 1rem;
+          margin: 1rem 0;
+          color: var(--color-text-secondary);
+          font-style: italic;
+        }
+        .note-preview :global(hr) {
+          border: none;
+          border-top: 1px solid var(--glass-border);
+          margin: 1.5rem 0;
+        }
+        .note-preview :global(ul[data-type="taskList"]) {
+          list-style: none;
+          padding-left: 0;
+        }
+        .note-preview :global(ul[data-type="taskList"] li) {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+        }
+        .note-preview :global(input[type="checkbox"]) {
+          margin-top: 0.25rem;
+          accent-color: var(--color-accent);
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export function CardDetailModal() {
   const activeCardId = useModalStore((s) => s.activeCardId);
   const closeCardDetail = useModalStore((s) => s.closeCardDetail);
@@ -53,25 +182,32 @@ export function CardDetailModal() {
   // Local state for editing
   const [title, setTitle] = useState('');
   const [notes, setNotes] = useState('');
+  const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [showReader, setShowReader] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(true);
 
-  // Refs for auto-save
+  // Refs
   const titleRef = useRef<HTMLInputElement>(null);
-  const notesRef = useRef<HTMLTextAreaElement>(null);
   const tagInputRef = useRef<HTMLInputElement>(null);
+
+  // Check if this is a note card (not a URL bookmark)
+  const isNoteCard = card?.type === 'md-note' || card?.type === 'text-note' || card?.type === 'quick-note';
 
   // Initialize local state when card changes
   useEffect(() => {
     if (card) {
       setTitle(card.title || '');
       setNotes(card.notes || '');
+      setContent(card.content || '');
       setTags(card.tags || []);
       setImageError(false);
+      setIsEditMode(true);
     }
   }, [card]);
+
 
   // Sanitize article content for safe rendering
   const sanitizedContent = useMemo(() => {
@@ -91,12 +227,21 @@ export function CardDetailModal() {
     }
   }, [card, title, updateCard]);
 
-  // Auto-save notes on blur
-  const handleNotesBlur = useCallback(() => {
-    if (card && notes !== card.notes) {
-      updateCard(card.id, { notes });
+  // Save content when editor blurs (for note cards)
+  const handleContentChange = useCallback((html: string) => {
+    setContent(html);
+    if (card && html !== card.content) {
+      updateCard(card.id, { content: html });
     }
-  }, [card, notes, updateCard]);
+  }, [card, updateCard]);
+
+  // Save notes when editor blurs (for bookmark cards)
+  const handleNotesChange = useCallback((html: string) => {
+    setNotes(html);
+    if (card && html !== card.notes) {
+      updateCard(card.id, { notes: html });
+    }
+  }, [card, updateCard]);
 
   // Add a new tag
   const handleAddTag = useCallback(() => {
@@ -325,30 +470,94 @@ export function CardDetailModal() {
                 </div>
               </div>
 
-              {/* Notes */}
-              <div className="space-y-2">
-                <label
-                  className="flex items-center gap-2 text-sm font-medium"
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  <FileText className="h-4 w-4" />
-                  Notes
-                </label>
-                <textarea
-                  ref={notesRef}
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  onBlur={handleNotesBlur}
-                  placeholder="Add your notes here..."
-                  rows={6}
-                  className={cn(
-                    'w-full p-4 rounded-xl resize-none',
-                    'bg-[var(--glass-bg)] border border-[var(--glass-border)] outline-none',
-                    'text-text-primary placeholder:text-text-muted',
-                    'focus:ring-2 focus:ring-[var(--ds-accent)]/30 focus:border-[var(--glass-border-hover)]'
-                  )}
-                />
-              </div>
+              {/* Content Editor for Note Cards */}
+              {isNoteCard && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label
+                      className="flex items-center gap-2 text-sm font-medium"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      <FileText className="h-4 w-4" />
+                      Content
+                    </label>
+                    {/* Edit/Preview Toggle */}
+                    <div className="flex items-center gap-1 p-1 rounded-lg bg-[var(--glass-bg)] border border-[var(--glass-border)]">
+                      <button
+                        onClick={() => setIsEditMode(true)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all',
+                          isEditMode
+                            ? 'bg-[var(--color-accent)] text-white'
+                            : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                        )}
+                      >
+                        <Edit3 className="h-3 w-3" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => setIsEditMode(false)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all',
+                          !isEditMode
+                            ? 'bg-[var(--color-accent)] text-white'
+                            : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
+                        )}
+                      >
+                        <Eye className="h-3 w-3" />
+                        Preview
+                      </button>
+                    </div>
+                  </div>
+                  <div
+                    className={cn(
+                      'rounded-xl overflow-hidden',
+                      'bg-[var(--glass-bg)] border border-[var(--glass-border)]',
+                      'focus-within:ring-2 focus-within:ring-[var(--color-accent)]/30 focus-within:border-[var(--glass-border-hover)]'
+                    )}
+                  >
+                    {isEditMode ? (
+                      <div className="p-4">
+                        <Editor
+                          content={content}
+                          onChange={handleContentChange}
+                          placeholder="Type '/' for commands or just start writing..."
+                        />
+                      </div>
+                    ) : (
+                      <NotePreview content={content} />
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Notes Editor for Bookmark Cards */}
+              {!isNoteCard && (
+                <div className="space-y-2">
+                  <label
+                    className="flex items-center gap-2 text-sm font-medium"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    <FileText className="h-4 w-4" />
+                    Notes
+                  </label>
+                  <div
+                    className={cn(
+                      'rounded-xl overflow-hidden',
+                      'bg-[var(--glass-bg)] border border-[var(--glass-border)]',
+                      'focus-within:ring-2 focus-within:ring-[var(--color-accent)]/30 focus-within:border-[var(--glass-border-hover)]'
+                    )}
+                  >
+                    <div className="p-4">
+                      <Editor
+                        content={notes}
+                        onChange={handleNotesChange}
+                        placeholder="Add your notes here..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Reader Mode (if article content exists) */}
               {hasArticleContent && (
