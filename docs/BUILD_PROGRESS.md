@@ -1,20 +1,21 @@
 # Pawkit V2 Build Progress
 
 ## Current Status
-**Phase:** 3 (Views & Omnibar)
+**Phase:** 6 (Rediscover View)
 **Visual Parity:** ~98%
 **Architecture:** Local-first (Dexie + Zustand)
 
 ---
 
 ### Completed ✅
-- [x] Project setup (Next.js 15, App Router, React 19)
+- [x] Project setup (Next.js 16.1.0, App Router, React 19)
 - [x] Data layer foundation (Dexie.js schema, Prisma schema)
 - [x] State management foundation (Zustand stores: auth, data, ui, view, workspace)
 - [x] State management persistence (Layout preferences saved to localStorage)
 - [x] **3-Panel Layout Shell** (Locked down, pixel-perfect V1 parity)
 - [x] **Smooth Sidebar Animations** (Resolved janky right-panel float transitions)
 - [x] **Omnibar Positioning:** Centered relative to content area (absolute) rather than viewport.
+- [x] **Omnibar Scroll-Awareness:** Collapses to compact mode on scroll; expands for toasts.
 - [x] **Standardized Header Spacing:** Consistent `pt-5 pb-4 px-6` across views.
 - [x] Responsive breakpoints (mobile/tablet/desktop)
 - [x] Mobile bottom nav implementation
@@ -35,12 +36,13 @@
 - [x] **Metadata Scraper Service (Phase 3.4):** Automated OpenGraph extraction with YouTube support and image validation.
 - [x] **Masonry Layout (Phase 3.5):** Custom left-to-right dense packing algorithm with `dnd-kit` integration and responsive resizing.
 - [x] **Drag-and-Drop Persistence (Phase 3.6):** Persistent manual sorting in Dexie, portal-based overlays, and conflict-free absolute positioning.
+- [x] **Collections & Organization (Phase 4):** Recursive Pawkits tree, drag-to-categorize logic, and nested navigation.
+- [x] **Calendar View (Phase 5):** Month/Week/Day/Agenda grids, event rendering.
 
 ### In Progress 🔄
-- [ ] Collection Management (Create/Edit Pawkits)
+- [ ] **Rediscover View (Phase 6):** Card stack interface and review workflow.
 
 ### Not Started ⬜
-- [ ] Calendar View
 - [ ] Rediscover View
 
 ---
@@ -54,12 +56,16 @@
 
 ## Session Log
 
-### Dec 20, 2025 - Mid-Project Health Check & Cleanup
-- **Codebase Sanitization:** Removed 300+ lines of dead code (`TopBar`, `PageHeader`, etc.).
-- **Theme Centralization:** Refactored hardcoded gradients in `DashboardShell` to use CSS variables, ensuring 100% theme support (Light/Dark).
-- **Type Safety:** Fixed `as never` type casting in Auth Store by introducing a strict `BasicUserInfo` interface.
-- **Logging:** Replaced chatty console logs with a dev-only `logger` utility.
-- **Stability:** Confirmed the Workspace Logic self-healing mechanism is working perfectly.
+### Dec 20, 2025 - Interactive Polish & View Settings
+- **Omnibar Refinement:** Implemented scroll-aware collapse logic. The Omnibar now shrinks to a compact pill after 20px of scroll but automatically expands to show notifications.
+- **View-Specific Settings:** Wired the Right Sidebar controls (Card Size, Padding, Toggles) to the View Store. Settings now persist per-view (Library has different settings than Pawkits).
+- **Sidebar UX:** Added smooth fade transitions between view-specific sidebar content to reduce visual jarring during navigation.
+- **Card Sizing:** Standardized card width spread (180px - 520px) for better visual hierarchy across different screen sizes.
+
+### Dec 20, 2025 - Collections & Organization
+- **Pawkits Management:** Completed Phase 4. Users can now create nested collections (Pawkits) via a glass-themed modal.
+- **Cross-Component DnD:** Successfully implemented "Drag to Pawkit". Dropping a card from the Masonry grid onto a sidebar tree item adds the card to that collection.
+- **DnD Architecture:** Lifted the `DndContext` to the `DashboardShell` root to allow dragging items across layout panels (Center -> Left Sidebar).
 
 ### Dec 20, 2025 - Drag-and-Drop & Layout Stability
 - **DnD Persistence:** Completed Phase 3.6. Implemented a robust manual sorting system that persists to Dexie and Sync.
@@ -79,7 +85,7 @@
 - **Unified DnD:** Integrated `dnd-kit` into the `MasonryGrid` component, allowing for future drag-and-drop reordering.
 - **Responsive:** Added `ResizeObserver` logic to dynamically recalculate columns and card widths.
 
-### Dec 20, 2025 - Theme System & Light Mode
+### Dec 20, 2025 - Omnibar & Polish
 - **Signature Feature:** Completed the Omnibar-Toast system.
   - Implemented elastic morphing animations where the search bar transforms into notifications.
   - Built a physics-based toast stack that "pops out" from underneath the bar.

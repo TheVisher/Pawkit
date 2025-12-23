@@ -1,22 +1,33 @@
 'use client';
 
-import { CardItem } from './card-item';
+import { CardItem, type CardDisplaySettings } from './card-item';
 import { MasonryGrid } from './masonry-grid';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
+
+type CardSize = 'small' | 'medium' | 'large' | 'xl';
 
 interface CardGridProps {
   cards: LocalCard[];
   layout: string;
   onReorder?: (reorderedIds: string[]) => void;
+  cardSize?: CardSize;
+  displaySettings?: Partial<CardDisplaySettings>;
 }
 
-export function CardGrid({ cards, layout, onReorder }: CardGridProps) {
+export function CardGrid({ cards, layout, onReorder, cardSize = 'medium', displaySettings }: CardGridProps) {
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   // Masonry layout with drag-and-drop
   if (layout === 'masonry') {
-    return <MasonryGrid cards={cards} onReorder={onReorder} />;
+    return (
+      <MasonryGrid
+        cards={cards}
+        onReorder={onReorder}
+        cardSize={cardSize}
+        displaySettings={displaySettings}
+      />
+    );
   }
 
   // List view
@@ -29,6 +40,7 @@ export function CardGrid({ cards, layout, onReorder }: CardGridProps) {
             card={card}
             variant="list"
             onClick={() => openCardDetail(card.id)}
+            displaySettings={displaySettings}
           />
         ))}
       </div>
@@ -44,6 +56,7 @@ export function CardGrid({ cards, layout, onReorder }: CardGridProps) {
           card={card}
           variant="grid"
           onClick={() => openCardDetail(card.id)}
+          displaySettings={displaySettings}
         />
       ))}
     </div>

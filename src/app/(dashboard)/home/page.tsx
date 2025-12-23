@@ -5,6 +5,7 @@ import { useCards, useCollections } from '@/lib/stores/data-store';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useGreeting } from '@/lib/hooks/use-greeting';
 import { Card, CardContent } from '@/components/ui/card';
+import { PageHeader } from '@/components/layout/page-header';
 
 const stats = [
   { label: 'Bookmarks', icon: Bookmark, key: 'bookmarks' },
@@ -36,20 +37,22 @@ export default function HomePage() {
 
   const TimeIcon = timeIcons[timeIcon as keyof typeof timeIcons] || Coffee;
 
+  const subtitle = (
+    <div className="flex items-center gap-1.5">
+      <TimeIcon className="h-3.5 w-3.5" />
+      <span>{mounted ? formattedDate : ''}</span>
+    </div>
+  );
+
+  const title = (
+    <>
+      {message}, <span className="text-[var(--color-accent)]">{displayName || 'friend'}</span>
+    </>
+  );
+
   return (
     <div className="flex-1">
-      {/* Header row - matches original PageHeader: pt-5 pb-4 px-6 min-h-[76px] */}
-      <div className="pt-5 pb-4 px-6 min-h-[76px] space-y-0.5">
-        {/* Date row - smaller and muted */}
-        <div className="flex items-center gap-1.5 text-text-muted">
-          <TimeIcon className="h-3.5 w-3.5" />
-          <span className="text-xs">{mounted ? formattedDate : ''}</span>
-        </div>
-        {/* Greeting row */}
-        <h1 className="text-2xl font-semibold text-text-primary">
-          {message}, <span className="text-[var(--color-accent)]">{displayName || 'friend'}</span>
-        </h1>
-      </div>
+      <PageHeader title={title} subtitle={subtitle} />
 
       {/* Page content */}
       <div className="px-6 pb-6 space-y-6">

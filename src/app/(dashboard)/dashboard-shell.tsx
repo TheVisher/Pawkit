@@ -6,17 +6,24 @@ import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useSync } from '@/lib/hooks/use-sync';
 import { useLayoutAnchors } from '@/lib/stores/ui-store';
+import { useActiveToast } from '@/lib/stores/toast-store';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightSidebar } from '@/components/layout/right-sidebar';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { AddCardModal } from '@/components/modals/add-card-modal';
 import { CardDetailModal } from '@/components/modals/card-detail-modal';
+import { CreatePawkitModal } from '@/components/modals/create-pawkit-modal';
+import { CardsDragHandler } from '@/components/pawkits/cards-drag-handler';
 import { Omnibar } from '@/components/layout/omnibar';
 import { ToastStack } from '@/components/layout/toast-stack';
+import { AppDndProvider } from '@/lib/contexts/dnd-context';
 import { cn } from '@/lib/utils';
 import { createModuleLogger } from '@/lib/utils/logger';
 
 const log = createModuleLogger('DashboardShell');
+
+// Scroll threshold for omnibar collapse (pixels)
+const OMNIBAR_SCROLL_THRESHOLD = 20;
 
 interface DashboardShellProps {
   userId: string;
@@ -33,6 +40,14 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   // Hover state for revealing closed sidebars
   const [leftHovered, setLeftHovered] = useState(false);
   const [rightHovered, setRightHovered] = useState(false);
+
+  // Scroll state for omnibar collapse
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Toast state - omnibar expands when toast is active
+  const activeToast = useActiveToast();
 
   // Timeout refs for delayed hide (gives user time to move mouse onto panel)
   const leftHideTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -183,6 +198,27 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     };
   }, []);
 
+  // Callback ref to capture scroll container
+  const handleContentRef = useCallback((node: HTMLDivElement | null) => {
+    contentRef.current = node;
+    setScrollContainer(node);
+  }, []);
+
+  // Track scroll position for omnibar collapse
+  useEffect(() => {
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const shouldCollapse = scrollContainer.scrollTop > OMNIBAR_SCROLL_THRESHOLD;
+      setIsScrolled(shouldCollapse);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Initial check
+
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [scrollContainer]);
+
   // Global pointer move handler - works better with inactive windows on macOS
   // Checks mouse position to trigger edge hover zones
   useEffect(() => {
@@ -277,141 +313,150 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     : (isRightOpen ? 16 : 16 + floatingInset);
 
   return (
-    <div className="h-screen w-screen bg-bg-base text-text-primary">
-      {/* Mobile bottom nav - only shows < 768px */}
-      <MobileNav className="md:hidden fixed bottom-0 left-0 right-0 z-50" />
+    <AppDndProvider>
+      <div className="h-screen w-screen bg-bg-base text-text-primary">
+        {/* Mobile bottom nav - only shows < 768px */}
+        <MobileNav className="md:hidden fixed bottom-0 left-0 right-0 z-50" />
 
-      {/* Main layout with padding to show purple gradient background */}
-      <div
-        className="h-full pb-16 md:pb-0"
-        style={{
-          // Animate padding for smooth full-screen transition
-          padding: isFullScreen ? 0 : 16,
-          transition: 'padding 300ms ease-out, background-color 300ms ease-out',
-          backgroundColor: 'var(--bg-gradient-base)',
-          backgroundImage: 'var(--bg-gradient-image)',
-          backgroundAttachment: 'fixed'
-        }}
-      >
-        {/* LEFT EDGE HOVER ZONE - Uses padding area when left sidebar is closed */}
-        {!isLeftOpen && (
-          <div
-            className="hidden lg:block fixed top-0 bottom-0 z-50"
-            style={{ left: 0, width: 20 }}
-            onMouseEnter={handleLeftMouseEnter}
-            onMouseLeave={handleLeftMouseLeave}
-          />
-        )}
-
-        {/* RIGHT EDGE HOVER ZONE - Uses padding area when right sidebar is closed */}
-        {!isRightOpen && (
-          <div
-            className="hidden xl:block fixed top-0 bottom-0 z-50"
-            style={{ right: 0, width: 20 }}
-            onMouseEnter={handleRightMouseEnter}
-            onMouseLeave={handleRightMouseLeave}
-          />
-        )}
-
-        {/* LEFT SIDEBAR - Fixed position, slides in/out */}
-        <aside
-          className={cn(
-            'hidden lg:flex fixed w-[325px] z-40',
-            panelBase,
-            // Always apply shadow when not merged (slides with panel during animation)
-            !leftMerged && floatingShadow,
-            // Rounding based on anchor state
-            isFullScreen
-              ? 'rounded-none'
-              : leftMerged
-                ? 'rounded-l-2xl rounded-r-none'
-                : 'rounded-2xl'
-          )}
+        {/* Main layout with padding to show purple gradient background */}
+        <div
+          className="h-full pb-16 md:pb-0"
           style={{
-            top: leftEdgeOffset,
-            left: leftEdgeOffset,
-            bottom: leftEdgeOffset,
-            // Slide completely off-screen when not visible
-            transform: isLeftVisible ? 'translateX(0)' : 'translateX(calc(-100% - 32px))',
-            transition: 'transform 300ms ease-out, top 300ms ease-out, left 300ms ease-out, bottom 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
+            // Animate padding for smooth full-screen transition
+            padding: isFullScreen ? 0 : 16,
+            transition: 'padding 300ms ease-out, background-color 300ms ease-out',
+            backgroundColor: 'var(--bg-gradient-base)',
+            backgroundImage: 'var(--bg-gradient-image)',
+            backgroundAttachment: 'fixed'
           }}
-          onMouseEnter={handleLeftMouseEnter}
-          onMouseLeave={handleLeftMouseLeave}
         >
-          <LeftSidebar />
-        </aside>
+          {/* LEFT EDGE HOVER ZONE - Uses padding area when left sidebar is closed */}
+          {!isLeftOpen && (
+            <div
+              className="hidden lg:block fixed top-0 bottom-0 z-50"
+              style={{ left: 0, width: 20 }}
+              onMouseEnter={handleLeftMouseEnter}
+              onMouseLeave={handleLeftMouseLeave}
+            />
+          )}
 
-        {/* CENTER CONTENT - Flex panel that expands when sidebars close */}
-        <main
-          className={cn(
-            'h-full flex flex-col',
-            panelBase,
-            // Inset shadows on edges where sidebars are merged (makes sidebars appear elevated)
-            leftMerged && rightMerged
-              ? bothInsetShadow
-              : leftMerged
-                ? leftInsetShadow
-                : rightMerged
-                  ? rightInsetShadow
-                  : floatingShadow,
-            // Dynamic rounding based on anchor state
-            isFullScreen && rightMerged
-              ? 'rounded-none'
-              : leftMerged && !rightMerged
-                ? 'rounded-l-none rounded-r-2xl'
-                : !leftMerged && rightMerged
+          {/* RIGHT EDGE HOVER ZONE - Uses padding area when right sidebar is closed */}
+          {!isRightOpen && (
+            <div
+              className="hidden xl:block fixed top-0 bottom-0 z-50"
+              style={{ right: 0, width: 20 }}
+              onMouseEnter={handleRightMouseEnter}
+              onMouseLeave={handleRightMouseLeave}
+            />
+          )}
+
+          {/* LEFT SIDEBAR - Fixed position, slides in/out */}
+          <aside
+            className={cn(
+              'hidden lg:flex fixed w-[325px] z-40',
+              panelBase,
+              // Always apply shadow when not merged (slides with panel during animation)
+              !leftMerged && floatingShadow,
+              // Rounding based on anchor state
+              isFullScreen
+                ? 'rounded-none'
+                : leftMerged
                   ? 'rounded-l-2xl rounded-r-none'
                   : 'rounded-2xl'
-          )}
-          style={{
-            // Left margin: account for left sidebar when it's in flow (open, not just hovered)
-            marginLeft: leftInFlow ? (leftMerged ? 325 : 341) : 0,
-            // Right margin: account for right sidebar when it's in flow
-            // When merged: 325 (flush with sidebar, container padding provides offset when not fullscreen)
-            // When not merged: 341 (sidebar width + 16px gap)
-            marginRight: rightInFlow ? (rightMerged ? 325 : 341) : 0,
-            transition: 'margin 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
-          }}
-        >
-          <div className="flex-1 overflow-auto relative">
-            {/* OMNIBAR - Absolute positioned at top center of content area */}
-            <div className="absolute top-5 left-1/2 -translate-x-1/2 z-50">
-              <Omnibar isCompact={false} />
-              <ToastStack isCompact={false} />
+            )}
+            style={{
+              top: leftEdgeOffset,
+              left: leftEdgeOffset,
+              bottom: leftEdgeOffset,
+              // Slide completely off-screen when not visible
+              transform: isLeftVisible ? 'translateX(0)' : 'translateX(calc(-100% - 32px))',
+              transition: 'transform 300ms ease-out, top 300ms ease-out, left 300ms ease-out, bottom 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
+            }}
+            onMouseEnter={handleLeftMouseEnter}
+            onMouseLeave={handleLeftMouseLeave}
+          >
+            <LeftSidebar />
+          </aside>
+
+          {/* CENTER CONTENT - Flex panel that expands when sidebars close */}
+          <main
+            className={cn(
+              'h-full flex flex-col',
+              panelBase,
+              // Inset shadows on edges where sidebars are merged (makes sidebars appear elevated)
+              leftMerged && rightMerged
+                ? bothInsetShadow
+                : leftMerged
+                  ? leftInsetShadow
+                  : rightMerged
+                    ? rightInsetShadow
+                    : floatingShadow,
+              // Dynamic rounding based on anchor state
+              isFullScreen && rightMerged
+                ? 'rounded-none'
+                : leftMerged && !rightMerged
+                  ? 'rounded-l-none rounded-r-2xl'
+                  : !leftMerged && rightMerged
+                    ? 'rounded-l-2xl rounded-r-none'
+                    : 'rounded-2xl'
+            )}
+            style={{
+              // Left margin: account for left sidebar when it's in flow (open, not just hovered)
+              marginLeft: leftInFlow ? (leftMerged ? 325 : 341) : 0,
+              // Right margin: account for right sidebar when it's in flow
+              // When merged: 325 (flush with sidebar, container padding provides offset when not fullscreen)
+              // When not merged: 341 (sidebar width + 16px gap)
+              marginRight: rightInFlow ? (rightMerged ? 325 : 341) : 0,
+              transition: 'margin 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
+            }}
+          >
+            <div ref={handleContentRef} className="flex-1 overflow-auto relative">
+              {/* OMNIBAR - Sticky but with zero-height wrapper so it doesn't push content down */}
+              <div className="sticky top-0 z-50 h-0 overflow-visible">
+                <div className="flex justify-center pt-5 pb-2 pointer-events-none">
+                  <div className="relative pointer-events-auto">
+                    <Omnibar isCompact={isScrolled && !activeToast} />
+                    <ToastStack isCompact={isScrolled && !activeToast} />
+                  </div>
+                </div>
+              </div>
+              {/* Content - starts at top, scrolls under the omnibar */}
+              {children}
             </div>
-            {children}
-          </div>
-        </main>
+          </main>
 
-        {/* RIGHT SIDEBAR - Fixed position, slides in/out */}
-        <aside
-          className={cn(
-            'hidden xl:flex fixed w-[325px] z-40',
-            panelBase,
-            // Always apply shadow when not merged (slides with panel during animation)
-            !rightMerged && floatingShadow,
-            // Rounding based on anchor state and full screen mode
-            rightMerged
-              ? (isFullScreen ? 'rounded-none' : 'rounded-r-2xl rounded-l-none')
-              : 'rounded-2xl'
-          )}
-          style={{
-            top: rightEdgeOffset,
-            right: rightEdgeOffset,
-            bottom: rightEdgeOffset,
-            // Slide completely off-screen when not visible
-            transform: isRightVisible ? 'translateX(0)' : 'translateX(calc(100% + 32px))',
-            transition: 'transform 300ms ease-out, top 300ms ease-out, right 300ms ease-out, bottom 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
-          }}
-          onMouseEnter={handleRightMouseEnter}
-          onMouseLeave={handleRightMouseLeave}
-        >
-          <RightSidebar />
-        </aside>
+          {/* RIGHT SIDEBAR - Fixed position, slides in/out */}
+          <aside
+            className={cn(
+              'hidden xl:flex fixed w-[325px] z-40',
+              panelBase,
+              // Always apply shadow when not merged (slides with panel during animation)
+              !rightMerged && floatingShadow,
+              // Rounding based on anchor state and full screen mode
+              rightMerged
+                ? (isFullScreen ? 'rounded-none' : 'rounded-r-2xl rounded-l-none')
+                : 'rounded-2xl'
+            )}
+            style={{
+              top: rightEdgeOffset,
+              right: rightEdgeOffset,
+              bottom: rightEdgeOffset,
+              // Slide completely off-screen when not visible
+              transform: isRightVisible ? 'translateX(0)' : 'translateX(calc(100% + 32px))',
+              transition: 'transform 300ms ease-out, top 300ms ease-out, right 300ms ease-out, bottom 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
+            }}
+            onMouseEnter={handleRightMouseEnter}
+            onMouseLeave={handleRightMouseLeave}
+          >
+            <RightSidebar />
+          </aside>
+        </div>
+
+        <AddCardModal />
+        <CardDetailModal />
+        <CreatePawkitModal />
+        <CardsDragHandler />
       </div>
-
-      <AddCardModal />
-      <CardDetailModal />
-    </div>
+    </AppDndProvider>
   );
 }

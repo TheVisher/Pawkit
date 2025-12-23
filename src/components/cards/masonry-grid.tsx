@@ -3,15 +3,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  DndContext,
   DragOverlay,
   pointerWithin,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragStartEvent,
-  DragEndEvent,
-  DragOverEvent,
+  useDndMonitor,
 } from '@dnd-kit/core';
 import { snapCenterToCursor } from '@dnd-kit/modifiers';
 import {
@@ -19,22 +13,33 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CardItem } from './card-item';
+import { CardItem, type CardDisplaySettings } from './card-item';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
 
 // Configuration
-const MIN_CARD_WIDTH = 280;
 const GAP = 16;
+
+// Card size configurations - min column widths
+type CardSize = 'small' | 'medium' | 'large' | 'xl';
+const CARD_SIZE_WIDTHS: Record<CardSize, number> = {
+  small: 180,    // Compact - more columns
+  medium: 280,   // Default
+  large: 400,    // Spacious - fewer columns
+  xl: 520,       // Extra large - minimal columns
+};
 
 interface MasonryGridProps {
   cards: LocalCard[];
   onReorder?: (reorderedIds: string[]) => void;
+  cardSize?: CardSize;
+  displaySettings?: Partial<CardDisplaySettings>;
 }
 
 interface SortableCardProps {
   card: LocalCard;
   onClick: () => void;
+  displaySettings?: Partial<CardDisplaySettings>;
 }
 
 interface SortableCardInnerProps extends SortableCardProps {
@@ -50,12 +55,19 @@ interface SortableCardInnerProps extends SortableCardProps {
  * absolute positioning. Transforms would conflict and cause offset issues.
  * The DragOverlay handles the visual dragging instead.
  */
-const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis, isDropTarget }: SortableCardInnerProps) {
+const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis, isDropTarget, displaySettings }: SortableCardInnerProps) {
   const {
     attributes,
     listeners,
     setNodeRef,
-  } = useSortable({ id: card.id });
+  } = useSortable({
+    id: card.id,
+    data: {
+      type: 'Card',
+      card,
+      sortable: { containerId: 'masonry-grid-sortable' }
+    }
+  });
 
   return (
     <div
@@ -74,8 +86,8 @@ const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis,
         <div
           className="absolute -top-2 left-0 right-0 h-1 rounded-full z-10"
           style={{
-            background: 'var(--ds-accent)',
-            boxShadow: '0 0 12px hsla(var(--accent-h) var(--accent-s) 50% / 0.6)',
+            background: 'var(--color-accent)',
+            boxShadow: '0 0 12px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.6)',
           }}
         />
       )}
@@ -84,13 +96,13 @@ const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis,
         style={{
           // Glow effect on drop target
           boxShadow: isDropTarget
-            ? '0 0 0 2px var(--ds-accent), 0 0 20px hsla(var(--accent-h) var(--accent-s) 50% / 0.4)'
+            ? '0 0 0 2px var(--color-accent), 0 0 20px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.4)'
             : 'none',
           borderRadius: '1rem',
           transition: 'box-shadow 150ms ease',
         }}
       >
-        <CardItem card={card} variant="grid" onClick={onClick} />
+        <CardItem card={card} variant="grid" onClick={onClick} displaySettings={displaySettings} />
       </div>
     </div>
   );
@@ -109,7 +121,8 @@ const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis,
     prevProps.card.status === nextProps.card.status &&
     prevProps.isDraggingThis === nextProps.isDraggingThis &&
     prevProps.isDropTarget === nextProps.isDropTarget &&
-    JSON.stringify(prevProps.card.tags) === JSON.stringify(nextProps.card.tags)
+    JSON.stringify(prevProps.card.tags) === JSON.stringify(nextProps.card.tags) &&
+    JSON.stringify(prevProps.displaySettings) === JSON.stringify(nextProps.displaySettings)
   );
 });
 
@@ -143,13 +156,16 @@ function estimateHeight(card: LocalCard, cardWidth: number): number {
 /**
  * Masonry grid layout with drag-and-drop support
  */
-export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
+export function MasonryGrid({ cards, onReorder, cardSize = 'medium', displaySettings }: MasonryGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [measuredHeights, setMeasuredHeights] = useState<Map<string, number>>(new Map());
   const openCardDetail = useModalStore((s) => s.openCardDetail);
+
+  // Get minimum card width based on size setting
+  const minCardWidth = CARD_SIZE_WIDTHS[cardSize];
 
   // Observe container width
   useEffect(() => {
@@ -177,15 +193,15 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
   // Calculate columns and card width
   const columnCount = useMemo(() => {
     if (containerWidth <= 0) return 1;
-    const cols = Math.floor((containerWidth + GAP) / (MIN_CARD_WIDTH + GAP));
+    const cols = Math.floor((containerWidth + GAP) / (minCardWidth + GAP));
     return Math.max(1, cols);
-  }, [containerWidth]);
+  }, [containerWidth, minCardWidth]);
 
   const cardWidth = useMemo(() => {
-    if (containerWidth <= 0) return MIN_CARD_WIDTH;
+    if (containerWidth <= 0) return minCardWidth;
     const totalGap = (columnCount - 1) * GAP;
     return (containerWidth - totalGap) / columnCount;
-  }, [containerWidth, columnCount]);
+  }, [containerWidth, columnCount, minCardWidth]);
 
   // Calculate masonry positions
   const { positions, totalHeight } = useMemo(() => {
@@ -282,31 +298,31 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
     };
   }, [containerWidth, cards]);
 
-  // DnD sensors
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 8 },
-    })
-  );
 
-  const handleDragStart = useCallback((event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
-    setOverId(null);
-  }, []);
 
-  const handleDragOver = useCallback((event: DragOverEvent) => {
-    const { over } = event;
-    // Update overId to show drop indicator
-    setOverId(over?.id as string | null);
-  }, []);
+  // State for drag preview
+  const [activeDragItem, setActiveDragItem] = useState<LocalCard | null>(null);
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
+  useDndMonitor({
+    onDragStart: (event) => {
+      setActiveId(event.active.id as string);
+      setOverId(null);
+      const card = cards.find(c => c.id === event.active.id);
+      setActiveDragItem(card || null);
+    },
+    onDragOver: (event) => {
+      const { over } = event;
+      setOverId(over?.id as string | null);
+    },
+    onDragEnd: (event) => {
       const { active, over } = event;
       setActiveId(null);
       setOverId(null);
+      setActiveDragItem(null);
 
       if (over && active.id !== over.id && onReorder) {
+        // Only reorder if the drag originated here and stayed here (or similar logic)
+        // Since we are using global context, active.id should match one of our cards
         const oldIndex = cards.findIndex((c) => c.id === active.id);
         const newIndex = cards.findIndex((c) => c.id === over.id);
 
@@ -318,31 +334,18 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
         }
       }
     },
-    [cards, onReorder]
-  );
-
-  const handleDragCancel = useCallback(() => {
-    setActiveId(null);
-    setOverId(null);
-  }, []);
-
-  const activeCard = useMemo(
-    () => cards.find((c) => c.id === activeId),
-    [cards, activeId]
-  );
+    onDragCancel: () => {
+      setActiveId(null);
+      setOverId(null);
+      setActiveDragItem(null);
+    }
+  });
 
   const cardIds = useMemo(() => cards.map((c) => c.id), [cards]);
 
   // Always render the container with ref, but show skeleton or content
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={pointerWithin}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-      onDragCancel={handleDragCancel}
-    >
+    <>
       <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
         <div
           ref={containerRef}
@@ -389,6 +392,7 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
                     onClick={() => openCardDetail(card.id)}
                     isDraggingThis={activeId === card.id}
                     isDropTarget={overId === card.id && activeId !== card.id}
+                    displaySettings={displaySettings}
                   />
                 </div>
               );
@@ -404,7 +408,7 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
           modifiers={[snapCenterToCursor]}
           style={{ zIndex: 9999 }}
         >
-          {activeCard && (
+          {activeDragItem && (
             <div
               style={{
                 width: cardWidth * 0.6, // 60% of original size
@@ -414,12 +418,13 @@ export function MasonryGrid({ cards, onReorder }: MasonryGridProps) {
                 filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4))',
               }}
             >
-              <CardItem card={activeCard} variant="grid" />
+              <CardItem card={activeDragItem} variant="grid" displaySettings={displaySettings} />
             </div>
           )}
         </DragOverlay>,
         document.body
       )}
-    </DndContext>
+    </>
   );
 }
+

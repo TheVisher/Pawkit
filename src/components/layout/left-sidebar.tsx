@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Library, Calendar, Trash2, LogOut, Settings, FolderOpen, ArrowLeftToLine, ArrowRightFromLine, Maximize2, Minimize2 } from 'lucide-react';
+import { PawkitsTree } from '@/components/pawkits/pawkits-tree';
 import { useLeftSidebar } from '@/lib/stores/ui-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { useCollections } from '@/lib/stores/data-store';
 import { getClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
@@ -39,7 +39,6 @@ export function LeftSidebar() {
   const router = useRouter();
   const { isOpen, isAnchored, toggleAnchored, setOpen } = useLeftSidebar();
   const workspace = useCurrentWorkspace();
-  const collections = useCollections();
 
   useEffect(() => {
     setMounted(true);
@@ -131,29 +130,8 @@ export function LeftSidebar() {
 
         {/* Pawkits Section */}
         <Separator className="my-4 bg-border-subtle" />
-        <div className="px-3 py-2">
-          <h3 className="text-xs font-medium uppercase text-text-muted mb-2">Pawkits</h3>
-          {collections.length === 0 ? (
-            <p className="text-xs text-text-muted italic">No pawkits yet</p>
-          ) : (
-            <div className="space-y-1">
-              {collections.slice(0, 10).map((collection) => (
-                <Link
-                  key={collection.id}
-                  href={`/pawkit/${collection.slug}`}
-                  className={cn(
-                    'flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors',
-                    pathname === `/pawkit/${collection.slug}`
-                      ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
-                      : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
-                  )}
-                >
-                  <FolderOpen className="h-5 w-5 shrink-0" />
-                  <span className="truncate">{collection.name}</span>
-                </Link>
-              ))}
-            </div>
-          )}
+        <div className="py-2">
+          <PawkitsTree />
         </div>
       </div>
 

@@ -228,41 +228,103 @@ The omnibar lives in `src/app/(dashboard)/dashboard-shell.tsx`, inside the main 
 
 ### Required Page Structure
 
-Pages must use the EXACT same header structure as the original PageHeader: `pt-5 pb-4 px-6 min-h-[76px]`. This places the page title at the same vertical level as the centered omnibar:
+All views in the center panel MUST use the `PageHeader` component for consistent header styling. This ensures:
+- Consistent typography across all views (Home, Library, Calendar, Pawkits)
+- Proper alignment with the centered omnibar
+- Unified layout pattern
+
+### PageHeader Component
+
+Located at `src/components/layout/page-header.tsx`:
 
 ```tsx
-export default function AnyViewPage() {
-  return (
-    <div className="flex-1">
-      {/* Header row - matches original PageHeader: pt-5 pb-4 px-6 min-h-[76px] */}
-      <div className="pt-5 pb-4 px-6 min-h-[76px]">
-        <h1 className="text-2xl font-semibold" style={{ color: 'var(--text-primary)' }}>
-          Page Title
-        </h1>
-        <p style={{ color: 'var(--text-muted)' }}>Subtitle</p>
-      </div>
+import { PageHeader } from '@/components/layout/page-header';
 
-      {/* Page content */}
-      <div className="px-6 pb-6">
-        {/* ... */}
-      </div>
-    </div>
-  );
-}
+// Basic usage
+<PageHeader title="Library" subtitle="12 items" />
+
+// With actions (buttons, toggles)
+<PageHeader
+  title="Calendar"
+  subtitle="December 2024"
+  actions={<ViewModeToggles />}
+/>
+
+// With React nodes for rich content
+<PageHeader
+  title={<>Hello, <span className="text-accent">User</span></>}
+  subtitle={<Breadcrumbs />}
+/>
+```
+
+### Props
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `title` | `React.ReactNode` | Main heading text (text-2xl font-semibold text-text-primary) |
+| `subtitle` | `React.ReactNode` | Optional line above title (text-xs text-text-muted) |
+| `actions` | `React.ReactNode` | Optional right-aligned action buttons |
+| `className` | `string` | Additional container classes |
+
+### Styling Spec
+
+- Container: `pt-5 pb-4 px-6 min-h-[76px]`
+- Subtitle: `text-xs text-text-muted`
+- Title: `text-2xl font-semibold text-text-primary`
+
+### View Examples
+
+**Home** - Greeting with time-based icon:
+```tsx
+<PageHeader
+  title={<>{message}, <span className="text-accent">{name}</span></>}
+  subtitle={<><TimeIcon /> {date}</>}
+/>
+```
+
+**Library** - Simple title with count:
+```tsx
+<PageHeader title="Library" subtitle="24 items" />
+```
+
+**Calendar** - Title with navigation and view mode actions:
+```tsx
+<PageHeader
+  title="Calendar"
+  subtitle="December 2024"
+  actions={<><NavButtons /><ViewToggles /></>}
+/>
+```
+
+**Pawkit** - Collection name with "Pawkits" label (not Library):
+```tsx
+// Root pawkit - just "Pawkits" as subtitle
+<PageHeader
+  title={collection.name}
+  subtitle="Pawkits"
+  actions={<OptionsDropdown />}
+/>
+
+// Nested pawkit - "Pawkits > Parent" breadcrumb
+<PageHeader
+  title={collection.name}
+  subtitle={<>Pawkits <ChevronRight /> Parent Name</>}
+  actions={<OptionsDropdown />}
+/>
 ```
 
 ### DO's and DON'Ts
 
 **DO**:
-- Use `pt-5 pb-4 px-6 min-h-[76px]` for the header row (exact PageHeader values)
-- Use `px-6 pb-6` for page content sections
+- ALWAYS use `PageHeader` for center panel view headers
+- Use `px-6 pb-6` for page content sections below the header
 - Keep `flex-1` on the root container
 
 **DON'T**:
-- Import or use `PageHeader` component (deprecated)
+- Build custom headers with inline padding (use PageHeader instead)
 - Render `Omnibar` or `ToastStack` in individual pages
-- Use `p-6` on root (splits padding incorrectly)
 - Use different header padding values (breaks alignment)
+- Add background colors to the header (inherits glass panel)
 
 ---
 
@@ -295,6 +357,170 @@ Usage: `text-[var(--color-accent)]` or `bg-[var(--color-accent)]`
 
 ---
 
+## CARD STYLING
+
+Cards use glass morphism with accent-colored hover effects. All styling is driven by CSS variables for theming.
+
+### Card CSS Variables
+
+```css
+/* Card glow effect - uses accent hue */
+--card-glow: 0 0 24px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.35),
+             0 0 48px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.2);
+--card-glow-border: hsl(var(--hue-accent) var(--sat-accent) 60% / 0.6);
+
+/* Layered shadows for depth */
+--card-shadow: 0 2px 4px rgba(0, 0, 0, 0.15),
+               0 4px 12px rgba(0, 0, 0, 0.2),
+               0 8px 24px rgba(0, 0, 0, 0.15);
+```
+
+### Card Structure
+
+1. **Container**: `rounded-2xl overflow-hidden` with layered shadow
+2. **Content area**: Glass blur effect with `--glass-panel-bg` background
+3. **Domain/URL**: Pill-shaped (`rounded-full`) with glass background
+4. **Tags**: Pill-shaped with glass background
+5. **Hover**: Purple glow + accent border using CSS variables
+
+### Hover Effects
+
+```tsx
+{/* Hover glow overlay */}
+<div
+  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+  style={{ boxShadow: 'var(--card-glow)' }}
+/>
+
+{/* Hover border */}
+<div
+  className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+  style={{ border: '1px solid var(--card-glow-border)' }}
+/>
+```
+
+### DO's and DON'Ts
+
+**DO**:
+- Use `var(--card-glow)` for hover glow effects
+- Use `var(--card-glow-border)` for hover borders
+- Use `rounded-full` for pill-shaped elements (domain, tags)
+- Use `var(--glass-bg)` for internal glass elements
+
+**DON'T**:
+- Hardcode accent colors - use CSS variables
+- Use sharp corners for tags/domains - always pill-shaped
+- Skip the hover glow effect
+
+---
+
+## PAGE LAYOUT CONSISTENCY
+
+**CRITICAL: All views must maintain consistent padding for visual alignment.**
+
+### Standard Page Structure
+
+Every view in the center panel follows this pattern:
+
+```tsx
+// Page wrapper (in dashboard/[view]/page.tsx)
+<div className="h-full flex flex-col overflow-hidden">
+  <PageHeader title="View Name" />
+
+  {/* Content wrapper - ALWAYS has p-6 */}
+  <div className="flex-1 overflow-auto p-6">
+    {/* View content */}
+  </div>
+</div>
+```
+
+### Padding Rules
+
+| Element | Padding | Purpose |
+|---------|---------|---------|
+| **PageHeader** | `px-6 pt-5 pb-4` | Built into component |
+| **Content wrapper** | `p-6` | **Required on all views** |
+| **Grid/card containers** | None | Let content use full padded area |
+
+### Calendar-Specific Layout
+
+The calendar month view uses **floating cards with spacing** for visual depth:
+
+```tsx
+{/* Month view container - NO background */}
+<div className="grid grid-cols-7 auto-rows-fr gap-2" style={{ height: 'calc(100% - 2.5rem)' }}>
+  {/* Day cells float independently */}
+  <DayCell className="bg-bg-surface-1 rounded-lg border shadow-sm" />
+</div>
+```
+
+**Key points:**
+- `gap-2` creates 8px spacing between cells
+- `auto-rows-fr` makes all rows equal height and fills vertical space
+- **NO background color** - cells float independently
+- Each cell has:
+  - `bg-bg-surface-1` background
+  - `rounded-lg` for card appearance
+  - `border border-border-subtle/50` for subtle edge definition
+  - `shadow-sm` for depth, `hover:shadow-md` for interactivity
+- Selected day shows purple ring on **day number only** (not whole cell)
+
+### Week/Day Time Grid Layout
+
+Time-based views use similar gap approach:
+
+```tsx
+<div className="grid grid-cols-[60px_repeat(7,1fr)] gap-px bg-border-subtle/30">
+  {/* Hour label column */}
+  <div className="bg-bg-surface-1" />
+
+  {/* Day columns */}
+  <div className="bg-bg-surface-1 hover:bg-bg-surface-2" />
+</div>
+```
+
+### DO's and DON'Ts
+
+**DO**:
+- Always add `p-6` to the content wrapper (not individual components)
+- Use `gap-2` for visible spacing between calendar cells
+- Use `flex-1` on grids to fill available height
+- Use `grid-rows-6` for month view to prevent empty space
+- Add `rounded-lg` to individual cells for card appearance
+
+**DON'T**:
+- Add padding to child components (let wrapper handle it)
+- Add background colors to grid containers (cells should float)
+- Hardcode heights (use flex-1 and grid-rows)
+- Remove `p-6` from content wrapper
+
+### Examples
+
+**Library View** (correct):
+```tsx
+<div className="flex-1 overflow-auto p-6">  {/* ✅ p-6 here */}
+  <MasonryGrid />  {/* ✅ No padding here */}
+</div>
+```
+
+**Calendar View** (correct):
+```tsx
+<div className="flex-1 overflow-auto p-6">  {/* ✅ p-6 here */}
+  <MonthView />  {/* ✅ No padding here */}
+</div>
+```
+
+**Agenda View** (correct):
+```tsx
+<div className="flex-1 overflow-auto p-6">  {/* ✅ p-6 here */}
+  <div className="max-w-3xl mx-auto">  {/* ✅ No padding here */}
+    {/* Content */}
+  </div>
+</div>
+```
+
+---
+
 ## TAILWIND CONFIGURATION
 
 These classes are registered in `app/globals.css` via `@theme inline`:
@@ -318,4 +544,4 @@ These classes are registered in `app/globals.css` via `@theme inline`:
 
 ---
 
-**Last Updated**: December 20, 2025
+**Last Updated**: December 21, 2025

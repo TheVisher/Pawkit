@@ -11,6 +11,7 @@ import type { LocalViewSettings } from '@/lib/db';
 type Layout = 'grid' | 'masonry' | 'list' | 'timeline' | 'board';
 type SortOrder = 'asc' | 'desc';
 type ContentType = 'all' | 'url' | 'md-note' | 'text-note' | 'quick-note' | 'file';
+type CardSize = 'small' | 'medium' | 'large' | 'xl';
 
 interface ViewState {
   // Current view context
@@ -23,7 +24,12 @@ interface ViewState {
   showTitles: boolean;
   showUrls: boolean;
   showTags: boolean;
-  cardPadding: number;
+  cardPadding: number; // 0-40 pixels
+
+  // Card display settings
+  cardSize: CardSize; // small, medium, large, xl
+  showMetadataFooter: boolean; // Toggle card footer (title, tags inside card)
+  showUrlPill: boolean; // Toggle URL pill overlay on thumbnail
 
   // Manual card order (per-view, stored as array of card IDs)
   cardOrder: string[];
@@ -44,6 +50,9 @@ interface ViewState {
   setShowUrls: (show: boolean) => void;
   setShowTags: (show: boolean) => void;
   setCardPadding: (padding: number) => void;
+  setCardSize: (size: CardSize) => void;
+  setShowMetadataFooter: (show: boolean) => void;
+  setShowUrlPill: (show: boolean) => void;
   setContentTypeFilter: (filter: ContentType) => void;
 
   // Manual ordering
@@ -63,7 +72,10 @@ const DEFAULT_VIEW_SETTINGS = {
   showTitles: true,
   showUrls: true,
   showTags: true,
-  cardPadding: 2,
+  cardPadding: 10, // 0-40 pixels
+  cardSize: 'medium' as CardSize,
+  showMetadataFooter: true,
+  showUrlPill: true,
   cardOrder: [] as string[],
 };
 
@@ -93,7 +105,13 @@ export const useViewStore = create<ViewState>((set, get) => ({
 
   setShowTags: (show) => set({ showTags: show }),
 
-  setCardPadding: (padding) => set({ cardPadding: Math.max(0, Math.min(4, padding)) }),
+  setCardPadding: (padding) => set({ cardPadding: Math.max(0, Math.min(40, padding)) }),
+
+  setCardSize: (size) => set({ cardSize: size }),
+
+  setShowMetadataFooter: (show) => set({ showMetadataFooter: show }),
+
+  setShowUrlPill: (show) => set({ showUrlPill: show }),
 
   setContentTypeFilter: (filter) => set({ contentTypeFilter: filter }),
 
@@ -116,15 +134,25 @@ export const useViewStore = create<ViewState>((set, get) => ({
         .first();
 
       if (settings) {
+        // Cast to access optional new fields that may not exist in old data
+        const s = settings as LocalViewSettings & {
+          cardOrder?: string[];
+          cardSize?: CardSize;
+          showMetadataFooter?: boolean;
+          showUrlPill?: boolean;
+        };
         set({
-          layout: settings.layout as Layout,
-          sortBy: settings.sortBy,
-          sortOrder: settings.sortOrder as SortOrder,
-          showTitles: settings.showTitles,
-          showUrls: settings.showUrls,
-          showTags: settings.showTags,
-          cardPadding: settings.cardPadding,
-          cardOrder: (settings as { cardOrder?: string[] }).cardOrder || [],
+          layout: s.layout as Layout,
+          sortBy: s.sortBy,
+          sortOrder: s.sortOrder as SortOrder,
+          showTitles: s.showTitles,
+          showUrls: s.showUrls,
+          showTags: s.showTags,
+          cardPadding: s.cardPadding,
+          cardSize: s.cardSize || DEFAULT_VIEW_SETTINGS.cardSize,
+          showMetadataFooter: s.showMetadataFooter ?? DEFAULT_VIEW_SETTINGS.showMetadataFooter,
+          showUrlPill: s.showUrlPill ?? DEFAULT_VIEW_SETTINGS.showUrlPill,
+          cardOrder: s.cardOrder || [],
           isLoading: false,
         });
       } else {
@@ -139,8 +167,10 @@ export const useViewStore = create<ViewState>((set, get) => ({
 
   // Save current view settings to Dexie
   saveViewSettings: async (workspaceId) => {
-    const { currentView, layout, sortBy, sortOrder, showTitles, showUrls, showTags, cardPadding, cardOrder } =
-      get();
+    const {
+      currentView, layout, sortBy, sortOrder, showTitles, showUrls, showTags,
+      cardPadding, cardSize, showMetadataFooter, showUrlPill, cardOrder
+    } = get();
 
     try {
       const existing = await db.viewSettings
@@ -159,12 +189,15 @@ export const useViewStore = create<ViewState>((set, get) => ({
           showUrls,
           showTags,
           cardPadding,
+          cardSize,
+          showMetadataFooter,
+          showUrlPill,
           cardOrder,
           updatedAt: new Date(),
         });
         await db.viewSettings.put(updated);
       } else {
-        // Create new - cast to allow cardOrder field
+        // Create new
         const newSettings = {
           id: crypto.randomUUID(),
           workspaceId,
@@ -176,6 +209,9 @@ export const useViewStore = create<ViewState>((set, get) => ({
           showUrls,
           showTags,
           cardPadding,
+          cardSize,
+          showMetadataFooter,
+          showUrlPill,
           cardOrder,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -209,7 +245,12 @@ export const selectDisplaySettings = (state: ViewState) => ({
   showUrls: state.showUrls,
   showTags: state.showTags,
   cardPadding: state.cardPadding,
+  cardSize: state.cardSize,
+  showMetadataFooter: state.showMetadataFooter,
+  showUrlPill: state.showUrlPill,
 });
+
+export const selectCardSize = (state: ViewState) => state.cardSize;
 
 // =============================================================================
 // HOOKS
@@ -225,6 +266,9 @@ export function useViewSettings() {
       showUrls: state.showUrls,
       showTags: state.showTags,
       cardPadding: state.cardPadding,
+      cardSize: state.cardSize,
+      showMetadataFooter: state.showMetadataFooter,
+      showUrlPill: state.showUrlPill,
       cardOrder: state.cardOrder,
     }))
   );
@@ -241,11 +285,28 @@ export function useViewActions() {
       setShowUrls: state.setShowUrls,
       setShowTags: state.setShowTags,
       setCardPadding: state.setCardPadding,
+      setCardSize: state.setCardSize,
+      setShowMetadataFooter: state.setShowMetadataFooter,
+      setShowUrlPill: state.setShowUrlPill,
       setCardOrder: state.setCardOrder,
       reorderCards: state.reorderCards,
       loadViewSettings: state.loadViewSettings,
       saveViewSettings: state.saveViewSettings,
       resetToDefaults: state.resetToDefaults,
+    }))
+  );
+}
+
+// Hook for card display settings only
+export function useCardDisplaySettings() {
+  return useViewStore(
+    useShallow((state) => ({
+      cardPadding: state.cardPadding,
+      cardSize: state.cardSize,
+      showMetadataFooter: state.showMetadataFooter,
+      showUrlPill: state.showUrlPill,
+      showTitles: state.showTitles,
+      showTags: state.showTags,
     }))
   );
 }

@@ -114,7 +114,7 @@ These decisions were made during V2 planning and differ from V1 patterns:
 
 | Layer | Technology | Reason |
 |-------|------------|--------|
-| **Framework** | Next.js 15 (App Router) | Current stable, RSC support |
+| **Framework** | Next.js 16.1.0 (App Router) | Current stable, RSC support |
 | **Language** | TypeScript (strict) | Type safety, better DX |
 | **Runtime** | React 19 | Latest features |
 | **ORM** | Prisma 5.22.0 | **Strict Version:** Works reliably with Next.js without requiring Accelerate/driver adapters by default. |
@@ -1964,7 +1964,7 @@ ALTER TABLE "Card" ALTER COLUMN "workspaceId" SET NOT NULL;
 
 1. **Project setup**
 
-   - Next.js 15 with App Router
+   - Next.js 16.1.0 with App Router
 
    - TypeScript strict mode
 
@@ -2438,7 +2438,7 @@ Use this checklist to verify V2 has all V1 features:
 
 ### Views
 - [ ] Library (Grid, List, Masonry) with Content Type filter
-- [ ] Calendar (Month, Week)
+- [x] Calendar (Month, Week)
 - [ ] Pawkit (Grid, List, Masonry, Board)
 - [ ] Rediscover (Card stack with batch processing)
 - [ ] Home dashboard with Tasks widget
