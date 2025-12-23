@@ -7,7 +7,7 @@ import { MasonryGrid } from './masonry-grid';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
-import { Bookmark, FileText, Image as ImageIcon, MoreVertical, ChevronUp, ChevronDown, ExternalLink, Copy, Trash2, Edit3 } from 'lucide-react';
+import { Bookmark, FileText, Image as ImageIcon, MoreVertical, ChevronUp, ChevronDown, ExternalLink, Copy, Trash2, Edit3, GripVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +31,18 @@ const DEFAULT_COLUMN_WIDTHS = {
   createdAt: 120,
   updatedAt: 120,
   actions: 48,
+};
+
+// Default column order
+const DEFAULT_COLUMN_ORDER: SortColumn[] = ['name', 'type', 'tags', 'createdAt', 'updatedAt'];
+
+// Column labels
+const COLUMN_LABELS: Record<SortColumn, string> = {
+  name: 'Name',
+  type: 'Type',
+  tags: 'Tags',
+  createdAt: 'Date Created',
+  updatedAt: 'Date Modified',
 };
 
 interface CardGridProps {
@@ -181,7 +193,7 @@ function ListRowActions({ card, onEdit }: { card: LocalCard; onEdit: () => void 
   );
 }
 
-// Resizable column header component
+// Draggable & Resizable column header component
 function ResizableHeader({
   column,
   label,
@@ -190,7 +202,10 @@ function ResizableHeader({
   sortColumn,
   sortDirection,
   onSort,
-  isLast = false,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  isDragOver,
 }: {
   column: SortColumn;
   label: string;
@@ -199,13 +214,17 @@ function ResizableHeader({
   sortColumn: SortColumn | null;
   sortDirection: SortDirection;
   onSort: (column: SortColumn) => void;
-  isLast?: boolean;
+  onDragStart: (column: SortColumn) => void;
+  onDragOver: (e: React.DragEvent, column: SortColumn) => void;
+  onDrop: (column: SortColumn) => void;
+  isDragOver: boolean;
 }) {
   const [isResizing, setIsResizing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsResizing(true);
@@ -236,34 +255,67 @@ function ResizableHeader({
 
   const isSorted = sortColumn === column;
 
+  const handleDragStart = (e: React.DragEvent) => {
+    setIsDragging(true);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', column);
+    onDragStart(column);
+  };
+
+  const handleDragEnd = () => {
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    onDragOver(e, column);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    onDrop(column);
+  };
+
   return (
     <div
-      className="text-left py-3 px-4 font-medium relative select-none flex-shrink-0"
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+      className={cn(
+        "group text-left py-3 px-4 font-medium relative select-none flex-shrink-0 transition-all",
+        isDragging && "opacity-50",
+        isDragOver && "bg-[var(--color-accent)]/20 border-l-2 border-[var(--color-accent)]"
+      )}
       style={{ width, minWidth: 60 }}
     >
-      <button
-        onClick={() => onSort(column)}
-        className="flex items-center gap-1 hover:text-text-primary transition-colors"
-      >
-        <span>{label}</span>
-        {isSorted && (
-          sortDirection === 'asc'
-            ? <ChevronUp className="h-3 w-3" />
-            : <ChevronDown className="h-3 w-3" />
-        )}
-      </button>
-      {/* Resize handle with visible divider line */}
-      {!isLast && (
-        <div
-          onMouseDown={handleMouseDown}
-          className={cn(
-            "absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[3px] cursor-col-resize rounded-full transition-colors",
-            isResizing
-              ? "bg-[var(--color-accent)]"
-              : "bg-white/10 hover:bg-[var(--color-accent)]"
+      <div className="flex items-center gap-1">
+        {/* Drag handle - visible on hover */}
+        <GripVertical className="h-3 w-3 text-text-muted opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
+        <button
+          onClick={() => onSort(column)}
+          className="flex items-center gap-1 hover:text-text-primary transition-colors"
+        >
+          <span>{label}</span>
+          {isSorted && (
+            sortDirection === 'asc'
+              ? <ChevronUp className="h-3 w-3" />
+              : <ChevronDown className="h-3 w-3" />
           )}
-        />
-      )}
+        </button>
+      </div>
+      {/* Resize handle with visible divider line */}
+      <div
+        onMouseDown={handleResizeMouseDown}
+        className={cn(
+          "absolute right-0 top-1/2 -translate-y-1/2 h-4 w-[3px] cursor-col-resize rounded-full transition-colors",
+          isResizing
+            ? "bg-[var(--color-accent)]"
+            : "bg-white/10 hover:bg-[var(--color-accent)]"
+        )}
+      />
     </div>
   );
 }
@@ -277,6 +329,46 @@ export function CardGrid({ cards, layout, onReorder, cardSize = 'medium', cardSp
 
   // Column widths for list view
   const [columnWidths, setColumnWidths] = useState(DEFAULT_COLUMN_WIDTHS);
+
+  // Column order for drag and drop reordering
+  const [columnOrder, setColumnOrder] = useState<SortColumn[]>(DEFAULT_COLUMN_ORDER);
+  const [draggedColumn, setDraggedColumn] = useState<SortColumn | null>(null);
+  const [dragOverColumn, setDragOverColumn] = useState<SortColumn | null>(null);
+
+  // Drag and drop handlers
+  const handleColumnDragStart = useCallback((column: SortColumn) => {
+    setDraggedColumn(column);
+  }, []);
+
+  const handleColumnDragOver = useCallback((e: React.DragEvent, column: SortColumn) => {
+    e.preventDefault();
+    if (draggedColumn && draggedColumn !== column) {
+      setDragOverColumn(column);
+    }
+  }, [draggedColumn]);
+
+  const handleColumnDrop = useCallback((targetColumn: SortColumn) => {
+    if (!draggedColumn || draggedColumn === targetColumn) {
+      setDraggedColumn(null);
+      setDragOverColumn(null);
+      return;
+    }
+
+    setColumnOrder(prev => {
+      const newOrder = [...prev];
+      const draggedIndex = newOrder.indexOf(draggedColumn);
+      const targetIndex = newOrder.indexOf(targetColumn);
+
+      // Remove dragged column and insert at target position
+      newOrder.splice(draggedIndex, 1);
+      newOrder.splice(targetIndex, 0, draggedColumn);
+
+      return newOrder;
+    });
+
+    setDraggedColumn(null);
+    setDragOverColumn(null);
+  }, [draggedColumn]);
 
 
   // Handle sort column click
@@ -344,119 +436,104 @@ export function CardGrid({ cards, layout, onReorder, cardSize = 'medium', cardSp
     );
   }
 
+  // Helper to render a data cell based on column type
+  const renderCell = (card: LocalCard, column: SortColumn) => {
+    const displayTitle = card.title || card.url || 'Untitled';
+    const cardType = getCardType(card);
+    const createdDate = card.createdAt ? format(new Date(card.createdAt), 'MM/dd/yyyy') : '-';
+    const modifiedDate = card.updatedAt ? format(new Date(card.updatedAt), 'MM/dd/yyyy') : '-';
+    const tags = card.tags || [];
+
+    switch (column) {
+      case 'name':
+        return (
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-[var(--bg-surface-3)] flex-shrink-0">
+              <ListRowIcon card={card} />
+            </span>
+            <span className="text-sm text-[var(--color-text-primary)] font-medium truncate min-w-0 flex-1">
+              {displayTitle}
+            </span>
+          </div>
+        );
+      case 'type':
+        return <span className="text-sm text-[var(--color-text-muted)]">{cardType}</span>;
+      case 'tags':
+        return (
+          <div className="flex flex-wrap gap-1">
+            {tags.length > 0 ? (
+              tags.slice(0, 2).map((tag) => (
+                <span
+                  key={tag}
+                  className="text-xs text-[var(--color-text-muted)] bg-[var(--bg-surface-3)] px-2 py-0.5 rounded"
+                >
+                  {tag}
+                </span>
+              ))
+            ) : (
+              <span className="text-sm text-[var(--color-text-muted)]">-</span>
+            )}
+          </div>
+        );
+      case 'createdAt':
+        return <span className="text-sm text-[var(--color-text-muted)]">{createdDate}</span>;
+      case 'updatedAt':
+        return <span className="text-sm text-[var(--color-text-muted)]">{modifiedDate}</span>;
+      default:
+        return null;
+    }
+  };
+
   // List view - Notion style: each column independent, horizontal scroll if needed
   if (layout === 'list') {
     return (
       <div className="w-full overflow-x-auto">
-        {/* Header row */}
+        {/* Header row - dynamically rendered based on columnOrder */}
         <div className="flex border-b border-white/5 text-xs text-[var(--color-text-muted)]" style={{ minWidth: 'max-content' }}>
-          <ResizableHeader
-            column="name"
-            label="Name"
-            width={columnWidths.name}
-            onResize={handleResize}
-            sortColumn={sortColumn}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-          />
-          <ResizableHeader
-            column="type"
-            label="Type"
-            width={columnWidths.type}
-            onResize={handleResize}
-            sortColumn={sortColumn}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-          />
-          <ResizableHeader
-            column="tags"
-            label="Tags"
-            width={columnWidths.tags}
-            onResize={handleResize}
-            sortColumn={sortColumn}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-          />
-          <ResizableHeader
-            column="createdAt"
-            label="Date Created"
-            width={columnWidths.createdAt}
-            onResize={handleResize}
-            sortColumn={sortColumn}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-          />
-          <ResizableHeader
-            column="updatedAt"
-            label="Date Modified"
-            width={columnWidths.updatedAt}
-            onResize={handleResize}
-            sortColumn={sortColumn}
-            sortDirection={sortDirection}
-            onSort={handleSort}
-          />
+          {columnOrder.map((col) => (
+            <ResizableHeader
+              key={col}
+              column={col}
+              label={COLUMN_LABELS[col]}
+              width={columnWidths[col]}
+              onResize={handleResize}
+              sortColumn={sortColumn}
+              sortDirection={sortDirection}
+              onSort={handleSort}
+              onDragStart={handleColumnDragStart}
+              onDragOver={handleColumnDragOver}
+              onDrop={handleColumnDrop}
+              isDragOver={dragOverColumn === col}
+            />
+          ))}
           {/* Actions header */}
           <div className="py-3 px-4 flex-shrink-0 w-12" />
         </div>
 
-        {/* Data rows */}
+        {/* Data rows - dynamically rendered based on columnOrder */}
         <div>
-          {sortedCards.map((card) => {
-            const displayTitle = card.title || card.url || 'Untitled';
-            const cardType = getCardType(card);
-            const createdDate = card.createdAt ? format(new Date(card.createdAt), 'MM/dd/yyyy') : '-';
-            const modifiedDate = card.updatedAt ? format(new Date(card.updatedAt), 'MM/dd/yyyy') : '-';
-            const tags = card.tags || [];
-
-            return (
-              <div
-                key={card.id}
-                onClick={() => openCardDetail(card.id)}
-                className="flex border-b border-white/5 hover:bg-[var(--bg-surface-2)] cursor-pointer transition-colors"
-                style={{ minWidth: 'max-content' }}
-              >
-                <div className="py-3 px-4 flex-shrink-0 overflow-hidden" style={{ width: columnWidths.name }}>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-[var(--bg-surface-3)] flex-shrink-0">
-                      <ListRowIcon card={card} />
-                    </span>
-                    <span className="text-sm text-[var(--color-text-primary)] font-medium truncate min-w-0 flex-1">
-                      {displayTitle}
-                    </span>
-                  </div>
+          {sortedCards.map((card) => (
+            <div
+              key={card.id}
+              onClick={() => openCardDetail(card.id)}
+              className="flex border-b border-white/5 hover:bg-[var(--bg-surface-2)] cursor-pointer transition-colors"
+              style={{ minWidth: 'max-content' }}
+            >
+              {columnOrder.map((col) => (
+                <div
+                  key={col}
+                  className="py-3 px-4 flex-shrink-0 overflow-hidden"
+                  style={{ width: columnWidths[col] }}
+                >
+                  {renderCell(card, col)}
                 </div>
-                <div className="py-3 px-4 flex-shrink-0 overflow-hidden" style={{ width: columnWidths.type }}>
-                  <span className="text-sm text-[var(--color-text-muted)]">{cardType}</span>
-                </div>
-                <div className="py-3 px-4 flex-shrink-0 overflow-hidden" style={{ width: columnWidths.tags }}>
-                  <div className="flex flex-wrap gap-1">
-                    {tags.length > 0 ? (
-                      tags.slice(0, 2).map((tag) => (
-                        <span
-                          key={tag}
-                          className="text-xs text-[var(--color-text-muted)] bg-[var(--bg-surface-3)] px-2 py-0.5 rounded"
-                        >
-                          {tag}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-sm text-[var(--color-text-muted)]">-</span>
-                    )}
-                  </div>
-                </div>
-                <div className="py-3 px-4 flex-shrink-0 overflow-hidden" style={{ width: columnWidths.createdAt }}>
-                  <span className="text-sm text-[var(--color-text-muted)]">{createdDate}</span>
-                </div>
-                <div className="py-3 px-4 flex-shrink-0 overflow-hidden" style={{ width: columnWidths.updatedAt }}>
-                  <span className="text-sm text-[var(--color-text-muted)]">{modifiedDate}</span>
-                </div>
-                {/* Actions */}
-                <div className="py-3 px-4 flex-shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
-                  <ListRowActions card={card} onEdit={() => openCardDetail(card.id)} />
-                </div>
+              ))}
+              {/* Actions */}
+              <div className="py-3 px-4 flex-shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
+                <ListRowActions card={card} onEdit={() => openCardDetail(card.id)} />
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
     );
