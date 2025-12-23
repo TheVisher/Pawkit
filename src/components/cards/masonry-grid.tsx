@@ -6,8 +6,8 @@ import {
   DragOverlay,
   pointerWithin,
   useDndMonitor,
+  type Modifier,
 } from '@dnd-kit/core';
-import { snapCenterToCursor } from '@dnd-kit/modifiers';
 import {
   SortableContext,
   useSortable,
@@ -16,6 +16,18 @@ import {
 import { CardItem, type CardDisplaySettings } from './card-item';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
+
+// Custom modifier that centers the overlay on cursor based on overlay size
+const centerOverlayOnCursor: Modifier = ({ transform, draggingNodeRect }) => {
+  if (draggingNodeRect) {
+    return {
+      ...transform,
+      x: transform.x - draggingNodeRect.width / 2,
+      y: transform.y - draggingNodeRect.height / 2,
+    };
+  }
+  return transform;
+};
 
 // Configuration
 const DEFAULT_GAP = 16;
@@ -406,7 +418,7 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
         <DragOverlay
           adjustScale={false}
           dropAnimation={null}
-          modifiers={[snapCenterToCursor]}
+          modifiers={[centerOverlayOnCursor]}
           style={{ zIndex: 9999 }}
         >
           {activeDragItem && (
