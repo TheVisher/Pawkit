@@ -39,7 +39,10 @@ export interface LocalViewSettings extends SyncMetadata {
   showTitles: boolean;
   showUrls: boolean;
   showTags: boolean;
-  cardPadding: number;        // 0-4 scale
+  cardPadding: number;        // 0-40 pixels (slider)
+  cardSize: string;           // small, medium, large, xl
+  showMetadataFooter: boolean; // Toggle card footer (title, tags inside card)
+  showUrlPill: boolean;       // Toggle URL pill overlay on thumbnail
   createdAt: Date;
   updatedAt: Date;
 }

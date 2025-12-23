@@ -11,10 +11,29 @@ const MIN_THUMBNAIL_HEIGHT = 180;
 // Default aspect ratio (16:10) until image loads
 const DEFAULT_ASPECT_RATIO = 16 / 10;
 
+// Card display settings interface
+export interface CardDisplaySettings {
+  cardPadding: number;        // 0-40 pixels
+  showMetadataFooter: boolean; // Show title/tags inside card
+  showUrlPill: boolean;       // Show URL pill overlay
+  showTitles: boolean;        // Show title text
+  showTags: boolean;          // Show tag pills
+}
+
+// Default display settings
+export const DEFAULT_CARD_DISPLAY: CardDisplaySettings = {
+  cardPadding: 10,
+  showMetadataFooter: true,
+  showUrlPill: true,
+  showTitles: true,
+  showTags: true,
+};
+
 interface CardItemProps {
   card: LocalCard;
   variant?: 'grid' | 'list';
   onClick?: () => void;
+  displaySettings?: Partial<CardDisplaySettings>;
 }
 
 function getCardIcon(type: string) {
@@ -34,7 +53,7 @@ function getCardIcon(type: string) {
 function getDomain(url: string): string {
   if (!url) return '';
   try {
-    return new URL(url).hostname.replace('www.', '');
+    return new URL(url).hostname;
   } catch {
     return '';
   }
@@ -42,14 +61,23 @@ function getDomain(url: string): string {
 
 /**
  * Card item component - memoized to prevent re-renders when other cards change
+ * V1-style design: blurred padding around thumbnail, glass pill overlay, metadata footer
  */
-export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick }: CardItemProps) {
+export const CardItem = memo(function CardItem({
+  card,
+  variant = 'grid',
+  onClick,
+  displaySettings = {},
+}: CardItemProps) {
   const [imageError, setImageError] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
   const Icon = getCardIcon(card.type);
   const domain = card.domain || getDomain(card.url);
   const isListView = variant === 'list';
   const isSyncing = !card._synced;
+
+  // Merge with defaults
+  const settings: CardDisplaySettings = { ...DEFAULT_CARD_DISPLAY, ...displaySettings };
 
   const hasImage = card.image && !imageError;
   const hasFavicon = card.favicon && !imageError;
@@ -60,7 +88,6 @@ export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick
     if (img.naturalWidth && img.naturalHeight) {
       const ratio = img.naturalWidth / img.naturalHeight;
       // Clamp aspect ratio to reasonable bounds (0.5 to 2.5)
-      // This prevents super tall or super wide cards
       const clampedRatio = Math.max(0.5, Math.min(2.5, ratio));
       setImageAspectRatio(clampedRatio);
     }
@@ -71,48 +98,79 @@ export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick
     ? (imageAspectRatio || DEFAULT_ASPECT_RATIO)
     : DEFAULT_ASPECT_RATIO;
 
-  // Grid view - vertical card with thumbnail on top
+  // Determine if we should show the metadata footer
+  const showFooter = settings.showMetadataFooter && (
+    (settings.showTitles && card.title) ||
+    (settings.showTags && card.tags && card.tags.length > 0)
+  );
+
+  // Calculate padding values - bottom has a minimum when footer is shown
+  const sidePadding = settings.cardPadding;
+  const MIN_FOOTER_PADDING = 8;
+  const bottomPadding = showFooter
+    ? Math.max(MIN_FOOTER_PADDING, settings.cardPadding)
+    : settings.cardPadding;
+
+  // Footer horizontal inset - provides breathing room from thumbnail edge
+  const FOOTER_INSET = 4;
+
+  // Grid view - V1 style: blurred padding, glass pill overlay, metadata footer inside
   if (!isListView) {
     return (
       <button
         onClick={onClick}
         className={cn(
-          'group relative w-full text-left rounded-2xl overflow-hidden',
+          'group relative w-full text-left',
           'transition-all duration-300 ease-out',
           'hover:-translate-y-1',
-          'focus:outline-none focus:ring-2 focus:ring-offset-2',
-          'focus:ring-offset-[var(--bg-base)]'
+          'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2',
+          'focus:ring-offset-transparent'
         )}
-        style={{
-          background: 'var(--bg-surface-2)',
-          border: '1px solid var(--border-subtle)',
-          boxShadow: 'var(--card-shadow, 0 2px 8px rgba(0, 0, 0, 0.08))',
-        }}
       >
-        {/* Colored blur background effect - uses thumbnail as blurred background */}
-        {hasImage && (
-          <div className="absolute inset-0 overflow-hidden rounded-2xl">
-            <Image
-              src={card.image!}
-              alt=""
-              fill
-              sizes="(max-width: 768px) 100vw, 300px"
-              className="object-cover scale-110 blur-3xl opacity-30 saturate-150"
-              onError={() => setImageError(true)}
-            />
-          </div>
-        )}
+        {/* Outer card container with configurable blurred padding */}
+        <div
+          className="relative overflow-hidden rounded-2xl"
+          style={{
+            padding: `${sidePadding}px ${sidePadding}px ${bottomPadding}px ${sidePadding}px`,
+            boxShadow: 'var(--card-shadow)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+          }}
+        >
+          {/* Blurred thumbnail background - creates colored blur padding */}
+          {hasImage && (
+            <div className="absolute inset-0 overflow-hidden rounded-2xl">
+              <Image
+                src={card.image!}
+                alt=""
+                fill
+                sizes="(max-width: 768px) 100vw, 300px"
+                className="object-cover scale-125 blur-2xl saturate-150 opacity-80"
+                onError={() => setImageError(true)}
+              />
+              {/* Darken overlay to ensure contrast */}
+              <div className="absolute inset-0 bg-black/30" />
+            </div>
+          )}
 
-        {/* Card content container */}
-        <div className="relative flex flex-col backdrop-blur-sm">
-          {/* Thumbnail / Image */}
+          {/* Fallback background for cards without images */}
+          {!hasImage && (
+            <div
+              className="absolute inset-0 rounded-2xl"
+              style={{
+                background: 'var(--color-bg-surface-2)',
+              }}
+            />
+          )}
+
+          {/* Inner thumbnail container */}
           <div
-            className="relative overflow-hidden"
+            className="relative overflow-hidden rounded-xl"
             style={{
               aspectRatio: hasImage ? thumbnailAspectRatio : undefined,
               minHeight: hasImage ? undefined : MIN_THUMBNAIL_HEIGHT,
             }}
           >
+            {/* Thumbnail image or placeholder */}
             {hasImage ? (
               <Image
                 src={card.image!}
@@ -128,7 +186,7 @@ export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick
               <div
                 className="absolute inset-0 flex items-center justify-center"
                 style={{
-                  background: `linear-gradient(135deg, var(--bg-surface-2) 0%, var(--bg-surface-3) 100%)`,
+                  background: `linear-gradient(135deg, var(--color-bg-surface-2) 0%, var(--color-bg-surface-3) 100%)`,
                 }}
               >
                 {hasFavicon ? (
@@ -141,122 +199,128 @@ export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick
                     onError={() => setImageError(true)}
                   />
                 ) : (
-                  <Icon className="w-16 h-16" style={{ color: 'var(--text-muted)' }} />
+                  <Icon className="w-16 h-16 text-text-muted" />
                 )}
+              </div>
+            )}
+
+            {/* Glass pill overlay at bottom - CENTERED domain/URL (toggleable) */}
+            {settings.showUrlPill && domain && (
+              <div className="absolute bottom-3 left-0 right-0 flex justify-center px-3">
+                <div
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm"
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.5)',
+                    backdropFilter: 'blur(12px) saturate(1.5)',
+                    WebkitBackdropFilter: 'blur(12px) saturate(1.5)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                  }}
+                >
+                  {hasFavicon ? (
+                    <Image
+                      src={card.favicon!}
+                      alt=""
+                      width={16}
+                      height={16}
+                      className="rounded-full shrink-0"
+                      onError={() => setImageError(true)}
+                    />
+                  ) : (
+                    <Globe className="h-4 w-4 shrink-0 text-white/70" />
+                  )}
+                  <span className="truncate text-white/90 max-w-[180px]">{domain}</span>
+                </div>
               </div>
             )}
 
             {/* Pinned indicator */}
             {card.pinned && (
               <div
-                className="absolute top-2 right-2 p-1.5 rounded-full"
+                className="absolute top-3 right-3 p-1.5 rounded-full"
                 style={{
-                  background: 'hsla(var(--accent-h) var(--accent-s) var(--accent-l) / 0.9)',
+                  background: 'var(--color-accent)',
                   color: 'white',
                 }}
               >
-                <Pin className="h-3 w-3" />
+                <Pin className="h-3.5 w-3.5" />
               </div>
             )}
 
-            {/* Syncing indicator - compact spinner, expands on hover */}
+            {/* Syncing indicator */}
             {isSyncing && (
               <div
-                className="absolute top-2 left-2 flex items-center gap-1.5 px-1.5 py-1.5 rounded-full text-xs transition-all duration-200 hover:px-2.5 hover:gap-1.5 group/sync"
+                className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded-full text-xs"
                 style={{
                   background: 'rgba(0, 0, 0, 0.6)',
                   backdropFilter: 'blur(8px)',
-                  color: 'var(--text-secondary)',
+                  color: 'white',
                 }}
               >
-                <Loader2 className="h-3 w-3 animate-spin shrink-0" />
-                <span className="max-w-0 overflow-hidden whitespace-nowrap transition-all duration-200 group-hover/sync:max-w-[60px]">
-                  Syncing
-                </span>
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Syncing</span>
               </div>
             )}
           </div>
 
-          {/* Content */}
-          <div className="p-3">
-            {/* Title */}
-            <h3
-              className={cn(
-                'font-medium text-sm line-clamp-2 transition-colors',
-                'group-hover:text-[var(--ds-accent)]'
-              )}
-              style={{ color: 'var(--text-primary)' }}
+          {/* Metadata footer - INSIDE the card, below thumbnail (toggleable) */}
+          {showFooter && (
+            <div
+              className="relative mt-2"
+              style={{ paddingLeft: FOOTER_INSET, paddingRight: FOOTER_INSET }}
             >
-              {card.title || 'Untitled'}
-            </h3>
+              {/* Title */}
+              {settings.showTitles && card.title && (
+                <h3
+                  className={cn(
+                    'font-medium text-sm line-clamp-2 transition-colors',
+                    'group-hover:text-[var(--color-accent)]'
+                  )}
+                  style={{ color: 'var(--color-text-primary)' }}
+                >
+                  {card.title}
+                </h3>
+              )}
 
-            {/* Domain / URL */}
-            {domain && (
-              <div className="flex items-center gap-1.5 mt-1.5 text-xs" style={{ color: 'var(--text-muted)' }}>
-                {hasFavicon ? (
-                  <Image
-                    src={card.favicon!}
-                    alt=""
-                    width={12}
-                    height={12}
-                    className="rounded-sm"
-                    onError={() => setImageError(true)}
-                  />
-                ) : (
-                  <Globe className="h-3 w-3" />
-                )}
-                <span className="truncate">{domain}</span>
-              </div>
-            )}
-
-            {/* Tags */}
-            {card.tags && card.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {card.tags.slice(0, 3).map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-1.5 py-0.5 text-[10px] font-medium rounded"
-                    style={{
-                      background: 'var(--bg-surface-1)',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-                {card.tags.length > 3 && (
-                  <span
-                    className="px-1.5 py-0.5 text-[10px] font-medium rounded"
-                    style={{
-                      background: 'var(--bg-surface-1)',
-                      color: 'var(--text-muted)',
-                    }}
-                  >
-                    +{card.tags.length - 3}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Hover glow effect */}
-        <div
-          className={cn(
-            'absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl'
+              {/* Tags */}
+              {settings.showTags && card.tags && card.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {card.tags.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-2 py-0.5 text-[11px] font-medium rounded-md"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        color: 'rgba(255, 255, 255, 0.8)',
+                      }}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                  {card.tags.length > 3 && (
+                    <span
+                      className="px-2 py-0.5 text-[11px] font-medium rounded-md"
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        color: 'rgba(255, 255, 255, 0.8)',
+                      }}
+                    >
+                      +{card.tags.length - 3}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
           )}
-          style={{
-            boxShadow: '0 0 30px hsla(var(--accent-h) var(--accent-s) 50% / 0.3), 0 8px 32px rgba(0, 0, 0, 0.4)',
-          }}
-        />
 
-        {/* Border highlight on hover */}
-        <div
-          className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-          style={{
-            border: '1px solid hsla(var(--accent-h) var(--accent-s) 50% / 0.5)',
-          }}
-        />
+          {/* Hover glow effect - gradient glow around the card */}
+          <div
+            className="absolute -inset-1 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none -z-10"
+            style={{
+              background: `radial-gradient(ellipse at center, hsl(var(--hue-accent) var(--sat-accent) 50% / 0.4) 0%, transparent 70%)`,
+              filter: 'blur(20px)',
+            }}
+          />
+        </div>
       </button>
     );
   }
@@ -274,9 +338,10 @@ export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick
         'focus:ring-offset-[var(--bg-base)]'
       )}
       style={{
-        background: 'var(--bg-surface-2)',
-        border: '1px solid var(--border-subtle)',
-        boxShadow: 'var(--card-shadow, 0 2px 8px rgba(0, 0, 0, 0.08))',
+        background: 'var(--glass-panel-bg)',
+        backdropFilter: 'blur(12px)',
+        border: '1px solid var(--glass-border)',
+        boxShadow: 'var(--card-shadow)',
       }}
     >
       {/* Favicon / Icon */}
@@ -287,13 +352,13 @@ export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick
             alt=""
             width={20}
             height={20}
-            className="rounded"
+            className="rounded-full"
             onError={() => setImageError(true)}
           />
         ) : (
           <div
-            className="w-5 h-5 rounded flex items-center justify-center"
-            style={{ background: 'var(--bg-surface-1)' }}
+            className="w-5 h-5 rounded-full flex items-center justify-center"
+            style={{ background: 'var(--glass-bg)' }}
           >
             <Icon className="h-3 w-3" style={{ color: 'var(--text-muted)' }} />
           </div>
@@ -301,19 +366,27 @@ export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick
       </div>
 
       {/* Title */}
-      <h3
-        className={cn(
-          'flex-1 font-medium text-sm truncate transition-colors',
-          'group-hover:text-[var(--ds-accent)]'
-        )}
-        style={{ color: 'var(--text-primary)' }}
-      >
-        {card.title || 'Untitled'}
-      </h3>
+      {settings.showTitles && (
+        <h3
+          className={cn(
+            'flex-1 font-medium text-sm truncate transition-colors',
+            'group-hover:text-[var(--color-accent)]'
+          )}
+          style={{ color: 'var(--text-primary)' }}
+        >
+          {card.title || 'Untitled'}
+        </h3>
+      )}
 
-      {/* Domain */}
-      {domain && (
-        <span className="text-xs truncate max-w-[150px]" style={{ color: 'var(--text-muted)' }}>
+      {/* Domain - Pill shaped */}
+      {settings.showUrlPill && domain && (
+        <span
+          className="px-2 py-0.5 rounded-full text-xs truncate max-w-[150px]"
+          style={{
+            background: 'var(--glass-bg)',
+            color: 'var(--text-muted)',
+          }}
+        >
           {domain}
         </span>
       )}
@@ -327,18 +400,18 @@ export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick
 
       {/* Pinned */}
       {card.pinned && (
-        <Pin className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--ds-accent)' }} />
+        <Pin className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--color-accent)' }} />
       )}
 
-      {/* Tags */}
-      {card.tags && card.tags.length > 0 && (
+      {/* Tags - Pill shaped */}
+      {settings.showTags && card.tags && card.tags.length > 0 && (
         <div className="flex gap-1">
           {card.tags.slice(0, 2).map((tag) => (
             <span
               key={tag}
-              className="px-1.5 py-0.5 text-[10px] font-medium rounded"
+              className="px-2 py-0.5 text-[10px] font-medium rounded-full"
               style={{
-                background: 'var(--bg-surface-1)',
+                background: 'var(--glass-bg)',
                 color: 'var(--text-muted)',
               }}
             >
@@ -347,9 +420,9 @@ export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick
           ))}
           {card.tags.length > 2 && (
             <span
-              className="px-1.5 py-0.5 text-[10px] font-medium rounded"
+              className="px-2 py-0.5 text-[10px] font-medium rounded-full"
               style={{
-                background: 'var(--bg-surface-1)',
+                background: 'var(--glass-bg)',
                 color: 'var(--text-muted)',
               }}
             >
@@ -359,17 +432,28 @@ export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick
         </div>
       )}
 
+      {/* Hover glow effect */}
+      <div
+        className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
+        style={{
+          boxShadow: 'var(--card-glow)',
+        }}
+      />
+
       {/* Hover border */}
       <div
         className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
         style={{
-          border: '1px solid hsla(var(--accent-h) var(--accent-s) 50% / 0.5)',
+          border: '1px solid var(--card-glow-border)',
         }}
       />
     </button>
   );
 }, (prevProps, nextProps) => {
   // Custom comparison to prevent re-renders when card content hasn't changed
+  const prevSettings = { ...DEFAULT_CARD_DISPLAY, ...prevProps.displaySettings };
+  const nextSettings = { ...DEFAULT_CARD_DISPLAY, ...nextProps.displaySettings };
+
   return (
     prevProps.card.id === nextProps.card.id &&
     prevProps.card.title === nextProps.card.title &&
@@ -382,6 +466,12 @@ export const CardItem = memo(function CardItem({ card, variant = 'grid', onClick
     prevProps.card.status === nextProps.card.status &&
     prevProps.card.type === nextProps.card.type &&
     prevProps.variant === nextProps.variant &&
-    JSON.stringify(prevProps.card.tags) === JSON.stringify(nextProps.card.tags)
+    JSON.stringify(prevProps.card.tags) === JSON.stringify(nextProps.card.tags) &&
+    // Compare display settings
+    prevSettings.cardPadding === nextSettings.cardPadding &&
+    prevSettings.showMetadataFooter === nextSettings.showMetadataFooter &&
+    prevSettings.showUrlPill === nextSettings.showUrlPill &&
+    prevSettings.showTitles === nextSettings.showTitles &&
+    prevSettings.showTags === nextSettings.showTags
   );
-})
+});

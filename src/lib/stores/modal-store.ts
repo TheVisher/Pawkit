@@ -16,6 +16,11 @@ interface ModalStore {
   activeCardId: string | null;
   openCardDetail: (id: string) => void;
   closeCardDetail: () => void;
+
+  // Create Pawkit Modal
+  isCreatePawkitOpen: boolean;
+  openCreatePawkitModal: () => void;
+  closeCreatePawkitModal: () => void;
 }
 
 export const useModalStore = create<ModalStore>((set) => ({
@@ -34,4 +39,9 @@ export const useModalStore = create<ModalStore>((set) => ({
   openCardDetail: (id) => set({ activeCardId: id }),
 
   closeCardDetail: () => set({ activeCardId: null }),
+
+  // Create Pawkit Modal
+  isCreatePawkitOpen: false,
+  openCreatePawkitModal: () => set({ isCreatePawkitOpen: true }),
+  closeCreatePawkitModal: () => set({ isCreatePawkitOpen: false }),
 }));

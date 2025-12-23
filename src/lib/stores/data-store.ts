@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { db, createSyncMetadata, markModified, markDeleted } from '@/lib/db';
-import type { LocalCard, LocalCollection, SyncQueueItem } from '@/lib/db';
+import type { LocalCard, LocalCollection, LocalCalendarEvent, SyncQueueItem } from '@/lib/db';
 import { scheduleQueueProcess } from '@/lib/services/sync-service';
 import { queueMetadataFetch } from '@/lib/services/metadata-service';
 
@@ -13,12 +13,14 @@ interface DataState {
   // State
   cards: LocalCard[];
   collections: LocalCollection[];
+  events: LocalCalendarEvent[];
   isLoading: boolean;
   error: string | null;
 
   // Setters
   setCards: (cards: LocalCard[]) => void;
   setCollections: (collections: LocalCollection[]) => void;
+  setEvents: (events: LocalCalendarEvent[]) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
 
@@ -27,6 +29,8 @@ interface DataState {
   createCard: (card: Omit<LocalCard, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalCard>;
   updateCard: (id: string, updates: Partial<LocalCard>) => Promise<void>;
   deleteCard: (id: string) => Promise<void>;
+  addCardToCollection: (cardId: string, collectionSlug: string) => Promise<void>;
+  removeCardFromCollection: (cardId: string, collectionSlug: string) => Promise<void>;
 
   // Collection actions
   loadCollections: (workspaceId: string) => Promise<void>;
@@ -37,6 +41,12 @@ interface DataState {
   // Bulk actions
   loadAll: (workspaceId: string) => Promise<void>;
   clearData: () => void;
+
+  // Event actions
+  loadEvents: (workspaceId: string) => Promise<void>;
+  createEvent: (event: Omit<LocalCalendarEvent, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalCalendarEvent>;
+  updateEvent: (id: string, updates: Partial<LocalCalendarEvent>) => Promise<void>;
+  deleteEvent: (id: string) => Promise<void>;
 }
 
 // Helper to queue sync and trigger processing
@@ -50,12 +60,14 @@ export const useDataStore = create<DataState>((set, get) => ({
   // Initial state
   cards: [],
   collections: [],
+  events: [],
   isLoading: false,
   error: null,
 
   // Setters
   setCards: (cards) => set({ cards }),
   setCollections: (collections) => set({ collections }),
+  setEvents: (events) => set({ events }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
 
@@ -169,6 +181,27 @@ export const useDataStore = create<DataState>((set, get) => ({
     });
   },
 
+  addCardToCollection: async (cardId: string, collectionSlug: string) => {
+    const card = get().cards.find(c => c.id === cardId);
+    if (!card) return;
+
+    // Avoid duplicates
+    if (card.collections.includes(collectionSlug)) return;
+
+    const newCollections = [...card.collections, collectionSlug];
+
+    await get().updateCard(cardId, { collections: newCollections });
+  },
+
+  removeCardFromCollection: async (cardId: string, collectionSlug: string) => {
+    const card = get().cards.find(c => c.id === cardId);
+    if (!card) return;
+
+    const newCollections = card.collections.filter(s => s !== collectionSlug);
+
+    await get().updateCard(cardId, { collections: newCollections });
+  },
+
   // ==========================================================================
   // COLLECTION ACTIONS
   // ==========================================================================
@@ -280,6 +313,7 @@ export const useDataStore = create<DataState>((set, get) => ({
       await Promise.all([
         get().loadCards(workspaceId),
         get().loadCollections(workspaceId),
+        get().loadEvents(workspaceId),
       ]);
       set({ isLoading: false });
     } catch (error) {
@@ -288,7 +322,107 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   clearData: () => {
-    set({ cards: [], collections: [], error: null });
+    set({ cards: [], collections: [], events: [], error: null });
+  },
+
+  // ==========================================================================
+  // EVENT ACTIONS
+  // ==========================================================================
+
+  loadEvents: async (workspaceId) => {
+    try {
+      const events = await db.calendarEvents
+        .where('workspaceId')
+        .equals(workspaceId)
+        .filter((e) => !e._deleted)
+        .toArray();
+      set({ events });
+    } catch (error) {
+      set({ error: (error as Error).message });
+    }
+  },
+
+  createEvent: async (eventData) => {
+    const { events } = get();
+
+    const event: LocalCalendarEvent = {
+      ...eventData,
+      id: crypto.randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...createSyncMetadata(),
+    };
+
+    // Write to Dexie
+    await db.calendarEvents.add(event);
+
+    // Update Zustand state
+    set({ events: [...events, event] });
+
+    // Queue sync
+    await queueSync({
+      entityType: 'event',
+      entityId: event.id,
+      operation: 'create',
+      payload: event as unknown as Record<string, unknown>,
+      retryCount: 0,
+      createdAt: new Date(),
+    });
+
+    return event;
+  },
+
+  updateEvent: async (id, updates) => {
+    const existing = await db.calendarEvents.get(id);
+    if (!existing) return;
+
+    const updated = markModified({
+      ...existing,
+      ...updates,
+      updatedAt: new Date(),
+    });
+
+    // Write to Dexie
+    await db.calendarEvents.put(updated);
+
+    // Update Zustand state
+    set({
+      events: get().events.map((e) => (e.id === id ? updated : e)),
+    });
+
+    // Queue sync
+    await queueSync({
+      entityType: 'event',
+      entityId: id,
+      operation: 'update',
+      payload: updates,
+      retryCount: 0,
+      createdAt: new Date(),
+    });
+  },
+
+  deleteEvent: async (id) => {
+    const existing = await db.calendarEvents.get(id);
+    if (!existing) return;
+
+    const deleted = markDeleted(existing);
+
+    // Soft delete in Dexie
+    await db.calendarEvents.put(deleted);
+
+    // Remove from Zustand state
+    set({
+      events: get().events.filter((e) => e.id !== id),
+    });
+
+    // Queue sync
+    await queueSync({
+      entityType: 'event',
+      entityId: id,
+      operation: 'delete',
+      retryCount: 0,
+      createdAt: new Date(),
+    });
   },
 }));
 
