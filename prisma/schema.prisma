@@ -168,13 +168,19 @@ model Card {
   fileId     String? // Reference to file in local IndexedDB
 
   // Cloud sync
-  cloudId       String?
-  cloudProvider String? // filen, google-drive, dropbox, onedrive
-  cloudSyncedAt DateTime?
+  cloudId         String?
+  cloudProvider   String?
+  cloudSyncedAt   DateTime?
 
-  // Relations
+  // Smart Detection
+  convertedToTodo         Boolean   @default(false)
+  dismissedTodoSuggestion Boolean   @default(false)
+
+  // Junction for notes in Pawkits
   collectionNotes CollectionNote[]
-  citations       Citation[] // For Topic Notes feature
+
+  // Citations (for topic notes)
+  citations Citation[]
 
   @@index([workspaceId])
   @@index([workspaceId, deleted])

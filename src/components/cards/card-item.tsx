@@ -6,6 +6,7 @@ import DOMPurify from 'dompurify';
 import { Globe, FileText, StickyNote, Pin, Loader2 } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
 import { cn } from '@/lib/utils';
+import { QuickNoteCard } from './quick-note-card';
 
 /**
  * Calculate relative luminance of an RGB color
@@ -138,6 +139,11 @@ export const CardItem = memo(function CardItem({
   displaySettings = {},
   uniformHeight = false,
 }: CardItemProps) {
+  // Use specialized QuickNoteCard for quick-note types in grid mode
+  if (variant === 'grid' && card.type === 'quick-note') {
+    return <QuickNoteCard card={card} onClick={onClick} uniformHeight={uniformHeight} />;
+  }
+
   const [imageError, setImageError] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
   const [isDarkBackground, setIsDarkBackground] = useState(true); // Default to dark (safer for overlays)
@@ -206,8 +212,7 @@ export const CardItem = memo(function CardItem({
           'group relative w-full text-left',
           'transition-all duration-300 ease-out',
           'hover:-translate-y-1',
-          'focus:outline-none focus:ring-2 focus:ring-[var(--color-accent)] focus:ring-offset-2',
-          'focus:ring-offset-transparent',
+          'focus:outline-none',
           uniformHeight && 'h-full'
         )}
       >
@@ -474,8 +479,7 @@ export const CardItem = memo(function CardItem({
         'flex items-center gap-4 p-3',
         'transition-all duration-200 ease-out',
         'hover:translate-x-1',
-        'focus:outline-none focus:ring-2 focus:ring-offset-2',
-        'focus:ring-offset-[var(--bg-base)]'
+        'focus:outline-none'
       )}
       style={{
         background: 'var(--glass-panel-bg)',

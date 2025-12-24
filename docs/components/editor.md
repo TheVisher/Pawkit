@@ -205,6 +205,8 @@ The editor uses these Tiptap extensions:
 - Wiki-links (`[[page-name]]` syntax)
 - Backlinks panel
 - **Block handles** (+ button for commands, ⋮⋮ drag handle for reordering)
+- **Raw Markdown Toggle** (View/Edit source for power users)
+- **Note Export** (Markdown and Plain Text formats)
 - Image uploads
 - Table support
 - Code syntax highlighting

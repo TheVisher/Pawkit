@@ -61,6 +61,7 @@ DataStore (local DB)
 ```
 src/components/cards/
 ├── card-item.tsx        # Main wrapper, handles generic UI (hover, actions)
+├── quick-note-card.tsx  # Specialized compact card for QuickNotes with inline editing
 ├── card-list-view.tsx   # Notion-style list view with inline editing
 ├── card-grid.tsx        # CSS Grid layout container
 ├── masonry-grid.tsx     # Custom masonry layout container
@@ -73,6 +74,7 @@ src/components/cards/
 | File | Lines | Purpose |
 |------|-------|---------|
 | `card-item.tsx` | ~300 | The heavy lifter. Handles common chrome, sync status, and type switching. |
+| `quick-note-card.tsx` | ~300 | Specialized for "sticky notes". Handles inline editing, todo detection, and promotion to full notes. |
 | `card-list-view.tsx` | ~800 | Complex table view. Handles sticky headers, resize, multi-select, and inline editing. |
 | `masonry-grid.tsx` | ~250 | Custom absolute-positioning engine for masonry layout. Integrates `dnd-kit`. |
 | `card-grid.tsx` | ~100 | Simple CSS grid alternative for standard views. |
@@ -85,6 +87,7 @@ src/components/cards/
 
 - [x] **Visual Parity**: Glass morphism, shadows, and hover effects match V1 design.
 - [x] **Content Types**: URLs (Bookmarks) and Markdown Notes are fully implemented.
+- [x] **QuickNotes**: Specialized compact "sticky note" cards with inline editing and smart todo detection.
 - [x] **List View**: Robust table with sorting, grouping, and inline edits.
 - [x] **Masonry Layout**: Custom algorithm preserves left-to-right reading order.
 - [x] **Drag & Drop**: Fully integrated with `dnd-kit`, including drag-to-sidebar.

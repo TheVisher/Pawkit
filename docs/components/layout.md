@@ -90,7 +90,10 @@ src/components/layout/
 
 - [x] **3-Panel Shell**: Fully implemented with pixel-perfect V1 dimensions.
 - [x] **Collapsible Sidebars**: Smooth framer-motion animations.
-- [x] **Omnibar**: Elastic morphing animations and toast integration.
+- [x] **Omnibar**: Unified search/command/capture interface.
+  - **Modes**: Quick Note (default), Command (`/`), Tag (`#`), Collection (`@`).
+  - **Search**: Full-text local search across cards and content.
+  - **Toasts**: Elastic morphing animations and toast integration.
 - [x] **Responsive**: Mobile bottom nav activates correctly on small screens.
 - [x] **Glass Morphism**: Panels use the standard V2 glass theme.
 - [x] **DnD Zones**: Left sidebar acts as a drop target for cards.

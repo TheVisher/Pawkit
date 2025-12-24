@@ -204,6 +204,10 @@ export async function PATCH(request: Request, context: RouteContext) {
         : null;
     }
 
+    // Smart Detection
+    if (updates.convertedToTodo !== undefined) updateData.convertedToTodo = updates.convertedToTodo;
+    if (updates.dismissedTodoSuggestion !== undefined) updateData.dismissedTodoSuggestion = updates.dismissedTodoSuggestion;
+
     // Soft delete
     if (updates.deleted !== undefined) {
       updateData.deleted = updates.deleted;

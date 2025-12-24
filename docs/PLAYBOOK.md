@@ -343,6 +343,10 @@ model Card {
   cloudProvider   String?
   cloudSyncedAt   DateTime?
 
+  // Smart Detection
+  convertedToTodo         Boolean   @default(false)
+  dismissedTodoSuggestion Boolean   @default(false)
+
   // Junction for notes in Pawkits (notes organized via Pawkits + Tags, NOT folders)
   collectionNotes CollectionNote[]
 
@@ -2179,6 +2183,7 @@ interface Card {
     - Quick Note capture
     - Daily Note (Calendar integration)
     - Template system (`/template`)
+    - **Raw Markdown View Toggle**
 
 ### Phase 8: Integrations
 
@@ -2220,11 +2225,12 @@ interface Card {
     - Selective demo data
     - Tour highlights
 
-27. **Migration**
+27. **Migration & Export**
     - V1 user detection
     - Workspace assignment
     - Data verification
     - **🆕 Extension token migration**
+    - **🆕 Note Export** (Markdown and Plain Text)
 
 ---
 
