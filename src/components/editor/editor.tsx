@@ -185,7 +185,7 @@ export function Editor({
       // Only update if content is different from what's in the editor
       const currentContent = editor.getHTML();
       if (content !== currentContent && content !== lastSavedContent.current) {
-        editor.commands.setContent(content, false);
+        editor.commands.setContent(content, { emitUpdate: false });
         lastSavedContent.current = content;
       }
     }

@@ -140,15 +140,26 @@ const MIN_COLUMN_WIDTH = 60;
 // =============================================================================
 
 function getCardType(card: LocalCard): string {
-  if (card.type === 'note') return 'Note';
-  if (card.type === 'image') return 'Image';
-  return 'Bookmark';
+  switch (card.type) {
+    case 'quick-note': return 'Quick Note';
+    case 'md-note': return 'Note';
+    case 'text-note': return 'Note';
+    case 'note': return 'Note';
+    case 'image': return 'Image';
+    case 'url': return 'Bookmark';
+    default: return 'Bookmark';
+  }
 }
 
 function getCardIcon(card: LocalCard) {
-  if (card.type === 'note') return FileText;
-  if (card.type === 'image') return ImageIcon;
-  return Bookmark;
+  switch (card.type) {
+    case 'quick-note': return FileText;
+    case 'md-note': return FileText;
+    case 'text-note': return FileText;
+    case 'note': return FileText;
+    case 'image': return ImageIcon;
+    default: return Bookmark;
+  }
 }
 
 // =============================================================================
@@ -1023,6 +1034,20 @@ export function CardListView({ cards, groups, groupIcon, onReorder }: CardListVi
     [editingCell]
   );
 
+  // Handle row click - quick notes get inline editing, others open modal
+  const handleRowClick = useCallback(
+    (card: LocalCard) => {
+      if (card.type === 'quick-note') {
+        // Quick notes: start inline editing instead of opening modal
+        handleStartEdit(card.id, 'name');
+      } else {
+        // Other cards: open detail modal
+        openCardDetail(card.id);
+      }
+    },
+    [openCardDetail, handleStartEdit]
+  );
+
   // DnD monitor for row reordering
   useDndMonitor({
     onDragStart: (event) => {
@@ -1110,7 +1135,35 @@ export function CardListView({ cards, groups, groupIcon, onReorder }: CardListVi
 
     switch (column) {
       case 'name':
-        // Name column - clicking opens modal (title can be edited in modal)
+        // Quick notes show content and are editable inline
+        if (card.type === 'quick-note') {
+          const plainContent = card.content?.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() || '';
+          return (
+            <div className="flex items-center gap-3 min-w-0" onClick={(e) => e.stopPropagation()}>
+              <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-[var(--bg-surface-3)] flex-shrink-0 border-l-2 border-l-[var(--color-accent)]">
+                <ListRowIcon card={card} />
+              </span>
+              <div className="flex-1 min-w-0">
+                <EditableCell
+                  value={plainContent}
+                  cardId={card.id}
+                  field="content"
+                  onSave={(cardId, field, value) => {
+                    // Wrap in paragraph tags for consistency
+                    const htmlContent = `<p>${value.replace(/\n/g, '</p><p>')}</p>`;
+                    handleSaveCell(cardId, field, htmlContent);
+                  }}
+                  isEditing={isEditing(card.id, 'name')}
+                  onStartEdit={() => handleStartEdit(card.id, 'name')}
+                  onCancelEdit={handleCancelEdit}
+                  placeholder="Empty note"
+                  multiline
+                />
+              </div>
+            </div>
+          );
+        }
+        // Regular cards - clicking opens modal (title can be edited in modal)
         return (
           <div className="flex items-center gap-3 min-w-0">
             <span className="flex items-center justify-center h-8 w-8 rounded-lg bg-[var(--bg-surface-3)] flex-shrink-0">
@@ -1318,9 +1371,9 @@ export function CardListView({ cards, groups, groupIcon, onReorder }: CardListVi
                         isDragging={isDragging}
                         isDropTarget={isDropTarget}
                       >
-                        {/* Row content - clicking opens modal */}
+                        {/* Row content - clicking opens modal or inline edit for quick notes */}
                         <div
-                          onClick={() => openCardDetail(card.id)}
+                          onClick={() => handleRowClick(card)}
                           className={cn(
                             'flex flex-1 cursor-pointer transition-colors',
                             isSelected
@@ -1375,9 +1428,9 @@ export function CardListView({ cards, groups, groupIcon, onReorder }: CardListVi
                     isDragging={isDragging}
                     isDropTarget={isDropTarget}
                   >
-                    {/* Row content - clicking opens modal */}
+                    {/* Row content - clicking opens modal or inline edit for quick notes */}
                     <div
-                      onClick={() => openCardDetail(card.id)}
+                      onClick={() => handleRowClick(card)}
                       className={cn(
                         'flex flex-1 cursor-pointer transition-colors',
                         isSelected

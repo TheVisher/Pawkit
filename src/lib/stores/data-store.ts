@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import { db, createSyncMetadata, markModified, markDeleted } from '@/lib/db';
-import type { LocalCard, LocalCollection, LocalCalendarEvent, SyncQueueItem } from '@/lib/db';
+import type { LocalCard, LocalCollection, LocalCalendarEvent, LocalTodo, SyncQueueItem } from '@/lib/db';
 import { scheduleQueueProcess } from '@/lib/services/sync-service';
 import { queueMetadataFetch } from '@/lib/services/metadata-service';
 
@@ -14,6 +14,7 @@ interface DataState {
   cards: LocalCard[];
   collections: LocalCollection[];
   events: LocalCalendarEvent[];
+  todos: LocalTodo[];
   isLoading: boolean;
   error: string | null;
 
@@ -21,6 +22,7 @@ interface DataState {
   setCards: (cards: LocalCard[]) => void;
   setCollections: (collections: LocalCollection[]) => void;
   setEvents: (events: LocalCalendarEvent[]) => void;
+  setTodos: (todos: LocalTodo[]) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
 
@@ -47,6 +49,12 @@ interface DataState {
   createEvent: (event: Omit<LocalCalendarEvent, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalCalendarEvent>;
   updateEvent: (id: string, updates: Partial<LocalCalendarEvent>) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
+
+  // Todo actions
+  loadTodos: (workspaceId: string) => Promise<void>;
+  createTodo: (todo: Omit<LocalTodo, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalTodo>;
+  updateTodo: (id: string, updates: Partial<LocalTodo>) => Promise<void>;
+  deleteTodo: (id: string) => Promise<void>;
 }
 
 // Helper to queue sync and trigger processing
@@ -61,6 +69,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   cards: [],
   collections: [],
   events: [],
+  todos: [],
   isLoading: false,
   error: null,
 
@@ -68,6 +77,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   setCards: (cards) => set({ cards }),
   setCollections: (collections) => set({ collections }),
   setEvents: (events) => set({ events }),
+  setTodos: (todos) => set({ todos }),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error }),
 
@@ -314,6 +324,7 @@ export const useDataStore = create<DataState>((set, get) => ({
         get().loadCards(workspaceId),
         get().loadCollections(workspaceId),
         get().loadEvents(workspaceId),
+        get().loadTodos(workspaceId),
       ]);
       set({ isLoading: false });
     } catch (error) {
@@ -322,7 +333,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   clearData: () => {
-    set({ cards: [], collections: [], events: [], error: null });
+    set({ cards: [], collections: [], events: [], todos: [], error: null });
   },
 
   // ==========================================================================
@@ -418,6 +429,106 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Queue sync
     await queueSync({
       entityType: 'event',
+      entityId: id,
+      operation: 'delete',
+      retryCount: 0,
+      createdAt: new Date(),
+    });
+  },
+
+  // ==========================================================================
+  // TODO ACTIONS
+  // ==========================================================================
+
+  loadTodos: async (workspaceId) => {
+    try {
+      const todos = await db.todos
+        .where('workspaceId')
+        .equals(workspaceId)
+        .filter((t) => !t._deleted)
+        .toArray();
+      set({ todos });
+    } catch (error) {
+      set({ error: (error as Error).message });
+    }
+  },
+
+  createTodo: async (todoData) => {
+    const { todos } = get();
+
+    const todo: LocalTodo = {
+      ...todoData,
+      id: crypto.randomUUID(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...createSyncMetadata(),
+    };
+
+    // Write to Dexie
+    await db.todos.add(todo);
+
+    // Update Zustand state
+    set({ todos: [...todos, todo] });
+
+    // Queue sync
+    await queueSync({
+      entityType: 'todo',
+      entityId: todo.id,
+      operation: 'create',
+      payload: todo as unknown as Record<string, unknown>,
+      retryCount: 0,
+      createdAt: new Date(),
+    });
+
+    return todo;
+  },
+
+  updateTodo: async (id, updates) => {
+    const existing = await db.todos.get(id);
+    if (!existing) return;
+
+    const updated = markModified({
+      ...existing,
+      ...updates,
+      updatedAt: new Date(),
+    });
+
+    // Write to Dexie
+    await db.todos.put(updated);
+
+    // Update Zustand state
+    set({
+      todos: get().todos.map((t) => (t.id === id ? updated : t)),
+    });
+
+    // Queue sync
+    await queueSync({
+      entityType: 'todo',
+      entityId: id,
+      operation: 'update',
+      payload: updates,
+      retryCount: 0,
+      createdAt: new Date(),
+    });
+  },
+
+  deleteTodo: async (id) => {
+    const existing = await db.todos.get(id);
+    if (!existing) return;
+
+    const deleted = markDeleted(existing);
+
+    // Soft delete in Dexie
+    await db.todos.put(deleted);
+
+    // Remove from Zustand state
+    set({
+      todos: get().todos.filter((t) => t.id !== id),
+    });
+
+    // Queue sync
+    await queueSync({
+      entityType: 'todo',
       entityId: id,
       operation: 'delete',
       retryCount: 0,

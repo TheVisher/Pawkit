@@ -7,7 +7,7 @@ import {
   Moon, Sun, SunMoon, Sliders, Home, Calendar, LayoutGrid, List, LayoutDashboard,
   ArrowUpDown, Bookmark, FileText, Video, Image, FileSpreadsheet, Music, HelpCircle,
   Layers, CalendarDays, Globe, Type, Inbox, FolderMinus, TagsIcon,
-  X, FolderOpen, Link2, Paperclip, MessageSquare
+  X, FolderOpen, Link2, Paperclip, MessageSquare, StickyNote
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useRightSidebar } from '@/lib/stores/ui-store';
@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/tooltip';
 
 type CardSize = 'small' | 'medium' | 'large' | 'xl';
-type ContentType = 'bookmarks' | 'notes' | 'video' | 'images' | 'docs' | 'audio' | 'other';
+type ContentType = 'bookmarks' | 'notes' | 'quick-notes' | 'video' | 'images' | 'docs' | 'audio' | 'other';
 type GroupBy = 'none' | 'date' | 'tags' | 'type' | 'domain';
 type DateGrouping = 'smart' | 'day' | 'week' | 'month' | 'year';
 type UnsortedFilter = 'none' | 'no-pawkits' | 'no-tags' | 'both';
@@ -35,6 +35,7 @@ type UnsortedFilter = 'none' | 'no-pawkits' | 'no-tags' | 'both';
 const CONTENT_FILTERS: { id: ContentType; label: string; icon: typeof Bookmark }[] = [
   { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
   { id: 'notes', label: 'Notes', icon: FileText },
+  { id: 'quick-notes', label: 'Quick Notes', icon: StickyNote },
   { id: 'video', label: 'Video', icon: Video },
   { id: 'images', label: 'Images', icon: Image },
   { id: 'docs', label: 'Docs', icon: FileSpreadsheet },

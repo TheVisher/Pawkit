@@ -229,6 +229,8 @@ export async function POST(request: Request) {
         cloudSyncedAt: cardData.cloudSyncedAt
           ? new Date(cardData.cloudSyncedAt)
           : null,
+        convertedToTodo: cardData.convertedToTodo,
+        dismissedTodoSuggestion: cardData.dismissedTodoSuggestion,
       },
     });
 

@@ -104,6 +104,10 @@ export interface LocalCard extends SyncMetadata {
   cloudProvider?: string;
   cloudSyncedAt?: Date;
 
+  // Smart Detection
+  convertedToTodo?: boolean;
+  dismissedTodoSuggestion?: boolean;
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;

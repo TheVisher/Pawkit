@@ -35,6 +35,7 @@
 - [x] **Omnibar-Toast System (Phase 3.2):** Elastic animations, spring stack physics, and sync status integration.
 - [x] **Metadata Scraper Service (Phase 3.4):** Automated OpenGraph extraction with YouTube support and image validation.
 - [x] **Masonry Layout (Phase 3.5):** Custom left-to-right dense packing algorithm with `dnd-kit` integration and responsive resizing.
+- [x] **QuickNote Compact Cards (Phase 3.7):** Lightweight "sticky note" visual treatment, inline editing, and smart todo detection.
 - [x] **Drag-and-Drop Persistence (Phase 3.6):** Persistent manual sorting in Dexie, portal-based overlays, and conflict-free absolute positioning.
 - [x] **Collections & Organization (Phase 4):** Recursive Pawkits tree, drag-to-categorize logic, and nested navigation.
 - [x] **Calendar View (Phase 5):** Month/Week/Day/Agenda grids, event rendering.
@@ -45,6 +46,8 @@
 
 ### Not Started ⬜
 - [ ] **Read-it-Later System:** Progress tracking, reading time, and status filters.
+- [ ] **Raw Markdown View:** Toggle to view/edit raw markdown source.
+- [ ] **Note Export:** Export notes to Markdown (.md) or Plain Text (.txt) formats.
 
 ### Recently Completed ✅
 - [x] **Contextual Note Editor Foundation (Phase 7.1):** Tiptap integration, floating toolbar, slash commands, task lists.
@@ -59,6 +62,16 @@
 ---
 
 ## Session Log
+
+### Dec 24, 2025 - QuickNote Evolution & Sync Layer
+- **QuickNote Compact Cards:** Implemented a specialized `QuickNoteCard` with a 100px min-height, accent left-border, and zero-padding aesthetic. 
+- **Inline Editing:** Bypassed the detail modal for QuickNotes, allowing direct editing in the grid via textarea with auto-save on blur.
+- **Smart Todo Detection:** Added a regex-based detection engine (`todo-detection.ts`) that suggests adding notes to the Tasks list based on content (e.g., "buy...", "call...").
+- **Promote Workflow:** Added a "Note" button to convert lightweight QuickNotes into full Markdown notes with one click.
+- **Sync Layer Update:** 
+  - Updated `prisma/schema.prisma` and `docs/PLAYBOOK.md` to include `convertedToTodo` and `dismissedTodoSuggestion` fields.
+  - Updated API routes (`POST`, `PATCH`) and Zod schemas to ensure todo-detection state persists across devices.
+  - Updated `LocalCard` types for full frontend-to-backend consistency.
 
 ### Dec 23, 2025 - Contextual Note Editor Foundation (Phase 7.1)
 - **Tiptap Integration:** Implemented a production-ready rich text editor powered by Tiptap with StarterKit, TaskList, Link, and Typography extensions.

@@ -415,7 +415,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
               transition: 'margin 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
             }}
           >
-            <div ref={handleContentRef} className="flex-1 overflow-auto relative">
+            <div ref={handleContentRef} className="flex-1 overflow-auto relative scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {/* OMNIBAR - Sticky but with zero-height wrapper so it doesn't push content down */}
               <div className="sticky top-0 z-50 h-0 overflow-visible">
                 <div className="flex justify-center pt-5 pb-2 pointer-events-none">

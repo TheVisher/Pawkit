@@ -11,7 +11,7 @@ import type { LocalViewSettings } from '@/lib/db';
 export type Layout = 'grid' | 'masonry' | 'list' | 'timeline' | 'board';
 export type SortOrder = 'asc' | 'desc';
 // Content type filters - matches V1 categories
-export type ContentType = 'bookmarks' | 'notes' | 'video' | 'images' | 'docs' | 'audio' | 'other';
+export type ContentType = 'bookmarks' | 'notes' | 'quick-notes' | 'video' | 'images' | 'docs' | 'audio' | 'other';
 export type CardSize = 'small' | 'medium' | 'large' | 'xl';
 // Grouping options
 export type GroupBy = 'none' | 'date' | 'tags' | 'type' | 'domain';
@@ -31,8 +31,13 @@ const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.ogg', '.flac', '.aac', '.m4a', '.wma
 function getCardContentType(card: { type: string; url: string; domain?: string }): ContentType {
   const url = card.url?.toLowerCase() || '';
 
-  // Notes
-  if (['md-note', 'text-note', 'quick-note'].includes(card.type)) {
+  // Quick Notes (separate from full notes)
+  if (card.type === 'quick-note') {
+    return 'quick-notes';
+  }
+
+  // Notes (full notes)
+  if (['md-note', 'text-note', 'note'].includes(card.type)) {
     return 'notes';
   }
 

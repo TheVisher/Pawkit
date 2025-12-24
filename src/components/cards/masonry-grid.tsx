@@ -14,6 +14,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CardItem, type CardDisplaySettings } from './card-item';
+import { QuickNoteCard } from './quick-note-card';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
 
@@ -115,7 +116,11 @@ const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis,
           transition: 'box-shadow 150ms ease',
         }}
       >
-        <CardItem card={card} variant="grid" onClick={onClick} displaySettings={displaySettings} />
+        {card.type === 'quick-note' ? (
+          <QuickNoteCard card={card} onClick={onClick} isDragging={isDraggingThis} />
+        ) : (
+          <CardItem card={card} variant="grid" onClick={onClick} displaySettings={displaySettings} />
+        )}
       </div>
     </div>
   );
@@ -129,9 +134,13 @@ const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis,
     prevProps.card.favicon === nextProps.card.favicon &&
     prevProps.card.domain === nextProps.card.domain &&
     prevProps.card.url === nextProps.card.url &&
+    prevProps.card.content === nextProps.card.content &&
+    prevProps.card.type === nextProps.card.type &&
     prevProps.card.pinned === nextProps.card.pinned &&
     prevProps.card._synced === nextProps.card._synced &&
     prevProps.card.status === nextProps.card.status &&
+    prevProps.card.convertedToTodo === nextProps.card.convertedToTodo &&
+    prevProps.card.dismissedTodoSuggestion === nextProps.card.dismissedTodoSuggestion &&
     prevProps.isDraggingThis === nextProps.isDraggingThis &&
     prevProps.isDropTarget === nextProps.isDropTarget &&
     JSON.stringify(prevProps.card.tags) === JSON.stringify(nextProps.card.tags) &&
@@ -149,6 +158,11 @@ const CONTENT_PADDING = 56; // Approximate height for title + domain + tags area
  * This is used for initial layout before actual measurements
  */
 function estimateHeight(card: LocalCard, cardWidth: number): number {
+  // Quick notes are compact - fixed small height
+  if (card.type === 'quick-note') {
+    return 100; // Matches min-h-[80px] + padding
+  }
+
   // For cards with images, use aspect ratio to estimate thumbnail height
   // We can't know the actual aspect ratio until the image loads, so use default
   const thumbnailHeight = card.image
@@ -424,14 +438,18 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
           {activeDragItem && (
             <div
               style={{
-                width: cardWidth * 0.6, // 60% of original size
+                width: activeDragItem.type === 'quick-note' ? cardWidth * 0.8 : cardWidth * 0.6,
                 opacity: 0.85,
                 transform: 'rotate(-2deg)', // Slight tilt for visual feedback
                 pointerEvents: 'none',
                 filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4))',
               }}
             >
-              <CardItem card={activeDragItem} variant="grid" displaySettings={displaySettings} />
+              {activeDragItem.type === 'quick-note' ? (
+                <QuickNoteCard card={activeDragItem} isDragging />
+              ) : (
+                <CardItem card={activeDragItem} variant="grid" displaySettings={displaySettings} />
+              )}
             </div>
           )}
         </DragOverlay>,

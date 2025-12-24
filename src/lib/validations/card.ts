@@ -83,6 +83,10 @@ export const createCardSchema = z.object({
   cloudId: z.string().nullish(),
   cloudProvider: z.string().nullish(),
   cloudSyncedAt: z.string().datetime().nullish(),
+
+  // Smart Detection
+  convertedToTodo: z.boolean().default(false),
+  dismissedTodoSuggestion: z.boolean().default(false),
 });
 
 /**
@@ -137,6 +141,10 @@ export const updateCardSchema = z.object({
   cloudId: z.string().nullish(),
   cloudProvider: z.string().nullish(),
   cloudSyncedAt: z.string().datetime().nullish(),
+
+  // Smart Detection
+  convertedToTodo: z.boolean().optional(),
+  dismissedTodoSuggestion: z.boolean().optional(),
 
   // Soft delete (allow setting via PATCH for sync)
   deleted: z.boolean().optional(),
