@@ -63,10 +63,10 @@ export function CardDetailModal() {
   // Find the active card
   const card = cards.find((c) => c.id === activeCardId);
 
-  // Local state for editing
-  const [title, setTitle] = useState('');
-  const [notes, setNotes] = useState('');
-  const [content, setContent] = useState('');
+  // Local state for editing - initialize from card
+  const [title, setTitle] = useState(card?.title || '');
+  const [notes, setNotes] = useState(card?.notes || '');
+  const [content, setContent] = useState(card?.content || '');
   const [imageError, setImageError] = useState(false);
 
   // Refs
@@ -75,7 +75,7 @@ export function CardDetailModal() {
   // Check if this is a note card (not a URL bookmark)
   const isNoteCard = card?.type === 'md-note' || card?.type === 'text-note' || card?.type === 'quick-note';
 
-  // Initialize local state when card changes
+  // Sync local state when card changes (e.g., opening a different card)
   useEffect(() => {
     if (card) {
       setTitle(card.title || '');
@@ -83,7 +83,7 @@ export function CardDetailModal() {
       setContent(card.content || '');
       setImageError(false);
     }
-  }, [card]);
+  }, [card?.id]); // Only trigger when card ID changes, not on every card update
 
 
 
@@ -203,7 +203,7 @@ export function CardDetailModal() {
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto modal-scroll">
             <div className="p-6 space-y-6">
               {/* Title & Stats */}
               <div className="space-y-2">
@@ -353,6 +353,14 @@ export function CardDetailModal() {
           line-height: 1.4;
           margin-top: 1rem;
           margin-bottom: 0.5rem;
+        }
+        /* Hide scrollbar */
+        .modal-scroll {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .modal-scroll::-webkit-scrollbar {
+          display: none;
         }
       `}</style>
     </>

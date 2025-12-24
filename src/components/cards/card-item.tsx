@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect, memo } from 'react';
+import { useState, useCallback, useMemo, memo } from 'react';
 import Image from 'next/image';
+import DOMPurify from 'dompurify';
 import { Globe, FileText, StickyNote, Pin, Loader2 } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
 import { cn } from '@/lib/utils';
@@ -55,7 +56,7 @@ function getAverageColor(img: HTMLImageElement): { r: number; g: number; b: numb
 }
 
 // Minimum height for cards without images (more substantial)
-const MIN_THUMBNAIL_HEIGHT = 180;
+const MIN_THUMBNAIL_HEIGHT = 240;
 // Default aspect ratio (16:10) until image loads
 const DEFAULT_ASPECT_RATIO = 16 / 10;
 
@@ -106,6 +107,24 @@ function getDomain(url: string): string {
   } catch {
     return '';
   }
+}
+
+/**
+ * Strip HTML tags and get plain text preview
+ */
+function getTextPreview(html: string, maxLength: number = 200): string {
+  if (!html) return '';
+  // Strip HTML tags
+  const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  if (text.length <= maxLength) return text;
+  return text.slice(0, maxLength).trim() + '...';
+}
+
+/**
+ * Check if card is a note type
+ */
+function isNoteCard(type: string): boolean {
+  return type === 'md-note' || type === 'text-note' || type === 'quick-note';
 }
 
 /**
@@ -255,7 +274,43 @@ export const CardItem = memo(function CardItem({
                 onError={() => setImageError(true)}
                 onLoad={handleImageLoad}
               />
+            ) : isNoteCard(card.type) ? (
+              /* Note card preview - title at top, formatted content below */
+              <div
+                className="absolute inset-0 flex flex-col p-4 overflow-hidden"
+                style={{
+                  background: `linear-gradient(135deg, var(--color-bg-surface-2) 0%, var(--color-bg-surface-3) 100%)`,
+                }}
+              >
+                {/* Note title */}
+                <h3
+                  className="font-semibold text-base line-clamp-2 mb-2 shrink-0"
+                  style={{ color: 'var(--color-text-primary)' }}
+                >
+                  {card.title || 'Untitled'}
+                </h3>
+                {/* Formatted content preview */}
+                <div
+                  className="note-card-preview flex-1 overflow-hidden text-sm"
+                  style={{ color: 'var(--color-text-muted)' }}
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(card.content || '<p>Empty note</p>')
+                  }}
+                />
+                {/* Fade overlay at bottom */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 h-12 pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(to top, var(--color-bg-surface-2) 0%, transparent 100%)',
+                  }}
+                />
+                {/* Small icon in corner */}
+                <div className="absolute bottom-3 right-3 z-10">
+                  <Icon className="w-5 h-5 text-text-muted opacity-50" />
+                </div>
+              </div>
             ) : (
+              /* URL/bookmark placeholder - centered icon or favicon */
               <div
                 className="absolute inset-0 flex items-center justify-center"
                 style={{
@@ -546,6 +601,7 @@ export const CardItem = memo(function CardItem({
     prevProps.card.favicon === nextProps.card.favicon &&
     prevProps.card.domain === nextProps.card.domain &&
     prevProps.card.url === nextProps.card.url &&
+    prevProps.card.content === nextProps.card.content &&
     prevProps.card.pinned === nextProps.card.pinned &&
     prevProps.card._synced === nextProps.card._synced &&
     prevProps.card.status === nextProps.card.status &&

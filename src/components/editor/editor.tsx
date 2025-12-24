@@ -123,6 +123,25 @@ export function Editor({
           'prose-hr:border-[var(--glass-border)]'
         ),
       },
+      handleKeyDown: (view, event) => {
+        const mod = event.metaKey || event.ctrlKey;
+
+        // Cmd+K for link
+        if (mod && event.key === 'k') {
+          event.preventDefault();
+          window.dispatchEvent(new CustomEvent('editor-set-link'));
+          return true;
+        }
+
+        // Cmd+Shift+X for strikethrough
+        if (mod && event.shiftKey && event.key.toLowerCase() === 'x') {
+          event.preventDefault();
+          window.dispatchEvent(new CustomEvent('editor-toggle-strike'));
+          return true;
+        }
+
+        return false;
+      },
     },
     onUpdate: () => {
       // Don't call onChange here - we'll handle saving on blur
@@ -159,6 +178,18 @@ export function Editor({
   useEffect(() => {
     lastSavedContent.current = content;
   }, []); // Only on mount - editor is source of truth after that
+
+  // Sync content when prop changes (e.g., when switching between cards)
+  useEffect(() => {
+    if (editor && content !== undefined) {
+      // Only update if content is different from what's in the editor
+      const currentContent = editor.getHTML();
+      if (content !== currentContent && content !== lastSavedContent.current) {
+        editor.commands.setContent(content, false);
+        lastSavedContent.current = content;
+      }
+    }
+  }, [editor, content]);
 
   // Cleanup
   useEffect(() => {
@@ -200,6 +231,20 @@ export function Editor({
 
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
+
+  // Listen for keyboard shortcut custom events
+  useEffect(() => {
+    const handleSetLinkEvent = () => setLink();
+    const handleToggleStrike = () => editor?.chain().focus().toggleStrike().run();
+
+    window.addEventListener('editor-set-link', handleSetLinkEvent);
+    window.addEventListener('editor-toggle-strike', handleToggleStrike);
+
+    return () => {
+      window.removeEventListener('editor-set-link', handleSetLinkEvent);
+      window.removeEventListener('editor-toggle-strike', handleToggleStrike);
+    };
+  }, [setLink, editor]);
 
   if (!editor) {
     return null;
