@@ -54,7 +54,7 @@ const SortableGridCard = memo(function SortableGridCard({
   return (
     <div
       ref={setNodeRef}
-      className="aspect-[4/3] overflow-hidden"
+      className="aspect-[4/5] overflow-hidden"
       style={{
         opacity: isDraggingThis ? 0.3 : 1,
         cursor: isDraggingThis ? 'grabbing' : 'grab',

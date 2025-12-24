@@ -141,7 +141,7 @@ const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis,
 
 // Default aspect ratio and minimum height from CardItem
 const DEFAULT_ASPECT_RATIO = 16 / 10;
-const MIN_THUMBNAIL_HEIGHT = 180;
+const MIN_THUMBNAIL_HEIGHT = 240;
 const CONTENT_PADDING = 56; // Approximate height for title + domain + tags area
 
 /**
