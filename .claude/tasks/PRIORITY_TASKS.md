@@ -651,9 +651,9 @@ src/lib/services/sync/
 ## 🔵 TESTING - After Refactoring
 
 ### #TEST-1: Add Sync Service Tests
-**Status:** ❌ Not Started  
-**Priority:** LOW  
-**Coverage:** 0% currently
+**Status:** ✅ Complete (Dec 25, 2025)
+**Priority:** LOW
+**Coverage:** 24 tests covering all sync scenarios
 
 #### Setup:
 ```bash
@@ -669,7 +669,7 @@ pnpm add -D vitest @testing-library/react @testing-library/jest-dom
 ---
 
 ### #TEST-2: Add Error Boundary
-**Status:** ❌ Not Started  
+**Status:** ✅ Complete (Dec 25, 2025)  
 **Priority:** LOW
 
 Create `src/components/error-boundary.tsx`:
@@ -746,7 +746,7 @@ export class ErrorBoundary extends Component<Props, State> {
 ### Sprint 2: Documentation (Week of Jan 1)
 - [x] #DOC-1 Rewrite README
 - [x] #DOC-2 Create .env.example
-- [ ] #DOC-3 Update playbook markers
+- [x] #DOC-3 Update playbook markers
 
 **Estimated Time:** 1-2 hours total
 
@@ -763,8 +763,8 @@ export class ErrorBoundary extends Component<Props, State> {
 ---
 
 ### Sprint 4: Testing (Week of Jan 15)
-- [ ] #TEST-1 Sync service tests
-- [ ] #TEST-2 Error boundary
+- [x] #TEST-1 Sync service tests
+- [x] #TEST-2 Error boundary
 
 **Estimated Time:** 4-6 hours total
 

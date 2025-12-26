@@ -17,6 +17,7 @@ import { useModalStore } from '@/lib/stores/modal-store';
 import { CardsDragHandler } from '@/components/pawkits/cards-drag-handler';
 import { Omnibar } from '@/components/layout/omnibar';
 import { ToastStack } from '@/components/layout/toast-stack';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { AppDndProvider } from '@/lib/contexts/dnd-context';
 import { cn } from '@/lib/utils';
 import { createModuleLogger } from '@/lib/utils/logger';
@@ -426,7 +427,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
                 </div>
               </div>
               {/* Content - starts at top, scrolls under the omnibar */}
-              {children}
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
             </div>
           </main>
 
