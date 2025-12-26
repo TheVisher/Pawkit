@@ -13,7 +13,7 @@ This file tracks all critical fixes and improvements needed before and after pub
 ### Progress Summary
 - **Critical Security:** 5/5 complete 🟢
 - **High Priority:** 3/3 complete 🟢
-- **Refactoring:** 0/4 complete 🟡
+- **Refactoring:** 1/4 complete 🟡
 - **Documentation:** 3/3 complete 🟢
 
 ---
@@ -569,7 +569,7 @@ Replace with appropriate status:
 ## 🟡 REFACTORING - After Launch
 
 ### #TECH-1: Split omnibar.tsx [4 hours]
-**Status:** ❌ Not Started  
+**Status:** ✅ Complete (Dec 25, 2025) - Split into 5 files  
 **Priority:** MEDIUM  
 **Current:** 1,496 lines (5x over limit)  
 **Target:** 4 files, ~375 lines each
