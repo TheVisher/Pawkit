@@ -569,9 +569,9 @@ Replace with appropriate status:
 ## 🟡 REFACTORING - After Launch
 
 ### #TECH-1: Split omnibar.tsx [4 hours]
-**Status:** ✅ Complete (Dec 25, 2025) - Split into 5 files  
+**Status:** ✅ Complete (Dec 25, 2025)  
 **Priority:** MEDIUM  
-**Current:** 1,496 lines (5x over limit)  
+**Current:** Split into modular components in `/omnibar` directory
 **Target:** 4 files, ~375 lines each
 
 #### Proposed Structure:
@@ -753,7 +753,7 @@ export class ErrorBoundary extends Component<Props, State> {
 ---
 
 ### Sprint 3: Refactoring (Week of Jan 8)
-- [ ] #TECH-1 Split omnibar
+- [x] #TECH-1 Split omnibar
 - [ ] #TECH-2 Split card-list-view
 - [ ] #TECH-3 Split card-item
 - [ ] #TECH-4 Refactor sync-service
