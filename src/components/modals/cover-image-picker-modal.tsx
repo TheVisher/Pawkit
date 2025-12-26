@@ -38,6 +38,16 @@ export function CoverImagePickerModal() {
     const [coverPosition, setCoverPosition] = useState(50);
     const [contentOffset, setContentOffset] = useState(0);
 
+    // Live update helper - updates collection immediately for real-time preview
+    const updateLive = async (updates: Partial<{ coverImageHeight: number; coverImagePosition: number; coverContentOffset: number }>) => {
+        if (!coverImageCollectionId) return;
+        try {
+            await updateCollection(coverImageCollectionId, updates);
+        } catch (err) {
+            console.error('Failed to update:', err);
+        }
+    };
+
     // Get the collection being edited
     const collection = useMemo(() => {
         if (!coverImageCollectionId) return null;
@@ -163,29 +173,9 @@ export function CoverImagePickerModal() {
                     {/* Adjust Tab - only when cover exists */}
                     {hasExistingCover && (
                         <TabsContent value="adjust" className="mt-4 space-y-4">
-                            {/* Live Preview */}
-                            <div className="space-y-2">
-                                <Label className="text-xs text-text-muted">Preview</Label>
-                                <div
-                                    className="relative rounded-lg overflow-hidden bg-bg-surface-2 border border-border-subtle"
-                                    style={{
-                                        height: `${Math.min(coverHeight, 200)}px`,
-                                        maskImage: 'linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.8) 60%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.1) 90%, transparent 100%)',
-                                        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.8) 60%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.1) 90%, transparent 100%)',
-                                    }}
-                                >
-                                    <Image
-                                        src={collection.coverImage!}
-                                        alt="Cover preview"
-                                        fill
-                                        sizes="600px"
-                                        className="object-cover"
-                                        style={{
-                                            objectPosition: `center ${coverPosition}%`
-                                        }}
-                                    />
-                                </div>
-                            </div>
+                            <p className="text-xs text-text-muted mb-2">
+                                Drag the sliders to see changes live on the page behind this modal.
+                            </p>
 
                             {/* Height Slider */}
                             <div className="space-y-2">
@@ -201,7 +191,11 @@ export function CoverImagePickerModal() {
                                     min="120"
                                     max="400"
                                     value={coverHeight}
-                                    onChange={(e) => setCoverHeight(Number(e.target.value))}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setCoverHeight(val);
+                                        updateLive({ coverImageHeight: val });
+                                    }}
                                     className="w-full h-2 rounded-full appearance-none cursor-pointer"
                                     style={{
                                         background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${((coverHeight - 120) / 280) * 100}%, var(--color-bg-surface-3) ${((coverHeight - 120) / 280) * 100}%, var(--color-bg-surface-3) 100%)`,
@@ -227,7 +221,11 @@ export function CoverImagePickerModal() {
                                     min="0"
                                     max="100"
                                     value={coverPosition}
-                                    onChange={(e) => setCoverPosition(Number(e.target.value))}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setCoverPosition(val);
+                                        updateLive({ coverImagePosition: val });
+                                    }}
                                     className="w-full h-2 rounded-full appearance-none cursor-pointer"
                                     style={{
                                         background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${coverPosition}%, var(--color-bg-surface-3) ${coverPosition}%, var(--color-bg-surface-3) 100%)`,
@@ -253,7 +251,11 @@ export function CoverImagePickerModal() {
                                     min="0"
                                     max="200"
                                     value={contentOffset}
-                                    onChange={(e) => setContentOffset(Number(e.target.value))}
+                                    onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setContentOffset(val);
+                                        updateLive({ coverContentOffset: val });
+                                    }}
                                     className="w-full h-2 rounded-full appearance-none cursor-pointer"
                                     style={{
                                         background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${(contentOffset / 200) * 100}%, var(--color-bg-surface-3) ${(contentOffset / 200) * 100}%, var(--color-bg-surface-3) 100%)`,
@@ -356,12 +358,18 @@ export function CoverImagePickerModal() {
                     <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>
                         Cancel
                     </Button>
-                    <Button
-                        onClick={handleSubmit}
-                        disabled={isSubmitting || (activeTab === 'gallery' && !selectedImage) || (activeTab === 'url' && !urlInput.trim())}
-                    >
-                        {isSubmitting ? 'Saving...' : (hasExistingCover && activeTab === 'adjust' ? 'Save Changes' : 'Set Cover')}
-                    </Button>
+                    {activeTab === 'adjust' ? (
+                        <Button onClick={() => handleOpenChange(false)}>
+                            Done
+                        </Button>
+                    ) : (
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={isSubmitting || (activeTab === 'gallery' && !selectedImage) || (activeTab === 'url' && !urlInput.trim())}
+                        >
+                            {isSubmitting ? 'Saving...' : 'Set Cover'}
+                        </Button>
+                    )}
                 </DialogFooter>
             </DialogContent>
         </Dialog>
