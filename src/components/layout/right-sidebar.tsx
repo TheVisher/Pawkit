@@ -7,11 +7,11 @@ import {
   Moon, Sun, SunMoon, Sliders, Home, Calendar, LayoutGrid, List, LayoutDashboard,
   ArrowUpDown, Bookmark, FileText, Video, Image, FileSpreadsheet, Music, HelpCircle,
   Layers, CalendarDays, Globe, Type, Inbox, FolderMinus, TagsIcon,
-  X, FolderOpen, Link2, Paperclip, MessageSquare, StickyNote
+  X, FolderOpen, Link2, Paperclip, MessageSquare, StickyNote, Columns3, Folder
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useRightSidebar } from '@/lib/stores/ui-store';
-import { useViewStore, useCardDisplaySettings } from '@/lib/stores/view-store';
+import { useViewStore, useCardDisplaySettings, useSubPawkitSettings, type SubPawkitSize } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useModalStore } from '@/lib/stores/modal-store';
@@ -78,13 +78,14 @@ const UNSORTED_OPTIONS: { id: UnsortedFilter; label: string; icon: typeof Inbox 
 ];
 
 // Define which features are available per view type
-type ViewType = 'cards' | 'home' | 'calendar' | 'other';
+type ViewType = 'cards' | 'pawkit' | 'home' | 'calendar' | 'other';
 
 interface ViewConfig {
   type: ViewType;
   title: string;
   showContentFilters: boolean;
   showCardDisplay: boolean;
+  showSubPawkitSettings: boolean;
   showTags: boolean;
 }
 
@@ -93,31 +94,46 @@ const VIEW_CONFIGS: Record<ViewType, Omit<ViewConfig, 'title'>> = {
     type: 'cards',
     showContentFilters: true,
     showCardDisplay: true,
+    showSubPawkitSettings: false,
+    showTags: true,
+  },
+  pawkit: {
+    type: 'pawkit',
+    showContentFilters: true,
+    showCardDisplay: true,
+    showSubPawkitSettings: true,
     showTags: true,
   },
   home: {
     type: 'home',
     showContentFilters: false,
     showCardDisplay: false,
+    showSubPawkitSettings: false,
     showTags: false,
   },
   calendar: {
     type: 'calendar',
     showContentFilters: false,
     showCardDisplay: false,
+    showSubPawkitSettings: false,
     showTags: false,
   },
   other: {
     type: 'other',
     showContentFilters: false,
     showCardDisplay: false,
+    showSubPawkitSettings: false,
     showTags: false,
   },
 };
 
 function getViewConfig(pathname: string): ViewConfig {
-  // Library and Pawkits show card controls
-  if (pathname === '/library' || pathname.startsWith('/pawkits/')) {
+  // Pawkit detail pages show sub-pawkit settings
+  if (pathname.startsWith('/pawkits/') && pathname !== '/pawkits') {
+    return { ...VIEW_CONFIGS.pawkit, title: 'Pawkit' };
+  }
+  // Library shows card controls
+  if (pathname === '/library') {
     return { ...VIEW_CONFIGS.cards, title: 'Filters' };
   }
   // Home page
@@ -225,6 +241,9 @@ export function RightSidebar() {
   const dateGrouping = useViewStore((s) => s.dateGrouping) as DateGrouping;
   const setGroupBy = useViewStore((s) => s.setGroupBy);
   const setDateGrouping = useViewStore((s) => s.setDateGrouping);
+
+  // Sub-Pawkit display settings (only used on pawkit detail pages)
+  const { subPawkitSize, subPawkitColumns, setSubPawkitSize, setSubPawkitColumns } = useSubPawkitSettings();
 
   // Get all cards to extract unique tags
   const cards = useDataStore((s) => s.cards);
@@ -670,6 +689,67 @@ export function RightSidebar() {
             </>
           )}
 
+          {/* Sub-Pawkits Display Section - Pawkit detail pages only */}
+          {viewConfig.showSubPawkitSettings && (
+            <>
+              <div>
+                <div className="flex items-center gap-2 text-text-muted mb-3">
+                  <Folder className="h-5 w-5" />
+                  <span className="text-xs font-medium uppercase">Sub-Pawkits</span>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Size options */}
+                  <div>
+                    <label className="text-xs text-text-secondary mb-2 block">Card Size</label>
+                    <div className="grid grid-cols-3 gap-1">
+                      {(['compact', 'normal', 'large'] as SubPawkitSize[]).map((size) => (
+                        <button
+                          key={size}
+                          onClick={() => {
+                            setSubPawkitSize(size);
+                            handleSettingChange();
+                          }}
+                          className={cn(
+                            'px-2 py-1.5 text-xs rounded-md transition-colors capitalize',
+                            subPawkitSize === size
+                              ? 'bg-[var(--color-accent)] text-white'
+                              : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                          )}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Columns slider */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs text-text-secondary">Columns</label>
+                      <span className="text-xs text-text-muted">{subPawkitColumns}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="2"
+                      max="6"
+                      value={subPawkitColumns}
+                      onChange={(e) => {
+                        setSubPawkitColumns(Number(e.target.value));
+                        handleSettingChange();
+                      }}
+                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-slider"
+                      style={{
+                        background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${((subPawkitColumns - 2) / 4) * 100}%, var(--bg-surface-3) ${((subPawkitColumns - 2) / 4) * 100}%, var(--bg-surface-3) 100%)`,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+              <Separator className="bg-border-subtle" />
+            </>
+          )}
+
           {/* Card Display Section - Card views only */}
           {viewConfig.showCardDisplay && (
             <>
@@ -687,7 +767,8 @@ export function RightSidebar() {
                       {layout === 'masonry' && <LayoutDashboard className="h-3.5 w-3.5" />}
                       {layout === 'grid' && <LayoutGrid className="h-3.5 w-3.5" />}
                       {layout === 'list' && <List className="h-3.5 w-3.5" />}
-                      <span className="capitalize">{layout}</span>
+                      {layout === 'board' && <Columns3 className="h-3.5 w-3.5" />}
+                      <span className="capitalize">{layout === 'board' ? 'Kanban' : layout}</span>
                     </button>
                     {/* Hover dropdown */}
                     <div className="absolute right-0 top-full mt-1 z-50 opacity-0 invisible group-hover/view:opacity-100 group-hover/view:visible transition-all duration-150">
@@ -742,6 +823,21 @@ export function RightSidebar() {
                         >
                           <List className="h-3.5 w-3.5" />
                           <span>List</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            setLayout('board');
+                            handleSettingChange();
+                          }}
+                          className={cn(
+                            'w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors',
+                            layout === 'board'
+                              ? 'text-[var(--color-accent)]'
+                              : 'text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                          )}
+                        >
+                          <Columns3 className="h-3.5 w-3.5" />
+                          <span>Kanban</span>
                         </button>
                       </div>
                     </div>

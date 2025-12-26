@@ -11,16 +11,51 @@ import { cn } from '@/lib/utils';
 import { useDataStore } from '@/lib/stores/data-store';
 import { PawkitContextMenu } from '@/components/context-menus';
 import type { LocalCollection } from '@/lib/db';
+import type { SubPawkitSize } from '@/lib/stores/view-store';
 
 interface PawkitCardProps {
   collection: LocalCollection;
   isActive?: boolean;
   isDragging?: boolean;
+  size?: SubPawkitSize;
 }
 
-export function PawkitCard({ collection, isActive = false, isDragging = false }: PawkitCardProps) {
+export function PawkitCard({ collection, isActive = false, isDragging = false, size = 'normal' }: PawkitCardProps) {
   const cards = useDataStore((state) => state.cards);
   const collections = useDataStore((state) => state.collections);
+
+  // Size-based styling
+  const sizeClasses = {
+    compact: {
+      padding: 'p-3',
+      iconSize: 'h-4 w-4',
+      textSize: 'text-sm',
+      countSize: 'text-xs',
+      thumbnailAspect: 'aspect-[3/1]',
+      thumbnailGrid: 'grid-cols-4',
+      emptyIconSize: 'h-6 w-6',
+    },
+    normal: {
+      padding: 'p-4',
+      iconSize: 'h-5 w-5',
+      textSize: 'text-base',
+      countSize: 'text-sm',
+      thumbnailAspect: 'aspect-[2/1]',
+      thumbnailGrid: 'grid-cols-2',
+      emptyIconSize: 'h-8 w-8',
+    },
+    large: {
+      padding: 'p-5',
+      iconSize: 'h-6 w-6',
+      textSize: 'text-lg',
+      countSize: 'text-sm',
+      thumbnailAspect: 'aspect-[2/1.2]',
+      thumbnailGrid: 'grid-cols-2',
+      emptyIconSize: 'h-10 w-10',
+    },
+  };
+
+  const sizeStyle = sizeClasses[size];
 
   // Sortable for reordering pawkits
   const {
@@ -114,27 +149,27 @@ export function PawkitCard({ collection, isActive = false, isDragging = false }:
           }}
         >
         {/* Header with name and count */}
-        <div className="flex items-center justify-between p-4 pb-2">
+        <div className={cn('flex items-center justify-between pb-2', sizeStyle.padding)}>
           <div className="flex items-center gap-2 min-w-0 flex-1">
-            <Folder className="h-5 w-5 shrink-0 text-[var(--color-accent)]" />
-            <span className="font-medium text-text-primary truncate">
+            <Folder className={cn('shrink-0 text-[var(--color-accent)]', sizeStyle.iconSize)} />
+            <span className={cn('font-medium text-text-primary truncate', sizeStyle.textSize)}>
               {collection.name}
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-sm text-text-muted">
+            <span className={cn('text-text-muted', sizeStyle.countSize)}>
               {itemCount} {itemCount === 1 ? 'item' : 'items'}
             </span>
             {hasChildren && (
-              <ChevronRight className="h-4 w-4 text-text-muted" />
+              <ChevronRight className={cn('text-text-muted', size === 'compact' ? 'h-3 w-3' : 'h-4 w-4')} />
             )}
           </div>
         </div>
 
         {/* Thumbnail grid */}
-        <div className="px-4 pb-4">
+        <div className={cn('pt-0', sizeStyle.padding)}>
           {thumbnails.length > 0 ? (
-            <div className="grid grid-cols-2 gap-2 aspect-[2/1]">
+            <div className={cn('grid gap-2', sizeStyle.thumbnailGrid, sizeStyle.thumbnailAspect)}>
               {thumbnails.map((src, idx) => (
                 <div
                   key={idx}
@@ -158,8 +193,8 @@ export function PawkitCard({ collection, isActive = false, isDragging = false }:
               ))}
             </div>
           ) : (
-            <div className="flex items-center justify-center aspect-[2/1] rounded-lg bg-bg-surface-3">
-              <Folder className="h-8 w-8 text-text-muted opacity-50" />
+            <div className={cn('flex items-center justify-center rounded-lg bg-bg-surface-3', sizeStyle.thumbnailAspect)}>
+              <Folder className={cn('text-text-muted opacity-50', sizeStyle.emptyIconSize)} />
             </div>
           )}
         </div>
