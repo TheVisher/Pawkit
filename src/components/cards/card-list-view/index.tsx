@@ -14,7 +14,7 @@ import { useListView } from './use-list-view';
 import { ResizableHeader, ColumnPicker } from './table-header';
 import { ListRowIcon, ListRowActions, SortableListRow } from './list-row';
 import { EditableCell, EditableTagsCell } from './editable-cells';
-import { BulkActionBar, GroupSeparator } from './bulk-actions';
+import { GroupSeparator } from './bulk-actions';
 
 // Custom modifier that centers the overlay on cursor
 const centerOverlayOnCursor: Modifier = ({ transform, draggingNodeRect }) => {
@@ -52,10 +52,6 @@ export function CardListView({ cards, groups, groupIcon, onReorder }: CardListVi
     handleResize,
     handleSelectAll,
     handleToggleSelect,
-    handleClearSelection,
-    handleBulkDelete,
-    handleBulkAddTags,
-    handleBulkAddToCollection,
     handleStartEdit,
     handleCancelEdit,
     handleSaveCell,
@@ -345,17 +341,6 @@ export function CardListView({ cards, groups, groupIcon, onReorder }: CardListVi
             )}
           </div>
         </SortableContext>
-
-        {/* Bulk action bar */}
-        {selectedIds.size > 0 && (
-          <BulkActionBar
-            selectedCount={selectedIds.size}
-            onDelete={handleBulkDelete}
-            onAddTags={handleBulkAddTags}
-            onAddToCollection={handleBulkAddToCollection}
-            onClear={handleClearSelection}
-          />
-        )}
       </div>
 
       {/* Drag overlay */}

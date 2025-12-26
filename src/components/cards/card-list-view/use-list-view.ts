@@ -6,13 +6,13 @@ import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useViewStore } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useSelectionStore } from '@/lib/stores/selection-store';
 import type { LocalCard } from '@/lib/db';
 import { type ColumnId, type SortDirection, DEFAULT_COLUMN_ORDER, DEFAULT_COLUMN_WIDTHS, MIN_COLUMN_WIDTH, getCardType } from './types';
 
 export function useListView(cards: LocalCard[], onReorder?: (reorderedIds: string[]) => void) {
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const workspace = useCurrentWorkspace();
-  const deleteCard = useDataStore((s) => s.deleteCard);
   const updateCard = useDataStore((s) => s.updateCard);
 
   // Get column state from view store (persisted)
@@ -39,8 +39,14 @@ export function useListView(cards: LocalCard[], onReorder?: (reorderedIds: strin
   const [overRowId, setOverRowId] = useState<string | null>(null);
   const [activeDragCard, setActiveDragCard] = useState<LocalCard | null>(null);
 
-  // Multi-select state
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Multi-select state (global store for omnibar integration)
+  const selectedIds = useSelectionStore((s) => s.selectedIds);
+  const toggleSelect = useSelectionStore((s) => s.toggleSelect);
+  const selectAllCards = useSelectionStore((s) => s.selectAll);
+  const clearSelection = useSelectionStore((s) => s.clearSelection);
+  const bulkDelete = useSelectionStore((s) => s.bulkDelete);
+  const bulkAddTags = useSelectionStore((s) => s.bulkAddTags);
+  const bulkAddToCollection = useSelectionStore((s) => s.bulkAddToCollection);
 
   // Inline editing state
   const [editingCell, setEditingCell] = useState<{ cardId: string; column: ColumnId } | null>(null);
@@ -141,53 +147,24 @@ export function useListView(cards: LocalCard[], onReorder?: (reorderedIds: strin
     [setListColumnWidth, triggerSave]
   );
 
-  // Selection handlers
+  // Selection handlers (using global store)
   const handleSelectAll = useCallback(() => {
-    if (selectedIds.size === cards.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(cards.map((c) => c.id)));
-    }
-  }, [cards, selectedIds.size]);
+    selectAllCards(cards.map((c) => c.id));
+  }, [cards, selectAllCards]);
 
   const handleToggleSelect = useCallback((id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
+    toggleSelect(id);
+  }, [toggleSelect]);
 
   const handleClearSelection = useCallback(() => {
-    setSelectedIds(new Set());
-  }, []);
+    clearSelection();
+  }, [clearSelection]);
 
-  // Bulk action handlers
-  const handleBulkDelete = useCallback(async () => {
-    if (selectedIds.size === 0) return;
-    const count = selectedIds.size;
-    if (confirm(`Are you sure you want to delete ${count} item${count === 1 ? '' : 's'}?`)) {
-      for (const id of selectedIds) {
-        await deleteCard(id);
-      }
-      setSelectedIds(new Set());
-    }
-  }, [selectedIds, deleteCard]);
-
-  const handleBulkAddTags = useCallback(() => {
-    console.log('Add tags to:', Array.from(selectedIds));
-    alert('Tag picker coming soon! Selected IDs logged to console.');
-  }, [selectedIds]);
-
-  const handleBulkAddToCollection = useCallback(() => {
-    console.log('Add to collection:', Array.from(selectedIds));
-    alert('Collection picker coming soon! Selected IDs logged to console.');
-  }, [selectedIds]);
+  // Bulk action handlers (delegated to global store)
+  const handleBulkDelete = bulkDelete;
+  const handleBulkAddTags = bulkAddTags;
+  const handleBulkAddToCollection = bulkAddToCollection;
 
   // Computed selection state
   const allSelected = cards.length > 0 && selectedIds.size === cards.length;

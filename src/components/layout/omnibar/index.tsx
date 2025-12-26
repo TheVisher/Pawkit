@@ -2,16 +2,20 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useActiveToast, useIsEjecting, useToastStore } from '@/lib/stores/toast-store';
+import { useSelectionStore } from '@/lib/stores/selection-store';
 import { cn } from '@/lib/utils';
 import { useOmnibar } from './use-omnibar';
 import { IdleContent } from './idle-content';
 import { ToastContent } from './toast-content';
+import { BulkActionsContent } from './bulk-actions-content';
 import type { OmnibarProps } from './types';
 
 export function Omnibar({ isCompact }: OmnibarProps) {
   const activeToast = useActiveToast();
   const isEjecting = useIsEjecting();
   const dismissActiveToast = useToastStore((s) => s.dismissActiveToast);
+  const selectedIds = useSelectionStore((s) => s.selectedIds);
+  const hasSelection = selectedIds.size > 0;
 
   const {
     mounted,
@@ -89,6 +93,11 @@ export function Omnibar({ isCompact }: OmnibarProps) {
               toast={activeToast}
               isCompact={isCompact}
               onDismiss={dismissActiveToast}
+            />
+          ) : hasSelection ? (
+            <BulkActionsContent
+              key="bulk-actions"
+              isCompact={effectivelyCompact}
             />
           ) : (
             <IdleContent
