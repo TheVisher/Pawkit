@@ -90,10 +90,11 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
                 <div className="relative group mb-4">
                     {/* Image container with mask for smooth fade */}
                     <div
-                        className="relative h-56"
+                        className="relative"
                         style={{
-                            maskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
-                            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
+                            height: `${collection.coverImageHeight ?? 224}px`,
+                            maskImage: 'linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.8) 60%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.1) 90%, transparent 100%)',
+                            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.8) 60%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.1) 90%, transparent 100%)',
                         }}
                     >
                         <Image
