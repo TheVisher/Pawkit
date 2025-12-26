@@ -60,15 +60,10 @@ export function PawkitsTree() {
     };
 
     return (
-        <div className="flex flex-col gap-0.5 px-2">
-            {/* Header */}
-            <div className="flex items-center justify-between px-2 py-1.5 mb-1 group">
-                <h3 className="text-xs font-medium uppercase text-text-muted">Pawkits</h3>
-            </div>
-
+        <div className="flex flex-col gap-0.5 pl-4">
             {rootCollections.map((c) => renderItem(c))}
 
-            <div className="mt-2 text-xs text-text-muted hover:text-text-primary px-2 transition-colors cursor-pointer">
+            <div className="mt-1 text-xs text-text-muted hover:text-text-primary px-2 transition-colors cursor-pointer">
                 <CreatePawkitButton />
             </div>
         </div>
