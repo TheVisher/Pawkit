@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Library, Calendar, Trash2, LogOut, Settings, FolderOpen, ArrowLeftToLine, ArrowRightFromLine, Maximize2, Minimize2 } from 'lucide-react';
+import { Home, Library, Calendar, Trash2, LogOut, Settings, FolderOpen, ArrowLeftToLine, ArrowRightFromLine, Maximize2, Minimize2, ChevronRight, ChevronDown } from 'lucide-react';
 import { PawkitsTree } from '@/components/pawkits/pawkits-tree';
 import { SidebarContextMenu } from '@/components/context-menus';
 import { useLeftSidebar } from '@/lib/stores/ui-store';
@@ -36,6 +36,7 @@ const navItems = [
 
 export function LeftSidebar() {
   const [mounted, setMounted] = useState(false);
+  const [pawkitsExpanded, setPawkitsExpanded] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
   const { isOpen, isAnchored, toggleAnchored, setOpen } = useLeftSidebar();
@@ -44,6 +45,9 @@ export function LeftSidebar() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Check if we're on a pawkits route
+  const isPawkitsActive = pathname === '/pawkits' || pathname.startsWith('/pawkits/');
 
   const handleSignOut = async () => {
     const supabase = getClient();
@@ -127,15 +131,53 @@ export function LeftSidebar() {
               </Link>
             );
           })}
-        </nav>
 
-        {/* Pawkits Section - context menu covers all remaining space */}
-        <Separator className="my-4 bg-border-subtle" />
-        <SidebarContextMenu>
-          <div className="flex-1 py-2">
-            <PawkitsTree />
+          {/* Pawkits Nav Item with Collapsible Tree */}
+          <div>
+            <div
+              className={cn(
+                'flex items-center rounded-lg px-3 py-2 text-sm transition-colors',
+                isPawkitsActive
+                  ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
+                  : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
+              )}
+            >
+              <Link
+                href="/pawkits"
+                className="flex items-center gap-3 flex-1 min-w-0"
+              >
+                <FolderOpen className="h-6 w-6 shrink-0" />
+                <span>Pawkits</span>
+              </Link>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPawkitsExpanded(!pawkitsExpanded);
+                }}
+                className={cn(
+                  'h-6 w-6 flex items-center justify-center rounded-md shrink-0',
+                  'hover:bg-bg-surface-3 transition-colors',
+                  isPawkitsActive ? 'text-[var(--color-accent)]' : 'text-text-muted'
+                )}
+              >
+                {pawkitsExpanded ? (
+                  <ChevronDown className="h-4 w-4" />
+                ) : (
+                  <ChevronRight className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+
+            {/* Collapsible Pawkits Tree */}
+            {pawkitsExpanded && (
+              <SidebarContextMenu>
+                <div className="mt-1">
+                  <PawkitsTree />
+                </div>
+              </SidebarContextMenu>
+            )}
           </div>
-        </SidebarContextMenu>
+        </nav>
       </div>
 
       <Separator className="bg-border-subtle" />

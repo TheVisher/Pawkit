@@ -53,42 +53,40 @@ export function PawkitTreeItem({
                     )}
                     style={{ paddingLeft: `${level * 12 + 8}px` }}
                 >
-                    <div className="flex items-center flex-1 min-w-0 gap-2">
-                        {/* Expand/Collapse Toggle */}
-                        <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleExpand?.(collection.id);
-                            }}
-                            className={cn(
-                                'h-4 w-4 shrink-0 flex items-center justify-center rounded-sm hover:bg-bg-surface-2',
-                                !hasChildren && 'invisible'
-                            )}
-                        >
-                            {isExpanded ? (
-                                <ChevronDown className="h-3 w-3" />
-                            ) : (
-                                <ChevronRight className="h-3 w-3" />
-                            )}
-                        </button>
-
                         {/* Link to Pawkit Page */}
-                        <Link href={`/pawkits/${collection.slug}`} className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-                            {isActive ? (
-                                <FolderOpen className="h-4 w-4 shrink-0 text-[var(--color-accent)]" />
-                            ) : (
-                                <Folder className="h-4 w-4 shrink-0" />
-                            )}
-                            <span className="truncate">{collection.name}</span>
-                        </Link>
-                    </div>
+                    <Link href={`/pawkits/${collection.slug}`} className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
+                        {isActive ? (
+                            <FolderOpen className="h-4 w-4 shrink-0 text-[var(--color-accent)]" />
+                        ) : (
+                            <Folder className="h-4 w-4 shrink-0" />
+                        )}
+                        <span className="truncate">{collection.name}</span>
+                    </Link>
 
-                    {/* Card count */}
-                    {cardCount > 0 && (
-                        <span className="text-xs text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
-                            {cardCount}
-                        </span>
-                    )}
+                    {/* Right side: Card count and Expand/Collapse */}
+                    <div className="flex items-center gap-1 shrink-0">
+                        {cardCount > 0 && (
+                            <span className="text-xs text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                                {cardCount}
+                            </span>
+                        )}
+                        {hasChildren && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                    onToggleExpand?.(collection.id);
+                                }}
+                                className="h-5 w-5 flex items-center justify-center rounded-sm hover:bg-bg-surface-2 transition-colors"
+                            >
+                                {isExpanded ? (
+                                    <ChevronDown className="h-3.5 w-3.5" />
+                                ) : (
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                )}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </PawkitContextMenu>
