@@ -2,7 +2,7 @@
 
 > Centralized lookup for component documentation in Pawkit V2
 
-**Last Updated**: December 23, 2025
+**Last Updated**: December 26, 2025
 
 ---
 
@@ -23,9 +23,9 @@
 | **cards** | Yes | [cards.md](./cards.md) | High | 2025-12-23 | Core visual entity, DnD enabled |
 | **card-list-view** | Yes | [card-list-view.md](./card-list-view.md) | High | 2025-12-23 | Table view with inline edit |
 | **editor** | Yes | [editor.md](./editor.md) | High | 2025-12-23 | Phase 7.1 - Tiptap rich text editor |
-| **layout** | Yes | [layout.md](./layout.md) | High | 2025-12-23 | 3-panel shell, Omnibar, Nav |
-| **modals** | Yes | [modals.md](./modals.md) | High | 2025-12-23 | Global registry, Card Detail editor |
-| **pawkits** | No | — | Medium | — | Tree + drag handlers |
+| **layout** | Yes | [layout.md](./layout.md) | High | 2025-12-26 | Right sidebar complexity spike |
+| **modals** | Yes | [modals.md](./modals.md) | High | 2025-12-26 | Added Cover Image Picker |
+| **pawkits** | No | — | Medium | 2025-12-26 | Tree, Headers, and Card logic |
 | **providers** | No | — | Low | — | Single theme-provider.tsx |
 | **ui** | N/A | — | Low | — | shadcn/ui standard - no docs needed |
 
@@ -50,7 +50,8 @@
 
 ### Maintenance
 
-1. **pawkits** - Should be documented next as complexity grows (nested tree logic)
+1. **right-sidebar** - Needs refactoring (46KB single file)
+2. **pawkits** - Should be documented next as complexity grows (nested tree logic)
 
 ---
 
@@ -61,35 +62,37 @@ Current component sizes (for monitoring file limits):
 ```
 src/components/
 ├── calendar/
-│   ├── calendar-header.tsx          3.8KB
-│   ├── week-view.tsx                6.5KB
-│   └── agenda-view.tsx              6.2KB
+│   ├── calendar-header.tsx          2.5KB
+│   ├── week-view.tsx                5.5KB
+│   └── agenda-view.tsx              4.6KB
 ├── cards/
-│   ├── card-grid.tsx                 1.6KB
-│   ├── card-item.tsx                16.4KB  ⚠️ Watch limit
+│   ├── card-grid.tsx                 8.0KB
+│   ├── card-item.tsx               <1.0KB   (Memoized wrapper)
 │   ├── empty-state.tsx               1.5KB
-│   └── masonry-grid.tsx             13.8KB  ⚠️ Watch limit
+│   └── masonry-grid.tsx             15.0KB  ⚠️ Watch limit
 ├── editor/
-│   ├── editor.tsx                   10.0KB  ⚠️ Watch limit
-│   ├── slash-command-menu.tsx        6.0KB
+│   ├── editor.tsx                   17.0KB  ⚠️ Watch limit
+│   ├── slash-command-menu.tsx       10.0KB  ⚠️ Watch limit
 │   └── index.ts                      0.1KB
 ├── layout/
-│   ├── left-sidebar.tsx              6.5KB
-│   ├── mobile-nav.tsx                1.9KB
-│   ├── omnibar.tsx                  13.4KB  ⚠️ Watch limit
-│   ├── page-header.tsx               1.7KB
-│   ├── right-sidebar.tsx            17.9KB  ⚠️ Approaching limit
-│   └── toast-stack.tsx               5.6KB
+│   ├── left-sidebar.tsx              8.1KB
+│   ├── mobile-nav.tsx                1.8KB
+│   ├── omnibar.tsx                  <1.0KB  (Refactored bridge)
+│   ├── page-header.tsx               1.6KB
+│   ├── right-sidebar.tsx            46.0KB  🚨 CRITICAL - SPLIT ASAP
+│   └── toast-stack.tsx               5.5KB
 ├── modals/
-│   ├── add-card-modal.tsx           13.8KB  ⚠️ Watch limit
-│   ├── card-detail-modal.tsx        17.5KB  ⚠️ Approaching limit
-│   └── create-pawkit-modal.tsx       6.4KB
+│   ├── add-card-modal.tsx           13.0KB  ⚠️ Watch limit
+│   ├── card-detail-modal.tsx        12.0KB  ⚠️ Watch limit
+│   ├── cover-image-picker-modal.tsx 18.0KB  ⚠️ Watch limit
+│   └── create-pawkit-modal.tsx       6.2KB
 ├── pawkits/
-│   ├── cards-drag-handler.tsx        1.5KB
+│   ├── cards-drag-handler.tsx        1.4KB
 │   ├── create-pawkit-button.tsx      0.6KB
-│   ├── pawkit-header.tsx             2.5KB
-│   ├── pawkit-tree-item.tsx          4.6KB
-│   └── pawkits-tree.tsx              2.7KB
+│   ├── pawkit-card.tsx               6.8KB
+│   ├── pawkit-header.tsx             5.7KB
+│   ├── pawkit-tree-item.tsx          3.8KB
+│   └── pawkits-tree.tsx              2.4KB
 ├── providers/
 │   └── theme-provider.tsx            0.3KB
 └── ui/                              [shadcn - not tracked]
