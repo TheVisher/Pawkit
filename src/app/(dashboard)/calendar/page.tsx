@@ -11,6 +11,7 @@ import {
   AgendaView,
 } from '@/components/calendar';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
+import { ContentAreaContextMenu } from '@/components/context-menus';
 
 export default function CalendarPage() {
   const workspace = useCurrentWorkspace();
@@ -25,15 +26,17 @@ export default function CalendarPage() {
   }, [workspace, loadCards]);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <CalendarHeader />
+    <ContentAreaContextMenu>
+      <div className="h-full flex flex-col overflow-hidden">
+        <CalendarHeader />
 
-      <div className="flex-1 overflow-hidden p-6">
-        {viewMode === 'month' && <MonthView />}
-        {viewMode === 'week' && <WeekView />}
-        {viewMode === 'day' && <DayView />}
-        {viewMode === 'agenda' && <AgendaView />}
+        <div className="flex-1 overflow-hidden p-6">
+          {viewMode === 'month' && <MonthView />}
+          {viewMode === 'week' && <WeekView />}
+          {viewMode === 'day' && <DayView />}
+          {viewMode === 'agenda' && <AgendaView />}
+        </div>
       </div>
-    </div>
+    </ContentAreaContextMenu>
   );
 }
