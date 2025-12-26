@@ -141,21 +141,6 @@ export function ListCard({
         </div>
       )}
 
-      {/* Hover glow effect */}
-      <div
-        className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
-        style={{
-          boxShadow: 'var(--card-glow)',
-        }}
-      />
-
-      {/* Hover border */}
-      <div
-        className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none"
-        style={{
-          border: '1px solid var(--card-glow-border)',
-        }}
-      />
     </button>
   );
 }
