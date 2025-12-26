@@ -87,23 +87,30 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
         <div>
             {/* Cover Image Area - only shown when there's a cover */}
             {hasCoverImage && (
-                <div className="relative group h-48">
-                    <Image
-                        src={collection.coverImage!}
-                        alt=""
-                        fill
-                        className="object-cover"
+                <div className="relative group mb-4">
+                    {/* Image container with mask for smooth fade */}
+                    <div
+                        className="relative h-56"
                         style={{
-                            objectPosition: `center ${collection.coverImagePosition ?? 50}%`
+                            maskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
+                            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 50%, transparent 100%)',
                         }}
-                    />
-                    {/* Gradient overlay for text readability */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-bg-base/80 via-bg-base/20 to-transparent" />
+                    >
+                        <Image
+                            src={collection.coverImage!}
+                            alt=""
+                            fill
+                            className="object-cover"
+                            style={{
+                                objectPosition: `center ${collection.coverImagePosition ?? 50}%`
+                            }}
+                        />
+                    </div>
 
                     {/* Change cover button */}
-                    <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10">
                         <button
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-bg-base/80 backdrop-blur-sm text-text-muted hover:text-text-primary text-xs transition-colors"
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-bg-base/80 backdrop-blur-sm text-text-muted hover:text-text-primary text-xs transition-colors border border-border-subtle"
                             onClick={() => openCoverImagePicker(collection.id)}
                         >
                             <ImagePlus className="h-3.5 w-3.5" />
