@@ -24,11 +24,68 @@ export function BulkActionsContent({ isCompact }: BulkActionsContentProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="flex items-center justify-center h-12 px-3"
+        className="flex items-center justify-center h-12 px-2 gap-1"
       >
-        <span className="text-sm font-medium text-[var(--color-accent)]">
-          {count} selected
+        {/* Count */}
+        <span className="text-sm font-medium text-[var(--color-accent)] min-w-[20px] text-center">
+          {count}
         </span>
+
+        {/* Tags */}
+        <button
+          onClick={bulkAddTags}
+          className={cn(
+            'p-1.5 rounded-lg',
+            'text-text-secondary hover:text-text-primary',
+            'hover:bg-[var(--glass-bg-hover)]',
+            'transition-colors'
+          )}
+          title="Add tags"
+        >
+          <Tag className="h-4 w-4" />
+        </button>
+
+        {/* Pawkit */}
+        <button
+          onClick={bulkAddToCollection}
+          className={cn(
+            'p-1.5 rounded-lg',
+            'text-text-secondary hover:text-text-primary',
+            'hover:bg-[var(--glass-bg-hover)]',
+            'transition-colors'
+          )}
+          title="Add to Pawkit"
+        >
+          <FolderPlus className="h-4 w-4" />
+        </button>
+
+        {/* Delete */}
+        <button
+          onClick={bulkDelete}
+          className={cn(
+            'p-1.5 rounded-lg',
+            'text-red-400 hover:text-red-300',
+            'hover:bg-red-500/10',
+            'transition-colors'
+          )}
+          title="Delete"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+
+        {/* Clear */}
+        <button
+          onClick={clearSelection}
+          className={cn(
+            'p-1.5 rounded-lg',
+            'text-text-muted hover:text-text-secondary',
+            'hover:bg-[var(--glass-bg-hover)]',
+            'transition-colors'
+          )}
+          title="Clear selection"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </motion.div>
     );
   }
