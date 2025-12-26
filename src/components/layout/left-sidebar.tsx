@@ -107,7 +107,7 @@ export function LeftSidebar() {
       </div>
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto px-2 py-4">
+      <div className="flex-1 overflow-y-auto px-2 py-4 flex flex-col">
         <nav className="space-y-1">
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -129,10 +129,10 @@ export function LeftSidebar() {
           })}
         </nav>
 
-        {/* Pawkits Section */}
+        {/* Pawkits Section - context menu covers all remaining space */}
         <Separator className="my-4 bg-border-subtle" />
         <SidebarContextMenu>
-          <div className="py-2 min-h-[100px]">
+          <div className="flex-1 py-2">
             <PawkitsTree />
           </div>
         </SidebarContextMenu>
