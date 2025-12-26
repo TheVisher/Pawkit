@@ -13,7 +13,7 @@ This file tracks all critical fixes and improvements needed before and after pub
 ### Progress Summary
 - **Critical Security:** 5/5 complete 🟢
 - **High Priority:** 3/3 complete 🟢
-- **Refactoring:** 1/4 complete 🟡
+- **Refactoring:** 3/4 complete 🟡
 - **Documentation:** 3/3 complete 🟢
 
 ---
@@ -594,9 +594,9 @@ src/components/layout/omnibar/
 ---
 
 ### #TECH-2: Split card-list-view.tsx [4 hours]
-**Status:** ❌ Not Started  
-**Priority:** MEDIUM  
-**Current:** 1,515 lines (5x over limit)  
+**Status:** ✅ Complete (Dec 25, 2025)
+**Priority:** MEDIUM
+**Current:** Split into 7 modular files in `/card-list-view` directory
 **Target:** 5 files, ~300 lines each
 
 #### Proposed Structure:
@@ -613,9 +613,9 @@ src/components/cards/list-view/
 ---
 
 ### #TECH-3: Split card-item.tsx [2 hours]
-**Status:** ❌ Not Started  
-**Priority:** MEDIUM  
-**Current:** 623 lines (2x over limit)  
+**Status:** ✅ Complete (Dec 25, 2025)
+**Priority:** MEDIUM
+**Current:** Split into 4 modular files in `/card-item` directory
 **Target:** 3 files, ~200 lines each
 
 #### Proposed Structure:
@@ -754,8 +754,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
 ### Sprint 3: Refactoring (Week of Jan 8)
 - [x] #TECH-1 Split omnibar
-- [ ] #TECH-2 Split card-list-view
-- [ ] #TECH-3 Split card-item
+- [x] #TECH-2 Split card-list-view
+- [x] #TECH-3 Split card-item
 - [ ] #TECH-4 Refactor sync-service
 
 **Estimated Time:** 13-15 hours total
