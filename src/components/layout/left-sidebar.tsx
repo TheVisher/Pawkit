@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, Library, Calendar, Trash2, LogOut, Settings, FolderOpen, ArrowLeftToLine, ArrowRightFromLine, Maximize2, Minimize2 } from 'lucide-react';
 import { PawkitsTree } from '@/components/pawkits/pawkits-tree';
+import { SidebarContextMenu } from '@/components/context-menus';
 import { useLeftSidebar } from '@/lib/stores/ui-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { getClient } from '@/lib/supabase/client';
@@ -130,9 +131,11 @@ export function LeftSidebar() {
 
         {/* Pawkits Section */}
         <Separator className="my-4 bg-border-subtle" />
-        <div className="py-2">
-          <PawkitsTree />
-        </div>
+        <SidebarContextMenu>
+          <div className="py-2 min-h-[100px]">
+            <PawkitsTree />
+          </div>
+        </SidebarContextMenu>
       </div>
 
       <Separator className="bg-border-subtle" />
