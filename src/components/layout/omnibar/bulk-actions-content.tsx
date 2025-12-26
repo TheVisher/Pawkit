@@ -24,22 +24,20 @@ export function BulkActionsContent({ isCompact }: BulkActionsContentProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="flex items-center justify-center h-12 px-2 gap-1"
+        className="flex items-center justify-center h-12 px-3 gap-2"
       >
         {/* Count */}
-        <span className="text-sm font-medium text-[var(--color-accent)] min-w-[20px] text-center">
+        <span className="text-sm font-medium text-[var(--color-accent)]">
           {count}
         </span>
+
+        {/* Divider */}
+        <div className="w-px h-4 bg-[var(--glass-border)]" />
 
         {/* Tags */}
         <button
           onClick={bulkAddTags}
-          className={cn(
-            'p-1.5 rounded-lg',
-            'text-text-secondary hover:text-text-primary',
-            'hover:bg-[var(--glass-bg-hover)]',
-            'transition-colors'
-          )}
+          className="text-text-secondary hover:text-text-primary transition-colors"
           title="Add tags"
         >
           <Tag className="h-4 w-4" />
@@ -48,12 +46,7 @@ export function BulkActionsContent({ isCompact }: BulkActionsContentProps) {
         {/* Pawkit */}
         <button
           onClick={bulkAddToCollection}
-          className={cn(
-            'p-1.5 rounded-lg',
-            'text-text-secondary hover:text-text-primary',
-            'hover:bg-[var(--glass-bg-hover)]',
-            'transition-colors'
-          )}
+          className="text-text-secondary hover:text-text-primary transition-colors"
           title="Add to Pawkit"
         >
           <FolderPlus className="h-4 w-4" />
@@ -62,26 +55,19 @@ export function BulkActionsContent({ isCompact }: BulkActionsContentProps) {
         {/* Delete */}
         <button
           onClick={bulkDelete}
-          className={cn(
-            'p-1.5 rounded-lg',
-            'text-red-400 hover:text-red-300',
-            'hover:bg-red-500/10',
-            'transition-colors'
-          )}
+          className="text-red-400 hover:text-red-300 transition-colors"
           title="Delete"
         >
           <Trash2 className="h-4 w-4" />
         </button>
 
+        {/* Divider */}
+        <div className="w-px h-4 bg-[var(--glass-border)]" />
+
         {/* Clear */}
         <button
           onClick={clearSelection}
-          className={cn(
-            'p-1.5 rounded-lg',
-            'text-text-muted hover:text-text-secondary',
-            'hover:bg-[var(--glass-bg-hover)]',
-            'transition-colors'
-          )}
+          className="text-text-muted hover:text-text-secondary transition-colors"
           title="Clear selection"
         >
           <X className="h-4 w-4" />
