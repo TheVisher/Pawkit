@@ -39,6 +39,10 @@
 - [x] **Drag-and-Drop Persistence (Phase 3.6):** Persistent manual sorting in Dexie, portal-based overlays, and conflict-free absolute positioning.
 - [x] **Collections & Organization (Phase 4):** Recursive Pawkits tree, drag-to-categorize logic, and nested navigation.
 - [x] **Calendar View (Phase 5):** Month/Week/Day/Agenda grids, event rendering.
+- [x] **Context Menu System:** Comprehensive context menus for cards, sidebar items, and content areas.
+- [x] **Selection System:** Multi-select state management foundations.
+- [x] **Cover Image Customization:** Background layers, position/height sliders, and gradient fades.
+- [x] **Expandable Panels:** Dynamic UI for action buttons and Kit chat interface.
 
 ### In Progress 🔄
 - [ ] **Rediscover View (Phase 6):** Card stack interface and review workflow.
@@ -62,6 +66,52 @@
 ---
 
 ## Session Log
+
+### Dec 26, 2025 - UI Refinements & Cover System
+- **Cover Image Evolution:**
+  - **Background Layering:** Refactored cover images to sit as a background layer, ensuring content doesn't jump when covers are added/removed.
+  - **Fine-Grained Control:** Added sliders for cover height and vertical positioning.
+  - **Title Positioning:** Implemented a slider to adjust the vertical position of the title/header content relative to the cover.
+  - **Visuals:** Added smooth gradient fades for better text legibility against cover images.
+- **Expandable Panels:**
+  - Implemented expandable panels for the "Add" (+) button and "Kit" chat interface, improving screen real estate usage.
+- **Architectural Cleanup:**
+  - **Context Menus:** Verified mature context menu system for Cards, Sidebar, and Content Areas.
+  - **Selection Store:** Confirmed implementation of `selection-store.ts` for multi-select capabilities.
+
+### Dec 25, 2025 - Pawkit UI Customization (Cover Images & Polish)
+- **Cover Image System:**
+  - Implemented background-layer cover images that don't shift content layout.
+  - Added smooth gradient fades for professional visual blending.
+  - Built a cover image picker modal for easy personalization.
+- **Dynamic Adjustments:**
+  - Added live-updating sliders for cover image height and vertical position.
+  - Implemented a title position slider to move UI elements up/down relative to the cover.
+- **Organization & Navigation:**
+  - Promoted Pawkits to a root navigation item with its own dedicated view.
+  - Added collapsible sub-pawkit sections to the detail view for better hierarchy management.
+- **UI UX Polish:** Moved "Add cover" options to a clean dropdown menu to reduce header clutter.
+
+### Dec 25, 2025 - Security, Documentation & Refactoring
+- **Critical Security Hardening (Phase 8):**
+  - **Open Redirect Fix:** Implemented allowlist validation in OAuth callback to prevent phishing redirects.
+  - **Admin Auth:** Moved cleanup endpoint to `/api/user/` scope, enforcing owner-only access.
+  - **SSRF Protection:** Added strict private IP blocking and protocol validation to the Metadata API.
+  - **Rate Limiting:** Implemented a custom, dependency-free in-memory rate limiter for API routes.
+  - **Password Policy:** Enforced strong password requirements (12+ chars, mixed case, numbers) on the client side.
+  - **CSP Headers:** Configured strict Content Security Policy in `next.config.ts`.
+- **Documentation Overhaul:**
+  - **README:** Rewrote `README.md` with project-specific features, tech stack, and setup guide.
+  - **Environment:** Created `.env.example` template.
+  - **Playbook:** Updated status markers to reflect "V2 Built" status.
+- **Major Refactoring (Phase 9):**
+  - **Omnibar:** Split the massive 1,500-line component into a modular `src/components/layout/omnibar/` directory with separated logic (`use-omnibar.ts`) and sub-components.
+  - **Card List View:** Modularized into `src/components/cards/card-list-view/`, splitting cell renderers, row logic, and hooks.
+  - **Card Item:** Refactored into `src/components/cards/card-item/` with performance optimizations (memoization).
+  - **Sync Service:** Restructured `sync-service.ts` into a domain-driven `src/lib/services/sync/` module.
+- **Testing:**
+  - **Sync Engine Tests:** Added a comprehensive test suite (24 tests) for the sync service covering queue logic, retry backoff, and conflict resolution using `vitest` and `fake-indexeddb`.
+  - **Error Boundary:** Implemented a global React Error Boundary to catch and display runtime errors gracefully.
 
 ### Dec 24, 2025 - QuickNote Evolution & Sync Layer
 - **QuickNote Compact Cards:** Implemented a specialized `QuickNoteCard` with a 100px min-height, accent left-border, and zero-padding aesthetic. 
