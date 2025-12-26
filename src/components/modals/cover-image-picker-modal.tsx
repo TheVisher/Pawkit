@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-import { ImagePlus, Link2, X, Check, MoveVertical, Maximize2 } from 'lucide-react';
+import { ImagePlus, Link2, X, Check, MoveVertical, Maximize2, ArrowDown } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -36,6 +36,7 @@ export function CoverImagePickerModal() {
     // Cover adjustments
     const [coverHeight, setCoverHeight] = useState(224);
     const [coverPosition, setCoverPosition] = useState(50);
+    const [contentOffset, setContentOffset] = useState(0);
 
     // Get the collection being edited
     const collection = useMemo(() => {
@@ -62,6 +63,7 @@ export function CoverImagePickerModal() {
             setActiveTab(collection.coverImage ? 'adjust' : 'gallery');
             setCoverHeight(collection.coverImageHeight ?? 224);
             setCoverPosition(collection.coverImagePosition ?? 50);
+            setContentOffset(collection.coverContentOffset ?? 0);
         }
     }, [isCoverImagePickerOpen, collection]);
 
@@ -77,6 +79,7 @@ export function CoverImagePickerModal() {
                 coverImage: imageUrl || undefined,
                 coverImageHeight: coverHeight,
                 coverImagePosition: coverPosition,
+                coverContentOffset: contentOffset,
             });
 
             toast({
@@ -106,6 +109,7 @@ export function CoverImagePickerModal() {
                 coverImage: undefined,
                 coverImageHeight: undefined,
                 coverImagePosition: undefined,
+                coverContentOffset: undefined,
             });
 
             toast({
@@ -214,7 +218,7 @@ export function CoverImagePickerModal() {
                                 <div className="flex items-center justify-between">
                                     <Label className="flex items-center gap-2 text-sm">
                                         <MoveVertical className="h-4 w-4 text-text-muted" />
-                                        Vertical Position
+                                        Image Position
                                     </Label>
                                     <span className="text-xs text-text-muted">{coverPosition}%</span>
                                 </div>
@@ -232,6 +236,32 @@ export function CoverImagePickerModal() {
                                 <div className="flex justify-between text-xs text-text-muted">
                                     <span>Top</span>
                                     <span>Bottom</span>
+                                </div>
+                            </div>
+
+                            {/* Content Offset Slider */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="flex items-center gap-2 text-sm">
+                                        <ArrowDown className="h-4 w-4 text-text-muted" />
+                                        Title Position
+                                    </Label>
+                                    <span className="text-xs text-text-muted">{contentOffset}px</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="200"
+                                    value={contentOffset}
+                                    onChange={(e) => setContentOffset(Number(e.target.value))}
+                                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                                    style={{
+                                        background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${(contentOffset / 200) * 100}%, var(--color-bg-surface-3) ${(contentOffset / 200) * 100}%, var(--color-bg-surface-3) 100%)`,
+                                    }}
+                                />
+                                <div className="flex justify-between text-xs text-text-muted">
+                                    <span>Top</span>
+                                    <span>Lower</span>
                                 </div>
                             </div>
                         </TabsContent>

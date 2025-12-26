@@ -127,6 +127,7 @@ export interface LocalCollection extends SyncMetadata {
   coverImage?: string;
   coverImagePosition?: number; // 0-100, vertical position of image
   coverImageHeight?: number; // height in pixels (default 224)
+  coverContentOffset?: number; // pixels to push content down (default 0)
   icon?: string;
 
   // Flags
