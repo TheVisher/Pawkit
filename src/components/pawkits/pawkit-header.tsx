@@ -123,8 +123,13 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
                 </>
             )}
 
-            {/* Header with title - always in normal flow, sits on top of cover */}
-            <div className="relative z-10">
+            {/* Header with title - offset down to overlap cover image */}
+            <div
+                className="relative z-10"
+                style={{
+                    paddingTop: hasCoverImage ? `${collection.coverContentOffset ?? 0}px` : undefined
+                }}
+            >
                 <PageHeader title={collection.name} subtitle={subtitle} actions={actions} />
             </div>
         </div>
