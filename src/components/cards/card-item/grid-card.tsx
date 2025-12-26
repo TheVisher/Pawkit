@@ -58,13 +58,13 @@ export function GridCard({
       setImageAspectRatio(clampedRatio);
 
       // Calculate average color and determine if background is dark
-      // The blurred background has a 30% black overlay, so we account for that
+      // The blurred background has a 20% black overlay, so we account for that
       const avgColor = getAverageColor(img);
       if (avgColor) {
-        // Apply the 30% black overlay effect to the average color
-        const overlayedR = avgColor.r * 0.7;
-        const overlayedG = avgColor.g * 0.7;
-        const overlayedB = avgColor.b * 0.7;
+        // Apply the 20% black overlay effect to the average color
+        const overlayedR = avgColor.r * 0.8;
+        const overlayedG = avgColor.g * 0.8;
+        const overlayedB = avgColor.b * 0.8;
         const luminance = getLuminance(overlayedR, overlayedG, overlayedB);
         // If luminance > 0.4, background is light enough to need dark text
         setIsDarkBackground(luminance <= 0.4);
@@ -131,11 +131,11 @@ export function GridCard({
               alt=""
               fill
               sizes="(max-width: 768px) 100vw, 300px"
-              className="object-cover scale-125 blur-2xl saturate-150 opacity-80"
+              className="object-cover scale-150 blur-2xl saturate-200 opacity-90"
               onError={() => setImageError(true)}
             />
             {/* Darken overlay to ensure contrast */}
-            <div className="absolute inset-0 bg-black/30" />
+            <div className="absolute inset-0 bg-black/20" />
           </div>
         )}
 
