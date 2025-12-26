@@ -1,6 +1,7 @@
 /**
- * Admin endpoint to clean up duplicate workspaces
- * Keeps only the oldest workspace (the original) and deletes the rest
+ * User endpoint to clean up duplicate workspaces
+ * Keeps the workspace with most cards (or oldest if all empty) and deletes duplicates
+ * Only affects the authenticated user's own workspaces
  */
 
 import { NextResponse } from 'next/server';

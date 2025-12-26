@@ -6,10 +6,25 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+// Whitelist of allowed redirect paths after OAuth
+const ALLOWED_PATHS = ['/dashboard', '/library', '/home', '/calendar', '/notes', '/favorites'];
+
+function getSafeRedirectPath(requestedPath: string | null): string {
+  if (!requestedPath) return '/dashboard';
+
+  // Check if path is in whitelist
+  if (ALLOWED_PATHS.includes(requestedPath)) {
+    return requestedPath;
+  }
+
+  // Default to dashboard for any non-whitelisted path
+  return '/dashboard';
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/dashboard';
+  const safePath = getSafeRedirectPath(searchParams.get('next'));
 
   if (code) {
     const supabase = await createClient();
@@ -17,7 +32,7 @@ export async function GET(request: Request) {
 
     if (!error) {
       // Successful auth - redirect to dashboard or specified route
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${origin}${safePath}`);
     }
   }
 

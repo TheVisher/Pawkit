@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import * as cheerio from 'cheerio';
+import { checkRateLimit } from '@/lib/rate-limit';
 
 // Force Node.js runtime for fetch
 export const runtime = 'nodejs';
@@ -38,8 +39,48 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 // Request timeout (10 seconds)
 const FETCH_TIMEOUT = 10000;
 
+/**
+ * Check if hostname is a private/internal IP address
+ * Prevents SSRF attacks by blocking requests to internal network
+ */
+function isPrivateIP(hostname: string): boolean {
+  const lowerHost = hostname.toLowerCase();
+
+  const BLOCKED_PATTERNS = [
+    // IPv4 localhost and loopback
+    '127.', '0.0.0.0', 'localhost',
+    // IPv4 private ranges
+    '10.',
+    '172.16.', '172.17.', '172.18.', '172.19.',
+    '172.20.', '172.21.', '172.22.', '172.23.', '172.24.',
+    '172.25.', '172.26.', '172.27.', '172.28.', '172.29.',
+    '172.30.', '172.31.',
+    '192.168.',
+    // AWS/cloud metadata service
+    '169.254.',
+    // IPv6 localhost and private
+    '[::1]', 'fe80:', 'fc00:', 'fd00::'
+  ];
+
+  return BLOCKED_PATTERNS.some(pattern => lowerHost.startsWith(pattern));
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Rate limiting: 5 requests per minute (metadata fetching is expensive)
+    const identifier = request.headers.get('x-forwarded-for') || 'anonymous';
+    const { success, remaining } = checkRateLimit(identifier, 60000, 5);
+
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Try again later.' },
+        {
+          status: 429,
+          headers: { 'X-RateLimit-Remaining': '0' },
+        }
+      );
+    }
+
     const body = await request.json();
     const { url } = body;
 
@@ -57,6 +98,22 @@ export async function POST(request: NextRequest) {
     } catch {
       return NextResponse.json(
         { error: 'Invalid URL format' },
+        { status: 400 }
+      );
+    }
+
+    // SSRF Protection: Block private/internal IPs
+    if (isPrivateIP(parsedUrl.hostname)) {
+      return NextResponse.json(
+        { error: 'Cannot fetch private/internal URLs' },
+        { status: 400 }
+      );
+    }
+
+    // Only allow HTTP(S) protocols
+    if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+      return NextResponse.json(
+        { error: 'Only HTTP(S) URLs allowed' },
         { status: 400 }
       );
     }
