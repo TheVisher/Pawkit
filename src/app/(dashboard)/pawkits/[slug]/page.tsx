@@ -1,14 +1,17 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useParams, useRouter } from 'next/navigation';
+import { ChevronDown, ChevronRight, Folder } from 'lucide-react';
 import { useDataStore, selectCollectionBySlug, selectCardsByCollection } from '@/lib/stores/data-store';
 import { useViewActions, useViewSettings, useCardDisplaySettings } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { MasonryGrid } from '@/components/cards/masonry-grid';
 import { PawkitHeader } from '@/components/pawkits/pawkit-header';
+import { PawkitCard } from '@/components/pawkits/pawkit-card';
 import { ContentAreaContextMenu } from '@/components/context-menus';
+import { cn } from '@/lib/utils';
 
 export default function PawkitPage() {
     const params = useParams();
@@ -16,8 +19,12 @@ export default function PawkitPage() {
     const slug = params?.slug as string;
 
     const collection = useDataStore(selectCollectionBySlug(slug));
+    const collections = useDataStore((state) => state.collections);
     const cards = useDataStore(useShallow(selectCardsByCollection(slug)));
     const isLoading = useDataStore((state) => state.isLoading);
+
+    // State for sub-pawkits section collapse
+    const [subPawkitsExpanded, setSubPawkitsExpanded] = useState(true);
     const { loadViewSettings, reorderCards } = useViewActions();
     const { cardOrder, sortBy } = useViewSettings();
     const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
@@ -49,6 +56,16 @@ export default function PawkitPage() {
 
         return sorted;
     }, [cards, cardOrder, sortBy]);
+
+    // Get child collections (sub-pawkits)
+    const childCollections = useMemo(() => {
+        if (!collection) return [];
+        return collections
+            .filter((c) => c.parentId === collection.id && !c._deleted)
+            .sort((a, b) => a.position - b.position);
+    }, [collections, collection]);
+
+    const hasSubPawkits = childCollections.length > 0;
 
     // Load view settings for this pawkit
     useEffect(() => {
@@ -85,21 +102,56 @@ export default function PawkitPage() {
             <div className="flex-1">
                 <PawkitHeader collection={collection} />
 
-                <div className="px-6 pt-4 pb-6">
-                    {sortedCards.length === 0 ? (
+                <div className="px-6 pt-4 pb-6 space-y-6">
+                    {/* Sub-Pawkits Section */}
+                    {hasSubPawkits && (
+                        <div>
+                            <button
+                                onClick={() => setSubPawkitsExpanded(!subPawkitsExpanded)}
+                                className="flex items-center gap-2 text-sm font-medium text-text-muted hover:text-text-primary transition-colors mb-3"
+                            >
+                                {subPawkitsExpanded ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                )}
+                                <Folder className="h-4 w-4" />
+                                Sub-Pawkits
+                                <span className="text-text-muted">({childCollections.length})</span>
+                            </button>
+                            {subPawkitsExpanded && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                    {childCollections.map((child) => (
+                                        <PawkitCard key={child.id} collection={child} />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Cards Section */}
+                    {sortedCards.length === 0 && !hasSubPawkits ? (
                         <div className="flex flex-col items-center justify-center py-20 text-text-muted">
                             <p>No cards in this pawkit yet.</p>
                             <p className="text-sm mt-2">Drag cards here from the Library.</p>
                         </div>
-                    ) : (
-                        <MasonryGrid
-                            cards={sortedCards}
-                            onReorder={reorderCards}
-                            cardSize={cardSize}
-                            cardSpacing={cardSpacing}
-                            displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
-                        />
-                    )}
+                    ) : sortedCards.length > 0 ? (
+                        <div>
+                            {hasSubPawkits && (
+                                <div className="flex items-center gap-2 text-sm font-medium text-text-muted mb-3">
+                                    Cards
+                                    <span>({sortedCards.length})</span>
+                                </div>
+                            )}
+                            <MasonryGrid
+                                cards={sortedCards}
+                                onReorder={reorderCards}
+                                cardSize={cardSize}
+                                cardSpacing={cardSpacing}
+                                displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+                            />
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </ContentAreaContextMenu>
