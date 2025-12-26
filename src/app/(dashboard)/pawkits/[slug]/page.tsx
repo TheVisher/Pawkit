@@ -8,6 +8,7 @@ import { useViewActions, useViewSettings, useCardDisplaySettings } from '@/lib/s
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { MasonryGrid } from '@/components/cards/masonry-grid';
 import { PawkitHeader } from '@/components/pawkits/pawkit-header';
+import { ContentAreaContextMenu } from '@/components/context-menus';
 
 export default function PawkitPage() {
     const params = useParams();
@@ -80,25 +81,27 @@ export default function PawkitPage() {
     }
 
     return (
-        <div className="flex-1">
-            <PawkitHeader collection={collection} />
+        <ContentAreaContextMenu>
+            <div className="flex-1">
+                <PawkitHeader collection={collection} />
 
-            <div className="px-6 pt-4 pb-6">
-                {sortedCards.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-20 text-text-muted">
-                        <p>No cards in this pawkit yet.</p>
-                        <p className="text-sm mt-2">Drag cards here from the Library.</p>
-                    </div>
-                ) : (
-                    <MasonryGrid
-                        cards={sortedCards}
-                        onReorder={reorderCards}
-                        cardSize={cardSize}
-                        cardSpacing={cardSpacing}
-                        displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
-                    />
-                )}
+                <div className="px-6 pt-4 pb-6">
+                    {sortedCards.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-text-muted">
+                            <p>No cards in this pawkit yet.</p>
+                            <p className="text-sm mt-2">Drag cards here from the Library.</p>
+                        </div>
+                    ) : (
+                        <MasonryGrid
+                            cards={sortedCards}
+                            onReorder={reorderCards}
+                            cardSize={cardSize}
+                            cardSpacing={cardSpacing}
+                            displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+                        />
+                    )}
+                </div>
             </div>
-        </div>
+        </ContentAreaContextMenu>
     );
 }
