@@ -62,6 +62,8 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
         </Link>
     );
 
+    const hasCoverImage = !!collection.coverImage;
+
     const actions = (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -70,6 +72,10 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => openCoverImagePicker(collection.id)}>
+                    <ImagePlus className="h-4 w-4 mr-2" />
+                    {hasCoverImage ? 'Change cover' : 'Add cover'}
+                </DropdownMenuItem>
                 <DropdownMenuItem disabled>Rename</DropdownMenuItem>
                 <DropdownMenuItem disabled>Change Icon</DropdownMenuItem>
                 <DropdownMenuItem disabled className="text-destructive">Delete Pawkit</DropdownMenuItem>
@@ -77,46 +83,24 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
         </DropdownMenu>
     );
 
-    const hasCoverImage = !!collection.coverImage;
-
     return (
         <div>
-            {/* Cover Image Area */}
-            <div
-                className={cn(
-                    'relative group',
-                    hasCoverImage ? 'h-48' : 'h-24'
-                )}
-            >
-                {hasCoverImage ? (
-                    <>
-                        <Image
-                            src={collection.coverImage!}
-                            alt=""
-                            fill
-                            className="object-cover"
-                            style={{
-                                objectPosition: `center ${collection.coverImagePosition ?? 50}%`
-                            }}
-                        />
-                        {/* Gradient overlay for text readability */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-bg-base/80 via-bg-base/20 to-transparent" />
-                    </>
-                ) : (
-                    /* Empty cover placeholder - always visible */
-                    <div className="absolute inset-0 flex items-center justify-center bg-bg-surface-2/30 border-b border-border-subtle">
-                        <button
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-surface-2 text-text-muted hover:text-text-primary hover:bg-bg-surface-3 transition-colors text-sm border border-border-subtle"
-                            onClick={() => openCoverImagePicker(collection.id)}
-                        >
-                            <ImagePlus className="h-4 w-4" />
-                            Add cover
-                        </button>
-                    </div>
-                )}
+            {/* Cover Image Area - only shown when there's a cover */}
+            {hasCoverImage && (
+                <div className="relative group h-48">
+                    <Image
+                        src={collection.coverImage!}
+                        alt=""
+                        fill
+                        className="object-cover"
+                        style={{
+                            objectPosition: `center ${collection.coverImagePosition ?? 50}%`
+                        }}
+                    />
+                    {/* Gradient overlay for text readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-bg-base/80 via-bg-base/20 to-transparent" />
 
-                {/* Change cover button - only when there's an existing cover */}
-                {hasCoverImage && (
+                    {/* Change cover button */}
                     <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-bg-base/80 backdrop-blur-sm text-text-muted hover:text-text-primary text-xs transition-colors"
@@ -126,8 +110,8 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
                             Change cover
                         </button>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* Header with title - positioned to overlap cover slightly when present */}
             <div className={cn(hasCoverImage && '-mt-8 relative z-10')}>
