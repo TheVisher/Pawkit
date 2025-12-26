@@ -8,12 +8,16 @@ import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDebounce } from '@/lib/hooks/use-debounce';
-import { SEARCHABLE_ACTIONS, type SearchResults } from './types';
+import { SEARCHABLE_ACTIONS, addMenuItems, type SearchResults } from './types';
 
 export function useOmnibar(isCompact: boolean) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+  const [isAddMode, setIsAddMode] = useState(false);
+  const [addModeSelectedIndex, setAddModeSelectedIndex] = useState(-1);
+  const [isKitMode, setIsKitMode] = useState(false);
+  const [kitModeSelectedIndex, setKitModeSelectedIndex] = useState(-1);
   const [quickNoteText, setQuickNoteText] = useState('');
   const [isQuickNoteMode, setIsQuickNoteMode] = useState(false);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
@@ -25,7 +29,7 @@ export function useOmnibar(isCompact: boolean) {
   const isDiscardingRef = useRef(false);
 
   // Effective compact state
-  const effectivelyCompact = isCompact && !forceExpanded && !isQuickNoteMode;
+  const effectivelyCompact = isCompact && !forceExpanded && !isQuickNoteMode && !isAddMode && !isKitMode;
 
   // Store hooks
   const toast = useToastStore((s) => s.toast);
@@ -117,6 +121,74 @@ export function useOmnibar(isCompact: boolean) {
     window.addEventListener('click', handleClickOutside, true);
     return () => window.removeEventListener('click', handleClickOutside, true);
   }, [isQuickNoteMode, quickNoteText]);
+
+  // Click-outside handler for add mode
+  useEffect(() => {
+    if (!isAddMode) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.omnibar-container')) return;
+
+      setIsAddMode(false);
+      setAddModeSelectedIndex(-1);
+    };
+
+    window.addEventListener('click', handleClickOutside, true);
+    return () => window.removeEventListener('click', handleClickOutside, true);
+  }, [isAddMode]);
+
+  // Escape handler for add mode
+  useEffect(() => {
+    if (!isAddMode) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setIsAddMode(false);
+        setAddModeSelectedIndex(-1);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isAddMode]);
+
+  // ==========================================================================
+  // KIT MODE CLICK-OUTSIDE & ESCAPE HANDLERS
+  // ==========================================================================
+
+  // Click-outside handler for kit mode
+  useEffect(() => {
+    if (!isKitMode) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.omnibar-container')) return;
+
+      setIsKitMode(false);
+      setKitModeSelectedIndex(-1);
+    };
+
+    window.addEventListener('click', handleClickOutside, true);
+    return () => window.removeEventListener('click', handleClickOutside, true);
+  }, [isKitMode]);
+
+  // Escape handler for kit mode
+  useEffect(() => {
+    if (!isKitMode) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setIsKitMode(false);
+        setKitModeSelectedIndex(-1);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [isKitMode]);
 
   // Global escape handler for closing omnibar
   useEffect(() => {
@@ -371,6 +443,46 @@ export function useOmnibar(isCompact: boolean) {
 
     return Math.min(Math.max(48, height), 600);
   }, [isQuickNoteMode, quickNoteText, textareaHeight, searchResults]);
+
+  // ==========================================================================
+  // ADD MODE HEIGHT CALCULATION
+  // ==========================================================================
+
+  const getAddModeHeight = useCallback(() => {
+    if (!isAddMode) return 48;
+
+    const baseHeight = 48;
+    const headerHeight = 28;
+    const itemHeight = 44;
+    const itemCount = addMenuItems.length;
+
+    // Base + header + items + padding
+    return baseHeight + 16 + headerHeight + (itemCount * itemHeight);
+  }, [isAddMode]);
+
+  // ==========================================================================
+  // KIT MODE HEIGHT CALCULATION
+  // ==========================================================================
+
+  // Kit menu items - placeholder for now, will be replaced with actual chat history
+  const kitMenuItems = [
+    { id: 'new-chat', label: 'New Chat', icon: 'plus' },
+    { id: 'recent-1', label: 'How do I organize my bookmarks?', icon: 'message' },
+    { id: 'recent-2', label: 'Summarize my saved articles', icon: 'message' },
+    { id: 'recent-3', label: 'Find recipes I saved last week', icon: 'message' },
+  ];
+
+  const getKitModeHeight = useCallback(() => {
+    if (!isKitMode) return 48;
+
+    const baseHeight = 48;
+    const headerHeight = 28;
+    const itemHeight = 44;
+    const itemCount = kitMenuItems.length;
+
+    // Base + header + items + padding
+    return baseHeight + 16 + headerHeight + (itemCount * itemHeight);
+  }, [isKitMode, kitMenuItems.length]);
 
   // ==========================================================================
   // URL HELPERS
@@ -631,16 +743,159 @@ export function useOmnibar(isCompact: boolean) {
   }, []);
 
   // ==========================================================================
+  // ADD MODE HANDLERS
+  // ==========================================================================
+
+  const handleToggleAddMode = useCallback(() => {
+    if (isAddMode) {
+      setIsAddMode(false);
+      setAddModeSelectedIndex(-1);
+    } else {
+      // Close other modes if open
+      setIsQuickNoteMode(false);
+      setForceExpanded(false);
+      setSearchResults(null);
+      setSelectedIndex(-1);
+      setIsKitMode(false);
+      setKitModeSelectedIndex(-1);
+      setIsAddMode(true);
+      setAddModeSelectedIndex(-1);
+    }
+  }, [isAddMode]);
+
+  const handleAddModeKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!isAddMode) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setAddModeSelectedIndex(prev =>
+        prev < addMenuItems.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setAddModeSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
+    } else if (e.key === 'Enter' && addModeSelectedIndex >= 0) {
+      e.preventDefault();
+      const item = addMenuItems[addModeSelectedIndex];
+      if (item) {
+        handleAddModeAction(item.action);
+      }
+    }
+  }, [isAddMode, addModeSelectedIndex]);
+
+  // Add mode keyboard listener
+  useEffect(() => {
+    if (!isAddMode) return;
+    window.addEventListener('keydown', handleAddModeKeyDown);
+    return () => window.removeEventListener('keydown', handleAddModeKeyDown);
+  }, [isAddMode, handleAddModeKeyDown]);
+
+  const handleAddModeAction = useCallback((action: string) => {
+    switch (action) {
+      case 'bookmark':
+        openAddCard('bookmark');
+        break;
+      case 'note':
+      case 'quick-note':
+        openAddCard('note');
+        break;
+      case 'upload':
+        console.log('Upload action - coming soon');
+        break;
+      case 'event':
+        console.log('Event action - coming soon');
+        break;
+      default:
+        console.log('Unknown action:', action);
+    }
+    // Close add mode after action
+    setIsAddMode(false);
+    setAddModeSelectedIndex(-1);
+  }, [openAddCard]);
+
+  // ==========================================================================
+  // KIT MODE HANDLERS
+  // ==========================================================================
+
+  const handleToggleKitMode = useCallback(() => {
+    if (isKitMode) {
+      setIsKitMode(false);
+      setKitModeSelectedIndex(-1);
+    } else {
+      // Close other modes if open
+      setIsQuickNoteMode(false);
+      setForceExpanded(false);
+      setSearchResults(null);
+      setSelectedIndex(-1);
+      setIsAddMode(false);
+      setAddModeSelectedIndex(-1);
+      setIsKitMode(true);
+      setKitModeSelectedIndex(-1);
+    }
+  }, [isKitMode]);
+
+  const handleKitModeKeyDown = useCallback((e: KeyboardEvent) => {
+    if (!isKitMode) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setKitModeSelectedIndex(prev =>
+        prev < kitMenuItems.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setKitModeSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
+    } else if (e.key === 'Enter' && kitModeSelectedIndex >= 0) {
+      e.preventDefault();
+      const item = kitMenuItems[kitModeSelectedIndex];
+      if (item) {
+        handleKitModeAction(item.id);
+      }
+    }
+  }, [isKitMode, kitModeSelectedIndex, kitMenuItems]);
+
+  // Kit mode keyboard listener
+  useEffect(() => {
+    if (!isKitMode) return;
+    window.addEventListener('keydown', handleKitModeKeyDown);
+    return () => window.removeEventListener('keydown', handleKitModeKeyDown);
+  }, [isKitMode, handleKitModeKeyDown]);
+
+  const handleKitModeAction = useCallback((actionId: string) => {
+    switch (actionId) {
+      case 'new-chat':
+        console.log('Starting new Kit chat - coming soon');
+        break;
+      default:
+        // Recent chat clicked
+        console.log('Opening chat:', actionId, '- coming soon');
+    }
+    // Close kit mode after action
+    setIsKitMode(false);
+    setKitModeSelectedIndex(-1);
+  }, []);
+
+  // ==========================================================================
   // UI HANDLERS
   // ==========================================================================
 
   const handleSearchClick = useCallback(() => {
+    // Close add mode and kit mode if open
+    setIsAddMode(false);
+    setAddModeSelectedIndex(-1);
+    setIsKitMode(false);
+    setKitModeSelectedIndex(-1);
     setForceExpanded(true);
     setIsQuickNoteMode(true);
     setTimeout(() => textareaRef.current?.focus(), 300);
   }, []);
 
   const handleForceExpand = useCallback(() => {
+    // Close add mode and kit mode if open
+    setIsAddMode(false);
+    setAddModeSelectedIndex(-1);
+    setIsKitMode(false);
+    setKitModeSelectedIndex(-1);
     setForceExpanded(true);
     setIsQuickNoteMode(true);
     setTimeout(() => textareaRef.current?.focus(), 300);
@@ -667,6 +922,13 @@ export function useOmnibar(isCompact: boolean) {
     setIsAddMenuOpen(false);
   }, [openAddCard]);
 
+  // Calculate the appropriate height based on current mode
+  const getComputedHeight = () => {
+    if (isAddMode) return getAddModeHeight();
+    if (isKitMode) return getKitModeHeight();
+    return getExpandedHeight();
+  };
+
   return {
     // State
     mounted,
@@ -683,8 +945,17 @@ export function useOmnibar(isCompact: boolean) {
     textareaRef,
     effectivelyCompact,
 
+    // Add Mode State
+    isAddMode,
+    addModeSelectedIndex,
+
+    // Kit Mode State
+    isKitMode,
+    kitModeSelectedIndex,
+    kitMenuItems,
+
     // Computed
-    expandedHeight: getExpandedHeight(),
+    expandedHeight: getComputedHeight(),
 
     // Handlers
     handleSearchClick,
@@ -696,5 +967,13 @@ export function useOmnibar(isCompact: boolean) {
     executeResult,
     confirmDiscard,
     cancelDiscard,
+
+    // Add Mode Handlers
+    handleToggleAddMode,
+    handleAddModeAction,
+
+    // Kit Mode Handlers
+    handleToggleKitMode,
+    handleKitModeAction,
   };
 }
