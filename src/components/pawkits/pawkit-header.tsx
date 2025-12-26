@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/layout/page-header';
 import { useCollections } from '@/lib/stores/data-store';
+import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
 import type { LocalCollection } from '@/lib/db';
 
@@ -21,6 +22,7 @@ interface PawkitHeaderProps {
 
 export function PawkitHeader({ collection }: PawkitHeaderProps) {
     const collections = useCollections();
+    const openCoverImagePicker = useModalStore((s) => s.openCoverImagePicker);
 
     // Build breadcrumb trail
     const breadcrumbs: LocalCollection[] = [];
@@ -101,14 +103,11 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
                         <div className="absolute inset-0 bg-gradient-to-t from-bg-base/80 via-bg-base/20 to-transparent" />
                     </>
                 ) : (
-                    /* Empty cover placeholder - shows on hover */
-                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-bg-surface-2/50">
+                    /* Empty cover placeholder - always visible */
+                    <div className="absolute inset-0 flex items-center justify-center bg-bg-surface-2/30 border-b border-border-subtle">
                         <button
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-surface-2 text-text-muted hover:text-text-primary hover:bg-bg-surface-3 transition-colors text-sm"
-                            onClick={() => {
-                                // TODO: Open cover image picker
-                                console.log('Add cover image');
-                            }}
+                            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-bg-surface-2 text-text-muted hover:text-text-primary hover:bg-bg-surface-3 transition-colors text-sm border border-border-subtle"
+                            onClick={() => openCoverImagePicker(collection.id)}
                         >
                             <ImagePlus className="h-4 w-4" />
                             Add cover
@@ -121,10 +120,7 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
                     <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-bg-base/80 backdrop-blur-sm text-text-muted hover:text-text-primary text-xs transition-colors"
-                            onClick={() => {
-                                // TODO: Open cover image picker
-                                console.log('Change cover image');
-                            }}
+                            onClick={() => openCoverImagePicker(collection.id)}
                         >
                             <ImagePlus className="h-3.5 w-3.5" />
                             Change cover

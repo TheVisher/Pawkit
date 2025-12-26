@@ -21,6 +21,12 @@ interface ModalStore {
   isCreatePawkitOpen: boolean;
   openCreatePawkitModal: () => void;
   closeCreatePawkitModal: () => void;
+
+  // Cover Image Picker Modal
+  isCoverImagePickerOpen: boolean;
+  coverImageCollectionId: string | null;
+  openCoverImagePicker: (collectionId: string) => void;
+  closeCoverImagePicker: () => void;
 }
 
 export const useModalStore = create<ModalStore>((set) => ({
@@ -44,4 +50,10 @@ export const useModalStore = create<ModalStore>((set) => ({
   isCreatePawkitOpen: false,
   openCreatePawkitModal: () => set({ isCreatePawkitOpen: true }),
   closeCreatePawkitModal: () => set({ isCreatePawkitOpen: false }),
+
+  // Cover Image Picker Modal
+  isCoverImagePickerOpen: false,
+  coverImageCollectionId: null,
+  openCoverImagePicker: (collectionId) => set({ isCoverImagePickerOpen: true, coverImageCollectionId: collectionId }),
+  closeCoverImagePicker: () => set({ isCoverImagePickerOpen: false, coverImageCollectionId: null }),
 }));

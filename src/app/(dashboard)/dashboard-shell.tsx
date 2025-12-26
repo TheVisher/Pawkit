@@ -13,6 +13,7 @@ import { MobileNav } from '@/components/layout/mobile-nav';
 import { AddCardModal } from '@/components/modals/add-card-modal';
 import { CardDetailModal } from '@/components/modals/card-detail-modal';
 import { CreatePawkitModal } from '@/components/modals/create-pawkit-modal';
+import { CoverImagePickerModal } from '@/components/modals/cover-image-picker-modal';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { CardsDragHandler } from '@/components/pawkits/cards-drag-handler';
 import { Omnibar } from '@/components/layout/omnibar';
@@ -465,6 +466,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
         <AddCardModal />
         <CardDetailModal />
         <CreatePawkitModal />
+        <CoverImagePickerModal />
         <CardsDragHandler />
       </div>
     </AppDndProvider>
