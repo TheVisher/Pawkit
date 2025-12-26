@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Image from 'next/image';
-import { ImagePlus, Link2, X, Check } from 'lucide-react';
+import { ImagePlus, Link2, X, Check, MoveVertical, Maximize2 } from 'lucide-react';
 import {
     Dialog,
     DialogContent,
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useToastStore } from '@/lib/stores/toast-store';
@@ -32,6 +33,10 @@ export function CoverImagePickerModal() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState<string>('gallery');
 
+    // Cover adjustments
+    const [coverHeight, setCoverHeight] = useState(224);
+    const [coverPosition, setCoverPosition] = useState(50);
+
     // Get the collection being edited
     const collection = useMemo(() => {
         if (!coverImageCollectionId) return null;
@@ -46,14 +51,19 @@ export function CoverImagePickerModal() {
         );
     }, [cards, collection]);
 
+    // Current preview image
+    const previewImage = activeTab === 'url' ? urlInput : selectedImage;
+
     // Reset form when modal opens
     useEffect(() => {
-        if (isCoverImagePickerOpen) {
-            setSelectedImage(collection?.coverImage || null);
+        if (isCoverImagePickerOpen && collection) {
+            setSelectedImage(collection.coverImage || null);
             setUrlInput('');
-            setActiveTab('gallery');
+            setActiveTab(collection.coverImage ? 'adjust' : 'gallery');
+            setCoverHeight(collection.coverImageHeight ?? 224);
+            setCoverPosition(collection.coverImagePosition ?? 50);
         }
-    }, [isCoverImagePickerOpen, collection?.coverImage]);
+    }, [isCoverImagePickerOpen, collection]);
 
     const handleSubmit = async () => {
         if (!coverImageCollectionId) return;
@@ -65,6 +75,8 @@ export function CoverImagePickerModal() {
         try {
             await updateCollection(coverImageCollectionId, {
                 coverImage: imageUrl || undefined,
+                coverImageHeight: coverHeight,
+                coverImagePosition: coverPosition,
             });
 
             toast({
@@ -92,6 +104,8 @@ export function CoverImagePickerModal() {
         try {
             await updateCollection(coverImageCollectionId, {
                 coverImage: undefined,
+                coverImageHeight: undefined,
+                coverImagePosition: undefined,
             });
 
             toast({
@@ -117,24 +131,111 @@ export function CoverImagePickerModal() {
         }
     };
 
+    const hasExistingCover = !!collection?.coverImage;
+
     return (
         <Dialog open={isCoverImagePickerOpen} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-[550px] bg-bg-surface-1 border-border-subtle">
+            <DialogContent className="sm:max-w-[600px] bg-bg-surface-1 border-border-subtle max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <ImagePlus className="h-5 w-5 text-accent" />
-                        Set Cover Image
+                        {hasExistingCover ? 'Edit Cover Image' : 'Set Cover Image'}
                     </DialogTitle>
                     <DialogDescription>
-                        Choose a cover image for &quot;{collection?.name}&quot;
+                        {hasExistingCover
+                            ? 'Adjust your cover image or choose a new one'
+                            : `Choose a cover image for "${collection?.name}"`
+                        }
                     </DialogDescription>
                 </DialogHeader>
 
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsList className={cn('grid w-full', hasExistingCover ? 'grid-cols-3' : 'grid-cols-2')}>
+                        {hasExistingCover && <TabsTrigger value="adjust">Adjust</TabsTrigger>}
                         <TabsTrigger value="gallery">From Cards</TabsTrigger>
                         <TabsTrigger value="url">Image URL</TabsTrigger>
                     </TabsList>
+
+                    {/* Adjust Tab - only when cover exists */}
+                    {hasExistingCover && (
+                        <TabsContent value="adjust" className="mt-4 space-y-4">
+                            {/* Live Preview */}
+                            <div className="space-y-2">
+                                <Label className="text-xs text-text-muted">Preview</Label>
+                                <div
+                                    className="relative rounded-lg overflow-hidden bg-bg-surface-2 border border-border-subtle"
+                                    style={{
+                                        height: `${Math.min(coverHeight, 200)}px`,
+                                        maskImage: 'linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.8) 60%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.1) 90%, transparent 100%)',
+                                        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.8) 60%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.1) 90%, transparent 100%)',
+                                    }}
+                                >
+                                    <Image
+                                        src={collection.coverImage!}
+                                        alt="Cover preview"
+                                        fill
+                                        sizes="600px"
+                                        className="object-cover"
+                                        style={{
+                                            objectPosition: `center ${coverPosition}%`
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Height Slider */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="flex items-center gap-2 text-sm">
+                                        <Maximize2 className="h-4 w-4 text-text-muted" />
+                                        Height
+                                    </Label>
+                                    <span className="text-xs text-text-muted">{coverHeight}px</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="120"
+                                    max="400"
+                                    value={coverHeight}
+                                    onChange={(e) => setCoverHeight(Number(e.target.value))}
+                                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                                    style={{
+                                        background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${((coverHeight - 120) / 280) * 100}%, var(--color-bg-surface-3) ${((coverHeight - 120) / 280) * 100}%, var(--color-bg-surface-3) 100%)`,
+                                    }}
+                                />
+                                <div className="flex justify-between text-xs text-text-muted">
+                                    <span>Short</span>
+                                    <span>Tall</span>
+                                </div>
+                            </div>
+
+                            {/* Position Slider */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <Label className="flex items-center gap-2 text-sm">
+                                        <MoveVertical className="h-4 w-4 text-text-muted" />
+                                        Vertical Position
+                                    </Label>
+                                    <span className="text-xs text-text-muted">{coverPosition}%</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="100"
+                                    value={coverPosition}
+                                    onChange={(e) => setCoverPosition(Number(e.target.value))}
+                                    className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                                    style={{
+                                        background: `linear-gradient(to right, var(--color-accent) 0%, var(--color-accent) ${coverPosition}%, var(--color-bg-surface-3) ${coverPosition}%, var(--color-bg-surface-3) 100%)`,
+                                    }}
+                                />
+                                <div className="flex justify-between text-xs text-text-muted">
+                                    <span>Top</span>
+                                    <span>Bottom</span>
+                                </div>
+                            </div>
+                        </TabsContent>
+                    )}
 
                     <TabsContent value="gallery" className="mt-4">
                         {collectionCards.length === 0 ? (
@@ -143,7 +244,7 @@ export function CoverImagePickerModal() {
                                 <p className="text-sm mt-1">Add cards with images or use a URL instead.</p>
                             </div>
                         ) : (
-                            <div className="grid grid-cols-3 gap-2 max-h-[300px] overflow-y-auto">
+                            <div className="grid grid-cols-3 gap-2 max-h-[250px] overflow-y-auto">
                                 {collectionCards.map((card) => (
                                     <button
                                         key={card.id}
@@ -210,7 +311,7 @@ export function CoverImagePickerModal() {
                 </Tabs>
 
                 <DialogFooter className="flex-col sm:flex-row gap-2">
-                    {collection?.coverImage && (
+                    {hasExistingCover && (
                         <Button
                             type="button"
                             variant="outline"
@@ -229,7 +330,7 @@ export function CoverImagePickerModal() {
                         onClick={handleSubmit}
                         disabled={isSubmitting || (activeTab === 'gallery' && !selectedImage) || (activeTab === 'url' && !urlInput.trim())}
                     >
-                        {isSubmitting ? 'Saving...' : 'Set Cover'}
+                        {isSubmitting ? 'Saving...' : (hasExistingCover && activeTab === 'adjust' ? 'Save Changes' : 'Set Cover')}
                     </Button>
                 </DialogFooter>
             </DialogContent>
