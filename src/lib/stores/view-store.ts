@@ -13,6 +13,7 @@ export type SortOrder = 'asc' | 'desc';
 // Content type filters - matches V1 categories
 export type ContentType = 'bookmarks' | 'notes' | 'quick-notes' | 'video' | 'images' | 'docs' | 'audio' | 'other';
 export type CardSize = 'small' | 'medium' | 'large' | 'xl';
+export type SubPawkitSize = 'compact' | 'normal' | 'large';
 // Grouping options
 export type GroupBy = 'none' | 'date' | 'tags' | 'type' | 'domain';
 export type DateGrouping = 'smart' | 'day' | 'week' | 'month' | 'year'; // smart = Today/Yesterday/This Week/etc
@@ -132,6 +133,10 @@ interface ViewState {
   groupBy: GroupBy;
   dateGrouping: DateGrouping; // Only used when groupBy === 'date'
 
+  // Sub-Pawkits display (persisted, for pawkit views)
+  subPawkitSize: SubPawkitSize;
+  subPawkitColumns: number; // 2-6 columns
+
   // Loading state
   isLoading: boolean;
 
@@ -153,6 +158,8 @@ interface ViewState {
   clearContentTypes: () => void;
   setGroupBy: (groupBy: GroupBy) => void;
   setDateGrouping: (grouping: DateGrouping) => void;
+  setSubPawkitSize: (size: SubPawkitSize) => void;
+  setSubPawkitColumns: (columns: number) => void;
   setSelectedTags: (tags: string[]) => void;
   toggleTag: (tag: string) => void; // Add/remove tag from selection
   clearTags: () => void;
@@ -189,6 +196,9 @@ const DEFAULT_VIEW_SETTINGS = {
   // Grouping
   groupBy: 'none' as GroupBy,
   dateGrouping: 'smart' as DateGrouping,
+  // Sub-Pawkits display
+  subPawkitSize: 'normal' as SubPawkitSize,
+  subPawkitColumns: 4,
   // List view column settings
   listColumnOrder: [] as string[],
   listColumnWidths: {} as Record<string, number>,
@@ -263,6 +273,10 @@ export const useViewStore = create<ViewState>((set, get) => ({
 
   setDateGrouping: (grouping) => set({ dateGrouping: grouping }),
 
+  setSubPawkitSize: (size) => set({ subPawkitSize: size }),
+
+  setSubPawkitColumns: (columns) => set({ subPawkitColumns: Math.max(2, Math.min(6, columns)) }),
+
   // Manual ordering actions
   setCardOrder: (ids) => set({ cardOrder: ids }),
 
@@ -306,6 +320,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
           listColumnVisibility?: Record<string, boolean>;
           groupBy?: GroupBy;
           dateGrouping?: DateGrouping;
+          subPawkitSize?: SubPawkitSize;
+          subPawkitColumns?: number;
         };
         set({
           layout: s.layout as Layout,
@@ -325,6 +341,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
           listColumnVisibility: s.listColumnVisibility || {},
           groupBy: s.groupBy || DEFAULT_VIEW_SETTINGS.groupBy,
           dateGrouping: s.dateGrouping || DEFAULT_VIEW_SETTINGS.dateGrouping,
+          subPawkitSize: s.subPawkitSize || DEFAULT_VIEW_SETTINGS.subPawkitSize,
+          subPawkitColumns: s.subPawkitColumns ?? DEFAULT_VIEW_SETTINGS.subPawkitColumns,
           isLoading: false,
         });
       } else {
@@ -342,7 +360,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
     const {
       currentView, layout, sortBy, sortOrder, showTitles, showUrls, showTags,
       cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, cardOrder,
-      listColumnOrder, listColumnWidths, listColumnVisibility, groupBy, dateGrouping
+      listColumnOrder, listColumnWidths, listColumnVisibility, groupBy, dateGrouping,
+      subPawkitSize, subPawkitColumns
     } = get();
 
     try {
@@ -372,6 +391,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
           listColumnVisibility,
           groupBy,
           dateGrouping,
+          subPawkitSize,
+          subPawkitColumns,
           updatedAt: new Date(),
         });
         await db.viewSettings.put(updated);
@@ -398,6 +419,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
           listColumnVisibility,
           groupBy,
           dateGrouping,
+          subPawkitSize,
+          subPawkitColumns,
           createdAt: new Date(),
           updatedAt: new Date(),
           ...createSyncMetadata(),
@@ -408,6 +431,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
           listColumnVisibility: Record<string, boolean>;
           groupBy: GroupBy;
           dateGrouping: DateGrouping;
+          subPawkitSize: SubPawkitSize;
+          subPawkitColumns: number;
         };
         await db.viewSettings.add(newSettings);
       }
@@ -541,6 +566,17 @@ export function useGrouping() {
       dateGrouping: state.dateGrouping,
       setGroupBy: state.setGroupBy,
       setDateGrouping: state.setDateGrouping,
+    }))
+  );
+}
+
+export function useSubPawkitSettings() {
+  return useViewStore(
+    useShallow((state) => ({
+      subPawkitSize: state.subPawkitSize,
+      subPawkitColumns: state.subPawkitColumns,
+      setSubPawkitSize: state.setSubPawkitSize,
+      setSubPawkitColumns: state.setSubPawkitColumns,
     }))
   );
 }

@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronDown, ChevronRight, Folder } from 'lucide-react';
 import { useDataStore, selectCollectionBySlug, selectCardsByCollection } from '@/lib/stores/data-store';
-import { useViewActions, useViewSettings, useCardDisplaySettings } from '@/lib/stores/view-store';
+import { useViewActions, useViewSettings, useCardDisplaySettings, useSubPawkitSettings } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { MasonryGrid } from '@/components/cards/masonry-grid';
 import { PawkitHeader } from '@/components/pawkits/pawkit-header';
@@ -28,7 +28,20 @@ export default function PawkitPage() {
     const { loadViewSettings, reorderCards } = useViewActions();
     const { cardOrder, sortBy } = useViewSettings();
     const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
+    const { subPawkitSize, subPawkitColumns } = useSubPawkitSettings();
     const workspace = useCurrentWorkspace();
+
+    // Get grid columns class based on subPawkitColumns setting
+    const getSubPawkitGridCols = () => {
+        switch (subPawkitColumns) {
+            case 2: return 'grid-cols-1 sm:grid-cols-2';
+            case 3: return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+            case 4: return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+            case 5: return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5';
+            case 6: return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6';
+            default: return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+        }
+    };
 
     // Sort cards based on manual order if 'manual' sort is active or if cardOrder exists
     const sortedCards = useMemo(() => {
@@ -120,9 +133,9 @@ export default function PawkitPage() {
                                 <span className="text-text-muted">({childCollections.length})</span>
                             </button>
                             {subPawkitsExpanded && (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                <div className={cn('grid gap-4', getSubPawkitGridCols())}>
                                     {childCollections.map((child) => (
-                                        <PawkitCard key={child.id} collection={child} />
+                                        <PawkitCard key={child.id} collection={child} size={subPawkitSize} />
                                     ))}
                                 </div>
                             )}
