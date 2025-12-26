@@ -7,16 +7,12 @@ import {
   FileText,
   Globe,
   MessageCircle,
+  MessageSquare,
   Hash,
   Folder,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { addMenuItems, type SearchResults } from './types';
 
 // =============================================================================
@@ -41,6 +37,17 @@ interface IdleContentProps {
   searchResults: SearchResults | null;
   selectedIndex: number;
   onSelectResult: (index: number) => void;
+  // Add Mode Props
+  isAddMode: boolean;
+  addModeSelectedIndex: number;
+  onToggleAddMode: () => void;
+  onAddModeAction: (action: string) => void;
+  // Kit Mode Props
+  isKitMode: boolean;
+  kitModeSelectedIndex: number;
+  kitMenuItems: Array<{ id: string; label: string; icon: string }>;
+  onToggleKitMode: () => void;
+  onKitModeAction: (actionId: string) => void;
 }
 
 export function IdleContent({
@@ -61,6 +68,17 @@ export function IdleContent({
   searchResults,
   selectedIndex,
   onSelectResult,
+  // Add Mode Props
+  isAddMode,
+  addModeSelectedIndex,
+  onToggleAddMode,
+  onAddModeAction,
+  // Kit Mode Props
+  isKitMode,
+  kitModeSelectedIndex,
+  kitMenuItems,
+  onToggleKitMode,
+  onKitModeAction,
 }: IdleContentProps) {
   const hasContent = quickNoteText.length > 0;
 
@@ -101,41 +119,30 @@ export function IdleContent({
     >
       {/* Top Row: Plus Button + Search + Chat */}
       <div className="flex w-full shrink-0 items-start pt-1">
-        {/* Plus Button */}
-        <DropdownMenu open={isAddMenuOpen} onOpenChange={setIsAddMenuOpen}>
-          <DropdownMenuTrigger asChild>
-            <button
-              className={cn(
-                'flex items-center justify-center shrink-0',
-                'w-10 h-10 rounded-xl',
-                'text-text-muted hover:text-text-primary',
-                'hover:bg-[var(--glass-bg)] active:bg-[var(--glass-bg-hover)]',
-                'transition-colors duration-150'
-              )}
-            >
-              <Plus className="h-5 w-5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56">
-            {addMenuItems.map((item) => (
-              <DropdownMenuItem
-                key={item.action}
-                onClick={() => onAddAction(item.action)}
-                className="flex items-center gap-3 text-text-secondary hover:text-text-primary focus:bg-[var(--glass-bg)]"
-              >
-                <item.icon className="h-4 w-4" />
-                <span className="flex-1">{item.label}</span>
-                {item.shortcut && (
-                  <kbd className="text-xs text-text-muted">{item.shortcut}</kbd>
-                )}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Plus Button - Toggle Add Mode */}
+        <button
+          onClick={onToggleAddMode}
+          className={cn(
+            'flex items-center justify-center shrink-0',
+            'w-10 h-10 rounded-xl',
+            'text-text-muted hover:text-text-primary',
+            'hover:bg-[var(--glass-bg)] active:bg-[var(--glass-bg-hover)]',
+            'transition-all duration-150',
+            isAddMode && 'bg-[var(--glass-bg)] text-text-primary rotate-45'
+          )}
+        >
+          <Plus className="h-5 w-5 transition-transform duration-200" />
+        </button>
 
         <AnimatePresence mode="wait">
           {isCompact && !isQuickNoteMode ? (
-            <CompactButtons key="compact" onSearchClick={onSearchClick} onForceExpand={onForceExpand} />
+            <CompactButtons
+              key="compact"
+              onSearchClick={onSearchClick}
+              onForceExpand={onForceExpand}
+              isKitMode={isKitMode}
+              onToggleKitMode={onToggleKitMode}
+            />
           ) : (
             <ExpandedContent
               key="expanded"
@@ -148,6 +155,8 @@ export function IdleContent({
               onQuickNoteKeyDown={onQuickNoteKeyDown}
               onQuickNoteBlur={onQuickNoteBlur}
               onSaveQuickNote={onSaveQuickNote}
+              isKitMode={isKitMode}
+              onToggleKitMode={onToggleKitMode}
             />
           )}
         </AnimatePresence>
@@ -285,6 +294,72 @@ export function IdleContent({
           )}
         </div>
       )}
+
+      {/* =================================================================== */}
+      {/* ADD MODE PANEL - Expandable menu for adding items                  */}
+      {/* =================================================================== */}
+      {isAddMode && (
+        <div className="flex-1 overflow-y-auto mt-2 border-t border-[var(--glass-border)] pt-2">
+          <div className="px-3 py-1 text-[11px] font-medium text-text-muted uppercase tracking-wider">
+            Create New
+          </div>
+          {addMenuItems.map((item, idx) => (
+            <button
+              key={item.action}
+              onClick={() => onAddModeAction(item.action)}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left',
+                'transition-colors duration-100',
+                addModeSelectedIndex === idx
+                  ? 'bg-[var(--color-accent)]/20 text-text-primary'
+                  : 'hover:bg-[var(--glass-bg)] text-text-secondary hover:text-text-primary'
+              )}
+            >
+              <item.icon className="h-4 w-4 shrink-0 text-text-muted" />
+              <span className="flex-1 text-sm">{item.label}</span>
+              {item.shortcut && (
+                <kbd className="text-xs text-text-muted shrink-0">{item.shortcut}</kbd>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* KIT MODE PANEL - AI Chat menu                                       */}
+      {/* =================================================================== */}
+      {isKitMode && (
+        <div className="flex-1 overflow-y-auto mt-2 border-t border-[var(--glass-border)] pt-2">
+          <div className="px-3 py-1 text-[11px] font-medium text-text-muted uppercase tracking-wider">
+            Kit AI
+          </div>
+          {kitMenuItems.map((item, idx) => (
+            <button
+              key={item.id}
+              onClick={() => onKitModeAction(item.id)}
+              className={cn(
+                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left',
+                'transition-colors duration-100',
+                kitModeSelectedIndex === idx
+                  ? 'bg-[var(--color-accent)]/20 text-text-primary'
+                  : 'hover:bg-[var(--glass-bg)] text-text-secondary hover:text-text-primary'
+              )}
+            >
+              {item.icon === 'plus' ? (
+                <Sparkles className="h-4 w-4 shrink-0 text-[var(--color-accent)]" />
+              ) : (
+                <MessageSquare className="h-4 w-4 shrink-0 text-text-muted" />
+              )}
+              <span className={cn(
+                'flex-1 text-sm truncate',
+                item.icon === 'plus' && 'font-medium'
+              )}>
+                {item.label}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -303,6 +378,9 @@ interface ExpandedContentProps {
   onQuickNoteKeyDown: (e: React.KeyboardEvent) => void;
   onQuickNoteBlur: (e: React.FocusEvent) => void;
   onSaveQuickNote: () => void;
+  // Kit Mode
+  isKitMode: boolean;
+  onToggleKitMode: () => void;
 }
 
 function ExpandedContent({
@@ -314,6 +392,8 @@ function ExpandedContent({
   onQuickNoteKeyDown,
   onQuickNoteBlur,
   onSaveQuickNote,
+  isKitMode,
+  onToggleKitMode,
 }: ExpandedContentProps) {
   const hasContent = quickNoteText.length > 0;
   const isSearchMode = quickNoteText.startsWith('/') || quickNoteText.startsWith('#') || quickNoteText.startsWith('@');
@@ -383,14 +463,16 @@ function ExpandedContent({
       {/* Kit Chat Button - only show when no content */}
       {!hasContent && (
         <button
+          onClick={onToggleKitMode}
           className={cn(
             'flex items-center justify-center shrink-0',
             'w-10 h-10 rounded-xl',
             'text-text-muted hover:text-text-primary',
             'hover:bg-[var(--glass-bg)] active:bg-[var(--glass-bg-hover)]',
-            'transition-colors duration-150'
+            'transition-all duration-150',
+            isKitMode && 'bg-[var(--glass-bg)] text-[var(--color-accent)]'
           )}
-          title="Kit Chat (coming soon)"
+          title="Kit AI Chat"
         >
           <MessageCircle className="h-5 w-5" />
         </button>
@@ -406,9 +488,11 @@ function ExpandedContent({
 interface CompactButtonsProps {
   onSearchClick: () => void;
   onForceExpand: () => void;
+  isKitMode: boolean;
+  onToggleKitMode: () => void;
 }
 
-function CompactButtons({ onForceExpand }: CompactButtonsProps) {
+function CompactButtons({ onForceExpand, isKitMode, onToggleKitMode }: CompactButtonsProps) {
   return (
     <motion.div
       className="flex items-center justify-center flex-1 h-10 gap-1"
@@ -434,14 +518,16 @@ function CompactButtons({ onForceExpand }: CompactButtonsProps) {
 
       {/* Kit Chat Button */}
       <button
+        onClick={onToggleKitMode}
         className={cn(
           'flex items-center justify-center',
           'w-10 h-10 rounded-xl',
           'text-text-muted hover:text-text-primary',
           'hover:bg-[var(--glass-bg)] active:bg-[var(--glass-bg-hover)]',
-          'transition-colors duration-150'
+          'transition-all duration-150',
+          isKitMode && 'bg-[var(--glass-bg)] text-[var(--color-accent)]'
         )}
-        title="Kit Chat (coming soon)"
+        title="Kit AI Chat"
       >
         <MessageCircle className="h-5 w-5" />
       </button>

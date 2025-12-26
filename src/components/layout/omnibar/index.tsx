@@ -40,6 +40,17 @@ export function Omnibar({ isCompact }: OmnibarProps) {
     executeResult,
     confirmDiscard,
     cancelDiscard,
+    // Add Mode
+    isAddMode,
+    addModeSelectedIndex,
+    handleToggleAddMode,
+    handleAddModeAction,
+    // Kit Mode
+    isKitMode,
+    kitModeSelectedIndex,
+    kitMenuItems,
+    handleToggleKitMode,
+    handleKitModeAction,
   } = useOmnibar(isCompact);
 
   // Don't render until mounted to prevent hydration issues
@@ -119,6 +130,17 @@ export function Omnibar({ isCompact }: OmnibarProps) {
               searchResults={searchResults}
               selectedIndex={selectedIndex}
               onSelectResult={executeResult}
+              // Add Mode Props
+              isAddMode={isAddMode}
+              addModeSelectedIndex={addModeSelectedIndex}
+              onToggleAddMode={handleToggleAddMode}
+              onAddModeAction={handleAddModeAction}
+              // Kit Mode Props
+              isKitMode={isKitMode}
+              kitModeSelectedIndex={kitModeSelectedIndex}
+              kitMenuItems={kitMenuItems}
+              onToggleKitMode={handleToggleKitMode}
+              onKitModeAction={handleKitModeAction}
             />
           )}
         </AnimatePresence>
