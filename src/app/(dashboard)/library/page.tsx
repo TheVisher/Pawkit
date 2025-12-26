@@ -9,6 +9,7 @@ import { useModalStore } from '@/lib/stores/modal-store';
 import { CardGrid } from '@/components/cards/card-grid';
 import { EmptyState } from '@/components/cards/empty-state';
 import { PageHeader } from '@/components/layout/page-header';
+import { ContentAreaContextMenu } from '@/components/context-menus';
 import { Bookmark, CalendarDays, Tag, Type, Globe } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
 
@@ -260,69 +261,71 @@ export default function LibraryPage() {
     : `${activeCards.length} item${activeCards.length === 1 ? '' : 's'}`;
 
   return (
-    <div className="flex-1">
-      <PageHeader title="Library" subtitle={subtitle} />
+    <ContentAreaContextMenu>
+      <div className="flex-1">
+        <PageHeader title="Library" subtitle={subtitle} />
 
-      {/* Page content - pt-4 creates spacing below header */}
-      <div className="px-6 pt-4 pb-6">
-        {activeCards.length === 0 ? (
-          <EmptyState
-            icon={Bookmark}
-            title="No bookmarks yet"
-            description="Save your first bookmark to get started. Use the + button above or press ⌘⇧B."
-            actionLabel="Add bookmark"
-            onAction={() => openAddCard('bookmark')}
-          />
-        ) : groupBy === 'none' ? (
-          <CardGrid
-            cards={sortedCards}
-            layout={layout}
-            onReorder={handleReorder}
-            cardSize={cardSize}
-            cardSpacing={cardSpacing}
-            displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
-          />
-        ) : layout === 'list' ? (
-          // List view with grouping - pass groups to single CardGrid for inline separators
-          <CardGrid
-            cards={sortedCards}
-            layout={layout}
-            onReorder={handleReorder}
-            cardSize={cardSize}
-            cardSpacing={cardSpacing}
-            displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
-            groups={groupedCards}
-            groupIcon={GroupIcon || undefined}
-          />
-        ) : (
-          // Masonry/Grid view with grouping - separate sections with headers
-          <div className="space-y-8">
-            {groupedCards.map((group) => (
-              <div key={group.key}>
-                {/* Group header */}
-                <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-text-muted)]/15">
-                  {GroupIcon && <GroupIcon className="h-4 w-4 text-[var(--color-text-muted)]" />}
-                  <h2 className="text-sm font-medium text-[var(--color-text-secondary)]">
-                    {group.label}
-                  </h2>
-                  <span className="text-xs text-[var(--color-text-muted)]">
-                    {group.cards.length} item{group.cards.length === 1 ? '' : 's'}
-                  </span>
+        {/* Page content - pt-4 creates spacing below header */}
+        <div className="px-6 pt-4 pb-6">
+          {activeCards.length === 0 ? (
+            <EmptyState
+              icon={Bookmark}
+              title="No bookmarks yet"
+              description="Save your first bookmark to get started. Use the + button above or press ⌘⇧B."
+              actionLabel="Add bookmark"
+              onAction={() => openAddCard('bookmark')}
+            />
+          ) : groupBy === 'none' ? (
+            <CardGrid
+              cards={sortedCards}
+              layout={layout}
+              onReorder={handleReorder}
+              cardSize={cardSize}
+              cardSpacing={cardSpacing}
+              displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+            />
+          ) : layout === 'list' ? (
+            // List view with grouping - pass groups to single CardGrid for inline separators
+            <CardGrid
+              cards={sortedCards}
+              layout={layout}
+              onReorder={handleReorder}
+              cardSize={cardSize}
+              cardSpacing={cardSpacing}
+              displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+              groups={groupedCards}
+              groupIcon={GroupIcon || undefined}
+            />
+          ) : (
+            // Masonry/Grid view with grouping - separate sections with headers
+            <div className="space-y-8">
+              {groupedCards.map((group) => (
+                <div key={group.key}>
+                  {/* Group header */}
+                  <div className="flex items-center gap-2 mb-4 pb-2 border-b border-[var(--color-text-muted)]/15">
+                    {GroupIcon && <GroupIcon className="h-4 w-4 text-[var(--color-text-muted)]" />}
+                    <h2 className="text-sm font-medium text-[var(--color-text-secondary)]">
+                      {group.label}
+                    </h2>
+                    <span className="text-xs text-[var(--color-text-muted)]">
+                      {group.cards.length} item{group.cards.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  {/* Group cards */}
+                  <CardGrid
+                    cards={group.cards}
+                    layout={layout}
+                    onReorder={handleReorder}
+                    cardSize={cardSize}
+                    cardSpacing={cardSpacing}
+                    displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+                  />
                 </div>
-                {/* Group cards */}
-                <CardGrid
-                  cards={group.cards}
-                  layout={layout}
-                  onReorder={handleReorder}
-                  cardSize={cardSize}
-                  cardSpacing={cardSpacing}
-                  displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
-                />
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </ContentAreaContextMenu>
   );
 }
