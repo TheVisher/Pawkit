@@ -5,7 +5,7 @@
 > This document contains everything needed to build V2 from scratch while maintaining full feature parity with V1 and setting the foundation for all planned future features.
 >
 > **Created:** December 19, 2025
-> **Updated:** December 19, 2025 — **V1 Analysis + Design Decisions Finalized**
+> **Updated:** December 25, 2025 — **V2 Built, Status Markers Updated**
 > **For:** Claude Code and development reference
 
 ---
@@ -25,9 +25,9 @@
 11. [Migration Strategy](#11-migration-strategy)
 12. [Deferred Features](#12-deferred-features)
 13. [Build Order](#13-build-order)
-14. **🆕 [Browser Extension Compatibility](#14-browser-extension-compatibility)**
-15. **🆕 [Masonry Implementation Guide](#15-masonry-implementation-guide)**
-16. **🆕 [V1 Feature Parity Checklist](#16-v1-feature-parity-checklist)**
+14. [Browser Extension Compatibility](#14-browser-extension-compatibility)
+15. [Masonry Implementation Guide](#15-masonry-implementation-guide)
+16. [V1 Feature Parity Checklist](#16-v1-feature-parity-checklist)
 
 ---
 
@@ -80,7 +80,7 @@ These decisions were made during V2 planning and differ from V1 patterns:
 - Render UI before any network calls
 - Sync to server in background
 - App works fully offline
-- **🆕 User can disable server sync entirely (`serverSync` toggle)**
+- **✅ User can disable server sync entirely (`serverSync` toggle)**
 
 ### Privacy-First
 
@@ -104,7 +104,7 @@ These decisions were made during V2 planning and differ from V1 patterns:
 - No blocking network calls during initialization
 - Debounced background sync
 - Optimistic UI updates
-- **🆕 Image caching with LRU eviction for thumbnails**
+- **✅ Image caching with LRU eviction for thumbnails**
 
 ---
 
@@ -146,7 +146,7 @@ These decisions were made during V2 planning and differ from V1 patterns:
 | **Masonry** | Custom implementation | Left-to-right ordering, full control |
 | **Markdown** | @uiw/react-md-editor or similar | Wiki-links, preview |
 
-**🆕 Note on Masonry:** V1 uses Muuri which orders top-to-bottom per column. V2 custom implementation MUST order left-to-right (reading order). See [Section 15](#15-masonry-implementation-guide) for implementation details.
+**Note on Masonry:** V1 uses Muuri which orders top-to-bottom per column. V2 custom implementation MUST order left-to-right (reading order). See [Section 15](#15-masonry-implementation-guide) for implementation details.
 
 ### AI & Integrations
 
@@ -182,19 +182,19 @@ model User {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  // 🆕 V1 PARITY: Local-only mode toggle
+  // ✅ V1 PARITY: Local-only mode toggle
   serverSync            Boolean  @default(true)
 
   workspaces     Workspace[]
   settings       UserSettings?
   deviceSessions DeviceSession[]
 
-  // 🆕 V1 PARITY: Connected platform accounts
+  // 🔵 ROADMAP: Connected platform accounts
   connectedAccounts ConnectedAccount[]
 }
 ```
 
-#### **🆕 DeviceSession (V1 PARITY)**
+#### **✅ DeviceSession (V1 PARITY)**
 ```prisma
 // V1 has this for multi-device sync conflict resolution
 model DeviceSession {
@@ -214,7 +214,7 @@ model DeviceSession {
 }
 ```
 
-#### **🆕 UserViewSettings (SYNCED PREFERENCES)**
+#### **✅ UserViewSettings (SYNCED PREFERENCES)**
 ```prisma
 // Per-view AND per-content-type layout preferences (synced across devices)
 model UserViewSettings {
@@ -293,7 +293,7 @@ model Card {
   description     String?
   content         String?   // Note content or extracted article
 
-  // 🆕 V1 PARITY: Separate notes field (V1 has both content AND notes)
+  // ✅ V1 PARITY: Separate notes field (V1 has both content AND notes)
   notes           String?   // User notes/annotations separate from content
 
   // Metadata
@@ -302,10 +302,10 @@ model Card {
   favicon         String?
   metadata        Json?     // Flexible metadata from scraping
 
-  // 🆕 V1 PARITY: Async metadata fetch status
+  // ✅ V1 PARITY: Async metadata fetch status
   status          String    @default("PENDING")  // PENDING, READY, ERROR
 
-  // 🆕 V1 PARITY: YouTube transcripts for Kit AI context
+  // 🔵 ROADMAP: YouTube transcripts for Kit AI context
   transcriptSegments String?  // JSON array of transcript segments
 
   // AI & Future Features
@@ -350,14 +350,14 @@ model Card {
   // Junction for notes in Pawkits (notes organized via Pawkits + Tags, NOT folders)
   collectionNotes CollectionNote[]
 
-  // 🆕 ROADMAP: Citations for Topic Notes
+  // 🔵 ROADMAP: Citations for Topic Notes
   citations       Citation[]
 
   @@index([workspaceId])
   @@index([workspaceId, deleted])
   @@index([workspaceId, type])
   @@index([workspaceId, scheduledDate])
-  @@index([workspaceId, status])  // 🆕 For filtering by metadata status
+  @@index([workspaceId, status])  // For filtering by metadata status
 }
 ```
 
@@ -491,7 +491,7 @@ model Connection {
 }
 ```
 
-#### **🆕 ConnectedAccount (ROADMAP FOUNDATION)**
+#### **🔵 ConnectedAccount (ROADMAP FOUNDATION)**
 ```prisma
 // For Reddit, YouTube, Twitter, Hacker News integrations
 model ConnectedAccount {
@@ -525,7 +525,7 @@ model ConnectedAccount {
 }
 ```
 
-#### **🆕 ImportJob (ROADMAP FOUNDATION)**
+#### **🔵 ImportJob (ROADMAP FOUNDATION)**
 ```prisma
 // For bulk import operations from connected platforms
 model ImportJob {
@@ -553,7 +553,7 @@ model ImportJob {
 }
 ```
 
-#### **🆕 Citation (ROADMAP FOUNDATION - Topic Notes)**
+#### **🔵 Citation (ROADMAP FOUNDATION - Topic Notes)**
 ```prisma
 // For Topic Notes with source citations
 model Citation {
@@ -580,7 +580,7 @@ model Citation {
 }
 ```
 
-#### **🆕 QuickNoteArchive (ROADMAP FOUNDATION)**
+#### **🔵 QuickNoteArchive (ROADMAP FOUNDATION)**
 ```prisma
 // For weekly auto-consolidation of quick notes
 model QuickNoteArchive {
@@ -632,11 +632,11 @@ model CollectionNote {
 | `source` | Card, CalendarEvent | Track origin (manual, Kit, Reddit, etc.) |
 | `metadata` | Collection | Board config, custom settings |
 | `linkedCardId` | Todo | Link tasks to cards |
-| **🆕 `status`** | Card | Async metadata fetch tracking |
-| **🆕 `transcriptSegments`** | Card | YouTube transcripts for Kit AI |
-| **🆕 `notes`** | Card | User annotations separate from content |
-| **🆕 `Citation`** | Model | Topic Notes source tracking |
-| **🆕 `ConnectedAccount`** | Model | Platform OAuth and sync state |
+| **✅ `status`** | Card | Async metadata fetch tracking |
+| **🔵 `transcriptSegments`** | Card | YouTube transcripts for Kit AI |
+| **✅ `notes`** | Card | User annotations separate from content |
+| **🔵 `Citation`** | Model | Topic Notes source tracking |
+| **🔵 `ConnectedAccount`** | Model | Platform OAuth and sync state |
 
 ---
 
@@ -2234,7 +2234,7 @@ interface Card {
 
 ---
 
-## **🆕 14. Browser Extension Compatibility**
+## **14. Browser Extension Compatibility**
 
 ### Extension Auth Flow (MUST PRESERVE)
 
@@ -2330,7 +2330,7 @@ Content-Type: application/json
 
 ---
 
-## **🆕 15. Masonry Implementation Guide**
+## **15. Masonry Implementation Guide**
 
 ### The Problem with V1 (Muuri)
 
@@ -2472,7 +2472,7 @@ function MasonryView({ cards }: { cards: Card[] }) {
 
 ---
 
-## **🆕 16. V1 Feature Parity Checklist**
+## **16. V1 Feature Parity Checklist**
 
 Use this checklist to verify V2 has all V1 features:
 
@@ -2599,4 +2599,4 @@ syncService.queueSync({
 
 *This document should be updated as decisions are made during development.*
 
-**🆕 Last updated:** December 19, 2025 — V1 analysis complete, design decisions finalized, Den removed, Notes/Tasks patterns clarified.
+**Last updated:** December 25, 2025 — V2 built, status markers updated (✅ stable, 🔵 planned).
