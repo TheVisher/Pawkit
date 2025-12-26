@@ -34,6 +34,7 @@ export interface CardListViewProps {
   groups?: CardGroup[];
   groupIcon?: React.ComponentType<{ className?: string }>;
   onReorder?: (reorderedIds: string[]) => void;
+  currentCollection?: string;
 }
 
 // =============================================================================

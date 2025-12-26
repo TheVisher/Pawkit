@@ -15,6 +15,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CardItem, type CardDisplaySettings } from './card-item';
 import { QuickNoteCard } from './quick-note-card';
+import { CardContextMenu } from '@/components/context-menus';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
 
@@ -48,12 +49,14 @@ interface MasonryGridProps {
   cardSize?: CardSize;
   cardSpacing?: number;
   displaySettings?: Partial<CardDisplaySettings>;
+  currentCollection?: string;
 }
 
 interface SortableCardProps {
   card: LocalCard;
   onClick: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
+  currentCollection?: string;
 }
 
 interface SortableCardInnerProps extends SortableCardProps {
@@ -69,7 +72,7 @@ interface SortableCardInnerProps extends SortableCardProps {
  * absolute positioning. Transforms would conflict and cause offset issues.
  * The DragOverlay handles the visual dragging instead.
  */
-const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis, isDropTarget, displaySettings }: SortableCardInnerProps) {
+const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis, isDropTarget, displaySettings, currentCollection }: SortableCardInnerProps) {
   const {
     attributes,
     listeners,
@@ -84,45 +87,47 @@ const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis,
   });
 
   return (
-    <div
-      ref={setNodeRef}
-      style={{
-        // Hide the original card while dragging - DragOverlay shows it instead
-        opacity: isDraggingThis ? 0.3 : 1,
-        cursor: isDraggingThis ? 'grabbing' : 'grab',
-      }}
-      className="w-full"
-      {...attributes}
-      {...listeners}
-    >
-      {/* Drop indicator - shows above the card when it's a drop target */}
-      {isDropTarget && (
-        <div
-          className="absolute -top-2 left-0 right-0 h-1 rounded-full z-10"
-          style={{
-            background: 'var(--color-accent)',
-            boxShadow: '0 0 12px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.6)',
-          }}
-        />
-      )}
+    <CardContextMenu card={card} currentCollection={currentCollection}>
       <div
-        className="relative"
+        ref={setNodeRef}
         style={{
-          // Glow effect on drop target
-          boxShadow: isDropTarget
-            ? '0 0 0 2px var(--color-accent), 0 0 20px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.4)'
-            : 'none',
-          borderRadius: '1rem',
-          transition: 'box-shadow 150ms ease',
+          // Hide the original card while dragging - DragOverlay shows it instead
+          opacity: isDraggingThis ? 0.3 : 1,
+          cursor: isDraggingThis ? 'grabbing' : 'grab',
         }}
+        className="w-full"
+        {...attributes}
+        {...listeners}
       >
-        {card.type === 'quick-note' ? (
-          <QuickNoteCard card={card} onClick={onClick} isDragging={isDraggingThis} />
-        ) : (
-          <CardItem card={card} variant="grid" onClick={onClick} displaySettings={displaySettings} />
+        {/* Drop indicator - shows above the card when it's a drop target */}
+        {isDropTarget && (
+          <div
+            className="absolute -top-2 left-0 right-0 h-1 rounded-full z-10"
+            style={{
+              background: 'var(--color-accent)',
+              boxShadow: '0 0 12px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.6)',
+            }}
+          />
         )}
+        <div
+          className="relative"
+          style={{
+            // Glow effect on drop target
+            boxShadow: isDropTarget
+              ? '0 0 0 2px var(--color-accent), 0 0 20px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.4)'
+              : 'none',
+            borderRadius: '1rem',
+            transition: 'box-shadow 150ms ease',
+          }}
+        >
+          {card.type === 'quick-note' ? (
+            <QuickNoteCard card={card} onClick={onClick} isDragging={isDraggingThis} />
+          ) : (
+            <CardItem card={card} variant="grid" onClick={onClick} displaySettings={displaySettings} />
+          )}
+        </div>
       </div>
-    </div>
+    </CardContextMenu>
   );
 }, (prevProps, nextProps) => {
   // Only re-render if the card content actually changed
@@ -143,7 +148,9 @@ const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis,
     prevProps.card.dismissedTodoSuggestion === nextProps.card.dismissedTodoSuggestion &&
     prevProps.isDraggingThis === nextProps.isDraggingThis &&
     prevProps.isDropTarget === nextProps.isDropTarget &&
+    prevProps.currentCollection === nextProps.currentCollection &&
     JSON.stringify(prevProps.card.tags) === JSON.stringify(nextProps.card.tags) &&
+    JSON.stringify(prevProps.card.collections) === JSON.stringify(nextProps.card.collections) &&
     JSON.stringify(prevProps.displaySettings) === JSON.stringify(nextProps.displaySettings)
   );
 });
@@ -183,7 +190,7 @@ function estimateHeight(card: LocalCard, cardWidth: number): number {
 /**
  * Masonry grid layout with drag-and-drop support
  */
-export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing = DEFAULT_GAP, displaySettings }: MasonryGridProps) {
+export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing = DEFAULT_GAP, displaySettings, currentCollection }: MasonryGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -420,6 +427,7 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
                     isDraggingThis={activeId === card.id}
                     isDropTarget={overId === card.id && activeId !== card.id}
                     displaySettings={displaySettings}
+                    currentCollection={currentCollection}
                   />
                 </div>
               );
