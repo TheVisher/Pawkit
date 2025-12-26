@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getClient } from '@/lib/supabase/client';
+import { validatePassword } from '@/lib/password-validator';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,8 +29,9 @@ export default function SignupForm() {
       return;
     }
 
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    const { valid, errors } = validatePassword(password);
+    if (!valid) {
+      setError(errors.join('. '));
       return;
     }
 
@@ -180,7 +182,7 @@ export default function SignupForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={8}
+              minLength={12}
               className="border-zinc-700 bg-zinc-800 text-zinc-100 placeholder:text-zinc-500"
             />
           </div>
