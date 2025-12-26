@@ -8,6 +8,7 @@ import { CardItem, type CardDisplaySettings } from './card-item';
 import { QuickNoteCard } from './quick-note-card';
 import { MasonryGrid } from './masonry-grid';
 import { CardListView, type CardGroup } from './card-list-view';
+import { CardContextMenu } from '@/components/context-menus';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
 
@@ -40,12 +41,14 @@ const SortableGridCard = memo(function SortableGridCard({
   displaySettings,
   isDraggingThis,
   isDropTarget,
+  currentCollection,
 }: {
   card: LocalCard;
   onClick: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
   isDraggingThis: boolean;
   isDropTarget: boolean;
+  currentCollection?: string;
 }) {
   const { attributes, listeners, setNodeRef } = useSortable({
     id: card.id,
@@ -55,6 +58,30 @@ const SortableGridCard = memo(function SortableGridCard({
   // Quick notes get compact display - use uniformHeight in grid view to stretch
   if (card.type === 'quick-note') {
     return (
+      <CardContextMenu card={card} currentCollection={currentCollection}>
+        <div
+          ref={setNodeRef}
+          className="aspect-[4/5] overflow-hidden"
+          style={{
+            opacity: isDraggingThis ? 0.3 : 1,
+            cursor: isDraggingThis ? 'grabbing' : 'grab',
+            boxShadow: isDropTarget
+              ? '0 0 0 2px var(--color-accent), 0 0 20px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.4)'
+              : 'none',
+            borderRadius: '1rem',
+            transition: 'box-shadow 150ms ease',
+          }}
+          {...attributes}
+          {...listeners}
+        >
+          <QuickNoteCard card={card} onClick={onClick} isDragging={isDraggingThis} uniformHeight />
+        </div>
+      </CardContextMenu>
+    );
+  }
+
+  return (
+    <CardContextMenu card={card} currentCollection={currentCollection}>
       <div
         ref={setNodeRef}
         className="aspect-[4/5] overflow-hidden"
@@ -70,35 +97,15 @@ const SortableGridCard = memo(function SortableGridCard({
         {...attributes}
         {...listeners}
       >
-        <QuickNoteCard card={card} onClick={onClick} isDragging={isDraggingThis} uniformHeight />
+        <CardItem
+          card={card}
+          variant="grid"
+          onClick={onClick}
+          displaySettings={displaySettings}
+          uniformHeight
+        />
       </div>
-    );
-  }
-
-  return (
-    <div
-      ref={setNodeRef}
-      className="aspect-[4/5] overflow-hidden"
-      style={{
-        opacity: isDraggingThis ? 0.3 : 1,
-        cursor: isDraggingThis ? 'grabbing' : 'grab',
-        boxShadow: isDropTarget
-          ? '0 0 0 2px var(--color-accent), 0 0 20px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.4)'
-          : 'none',
-        borderRadius: '1rem',
-        transition: 'box-shadow 150ms ease',
-      }}
-      {...attributes}
-      {...listeners}
-    >
-      <CardItem
-        card={card}
-        variant="grid"
-        onClick={onClick}
-        displaySettings={displaySettings}
-        uniformHeight
-      />
-    </div>
+    </CardContextMenu>
   );
 });
 
@@ -111,6 +118,8 @@ interface CardGridProps {
   displaySettings?: Partial<CardDisplaySettings>;
   groups?: CardGroup[];
   groupIcon?: React.ComponentType<{ className?: string }>;
+  /** Current collection slug for context menu actions */
+  currentCollection?: string;
 }
 
 export function CardGrid({
@@ -122,6 +131,7 @@ export function CardGrid({
   displaySettings,
   groups,
   groupIcon,
+  currentCollection,
 }: CardGridProps) {
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
@@ -187,13 +197,22 @@ export function CardGrid({
         cardSize={cardSize}
         cardSpacing={cardSpacing}
         displaySettings={displaySettings}
+        currentCollection={currentCollection}
       />
     );
   }
 
   // List view - dedicated component
   if (layout === 'list') {
-    return <CardListView cards={cards} groups={groups} groupIcon={groupIcon} onReorder={onReorder} />;
+    return (
+      <CardListView
+        cards={cards}
+        groups={groups}
+        groupIcon={groupIcon}
+        onReorder={onReorder}
+        currentCollection={currentCollection}
+      />
+    );
   }
 
   // Grid view - Uniform card sizes with fixed aspect ratio and DnD
@@ -217,6 +236,7 @@ export function CardGrid({
               displaySettings={displaySettings}
               isDraggingThis={activeId === card.id}
               isDropTarget={overId === card.id && activeId !== card.id}
+              currentCollection={currentCollection}
             />
           ))}
         </div>

@@ -8,6 +8,7 @@ import { Check, Minus, Globe, FileText, Pin } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { CardItem } from '../card-item';
+import { CardContextMenu } from '@/components/context-menus';
 import type { LocalCard } from '@/lib/db';
 import { type ColumnId, type CardListViewProps, COLUMN_LABELS, getCardType } from './types';
 import { useListView } from './use-list-view';
@@ -28,7 +29,7 @@ const centerOverlayOnCursor: Modifier = ({ transform, draggingNodeRect }) => {
   return transform;
 };
 
-export function CardListView({ cards, groups, groupIcon, onReorder }: CardListViewProps) {
+export function CardListView({ cards, groups, groupIcon, onReorder, currentCollection }: CardListViewProps) {
   const {
     columnOrder,
     columnWidths,
@@ -236,48 +237,49 @@ export function CardListView({ cards, groups, groupIcon, onReorder }: CardListVi
     const isDropTarget = overRowId === card.id && activeRowId !== card.id;
 
     return (
-      <SortableListRow
-        key={card.id}
-        card={card}
-        isDragging={isDragging}
-        isDropTarget={isDropTarget}
-      >
-        <div
-          onClick={() => handleRowClick(card)}
-          className={cn(
-            'flex flex-1 cursor-pointer transition-colors',
-            isSelected
-              ? 'bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/15'
-              : 'hover:bg-[var(--bg-surface-2)]'
-          )}
+      <CardContextMenu key={card.id} card={card} currentCollection={currentCollection}>
+        <SortableListRow
+          card={card}
+          isDragging={isDragging}
+          isDropTarget={isDropTarget}
         >
-          <div className="w-12 py-3 px-4 flex-shrink-0 flex items-center">
-            <button
-              onClick={(e) => handleToggleSelect(card.id, e)}
-              className={cn(
-                'w-4 h-4 rounded border flex items-center justify-center transition-colors',
-                isSelected
-                  ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
-                  : 'border-[var(--color-text-muted)]/40 hover:border-[var(--color-text-muted)]/60'
-              )}
-            >
-              {isSelected && <Check className="h-3 w-3 text-white" />}
-            </button>
-          </div>
-          {columnOrder.map((col) => (
-            <div
-              key={col}
-              className="py-3 px-4 flex-shrink-0 overflow-hidden"
-              style={{ width: columnWidths[col] }}
-            >
-              {renderCell(card, col)}
+          <div
+            onClick={() => handleRowClick(card)}
+            className={cn(
+              'flex flex-1 cursor-pointer transition-colors',
+              isSelected
+                ? 'bg-[var(--color-accent)]/10 hover:bg-[var(--color-accent)]/15'
+                : 'hover:bg-[var(--bg-surface-2)]'
+            )}
+          >
+            <div className="w-12 py-3 px-4 flex-shrink-0 flex items-center">
+              <button
+                onClick={(e) => handleToggleSelect(card.id, e)}
+                className={cn(
+                  'w-4 h-4 rounded border flex items-center justify-center transition-colors',
+                  isSelected
+                    ? 'bg-[var(--color-accent)] border-[var(--color-accent)]'
+                    : 'border-[var(--color-text-muted)]/40 hover:border-[var(--color-text-muted)]/60'
+                )}
+              >
+                {isSelected && <Check className="h-3 w-3 text-white" />}
+              </button>
             </div>
-          ))}
-          <div className="py-3 px-4 flex-shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
-            <ListRowActions card={card} onEdit={() => openCardDetail(card.id)} />
+            {columnOrder.map((col) => (
+              <div
+                key={col}
+                className="py-3 px-4 flex-shrink-0 overflow-hidden"
+                style={{ width: columnWidths[col] }}
+              >
+                {renderCell(card, col)}
+              </div>
+            ))}
+            <div className="py-3 px-4 flex-shrink-0 w-12" onClick={(e) => e.stopPropagation()}>
+              <ListRowActions card={card} onEdit={() => openCardDetail(card.id)} />
+            </div>
           </div>
-        </div>
-      </SortableListRow>
+        </SortableListRow>
+      </CardContextMenu>
     );
   };
 
