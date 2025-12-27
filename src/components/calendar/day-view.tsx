@@ -56,6 +56,12 @@ export function DayView() {
   const handleCreateDailyNote = async () => {
     if (!workspace) return;
 
+    // Check if a note already exists (prevent duplicates from race conditions)
+    if (dailyNote) {
+      openCardDetail(dailyNote.id);
+      return;
+    }
+
     const newNote = await createCard({
       workspaceId: workspace.id,
       type: 'md-note',
@@ -72,7 +78,6 @@ export function DayView() {
     });
 
     if (newNote) {
-      // Note: dailyNote will auto-update via Zustand store
       openCardDetail(newNote.id);
     }
   };

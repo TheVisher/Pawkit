@@ -211,10 +211,11 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
       hasImage: !!metadata.image,
     });
 
-    // Queue article extraction if URL looks like an article
-    if (card.url && isArticleUrl(card.url)) {
-      queueArticleExtraction(cardId);
-    }
+    // NOTE: Article extraction disabled - was causing 2+ minute hangs
+    // TODO: Re-enable when article API is optimized or make it user-triggered
+    // if (card.url && isArticleUrl(card.url)) {
+    //   queueArticleExtraction(cardId);
+    // }
   } catch (error) {
     console.error('[MetadataService] Error fetching metadata:', error);
 

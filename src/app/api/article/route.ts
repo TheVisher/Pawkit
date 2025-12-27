@@ -5,16 +5,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit } from '@/lib/rate-limit';
-import { extractArticle, isArticleUrl } from '@/lib/services/article-extractor';
+import { extractArticle } from '@/lib/services/article-extractor';
 
 // Force Node.js runtime for JSDOM
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting: 3 requests per minute (article extraction is expensive)
+    // Rate limiting: 20 requests per minute (matching V1)
     const identifier = request.headers.get('x-forwarded-for') || 'anonymous';
-    const { success, remaining } = checkRateLimit(identifier, 60000, 3);
+    const { success, remaining } = checkRateLimit(identifier, 60000, 20);
 
     if (!success) {
       return NextResponse.json(
@@ -46,15 +46,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if URL is likely to have article content
-    if (!isArticleUrl(url)) {
-      return NextResponse.json(
-        { error: 'URL does not appear to be an article' },
-        { status: 400 }
-      );
-    }
-
-    // Extract article content
+    // Extract article content (removed isArticleUrl check - let extraction decide)
     const result = await extractArticle(url);
 
     if (!result.success) {

@@ -6,8 +6,13 @@
 import { create } from 'zustand';
 import { db, createSyncMetadata, markModified, markDeleted } from '@/lib/db';
 import type { LocalCard, LocalCollection, LocalCalendarEvent, LocalTodo } from '@/lib/db';
-import { addToQueue } from '@/lib/services/sync-queue';
+import { addToQueue, clearAllSyncQueue } from '@/lib/services/sync-queue';
 import { queueMetadataFetch } from '@/lib/services/metadata-service';
+
+// Expose debug helper on window for console access
+if (typeof window !== 'undefined') {
+  (window as unknown as Record<string, unknown>).__clearSyncQueue = clearAllSyncQueue;
+}
 
 interface DataState {
   // State

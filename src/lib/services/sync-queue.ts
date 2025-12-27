@@ -14,8 +14,21 @@ const log = createModuleLogger('SyncQueue');
 // Maximum retry attempts before marking as failed
 const MAX_RETRIES = 3;
 
-// Debounce delay for queue processing (ms)
+// Debounce delay for immediate syncs (ms)
 export const QUEUE_DEBOUNCE_MS = 2000;
+
+/**
+ * Manually trigger a sync (e.g., when modal closes)
+ * Only syncs if there are pending items - no wasted requests
+ */
+export async function triggerSync(): Promise<void> {
+  if (typeof navigator !== 'undefined' && navigator.onLine) {
+    const count = await getPendingItemCount();
+    if (count > 0) {
+      await processQueue();
+    }
+  }
+}
 
 /**
  * Get count of pending (non-failed) items in the queue
@@ -396,6 +409,12 @@ export async function addToQueue(
   // Update pending count (new items always have retryCount=0, so count all pending)
   const count = await getPendingItemCount();
   useSyncStore.getState().setPendingCount(count);
+
+  // Note: We don't auto-sync here anymore. Sync is triggered by:
+  // - Periodic background sync (every 30s)
+  // - Tab visibility change (when tab regains focus)
+  // - Modal close (via triggerSync)
+  // - Page unload (best effort)
 }
 
 /**
@@ -442,21 +461,27 @@ export async function retryFailedItems(): Promise<void> {
  * Use this to reset after a broken sync state
  */
 export async function clearAllSyncQueue(): Promise<void> {
-  log.info('Clearing all sync queue items');
+  console.log('[SyncQueue] Clearing all sync queue items...');
 
   // Clear the queue
+  const queueCount = await db.syncQueue.count();
+  console.log(`[SyncQueue] Queue has ${queueCount} items, clearing...`);
   await db.syncQueue.clear();
 
-  // Mark all cards as synced
+  // Mark all cards as synced in IndexedDB
+  const cardCount = await db.cards.count();
+  console.log(`[SyncQueue] Marking ${cardCount} cards as synced in IndexedDB...`);
   await db.cards.toCollection().modify({ _synced: true });
 
   // Update Zustand store
-  useDataStore.setState((state) => ({
-    cards: state.cards.map((c) => ({ ...c, _synced: true })),
-  }));
+  const storeCards = useDataStore.getState().cards;
+  console.log(`[SyncQueue] Updating ${storeCards.length} cards in Zustand store...`);
+  useDataStore.setState({
+    cards: storeCards.map((c) => ({ ...c, _synced: true })),
+  });
 
   // Reset pending count
   useSyncStore.getState().setPendingCount(0);
 
-  log.info('Sync queue cleared and all cards marked as synced');
+  console.log('[SyncQueue] Done! All cards marked as synced.');
 }

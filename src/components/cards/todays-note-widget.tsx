@@ -42,6 +42,12 @@ export function TodaysNoteWidget() {
   const handleCreateNote = async () => {
     if (!workspace) return;
 
+    // Check if a note already exists (prevent duplicates from race conditions)
+    if (note) {
+      openCardDetail(note.id);
+      return;
+    }
+
     const newNote = await createCard({
       workspaceId: workspace.id,
       type: 'md-note',
@@ -58,7 +64,6 @@ export function TodaysNoteWidget() {
     });
 
     if (newNote) {
-      // Note: note will auto-update via Zustand store
       openCardDetail(newNote.id);
     }
   };
