@@ -5,7 +5,8 @@
  * Shown in the right sidebar when a card modal is open
  */
 
-import { Tag, FolderOpen, Link2, Paperclip, MessageSquare } from 'lucide-react';
+import { useState } from 'react';
+import { Tag, FolderOpen, Link2, Paperclip, MessageSquare, Copy, Check, ExternalLink } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import type { LocalCard, LocalCollection } from '@/lib/db';
@@ -17,6 +18,19 @@ interface CardDetailsPanelProps {
 }
 
 export function CardDetailsPanel({ card, collections, isTransitioning }: CardDetailsPanelProps) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyUrl = async () => {
+    if (!card.url) return;
+    try {
+      await navigator.clipboard.writeText(card.url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy URL:', err);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -27,6 +41,45 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
       )}
       style={{ transitionDuration: '250ms' }}
     >
+      {/* Quick Actions for URL cards */}
+      {card.url && card.type === 'url' && (
+        <>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCopyUrl}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs rounded-md transition-colors',
+                copied
+                  ? 'bg-green-500/20 text-green-500 border border-green-500/30'
+                  : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary border border-border-subtle'
+              )}
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3.5 w-3.5" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy URL
+                </>
+              )}
+            </button>
+            <a
+              href={card.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs rounded-md bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary border border-border-subtle transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open Link
+            </a>
+          </div>
+          <Separator className="bg-border-subtle" />
+        </>
+      )}
+
       {/* Tags Section */}
       <div>
         <div className="flex items-center gap-2 text-text-muted mb-3">

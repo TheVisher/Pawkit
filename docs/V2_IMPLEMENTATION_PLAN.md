@@ -89,7 +89,7 @@ Clean article reading view for saved bookmarks.
 
 #### Requirements
 - [x] Reader component (clean typography, no distractions)
-- [ ] Extract and store article content on save
+- [x] Extract and store article content on save
 - [x] Toggle between card view and reader view in modal
 - [x] Offline reading support (content stored locally)
 - [x] Reading progress tracking (scroll position)
@@ -125,11 +125,11 @@ interface LocalCard {
 Transform bookmarking from "save and forget" to "save and read."
 
 #### Requirements
-- [ ] Calculate word count on URL scrape
+- [x] Calculate word count on URL scrape
 - [x] Calculate reading time (words / 225 WPM)
 - [x] Display reading time badge on cards (e.g., "5 min")
 - [x] Read/Unread toggle on cards
-- [ ] Reading progress bar on card thumbnails
+- [x] Reading progress bar on card thumbnails
 - [x] "In Progress" status when partially read
 - [x] Library filters: Unread, In Progress, Read
 
@@ -151,12 +151,12 @@ Transform bookmarking from "save and forget" to "save and read."
 Identify dead bookmarks before users click them.
 
 #### Requirements
-- [ ] Background job to check bookmark URLs
-- [ ] `linkStatus` field: 'ok' | 'broken' | 'redirect' | 'unchecked'
-- [ ] `lastLinkCheck` timestamp
-- [ ] Warning badge on broken link cards
-- [ ] "Broken Links" filter in Library
-- [ ] Batch re-check option
+- [x] Background job to check bookmark URLs
+- [x] `linkStatus` field: 'ok' | 'broken' | 'redirect' | 'unchecked'
+- [x] `lastLinkCheck` timestamp
+- [x] Warning badge on broken link cards
+- [x] "Broken Links" filter in Library (Link Status filter section)
+- [x] Batch re-check option ("Re-check" button in filter section)
 - [ ] Wayback Machine integration (optional - show archived version)
 
 #### Implementation
@@ -173,11 +173,11 @@ Identify dead bookmarks before users click them.
 Prevent saving the same URL twice.
 
 #### Requirements
-- [ ] Check for existing URL on save
-- [ ] "Already saved" notification with link to existing card
-- [ ] Option to: View existing, Update existing, or Save anyway
-- [ ] "Find Duplicates" utility in Library
-- [ ] Duplicate count in Library filters
+- [x] Check for existing URL on save
+- [x] "Already saved" notification with link to existing card
+- [x] Option to: View existing, Update existing, or Save anyway
+- [x] "Find Duplicates" toggle in Library (Duplicates filter section)
+- [x] Duplicate count in Library filters
 
 #### Implementation
 - Normalize URLs before comparison (remove tracking params, www, trailing slash)
@@ -202,7 +202,8 @@ Prevent saving the same URL twice.
 ### 2.2 Card Detail Modal
 **Current State:** Feature-rich but missing some conveniences
 
-- [ ] Copy URL button (clipboard)
+- [x] Copy URL button (clipboard) - in right sidebar panel
+- [x] Open Link button (external) - in right sidebar panel
 - [ ] Schedule date picker
 - [ ] Reading time display
 - [ ] Read/Unread toggle
@@ -215,10 +216,11 @@ Prevent saving the same URL twice.
 ### 2.3 Library Page
 **Current State:** Sophisticated filtering, some gaps
 
-- [ ] Empty state with helpful actions
-- [ ] "No results" state when filters return nothing
-- [ ] Reading status filter (Unread, In Progress, Read)
-- [ ] Broken links filter
+- [x] Empty state with helpful actions
+- [x] "No results" state when filters return nothing
+- [x] Reading status filter (Unread, In Progress, Read)
+- [x] Broken links filter (Link Status filter section)
+- [x] Duplicates filter (Show duplicates only toggle)
 - [ ] Quick tag search in filter panel
 - [ ] Scheduled cards filter (upcoming)
 
@@ -407,8 +409,8 @@ redirectUrl?: string;       // If redirected
 | Card Scheduling UI | ✅ Complete | Date picker in modal, Schedule context menu |
 | Reader Mode | ✅ Complete | Full reader with font controls, progress tracking |
 | Reading Time/Progress | ✅ Complete | Time badges on cards, progress bar, read/unread filters |
-| Broken Link Detection | 🟡 In Progress | Schema fields added, background job pending |
-| Duplicate Detection | ⬜ Not Started | |
+| Broken Link Detection | ✅ Complete | API endpoint, badge on cards, link check service |
+| Duplicate Detection | ✅ Complete | URL normalization, warning on save, view existing |
 
 ### Phase 1 Completed (Dec 27, 2025)
 - ✅ Added reading/link health fields to database schema
@@ -430,6 +432,38 @@ redirectUrl?: string;       // If redirected
 - ✅ Added read status badge on grid cards
 - ✅ Added Mark Read/Unread toggle in card detail modal
 - ✅ Added Reading Status filter in Library (All, Unread, In Progress, Read)
+- ✅ Created article extraction service using @mozilla/readability
+- ✅ Created /api/article endpoint for article extraction
+- ✅ Integrated article extraction into metadata service queue
+- ✅ Auto-extract articles when URL bookmarks are saved
+
+### Phase 3 Completed (Dec 27, 2025)
+- ✅ Added reading progress bar on card thumbnails (accent color fill)
+
+### Phase 4 Completed (Dec 27, 2025)
+- ✅ Created link-checker.ts service for URL validation
+- ✅ Created /api/link-check endpoint (single and batch)
+- ✅ Created link-check-service.ts for client-side queue
+- ✅ Added broken link badge (red warning icon) on cards
+- ✅ Support for HEAD and GET fallback requests
+- ✅ Redirect detection and URL tracking
+
+### Phase 5 Completed (Dec 27, 2025)
+- ✅ Created url-normalizer.ts for URL comparison
+- ✅ Removes tracking params (UTM, fbclid, etc.)
+- ✅ Normalizes www prefix, trailing slashes, param order
+- ✅ Real-time duplicate detection in add card form
+- ✅ Warning banner with link to view existing bookmark
+
+### Additional Enhancements (Dec 27, 2025)
+- ✅ Link Status filter in Library (All, Valid, Broken, Redirect)
+- ✅ "Re-check" button to batch re-check all links
+- ✅ "Find Duplicates" toggle in Library (shows only cards with duplicate URLs)
+- ✅ Duplicate count display in filter section
+- ✅ Copy URL button in card details panel
+- ✅ Open Link button in card details panel
+- ✅ Empty state improvements (distinguishes "no items" vs "no results")
+- ✅ "No matching items" state when filters return nothing
 
 ### Status Legend
 - ⬜ Not Started

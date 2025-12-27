@@ -21,6 +21,8 @@ export type DateGrouping = 'smart' | 'day' | 'week' | 'month' | 'year'; // smart
 export type UnsortedFilter = 'none' | 'no-pawkits' | 'no-tags' | 'both';
 // Reading status filter
 export type ReadingFilter = 'all' | 'unread' | 'in-progress' | 'read';
+// Link status filter
+export type LinkStatusFilter = 'all' | 'ok' | 'broken' | 'redirect' | 'unchecked';
 
 // File extensions for uploaded files
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v'];
@@ -126,6 +128,71 @@ export function cardMatchesReadingFilter(
   }
 }
 
+/**
+ * Check if a card matches the link status filter
+ * Note: Only applies to bookmark cards (type === 'url'), not notes
+ */
+export function cardMatchesLinkStatusFilter(
+  card: { type: string; linkStatus?: string },
+  filter: LinkStatusFilter
+): boolean {
+  if (filter === 'all') return true;
+
+  // Notes don't have link status, so show them in 'all' mode only
+  if (['md-note', 'text-note', 'quick-note'].includes(card.type)) {
+    return false; // Exclude notes when filtering by link status
+  }
+
+  const cardStatus = card.linkStatus || 'unchecked';
+  return cardStatus === filter;
+}
+
+/**
+ * Find duplicate cards in a list based on normalized URLs
+ * Returns a Set of card IDs that have at least one duplicate
+ */
+export function findDuplicateCardIds(
+  cards: Array<{ id: string; url: string; type: string; _deleted?: boolean }>
+): Set<string> {
+  // Import dynamically to avoid circular deps - we'll use inline normalization
+  const normalizeUrl = (url: string): string => {
+    try {
+      const parsed = new URL(url);
+      let hostname = parsed.hostname.toLowerCase();
+      if (hostname.startsWith('www.')) hostname = hostname.slice(4);
+      let pathname = parsed.pathname;
+      if (pathname.length > 1 && pathname.endsWith('/')) pathname = pathname.slice(0, -1);
+      return `${parsed.protocol}//${hostname}${pathname}`;
+    } catch {
+      return url.toLowerCase().trim();
+    }
+  };
+
+  const duplicateIds = new Set<string>();
+  const urlToCards = new Map<string, string[]>();
+
+  // Group cards by normalized URL
+  for (const card of cards) {
+    if (card._deleted || card.type !== 'url' || !card.url) continue;
+
+    const normalizedUrl = normalizeUrl(card.url);
+    const existing = urlToCards.get(normalizedUrl) || [];
+    existing.push(card.id);
+    urlToCards.set(normalizedUrl, existing);
+  }
+
+  // Mark all cards that have duplicates
+  for (const [, cardIds] of urlToCards) {
+    if (cardIds.length > 1) {
+      for (const id of cardIds) {
+        duplicateIds.add(id);
+      }
+    }
+  }
+
+  return duplicateIds;
+}
+
 interface ViewState {
   // Current view context
   currentView: string; // "library", "library:notes", "pawkit:{slug}", etc.
@@ -158,6 +225,8 @@ interface ViewState {
   selectedTags: string[]; // Filter by these tags (AND logic)
   unsortedFilter: UnsortedFilter; // Quick filter for unorganized items
   readingFilter: ReadingFilter; // Filter by reading status
+  linkStatusFilter: LinkStatusFilter; // Filter by link health status
+  showDuplicatesOnly: boolean; // Show only cards with duplicate URLs
 
   // Grouping (persisted)
   groupBy: GroupBy;
@@ -195,6 +264,8 @@ interface ViewState {
   clearTags: () => void;
   setUnsortedFilter: (filter: UnsortedFilter) => void;
   setReadingFilter: (filter: ReadingFilter) => void;
+  setLinkStatusFilter: (filter: LinkStatusFilter) => void;
+  setShowDuplicatesOnly: (show: boolean) => void;
 
   // Manual ordering
   setCardOrder: (ids: string[]) => void;
@@ -244,6 +315,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
   selectedTags: [],
   unsortedFilter: 'none' as UnsortedFilter,
   readingFilter: 'all' as ReadingFilter,
+  linkStatusFilter: 'all' as LinkStatusFilter,
+  showDuplicatesOnly: false,
   isLoading: false,
 
   // View context
@@ -302,6 +375,10 @@ export const useViewStore = create<ViewState>((set, get) => ({
   setUnsortedFilter: (filter) => set({ unsortedFilter: filter }),
 
   setReadingFilter: (filter) => set({ readingFilter: filter }),
+
+  setLinkStatusFilter: (filter) => set({ linkStatusFilter: filter }),
+
+  setShowDuplicatesOnly: (show) => set({ showDuplicatesOnly: show }),
 
   setGroupBy: (groupBy) => set({ groupBy }),
 
@@ -476,7 +553,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
   },
 
   // Reset to defaults (without saving)
-  resetToDefaults: () => set({ ...DEFAULT_VIEW_SETTINGS, contentTypeFilters: [], selectedTags: [], readingFilter: 'all' as ReadingFilter }),
+  resetToDefaults: () => set({ ...DEFAULT_VIEW_SETTINGS, contentTypeFilters: [], selectedTags: [], readingFilter: 'all' as ReadingFilter, linkStatusFilter: 'all' as LinkStatusFilter, showDuplicatesOnly: false }),
 }));
 
 // =============================================================================

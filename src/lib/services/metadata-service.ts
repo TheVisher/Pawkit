@@ -1,22 +1,68 @@
 /**
  * Metadata Service
- * Client-side queue for fetching URL metadata with concurrency control
+ * Client-side queue for fetching URL metadata and article content
  */
 
 import { db } from '@/lib/db';
 import { useDataStore } from '@/lib/stores/data-store';
 
-// Maximum concurrent metadata fetches
-const MAX_CONCURRENT = 3;
+/**
+ * Check if a URL is likely to have readable article content
+ * (Duplicated from article-extractor.ts to avoid importing Node.js-only dependencies)
+ */
+function isArticleUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const path = parsed.pathname.toLowerCase();
 
-// Queue of pending card IDs
-const fetchQueue: string[] = [];
+    // Skip direct file URLs
+    const nonArticleExtensions = [
+      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.ico',
+      '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+      '.mp3', '.mp4', '.wav', '.avi', '.mov', '.webm',
+      '.zip', '.rar', '.tar', '.gz',
+      '.js', '.css', '.json', '.xml',
+    ];
 
-// Currently active fetches
-let activeCount = 0;
+    if (nonArticleExtensions.some(ext => path.endsWith(ext))) {
+      return false;
+    }
+
+    // Skip common non-article patterns
+    const nonArticlePatterns = [
+      /^\/api\//,
+      /^\/static\//,
+      /^\/assets\//,
+      /^\/cdn-cgi\//,
+      /\/feed\/?$/,
+      /\/rss\/?$/,
+    ];
+
+    if (nonArticlePatterns.some(pattern => pattern.test(path))) {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Maximum concurrent fetches
+const MAX_CONCURRENT_METADATA = 3;
+const MAX_CONCURRENT_ARTICLES = 2;
+
+// Queues
+const metadataQueue: string[] = [];
+const articleQueue: string[] = [];
+
+// Active counts
+let metadataActiveCount = 0;
+let articleActiveCount = 0;
 
 // Track processed cards to avoid duplicates
-const processed = new Set<string>();
+const metadataProcessed = new Set<string>();
+const articleProcessed = new Set<string>();
 
 interface MetadataResponse {
   title: string | null;
@@ -26,31 +72,76 @@ interface MetadataResponse {
   domain: string;
 }
 
+interface ArticleResponse {
+  success: boolean;
+  article?: {
+    title: string | null;
+    content: string | null;
+    textContent: string | null;
+    excerpt: string | null;
+    byline: string | null;
+    siteName: string | null;
+    wordCount: number;
+    readingTime: number;
+    publishedTime: string | null;
+  };
+  error?: string;
+}
+
 /**
  * Queue a card for metadata fetching
  */
 export function queueMetadataFetch(cardId: string): void {
   // Skip if already processed or queued
-  if (processed.has(cardId) || fetchQueue.includes(cardId)) {
+  if (metadataProcessed.has(cardId) || metadataQueue.includes(cardId)) {
     return;
   }
 
-  fetchQueue.push(cardId);
-  processQueue();
+  metadataQueue.push(cardId);
+  processMetadataQueue();
 }
 
 /**
- * Process the queue with concurrency limit
+ * Queue a card for article extraction
  */
-function processQueue(): void {
-  while (activeCount < MAX_CONCURRENT && fetchQueue.length > 0) {
-    const cardId = fetchQueue.shift();
-    if (cardId && !processed.has(cardId)) {
-      activeCount++;
-      processed.add(cardId);
+export function queueArticleExtraction(cardId: string): void {
+  if (articleProcessed.has(cardId) || articleQueue.includes(cardId)) {
+    return;
+  }
+
+  articleQueue.push(cardId);
+  processArticleQueue();
+}
+
+/**
+ * Process the metadata queue
+ */
+function processMetadataQueue(): void {
+  while (metadataActiveCount < MAX_CONCURRENT_METADATA && metadataQueue.length > 0) {
+    const cardId = metadataQueue.shift();
+    if (cardId && !metadataProcessed.has(cardId)) {
+      metadataActiveCount++;
+      metadataProcessed.add(cardId);
       fetchMetadataForCard(cardId).finally(() => {
-        activeCount--;
-        processQueue();
+        metadataActiveCount--;
+        processMetadataQueue();
+      });
+    }
+  }
+}
+
+/**
+ * Process the article extraction queue
+ */
+function processArticleQueue(): void {
+  while (articleActiveCount < MAX_CONCURRENT_ARTICLES && articleQueue.length > 0) {
+    const cardId = articleQueue.shift();
+    if (cardId && !articleProcessed.has(cardId)) {
+      articleActiveCount++;
+      articleProcessed.add(cardId);
+      extractArticleForCard(cardId).finally(() => {
+        articleActiveCount--;
+        processArticleQueue();
       });
     }
   }
@@ -119,6 +210,11 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
       title: metadata.title?.substring(0, 30),
       hasImage: !!metadata.image,
     });
+
+    // Queue article extraction if URL looks like an article
+    if (card.url && isArticleUrl(card.url)) {
+      queueArticleExtraction(cardId);
+    }
   } catch (error) {
     console.error('[MetadataService] Error fetching metadata:', error);
 
@@ -134,10 +230,67 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
 }
 
 /**
- * Clear the processed set (useful for retrying)
+ * Extract article content for a single card
+ */
+async function extractArticleForCard(cardId: string): Promise<void> {
+  try {
+    const card = await db.cards.get(cardId);
+    if (!card || !card.url || card.type !== 'url') {
+      return;
+    }
+
+    // Skip if already has article content
+    if (card.articleContent && card.wordCount) {
+      return;
+    }
+
+    console.log('[MetadataService] Extracting article for:', card.url);
+
+    const response = await fetch('/api/article', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: card.url }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      console.log('[MetadataService] Article extraction skipped:', error.error || response.status);
+      return;
+    }
+
+    const data: ArticleResponse = await response.json();
+
+    if (!data.success || !data.article) {
+      return;
+    }
+
+    const { article } = data;
+
+    // Update card with article content
+    await useDataStore.getState().updateCard(cardId, {
+      articleContent: article.content || undefined,
+      wordCount: article.wordCount,
+      readingTime: article.readingTime,
+      // Set initial reading status
+      isRead: false,
+      readProgress: 0,
+    });
+
+    console.log('[MetadataService] Article extracted:', cardId, {
+      wordCount: article.wordCount,
+      readingTime: article.readingTime,
+    });
+  } catch (error) {
+    console.error('[MetadataService] Error extracting article:', error);
+  }
+}
+
+/**
+ * Clear the processed sets (useful for retrying)
  */
 export function clearMetadataCache(): void {
-  processed.clear();
+  metadataProcessed.clear();
+  articleProcessed.clear();
 }
 
 /**
@@ -145,8 +298,15 @@ export function clearMetadataCache(): void {
  */
 export function getMetadataQueueStatus() {
   return {
-    queueLength: fetchQueue.length,
-    activeCount,
-    processedCount: processed.size,
+    metadata: {
+      queueLength: metadataQueue.length,
+      activeCount: metadataActiveCount,
+      processedCount: metadataProcessed.size,
+    },
+    article: {
+      queueLength: articleQueue.length,
+      activeCount: articleActiveCount,
+      processedCount: articleProcessed.size,
+    },
   };
 }

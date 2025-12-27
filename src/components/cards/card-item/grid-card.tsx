@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import DOMPurify from 'dompurify';
-import { Globe, Pin, Loader2, Clock, CheckCircle2 } from 'lucide-react';
+import { Globe, Pin, Loader2, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LocalCard } from '@/lib/db';
 import { TagBadgeList } from '@/components/tags/tag-badge';
@@ -258,18 +258,35 @@ export function GridCard({
             </div>
           )}
 
-          {/* Pinned indicator */}
-          {card.pinned && (
-            <div
-              className="absolute top-3 right-3 p-1.5 rounded-full"
-              style={{
-                background: 'var(--color-accent)',
-                color: 'white',
-              }}
-            >
-              <Pin className="h-3.5 w-3.5" />
-            </div>
-          )}
+          {/* Top right indicators */}
+          <div className="absolute top-3 right-3 flex items-center gap-1.5">
+            {/* Broken link warning */}
+            {card.linkStatus === 'broken' && (
+              <div
+                className="p-1.5 rounded-full"
+                style={{
+                  background: 'rgba(239, 68, 68, 0.9)',
+                  color: 'white',
+                }}
+                title="This link may be broken"
+              >
+                <AlertTriangle className="h-3.5 w-3.5" />
+              </div>
+            )}
+
+            {/* Pinned indicator */}
+            {card.pinned && (
+              <div
+                className="p-1.5 rounded-full"
+                style={{
+                  background: 'var(--color-accent)',
+                  color: 'white',
+                }}
+              >
+                <Pin className="h-3.5 w-3.5" />
+              </div>
+            )}
+          </div>
 
           {/* Reading time and status badges - top left */}
           {!isNoteCard(card.type) && (card.readingTime || card.isRead) && (
@@ -315,6 +332,16 @@ export function GridCard({
             >
               <Loader2 className="h-3 w-3 animate-spin" />
               <span>Syncing</span>
+            </div>
+          )}
+
+          {/* Reading progress bar - shown for in-progress articles */}
+          {!isNoteCard(card.type) && card.readProgress !== undefined && card.readProgress > 0 && !card.isRead && (
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/30">
+              <div
+                className="h-full bg-[var(--color-accent)] transition-all duration-300"
+                style={{ width: `${card.readProgress}%` }}
+              />
             </div>
           )}
         </div>

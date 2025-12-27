@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Link2, FileText, Loader2 } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Link2, FileText, Loader2, AlertCircle } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCurrentWorkspaceId, useCollections } from '@/lib/stores';
 import { useToast } from '@/lib/stores/toast-store';
+import { useModalStore } from '@/lib/stores/modal-store';
+import { normalizeUrl } from '@/lib/utils/url-normalizer';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,9 +28,11 @@ interface AddCardFormProps {
 
 export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProps) {
   const createCard = useDataStore((state) => state.createCard);
+  const allCards = useDataStore((state) => state.cards);
   const workspaceId = useCurrentWorkspaceId();
   const collections = useCollections();
   const { success, error } = useToast();
+  const openCardDetail = useModalStore((state) => state.openCardDetail);
 
   // Bookmark form state
   const [bookmarkUrl, setBookmarkUrl] = useState('');
@@ -36,6 +40,28 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
   const [bookmarkDescription, setBookmarkDescription] = useState('');
   const [bookmarkCollection, setBookmarkCollection] = useState<string>('');
   const [isFetchingMetadata, setIsFetchingMetadata] = useState(false);
+
+  // Duplicate detection
+  const duplicateCard = useMemo(() => {
+    if (!bookmarkUrl || !workspaceId) return null;
+
+    try {
+      // Validate URL format first
+      new URL(bookmarkUrl);
+    } catch {
+      return null;
+    }
+
+    const normalizedInput = normalizeUrl(bookmarkUrl);
+
+    return allCards.find((card) => {
+      if (card._deleted) return false;
+      if (card.type !== 'url') return false;
+      if (!card.url) return false;
+
+      return normalizeUrl(card.url) === normalizedInput;
+    }) || null;
+  }, [bookmarkUrl, allCards, workspaceId]);
 
   // Note form state
   const [noteTitle, setNoteTitle] = useState('');
@@ -173,6 +199,31 @@ export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProp
             onKeyDown={handleUrlKeyDown}
             className="bg-[var(--glass-bg)] border-[var(--glass-border)] text-text-primary"
           />
+
+          {/* Duplicate warning */}
+          {duplicateCard && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+              <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-amber-200">
+                  This URL is already saved
+                </p>
+                <p className="text-xs text-amber-200/70 truncate mt-0.5">
+                  {duplicateCard.title || duplicateCard.url}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    openCardDetail(duplicateCard.id);
+                    onCancel();
+                  }}
+                  className="text-xs text-amber-400 hover:text-amber-300 mt-1.5 underline"
+                >
+                  View existing bookmark →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
