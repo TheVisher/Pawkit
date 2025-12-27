@@ -2,8 +2,8 @@
 
 import { useMemo, useCallback, useEffect } from 'react';
 import { useDataStore } from '@/lib/stores/data-store';
-import { useViewStore, useCardDisplaySettings, cardMatchesContentTypes, cardMatchesUnsortedFilter, cardMatchesReadingFilter } from '@/lib/stores/view-store';
-import type { GroupBy, DateGrouping, UnsortedFilter, ReadingFilter } from '@/lib/stores/view-store';
+import { useViewStore, useCardDisplaySettings, cardMatchesContentTypes, cardMatchesUnsortedFilter, cardMatchesReadingFilter, cardMatchesLinkStatusFilter, findDuplicateCardIds } from '@/lib/stores/view-store';
+import type { GroupBy, DateGrouping, UnsortedFilter, ReadingFilter, LinkStatusFilter } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { CardGrid } from '@/components/cards/card-grid';
@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/cards/empty-state';
 import { PageHeader } from '@/components/layout/page-header';
 import { MobileViewOptions } from '@/components/layout/mobile-view-options';
 import { ContentAreaContextMenu } from '@/components/context-menus';
-import { Bookmark, CalendarDays, Tag, Type, Globe } from 'lucide-react';
+import { Bookmark, CalendarDays, Tag, Type, Globe, SearchX } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
 
 // Helper to get smart date label (Today, Yesterday, This Week, etc.)
@@ -79,6 +79,8 @@ export default function LibraryPage() {
   const selectedTags = useViewStore((state) => state.selectedTags);
   const unsortedFilter = useViewStore((state) => state.unsortedFilter) as UnsortedFilter;
   const readingFilter = useViewStore((state) => state.readingFilter) as ReadingFilter;
+  const linkStatusFilter = useViewStore((state) => state.linkStatusFilter) as LinkStatusFilter;
+  const showDuplicatesOnly = useViewStore((state) => state.showDuplicatesOnly);
   const groupBy = useViewStore((state) => state.groupBy) as GroupBy;
   const dateGrouping = useViewStore((state) => state.dateGrouping) as DateGrouping;
   const reorderCards = useViewStore((state) => state.reorderCards);
@@ -96,6 +98,26 @@ export default function LibraryPage() {
   // Card display settings
   const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
 
+  // Calculate duplicate card IDs (memoized)
+  const duplicateCardIds = useMemo(() => {
+    return findDuplicateCardIds(cards);
+  }, [cards]);
+
+  // Count total non-deleted cards to distinguish between "no items" vs "no results"
+  const totalCards = useMemo(() => {
+    return cards.filter(c => !c._deleted).length;
+  }, [cards]);
+
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return contentTypeFilters.length > 0 ||
+           selectedTags.length > 0 ||
+           unsortedFilter !== 'none' ||
+           readingFilter !== 'all' ||
+           linkStatusFilter !== 'all' ||
+           showDuplicatesOnly;
+  }, [contentTypeFilters, selectedTags, unsortedFilter, readingFilter, linkStatusFilter, showDuplicatesOnly]);
+
   // Filter out deleted cards and apply content type + tag + unsorted + reading filters
   const activeCards = useMemo(() => {
     return cards.filter((card) => {
@@ -110,9 +132,13 @@ export default function LibraryPage() {
       if (!cardMatchesUnsortedFilter(card, unsortedFilter)) return false;
       // Reading status filter
       if (!cardMatchesReadingFilter(card, readingFilter)) return false;
+      // Link status filter
+      if (!cardMatchesLinkStatusFilter(card, linkStatusFilter)) return false;
+      // Duplicates filter
+      if (showDuplicatesOnly && !duplicateCardIds.has(card.id)) return false;
       return true;
     });
-  }, [cards, contentTypeFilters, selectedTags, unsortedFilter, readingFilter]);
+  }, [cards, contentTypeFilters, selectedTags, unsortedFilter, readingFilter, linkStatusFilter, showDuplicatesOnly, duplicateCardIds]);
 
   // Sort cards based on current sort settings
   const sortedCards = useMemo(() => {
@@ -261,7 +287,7 @@ export default function LibraryPage() {
   }
 
   const subtitle = activeCards.length === 0
-    ? 'All your saved content'
+    ? (hasActiveFilters ? 'No matching items' : 'All your saved content')
     : `${activeCards.length} item${activeCards.length === 1 ? '' : 's'}`;
 
   return (
@@ -276,13 +302,23 @@ export default function LibraryPage() {
         {/* Page content - pt-4 creates spacing below header */}
         <div className="px-4 md:px-6 pt-4 pb-6">
           {activeCards.length === 0 ? (
-            <EmptyState
-              icon={Bookmark}
-              title="No bookmarks yet"
-              description="Save your first bookmark to get started. Use the + button above or press ⌘⇧B."
-              actionLabel="Add bookmark"
-              onAction={() => openAddCard('bookmark')}
-            />
+            totalCards === 0 ? (
+              // Truly empty library
+              <EmptyState
+                icon={Bookmark}
+                title="No bookmarks yet"
+                description="Save your first bookmark to get started. Use the + button above or press ⌘⇧B."
+                actionLabel="Add bookmark"
+                onAction={() => openAddCard('bookmark')}
+              />
+            ) : (
+              // Filters returned no results
+              <EmptyState
+                icon={SearchX}
+                title="No matching items"
+                description="Try adjusting your filters or search criteria to find what you're looking for."
+              />
+            )
           ) : groupBy === 'none' ? (
             <CardGrid
               cards={sortedCards}

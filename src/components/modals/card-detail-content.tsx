@@ -115,21 +115,23 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
     }
   }, [card, title, updateCard]);
 
-  // Save content when editor blurs (for note cards)
+  // Save content when editor changes (for note cards)
+  // Note: Editor component handles debouncing, so we save immediately here
   const handleContentChange = useCallback((html: string) => {
     setContent(html);
-    if (card && html !== card.content) {
+    if (card) {
       updateCard(card.id, { content: html });
     }
-  }, [card, updateCard]);
+  }, [card?.id, updateCard]);
 
-  // Save notes when editor blurs (for bookmark cards)
+  // Save notes when editor changes (for bookmark cards)
+  // Note: Editor component handles debouncing, so we save immediately here
   const handleNotesChange = useCallback((html: string) => {
     setNotes(html);
-    if (card && html !== card.notes) {
+    if (card) {
       updateCard(card.id, { notes: html });
     }
-  }, [card, updateCard]);
+  }, [card?.id, updateCard]);
 
   // Handle tag changes - save immediately
   const handleTagsChange = useCallback((newTags: string[]) => {

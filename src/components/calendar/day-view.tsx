@@ -1,13 +1,12 @@
 'use client';
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
-import { format, isToday } from 'date-fns';
-import { FileText, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { useMemo } from 'react';
+import { format, isToday, isSameDay } from 'date-fns';
+import { FileText, Plus } from 'lucide-react';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { getDailyNote } from '@/lib/db/schema';
 import { Button } from '@/components/ui/button';
 import { EventItem } from './event-item';
 import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
@@ -38,22 +37,21 @@ export function DayView() {
   const workspace = useCurrentWorkspace();
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
-  const [dailyNote, setDailyNote] = useState<LocalCard | null>(null);
-  const [showNote, setShowNote] = useState(false);
-
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const isTodayDate = isToday(currentDate);
 
-  // Load daily note for current date
-  const loadDailyNote = useCallback(async () => {
-    if (!workspace) return;
-    const note = await getDailyNote(workspace.id, currentDate);
-    setDailyNote(note);
-  }, [workspace, currentDate]);
-
-  useEffect(() => {
-    loadDailyNote();
-  }, [loadDailyNote]);
+  // Find the daily note for current date from the store
+  const dailyNote = useMemo(() => {
+    if (!workspace) return null;
+    return cards.find(
+      (c) =>
+        c.workspaceId === workspace.id &&
+        c.isDailyNote &&
+        c.scheduledDate &&
+        isSameDay(new Date(c.scheduledDate), currentDate) &&
+        !c._deleted
+    ) || null;
+  }, [cards, workspace, currentDate]);
 
   const handleCreateDailyNote = async () => {
     if (!workspace) return;
@@ -74,7 +72,7 @@ export function DayView() {
     });
 
     if (newNote) {
-      setDailyNote(newNote);
+      // Note: dailyNote will auto-update via Zustand store
       openCardDetail(newNote.id);
     }
   };

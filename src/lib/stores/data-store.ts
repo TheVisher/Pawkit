@@ -5,8 +5,8 @@
 
 import { create } from 'zustand';
 import { db, createSyncMetadata, markModified, markDeleted } from '@/lib/db';
-import type { LocalCard, LocalCollection, LocalCalendarEvent, LocalTodo, SyncQueueItem } from '@/lib/db';
-import { scheduleQueueProcess } from '@/lib/services/sync-service';
+import type { LocalCard, LocalCollection, LocalCalendarEvent, LocalTodo } from '@/lib/db';
+import { addToQueue } from '@/lib/services/sync-queue';
 import { queueMetadataFetch } from '@/lib/services/metadata-service';
 
 interface DataState {
@@ -57,12 +57,6 @@ interface DataState {
   deleteTodo: (id: string) => Promise<void>;
 }
 
-// Helper to queue sync and trigger processing
-async function queueSync(item: Omit<SyncQueueItem, 'id'>) {
-  await db.syncQueue.add(item);
-  // Schedule queue processing (debounced)
-  scheduleQueueProcess();
-}
 
 export const useDataStore = create<DataState>((set, get) => ({
   // Initial state
@@ -117,15 +111,8 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Update Zustand state immediately (optimistic)
     set({ cards: [...get().cards, card] });
 
-    // Queue sync
-    await queueSync({
-      entityType: 'card',
-      entityId: card.id,
-      operation: 'create',
-      payload: card as unknown as Record<string, unknown>,
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    // Queue sync (addToQueue handles merging duplicate updates)
+    await addToQueue('card', card.id, 'create');
 
     // Queue metadata fetch for URL cards (fire-and-forget)
     if (isUrlCard) {
@@ -156,15 +143,8 @@ export const useDataStore = create<DataState>((set, get) => ({
       cards: get().cards.map((c) => (c.id === id ? updated : c)),
     });
 
-    // Queue sync
-    await queueSync({
-      entityType: 'card',
-      entityId: id,
-      operation: 'update',
-      payload: updates,
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    // Queue sync (addToQueue handles merging duplicate updates)
+    await addToQueue('card', id, 'update', updates as Record<string, unknown>);
   },
 
   deleteCard: async (id) => {
@@ -182,13 +162,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     });
 
     // Queue sync
-    await queueSync({
-      entityType: 'card',
-      entityId: id,
-      operation: 'delete',
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    await addToQueue('card', id, 'delete');
   },
 
   addCardToCollection: async (cardId: string, collectionSlug: string) => {
@@ -248,14 +222,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     set({ collections: [...collections, collection] });
 
     // Queue sync
-    await queueSync({
-      entityType: 'collection',
-      entityId: collection.id,
-      operation: 'create',
-      payload: collection as unknown as Record<string, unknown>,
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    await addToQueue('collection', collection.id, 'create');
 
     return collection;
   },
@@ -279,14 +246,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     });
 
     // Queue sync
-    await queueSync({
-      entityType: 'collection',
-      entityId: id,
-      operation: 'update',
-      payload: updates,
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    await addToQueue('collection', id, 'update', updates as Record<string, unknown>);
   },
 
   deleteCollection: async (id) => {
@@ -304,13 +264,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     });
 
     // Queue sync
-    await queueSync({
-      entityType: 'collection',
-      entityId: id,
-      operation: 'delete',
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    await addToQueue('collection', id, 'delete');
   },
 
   // ==========================================================================
@@ -371,14 +325,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     set({ events: [...events, event] });
 
     // Queue sync
-    await queueSync({
-      entityType: 'event',
-      entityId: event.id,
-      operation: 'create',
-      payload: event as unknown as Record<string, unknown>,
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    await addToQueue('event', event.id, 'create');
 
     return event;
   },
@@ -402,14 +349,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     });
 
     // Queue sync
-    await queueSync({
-      entityType: 'event',
-      entityId: id,
-      operation: 'update',
-      payload: updates,
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    await addToQueue('event', id, 'update', updates as Record<string, unknown>);
   },
 
   deleteEvent: async (id) => {
@@ -427,13 +367,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     });
 
     // Queue sync
-    await queueSync({
-      entityType: 'event',
-      entityId: id,
-      operation: 'delete',
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    await addToQueue('event', id, 'delete');
   },
 
   // ==========================================================================
@@ -471,14 +405,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     set({ todos: [...todos, todo] });
 
     // Queue sync
-    await queueSync({
-      entityType: 'todo',
-      entityId: todo.id,
-      operation: 'create',
-      payload: todo as unknown as Record<string, unknown>,
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    await addToQueue('todo', todo.id, 'create');
 
     return todo;
   },
@@ -502,14 +429,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     });
 
     // Queue sync
-    await queueSync({
-      entityType: 'todo',
-      entityId: id,
-      operation: 'update',
-      payload: updates,
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    await addToQueue('todo', id, 'update', updates as Record<string, unknown>);
   },
 
   deleteTodo: async (id) => {
@@ -527,13 +447,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     });
 
     // Queue sync
-    await queueSync({
-      entityType: 'todo',
-      entityId: id,
-      operation: 'delete',
-      retryCount: 0,
-      createdAt: new Date(),
-    });
+    await addToQueue('todo', id, 'delete');
   },
 }));
 

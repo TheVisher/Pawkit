@@ -5,41 +5,39 @@
  * Quick access to today's daily note from the home dashboard
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { format } from 'date-fns';
+import { useState, useMemo } from 'react';
+import { format, isSameDay } from 'date-fns';
 import { Calendar, Plus, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
-import { getDailyNote } from '@/lib/db/schema';
 import { cn } from '@/lib/utils';
-import type { LocalCard } from '@/lib/db';
 
 export function TodaysNoteWidget() {
-  const [note, setNote] = useState<LocalCard | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [date, setDate] = useState(new Date());
   const workspace = useCurrentWorkspace();
+  const cards = useDataStore((s) => s.cards);
+  const isLoading = useDataStore((s) => s.isLoading);
   const createCard = useDataStore((s) => s.createCard);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
   const formattedDate = format(date, 'EEEE, MMMM d');
 
-  // Load the daily note for the selected date
-  const loadNote = useCallback(async () => {
-    if (!workspace) return;
-    setIsLoading(true);
-    const dailyNote = await getDailyNote(workspace.id, date);
-    setNote(dailyNote);
-    setIsLoading(false);
-  }, [workspace, date]);
-
-  useEffect(() => {
-    loadNote();
-  }, [loadNote]);
+  // Find the daily note for the selected date from the store
+  const note = useMemo(() => {
+    if (!workspace) return null;
+    return cards.find(
+      (c) =>
+        c.workspaceId === workspace.id &&
+        c.isDailyNote &&
+        c.scheduledDate &&
+        isSameDay(new Date(c.scheduledDate), date) &&
+        !c._deleted
+    ) || null;
+  }, [cards, workspace, date]);
 
   const handleCreateNote = async () => {
     if (!workspace) return;
@@ -60,7 +58,7 @@ export function TodaysNoteWidget() {
     });
 
     if (newNote) {
-      setNote(newNote);
+      // Note: note will auto-update via Zustand store
       openCardDetail(newNote.id);
     }
   };

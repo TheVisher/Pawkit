@@ -8,7 +8,7 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Typography from '@tiptap/extension-typography';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Bold, Italic, Code, Link as LinkIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlashCommandMenu } from './slash-command-menu';
@@ -32,6 +32,7 @@ export function Editor({
   const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
   const toolbarRef = useRef<HTMLDivElement>(null);
   const lastSavedContent = useRef(content);
+  const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   const editor = useEditor({
     immediatelyRender: false, // Required for SSR/Next.js to avoid hydration mismatches
@@ -143,12 +144,26 @@ export function Editor({
         return false;
       },
     },
-    onUpdate: () => {
-      // Don't call onChange here - we'll handle saving on blur
+    onUpdate: ({ editor }) => {
+      // Debounced save - triggers 500ms after last keystroke
+      if (saveDebounceRef.current) {
+        clearTimeout(saveDebounceRef.current);
+      }
+      saveDebounceRef.current = setTimeout(() => {
+        const currentContent = editor.getHTML();
+        if (currentContent !== lastSavedContent.current) {
+          lastSavedContent.current = currentContent;
+          onChange(currentContent);
+        }
+      }, 500);
     },
     onBlur: ({ editor }) => {
+      // Immediate save on blur (cancel any pending debounce)
+      if (saveDebounceRef.current) {
+        clearTimeout(saveDebounceRef.current);
+        saveDebounceRef.current = null;
+      }
       const currentContent = editor.getHTML();
-      // Only save if content actually changed
       if (currentContent !== lastSavedContent.current) {
         lastSavedContent.current = currentContent;
         onChange(currentContent);
@@ -162,10 +177,19 @@ export function Editor({
         // Get the coordinates of the selection
         const coords = editor.view.coordsAtPos(from);
         const editorRect = editor.view.dom.getBoundingClientRect();
-
+        
+        // Estimate toolbar width (approx 280px based on buttons)
+        const estimatedToolbarWidth = 280;
+        let left = coords.left - editorRect.left;
+        
+        // Clamp to edges
+        if (left + estimatedToolbarWidth > editorRect.width) {
+          left = Math.max(0, editorRect.width - estimatedToolbarWidth);
+        }
+        
         setToolbarPosition({
           top: coords.top - editorRect.top - 45,
-          left: coords.left - editorRect.left,
+          left,
         });
         setShowToolbar(true);
       } else {
@@ -191,12 +215,25 @@ export function Editor({
     }
   }, [editor, content]);
 
-  // Cleanup
+  // Cleanup - flush pending saves and destroy editor
   useEffect(() => {
     return () => {
+      // Flush any pending debounced save before unmounting
+      if (saveDebounceRef.current) {
+        clearTimeout(saveDebounceRef.current);
+        saveDebounceRef.current = null;
+      }
+      // Save current content if it changed
+      if (editor) {
+        const currentContent = editor.getHTML();
+        if (currentContent !== lastSavedContent.current) {
+          lastSavedContent.current = currentContent;
+          onChange(currentContent);
+        }
+      }
       editor?.destroy();
     };
-  }, [editor]);
+  }, [editor, onChange]);
 
   // Hide toolbar when clicking outside
   useEffect(() => {

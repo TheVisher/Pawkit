@@ -5,7 +5,8 @@
  * Content type, sort, quick filter, grouping, sub-pawkit, and tags sections
  */
 
-import { Filter, ArrowUpDown, Inbox, Layers, Tag, Folder, BookOpen } from 'lucide-react';
+import { useState } from 'react';
+import { Filter, ArrowUpDown, Inbox, Layers, Tag, Folder, BookOpen, Link, RefreshCw, Copy } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import type { SubPawkitSize } from '@/lib/stores/view-store';
@@ -16,11 +17,13 @@ import {
   DATE_GROUP_OPTIONS,
   UNSORTED_OPTIONS,
   READING_FILTER_OPTIONS,
+  LINK_STATUS_FILTER_OPTIONS,
   type ContentType,
   type GroupBy,
   type DateGrouping,
   type UnsortedFilter,
   type ReadingFilter,
+  type LinkStatusFilter,
 } from './config';
 
 // Content Type Filter Section
@@ -214,6 +217,123 @@ export function ReadingStatusFilter({ filter, onFilterChange }: ReadingStatusFil
             );
           })}
         </div>
+      </div>
+      <Separator className="bg-border-subtle" />
+    </>
+  );
+}
+
+// Link Status Filter Section
+interface LinkStatusFilterSectionProps {
+  filter: LinkStatusFilter;
+  onFilterChange: (filter: LinkStatusFilter) => void;
+  onRecheckAll?: () => Promise<number>;
+}
+
+export function LinkStatusFilterSection({ filter, onFilterChange, onRecheckAll }: LinkStatusFilterSectionProps) {
+  const [isRechecking, setIsRechecking] = useState(false);
+  const [recheckCount, setRecheckCount] = useState<number | null>(null);
+
+  const handleRecheckAll = async () => {
+    if (!onRecheckAll || isRechecking) return;
+    setIsRechecking(true);
+    setRecheckCount(null);
+    try {
+      const count = await onRecheckAll();
+      setRecheckCount(count);
+      // Clear message after 5 seconds
+      setTimeout(() => setRecheckCount(null), 5000);
+    } finally {
+      setIsRechecking(false);
+    }
+  };
+
+  return (
+    <>
+      <div>
+        <div className="flex items-center justify-between text-text-muted mb-3">
+          <div className="flex items-center gap-2">
+            <Link className="h-5 w-5" />
+            <span className="text-xs font-medium uppercase">Link Status</span>
+          </div>
+          {onRecheckAll && (
+            <button
+              onClick={handleRecheckAll}
+              disabled={isRechecking}
+              className="text-xs text-text-muted hover:text-text-primary transition-colors disabled:opacity-50 flex items-center gap-1"
+            >
+              <RefreshCw className={cn('h-3 w-3', isRechecking && 'animate-spin')} />
+              {isRechecking ? 'Checking...' : 'Re-check'}
+            </button>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {LINK_STATUS_FILTER_OPTIONS.map((option) => {
+            const Icon = option.icon;
+            const isActive = filter === option.id;
+            return (
+              <button
+                key={option.id}
+                onClick={() => onFilterChange(option.id)}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors',
+                  isActive
+                    ? 'bg-[var(--color-accent)] text-white'
+                    : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span>{option.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        {recheckCount !== null && (
+          <p className="text-xs text-text-muted mt-2">
+            Queued {recheckCount} link{recheckCount !== 1 ? 's' : ''} for checking
+          </p>
+        )}
+      </div>
+      <Separator className="bg-border-subtle" />
+    </>
+  );
+}
+
+// Duplicates Filter Section
+interface DuplicatesFilterProps {
+  showDuplicatesOnly: boolean;
+  duplicateCount: number;
+  onToggle: (show: boolean) => void;
+}
+
+export function DuplicatesFilter({ showDuplicatesOnly, duplicateCount, onToggle }: DuplicatesFilterProps) {
+  return (
+    <>
+      <div>
+        <div className="flex items-center justify-between text-text-muted mb-3">
+          <div className="flex items-center gap-2">
+            <Copy className="h-5 w-5" />
+            <span className="text-xs font-medium uppercase">Duplicates</span>
+          </div>
+          {duplicateCount > 0 && (
+            <span className="text-xs text-text-muted">{duplicateCount} found</span>
+          )}
+        </div>
+        <button
+          onClick={() => onToggle(!showDuplicatesOnly)}
+          className={cn(
+            'w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors',
+            showDuplicatesOnly
+              ? 'bg-[var(--color-accent)] text-white'
+              : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+          )}
+        >
+          <span>Show duplicates only</span>
+          {showDuplicatesOnly && <span className="text-xs opacity-70">✓</span>}
+        </button>
+        {duplicateCount === 0 && (
+          <p className="text-xs text-text-muted mt-2 italic">No duplicates found</p>
+        )}
       </div>
       <Separator className="bg-border-subtle" />
     </>

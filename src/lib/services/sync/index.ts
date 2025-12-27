@@ -24,6 +24,7 @@ export {
 
 // Convenience functions
 import { syncService } from './sync-service';
+import { clearAllSyncQueue } from '../sync-queue';
 
 export const fullSync = () => syncService.fullSync();
 export const deltaSync = () => syncService.deltaSync();
@@ -32,3 +33,13 @@ export const processQueueNow = () => syncService.processQueueNow();
 export const clearLocalData = () => syncService.clearLocalData();
 export const setWorkspace = (id: string | null) => syncService.setWorkspace(id);
 export const getLastSyncTime = () => syncService.getLastSyncTime();
+export { clearAllSyncQueue };
+
+// Expose debug helpers on window for console access
+if (typeof window !== 'undefined') {
+  (window as unknown as Record<string, unknown>).__pawkitSync = {
+    clearQueue: clearAllSyncQueue,
+    fullSync,
+    processQueueNow,
+  };
+}

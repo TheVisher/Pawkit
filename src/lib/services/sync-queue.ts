@@ -207,6 +207,9 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
     if (response.status === 404 && (operation === 'update' || operation === 'delete')) {
       // Entity doesn't exist on server, remove from queue
       await db.syncQueue.delete(item.id!);
+      // Mark as synced locally to prevent re-queueing on future edits
+      await markEntitySynced(entityType, entityId);
+      log.debug(`Entity ${entityId} not found on server, marked as synced locally`);
       return;
     }
 
@@ -432,4 +435,28 @@ export async function retryFailedItems(): Promise<void> {
       lastError: undefined,
     });
   }
+}
+
+/**
+ * Clear entire sync queue and mark all entities as synced
+ * Use this to reset after a broken sync state
+ */
+export async function clearAllSyncQueue(): Promise<void> {
+  log.info('Clearing all sync queue items');
+
+  // Clear the queue
+  await db.syncQueue.clear();
+
+  // Mark all cards as synced
+  await db.cards.toCollection().modify({ _synced: true });
+
+  // Update Zustand store
+  useDataStore.setState((state) => ({
+    cards: state.cards.map((c) => ({ ...c, _synced: true })),
+  }));
+
+  // Reset pending count
+  useSyncStore.getState().setPendingCount(0);
+
+  log.info('Sync queue cleared and all cards marked as synced');
 }

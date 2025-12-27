@@ -30,7 +30,7 @@ export default function CalendarPage() {
       <div className="h-full flex flex-col overflow-hidden">
         <CalendarHeader />
 
-        <div className="flex-1 overflow-hidden p-6">
+        <div className="flex-1 overflow-hidden p-4 md:p-6">
           {viewMode === 'month' && <MonthView />}
           {viewMode === 'week' && <WeekView />}
           {viewMode === 'day' && <DayView />}

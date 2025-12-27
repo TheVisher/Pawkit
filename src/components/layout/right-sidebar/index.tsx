@@ -26,7 +26,8 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-import { getViewConfig, type ContentType, type GroupBy, type DateGrouping, type UnsortedFilter, type ReadingFilter } from './config';
+import { getViewConfig, type ContentType, type GroupBy, type DateGrouping, type UnsortedFilter, type ReadingFilter, type LinkStatusFilter } from './config';
+import { forceRecheckAllLinks } from '@/lib/services/link-check-service';
 import { CardDetailsPanel } from './CardDetailsPanel';
 import { CardDisplaySettings } from './CardDisplaySettings';
 import {
@@ -34,10 +35,13 @@ import {
   SortOptions,
   QuickFilter,
   ReadingStatusFilter,
+  LinkStatusFilterSection,
+  DuplicatesFilter,
   GroupingSection,
   SubPawkitSettings,
   TagsFilter,
 } from './FilterSections';
+import { findDuplicateCardIds } from '@/lib/stores/view-store';
 
 export function RightSidebar() {
   const [mounted, setMounted] = useState(false);
@@ -121,6 +125,10 @@ export function RightSidebar() {
   const setUnsortedFilter = useViewStore((s) => s.setUnsortedFilter);
   const readingFilter = useViewStore((s) => s.readingFilter) as ReadingFilter;
   const setReadingFilter = useViewStore((s) => s.setReadingFilter);
+  const linkStatusFilter = useViewStore((s) => s.linkStatusFilter) as LinkStatusFilter;
+  const setLinkStatusFilter = useViewStore((s) => s.setLinkStatusFilter);
+  const showDuplicatesOnly = useViewStore((s) => s.showDuplicatesOnly);
+  const setShowDuplicatesOnly = useViewStore((s) => s.setShowDuplicatesOnly);
   const groupBy = useViewStore((s) => s.groupBy) as GroupBy;
   const dateGrouping = useViewStore((s) => s.dateGrouping) as DateGrouping;
   const setGroupBy = useViewStore((s) => s.setGroupBy);
@@ -129,8 +137,15 @@ export function RightSidebar() {
   // Sub-Pawkit display settings
   const { subPawkitSize, subPawkitColumns, setSubPawkitSize, setSubPawkitColumns } = useSubPawkitSettings();
 
-  // Get all tags from cards
+  // Get all tags from cards and calculate duplicates
   const cards = useDataStore((s) => s.cards);
+
+  // Calculate duplicate count
+  const duplicateCount = useMemo(() => {
+    const duplicateIds = findDuplicateCardIds(cards);
+    return duplicateIds.size;
+  }, [cards]);
+
   const allTags = useMemo(() => {
     const tagCounts = new Map<string, number>();
     for (const card of cards) {
@@ -283,6 +298,16 @@ export function RightSidebar() {
                 <ReadingStatusFilter
                   filter={readingFilter}
                   onFilterChange={setReadingFilter}
+                />
+                <LinkStatusFilterSection
+                  filter={linkStatusFilter}
+                  onFilterChange={setLinkStatusFilter}
+                  onRecheckAll={workspace ? () => forceRecheckAllLinks(workspace.id) : undefined}
+                />
+                <DuplicatesFilter
+                  showDuplicatesOnly={showDuplicatesOnly}
+                  duplicateCount={duplicateCount}
+                  onToggle={setShowDuplicatesOnly}
                 />
                 <GroupingSection
                   groupBy={groupBy}
