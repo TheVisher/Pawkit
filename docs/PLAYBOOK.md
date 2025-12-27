@@ -997,97 +997,37 @@ src/
 │   │   ├── dashboard-layout.tsx
 │   │   ├── sidebar-left.tsx
 │   │   ├── sidebar-right.tsx
-│   │   ├── center-panel.tsx
-│   │   ├── omnibar.tsx
+│   │   ├── omnibar/            # Modular omnibar
+│   │   │   ├── index.tsx
+│   │   │   ├── use-omnibar.ts
+│   │   │   └── idle-content.tsx
+│   │   ├── omnibar.tsx         # Re-export bridge
 │   │   └── mobile-nav.tsx
 │   │
-│   ├── sidebar-sections/       # Modular sidebar sections
-│   │   ├── nav-items.tsx
-│   │   ├── pawkits-tree.tsx
-│   │   ├── connections-list.tsx
-│   │   ├── content-type-filter.tsx
-│   │   ├── tags-filter.tsx
-│   │   ├── sort-options.tsx
-│   │   ├── view-options.tsx
-│   │   └── display-options.tsx
-│   │
-│   ├── views/                  # View components
-│   │   ├── grid-view.tsx
-│   │   ├── list-view.tsx
-│   │   ├── masonry-view.tsx
-│   │   ├── timeline-view.tsx
-│   │   └── board-view.tsx
-│   │
+... (intermediate content)
 │   ├── cards/                  # Card display components
 │   │   ├── card-base.tsx
-│   │   ├── card-bookmark.tsx
-│   │   ├── card-note.tsx
-│   │   ├── card-file.tsx
+│   │   ├── card-item/          # Modular card item
+│   │   ├── card-list-view/     # Modular list view
 │   │   └── card-actions.tsx
 │   │
-│   ├── modals/                 # Modal dialogs
-│   │   ├── card-detail-modal.tsx
-│   │   ├── create-pawkit-modal.tsx
-│   │   ├── create-event-modal.tsx
-│   │   ├── tasks-modal.tsx
-│   │   ├── settings-modal.tsx
-│   │   └── workspace-switcher.tsx
-│   │
-│   ├── calendar/               # Calendar components
-│   │   ├── month-view.tsx
-│   │   ├── week-view.tsx
-│   │   ├── day-cell.tsx
-│   │   └── event-item.tsx
-│   │
-│   ├── kit/                    # Kit AI components
-│   │   ├── kit-chat-panel.tsx
-│   │   ├── kit-overlay.tsx
-│   │   ├── kit-message.tsx
-│   │   └── kit-input.tsx
-│   │
-│   ├── home/                   # Home dashboard widgets
-│   │   ├── tasks-widget.tsx
-│   │   ├── recent-items-widget.tsx
-│   │   ├── quick-access-widget.tsx
-│   │   └── week-strip-widget.tsx
-│   │
-│   ├── rediscover/             # 🆕 Rediscover components
-│   │   ├── card-stack.tsx
-│   │   ├── orbiting-cards.tsx
-│   │   ├── swipe-actions.tsx
-│   │   └── batch-progress.tsx
-│   │
-│   └── shared/                 # Shared components
-│       ├── loading.tsx
-│       ├── error-boundary.tsx
-│       ├── empty-state.tsx
-│       └── confirm-dialog.tsx
-│
+... (intermediate content)
 ├── lib/
 │   ├── db/                     # Database layer
 │   │   ├── dexie.ts            # Dexie instance & schema
 │   │   ├── queries.ts          # Dexie query helpers
 │   │   └── migrations.ts       # Local DB migrations
 │   │
-│   ├── stores/                 # Zustand stores
-│   │   ├── workspace-store.ts
-│   │   ├── cards-store.ts
-│   │   ├── collections-store.ts
-│   │   ├── calendar-store.ts
-│   │   ├── todos-store.ts
-│   │   ├── ui-store.ts         # Sidebar state, modals, etc.
-│   │   ├── sync-store.ts
-│   │   ├── conflict-store.ts   # 🆕 Sync conflict notifications
-│   │   ├── drag-store.ts       # 🆕 DnD cross-component state
-│   │   └── file-store.ts       # 🆕 File/attachment management
-│   │
 │   ├── services/               # Business logic
-│   │   ├── sync-service.ts
-│   │   ├── sync-queue.ts       # 🆕 Retry queue
+│   │   ├── sync/               # Modular sync domain
+│   │   │   ├── index.ts
+│   │   │   ├── sync-service.ts
+│   │   │   └── entity-sync.ts
+│   │   ├── sync-queue.ts       # Retry queue
 │   │   ├── metadata-service.ts # URL scraping
 │   │   ├── search-service.ts
 │   │   ├── kit-service.ts
-│   │   └── image-cache.ts      # 🆕 LRU thumbnail cache
+│   │   └── image-cache.ts      # LRU thumbnail cache
 │   │
 │   ├── hooks/                  # Custom React hooks
 │   │   ├── use-cards.ts
@@ -1129,10 +1069,67 @@ src/
 2. Import into `sidebar-left.tsx` or `sidebar-right.tsx`
 3. Add to render with appropriate collapse behavior
 
-**Adding a new view:**
-1. Create component in `components/views/`
-2. Add to view switcher in `view-options.tsx`
-3. Handle in parent container
+**Adding a new view/page (IMPORTANT - Follow this pattern):**
+
+All dashboard pages MUST follow this consistent design pattern:
+
+```tsx
+// src/app/(dashboard)/[view-name]/page.tsx
+'use client';
+
+import { PageHeader } from '@/components/layout/page-header';
+// ... other imports
+
+export default function ViewNamePage() {
+  // Subtitle shows count or context info
+  const subtitle = items.length === 0
+    ? 'Description of the view'
+    : `${items.length} item${items.length === 1 ? '' : 's'}`;
+
+  // Optional: Header actions (filters, buttons, etc.)
+  const headerActions = (
+    <div className="flex items-center gap-2">
+      {/* Search input, sort dropdown, action buttons */}
+    </div>
+  );
+
+  return (
+    <div className="flex-1">
+      {/* PageHeader - REQUIRED for all views */}
+      <PageHeader
+        title="View Name"      // Large title (Library, Calendar, Tags, etc.)
+        subtitle={subtitle}     // Small muted text above title
+        actions={headerActions} // Optional: right-aligned controls
+      />
+
+      {/* Content area - standard padding */}
+      <div className="px-6 pt-4 pb-6">
+        {/* View content here */}
+      </div>
+    </div>
+  );
+}
+```
+
+**PageHeader Pattern:**
+- **Subtitle (top):** Small muted text - shows count, date, or context info
+  - Examples: "29 items", "December 2025", "4 tags", "Organize your content"
+- **Title (below subtitle):** Large semibold text - the view name
+  - Examples: "Library", "Calendar", "Tags", "Home"
+- **Actions (right side):** Optional controls aligned to the right
+  - Examples: Search input, sort dropdown, "Create new" button
+
+**Layout Rules:**
+1. **NO header bars** - Don't create custom headers with back buttons
+2. **NO explicit background** - Inherit from app's default background
+3. **Use PageHeader** - Every view uses the `PageHeader` component
+4. **Standard padding** - Content uses `px-6 pt-4 pb-6`
+5. **flex-1 wrapper** - Outer div uses `className="flex-1"`
+
+**Reference Examples:**
+- Library: `src/app/(dashboard)/library/page.tsx`
+- Tags: `src/app/(dashboard)/tags/page.tsx`
+- Home: `src/app/(dashboard)/home/page.tsx`
 
 **Adding a new modal:**
 1. Create component in `components/modals/`
@@ -2477,29 +2474,29 @@ function MasonryView({ cards }: { cards: Card[] }) {
 Use this checklist to verify V2 has all V1 features:
 
 ### Core Features
-- [ ] Cards (bookmarks, notes, files)
-- [ ] Collections (Pawkits) with nesting
-- [ ] Calendar with recurring events
-- [ ] Todos with due dates and categorization
-- [ ] Note folders with hierarchy
+- [x] Cards (bookmarks, notes, files)
+- [x] Collections (Pawkits) with nesting
+- [x] Calendar with recurring events
+- [x] Todos with due dates and categorization
+- [x] Note folders with hierarchy
 - [ ] Wiki-links and backlinks
 - [ ] Daily notes with templates
 - [ ] Knowledge graph visualization
-- [ ] Search with smart scoring
+- [x] Search with smart scoring
 
 ### Views
-- [ ] Library (Grid, List, Masonry) with Content Type filter
+- [x] Library (Grid, List, Masonry) with Content Type filter
 - [x] Calendar (Month, Week)
-- [ ] Pawkit (Grid, List, Masonry, Board)
+- [x] Pawkit (Grid, List, Masonry, Board)
 - [ ] Rediscover (Card stack with batch processing)
-- [ ] Home dashboard with Tasks widget
+- [x] Home dashboard with Tasks widget
 
 ### Interactions
-- [ ] Drag cards to Pawkits
-- [ ] Drag cards between Kanban columns
-- [ ] Reorder Pawkits in sidebar
+- [x] Drag cards to Pawkits
+- [x] Drag cards between Kanban columns
+- [x] Reorder Pawkits in sidebar
 - [ ] Keyboard shortcuts (K/F/D in Rediscover)
-- [ ] Command palette (⌘K)
+- [x] Command palette (⌘K)
 
 ### AI & Integrations
 - [ ] Kit AI chat with context awareness
@@ -2509,25 +2506,25 @@ Use this checklist to verify V2 has all V1 features:
 - [ ] Browser extension compatibility
 
 ### Customization
-- [ ] Dark/Light theme
-- [ ] Glass/Modern style
+- [x] Dark/Light theme
+- [x] Glass/Modern style
 - [ ] Surface tint option
-- [ ] Accent color picker
-- [ ] Background customization
-- [ ] Per-view layout preferences
+- [x] Accent color picker
+- [x] Background customization
+- [x] Per-view layout preferences
 
 ### Sync & Offline
-- [ ] Local-first with IndexedDB
-- [ ] Background sync with debounce
-- [ ] Conflict resolution with notifications
-- [ ] Offline operation
-- [ ] Cross-tab coordination
-- [ ] Local-only mode toggle
+- [x] Local-first with IndexedDB
+- [x] Background sync with debounce
+- [x] Conflict resolution with notifications
+- [x] Offline operation
+- [x] Cross-tab coordination
+- [x] Local-only mode toggle
 
 ### User Management
-- [ ] Workspaces
+- [x] Workspaces
 - [ ] Extension token auth
-- [ ] View settings persistence
+- [x] View settings persistence
 - [ ] Export/import data
 
 ---

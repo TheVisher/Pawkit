@@ -14,6 +14,7 @@ import {
   Moon,
   PanelLeft,
   Folder,
+  Hash,
 } from 'lucide-react';
 import type { ToastType } from '@/lib/stores/toast-store';
 import type { LocalCard, LocalCollection } from '@/lib/db';
@@ -100,4 +101,5 @@ export const addMenuItems = [
   { icon: StickyNote, label: 'Quick Note', action: 'quick-note' },
   { icon: Upload, label: 'Upload File', action: 'upload' },
   { icon: Calendar, label: 'New Event', action: 'event' },
+  { icon: Hash, label: 'New Tag', action: 'tag' },
 ];

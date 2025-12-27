@@ -90,3 +90,15 @@ export {
   selectIsOffline,
 } from './sync-store';
 export type { SyncStatus } from './sync-store';
+
+// Tags
+export {
+  useTagStore,
+  useTagInput,
+  useTagTree,
+  useTagManagement,
+  selectUniqueTags,
+  selectTagCounts,
+  selectTagTree,
+  selectRecentTags,
+} from './tag-store';

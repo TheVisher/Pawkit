@@ -137,10 +137,22 @@
   --sat-accent: 60%;
   --color-accent: hsl(var(--hue-accent) var(--sat-accent) 55%);
   --color-accent-hover: hsl(var(--hue-accent) var(--sat-accent) 65%);
+
+  /* Tag colors - light mode (pastel backgrounds, dark text) */
+  --tag-saturation: 65%;
+  --tag-lightness: 88%;
+  --tag-text-saturation: 70%;
+  --tag-text-lightness: 30%;
 }
 
 /* Dark theme semantic colors - only apply when .dark class is present */
 .dark {
+  /* Tag colors - dark mode (muted backgrounds, light text) */
+  --tag-saturation: 50%;
+  --tag-lightness: 25%;
+  --tag-text-saturation: 70%;
+  --tag-text-lightness: 85%;
+
   --color-bg-base: hsl(0 0% 4%);
   --color-bg-surface-1: hsl(0 0% 9%);
   --color-bg-surface-2: hsl(0 0% 13%);

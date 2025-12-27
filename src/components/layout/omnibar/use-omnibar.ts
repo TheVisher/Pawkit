@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useModalStore } from '@/lib/stores/modal-store';
@@ -12,6 +12,7 @@ import { SEARCHABLE_ACTIONS, addMenuItems, type SearchResults } from './types';
 
 export function useOmnibar(isCompact: boolean) {
   const router = useRouter();
+  const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isAddMode, setIsAddMode] = useState(false);
@@ -307,6 +308,26 @@ export function useOmnibar(isCompact: boolean) {
     setSelectedIndex(-1);
   }, [debouncedQuery, isQuickNoteMode, cards, collections, recentCards, stripHtml]);
 
+  // Context-aware filtering for /tags page
+  // When on /tags and typing, update URL with query param for filtering
+  const isOnTagsPage = pathname === '/tags';
+
+  useEffect(() => {
+    if (!isOnTagsPage || !isQuickNoteMode) return;
+
+    const query = debouncedQuery.trim();
+
+    // Skip if it's a command prefix
+    if (query.startsWith('/') || query.startsWith('#') || query.startsWith('@')) return;
+
+    // Update URL with filter query
+    if (query) {
+      router.replace(`/tags?q=${encodeURIComponent(query)}`, { scroll: false });
+    } else {
+      router.replace('/tags', { scroll: false });
+    }
+  }, [debouncedQuery, isOnTagsPage, isQuickNoteMode, router]);
+
   const totalResultsCount = useMemo(() => {
     if (!searchResults) return 0;
     return (
@@ -401,6 +422,12 @@ export function useOmnibar(isCompact: boolean) {
       height += textareaHeight - 28;
     }
 
+    // On tags page, show a simpler UI with just "Filtering tags..." text
+    if (isOnTagsPage && hasTypedContent && !isPrefixCommand) {
+      height += 36; // Just enough for "Filtering tags..." text
+      return Math.min(Math.max(48, height), 600);
+    }
+
     if (hasTypedContent && !isPrefixCommand) {
       height += 40;
     }
@@ -442,7 +469,7 @@ export function useOmnibar(isCompact: boolean) {
     }
 
     return Math.min(Math.max(48, height), 600);
-  }, [isQuickNoteMode, quickNoteText, textareaHeight, searchResults]);
+  }, [isQuickNoteMode, quickNoteText, textareaHeight, searchResults, isOnTagsPage]);
 
   // ==========================================================================
   // ADD MODE HEIGHT CALCULATION
@@ -593,6 +620,16 @@ export function useOmnibar(isCompact: boolean) {
       e.preventDefault();
       if (selectedIndex >= 0 && totalResultsCount > 0) {
         executeResult(selectedIndex);
+      } else if (isOnTagsPage) {
+        // On tags page, Enter just closes - filter is already in URL
+        isDiscardingRef.current = true;
+        setIsQuickNoteMode(false);
+        setQuickNoteText('');
+        setForceExpanded(false);
+        setSearchResults(null);
+        setSelectedIndex(-1);
+        (e.target as HTMLTextAreaElement)?.blur();
+        setTimeout(() => { isDiscardingRef.current = false; }, 0);
       } else if (quickNoteText.trim() && !quickNoteText.startsWith('/') && !quickNoteText.startsWith('#') && !quickNoteText.startsWith('@')) {
         saveQuickNote();
       }
@@ -603,6 +640,19 @@ export function useOmnibar(isCompact: boolean) {
       e.preventDefault();
       e.stopPropagation();
       e.nativeEvent.stopImmediatePropagation();
+
+      // On tags page, just close without discard confirm
+      if (isOnTagsPage) {
+        isDiscardingRef.current = true;
+        setIsQuickNoteMode(false);
+        setQuickNoteText('');
+        setForceExpanded(false);
+        setSearchResults(null);
+        setSelectedIndex(-1);
+        (e.target as HTMLTextAreaElement)?.blur();
+        setTimeout(() => { isDiscardingRef.current = false; }, 0);
+        return;
+      }
 
       if (showDiscardConfirm) {
         isDiscardingRef.current = true;
@@ -628,13 +678,23 @@ export function useOmnibar(isCompact: boolean) {
         setTimeout(() => { isDiscardingRef.current = false; }, 0);
       }
     }
-  }, [quickNoteText, saveQuickNote, showDiscardConfirm, selectedIndex, totalResultsCount, executeResult]);
+  }, [quickNoteText, saveQuickNote, showDiscardConfirm, selectedIndex, totalResultsCount, executeResult, isOnTagsPage]);
 
   const handleQuickNoteBlur = useCallback((e: React.FocusEvent) => {
     if (isDiscardingRef.current) return;
 
     const relatedTarget = e.relatedTarget as HTMLElement;
     if (relatedTarget?.closest('.omnibar-container')) return;
+
+    // On tags page, don't show discard - just close (filter stays in URL)
+    if (isOnTagsPage) {
+      setIsQuickNoteMode(false);
+      setForceExpanded(false);
+      setSearchResults(null);
+      setSelectedIndex(-1);
+      setQuickNoteText('');
+      return;
+    }
 
     if (quickNoteText.trim()) {
       setShowDiscardConfirm(true);
@@ -644,7 +704,7 @@ export function useOmnibar(isCompact: boolean) {
       setSearchResults(null);
       setSelectedIndex(-1);
     }
-  }, [quickNoteText]);
+  }, [quickNoteText, isOnTagsPage]);
 
   const confirmDiscard = useCallback(() => {
     isDiscardingRef.current = true;
@@ -805,13 +865,16 @@ export function useOmnibar(isCompact: boolean) {
       case 'event':
         console.log('Event action - coming soon');
         break;
+      case 'tag':
+        router.push('/tags?create=true');
+        break;
       default:
         console.log('Unknown action:', action);
     }
     // Close add mode after action
     setIsAddMode(false);
     setAddModeSelectedIndex(-1);
-  }, [openAddCard]);
+  }, [openAddCard, router]);
 
   // ==========================================================================
   // KIT MODE HANDLERS
@@ -953,6 +1016,9 @@ export function useOmnibar(isCompact: boolean) {
     isKitMode,
     kitModeSelectedIndex,
     kitMenuItems,
+
+    // Context awareness
+    isOnTagsPage,
 
     // Computed
     expandedHeight: getComputedHeight(),

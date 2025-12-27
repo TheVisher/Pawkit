@@ -51,6 +51,8 @@ export function Omnibar({ isCompact }: OmnibarProps) {
     kitMenuItems,
     handleToggleKitMode,
     handleKitModeAction,
+    // Context awareness
+    isOnTagsPage,
   } = useOmnibar(isCompact);
 
   // Don't render until mounted to prevent hydration issues
@@ -141,6 +143,7 @@ export function Omnibar({ isCompact }: OmnibarProps) {
               kitMenuItems={kitMenuItems}
               onToggleKitMode={handleToggleKitMode}
               onKitModeAction={handleKitModeAction}
+              isOnTagsPage={isOnTagsPage}
             />
           )}
         </AnimatePresence>
