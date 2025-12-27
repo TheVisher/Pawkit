@@ -77,7 +77,8 @@ export function CardDetailModal() {
         <div
           className={cn(
             'pointer-events-auto w-full max-w-5xl mx-auto overflow-hidden',
-            'flex flex-col rounded-2xl border border-[var(--glass-border)] shadow-[var(--glass-shadow)]'
+            'flex flex-col rounded-2xl border border-[var(--glass-border)] shadow-[var(--glass-shadow)]',
+            'bg-[#0d0d0d]' // Solid background to prevent flicker
           )}
           onClick={(e) => e.stopPropagation()}
         >
