@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Library, Calendar, Trash2, LogOut, Settings, FolderOpen, ArrowLeftToLine, ArrowRightFromLine, Maximize2, Minimize2, ChevronRight, ChevronDown } from 'lucide-react';
+import { Home, Library, Calendar, Trash2, LogOut, Settings, FolderOpen, ArrowLeftToLine, ArrowRightFromLine, Maximize2, Minimize2, ChevronRight, ChevronDown, Tags } from 'lucide-react';
 import { PawkitsTree } from '@/components/pawkits/pawkits-tree';
 import { SidebarContextMenu } from '@/components/context-menus';
 import { useLeftSidebar } from '@/lib/stores/ui-store';
@@ -177,6 +177,20 @@ export function LeftSidebar() {
               </SidebarContextMenu>
             )}
           </div>
+
+          {/* Tags Nav Item */}
+          <Link
+            href="/tags"
+            className={cn(
+              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+              pathname === '/tags'
+                ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
+                : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
+            )}
+          >
+            <Tags className="h-6 w-6 shrink-0" />
+            <span>Tags</span>
+          </Link>
         </nav>
       </div>
 

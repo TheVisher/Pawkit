@@ -4,16 +4,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   Search,
-  FileText,
-  Globe,
   MessageCircle,
   MessageSquare,
   Hash,
-  Folder,
   Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { addMenuItems, type SearchResults } from './types';
+import { SearchResultsPanel } from './search-results-panel';
 
 // =============================================================================
 // IDLE CONTENT (Search/Actions)
@@ -48,6 +46,8 @@ interface IdleContentProps {
   kitMenuItems: Array<{ id: string; label: string; icon: string }>;
   onToggleKitMode: () => void;
   onKitModeAction: (actionId: string) => void;
+  // Context awareness
+  isOnTagsPage?: boolean;
 }
 
 export function IdleContent({
@@ -79,35 +79,23 @@ export function IdleContent({
   kitMenuItems,
   onToggleKitMode,
   onKitModeAction,
+  // Context awareness
+  isOnTagsPage = false,
 }: IdleContentProps) {
   const hasContent = quickNoteText.length > 0;
+  const isPrefixCommand = quickNoteText.startsWith('/') || quickNoteText.startsWith('#') || quickNoteText.startsWith('@');
+
+  // On tags page, show "Filtering tags..." instead of search results
+  const isFilteringTags = isOnTagsPage && hasContent && !isPrefixCommand;
 
   // Check if search results are showing
-  const hasSearchResults = searchResults && (
+  const hasSearchResults = searchResults && !isFilteringTags && (
     searchResults.cards.length > 0 ||
     searchResults.collections.length > 0 ||
     (searchResults.tags?.length || 0) > 0 ||
     searchResults.actions.length > 0
   );
-  const showEmptyState = isQuickNoteMode && !hasContent && searchResults && searchResults.cards.length > 0;
-
-  // Calculate index offsets for each section
-  const getGlobalIndex = (section: 'cards' | 'collections' | 'tags' | 'actions', localIndex: number): number => {
-    if (!searchResults) return -1;
-    let offset = 0;
-    if (section === 'cards') return offset + localIndex;
-    offset += searchResults.cards.length;
-    if (section === 'collections') return offset + localIndex;
-    offset += searchResults.collections.length;
-    if (section === 'tags') return offset + localIndex;
-    offset += searchResults.tags?.length || 0;
-    if (section === 'actions') return offset + localIndex;
-    return -1;
-  };
-
-  const isSelected = (section: 'cards' | 'collections' | 'tags' | 'actions', localIndex: number): boolean => {
-    return getGlobalIndex(section, localIndex) === selectedIndex;
-  };
+  const showEmptyState = !!(isQuickNoteMode && !hasContent && searchResults && searchResults.cards.length > 0);
 
   return (
     <motion.div
@@ -157,142 +145,28 @@ export function IdleContent({
               onSaveQuickNote={onSaveQuickNote}
               isKitMode={isKitMode}
               onToggleKitMode={onToggleKitMode}
+              isOnTagsPage={isOnTagsPage}
             />
           )}
         </AnimatePresence>
       </div>
 
-      {/* Search Results - Full Width */}
-      {isQuickNoteMode && hasSearchResults && (
-        <div className="flex-1 overflow-y-auto mt-2 border-t border-[var(--glass-border)] pt-2">
-          {/* Cards Section */}
-          {searchResults.cards.length > 0 && (
-            <div className="mb-2">
-              <div className="px-3 py-1 text-[11px] font-medium text-text-muted uppercase tracking-wider">
-                {showEmptyState ? 'Recent' : 'Cards'}
-              </div>
-              {searchResults.cards.map((card, idx) => (
-                <button
-                  key={card.id}
-                  onClick={() => onSelectResult(getGlobalIndex('cards', idx))}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left',
-                    'transition-colors duration-100',
-                    isSelected('cards', idx)
-                      ? 'bg-[var(--color-accent)]/20 text-text-primary'
-                      : 'hover:bg-[var(--glass-bg)] text-text-secondary hover:text-text-primary'
-                  )}
-                >
-                  {card.type === 'url' ? (
-                    <Globe className="h-4 w-4 shrink-0 text-text-muted" />
-                  ) : (
-                    <FileText className="h-4 w-4 shrink-0 text-text-muted" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate text-sm">{card.title || 'Untitled'}</div>
-                    {card.domain && (
-                      <div className="text-xs text-text-muted truncate">{card.domain}</div>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Collections Section */}
-          {searchResults.collections.length > 0 && (
-            <div className="mb-2">
-              <div className="px-3 py-1 text-[11px] font-medium text-text-muted uppercase tracking-wider">
-                Pawkits
-              </div>
-              {searchResults.collections.map((col, idx) => (
-                <button
-                  key={col.id}
-                  onClick={() => onSelectResult(getGlobalIndex('collections', idx))}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left',
-                    'transition-colors duration-100',
-                    isSelected('collections', idx)
-                      ? 'bg-[var(--color-accent)]/20 text-text-primary'
-                      : 'hover:bg-[var(--glass-bg)] text-text-secondary hover:text-text-primary'
-                  )}
-                >
-                  <Folder className="h-4 w-4 shrink-0 text-text-muted" />
-                  <div className="flex-1 min-w-0">
-                    <div className="truncate text-sm">{col.name}</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Tags Section */}
-          {searchResults.tags && searchResults.tags.length > 0 && (
-            <div className="mb-2">
-              <div className="px-3 py-1 text-[11px] font-medium text-text-muted uppercase tracking-wider">
-                Tags
-              </div>
-              {searchResults.tags.map((tag, idx) => (
-                <button
-                  key={tag}
-                  onClick={() => onSelectResult(getGlobalIndex('tags', idx))}
-                  className={cn(
-                    'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left',
-                    'transition-colors duration-100',
-                    isSelected('tags', idx)
-                      ? 'bg-[var(--color-accent)]/20 text-text-primary'
-                      : 'hover:bg-[var(--glass-bg)] text-text-secondary hover:text-text-primary'
-                  )}
-                >
-                  <Hash className="h-4 w-4 shrink-0 text-text-muted" />
-                  <div className="truncate text-sm">{tag}</div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Actions Section */}
-          {searchResults.actions.length > 0 && (
-            <div className="mb-2">
-              <div className="px-3 py-1 text-[11px] font-medium text-text-muted uppercase tracking-wider">
-                Actions
-              </div>
-              {searchResults.actions.map((action, idx) => {
-                const Icon = action.icon;
-                return (
-                  <button
-                    key={action.id}
-                    onClick={() => onSelectResult(getGlobalIndex('actions', idx))}
-                    className={cn(
-                      'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left',
-                      'transition-colors duration-100',
-                      isSelected('actions', idx)
-                        ? 'bg-[var(--color-accent)]/20 text-text-primary'
-                        : 'hover:bg-[var(--glass-bg)] text-text-secondary hover:text-text-primary'
-                    )}
-                  >
-                    <Icon className="h-4 w-4 shrink-0 text-text-muted" />
-                    <div className="flex-1 min-w-0">
-                      <div className="truncate text-sm">{action.label}</div>
-                    </div>
-                    {action.shortcut && (
-                      <kbd className="text-xs text-text-muted shrink-0">{action.shortcut}</kbd>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Tips row for empty state */}
-          {showEmptyState && (
-            <div className="px-3 py-2 text-xs text-text-muted flex items-center gap-4 border-t border-[var(--glass-border)] mt-2">
-              <span><kbd className="px-1.5 py-0.5 bg-[var(--glass-bg)] rounded text-[10px]">/</kbd> commands</span>
-              <span><kbd className="px-1.5 py-0.5 bg-[var(--glass-bg)] rounded text-[10px]">#</kbd> tags</span>
-              <span><kbd className="px-1.5 py-0.5 bg-[var(--glass-bg)] rounded text-[10px]">@</kbd> pawkits</span>
-            </div>
-          )}
+      {/* Tags Page Filter Indicator */}
+      {isQuickNoteMode && isFilteringTags && (
+        <div className="flex items-center gap-2 px-3 py-2 mt-1 border-t border-[var(--glass-border)]">
+          <Hash className="h-4 w-4 text-[var(--color-accent)]" />
+          <span className="text-sm text-text-muted">Filtering tags...</span>
         </div>
+      )}
+
+      {/* Search Results - Full Width */}
+      {isQuickNoteMode && hasSearchResults && searchResults && (
+        <SearchResultsPanel
+          searchResults={searchResults}
+          selectedIndex={selectedIndex}
+          onSelectResult={onSelectResult}
+          showEmptyState={showEmptyState}
+        />
       )}
 
       {/* =================================================================== */}
@@ -381,6 +255,8 @@ interface ExpandedContentProps {
   // Kit Mode
   isKitMode: boolean;
   onToggleKitMode: () => void;
+  // Context awareness
+  isOnTagsPage?: boolean;
 }
 
 function ExpandedContent({
@@ -394,10 +270,12 @@ function ExpandedContent({
   onSaveQuickNote,
   isKitMode,
   onToggleKitMode,
+  isOnTagsPage = false,
 }: ExpandedContentProps) {
   const hasContent = quickNoteText.length > 0;
   const isSearchMode = quickNoteText.startsWith('/') || quickNoteText.startsWith('#') || quickNoteText.startsWith('@');
-  const showHints = hasContent && !isSearchMode;
+  // Don't show quick note hints on tags page - we're filtering, not creating a note
+  const showHints = hasContent && !isSearchMode && !isOnTagsPage;
 
   return (
     <motion.div
@@ -426,7 +304,7 @@ function ExpandedContent({
           onChange={(e) => setQuickNoteText(e.target.value)}
           onKeyDown={onQuickNoteKeyDown}
           onBlur={onQuickNoteBlur}
-          placeholder="Search or quick note..."
+          placeholder={isOnTagsPage ? "Filter tags..." : "Search or quick note..."}
           className={cn(
             'bg-transparent text-sm resize-none',
             'placeholder:text-text-muted',

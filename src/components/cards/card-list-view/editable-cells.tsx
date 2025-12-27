@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { TagBadgeList } from '@/components/tags/tag-badge';
+import { TagInput } from '@/components/tags/tag-input';
 
 // =============================================================================
 // EDITABLE CELL
@@ -124,52 +126,71 @@ export function EditableTagsCell({
   onStartEdit,
   onCancelEdit,
 }: EditableTagsCellProps) {
-  const [editValue, setEditValue] = useState(tags.join(', '));
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [localTags, setLocalTags] = useState(tags);
+  const containerRef = useRef<HTMLDivElement>(null);
 
+  // Sync local tags when props change
   useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isEditing]);
-
-  useEffect(() => {
-    setEditValue(tags.join(', '));
+    setLocalTags(tags);
   }, [tags]);
 
-  const handleSave = () => {
-    const newTags = editValue
-      .split(',')
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0);
+  // Handle tag changes from TagInput
+  const handleTagsChange = (newTags: string[]) => {
+    setLocalTags(newTags);
     onSave(cardId, 'tags', newTags);
-    onCancelEdit();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleSave();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      setEditValue(tags.join(', '));
-      onCancelEdit();
-    }
-  };
+  // Handle click outside to close
+  useEffect(() => {
+    if (!isEditing) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        onCancelEdit();
+      }
+    };
+
+    // Delay adding the listener to avoid immediate close
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 0);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isEditing, onCancelEdit]);
+
+  // Handle escape key
+  useEffect(() => {
+    if (!isEditing) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onCancelEdit();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isEditing, onCancelEdit]);
 
   if (isEditing) {
     return (
-      <input
-        ref={inputRef}
-        type="text"
-        value={editValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onBlur={handleSave}
-        onKeyDown={handleKeyDown}
-        placeholder="tag1, tag2, tag3"
-        className="w-full bg-transparent border border-[var(--color-accent)] rounded px-2 py-1 text-sm text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+      <div
+        ref={containerRef}
+        className="relative min-w-[200px]"
         onClick={(e) => e.stopPropagation()}
-      />
+      >
+        <TagInput
+          value={localTags}
+          onChange={handleTagsChange}
+          placeholder="Add tags..."
+          compact
+          autoFocus
+        />
+      </div>
     );
   }
 
@@ -179,23 +200,18 @@ export function EditableTagsCell({
         e.stopPropagation();
         onStartEdit();
       }}
-      className="flex flex-wrap gap-1 cursor-text"
+      className="cursor-text min-h-[24px] flex items-center"
       title="Double-click to edit"
     >
       {tags.length > 0 ? (
-        tags.slice(0, 2).map((tag) => (
-          <span
-            key={tag}
-            className="text-xs text-[var(--color-text-muted)] bg-[var(--bg-surface-3)] px-2 py-0.5 rounded"
-          >
-            {tag}
-          </span>
-        ))
+        <TagBadgeList
+          tags={tags}
+          maxVisible={2}
+          size="sm"
+          showLeafOnly
+        />
       ) : (
         <span className="text-sm text-[var(--color-text-muted)]">-</span>
-      )}
-      {tags.length > 2 && (
-        <span className="text-xs text-[var(--color-text-muted)]">+{tags.length - 2}</span>
       )}
     </div>
   );

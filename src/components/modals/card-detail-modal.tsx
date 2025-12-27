@@ -12,8 +12,10 @@ import {
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useUIStore } from '@/lib/stores/ui-store';
+import { useTagStore } from '@/lib/stores/tag-store';
 import { cn } from '@/lib/utils';
 import { Editor } from '@/components/editor';
+import { TagInput } from '@/components/tags/tag-input';
 
 function getCardIcon(type: string) {
   switch (type) {
@@ -67,7 +69,11 @@ export function CardDetailModal() {
   const [title, setTitle] = useState(card?.title || '');
   const [notes, setNotes] = useState(card?.notes || '');
   const [content, setContent] = useState(card?.content || '');
+  const [tags, setTags] = useState<string[]>(card?.tags || []);
   const [imageError, setImageError] = useState(false);
+
+  // Tag store for refreshing tags
+  const refreshTags = useTagStore((s) => s.refreshTags);
 
   // Refs
   const titleRef = useRef<HTMLInputElement>(null);
@@ -81,6 +87,7 @@ export function CardDetailModal() {
       setTitle(card.title || '');
       setNotes(card.notes || '');
       setContent(card.content || '');
+      setTags(card.tags || []);
       setImageError(false);
     }
   }, [card?.id]); // Only trigger when card ID changes, not on every card update
@@ -107,6 +114,14 @@ export function CardDetailModal() {
     setNotes(html);
     if (card && html !== card.notes) {
       updateCard(card.id, { notes: html });
+    }
+  }, [card, updateCard]);
+
+  // Handle tag changes - save immediately
+  const handleTagsChange = useCallback((newTags: string[]) => {
+    setTags(newTags);
+    if (card) {
+      updateCard(card.id, { tags: newTags });
     }
   }, [card, updateCard]);
 
@@ -264,6 +279,21 @@ export function CardDetailModal() {
                   </a>
                 </div>
               )}
+
+              {/* Tags */}
+              <div className="space-y-2">
+                <label
+                  className="text-sm font-medium"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  Tags
+                </label>
+                <TagInput
+                  value={tags}
+                  onChange={handleTagsChange}
+                  placeholder="Add tags..."
+                />
+              </div>
 
               {/* Content Editor for Note Cards */}
               {isNoteCard && (

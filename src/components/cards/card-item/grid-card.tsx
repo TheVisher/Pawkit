@@ -6,6 +6,7 @@ import DOMPurify from 'dompurify';
 import { Globe, Pin, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LocalCard } from '@/lib/db';
+import { TagBadgeList } from '@/components/tags/tag-badge';
 import {
   type CardDisplaySettings,
   DEFAULT_CARD_DISPLAY,
@@ -309,40 +310,15 @@ export function GridCard({
               </h3>
             )}
 
-            {/* Tags - dynamic color based on background brightness */}
+            {/* Tags with deterministic colors */}
             {settings.showTags && card.tags && card.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mt-1.5">
-                {card.tags.slice(0, 3).map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-0.5 text-[11px] font-medium rounded-md"
-                    style={{
-                      background: hasImage
-                        ? (isDarkBackground ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)')
-                        : 'var(--color-bg-surface-3)',
-                      color: hasImage
-                        ? (isDarkBackground ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.75)')
-                        : 'var(--color-text-secondary)',
-                    }}
-                  >
-                    {tag}
-                  </span>
-                ))}
-                {card.tags.length > 3 && (
-                  <span
-                    className="px-2 py-0.5 text-[11px] font-medium rounded-md"
-                    style={{
-                      background: hasImage
-                        ? (isDarkBackground ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.1)')
-                        : 'var(--color-bg-surface-3)',
-                      color: hasImage
-                        ? (isDarkBackground ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.75)')
-                        : 'var(--color-text-secondary)',
-                    }}
-                  >
-                    +{card.tags.length - 3}
-                  </span>
-                )}
+              <div className="mt-1.5">
+                <TagBadgeList
+                  tags={card.tags}
+                  maxVisible={3}
+                  size="sm"
+                  showLeafOnly
+                />
               </div>
             )}
           </div>
