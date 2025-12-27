@@ -47,7 +47,7 @@ export function SearchResultsPanel({
               key={card.id}
               onClick={() => onSelectResult(getGlobalIndex('cards', idx))}
               className={cn(
-                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left',
+                'w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg text-left',
                 'transition-colors duration-100',
                 isSelected('cards', idx)
                   ? 'bg-[var(--color-accent)]/20 text-text-primary'
@@ -81,7 +81,7 @@ export function SearchResultsPanel({
               key={col.id}
               onClick={() => onSelectResult(getGlobalIndex('collections', idx))}
               className={cn(
-                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left',
+                'w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg text-left',
                 'transition-colors duration-100',
                 isSelected('collections', idx)
                   ? 'bg-[var(--color-accent)]/20 text-text-primary'
@@ -108,7 +108,7 @@ export function SearchResultsPanel({
               key={tag}
               onClick={() => onSelectResult(getGlobalIndex('tags', idx))}
               className={cn(
-                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left',
+                'w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg text-left',
                 'transition-colors duration-100',
                 isSelected('tags', idx)
                   ? 'bg-[var(--color-accent)]/20 text-text-primary'
@@ -135,7 +135,7 @@ export function SearchResultsPanel({
                 key={action.id}
                 onClick={() => onSelectResult(getGlobalIndex('actions', idx))}
                 className={cn(
-                  'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left',
+                  'w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg text-left',
                   'transition-colors duration-100',
                   isSelected('actions', idx)
                     ? 'bg-[var(--color-accent)]/20 text-text-primary'

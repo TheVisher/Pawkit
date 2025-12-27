@@ -227,9 +227,16 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
   // Calculate columns and card width
   const columnCount = useMemo(() => {
     if (containerWidth <= 0) return 1;
-    const cols = Math.floor((containerWidth + cardSpacing) / (minCardWidth + cardSpacing));
+    
+    // On mobile (containerWidth < 600), we allow 2 columns for 'small' size
+    // by slightly reducing the effective minCardWidth
+    const effectiveMinCardWidth = (containerWidth < 600 && cardSize === 'small') 
+      ? Math.min(minCardWidth, (containerWidth - cardSpacing) / 2 - 1)
+      : minCardWidth;
+      
+    const cols = Math.floor((containerWidth + cardSpacing) / (effectiveMinCardWidth + cardSpacing));
     return Math.max(1, cols);
-  }, [containerWidth, minCardWidth, cardSpacing]);
+  }, [containerWidth, minCardWidth, cardSpacing, cardSize]);
 
   const cardWidth = useMemo(() => {
     if (containerWidth <= 0) return minCardWidth;

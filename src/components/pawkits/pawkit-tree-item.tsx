@@ -45,7 +45,7 @@ export function PawkitTreeItem({
                 <div
                     ref={setNodeRef}
                     className={cn(
-                        'group flex items-center justify-between py-1 px-2 rounded-md transition-colors cursor-pointer text-sm',
+                        'group flex items-center justify-between py-2.5 md:py-1 px-2 rounded-md transition-colors cursor-pointer text-sm',
                         isActive
                             ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] font-medium'
                             : 'text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary',

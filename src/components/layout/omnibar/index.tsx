@@ -76,7 +76,7 @@ export function Omnibar({ isCompact }: OmnibarProps) {
         )}
         initial={false}
         animate={{
-          width: effectivelyCompact ? 140 : 400,
+          width: effectivelyCompact ? 140 : '100%',
           height: expandedHeight,
           scaleY: isEjecting ? 1.04 : 1,
           scaleX: isEjecting ? 0.98 : 1,

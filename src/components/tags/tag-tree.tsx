@@ -13,7 +13,7 @@ import { getTagColor } from '@/lib/utils/tag-colors';
 interface TagTreeItemProps {
   node: TagTreeNode;
   level?: number;
-  isExpanded?: boolean;
+  expandedPaths: Set<string>;
   onToggleExpand?: (path: string) => void;
   selectedTags: string[];
   onTagClick: (tag: string) => void;
@@ -22,12 +22,13 @@ interface TagTreeItemProps {
 function TagTreeItem({
   node,
   level = 0,
-  isExpanded = false,
+  expandedPaths,
   onToggleExpand,
   selectedTags,
   onTagClick,
 }: TagTreeItemProps) {
   const hasChildren = node.children.length > 0;
+  const isExpanded = expandedPaths.has(node.fullPath);
   const isSelected = selectedTags.includes(node.fullPath);
   const isVirtual = node.isVirtual;
   const colors = getTagColor(node.fullPath);
@@ -36,7 +37,7 @@ function TagTreeItem({
     <div>
       <div
         className={cn(
-          'group flex items-center justify-between py-1 px-2 rounded-md transition-colors text-sm',
+          'group flex items-center justify-between py-2.5 md:py-1 px-2 rounded-md transition-colors text-sm',
           isSelected
             ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] font-medium'
             : isVirtual
@@ -99,7 +100,7 @@ function TagTreeItem({
               key={child.fullPath}
               node={child}
               level={level + 1}
-              isExpanded={false}
+              expandedPaths={expandedPaths}
               onToggleExpand={onToggleExpand}
               selectedTags={selectedTags}
               onTagClick={onTagClick}
@@ -198,7 +199,7 @@ export function TagTree({ onTagsChange }: TagTreeProps) {
           key={node.fullPath}
           node={node}
           level={0}
-          isExpanded={expandedPaths.has(node.fullPath)}
+          expandedPaths={expandedPaths}
           onToggleExpand={handleToggleExpand}
           selectedTags={selectedTags}
           onTagClick={handleTagClick}

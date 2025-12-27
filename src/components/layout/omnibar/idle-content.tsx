@@ -182,7 +182,7 @@ export function IdleContent({
               key={item.action}
               onClick={() => onAddModeAction(item.action)}
               className={cn(
-                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left',
+                'w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg text-left',
                 'transition-colors duration-100',
                 addModeSelectedIndex === idx
                   ? 'bg-[var(--color-accent)]/20 text-text-primary'
@@ -212,7 +212,7 @@ export function IdleContent({
               key={item.id}
               onClick={() => onKitModeAction(item.id)}
               className={cn(
-                'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left',
+                'w-full flex items-center gap-3 px-3 py-3 md:py-2 rounded-lg text-left',
                 'transition-colors duration-100',
                 kitModeSelectedIndex === idx
                   ? 'bg-[var(--color-accent)]/20 text-text-primary'

@@ -327,10 +327,15 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
 
         {/* Main layout with padding to show purple gradient background */}
         <div
-          className="h-full pb-16 md:pb-0"
+          className="h-full flex flex-col"
           style={{
             // Animate padding for smooth full-screen transition
-            padding: isFullScreen ? 0 : 16,
+            paddingTop: isFullScreen ? 0 : 16,
+            paddingLeft: isFullScreen ? 0 : 16,
+            paddingRight: isFullScreen ? 0 : 16,
+            paddingBottom: isFullScreen 
+              ? 'var(--mobile-nav-height)' 
+              : 'calc(16px + var(--mobile-nav-height))',
             transition: 'padding 300ms ease-out, background-color 300ms ease-out',
             backgroundColor: 'var(--bg-gradient-base)',
             backgroundImage: 'var(--bg-gradient-image)',
@@ -419,9 +424,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
           >
             <div ref={handleContentRef} className="flex-1 overflow-auto relative scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               {/* OMNIBAR - Sticky but with zero-height wrapper so it doesn't push content down */}
-              <div className="sticky top-0 z-50 h-0 overflow-visible">
+              <div className="hidden md:block sticky top-0 z-50 h-0 overflow-visible">
                 <div className="flex justify-center pt-5 pb-2 pointer-events-none">
-                  <div className="relative pointer-events-auto">
+                  <div className="relative pointer-events-auto w-[400px]">
                     <Omnibar isCompact={isScrolled && !activeToast} />
                     <ToastStack isCompact={isScrolled && !activeToast} />
                   </div>
@@ -431,6 +436,14 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
               <ErrorBoundary>
                 {children}
               </ErrorBoundary>
+              
+              {/* Mobile Omnibar - Sticky at bottom on mobile, above MobileNav */}
+              <div className="md:hidden sticky bottom-4 z-50 flex justify-center px-4 pointer-events-none">
+                <div className="relative pointer-events-auto w-full max-w-[400px]">
+                  <Omnibar isCompact={isScrolled && !activeToast} />
+                  <ToastStack isCompact={isScrolled && !activeToast} />
+                </div>
+              </div>
             </div>
           </main>
 

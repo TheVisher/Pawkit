@@ -308,6 +308,25 @@
     border-color: var(--color-border-subtle);
     color: var(--color-text-secondary);
   }
+
+  /* Safe area utilities for mobile */
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-area-pt {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+:root {
+  --mobile-nav-height: 0px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --mobile-nav-height: calc(4rem + env(safe-area-inset-bottom));
+  }
 }
 
 /* ==========================================================================
