@@ -115,7 +115,7 @@ export default function PawkitPage() {
             <div className="flex-1">
                 <PawkitHeader collection={collection} />
 
-                <div className="px-6 pt-4 pb-6 space-y-6">
+                <div className="px-4 md:px-6 pt-4 pb-6 space-y-6">
                     {/* Sub-Pawkits Section */}
                     {hasSubPawkits && (
                         <div>

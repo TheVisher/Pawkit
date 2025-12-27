@@ -7,6 +7,7 @@ import { useGreeting } from '@/lib/hooks/use-greeting';
 import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/layout/page-header';
 import { ContentAreaContextMenu } from '@/components/context-menus';
+import { TodaysNoteWidget } from '@/components/cards/todays-note-widget';
 
 const stats = [
   { label: 'Bookmarks', icon: Bookmark, key: 'bookmarks' },
@@ -57,7 +58,7 @@ export default function HomePage() {
         <PageHeader title={title} subtitle={subtitle} />
 
         {/* Page content */}
-        <div className="px-6 pb-6 space-y-6">
+        <div className="px-4 md:px-6 pb-6 space-y-6">
 
         {/* Quick Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -79,6 +80,9 @@ export default function HomePage() {
             </Card>
           ))}
         </div>
+
+        {/* Today's Note */}
+        <TodaysNoteWidget />
 
         {/* Getting Started */}
         <div className="space-y-4">

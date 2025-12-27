@@ -19,6 +19,8 @@ export type GroupBy = 'none' | 'date' | 'tags' | 'type' | 'domain';
 export type DateGrouping = 'smart' | 'day' | 'week' | 'month' | 'year'; // smart = Today/Yesterday/This Week/etc
 // Unsorted/Quick filters
 export type UnsortedFilter = 'none' | 'no-pawkits' | 'no-tags' | 'both';
+// Reading status filter
+export type ReadingFilter = 'all' | 'unread' | 'in-progress' | 'read';
 
 // File extensions for uploaded files
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v'];
@@ -97,6 +99,33 @@ export function cardMatchesUnsortedFilter(
   }
 }
 
+/**
+ * Check if a card matches the reading status filter
+ * Note: Only applies to bookmark cards (type === 'url'), not notes
+ */
+export function cardMatchesReadingFilter(
+  card: { type: string; isRead?: boolean; readProgress?: number },
+  filter: ReadingFilter
+): boolean {
+  if (filter === 'all') return true;
+
+  // Notes don't have reading status, so show them in 'all' mode only
+  if (['md-note', 'text-note', 'quick-note'].includes(card.type)) {
+    return false; // Exclude notes when filtering by reading status
+  }
+
+  switch (filter) {
+    case 'unread':
+      return !card.isRead && (!card.readProgress || card.readProgress === 0);
+    case 'in-progress':
+      return !card.isRead && card.readProgress !== undefined && card.readProgress > 0;
+    case 'read':
+      return card.isRead === true;
+    default:
+      return true;
+  }
+}
+
 interface ViewState {
   // Current view context
   currentView: string; // "library", "library:notes", "pawkit:{slug}", etc.
@@ -128,6 +157,7 @@ interface ViewState {
   contentTypeFilters: ContentType[]; // Multi-select, OR logic
   selectedTags: string[]; // Filter by these tags (AND logic)
   unsortedFilter: UnsortedFilter; // Quick filter for unorganized items
+  readingFilter: ReadingFilter; // Filter by reading status
 
   // Grouping (persisted)
   groupBy: GroupBy;
@@ -164,6 +194,7 @@ interface ViewState {
   toggleTag: (tag: string) => void; // Add/remove tag from selection
   clearTags: () => void;
   setUnsortedFilter: (filter: UnsortedFilter) => void;
+  setReadingFilter: (filter: ReadingFilter) => void;
 
   // Manual ordering
   setCardOrder: (ids: string[]) => void;
@@ -212,6 +243,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
   contentTypeFilters: [], // Empty = show all
   selectedTags: [],
   unsortedFilter: 'none' as UnsortedFilter,
+  readingFilter: 'all' as ReadingFilter,
   isLoading: false,
 
   // View context
@@ -268,6 +300,8 @@ export const useViewStore = create<ViewState>((set, get) => ({
   clearTags: () => set({ selectedTags: [] }),
 
   setUnsortedFilter: (filter) => set({ unsortedFilter: filter }),
+
+  setReadingFilter: (filter) => set({ readingFilter: filter }),
 
   setGroupBy: (groupBy) => set({ groupBy }),
 
@@ -442,7 +476,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
   },
 
   // Reset to defaults (without saving)
-  resetToDefaults: () => set({ ...DEFAULT_VIEW_SETTINGS, contentTypeFilters: [], selectedTags: [] }),
+  resetToDefaults: () => set({ ...DEFAULT_VIEW_SETTINGS, contentTypeFilters: [], selectedTags: [], readingFilter: 'all' as ReadingFilter }),
 }));
 
 // =============================================================================

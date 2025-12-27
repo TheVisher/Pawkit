@@ -8,12 +8,19 @@ import {
   Globe,
   FileText,
   StickyNote,
+  BookOpen,
+  Clock,
+  CheckCircle2,
 } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useTagStore } from '@/lib/stores/tag-store';
 import { cn } from '@/lib/utils';
 import { Editor } from '@/components/editor';
 import { TagInput } from '@/components/tags/tag-input';
+import { SchedulePicker } from '@/components/cards/schedule-picker';
+import { Reader } from '@/components/reader';
+import { Button } from '@/components/ui/button';
+import { calculateReadingTime } from '@/lib/db/schema';
 
 function getCardIcon(type: string) {
   switch (type) {
@@ -71,13 +78,23 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
   const [notes, setNotes] = useState(card?.notes || '');
   const [content, setContent] = useState(card?.content || '');
   const [tags, setTags] = useState<string[]>(card?.tags || []);
+  const [scheduledDate, setScheduledDate] = useState<Date | undefined>(
+    card?.scheduledDate ? new Date(card.scheduledDate) : undefined
+  );
   const [imageError, setImageError] = useState(false);
+  const [showReader, setShowReader] = useState(false);
 
   // Refs
   const titleRef = useRef<HTMLInputElement>(null);
 
   // Check if this is a note card (not a URL bookmark)
   const isNoteCard = card?.type === 'md-note' || card?.type === 'text-note' || card?.type === 'quick-note';
+
+  // Check if card has article content for reader mode
+  const hasArticleContent = !isNoteCard && (card?.articleContent || card?.content);
+  const articleContent = card?.articleContent || card?.content || '';
+  const wordCount = card?.wordCount || getContentStats(articleContent).words;
+  const readingTime = card?.readingTime || (wordCount ? calculateReadingTime(wordCount) : 0);
 
   // Sync local state when card changes
   useEffect(() => {
@@ -86,6 +103,7 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
       setNotes(card.notes || '');
       setContent(card.content || '');
       setTags(card.tags || []);
+      setScheduledDate(card.scheduledDate ? new Date(card.scheduledDate) : undefined);
       setImageError(false);
     }
   }, [card?.id]);
@@ -121,7 +139,54 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
     }
   }, [card, updateCard]);
 
+  // Handle schedule changes - save immediately
+  const handleScheduleChange = useCallback((date: Date | undefined) => {
+    setScheduledDate(date);
+    if (card) {
+      updateCard(card.id, { scheduledDate: date });
+    }
+  }, [card, updateCard]);
+
+  // Handle reading progress changes
+  const handleReadingProgress = useCallback((progress: number, scrollPosition: number) => {
+    if (card) {
+      const updates: Record<string, unknown> = {
+        readProgress: progress,
+        lastScrollPosition: scrollPosition,
+      };
+      // Mark as read if completed
+      if (progress >= 95) {
+        updates.isRead = true;
+      }
+      updateCard(card.id, updates);
+    }
+  }, [card, updateCard]);
+
+  // Toggle read status
+  const handleToggleRead = useCallback(() => {
+    if (card) {
+      updateCard(card.id, { isRead: !card.isRead });
+    }
+  }, [card, updateCard]);
+
   if (!card) return null;
+
+  // Show reader mode
+  if (showReader && hasArticleContent) {
+    return (
+      <Reader
+        title={card.title || 'Untitled'}
+        content={articleContent}
+        url={card.url}
+        domain={card.domain || getDomain(card.url)}
+        wordCount={wordCount}
+        readingTime={readingTime}
+        initialProgress={card.readProgress || 0}
+        onProgressChange={handleReadingProgress}
+        onClose={() => setShowReader(false)}
+      />
+    );
+  }
 
   const Icon = getCardIcon(card.type);
   const domain = card.domain || getDomain(card.url);
@@ -210,34 +275,82 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
             <div className="h-px bg-[var(--glass-border)]" />
           </div>
 
-          {/* URL (for bookmarks) */}
+          {/* URL and Reading Actions (for bookmarks) */}
           {card.url && (
-            <div className="flex items-center gap-2">
-              <a
-                href={card.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm',
-                  'bg-[var(--glass-bg)] border border-[var(--glass-border)] text-text-secondary',
-                  'transition-all duration-200',
-                  'hover:bg-[var(--glass-bg-hover)] hover:border-[var(--glass-border-hover)] hover:text-text-primary hover:scale-105'
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <a
+                  href={card.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    'inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm',
+                    'bg-[var(--glass-bg)] border border-[var(--glass-border)] text-text-secondary',
+                    'transition-all duration-200',
+                    'hover:bg-[var(--glass-bg-hover)] hover:border-[var(--glass-border-hover)] hover:text-text-primary hover:scale-105'
+                  )}
+                >
+                  {card.favicon ? (
+                    <Image
+                      src={card.favicon}
+                      alt=""
+                      width={14}
+                      height={14}
+                      className="rounded-sm"
+                    />
+                  ) : (
+                    <Globe className="h-3.5 w-3.5" />
+                  )}
+                  <span className="truncate max-w-[300px]">{domain || card.url}</span>
+                  <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                </a>
+
+                {/* Reading time badge */}
+                {readingTime > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs text-text-muted">
+                    <Clock className="h-3 w-3" />
+                    {readingTime} min
+                  </span>
                 )}
-              >
-                {card.favicon ? (
-                  <Image
-                    src={card.favicon}
-                    alt=""
-                    width={14}
-                    height={14}
-                    className="rounded-sm"
-                  />
-                ) : (
-                  <Globe className="h-3.5 w-3.5" />
+
+                {/* Read status badge */}
+                {card.isRead && (
+                  <span className="inline-flex items-center gap-1 px-2 py-1 text-xs text-green-500">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Read
+                  </span>
                 )}
-                <span className="truncate max-w-[300px]">{domain || card.url}</span>
-                <ExternalLink className="h-3 w-3 flex-shrink-0" />
-              </a>
+              </div>
+
+              {/* Reader mode and read toggle buttons */}
+              <div className="flex items-center gap-2">
+                {hasArticleContent && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowReader(true)}
+                    className="gap-2"
+                  >
+                    <BookOpen className="h-4 w-4" />
+                    Read Article
+                    {card.readProgress && card.readProgress > 0 && card.readProgress < 100 && (
+                      <span className="text-xs text-text-muted">({card.readProgress}%)</span>
+                    )}
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleToggleRead}
+                  className={cn(
+                    'gap-2',
+                    card.isRead && 'text-green-500'
+                  )}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {card.isRead ? 'Mark Unread' : 'Mark Read'}
+                </Button>
+              </div>
             </div>
           )}
 
@@ -255,6 +368,22 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
               placeholder="Add tags..."
             />
           </div>
+
+          {/* Schedule - for bookmark cards only */}
+          {!isNoteCard && (
+            <div className="space-y-2">
+              <label
+                className="text-sm font-medium"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                Schedule
+              </label>
+              <SchedulePicker
+                value={scheduledDate}
+                onChange={handleScheduleChange}
+              />
+            </div>
+          )}
 
           {/* Content Editor for Note Cards */}
           {isNoteCard && (

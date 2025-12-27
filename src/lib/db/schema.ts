@@ -19,6 +19,9 @@ import type {
   CachedImage,
 } from './types';
 
+// Re-export types for convenience
+export type { LocalCard } from './types';
+
 export class PawkitDB extends Dexie {
   // Core entities
   workspaces!: Table<LocalWorkspace>;
@@ -62,6 +65,9 @@ export class PawkitDB extends Dexie {
         '[workspaceId+status]',
         '[workspaceId+pinned]',
         '[workspaceId+scheduledDate]',
+        '[workspaceId+isRead]',
+        '[workspaceId+isDailyNote]',
+        '[workspaceId+linkStatus]',
         'updatedAt',
         '_synced',
         '_lastModified',
@@ -252,4 +258,136 @@ export async function getUnsyncedItems(workspaceId: string) {
   ]);
 
   return { cards, collections, events, todos };
+}
+
+// =============================================================================
+// DAILY NOTE HELPERS
+// =============================================================================
+
+/**
+ * Get the daily note for a specific date
+ * Returns null if no daily note exists for that date
+ */
+export async function getDailyNote(workspaceId: string, date: Date) {
+  // Normalize date to YYYY-MM-DD for comparison
+  const dateStr = date.toISOString().split('T')[0];
+
+  const notes = await db.cards
+    .where('workspaceId')
+    .equals(workspaceId)
+    .filter(card =>
+      card.isDailyNote === true &&
+      !card._deleted &&
+      card.scheduledDate?.toISOString().split('T')[0] === dateStr
+    )
+    .toArray();
+
+  return notes[0] || null;
+}
+
+/**
+ * Get or create a daily note for a specific date
+ */
+export async function getOrCreateDailyNote(
+  workspaceId: string,
+  date: Date,
+  createFn: (date: Date) => Promise<LocalCard>
+): Promise<LocalCard> {
+  const existing = await getDailyNote(workspaceId, date);
+  if (existing) return existing;
+
+  return createFn(date);
+}
+
+/**
+ * Get all daily notes for a workspace
+ */
+export async function getAllDailyNotes(workspaceId: string) {
+  return db.cards
+    .where('workspaceId')
+    .equals(workspaceId)
+    .filter(card => card.isDailyNote === true && !card._deleted)
+    .sortBy('scheduledDate');
+}
+
+// =============================================================================
+// READING STATUS HELPERS
+// =============================================================================
+
+/**
+ * Get unread cards for a workspace
+ */
+export async function getUnreadCards(workspaceId: string) {
+  return db.cards
+    .where('workspaceId')
+    .equals(workspaceId)
+    .filter(card =>
+      !card._deleted &&
+      card.type === 'url' &&
+      (card.isRead === false || card.isRead === undefined)
+    )
+    .toArray();
+}
+
+/**
+ * Get cards in progress (partially read)
+ */
+export async function getInProgressCards(workspaceId: string) {
+  return db.cards
+    .where('workspaceId')
+    .equals(workspaceId)
+    .filter(card =>
+      !card._deleted &&
+      card.type === 'url' &&
+      card.readProgress !== undefined &&
+      card.readProgress > 0 &&
+      card.readProgress < 100
+    )
+    .toArray();
+}
+
+/**
+ * Calculate reading time from word count
+ * Uses 225 WPM (average adult reading speed)
+ */
+export function calculateReadingTime(wordCount: number): number {
+  return Math.max(1, Math.ceil(wordCount / 225));
+}
+
+// =============================================================================
+// LINK HEALTH HELPERS
+// =============================================================================
+
+/**
+ * Get cards with broken links
+ */
+export async function getBrokenLinkCards(workspaceId: string) {
+  return db.cards
+    .where('workspaceId')
+    .equals(workspaceId)
+    .filter(card =>
+      !card._deleted &&
+      card.type === 'url' &&
+      card.linkStatus === 'broken'
+    )
+    .toArray();
+}
+
+/**
+ * Get cards that haven't been checked recently
+ */
+export async function getCardsNeedingLinkCheck(workspaceId: string, maxAgeDays = 7) {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
+
+  return db.cards
+    .where('workspaceId')
+    .equals(workspaceId)
+    .filter(card => {
+      if (card._deleted || card.type !== 'url') return false;
+      if (card.linkStatus === 'unchecked' || card.linkStatus === undefined) return true;
+      if (card.lastLinkCheck && new Date(card.lastLinkCheck) < cutoffDate) return true;
+      return false;
+    })
+    .toArray();
 }

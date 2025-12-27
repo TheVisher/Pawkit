@@ -26,13 +26,14 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-import { getViewConfig, type ContentType, type GroupBy, type DateGrouping, type UnsortedFilter } from './config';
+import { getViewConfig, type ContentType, type GroupBy, type DateGrouping, type UnsortedFilter, type ReadingFilter } from './config';
 import { CardDetailsPanel } from './CardDetailsPanel';
 import { CardDisplaySettings } from './CardDisplaySettings';
 import {
   ContentTypeFilter,
   SortOptions,
   QuickFilter,
+  ReadingStatusFilter,
   GroupingSection,
   SubPawkitSettings,
   TagsFilter,
@@ -118,6 +119,8 @@ export function RightSidebar() {
   const clearTags = useViewStore((s) => s.clearTags);
   const unsortedFilter = useViewStore((s) => s.unsortedFilter) as UnsortedFilter;
   const setUnsortedFilter = useViewStore((s) => s.setUnsortedFilter);
+  const readingFilter = useViewStore((s) => s.readingFilter) as ReadingFilter;
+  const setReadingFilter = useViewStore((s) => s.setReadingFilter);
   const groupBy = useViewStore((s) => s.groupBy) as GroupBy;
   const dateGrouping = useViewStore((s) => s.dateGrouping) as DateGrouping;
   const setGroupBy = useViewStore((s) => s.setGroupBy);
@@ -276,6 +279,10 @@ export function RightSidebar() {
                 <QuickFilter
                   filter={unsortedFilter}
                   onFilterChange={setUnsortedFilter}
+                />
+                <ReadingStatusFilter
+                  filter={readingFilter}
+                  onFilterChange={setReadingFilter}
                 />
                 <GroupingSection
                   groupBy={groupBy}

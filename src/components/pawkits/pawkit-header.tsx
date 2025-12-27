@@ -11,6 +11,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/layout/page-header';
+import { MobileViewOptions } from '@/components/layout/mobile-view-options';
 import { useCollections } from '@/lib/stores/data-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
@@ -65,22 +66,25 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
     const hasCoverImage = !!collection.coverImage;
 
     const actions = (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <MoreHorizontal className="h-4 w-4" />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => openCoverImagePicker(collection.id)}>
-                    <ImagePlus className="h-4 w-4 mr-2" />
-                    {hasCoverImage ? 'Change cover' : 'Add cover'}
-                </DropdownMenuItem>
-                <DropdownMenuItem disabled>Rename</DropdownMenuItem>
-                <DropdownMenuItem disabled>Change Icon</DropdownMenuItem>
-                <DropdownMenuItem disabled className="text-destructive">Delete Pawkit</DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1">
+            <MobileViewOptions viewType="pawkit" />
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => openCoverImagePicker(collection.id)}>
+                        <ImagePlus className="h-4 w-4 mr-2" />
+                        {hasCoverImage ? 'Change cover' : 'Add cover'}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled>Rename</DropdownMenuItem>
+                    <DropdownMenuItem disabled>Change Icon</DropdownMenuItem>
+                    <DropdownMenuItem disabled className="text-destructive">Delete Pawkit</DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
     );
 
     return (
