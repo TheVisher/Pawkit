@@ -23,6 +23,7 @@ import { useModalStore } from '@/lib/stores/modal-store';
 import { useToastStore } from '@/lib/stores/toast-store';
 import type { LocalCard } from '@/lib/db';
 import { AddToPawkitSubmenu } from './add-to-pawkit-submenu';
+import { ScheduleSubmenu } from './schedule-submenu';
 
 interface CardContextMenuProps {
   card: LocalCard;
@@ -133,6 +134,11 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
 
         {/* Add to Pawkit submenu */}
         <AddToPawkitSubmenu cardId={card.id} cardCollections={card.collections || []} />
+
+        {/* Schedule submenu - for bookmark cards */}
+        {isBookmark && (
+          <ScheduleSubmenu cardId={card.id} currentSchedule={card.scheduledDate} />
+        )}
 
         {/* Remove from collection (only show when viewing a collection) */}
         {currentCollection && (

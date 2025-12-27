@@ -5,7 +5,7 @@
  * Content type, sort, quick filter, grouping, sub-pawkit, and tags sections
  */
 
-import { Filter, ArrowUpDown, Inbox, Layers, Tag, Folder } from 'lucide-react';
+import { Filter, ArrowUpDown, Inbox, Layers, Tag, Folder, BookOpen } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import type { SubPawkitSize } from '@/lib/stores/view-store';
@@ -15,10 +15,12 @@ import {
   GROUP_OPTIONS,
   DATE_GROUP_OPTIONS,
   UNSORTED_OPTIONS,
+  READING_FILTER_OPTIONS,
   type ContentType,
   type GroupBy,
   type DateGrouping,
   type UnsortedFilter,
+  type ReadingFilter,
 } from './config';
 
 // Content Type Filter Section
@@ -166,6 +168,47 @@ export function QuickFilter({ filter, onFilterChange }: QuickFilterProps) {
                 )}
               >
                 {Icon && <Icon className="h-3.5 w-3.5" />}
+                <span>{option.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <Separator className="bg-border-subtle" />
+    </>
+  );
+}
+
+// Reading Status Filter Section
+interface ReadingStatusFilterProps {
+  filter: ReadingFilter;
+  onFilterChange: (filter: ReadingFilter) => void;
+}
+
+export function ReadingStatusFilter({ filter, onFilterChange }: ReadingStatusFilterProps) {
+  return (
+    <>
+      <div>
+        <div className="flex items-center gap-2 text-text-muted mb-3">
+          <BookOpen className="h-5 w-5" />
+          <span className="text-xs font-medium uppercase">Reading Status</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {READING_FILTER_OPTIONS.map((option) => {
+            const Icon = option.icon;
+            const isActive = filter === option.id;
+            return (
+              <button
+                key={option.id}
+                onClick={() => onFilterChange(option.id)}
+                className={cn(
+                  'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors',
+                  isActive
+                    ? 'bg-[var(--color-accent)] text-white'
+                    : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
                 <span>{option.label}</span>
               </button>
             );

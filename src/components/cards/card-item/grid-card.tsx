@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import DOMPurify from 'dompurify';
-import { Globe, Pin, Loader2 } from 'lucide-react';
+import { Globe, Pin, Loader2, Clock, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LocalCard } from '@/lib/db';
 import { TagBadgeList } from '@/components/tags/tag-badge';
@@ -271,8 +271,40 @@ export function GridCard({
             </div>
           )}
 
-          {/* Syncing indicator */}
-          {isSyncing && (
+          {/* Reading time and status badges - top left */}
+          {!isNoteCard(card.type) && (card.readingTime || card.isRead) && (
+            <div className="absolute top-3 left-3 flex items-center gap-1.5">
+              {card.readingTime && !card.isRead && (
+                <div
+                  className="flex items-center gap-1 px-2 py-1 rounded-full text-xs"
+                  style={{
+                    background: 'rgba(0, 0, 0, 0.6)',
+                    backdropFilter: 'blur(8px)',
+                    color: 'white',
+                  }}
+                >
+                  <Clock className="h-3 w-3" />
+                  <span>{card.readingTime}m</span>
+                </div>
+              )}
+              {card.isRead && (
+                <div
+                  className="flex items-center gap-1 px-2 py-1 rounded-full text-xs"
+                  style={{
+                    background: 'rgba(34, 197, 94, 0.8)',
+                    backdropFilter: 'blur(8px)',
+                    color: 'white',
+                  }}
+                >
+                  <CheckCircle2 className="h-3 w-3" />
+                  <span>Read</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Syncing indicator - only show if no reading badges */}
+          {isSyncing && !card.readingTime && !card.isRead && (
             <div
               className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded-full text-xs"
               style={{

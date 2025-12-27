@@ -16,14 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { ResponsiveDialog } from '@/components/ui/responsive-dialog';
 import { cn } from '@/lib/utils';
 
 type SortBy = 'alphabetical' | 'count';
@@ -62,7 +55,6 @@ export default function TagsPage() {
   // Check for create=true query param - redirect to omnibar approach
   useEffect(() => {
     if (searchParams.get('create') === 'true') {
-      // Clear the param - tag creation is handled via omnibar + menu
       router.replace('/tags');
     }
   }, [searchParams, router]);
@@ -167,10 +159,8 @@ export default function TagsPage() {
     ? 'Organize your content'
     : `${uniqueTags.length} tag${uniqueTags.length === 1 ? '' : 's'}`;
 
-  // Header actions (sort only - filtering done via omnibar)
   const headerActions = (
     <div className="flex items-center gap-2">
-      {/* Sort dropdown */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="gap-1.5 h-8 text-sm">
@@ -198,8 +188,7 @@ export default function TagsPage() {
         actions={headerActions}
       />
 
-      {/* Content */}
-      <div className="px-6 pt-4 pb-6">
+      <div className="px-4 md:px-6 pt-4 pb-6">
         {isLoading ? (
           <div className="text-center py-12 text-text-muted">
             Loading tags...
@@ -212,14 +201,12 @@ export default function TagsPage() {
           <div className="space-y-8">
             {sortedLetters.map((letter) => (
               <div key={letter || 'all'}>
-                {/* Letter header - only show for alphabetical sort */}
                 {sortBy === 'alphabetical' && letter && (
                   <h2 className="text-lg font-semibold text-text-muted mb-3">
                     {letter}
                   </h2>
                 )}
 
-                {/* Tags in this group */}
                 <div className="flex flex-wrap gap-2">
                   {groupedTags[letter].map((tag) => (
                     <div
@@ -228,18 +215,18 @@ export default function TagsPage() {
                     >
                       <TagBadge tag={tag} size="md" />
 
-                      {/* 3-dot menu */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
                             className={cn(
-                              'h-5 w-5 flex items-center justify-center rounded-full',
+                              'h-6 w-6 md:h-5 md:w-5 flex items-center justify-center rounded-full',
                               'text-text-muted hover:text-text-primary hover:bg-bg-surface-2',
-                              'opacity-0 group-hover:opacity-100 transition-opacity',
+                              // Visible on mobile (touch), hover-only on desktop
+                              'opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity',
                               '-ml-0.5'
                             )}
                           >
-                            <MoreVertical className="h-3 w-3" />
+                            <MoreVertical className="h-3.5 w-3.5 md:h-3 md:w-3" />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start">
@@ -266,46 +253,40 @@ export default function TagsPage() {
         )}
       </div>
 
-      {/* Rename Dialog */}
-      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rename Tag</DialogTitle>
-            <DialogDescription>
-              This will update all {tagCounts[tagToEdit || ''] || 0} card(s) that use this tag.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4">
-            <Input
-              value={newTagName}
-              onChange={(e) => setNewTagName(e.target.value)}
-              placeholder="New tag name"
-              className="bg-bg-surface-2"
-              autoFocus
-            />
-          </div>
-          <DialogFooter>
+      <ResponsiveDialog
+        open={renameDialogOpen}
+        onOpenChange={setRenameDialogOpen}
+        title="Rename Tag"
+        description={`This will update all ${tagCounts[tagToEdit || ''] || 0} card(s) that use this tag.`}
+        footer={
+          <>
             <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleRename} disabled={isProcessing || !newTagName.trim()}>
               {isProcessing ? 'Renaming...' : 'Rename'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        }
+      >
+        <div className="py-4">
+          <Input
+            value={newTagName}
+            onChange={(e) => setNewTagName(e.target.value)}
+            placeholder="New tag name"
+            className="bg-bg-surface-2"
+            autoFocus
+          />
+        </div>
+      </ResponsiveDialog>
 
-      {/* Delete Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Tag</DialogTitle>
-            <DialogDescription>
-              This will remove the tag from {tagCounts[tagToEdit || ''] || 0} card(s).
-              The cards themselves will not be deleted.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
+      <ResponsiveDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Tag"
+        description={`This will remove the tag from ${tagCounts[tagToEdit || ''] || 0} card(s). The cards themselves will not be deleted.`}
+        footer={
+          <>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
               Cancel
             </Button>
@@ -316,10 +297,11 @@ export default function TagsPage() {
             >
               {isProcessing ? 'Deleting...' : 'Delete'}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+          </>
+        }
+      >
+        <div /> 
+      </ResponsiveDialog>
     </div>
   );
 }

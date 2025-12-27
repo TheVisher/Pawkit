@@ -176,6 +176,21 @@ model Card {
   convertedToTodo         Boolean   @default(false)
   dismissedTodoSuggestion Boolean   @default(false)
 
+  // Reading Tracking
+  wordCount          Int?     // Word count of article content
+  readingTime        Int?     // Estimated minutes (wordCount / 225 WPM)
+  readProgress       Int?     // 0-100 scroll percentage
+  isRead             Boolean  @default(false)
+  lastScrollPosition Int?     // Pixel position for resume reading
+
+  // Link Health
+  linkStatus    String?   // 'ok' | 'broken' | 'redirect' | 'unchecked'
+  lastLinkCheck DateTime?
+  redirectUrl   String?   // Final URL if redirected
+
+  // Daily Note
+  isDailyNote Boolean @default(false)
+
   // Junction for notes in Pawkits
   collectionNotes CollectionNote[]
 
@@ -187,6 +202,9 @@ model Card {
   @@index([workspaceId, type])
   @@index([workspaceId, scheduledDate])
   @@index([workspaceId, status])
+  @@index([workspaceId, isRead])
+  @@index([workspaceId, isDailyNote])
+  @@index([workspaceId, linkStatus])
 }
 
 /// Collection - A Pawkit (folder/collection of cards)

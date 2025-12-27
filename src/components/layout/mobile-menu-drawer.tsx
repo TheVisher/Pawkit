@@ -26,7 +26,8 @@ interface MobileMenuDrawerProps {
 
 export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) {
   const { theme, setTheme } = useTheme();
-  const userEmail = useAuthStore((s) => s.userEmail);
+  const user = useAuthStore((s) => s.user);
+  const userEmail = user?.email;
   
   const cycleTheme = () => {
     if (theme === 'system') setTheme('dark');

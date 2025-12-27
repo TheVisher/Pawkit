@@ -29,7 +29,7 @@ interface PageHeaderProps {
  */
 export function PageHeader({ title, subtitle, actions, className }: PageHeaderProps) {
   return (
-    <div className={cn('pt-5 pb-4 px-6 min-h-[76px]', className)}>
+    <div className={cn('pt-5 pb-4 px-4 md:px-6 min-h-[76px]', className)}>
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-0.5 min-w-0 flex-1">
           {subtitle && (

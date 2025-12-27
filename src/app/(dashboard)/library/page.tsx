@@ -2,13 +2,14 @@
 
 import { useMemo, useCallback, useEffect } from 'react';
 import { useDataStore } from '@/lib/stores/data-store';
-import { useViewStore, useCardDisplaySettings, cardMatchesContentTypes, cardMatchesUnsortedFilter } from '@/lib/stores/view-store';
-import type { GroupBy, DateGrouping, UnsortedFilter } from '@/lib/stores/view-store';
+import { useViewStore, useCardDisplaySettings, cardMatchesContentTypes, cardMatchesUnsortedFilter, cardMatchesReadingFilter } from '@/lib/stores/view-store';
+import type { GroupBy, DateGrouping, UnsortedFilter, ReadingFilter } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { CardGrid } from '@/components/cards/card-grid';
 import { EmptyState } from '@/components/cards/empty-state';
 import { PageHeader } from '@/components/layout/page-header';
+import { MobileViewOptions } from '@/components/layout/mobile-view-options';
 import { ContentAreaContextMenu } from '@/components/context-menus';
 import { Bookmark, CalendarDays, Tag, Type, Globe } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
@@ -77,6 +78,7 @@ export default function LibraryPage() {
   const contentTypeFilters = useViewStore((state) => state.contentTypeFilters);
   const selectedTags = useViewStore((state) => state.selectedTags);
   const unsortedFilter = useViewStore((state) => state.unsortedFilter) as UnsortedFilter;
+  const readingFilter = useViewStore((state) => state.readingFilter) as ReadingFilter;
   const groupBy = useViewStore((state) => state.groupBy) as GroupBy;
   const dateGrouping = useViewStore((state) => state.dateGrouping) as DateGrouping;
   const reorderCards = useViewStore((state) => state.reorderCards);
@@ -94,7 +96,7 @@ export default function LibraryPage() {
   // Card display settings
   const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
 
-  // Filter out deleted cards and apply content type + tag + unsorted filters
+  // Filter out deleted cards and apply content type + tag + unsorted + reading filters
   const activeCards = useMemo(() => {
     return cards.filter((card) => {
       if (card._deleted) return false;
@@ -106,9 +108,11 @@ export default function LibraryPage() {
       }
       // Unsorted/Quick filter
       if (!cardMatchesUnsortedFilter(card, unsortedFilter)) return false;
+      // Reading status filter
+      if (!cardMatchesReadingFilter(card, readingFilter)) return false;
       return true;
     });
-  }, [cards, contentTypeFilters, selectedTags, unsortedFilter]);
+  }, [cards, contentTypeFilters, selectedTags, unsortedFilter, readingFilter]);
 
   // Sort cards based on current sort settings
   const sortedCards = useMemo(() => {
@@ -263,10 +267,14 @@ export default function LibraryPage() {
   return (
     <ContentAreaContextMenu>
       <div className="flex-1">
-        <PageHeader title="Library" subtitle={subtitle} />
+        <PageHeader 
+          title="Library" 
+          subtitle={subtitle} 
+          actions={<MobileViewOptions viewType="library" />}
+        />
 
         {/* Page content - pt-4 creates spacing below header */}
-        <div className="px-6 pt-4 pb-6">
+        <div className="px-4 md:px-6 pt-4 pb-6">
           {activeCards.length === 0 ? (
             <EmptyState
               icon={Bookmark}

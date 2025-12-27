@@ -1,9 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { format, isToday } from 'date-fns';
+import { FileText, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useModalStore } from '@/lib/stores/modal-store';
+import { getDailyNote } from '@/lib/db/schema';
+import { Button } from '@/components/ui/button';
 import { EventItem } from './event-item';
 import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
 
@@ -29,9 +34,62 @@ export function DayView() {
   const { currentDate } = useCalendarStore();
   const events = useDataStore((state) => state.events);
   const cards = useDataStore((state) => state.cards);
+  const createCard = useDataStore((state) => state.createCard);
+  const workspace = useCurrentWorkspace();
+  const openCardDetail = useModalStore((s) => s.openCardDetail);
+
+  const [dailyNote, setDailyNote] = useState<LocalCard | null>(null);
+  const [showNote, setShowNote] = useState(false);
 
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const isTodayDate = isToday(currentDate);
+
+  // Load daily note for current date
+  const loadDailyNote = useCallback(async () => {
+    if (!workspace) return;
+    const note = await getDailyNote(workspace.id, currentDate);
+    setDailyNote(note);
+  }, [workspace, currentDate]);
+
+  useEffect(() => {
+    loadDailyNote();
+  }, [loadDailyNote]);
+
+  const handleCreateDailyNote = async () => {
+    if (!workspace) return;
+
+    const newNote = await createCard({
+      workspaceId: workspace.id,
+      type: 'md-note',
+      url: '',
+      title: format(currentDate, 'MMMM d, yyyy'),
+      content: '',
+      isDailyNote: true,
+      scheduledDate: currentDate,
+      tags: ['daily-note'],
+      collections: [],
+      pinned: false,
+      status: 'READY',
+      isFileCard: false,
+    });
+
+    if (newNote) {
+      setDailyNote(newNote);
+      openCardDetail(newNote.id);
+    }
+  };
+
+  const handleOpenDailyNote = () => {
+    if (dailyNote) {
+      openCardDetail(dailyNote.id);
+    }
+  };
+
+  const getNotePreview = (html: string) => {
+    if (!html) return 'Empty note';
+    const text = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    return text.length > 80 ? text.slice(0, 80) + '...' : text || 'Empty note';
+  };
 
   // Get items for current day
   const dayItems = useMemo(() => {
@@ -77,13 +135,42 @@ export function DayView() {
   return (
     <div className="h-full flex flex-col">
       {/* Day header */}
-      <div className="flex items-center justify-center py-4 border-b border-border-subtle bg-bg-surface-1">
-        <div className={isTodayDate ? 'text-accent-primary' : 'text-text-primary'}>
-          <div className="text-sm text-center text-text-muted">
-            {format(currentDate, 'EEEE')}
+      <div className="border-b border-border-subtle bg-bg-surface-1">
+        <div className="flex items-center justify-between px-4 py-4">
+          <div className={isTodayDate ? 'text-accent-primary' : 'text-text-primary'}>
+            <div className="text-sm text-text-muted">
+              {format(currentDate, 'EEEE')}
+            </div>
+            <div className="text-3xl font-light mt-1">
+              {format(currentDate, 'd')}
+            </div>
           </div>
-          <div className="text-3xl font-light mt-1 text-center">
-            {format(currentDate, 'd')}
+
+          {/* Daily Note Section */}
+          <div className="flex-1 max-w-md ml-6">
+            {dailyNote ? (
+              <button
+                onClick={handleOpenDailyNote}
+                className="w-full flex items-center gap-3 p-3 rounded-lg bg-bg-surface-2/50 hover:bg-bg-surface-2 transition-colors text-left"
+              >
+                <FileText className="h-5 w-5 text-[var(--color-accent)] flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs text-text-muted mb-0.5">Daily Note</div>
+                  <div className="text-sm text-text-secondary truncate">
+                    {getNotePreview(dailyNote.content || '')}
+                  </div>
+                </div>
+              </button>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={handleCreateDailyNote}
+                className="w-full justify-start gap-2 bg-bg-surface-2/30 border-dashed"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Create daily note</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>

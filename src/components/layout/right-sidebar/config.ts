@@ -6,6 +6,7 @@
 import {
   Bookmark, FileText, Video, Image, FileSpreadsheet, Music, HelpCircle,
   Layers, CalendarDays, Globe, Type, Tag, Inbox, FolderMinus, TagsIcon, StickyNote,
+  Circle, Clock, CheckCircle2,
 } from 'lucide-react';
 
 // Types
@@ -14,6 +15,7 @@ export type ContentType = 'bookmarks' | 'notes' | 'quick-notes' | 'video' | 'ima
 export type GroupBy = 'none' | 'date' | 'tags' | 'type' | 'domain';
 export type DateGrouping = 'smart' | 'day' | 'week' | 'month' | 'year';
 export type UnsortedFilter = 'none' | 'no-pawkits' | 'no-tags' | 'both';
+export type ReadingFilter = 'all' | 'unread' | 'in-progress' | 'read';
 export type ViewType = 'cards' | 'pawkit' | 'home' | 'calendar' | 'other';
 
 export interface ViewConfig {
@@ -69,6 +71,14 @@ export const UNSORTED_OPTIONS: { id: UnsortedFilter; label: string; icon: typeof
   { id: 'no-pawkits', label: 'No Pawkits', icon: FolderMinus },
   { id: 'no-tags', label: 'No Tags', icon: TagsIcon },
   { id: 'both', label: 'Unsorted', icon: Inbox },
+];
+
+// Reading status filter options
+export const READING_FILTER_OPTIONS: { id: ReadingFilter; label: string; icon: typeof Circle }[] = [
+  { id: 'all', label: 'All', icon: Circle },
+  { id: 'unread', label: 'Unread', icon: Circle },
+  { id: 'in-progress', label: 'In Progress', icon: Clock },
+  { id: 'read', label: 'Read', icon: CheckCircle2 },
 ];
 
 // View configurations per view type

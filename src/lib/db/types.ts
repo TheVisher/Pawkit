@@ -108,6 +108,21 @@ export interface LocalCard extends SyncMetadata {
   convertedToTodo?: boolean;
   dismissedTodoSuggestion?: boolean;
 
+  // Reading Tracking
+  wordCount?: number;           // Word count of article content
+  readingTime?: number;         // Estimated minutes (wordCount / 225 WPM)
+  readProgress?: number;        // 0-100 scroll percentage
+  isRead?: boolean;             // Manual toggle or auto at 100%
+  lastScrollPosition?: number;  // Pixel position for resume reading
+
+  // Link Health
+  linkStatus?: 'ok' | 'broken' | 'redirect' | 'unchecked';
+  lastLinkCheck?: Date;
+  redirectUrl?: string;         // Final URL if redirected
+
+  // Daily Note
+  isDailyNote?: boolean;        // Flag for daily note cards
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
