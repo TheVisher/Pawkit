@@ -12,7 +12,13 @@ import {
   Clock,
   CheckCircle2,
   Loader2,
+  Maximize2,
+  Monitor,
+  ArrowLeft,
+  Sun,
+  Moon,
 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useTagStore } from '@/lib/stores/tag-store';
 import { cn } from '@/lib/utils';
@@ -83,9 +89,19 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
     card?.scheduledDate ? new Date(card.scheduledDate) : undefined
   );
   const [imageError, setImageError] = useState(false);
-  const [showReader, setShowReader] = useState(false);
+  const [showInlineReader, setShowInlineReader] = useState(false);
+  const [showFullReader, setShowFullReader] = useState(false);
   const [isExtractingArticle, setIsExtractingArticle] = useState(false);
   const [extractionError, setExtractionError] = useState<string | null>(null);
+  const [inlineTheme, setInlineTheme] = useState<'dark' | 'sepia' | 'light'>('dark');
+
+  // Theme styles for inline reader
+  const inlineThemeStyles = {
+    dark: { bg: '#0d0d0d', text: '#e5e5e5', textMuted: '#888888', border: '#333333' },
+    sepia: { bg: '#f4ecd8', text: '#5c4b37', textMuted: '#8b7355', border: '#d4c4a8' },
+    light: { bg: '#ffffff', text: '#1a1a1a', textMuted: '#666666', border: '#e5e5e5' },
+  };
+  const currentTheme = inlineThemeStyles[inlineTheme];
 
   // Refs
   const titleRef = useRef<HTMLInputElement>(null);
@@ -208,8 +224,8 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
         readProgress: 0,
       });
 
-      // Open reader mode after extraction
-      setShowReader(true);
+      // Show inline reader after extraction
+      setShowInlineReader(true);
     } catch (error) {
       console.error('[CardDetail] Article extraction failed:', error);
       setExtractionError(error instanceof Error ? error.message : 'Failed to extract article');
@@ -218,21 +234,33 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
     }
   }, [card?.id, card?.url, isExtractingArticle, updateCard]);
 
-  // Handle reader button click - extract if needed, then show
+  // Handle reader button click - extract if needed, then show inline reader
   const handleReaderClick = useCallback(() => {
     if (card?.articleContent) {
-      // Already have content, just show reader
-      setShowReader(true);
+      // Already have content, show inline reader
+      setShowInlineReader(true);
     } else {
       // Need to extract first
       handleExtractArticle();
     }
   }, [card?.articleContent, handleExtractArticle]);
 
+  // Sanitize article content for inline display
+  const sanitizedArticleContent = useMemo(() => {
+    if (typeof window === 'undefined' || !articleContent) return '';
+    let cleaned = DOMPurify.sanitize(articleContent, {
+      ADD_TAGS: ['iframe'],
+      ADD_ATTR: ['allowfullscreen', 'frameborder', 'src', 'loading'],
+    });
+    // Add lazy loading to images
+    cleaned = cleaned.replace(/<img\s/gi, '<img loading="lazy" ');
+    return cleaned;
+  }, [articleContent]);
+
   if (!card) return null;
 
-  // Show reader mode
-  if (showReader && hasArticleContent) {
+  // Show full viewport reader mode
+  if (showFullReader && hasArticleContent) {
     return (
       <Reader
         title={card.title || 'Untitled'}
@@ -243,8 +271,204 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
         readingTime={readingTime}
         initialProgress={card.readProgress || 0}
         onProgressChange={handleReadingProgress}
-        onClose={() => setShowReader(false)}
+        onClose={() => setShowFullReader(false)}
+        onMinimize={() => {
+          setShowFullReader(false);
+          setShowInlineReader(true);
+        }}
       />
+    );
+  }
+
+  // Show inline reader in modal
+  if (showInlineReader && hasArticleContent) {
+    return (
+      <div
+        className={cn(
+          'flex flex-col h-full transition-colors duration-200',
+          className
+        )}
+        style={{ backgroundColor: currentTheme.bg }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Inline reader header */}
+        <div
+          className="flex items-center justify-between px-4 py-3 border-b"
+          style={{ borderColor: currentTheme.border }}
+        >
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowInlineReader(false)}
+              className="p-2 rounded-lg transition-colors"
+              style={{ color: currentTheme.text }}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+            <div className="text-sm" style={{ color: currentTheme.textMuted }}>
+              {readingTime > 0 && <span>{readingTime} min read</span>}
+              {wordCount > 0 && <span className="ml-2">{wordCount.toLocaleString()} words</span>}
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            {/* Theme toggle */}
+            <button
+              onClick={() => setInlineTheme(t => t === 'dark' ? 'sepia' : t === 'sepia' ? 'light' : 'dark')}
+              className="p-2 rounded-lg transition-colors hover:opacity-70"
+              style={{ color: currentTheme.text }}
+              title={`Theme: ${inlineTheme}`}
+            >
+              {inlineTheme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            </button>
+            {/* Expand to full Pawkit viewport */}
+            <button
+              onClick={() => {
+                setShowInlineReader(false);
+                setShowFullReader(true);
+              }}
+              className="p-2 rounded-lg transition-colors hover:opacity-70"
+              style={{ color: currentTheme.text }}
+              title="Expand to full window"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </button>
+            {/* Browser fullscreen */}
+            <button
+              onClick={() => {
+                setShowInlineReader(false);
+                setShowFullReader(true);
+                setTimeout(() => {
+                  document.querySelector('[data-reader-container]')?.requestFullscreen?.();
+                }, 100);
+              }}
+              className="p-2 rounded-lg transition-colors hover:opacity-70"
+              style={{ color: currentTheme.text }}
+              title="Browser fullscreen"
+            >
+              <Monitor className="h-4 w-4" />
+            </button>
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="p-2 rounded-lg transition-colors hover:opacity-70"
+              style={{ color: currentTheme.text }}
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Article content - overscroll-none prevents text bounce */}
+        <div
+          className="flex-1 overflow-y-auto overscroll-none"
+          style={{ WebkitOverflowScrolling: 'auto' }}
+        >
+          <article className="max-w-none px-6 py-8">
+            <h1
+              className="text-2xl font-bold mb-4 leading-tight"
+              style={{ color: currentTheme.text }}
+            >
+              {card.title || 'Untitled'}
+            </h1>
+            {(card.domain || card.url) && (
+              <a
+                href={card.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-sm mb-6 hover:underline"
+                style={{ color: currentTheme.textMuted }}
+              >
+                {card.domain || getDomain(card.url)}
+              </a>
+            )}
+            <div
+              className="inline-reader-content"
+              style={{
+                fontSize: '16px',
+                lineHeight: 1.8,
+                color: currentTheme.text,
+                ['--inline-text' as string]: currentTheme.text,
+                ['--inline-muted' as string]: currentTheme.textMuted,
+                ['--inline-border' as string]: currentTheme.border,
+              }}
+            >
+              <InlineReaderContent html={sanitizedArticleContent} />
+            </div>
+            <div
+              className="mt-12 pt-6 border-t text-center"
+              style={{ borderColor: currentTheme.border }}
+            >
+              <p className="text-sm" style={{ color: currentTheme.textMuted }}>End of article</p>
+              {card.url && (
+                <a
+                  href={card.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block mt-2 text-sm text-[var(--color-accent)] hover:underline"
+                >
+                  View original →
+                </a>
+              )}
+            </div>
+          </article>
+        </div>
+
+        <style jsx global>{`
+          .inline-reader-content h1,
+          .inline-reader-content h2,
+          .inline-reader-content h3 {
+            color: var(--inline-text);
+            font-weight: 600;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+          }
+          .inline-reader-content h1 { font-size: 1.5em; }
+          .inline-reader-content h2 { font-size: 1.25em; }
+          .inline-reader-content h3 { font-size: 1.1em; }
+          .inline-reader-content p {
+            margin-bottom: 1em;
+          }
+          .inline-reader-content a {
+            color: var(--color-accent);
+          }
+          .inline-reader-content a:hover {
+            text-decoration: underline;
+          }
+          .inline-reader-content strong {
+            color: var(--inline-text);
+            font-weight: 600;
+          }
+          .inline-reader-content blockquote {
+            border-left: 3px solid var(--color-accent);
+            padding-left: 1em;
+            margin: 1em 0;
+            color: var(--inline-muted);
+            font-style: italic;
+          }
+          .inline-reader-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 1em 0;
+          }
+          .inline-reader-content ul,
+          .inline-reader-content ol {
+            margin: 1em 0;
+            padding-left: 1.5em;
+          }
+          .inline-reader-content li {
+            margin-bottom: 0.5em;
+          }
+          .inline-reader-content figure {
+            margin: 1.5em 0;
+          }
+          .inline-reader-content figcaption {
+            color: var(--inline-muted);
+            font-size: 0.9em;
+            text-align: center;
+            margin-top: 0.5em;
+          }
+        `}</style>
+      </div>
     );
   }
 
@@ -511,4 +735,10 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
       `}</style>
     </div>
   );
+}
+
+// Separate component to prevent re-renders - content is sanitized with DOMPurify before passing
+function InlineReaderContent({ html }: { html: string }) {
+  // Note: html is pre-sanitized with DOMPurify in sanitizedArticleContent
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
 }
