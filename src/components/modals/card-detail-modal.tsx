@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Drawer } from 'vaul';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useMobile } from '@/lib/hooks/use-mobile';
+import { triggerSync } from '@/lib/services/sync-queue';
 import { cn } from '@/lib/utils';
 import { CardDetailContent } from './card-detail-content';
 
@@ -14,30 +15,39 @@ export function CardDetailModal() {
   const rightSidebarOpen = useUIStore((s) => s.rightSidebarOpen);
   const isMobile = useMobile();
 
+  // Handle close with sync
+  const handleClose = useCallback(() => {
+    closeCardDetail();
+    // Trigger sync when modal closes (fire-and-forget)
+    triggerSync().catch(() => {
+      // Ignore sync errors on close
+    });
+  }, [closeCardDetail]);
+
   // Close on escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        closeCardDetail();
+        handleClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [closeCardDetail]);
+  }, [handleClose]);
 
   if (!activeCardId) return null;
 
   if (isMobile) {
     return (
-      <Drawer.Root open={!!activeCardId} onOpenChange={(open) => !open && closeCardDetail()}>
+      <Drawer.Root open={!!activeCardId} onOpenChange={(open) => !open && handleClose()}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm" />
           <Drawer.Content className="fixed bottom-0 left-0 right-0 z-50 mt-24 flex h-[96%] flex-col rounded-t-[20px] bg-[var(--glass-panel-bg)] backdrop-blur-[var(--glass-blur)] border-t border-[var(--glass-border)] outline-none">
             <div className="mx-auto mt-4 h-1.5 w-12 flex-shrink-0 rounded-full bg-[var(--color-text-muted)] opacity-20" />
-            <CardDetailContent 
-              cardId={activeCardId} 
-              onClose={closeCardDetail}
-              className="bg-transparent" 
+            <CardDetailContent
+              cardId={activeCardId}
+              onClose={handleClose}
+              className="bg-transparent"
             />
           </Drawer.Content>
         </Drawer.Portal>
@@ -50,7 +60,7 @@ export function CardDetailModal() {
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
-        onClick={closeCardDetail}
+        onClick={handleClose}
       />
 
       {/* Desktop Modal */}
@@ -71,7 +81,7 @@ export function CardDetailModal() {
           )}
           onClick={(e) => e.stopPropagation()}
         >
-          <CardDetailContent cardId={activeCardId} onClose={closeCardDetail} />
+          <CardDetailContent cardId={activeCardId} onClose={handleClose} />
         </div>
       </div>
     </>

@@ -11,6 +11,15 @@ import { X, Minus, Plus, Type } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+// Debounce helper
+function debounce<T extends (...args: Parameters<T>) => void>(fn: T, ms: number): T {
+  let timeoutId: ReturnType<typeof setTimeout>;
+  return ((...args: Parameters<T>) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => fn(...args), ms);
+  }) as T;
+}
+
 interface ReaderProps {
   title: string;
   content: string;
@@ -38,37 +47,62 @@ export function Reader({
   onClose,
 }: ReaderProps) {
   const [fontSizeIndex, setFontSizeIndex] = useState(DEFAULT_FONT_SIZE_INDEX);
-  const [progress, setProgress] = useState(initialProgress);
   const contentRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const progressTextRef = useRef<HTMLSpanElement>(null);
+  const progressRef = useRef(initialProgress);
 
   const fontSize = FONT_SIZES[fontSizeIndex];
 
-  // Sanitize HTML content
+  // Sanitize HTML content and handle images
   const sanitizedContent = useMemo(() => {
     if (typeof window === 'undefined') return '';
-    return DOMPurify.sanitize(content, {
+
+    // Sanitize first
+    let cleaned = DOMPurify.sanitize(content, {
       ADD_TAGS: ['iframe'],
-      ADD_ATTR: ['allowfullscreen', 'frameborder', 'src'],
+      ADD_ATTR: ['allowfullscreen', 'frameborder', 'src', 'loading'],
     });
+
+    // Add lazy loading to images and handle errors
+    cleaned = cleaned.replace(
+      /<img\s/gi,
+      '<img loading="lazy" onerror="this.style.display=\'none\'" '
+    );
+
+    return cleaned;
   }, [content]);
 
-  // Handle scroll and calculate progress
+  // Debounced progress save - only saves to DB every 500ms
+  const debouncedProgressSave = useMemo(
+    () => debounce((progress: number, scrollTop: number) => {
+      onProgressChange?.(progress, scrollTop);
+    }, 500),
+    [onProgressChange]
+  );
+
+  // Handle scroll - updates DOM directly via refs to avoid re-renders
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
 
     const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
     const maxScroll = scrollHeight - clientHeight;
 
-    if (maxScroll <= 0) {
-      setProgress(100);
-      return;
+    const newProgress = maxScroll <= 0 ? 100 : Math.min(100, Math.round((scrollTop / maxScroll) * 100));
+
+    // Update refs and DOM directly - no state change = no re-render
+    progressRef.current = newProgress;
+    if (progressBarRef.current) {
+      progressBarRef.current.style.width = `${newProgress}%`;
+    }
+    if (progressTextRef.current) {
+      progressTextRef.current.textContent = `${newProgress}%`;
     }
 
-    const newProgress = Math.min(100, Math.round((scrollTop / maxScroll) * 100));
-    setProgress(newProgress);
-    onProgressChange?.(newProgress, scrollTop);
-  }, [onProgressChange]);
+    // Debounced save to DB
+    debouncedProgressSave(newProgress, scrollTop);
+  }, [debouncedProgressSave]);
 
   // Restore scroll position on mount
   useEffect(() => {
@@ -91,8 +125,8 @@ export function Reader({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-bg-primary">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">
-        <div className="flex items-center gap-4">
+      <header className="flex items-center justify-between px-4 md:px-6 py-4 border-b border-border-subtle">
+        <div className="flex items-center gap-2 md:gap-4">
           <Button
             variant="ghost"
             size="icon"
@@ -103,19 +137,19 @@ export function Reader({
           </Button>
 
           {/* Reading stats */}
-          <div className="flex items-center gap-3 text-sm text-text-muted">
+          <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm text-text-muted whitespace-nowrap">
             {readingTime && (
               <span>{readingTime} min read</span>
             )}
             {wordCount && (
-              <span>{wordCount.toLocaleString()} words</span>
+              <span className="hidden md:inline">{wordCount.toLocaleString()} words</span>
             )}
-            <span className="text-[var(--color-accent)]">{progress}%</span>
+            <span ref={progressTextRef} className="text-[var(--color-accent)]">{initialProgress}%</span>
           </div>
         </div>
 
         {/* Font size controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2">
           <Button
             variant="ghost"
             size="icon"
@@ -125,9 +159,9 @@ export function Reader({
           >
             <Minus className="h-4 w-4" />
           </Button>
-          <div className="flex items-center gap-1 text-sm text-text-muted w-16 justify-center">
+          <div className="flex items-center gap-1 text-sm text-text-muted w-12 md:w-16 justify-center">
             <Type className="h-4 w-4" />
-            <span>{fontSize}px</span>
+            <span className="hidden md:inline">{fontSize}px</span>
           </div>
           <Button
             variant="ghost"
@@ -144,8 +178,9 @@ export function Reader({
       {/* Progress bar */}
       <div className="h-0.5 bg-bg-surface-2">
         <div
-          className="h-full bg-[var(--color-accent)] transition-all duration-150"
-          style={{ width: `${progress}%` }}
+          ref={progressBarRef}
+          className="h-full bg-[var(--color-accent)]"
+          style={{ width: `${initialProgress}%` }}
         />
       </div>
 
@@ -157,7 +192,7 @@ export function Reader({
       >
         <article
           ref={contentRef}
-          className="max-w-[680px] mx-auto px-6 py-12"
+          className="max-w-[680px] mx-auto px-4 md:px-6 py-8 md:py-12"
           style={{ fontSize: `${fontSize}px` }}
         >
           {/* Title */}

@@ -19,6 +19,7 @@ import {
   clearLocalData,
   setWorkspace,
 } from '@/lib/services/sync-service';
+import { triggerSync } from '@/lib/services/sync-queue';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { createClient } from '@/lib/supabase/client';
 import { createModuleLogger } from '@/lib/utils/logger';
@@ -122,8 +123,8 @@ export function useSync(options: UseSyncOptions = {}): UseSyncReturn {
       useSyncStore.getState().goOnline();
 
       if (syncOnOnline) {
-        // Process queue immediately when coming online
-        processQueueNow();
+        // Only process queue if there are pending items (no wasted requests)
+        triggerSync();
       }
     };
 
@@ -152,8 +153,10 @@ export function useSync(options: UseSyncOptions = {}): UseSyncReturn {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        log.debug('Tab visible, syncing...');
-        deltaSync();
+        log.debug('Tab visible, checking for pending items...');
+        // Only push pending changes - don't do a full pull on every tab switch
+        // The user can manually refresh if they need latest server data
+        triggerSync();
       }
     };
 

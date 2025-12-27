@@ -11,6 +11,7 @@ import {
   BookOpen,
   Clock,
   CheckCircle2,
+  Loader2,
 } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useTagStore } from '@/lib/stores/tag-store';
@@ -83,6 +84,8 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
   );
   const [imageError, setImageError] = useState(false);
   const [showReader, setShowReader] = useState(false);
+  const [isExtractingArticle, setIsExtractingArticle] = useState(false);
+  const [extractionError, setExtractionError] = useState<string | null>(null);
 
   // Refs
   const titleRef = useRef<HTMLInputElement>(null);
@@ -170,6 +173,61 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
       updateCard(card.id, { isRead: !card.isRead });
     }
   }, [card, updateCard]);
+
+  // On-demand article extraction
+  const handleExtractArticle = useCallback(async () => {
+    if (!card?.url || isExtractingArticle) return;
+
+    setIsExtractingArticle(true);
+    setExtractionError(null);
+
+    try {
+      const response = await fetch('/api/article', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: card.url }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.error || `Failed to extract article (${response.status})`);
+      }
+
+      const data = await response.json();
+
+      if (!data.success || !data.article) {
+        throw new Error('Could not extract article content');
+      }
+
+      // Update card with article content
+      await updateCard(card.id, {
+        articleContent: data.article.content || undefined,
+        wordCount: data.article.wordCount,
+        readingTime: data.article.readingTime,
+        isRead: false,
+        readProgress: 0,
+      });
+
+      // Open reader mode after extraction
+      setShowReader(true);
+    } catch (error) {
+      console.error('[CardDetail] Article extraction failed:', error);
+      setExtractionError(error instanceof Error ? error.message : 'Failed to extract article');
+    } finally {
+      setIsExtractingArticle(false);
+    }
+  }, [card?.id, card?.url, isExtractingArticle, updateCard]);
+
+  // Handle reader button click - extract if needed, then show
+  const handleReaderClick = useCallback(() => {
+    if (card?.articleContent) {
+      // Already have content, just show reader
+      setShowReader(true);
+    } else {
+      // Need to extract first
+      handleExtractArticle();
+    }
+  }, [card?.articleContent, handleExtractArticle]);
 
   if (!card) return null;
 
@@ -325,20 +383,29 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
               </div>
 
               {/* Reader mode and read toggle buttons */}
-              <div className="flex items-center gap-2">
-                {hasArticleContent && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Reader mode button for URL cards */}
+                {card.type === 'url' && (
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowReader(true)}
+                    onClick={handleReaderClick}
+                    disabled={isExtractingArticle}
                     className="gap-2"
                   >
-                    <BookOpen className="h-4 w-4" />
-                    Read Article
-                    {card.readProgress && card.readProgress > 0 && card.readProgress < 100 && (
+                    {isExtractingArticle ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <BookOpen className="h-4 w-4" />
+                    )}
+                    {isExtractingArticle ? 'Extracting...' : card.articleContent ? 'Read Article' : 'Reader Mode'}
+                    {!isExtractingArticle && card.readProgress && card.readProgress > 0 && card.readProgress < 100 && (
                       <span className="text-xs text-text-muted">({card.readProgress}%)</span>
                     )}
                   </Button>
+                )}
+                {extractionError && (
+                  <span className="text-xs text-red-400">{extractionError}</span>
                 )}
                 <Button
                   variant="ghost"
