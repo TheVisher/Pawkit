@@ -11,7 +11,7 @@ export function CreatePawkitButton() {
         <button
             onClick={() => openModal()}
             className={cn(
-                'flex items-center gap-2 w-full py-1.5 rounded-md transition-colors',
+                'flex items-center gap-2 w-full py-2.5 md:py-1.5 rounded-md transition-colors',
                 'text-text-muted hover:text-text-primary'
             )}
         >
