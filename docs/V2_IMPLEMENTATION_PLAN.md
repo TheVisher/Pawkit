@@ -337,6 +337,65 @@ redirectUrl?: string;       // If redirected
 
 ---
 
+### 3.4 Orphaned Data Cleanup
+**Priority:** LOW | **Effort:** Low
+
+Cards/collections can become orphaned when their workspace is deleted but the data remains in IndexedDB. This creates database bloat and confusing discrepancies.
+
+#### Requirements
+- [ ] `cleanupOrphanedData(currentWorkspaceId)` function in data store
+- [ ] Run on app load, **after** initial data load (non-blocking)
+- [ ] Use `requestIdleCallback` or `setTimeout` to defer execution
+- [ ] Delete cards where `workspaceId` not in valid workspaces table
+- [ ] Delete collections where `workspaceId` not in valid workspaces
+- [ ] Log cleanup count for debugging (no user notification)
+- [ ] Safety check: only run if `workspaces.length > 0`
+
+#### Implementation
+```typescript
+// In dashboard-shell.tsx, after loadAll completes
+useEffect(() => {
+  if (!currentWorkspace) return;
+
+  loadAll(currentWorkspace.id);
+  purgeOldTrash(currentWorkspace.id, 30);
+
+  // Deferred cleanup - runs after app is interactive
+  const cleanup = () => cleanupOrphanedData(currentWorkspace.id);
+  requestIdleCallback?.(cleanup) ?? setTimeout(cleanup, 1000);
+
+}, [currentWorkspace, loadAll, purgeOldTrash]);
+
+// In data-store.ts
+cleanupOrphanedData: async (currentWorkspaceId) => {
+  // Get all valid workspace IDs
+  const workspaces = await db.workspaces.toArray();
+  if (workspaces.length === 0) return 0; // Safety check
+
+  const validIds = new Set(workspaces.map(w => w.id));
+
+  // Find orphaned cards
+  const allCards = await db.cards.toArray();
+  const orphaned = allCards.filter(c => !validIds.has(c.workspaceId));
+
+  // Delete them
+  await Promise.all(orphaned.map(c => db.cards.delete(c.id)));
+
+  if (orphaned.length > 0) {
+    log.info(`Cleaned up ${orphaned.length} orphaned cards`);
+  }
+
+  return orphaned.length;
+}
+```
+
+#### Notes
+- This handles edge cases from V1 migrations, deleted workspaces, sync conflicts
+- Silent operation - users don't need to know about database hygiene
+- Low priority since it doesn't affect functionality, just storage efficiency
+
+---
+
 ## 4. Implementation Order
 
 ### Phase 1: Foundation (Week 1)
@@ -468,6 +527,22 @@ redirectUrl?: string;       // If redirected
 - ✅ Open Link button in card details panel
 - ✅ Empty state improvements (distinguishes "no items" vs "no results")
 - ✅ "No matching items" state when filters return nothing
+
+### Completed (Dec 28, 2025)
+- ✅ Trash system with 30-day auto-purge
+- ✅ Moved Trash from sidebar nav to workspace dropdown menu
+- ✅ Added `_deletedAt` timestamp to SyncMetadata for tracking deletion time
+- ✅ Added `restoreCard`, `permanentDeleteCard` functions to data store
+- ✅ Added `loadTrashedCards`, `emptyTrash`, `purgeOldTrash` functions
+- ✅ Created Trash page with restore/delete/empty functionality
+- ✅ Auto-purge runs on app load (removes items older than 30 days)
+
+### Backlog / TODO
+| Task | Priority | Effort | Notes |
+|------|----------|--------|-------|
+| Orphaned data cleanup | Low | Low | Delete cards/collections from non-existent workspaces on app load (deferred, non-blocking) |
+| Settings page | High | Medium | Theme, reader defaults, sync preferences |
+| Real metadata extraction API | Medium | Medium | Replace mock with actual scraping |
 
 ### Status Legend
 - ⬜ Not Started

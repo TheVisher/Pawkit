@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import { db, createSyncMetadata, markModified, markDeleted } from '@/lib/db';
+import { db, createSyncMetadata, markModified, markDeleted, markRestored } from '@/lib/db';
 import type { LocalCard, LocalCollection, LocalCalendarEvent, LocalTodo } from '@/lib/db';
 import { addToQueue, clearAllSyncQueue } from '@/lib/services/sync-queue';
 import { queueMetadataFetch } from '@/lib/services/metadata-service';
@@ -36,8 +36,15 @@ interface DataState {
   createCard: (card: Omit<LocalCard, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalCard>;
   updateCard: (id: string, updates: Partial<LocalCard>) => Promise<void>;
   deleteCard: (id: string) => Promise<void>;
+  restoreCard: (id: string) => Promise<void>;
+  permanentDeleteCard: (id: string) => Promise<void>;
   addCardToCollection: (cardId: string, collectionSlug: string) => Promise<void>;
   removeCardFromCollection: (cardId: string, collectionSlug: string) => Promise<void>;
+
+  // Trash actions
+  loadTrashedCards: (workspaceId: string) => Promise<LocalCard[]>;
+  emptyTrash: (workspaceId: string) => Promise<void>;
+  purgeOldTrash: (workspaceId: string, maxAgeDays?: number) => Promise<number>;
 
   // Collection actions
   loadCollections: (workspaceId: string) => Promise<void>;
@@ -170,6 +177,38 @@ export const useDataStore = create<DataState>((set, get) => ({
     await addToQueue('card', id, 'delete');
   },
 
+  restoreCard: async (id) => {
+    const existing = await db.cards.get(id);
+    if (!existing || !existing._deleted) return;
+
+    const restored = markRestored(existing);
+
+    // Update in Dexie
+    await db.cards.put(restored);
+
+    // Add back to Zustand state
+    set({
+      cards: [...get().cards, restored],
+    });
+
+    // Queue sync (restore = update with _deleted: false)
+    await addToQueue('card', id, 'update', { _deleted: false });
+  },
+
+  permanentDeleteCard: async (id) => {
+    // Actually remove from IndexedDB
+    await db.cards.delete(id);
+
+    // Ensure removed from Zustand state
+    set({
+      cards: get().cards.filter((c) => c.id !== id),
+    });
+
+    // Note: We don't queue a sync here because the card should already
+    // be marked as deleted on the server. If needed, handle server-side
+    // permanent deletion separately.
+  },
+
   addCardToCollection: async (cardId: string, collectionSlug: string) => {
     const card = get().cards.find(c => c.id === cardId);
     if (!card) return;
@@ -189,6 +228,50 @@ export const useDataStore = create<DataState>((set, get) => ({
     const newCollections = card.collections.filter(s => s !== collectionSlug);
 
     await get().updateCard(cardId, { collections: newCollections });
+  },
+
+  // ==========================================================================
+  // TRASH ACTIONS
+  // ==========================================================================
+
+  loadTrashedCards: async (workspaceId) => {
+    return db.cards
+      .where('workspaceId')
+      .equals(workspaceId)
+      .filter((c) => c._deleted === true)
+      .toArray();
+  },
+
+  emptyTrash: async (workspaceId) => {
+    const trashedCards = await db.cards
+      .where('workspaceId')
+      .equals(workspaceId)
+      .filter((c) => c._deleted === true)
+      .toArray();
+
+    // Permanently delete all trashed cards
+    await Promise.all(trashedCards.map((card) => db.cards.delete(card.id)));
+  },
+
+  purgeOldTrash: async (workspaceId, maxAgeDays = 30) => {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - maxAgeDays);
+
+    const oldTrashedCards = await db.cards
+      .where('workspaceId')
+      .equals(workspaceId)
+      .filter((c) => {
+        if (!c._deleted) return false;
+        // Use _deletedAt if available, fall back to _lastModified
+        const deletedAt = c._deletedAt || c._lastModified;
+        return deletedAt && new Date(deletedAt) < cutoffDate;
+      })
+      .toArray();
+
+    // Permanently delete old trashed cards
+    await Promise.all(oldTrashedCards.map((card) => db.cards.delete(card.id)));
+
+    return oldTrashedCards.length;
   },
 
   // ==========================================================================

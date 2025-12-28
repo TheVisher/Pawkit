@@ -97,9 +97,9 @@ export function ContinueReadingWidget() {
   }, [cards]);
 
   return (
-    <Card className="border-border-subtle bg-bg-surface-2 h-full">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3">
+    <Card className="border-border-subtle bg-bg-surface-2 h-full py-0">
+      <CardContent className="p-3">
+        <div className="flex items-center gap-2 mb-2">
           <div className="p-2 rounded-lg bg-green-500/20">
             <BookOpen className="h-4 w-4 text-green-500" />
           </div>

@@ -191,12 +191,28 @@ export function markSynced<T extends { _synced: boolean; _serverVersion?: string
 /**
  * Soft delete an entity (mark for sync deletion)
  */
-export function markDeleted<T extends { _deleted: boolean; _synced: boolean; _lastModified: Date }>(
+export function markDeleted<T extends { _deleted: boolean; _synced: boolean; _lastModified: Date; _deletedAt?: Date }>(
   entity: T
 ): T {
   return {
     ...entity,
     _deleted: true,
+    _deletedAt: new Date(),
+    _synced: false,
+    _lastModified: new Date(),
+  };
+}
+
+/**
+ * Restore a soft-deleted entity
+ */
+export function markRestored<T extends { _deleted: boolean; _synced: boolean; _lastModified: Date; _deletedAt?: Date }>(
+  entity: T
+): T {
+  return {
+    ...entity,
+    _deleted: false,
+    _deletedAt: undefined,
     _synced: false,
     _lastModified: new Date(),
   };

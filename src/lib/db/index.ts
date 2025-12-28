@@ -17,6 +17,7 @@ export {
   markModified,
   markSynced,
   markDeleted,
+  markRestored,
   getCardsForWorkspace,
   getCollectionsForWorkspace,
   getCardsByType,
