@@ -146,6 +146,11 @@ const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis,
     prevProps.card.status === nextProps.card.status &&
     prevProps.card.convertedToTodo === nextProps.card.convertedToTodo &&
     prevProps.card.dismissedTodoSuggestion === nextProps.card.dismissedTodoSuggestion &&
+    prevProps.card.scheduledDate === nextProps.card.scheduledDate &&
+    prevProps.card.linkStatus === nextProps.card.linkStatus &&
+    prevProps.card.isRead === nextProps.card.isRead &&
+    prevProps.card.readProgress === nextProps.card.readProgress &&
+    prevProps.card.readingTime === nextProps.card.readingTime &&
     prevProps.isDraggingThis === nextProps.isDraggingThis &&
     prevProps.isDropTarget === nextProps.isDropTarget &&
     prevProps.currentCollection === nextProps.currentCollection &&

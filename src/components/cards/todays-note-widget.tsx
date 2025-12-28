@@ -5,8 +5,9 @@
  * Quick access to today's daily note from the home dashboard
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { format, isSameDay } from 'date-fns';
+import { db } from '@/lib/db';
 import { Calendar, Plus, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,12 +40,41 @@ export function TodaysNoteWidget() {
     ) || null;
   }, [cards, workspace, date]);
 
+  const updateCard = useDataStore((s) => s.updateCard);
+
   const handleCreateNote = async () => {
     if (!workspace) return;
 
     // Check if a note already exists (prevent duplicates from race conditions)
     if (note) {
       openCardDetail(note.id);
+      return;
+    }
+
+    // Check for trashed daily note for this date - restore instead of creating new
+    const trashedCards = await db.cards
+      .where('workspaceId')
+      .equals(workspace.id)
+      .filter(
+        (c) =>
+          c.isDailyNote &&
+          c.scheduledDate &&
+          isSameDay(new Date(c.scheduledDate), date) &&
+          c._deleted === true
+      )
+      .toArray();
+
+    if (trashedCards.length > 0) {
+      // Restore only the most recent trashed daily note (preserve all existing content)
+      // Sort by updatedAt descending to get the most recent one
+      const sortedTrashed = trashedCards.sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+      const trashedNote = sortedTrashed[0];
+      await updateCard(trashedNote.id, {
+        _deleted: false,
+      });
+      openCardDetail(trashedNote.id);
       return;
     }
 
