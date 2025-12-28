@@ -57,8 +57,8 @@ export function TodaysNoteWidget() {
       .equals(workspace.id)
       .filter(
         (c) =>
-          c.isDailyNote &&
-          c.scheduledDate &&
+          c.isDailyNote === true &&
+          c.scheduledDate != null &&
           isSameDay(new Date(c.scheduledDate), date) &&
           c._deleted === true
       )
