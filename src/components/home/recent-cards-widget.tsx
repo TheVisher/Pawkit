@@ -133,13 +133,13 @@ export function RecentCardsWidget() {
       .sort((a, b) => {
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       })
-      .slice(0, 15); // Max 15 cards
+      .slice(0, 30); // Max 30 cards for 2-row horizontal scroll
   }, [cards]);
 
   return (
-    <Card className="border-border-subtle bg-bg-surface-2">
-      <CardContent className="p-4 md:p-5">
-        <div className="flex items-center gap-2 mb-4 shrink-0">
+    <Card className="border-border-subtle bg-bg-surface-2 py-0">
+      <CardContent className="p-3">
+        <div className="flex items-center gap-2 mb-2 shrink-0">
           <div className="p-2 rounded-lg bg-purple-500/20">
             <Layers className="h-4 w-4 text-purple-500" />
           </div>
@@ -151,36 +151,32 @@ export function RecentCardsWidget() {
 
         {recentCards.length > 0 ? (
           <>
-            {/* Desktop: Grid layout - fixed card width, max height with scroll */}
+            {/* Two-row horizontal scroll grid layout */}
             <div
-              className="hidden md:grid gap-3 content-start auto-rows-max max-h-[550px] overflow-y-auto"
-              style={{
-                gridTemplateColumns: 'repeat(auto-fill, 180px)',
-              }}
+              className="overflow-x-auto pb-2 -mx-1 px-1 scrollbar-thin scrollbar-thumb-bg-surface-3 scrollbar-track-transparent"
+              style={{ scrollbarWidth: 'thin' }}
             >
-              {recentCards.map((card) => (
-                <RecentCardItem
-                  key={card.id}
-                  card={card}
-                  onClick={() => openCardDetail(card.id)}
-                />
-              ))}
-            </div>
-
-            {/* Mobile: Compact list */}
-            <div className="md:hidden space-y-2 max-h-[300px] overflow-y-auto">
-              {recentCards.slice(0, 8).map((card) => (
-                <RecentCardListItem
-                  key={card.id}
-                  card={card}
-                  onClick={() => openCardDetail(card.id)}
-                />
-              ))}
+              <div
+                className="grid gap-3"
+                style={{
+                  gridTemplateRows: 'repeat(2, 1fr)',
+                  gridAutoFlow: 'column',
+                  gridAutoColumns: '160px',
+                }}
+              >
+                {recentCards.map((card) => (
+                  <RecentCardItem
+                    key={card.id}
+                    card={card}
+                    onClick={() => openCardDetail(card.id)}
+                  />
+                ))}
+              </div>
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <Layers className="h-10 w-10 text-text-muted/50 mb-3" />
+          <div className="flex flex-col items-center justify-center py-6 text-center">
+            <Layers className="h-8 w-8 text-text-muted/50 mb-2" />
             <p className="text-sm text-text-muted">No cards yet</p>
             <p className="text-xs text-text-muted/70 mt-1">
               Add your first bookmark or note to get started

@@ -28,6 +28,7 @@ import { clearAllSyncQueue } from '../sync-queue';
 
 export const fullSync = () => syncService.fullSync();
 export const deltaSync = () => syncService.deltaSync();
+export const pushOnlySync = () => syncService.pushOnlySync();
 export const scheduleQueueProcess = () => syncService.scheduleQueueProcess();
 export const processQueueNow = () => syncService.processQueueNow();
 export const clearLocalData = () => syncService.clearLocalData();

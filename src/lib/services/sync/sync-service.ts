@@ -125,6 +125,8 @@ class SyncService {
 
   /**
    * Perform a delta sync (only changes since last sync)
+   * NOTE: This now uses push-only to preserve local-first architecture
+   * Full pull only happens on fullSync() - initial load or manual refresh
    */
   async deltaSync(): Promise<void> {
     if (!this.workspaceId) {
@@ -144,39 +146,59 @@ class SyncService {
 
     const lastSync = await this.getLastSyncTime();
 
-    // If no last sync, do full sync
+    // If no last sync, do full sync (initial load)
     if (!lastSync) {
       log.info('No last sync time, performing full sync');
       return this.fullSync();
     }
 
-    log.info('Starting delta sync since', lastSync.toISOString());
+    // LOCAL-FIRST: After initial sync, only push changes (never pull)
+    // This prevents server from overwriting local-only data like daily notes
+    log.info('Starting push-only sync (local-first mode)');
+    return this.pushOnlySync();
+  }
+
+  /**
+   * Push-only sync - pushes local changes to server WITHOUT pulling
+   * Use this for ongoing syncs AFTER initial load
+   * This is the LOCAL-FIRST approach: Zustand/Dexie is source of truth
+   */
+  async pushOnlySync(): Promise<void> {
+    if (!this.workspaceId) {
+      log.warn('No workspace ID set, skipping sync');
+      return;
+    }
+
+    if (this.isSyncing) {
+      log.debug('Sync already in progress, skipping');
+      return;
+    }
+
+    if (!navigator.onLine) {
+      useSyncStore.getState().goOffline();
+      return;
+    }
+
+    log.info('Starting push-only sync');
     this.isSyncing = true;
     useSyncStore.getState().startSync();
 
     try {
-      // 1. Process outgoing queue first
+      // ONLY process outgoing queue - NO pull from server
       await processQueue();
 
-      // 2. Pull changes since last sync (include deleted for cleanup)
-      for (const entity of ENTITY_ORDER) {
-        await pullEntity(entity, this.workspaceId, lastSync);
-      }
-
-      // 3. Update last sync time
+      // Update last sync time
       await this.setLastSyncTime(new Date());
 
-      // 4. Notify other tabs
+      // Notify other tabs
       this.broadcast({ type: 'sync-complete' });
 
       useSyncStore.getState().finishSync(true);
-      useToastStore.getState().toast({ type: 'success', message: 'Sync complete' });
-      log.info('Delta sync complete');
+      log.info('Push-only sync complete');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
-      log.error('Delta sync failed:', message);
+      log.error('Push-only sync failed:', message);
       useSyncStore.getState().finishSync(false, message);
-      useToastStore.getState().toast({ type: 'error', message: `Sync failed: ${message}` });
     } finally {
       this.isSyncing = false;
     }

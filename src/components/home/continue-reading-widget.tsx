@@ -97,9 +97,9 @@ export function ContinueReadingWidget() {
   }, [cards]);
 
   return (
-    <Card className="border-border-subtle bg-bg-surface-2 h-full">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 mb-3">
+    <Card className="border-border-subtle bg-bg-surface-2 h-full py-0">
+      <CardContent className="p-3 h-full flex flex-col">
+        <div className="flex items-center gap-2 mb-2">
           <div className="p-2 rounded-lg bg-green-500/20">
             <BookOpen className="h-4 w-4 text-green-500" />
           </div>
@@ -112,7 +112,7 @@ export function ContinueReadingWidget() {
         </div>
 
         {inProgressCards.length > 0 ? (
-          <div className="space-y-2">
+          <div className="flex-1 space-y-2">
             {inProgressCards.map((card) => (
               <ReadingCardItem
                 key={card.id}
@@ -122,7 +122,7 @@ export function ContinueReadingWidget() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-6 text-center">
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
             <BookOpen className="h-8 w-8 text-text-muted/50 mb-2" />
             <p className="text-sm text-text-muted">No articles in progress</p>
             <p className="text-xs text-text-muted/70 mt-1">
