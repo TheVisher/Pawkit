@@ -1,16 +1,18 @@
 'use client';
 
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { DragOverlay, useDndMonitor } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { FolderPlus, Folder } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useModalStore } from '@/lib/stores/modal-store';
+import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
 import { PageHeader } from '@/components/layout/page-header';
 import { PawkitCard } from '@/components/pawkits/pawkit-card';
 import { EmptyState } from '@/components/cards/empty-state';
 import { ContentAreaContextMenu } from '@/components/context-menus';
+import { cn } from '@/lib/utils';
 import type { LocalCollection } from '@/lib/db';
 
 export default function PawkitsPage() {
@@ -18,6 +20,10 @@ export default function PawkitsPage() {
   const isLoading = useDataStore((state) => state.isLoading);
   const updateCollection = useDataStore((state) => state.updateCollection);
   const openCreatePawkitModal = useModalStore((state) => state.openCreatePawkitModal);
+
+  // Collision detection for omnibar
+  const headerRef = useRef<HTMLDivElement>(null);
+  const needsOffset = useOmnibarCollision(headerRef);
 
   const [activeCollection, setActiveCollection] = useState<LocalCollection | null>(null);
 
@@ -85,7 +91,11 @@ export default function PawkitsPage() {
   if (isLoading) {
     return (
       <div className="flex-1">
-        <PageHeader title="Pawkits" subtitle="Loading..." />
+        <div className={cn('transition-[padding] duration-200', needsOffset && 'md:pt-20')}>
+          <div ref={headerRef} className="w-fit">
+            <PageHeader title="Pawkits" subtitle="Loading..." />
+          </div>
+        </div>
         <div className="px-6 pt-4 pb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {[...Array(6)].map((_, i) => (
             <div
@@ -106,10 +116,15 @@ export default function PawkitsPage() {
     <>
       <ContentAreaContextMenu>
         <div className="flex-1">
-          <PageHeader
-            title="Pawkits"
-            subtitle={subtitle}
-          />
+          {/* Header with collision-aware offset */}
+          <div className={cn('transition-[padding] duration-200', needsOffset && 'md:pt-20')}>
+            <div ref={headerRef} className="w-fit">
+              <PageHeader
+                title="Pawkits"
+                subtitle={subtitle}
+              />
+            </div>
+          </div>
 
           <div className="px-6 pt-4 pb-6">
             {rootCollections.length === 0 ? (

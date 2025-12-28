@@ -1,18 +1,19 @@
 'use client';
 
-import { useMemo, useCallback, useEffect } from 'react';
+import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useViewStore, useCardDisplaySettings, cardMatchesContentTypes, cardMatchesUnsortedFilter, cardMatchesReadingFilter, cardMatchesLinkStatusFilter, findDuplicateCardIds } from '@/lib/stores/view-store';
 import type { GroupBy, DateGrouping, UnsortedFilter, ReadingFilter, LinkStatusFilter } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
+import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
 import { CardGrid } from '@/components/cards/card-grid';
 import { EmptyState } from '@/components/cards/empty-state';
-import { PageHeader } from '@/components/layout/page-header';
 import { MobileViewOptions } from '@/components/layout/mobile-view-options';
 import { ContentAreaContextMenu } from '@/components/context-menus';
 import { Bookmark, CalendarDays, Tag, Type, Globe, SearchX } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
+import { cn } from '@/lib/utils';
 
 // Helper to get smart date label (Today, Yesterday, This Week, etc.)
 function getSmartDateLabel(date: Date): string {
@@ -71,6 +72,10 @@ interface CardGroup {
 export default function LibraryPage() {
   const cards = useDataStore((state) => state.cards);
   const isLoading = useDataStore((state) => state.isLoading);
+
+  // Collision detection for omnibar
+  const headerRef = useRef<HTMLDivElement>(null);
+  const needsOffset = useOmnibarCollision(headerRef);
   const layout = useViewStore((state) => state.layout);
   const sortBy = useViewStore((state) => state.sortBy);
   const sortOrder = useViewStore((state) => state.sortOrder);
@@ -273,7 +278,16 @@ export default function LibraryPage() {
   if (isLoading) {
     return (
       <div className="flex-1">
-        <PageHeader title="Library" subtitle="Loading..." />
+        <div className={cn('transition-[padding] duration-200', needsOffset && 'md:pt-20')}>
+          <div className="pt-5 pb-4 px-4 md:px-6 min-h-[76px]">
+            <div className="flex items-start justify-between gap-4">
+              <div ref={headerRef} className="w-fit space-y-0.5">
+                <div className="text-xs text-text-muted">Loading...</div>
+                <h1 className="text-2xl font-semibold text-text-primary">Library</h1>
+              </div>
+            </div>
+          </div>
+        </div>
         <div className="px-6 pt-4 pb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {[...Array(8)].map((_, i) => (
             <div
@@ -293,11 +307,23 @@ export default function LibraryPage() {
   return (
     <ContentAreaContextMenu>
       <div className="flex-1">
-        <PageHeader 
-          title="Library" 
-          subtitle={subtitle} 
-          actions={<MobileViewOptions viewType="library" />}
-        />
+        {/* Header with collision-aware offset */}
+        <div className={cn('transition-[padding] duration-200', needsOffset && 'md:pt-20')}>
+          {/* Custom header layout: title measured for collision, actions stay right */}
+          <div className="pt-5 pb-4 px-4 md:px-6 min-h-[76px]">
+            <div className="flex items-start justify-between gap-4">
+              {/* Title area - measured for collision */}
+              <div ref={headerRef} className="w-fit space-y-0.5">
+                <div className="text-xs text-text-muted">{subtitle}</div>
+                <h1 className="text-2xl font-semibold text-text-primary">Library</h1>
+              </div>
+              {/* Actions - always on the right */}
+              <div className="flex items-center gap-2 shrink-0">
+                <MobileViewOptions viewType="library" />
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Page content - pt-4 creates spacing below header */}
         <div className="px-4 md:px-6 pt-4 pb-6">

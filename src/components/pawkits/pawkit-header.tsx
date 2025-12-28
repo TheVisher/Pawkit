@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ChevronRight, MoreHorizontal, ImagePlus } from 'lucide-react';
@@ -14,6 +15,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { MobileViewOptions } from '@/components/layout/mobile-view-options';
 import { useCollections } from '@/lib/stores/data-store';
 import { useModalStore } from '@/lib/stores/modal-store';
+import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
 import { cn } from '@/lib/utils';
 import type { LocalCollection } from '@/lib/db';
 
@@ -24,6 +26,10 @@ interface PawkitHeaderProps {
 export function PawkitHeader({ collection }: PawkitHeaderProps) {
     const collections = useCollections();
     const openCoverImagePicker = useModalStore((s) => s.openCoverImagePicker);
+
+    // Collision detection for omnibar
+    const headerRef = useRef<HTMLDivElement>(null);
+    const needsOffset = useOmnibarCollision(headerRef, [collection.name]);
 
     // Build breadcrumb trail
     const breadcrumbs: LocalCollection[] = [];
@@ -88,53 +94,57 @@ export function PawkitHeader({ collection }: PawkitHeaderProps) {
     );
 
     return (
-        <div className="relative group/cover">
-            {/* Cover Image Area - positioned absolutely as background layer */}
-            {hasCoverImage && (
-                <>
-                    <div className="absolute inset-x-0 top-0 overflow-hidden pointer-events-none">
-                        {/* Image container with mask for smooth fade */}
-                        <div
-                            className="relative w-full"
-                            style={{
-                                height: `${collection.coverImageHeight ?? 224}px`,
-                                maskImage: 'linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.8) 60%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.1) 90%, transparent 100%)',
-                                WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.8) 60%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.1) 90%, transparent 100%)',
-                            }}
-                        >
-                            <Image
-                                src={collection.coverImage!}
-                                alt=""
-                                fill
-                                className="object-cover"
+        <div className={cn('transition-[padding] duration-200', needsOffset && 'md:pt-20')}>
+            <div className="relative group/cover">
+                {/* Cover Image Area - positioned absolutely as background layer */}
+                {hasCoverImage && (
+                    <>
+                        <div className="absolute inset-x-0 top-0 overflow-hidden pointer-events-none">
+                            {/* Image container with mask for smooth fade */}
+                            <div
+                                className="relative w-full"
                                 style={{
-                                    objectPosition: `center ${collection.coverImagePosition ?? 50}%`
+                                    height: `${collection.coverImageHeight ?? 224}px`,
+                                    maskImage: 'linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.8) 60%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.1) 90%, transparent 100%)',
+                                    WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 40%, rgba(0,0,0,0.8) 60%, rgba(0,0,0,0.4) 80%, rgba(0,0,0,0.1) 90%, transparent 100%)',
                                 }}
-                            />
+                            >
+                                <Image
+                                    src={collection.coverImage!}
+                                    alt=""
+                                    fill
+                                    className="object-cover"
+                                    style={{
+                                        objectPosition: `center ${collection.coverImagePosition ?? 50}%`
+                                    }}
+                                />
+                            </div>
                         </div>
-                    </div>
 
-                    {/* Change cover button - separate element for pointer events */}
-                    <div className="absolute top-3 right-3 opacity-0 group-hover/cover:opacity-100 transition-opacity z-20">
-                        <button
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-bg-base/80 backdrop-blur-sm text-text-muted hover:text-text-primary text-xs transition-colors border border-border-subtle"
-                            onClick={() => openCoverImagePicker(collection.id)}
-                        >
-                            <ImagePlus className="h-3.5 w-3.5" />
-                            Change cover
-                        </button>
-                    </div>
-                </>
-            )}
+                        {/* Change cover button - separate element for pointer events */}
+                        <div className="absolute top-3 right-3 opacity-0 group-hover/cover:opacity-100 transition-opacity z-20">
+                            <button
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-bg-base/80 backdrop-blur-sm text-text-muted hover:text-text-primary text-xs transition-colors border border-border-subtle"
+                                onClick={() => openCoverImagePicker(collection.id)}
+                            >
+                                <ImagePlus className="h-3.5 w-3.5" />
+                                Change cover
+                            </button>
+                        </div>
+                    </>
+                )}
 
-            {/* Header with title - offset down to overlap cover image */}
-            <div
-                className="relative z-10"
-                style={{
-                    paddingTop: hasCoverImage ? `${collection.coverContentOffset ?? 0}px` : undefined
-                }}
-            >
-                <PageHeader title={collection.name} subtitle={subtitle} actions={actions} />
+                {/* Header with title - offset down to overlap cover image */}
+                <div
+                    className="relative z-10"
+                    style={{
+                        paddingTop: hasCoverImage ? `${collection.coverContentOffset ?? 0}px` : undefined
+                    }}
+                >
+                    <div ref={headerRef} className="w-fit">
+                        <PageHeader title={collection.name} subtitle={subtitle} actions={actions} />
+                    </div>
+                </div>
             </div>
         </div>
     );

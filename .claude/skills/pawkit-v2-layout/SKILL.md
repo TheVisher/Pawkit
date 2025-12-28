@@ -186,6 +186,81 @@ DISPLAY ───────────────────[▼]
 └─────────────────────────┘
 ```
 
+### Omnibar Collision Detection
+
+The omnibar is 400px wide and centered in the content area. On narrower viewports, it can overlap with page headers (titles like "Good morning, Username"). Use the `useOmnibarCollision` hook to automatically detect when collision would occur and add padding to push the header below the omnibar.
+
+**Hook Location**: `src/lib/hooks/use-omnibar-collision.ts`
+
+**Usage Pattern** (without header actions):
+```tsx
+import { useRef } from 'react';
+import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
+import { cn } from '@/lib/utils';
+
+function MyPage() {
+  const headerRef = useRef<HTMLDivElement>(null);
+  const needsOffset = useOmnibarCollision(headerRef, [/* optional deps */]);
+
+  return (
+    <div className={cn(
+      'transition-[padding] duration-200',
+      needsOffset && 'md:pt-20'  // 80px padding when collision detected
+    )}>
+      {/* IMPORTANT: w-fit makes the container only as wide as content */}
+      <div ref={headerRef} className="w-fit">
+        <PageHeader title="My Page" subtitle="..." />
+      </div>
+    </div>
+  );
+}
+```
+
+**Usage Pattern** (with header actions that should stay right-aligned):
+```tsx
+// When you have actions (buttons, dropdowns) that need to stay on the right,
+// DON'T wrap PageHeader - build a custom header layout instead:
+
+function MyPageWithActions() {
+  const headerRef = useRef<HTMLDivElement>(null);
+  const needsOffset = useOmnibarCollision(headerRef);
+
+  return (
+    <div className={cn('transition-[padding] duration-200', needsOffset && 'md:pt-20')}>
+      {/* Custom header: title measured for collision, actions stay right */}
+      <div className="pt-5 pb-4 px-4 md:px-6 min-h-[76px]">
+        <div className="flex items-start justify-between gap-4">
+          {/* Title area - ONLY this gets measured for collision */}
+          <div ref={headerRef} className="w-fit space-y-0.5">
+            <div className="text-xs text-text-muted">{subtitle}</div>
+            <h1 className="text-2xl font-semibold text-text-primary">Page Title</h1>
+          </div>
+          {/* Actions - always on the right */}
+          <div className="flex items-center gap-2 shrink-0">
+            {actions}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+**Key Requirements**:
+1. The `ref` element MUST have `w-fit` class so it only spans the actual content width
+2. Without `w-fit`, the container is full-width and collision is always detected
+3. The hook checks if header's right edge extends into the omnibar zone (center ± 220px)
+4. Only applies on desktop (md breakpoint, 768px+)
+5. **For pages with header actions**: Don't wrap PageHeader in `w-fit`. Instead, build custom header layout so actions stay right-aligned
+
+**Pages Using This Pattern**:
+- Home (`src/app/(dashboard)/home/page.tsx`)
+- Library (`src/app/(dashboard)/library/page.tsx`)
+- Pawkits (`src/app/(dashboard)/pawkits/page.tsx`)
+- Tags (`src/app/(dashboard)/tags/page.tsx`)
+- Calendar (`src/components/calendar/calendar-header.tsx`)
+- Pawkit Detail (`src/components/pawkits/pawkit-header.tsx`)
+
 ---
 
 ## CSS VARIABLES FOR LAYOUT
@@ -275,4 +350,4 @@ className={cn(
 
 ---
 
-**Last Updated**: December 20, 2025
+**Last Updated**: December 28, 2025

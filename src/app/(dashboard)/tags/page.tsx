@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { Suspense, useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { MoreVertical, Edit2, Trash2, ArrowUpDown } from 'lucide-react';
 import { useTagStore } from '@/lib/stores/tag-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { PageHeader } from '@/components/layout/page-header';
+import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
 import { TagBadge } from '@/components/tags/tag-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,29 @@ import { cn } from '@/lib/utils';
 
 type SortBy = 'alphabetical' | 'count';
 
+// Wrapper with Suspense for useSearchParams (Next.js 15+ requirement)
 export default function TagsPage() {
+  return (
+    <Suspense fallback={<TagsPageLoading />}>
+      <TagsPageContent />
+    </Suspense>
+  );
+}
+
+function TagsPageLoading() {
+  return (
+    <div className="flex-1">
+      <div className="pt-5 pb-4 px-4 md:px-6">
+        <div className="h-8 w-24 bg-bg-surface-2 rounded animate-pulse" />
+      </div>
+      <div className="px-4 md:px-6 pt-4 pb-6">
+        <div className="text-center py-12 text-text-muted">Loading tags...</div>
+      </div>
+    </div>
+  );
+}
+
+function TagsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const workspace = useCurrentWorkspace();
@@ -31,6 +53,10 @@ export default function TagsPage() {
   const refreshTags = useTagStore((s) => s.refreshTags);
   const renameTag = useTagStore((s) => s.renameTag);
   const deleteTag = useTagStore((s) => s.deleteTag);
+
+  // Collision detection for omnibar
+  const headerRef = useRef<HTMLDivElement>(null);
+  const needsOffset = useOmnibarCollision(headerRef);
 
   // Get search query from URL params (set by omnibar)
   const searchQuery = searchParams.get('q') || '';
@@ -182,11 +208,23 @@ export default function TagsPage() {
 
   return (
     <div className="flex-1">
-      <PageHeader
-        title="Tags"
-        subtitle={subtitle}
-        actions={headerActions}
-      />
+      {/* Header with collision-aware offset */}
+      <div className={cn('transition-[padding] duration-200', needsOffset && 'md:pt-20')}>
+        {/* Custom header layout: title measured for collision, actions stay right */}
+        <div className="pt-5 pb-4 px-4 md:px-6 min-h-[76px]">
+          <div className="flex items-start justify-between gap-4">
+            {/* Title area - measured for collision */}
+            <div ref={headerRef} className="w-fit space-y-0.5">
+              <div className="text-xs text-text-muted">{subtitle}</div>
+              <h1 className="text-2xl font-semibold text-text-primary">Tags</h1>
+            </div>
+            {/* Actions - always on the right */}
+            <div className="flex items-center gap-2 shrink-0">
+              {headerActions}
+            </div>
+          </div>
+        </div>
+      </div>
 
       <div className="px-4 md:px-6 pt-4 pb-6">
         {isLoading ? (

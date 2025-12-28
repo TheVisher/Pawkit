@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { format } from 'date-fns';
 import {
   ChevronLeft,
@@ -17,8 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { PageHeader } from '@/components/layout/page-header';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
+import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
+import { cn } from '@/lib/utils';
 
 const VIEW_OPTIONS = [
   { value: 'month', label: 'Month', icon: CalendarIcon },
@@ -30,6 +32,10 @@ const VIEW_OPTIONS = [
 export function CalendarHeader() {
   const { currentDate, viewMode, next, prev, today, setViewMode } =
     useCalendarStore();
+
+  // Collision detection for omnibar
+  const headerRef = useRef<HTMLDivElement>(null);
+  const needsOffset = useOmnibarCollision(headerRef);
 
   const subtitle = format(currentDate, 'MMMM yyyy');
 
@@ -89,5 +95,22 @@ export function CalendarHeader() {
     </div>
   );
 
-  return <PageHeader title="Calendar" subtitle={subtitle} actions={actions} />;
+  return (
+    <div className={cn('transition-[padding] duration-200', needsOffset && 'md:pt-20')}>
+      {/* Custom header layout: title measured for collision, actions stay right */}
+      <div className="pt-5 pb-4 px-4 md:px-6 min-h-[76px]">
+        <div className="flex items-start justify-between gap-4">
+          {/* Title area - measured for collision */}
+          <div ref={headerRef} className="w-fit space-y-0.5">
+            <div className="text-xs text-text-muted">{subtitle}</div>
+            <h1 className="text-2xl font-semibold text-text-primary">Calendar</h1>
+          </div>
+          {/* Actions - always on the right */}
+          <div className="flex items-center gap-2 shrink-0">
+            {actions}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
