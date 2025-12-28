@@ -9,6 +9,7 @@ import { useDataStore } from '@/lib/stores/data-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { SEARCHABLE_ACTIONS, addMenuItems, type SearchResults } from './types';
+import { normalizeUrl } from '@/lib/utils/url-normalizer';
 
 export function useOmnibar(isCompact: boolean) {
   const router = useRouter();
@@ -521,7 +522,7 @@ export function useOmnibar(isCompact: boolean) {
            /^[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}(\/|$)/i.test(trimmed);
   }, []);
 
-  const normalizeUrl = useCallback((text: string): string => {
+  const normalizeUrlFn = useCallback((text: string): string => {
     const trimmed = text.trim();
     if (/^https?:\/\//i.test(trimmed)) return trimmed;
     if (/^www\./i.test(trimmed)) return `https://${trimmed}`;
@@ -539,7 +540,28 @@ export function useOmnibar(isCompact: boolean) {
 
     try {
       if (isUrl(trimmedText)) {
-        const url = normalizeUrl(trimmedText);
+        const url = normalizeUrlFn(trimmedText);
+        const normalizedInput = normalizeUrl(url);
+
+        // Check for duplicate URL
+        const existingCard = cards.find((card) => {
+          if (card._deleted) return false;
+          if (card.type !== 'url') return false;
+          if (!card.url) return false;
+          return normalizeUrl(card.url) === normalizedInput;
+        });
+
+        if (existingCard) {
+          toast({
+            type: 'warning',
+            message: 'This URL is already saved',
+            action: {
+              label: 'View existing',
+              onClick: () => openCardDetail(existingCard.id),
+            },
+          });
+          return;
+        }
 
         await createCard({
           workspaceId: currentWorkspace.id,
@@ -595,7 +617,7 @@ export function useOmnibar(isCompact: boolean) {
         message: 'Failed to save',
       });
     }
-  }, [quickNoteText, currentWorkspace, createCard, toast, isUrl, normalizeUrl]);
+  }, [quickNoteText, currentWorkspace, createCard, toast, isUrl, normalizeUrlFn, cards, openCardDetail]);
 
   // ==========================================================================
   // KEYBOARD HANDLERS

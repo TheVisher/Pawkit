@@ -124,6 +124,32 @@ export function WeekView() {
         })}
       </div>
 
+      {/* All-day section for scheduled cards without times */}
+      <div className="border-b border-border-subtle bg-bg-surface-1/50">
+        <div className="grid grid-cols-[60px_repeat(7,1fr)]">
+          <div className="border-r border-border-subtle text-xs text-text-muted text-right pr-2 py-2">
+            All day
+          </div>
+          {weekDays.map((day) => {
+            const dateKey = format(day, 'yyyy-MM-dd');
+            const allDayItems = (itemsByDate.get(dateKey) || []).filter(item => item.isAllDay);
+
+            return (
+              <div
+                key={`allday-${day.toISOString()}`}
+                className="border-r border-border-subtle last:border-r-0 p-1 min-h-[32px]"
+              >
+                <div className="flex flex-wrap gap-0.5">
+                  {allDayItems.map((item) => (
+                    <EventItem key={item.id} item={item} compact />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Time grid */}
       <div className="flex-1 overflow-auto scrollbar-hide">
         <div className="grid grid-cols-[60px_repeat(7,1fr)]">

@@ -186,6 +186,21 @@ export async function POST(request: Request) {
       });
 
       if (existing) {
+        // If existing card is soft-deleted, restore it with the new data
+        if (existing.deleted) {
+          const restored = await prisma.card.update({
+            where: { id: existing.id },
+            data: {
+              deleted: false,
+              deletedAt: null,
+              // Update with any new data from the create request
+              title: cardData.title ?? existing.title,
+              content: cardData.content ?? existing.content,
+              updatedAt: new Date(),
+            },
+          });
+          return NextResponse.json({ card: restored }, { status: 200 });
+        }
         // Return existing card (idempotent create)
         return NextResponse.json({ card: existing }, { status: 200 });
       }

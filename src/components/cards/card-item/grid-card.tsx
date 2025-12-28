@@ -3,9 +3,10 @@
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import DOMPurify from 'dompurify';
-import { Globe, Pin, Loader2, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Globe, Pin, Loader2, Clock, CheckCircle2, AlertTriangle, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LocalCard } from '@/lib/db';
+import { calculateReadingTime } from '@/lib/db/schema';
 import { TagBadgeList } from '@/components/tags/tag-badge';
 import {
   type CardDisplaySettings,
@@ -260,6 +261,20 @@ export function GridCard({
 
           {/* Top right indicators */}
           <div className="absolute top-3 right-3 flex items-center gap-1.5">
+            {/* Scheduled date indicator */}
+            {card.scheduledDate && (
+              <div
+                className="p-1.5 rounded-full"
+                style={{
+                  background: 'rgba(59, 130, 246, 0.9)',
+                  color: 'white',
+                }}
+                title={`Scheduled for ${new Date(card.scheduledDate).toLocaleDateString()}`}
+              >
+                <CalendarDays className="h-3.5 w-3.5" />
+              </div>
+            )}
+
             {/* Broken link warning */}
             {card.linkStatus === 'broken' && (
               <div
@@ -289,9 +304,13 @@ export function GridCard({
           </div>
 
           {/* Reading time and status badges - top left */}
-          {!isNoteCard(card.type) && (card.readingTime || card.isRead) && (
+          {!isNoteCard(card.type) && (card.readingTime || card.wordCount || card.isRead) && (() => {
+            // Calculate reading time from wordCount if not stored
+            const displayReadingTime = card.readingTime || (card.wordCount ? calculateReadingTime(card.wordCount) : 0);
+
+            return (
             <div className="absolute top-3 left-3 flex items-center gap-1.5">
-              {card.readingTime && !card.isRead && (
+              {displayReadingTime > 0 && !card.isRead && (
                 <div
                   className="flex items-center gap-1 px-2 py-1 rounded-full text-xs"
                   style={{
@@ -301,7 +320,7 @@ export function GridCard({
                   }}
                 >
                   <Clock className="h-3 w-3" />
-                  <span>{card.readingTime}m</span>
+                  <span>{displayReadingTime}m</span>
                 </div>
               )}
               {card.isRead && (
@@ -318,10 +337,11 @@ export function GridCard({
                 </div>
               )}
             </div>
-          )}
+            );
+          })()}
 
           {/* Syncing indicator - only show if no reading badges */}
-          {isSyncing && !card.readingTime && !card.isRead && (
+          {isSyncing && !card.readingTime && !card.wordCount && !card.isRead && (
             <div
               className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded-full text-xs"
               style={{

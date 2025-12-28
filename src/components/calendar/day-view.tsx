@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { format, isToday, isSameDay } from 'date-fns';
+import { db } from '@/lib/db';
 import { FileText, Plus } from 'lucide-react';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { useDataStore } from '@/lib/stores/data-store';
@@ -53,12 +54,40 @@ export function DayView() {
     ) || null;
   }, [cards, workspace, currentDate]);
 
+  const updateCard = useDataStore((state) => state.updateCard);
+
   const handleCreateDailyNote = async () => {
     if (!workspace) return;
 
     // Check if a note already exists (prevent duplicates from race conditions)
     if (dailyNote) {
       openCardDetail(dailyNote.id);
+      return;
+    }
+
+    // Check for trashed daily note for this date - restore instead of creating new
+    const trashedCards = await db.cards
+      .where('workspaceId')
+      .equals(workspace.id)
+      .filter(
+        (c) =>
+          c.isDailyNote &&
+          c.scheduledDate &&
+          isSameDay(new Date(c.scheduledDate), currentDate) &&
+          c._deleted === true
+      )
+      .toArray();
+
+    if (trashedCards.length > 0) {
+      // Restore only the most recent trashed daily note (preserve all existing content)
+      const sortedTrashed = trashedCards.sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+      const trashedNote = sortedTrashed[0];
+      await updateCard(trashedNote.id, {
+        _deleted: false,
+      });
+      openCardDetail(trashedNote.id);
       return;
     }
 
@@ -178,8 +207,28 @@ export function DayView() {
         </div>
       </div>
 
+      {/* All-day section for scheduled cards without times */}
+      {dayItems.filter(item => item.isAllDay).length > 0 && (
+        <div className="border-b border-border-subtle bg-bg-surface-1/50">
+          <div className="grid grid-cols-[60px_1fr]">
+            <div className="border-r border-border-subtle text-xs text-text-muted text-right pr-2 py-2">
+              All day
+            </div>
+            <div className="p-2">
+              <div className="flex flex-wrap gap-1.5">
+                {dayItems
+                  .filter(item => item.isAllDay)
+                  .map((item) => (
+                    <EventItem key={item.id} item={item} compact />
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Time grid */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-auto scrollbar-hide">
         <div className="grid grid-cols-[60px_1fr]">
           {HOURS.map((hour) => {
             // Filter items for this hour

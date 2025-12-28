@@ -91,7 +91,12 @@ export function ScheduleSubmenu({ cardId, currentSchedule }: ScheduleSubmenuProp
 
             <ContextMenuSeparator />
 
-            <ContextMenuItem onClick={() => setShowCalendar(true)}>
+            <ContextMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                setShowCalendar(true);
+              }}
+            >
               <CalendarIcon className="size-4" />
               Pick a date...
             </ContextMenuItem>
