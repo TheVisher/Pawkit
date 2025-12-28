@@ -13,6 +13,10 @@
 2. [Small Enhancements](#2-small-enhancements)
 3. [Technical Debt](#3-technical-debt)
 4. [Implementation Order](#4-implementation-order)
+5. [Settings Page](#5-settings-page)
+6. [Reader Mode Enhancements](#6-reader-mode-enhancements)
+7. [Multi-Media Content Extraction](#7-multi-media-content-extraction)
+8. [Future Ideas (Post-V2)](#8-future-ideas-post-v2)
 
 ---
 
@@ -487,6 +491,387 @@ npx prisma migrate dev --name add_reading_and_daily_note_fields
 - `linkStatus`, `lastLinkCheck`, `redirectUrl` (link health)
 - `isDailyNote` (daily notes flag)
 - Indexes on `isRead`, `isDailyNote`, `linkStatus`
+
+---
+
+---
+
+## 5. Settings Page
+**Priority:** HIGH | **Effort:** Medium
+
+Currently no settings page exists. Users need a centralized place to configure preferences.
+
+### 5.1 General Settings
+- [ ] Theme preference (system, dark, light)
+- [ ] Default view mode (grid, list, compact)
+- [ ] Cards per page / infinite scroll toggle
+- [ ] Date format preference
+- [ ] Timezone setting
+
+### 5.2 Reader Mode Settings
+- [ ] **Default view:** Modal, Full Viewport, or Browser Fullscreen
+- [ ] **Default theme:** Dark, Sepia, or Light
+- [ ] **Default font size:** 14-24px (persist across sessions)
+- [ ] **Font family:** Sans-serif (default), Serif, or System
+- [ ] **Line spacing:** Compact, Normal, Relaxed
+- [ ] **Content width:** Narrow (600px), Medium (800px), Wide (1000px)
+- [ ] **Auto-mark as read:** At 95% scroll (current), 100%, or Manual only
+
+### 5.3 Sync & Data Settings
+- [ ] Sync frequency (real-time, every 5 min, manual)
+- [ ] Offline mode toggle
+- [ ] Clear local cache button
+- [ ] Export data (JSON, CSV)
+- [ ] Import bookmarks (Pocket, Instapaper, browser)
+
+### 5.4 Notifications (Future)
+- [ ] Daily reading reminder
+- [ ] Scheduled item reminders
+- [ ] Broken link alerts
+
+---
+
+## 6. Reader Mode Enhancements
+
+Features we have vs. what's standard in reader apps:
+
+### Currently Implemented
+- [x] Clean article extraction (@mozilla/readability)
+- [x] Font size controls (14-24px)
+- [x] Theme toggle (dark/sepia/light)
+- [x] Reading progress tracking (scroll %)
+- [x] Auto-mark as read at 95%
+- [x] Three-tier view (modal → viewport → fullscreen)
+- [x] Word count and reading time display
+- [x] On-demand extraction (user clicks "Reader Mode" to extract)
+
+### Extraction Mode Note
+Currently using **on-demand extraction** - articles are only extracted when user clicks "Reader Mode" button. This was changed from auto-extract-on-save because:
+- Auto-extraction caused 2+ minute hangs on some URLs
+- Not all saved URLs need reader mode
+- Reduces server load and API calls
+
+**Future option:** Add user preference in Settings:
+- [ ] **Extraction mode:** "On-demand" (current) vs "Auto on save"
+- [ ] If auto: queue extraction in background, don't block save
+- [ ] Show "Extracting..." indicator on card while processing
+
+### Missing Basic Features
+- [ ] **Font family toggle** - Serif vs Sans-serif (readers expect this)
+- [ ] **Line spacing control** - Compact/Normal/Relaxed
+- [ ] **Persist preferences** - Font size, theme, view mode saved to localStorage/settings
+- [ ] **Keyboard shortcuts** - Arrow keys for font size, T for theme, Esc to close
+- [ ] **Estimated time remaining** - "3 min left" based on scroll position
+
+### Nice-to-Have Features
+- [ ] **Text-to-speech** - "Listen" mode (Web Speech API)
+- [ ] **Article outline/TOC** - Jump to headings (extract h2/h3 from content)
+- [ ] **Distraction-free mode** - Hide header/controls until hover
+
+### 6.1 Highlighting & Annotations System
+
+Progressive implementation from simple to advanced:
+
+#### Phase 1: Basic Highlights (Persist Across Sessions)
+- [ ] Select text in reader → floating toolbar appears → click highlight icon
+- [ ] Highlight applies with default color (yellow)
+- [ ] **Highlights persist** - saved to card metadata, survive close/refresh/sync
+- [ ] Highlights render when article reopens (restore from saved positions)
+- [ ] Visual indicator in card grid showing article has highlights
+
+#### Phase 2: Highlight Interactions
+- [ ] **Click highlight** → popover shows annotation (if exists) or "Add note" prompt
+- [ ] **Right-click highlight** → context menu:
+  - Change color (yellow, green, blue, pink)
+  - Add/edit annotation
+  - Copy text
+  - Export to article notes
+  - Delete highlight
+- [ ] Annotation popover has text field for quick thoughts
+- [ ] Annotations saved inline with highlight
+
+#### User Flow Example
+```
+1. User reads article, selects important paragraph
+2. Floating toolbar appears → clicks highlight icon → text highlighted yellow
+3. Later, user right-clicks highlight → "Add note"
+4. Popover appears with text field: "This relates to our mobile nav problem"
+5. User saves, continues reading
+6. Next week, user reopens article
+7. Highlights are visible, clicks one → sees their note from last time
+8. "Oh right, I was thinking about mobile nav!"
+```
+
+#### Phase 3: Unified Card Notes (Builds on V1)
+
+V1 Pawkit already has a notes section per card. Expand this to be the unified home for both manual notes AND auto-saved highlights.
+
+**Concept:** Each card has one "notes" field (markdown). When user highlights text in reader, it auto-appends to the card's notes in a structured format. User can also add their own notes manually.
+
+- [ ] Card notes section shows in card detail modal (already exists in V1)
+- [ ] "Notes" tab/button in reader mode opens notes panel
+- [ ] **Auto-save highlights:** When user creates highlight, auto-append to card notes
+- [ ] Format: blockquote + annotation + separator
+- [ ] User can edit/reorder notes freely (it's just markdown)
+- [ ] Click highlight reference in notes → scrolls to position in article
+
+**Auto-append format:**
+```markdown
+> "The best interface is no interface at all."
+
+This aligns with our mobile-first philosophy.
+
+---
+```
+
+**Full example of a card's notes after reading:**
+```markdown
+# My Notes
+
+Initial thoughts before reading: Heard this was a good article on design principles.
+
+---
+
+> "The best interface is no interface at all."
+
+This aligns with our mobile-first philosophy. Less chrome = more content.
+
+---
+
+> "Users don't read, they scan."
+
+Need to review our dashboard density. Maybe we're showing too much.
+
+---
+
+## Summary
+
+Key takeaways:
+- Simplify the nav
+- Reduce information density
+- Test with real users
+```
+
+#### Phase 4: Notes Panel in Reader
+- [ ] Split or slide-out panel showing card notes while reading
+- [ ] Real-time: see highlights appear as you create them
+- [ ] Edit notes inline without leaving reader
+- [ ] Toggle panel visibility (keyboard shortcut: `N`)
+
+#### Data Model
+```typescript
+interface Highlight {
+  id: string;
+  cardId: string;           // Which article
+  text: string;             // The highlighted text
+  color: 'yellow' | 'green' | 'blue' | 'pink';
+  startOffset: number;      // Character position in articleContent
+  endOffset: number;
+  annotation?: string;      // User's annotation (also saved to notes)
+  createdAt: Date;
+}
+
+// LocalCard already has 'notes' field from V1
+interface LocalCard {
+  // ... existing fields
+  notes?: string;           // Markdown notes (V1 - already exists)
+  highlights?: Highlight[]; // For rendering highlights in reader
+}
+```
+
+**Why both `highlights[]` and `notes`?**
+- `highlights[]` stores position data for re-rendering highlights in the article
+- `notes` is the human-readable markdown that users can edit freely
+- When highlight is created: save to `highlights[]` AND append to `notes`
+- This way notes remain editable markdown, not locked to highlight structure
+
+#### Technical Notes
+- Use character offsets (not DOM positions) for stability across re-renders
+- Re-apply highlights by wrapping text ranges with `<mark>` elements
+- Handle edge cases: article content changes, overlapping highlights
+- Sync both `highlights` and `notes` via existing card sync mechanism
+- If user deletes text from notes, highlight still shows (they're independent)
+
+### 6.2 Research Mode (Future - Post V2)
+
+Full split-view research workflow for power users.
+
+#### Concept
+User is reading an article about UI design. They want to actively build their "UI Design Research" note while reading. Instead of switching back and forth, they work in a split view.
+
+#### UI Flow
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Reader Mode                    │  Research Note            │
+│  ─────────────────────────────  │  ───────────────────────  │
+│                                 │  # UI Design Research     │
+│  Article content here...        │                           │
+│                                 │  ## Key Principles        │
+│  [User highlights this text]    │  - Less is more           │
+│  ════════════════════════════   │  - [cursor here]          │
+│         ↓ drag to note          │                           │
+│                                 │  > "The best interface    │
+│                                 │  > is no interface"       │
+│                                 │  > — Article Title        │
+│                                 │                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Features
+- [ ] "Open Research Mode" button in reader toolbar
+- [ ] Split view: Reader (left) + Note editor (right)
+- [ ] Highlight in reader → drag to note position
+- [ ] Auto-format as blockquote with source
+- [ ] Note auto-saves as you edit
+- [ ] Resizable split panes
+- [ ] Mobile: swipe between reader and note (no split)
+
+#### Entry Points
+- Reader toolbar: "Research Mode" or "Take Notes" button
+- Keyboard shortcut: `Cmd/Ctrl + Shift + N`
+- Right-click highlight: "Open in Research Mode"
+
+#### Technical Considerations
+- Split view layout component (resizable)
+- Drag-and-drop from reader to editor
+- Keep both views scrollable independently
+- Handle unsaved changes on close
+- Mobile fallback (tab switching vs split)
+
+---
+
+## 7. Multi-Media Content Extraction
+
+Extend reader mode beyond articles to support multiple content types with the same highlight/notes workflow.
+
+### 7.1 YouTube Transcripts
+**Priority:** HIGH | **Effort:** Medium
+
+Extract YouTube video transcripts so users can read, highlight, and take notes on video content.
+
+#### Why This Matters
+- Users save YouTube videos to watch later
+- Transcripts let them skim/search content quickly
+- Same highlight → notes workflow as articles
+- Research across articles AND videos in one place
+
+#### Features
+- [ ] Detect YouTube URLs (youtube.com, youtu.be)
+- [ ] Extract transcript via API or library
+- [ ] Store in `articleContent` field (same as articles)
+- [ ] Display in reader mode with timestamps
+- [ ] Click timestamp → link to that point in video
+- [ ] Highlight transcript text → same notes system
+- [ ] Show video thumbnail and metadata (duration, channel)
+
+#### Technical Options
+```typescript
+// Option 1: youtube-transcript npm package (no API key)
+import { YoutubeTranscript } from 'youtube-transcript';
+const transcript = await YoutubeTranscript.fetchTranscript(videoId);
+
+// Option 2: YouTube Data API v3 (requires API key)
+// More reliable but needs API setup
+
+// Option 3: yt-dlp / ytdl-core for metadata + captions
+```
+
+#### Transcript Format in Reader
+```
+[0:00] Introduction to the concept
+[0:45] First key point about design systems
+[1:23] "The best designs are invisible" ← user can highlight this
+[2:10] Example walkthrough
+...
+```
+
+#### Data Model Addition
+```typescript
+interface LocalCard {
+  // ... existing fields
+  contentType?: 'article' | 'youtube' | 'podcast' | 'pdf' | 'github';
+  transcript?: string;        // For video/audio content
+  duration?: number;          // Video/audio length in seconds
+  timestamps?: boolean;       // Whether transcript has timestamps
+}
+```
+
+---
+
+### 7.2 Future Content Types
+
+Same pattern can extend to:
+
+| Content Type | Extraction Method | Effort |
+|--------------|-------------------|--------|
+| **Podcasts** | Whisper API / podcast RSS transcripts | High |
+| **PDFs** | pdf.js or pdf-parse | Medium |
+| **Twitter threads** | Twitter API / scraping | Medium |
+| **Reddit posts** | Reddit API | Low |
+| **GitHub repos** | README.md via raw URL | Low |
+
+#### Vision
+User saves any URL → Pawkit extracts readable content → User highlights and takes notes → All notes aggregate into research documents.
+
+"I'm researching UI design" → Save 10 articles, 5 YouTube videos, 3 podcast episodes → Highlight key points from all of them → Export combined notes → Research complete.
+
+---
+
+## 8. Future Ideas (Post-V2)
+
+### 8.1 Continuous Reading Queue
+**Priority:** Future | **Effort:** Medium-High
+
+Allow users to stay in reader mode and continuously scroll through multiple articles without returning to the library.
+
+#### Concept
+Instead of reading one article → closing → opening next, users can scroll past the end of an article to seamlessly load the next one. Queue can be based on:
+- **Tag-based:** All articles tagged "UI Design"
+- **Pawkit-based:** All articles in a collection
+- **Manual queue:** User-curated reading list
+- **Smart queue:** Unread articles sorted by reading time
+
+#### Prior Art
+| App | Implementation |
+|-----|----------------|
+| Matter | Explicit queue system, continuous flow |
+| Apple News | Infinite scroll through curated articles |
+| Flipboard | Swipe-based continuous reading by topic |
+| Kindle | Continuous scroll through book series |
+| Feedly | Keyboard shortcuts for mark-read-and-advance |
+
+#### Technical Considerations
+- Preload next article at ~80% scroll progress
+- Intersection observer for transition detection
+- Visual divider between articles ("Next: [Title]" preview)
+- Memory management (don't load all articles at once)
+- Graceful handling of failed extractions mid-queue
+- Back navigation (re-read previous article)
+- Clear "end of queue" state
+- Session metrics (articles read, time spent)
+
+#### UI Flow
+```
+┌─────────────────────────────────────┐
+│  Article 1 Title                    │
+│  ...content...                      │
+│  ...content...                      │
+│  ─────────────────────────────────  │
+│  END OF ARTICLE                     │
+│  ↓ Keep scrolling for next          │
+│  ┌─────────────────────────────────┐│
+│  │ NEXT: Article 2 Title           ││
+│  │ 8 min read • example.com        ││
+│  └─────────────────────────────────┘│
+│  ...Article 2 content...            │
+└─────────────────────────────────────┘
+```
+
+#### Entry Points
+- "Read All" button on tag page
+- "Start Reading Session" on Pawkit/collection
+- "Continue Queue" in reader toolbar
+- Keyboard shortcut from reader (e.g., `Q` to queue remaining)
 
 ---
 
