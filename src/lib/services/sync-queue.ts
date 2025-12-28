@@ -410,11 +410,12 @@ export async function addToQueue(
   const count = await getPendingItemCount();
   useSyncStore.getState().setPendingCount(count);
 
-  // Note: We don't auto-sync here anymore. Sync is triggered by:
-  // - Periodic background sync (every 30s)
-  // - Tab visibility change (when tab regains focus)
-  // - Modal close (via triggerSync)
-  // - Page unload (best effort)
+  // NOTE: We don't auto-sync here. Sync is triggered explicitly by:
+  // - triggerSync() after discrete actions (e.g., Daily Log entry)
+  // - Modal close
+  // - Tab visibility change
+  // - Page unload
+  // This prevents wasteful syncing while typing in notes.
 }
 
 /**

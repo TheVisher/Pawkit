@@ -54,13 +54,12 @@ function calculateStreak(cards: LocalCard[]): number {
 }
 
 /**
- * Stats Banner - Fixed header showing activity metrics
- * Displays streak, unread count, in-progress count, and weekly additions
+ * Hook to get stats data - used by both inline and banner versions
  */
-export function StatsBanner() {
+export function useHomeStats() {
   const cards = useCards();
 
-  const stats = useMemo(() => {
+  return useMemo(() => {
     const now = new Date();
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
@@ -91,6 +90,81 @@ export function StatsBanner() {
 
     return { streak, unread, inProgress, addedThisWeek };
   }, [cards]);
+}
+
+/**
+ * Inline Stats - Compact version for header row
+ * Shows stats inline with the greeting on desktop, hidden on mobile
+ */
+export function InlineStats() {
+  const stats = useHomeStats();
+
+  return (
+    <div className="hidden md:flex items-center gap-3 text-xs text-text-muted whitespace-nowrap">
+      {/* Streak */}
+      <div className="flex items-center gap-1">
+        <Flame
+          className="h-3.5 w-3.5"
+          style={{ color: stats.streak > 0 ? 'var(--color-accent)' : 'currentColor' }}
+        />
+        <span className="font-medium text-text-secondary">{stats.streak}</span>
+      </div>
+
+      <span>•</span>
+
+      {/* Unread */}
+      <span>
+        <span className="font-medium text-text-secondary">{stats.unread}</span> unread
+      </span>
+
+      <span>•</span>
+
+      {/* In Progress */}
+      <span>
+        <span className="font-medium text-text-secondary">{stats.inProgress}</span> in progress
+      </span>
+
+      <span>•</span>
+
+      {/* Added This Week */}
+      <span>
+        <span className="font-medium text-text-secondary">{stats.addedThisWeek}</span> this week
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Mobile Stats Row - Compact row for mobile view
+ * Shows below the header greeting on mobile only
+ */
+export function MobileStatsRow() {
+  const stats = useHomeStats();
+
+  return (
+    <div className="flex md:hidden items-center gap-3 text-xs text-text-muted px-4 pb-2">
+      <div className="flex items-center gap-1">
+        <Flame
+          className="h-3.5 w-3.5"
+          style={{ color: stats.streak > 0 ? 'var(--color-accent)' : 'currentColor' }}
+        />
+        <span className="font-medium text-text-secondary">{stats.streak}</span>
+      </div>
+      <span>•</span>
+      <span><span className="font-medium text-text-secondary">{stats.unread}</span> unread</span>
+      <span>•</span>
+      <span><span className="font-medium text-text-secondary">{stats.inProgress}</span> in progress</span>
+      <span>•</span>
+      <span><span className="font-medium text-text-secondary">{stats.addedThisWeek}</span> this week</span>
+    </div>
+  );
+}
+
+/**
+ * Stats Banner - Full-width version (legacy, kept for compatibility)
+ */
+export function StatsBanner() {
+  const stats = useHomeStats();
 
   return (
     <div className="flex items-center gap-4 px-4 py-2 bg-bg-surface-2 rounded-lg text-sm text-text-secondary">

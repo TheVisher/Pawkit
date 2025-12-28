@@ -5,16 +5,15 @@ import { Coffee, Sun, Sunset, Moon } from 'lucide-react';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useGreeting } from '@/lib/hooks/use-greeting';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
-import { PageHeader } from '@/components/layout/page-header';
 import { ContentAreaContextMenu } from '@/components/context-menus';
 import {
-  StatsBanner,
+  InlineStats,
+  MobileStatsRow,
   DailyLogWidget,
   ScheduledTodayWidget,
   ContinueReadingWidget,
   RecentCardsWidget,
 } from '@/components/home';
-import { getEnabledWidgets, type HomeWidget } from '@/lib/home/config';
 import { cn } from '@/lib/utils';
 
 // Time icon mapping
@@ -23,14 +22,6 @@ const timeIcons = {
   sun: Sun,
   sunset: Sunset,
   moon: Moon,
-};
-
-// Widget component mapping
-const widgetComponents: Record<string, React.ComponentType> = {
-  'daily-log': DailyLogWidget,
-  'scheduled-today': ScheduledTodayWidget,
-  'continue-reading': ContinueReadingWidget,
-  'recent-cards': RecentCardsWidget,
 };
 
 export default function HomePage() {
@@ -43,103 +34,61 @@ export default function HomePage() {
 
   const TimeIcon = timeIcons[timeIcon as keyof typeof timeIcons] || Coffee;
 
-  const subtitle = (
-    <div className="flex items-center gap-1.5">
-      <TimeIcon className="h-3.5 w-3.5" />
-      <span>{mounted ? formattedDate : ''}</span>
-    </div>
-  );
-
-  const title = (
-    <>
-      {message}, <span className="text-[var(--color-accent)]">{displayName || 'friend'}</span>
-    </>
-  );
-
-  // Get enabled widgets from config
-  const widgets = getEnabledWidgets();
-
-  // Group widgets by row (full-width widgets are their own row, half-width widgets pair up)
-  const renderWidgets = () => {
-    const rows: React.ReactNode[] = [];
-    let halfWidgets: HomeWidget[] = [];
-
-    widgets.forEach((widget, index) => {
-      const Component = widgetComponents[widget.id];
-      if (!Component) return;
-
-      if (widget.width === 'full') {
-        // Flush any pending half-width widgets first
-        if (halfWidgets.length > 0) {
-          rows.push(
-            <div key={`half-row-${index}`} className="grid md:grid-cols-2 gap-4">
-              {halfWidgets.map((hw) => {
-                const HalfComponent = widgetComponents[hw.id];
-                return HalfComponent ? <HalfComponent key={hw.id} /> : null;
-              })}
-            </div>
-          );
-          halfWidgets = [];
-        }
-        // Add full-width widget
-        rows.push(<Component key={widget.id} />);
-      } else {
-        // Collect half-width widgets
-        halfWidgets.push(widget);
-        // If we have 2 half-width widgets, render them
-        if (halfWidgets.length === 2) {
-          rows.push(
-            <div key={`half-row-${index}`} className="grid md:grid-cols-2 gap-4">
-              {halfWidgets.map((hw) => {
-                const HalfComponent = widgetComponents[hw.id];
-                return HalfComponent ? <HalfComponent key={hw.id} /> : null;
-              })}
-            </div>
-          );
-          halfWidgets = [];
-        }
-      }
-    });
-
-    // Handle any remaining half-width widget
-    if (halfWidgets.length > 0) {
-      rows.push(
-        <div key="half-row-final" className="grid md:grid-cols-2 gap-4">
-          {halfWidgets.map((hw) => {
-            const HalfComponent = widgetComponents[hw.id];
-            return HalfComponent ? <HalfComponent key={hw.id} /> : null;
-          })}
-        </div>
-      );
-    }
-
-    return rows;
-  };
-
   return (
     <ContentAreaContextMenu>
       <div className="flex-1">
         {/* Header with collision-aware offset */}
-        {/* w-fit makes the container only as wide as the content */}
-        {/* When header text would overlap with centered omnibar, drop it down */}
         <div
           className={cn(
             'transition-[padding] duration-200',
-            needsOffset && 'md:pt-20' // 80px = omnibar height + breathing room
+            needsOffset && 'md:pt-20'
           )}
         >
-          <div ref={headerRef} className="w-fit">
-            <PageHeader title={title} subtitle={subtitle} />
+          {/* Custom header layout: greeting on left, stats on right */}
+          <div className="pt-5 pb-4 px-4 md:px-6 min-h-[76px]">
+            <div className="flex items-start justify-between gap-4">
+              {/* Title area - measured for collision */}
+              <div ref={headerRef} className="w-fit space-y-0.5">
+                <div className="flex items-center gap-1.5 text-xs text-text-muted">
+                  <TimeIcon className="h-3.5 w-3.5" />
+                  <span>{mounted ? formattedDate : ''}</span>
+                </div>
+                <h1 className="text-2xl font-semibold text-text-primary">
+                  {message}, <span className="text-[var(--color-accent)]">{displayName || 'friend'}</span>
+                </h1>
+              </div>
+              {/* Stats - right aligned on desktop */}
+              <div className="flex items-center gap-2 shrink-0 pt-1">
+                <InlineStats />
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Page content */}
-        <div className="px-4 md:px-6 pb-6 space-y-4">
-          {/* Stats Banner (fixed, not in widget config) */}
-          <StatsBanner />
+        {/* Mobile stats row - shows below header on mobile */}
+        <MobileStatsRow />
 
-          {/* Config-based widgets */}
-          {renderWidgets()}
+        {/* Page content - 2-column grid on wider screens */}
+        <div className="px-4 md:px-6 pt-4 pb-6 space-y-4">
+          {/* 2-column layout: Daily Log (left) | Scheduled + Continue Reading (right) */}
+          {/* Min heights locked to look good at 1920x1080 - this is the baseline */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 xl:grid-rows-[minmax(180px,1fr)_minmax(180px,1fr)]">
+            {/* Left column - Daily Log spans both rows, min 380px */}
+            <div className="xl:row-span-2 min-h-[380px]">
+              <DailyLogWidget />
+            </div>
+            {/* Right column - Scheduled Today, min 180px */}
+            <div className="min-h-[180px]">
+              <ScheduledTodayWidget />
+            </div>
+            {/* Right column - Continue Reading, min 180px */}
+            <div className="min-h-[180px]">
+              <ContinueReadingWidget />
+            </div>
+          </div>
+
+          {/* Recently Added - full width */}
+          <RecentCardsWidget />
         </div>
       </div>
     </ContentAreaContextMenu>

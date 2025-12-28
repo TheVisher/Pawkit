@@ -5,22 +5,23 @@
  * Enhanced daily note with timestamp-based entries
  */
 
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { format, isSameDay } from 'date-fns';
 import { db } from '@/lib/db';
-import { Calendar, Plus, ChevronLeft, ChevronRight, Edit3, Clock } from 'lucide-react';
+import { Calendar, Plus, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
+import { triggerSync } from '@/lib/services/sync-queue';
 import { cn } from '@/lib/utils';
 
 export function DailyLogWidget() {
   const [date, setDate] = useState(new Date());
   const [quickEntry, setQuickEntry] = useState('');
-  const [isAddingEntry, setIsAddingEntry] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const workspace = useCurrentWorkspace();
   const cards = useDataStore((s) => s.cards);
   const isLoading = useDataStore((s) => s.isLoading);
@@ -32,30 +33,46 @@ export function DailyLogWidget() {
   const formattedDate = format(date, 'EEEE, MMMM d');
 
   // Find the daily note for the selected date from the store
+  // Must get the MOST RECENTLY UPDATED note to match what handleQuickEntry writes to
   const note = useMemo(() => {
     if (!workspace) return null;
-    return cards.find(
+    const dailyNotes = cards.filter(
       (c) =>
         c.workspaceId === workspace.id &&
         c.isDailyNote &&
         c.scheduledDate &&
         isSameDay(new Date(c.scheduledDate), date) &&
         !c._deleted
-    ) || null;
+    );
+    if (dailyNotes.length === 0) return null;
+    // Sort by updatedAt descending and return the most recent
+    return dailyNotes.sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    )[0];
   }, [cards, workspace, date]);
 
-  // Focus input when adding entry
-  useEffect(() => {
-    if (isAddingEntry && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isAddingEntry]);
-
   const handleCreateNote = async () => {
-    if (!workspace) return;
+    if (!workspace || isSubmitting) return;
 
-    if (note) {
-      openCardDetail(note.id);
+    // Always do a direct DB query to check for existing notes
+    // This prevents creating duplicates when reactive state is stale
+    const existingNotes = await db.cards
+      .where('workspaceId')
+      .equals(workspace.id)
+      .filter(
+        (c) =>
+          c.isDailyNote === true &&
+          c.scheduledDate != null &&
+          isSameDay(new Date(c.scheduledDate), date) &&
+          c._deleted !== true
+      )
+      .toArray();
+
+    if (existingNotes.length > 0) {
+      const sortedNotes = existingNotes.sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+      openCardDetail(sortedNotes[0].id);
       return;
     }
 
@@ -82,36 +99,116 @@ export function DailyLogWidget() {
       return;
     }
 
-    const newNote = await createCard({
-      workspaceId: workspace.id,
-      type: 'md-note',
-      url: '',
-      title: format(date, 'MMMM d, yyyy'),
-      content: '',
-      isDailyNote: true,
-      scheduledDate: date,
-      tags: ['daily-note'],
-      collections: [],
-      pinned: false,
-      status: 'READY',
-      isFileCard: false,
-    });
+    setIsSubmitting(true);
+    try {
+      const newNote = await createCard({
+        workspaceId: workspace.id,
+        type: 'md-note',
+        url: '',
+        title: format(date, 'MMMM d, yyyy'),
+        content: '',
+        isDailyNote: true,
+        scheduledDate: date,
+        tags: ['daily-note'],
+        collections: [],
+        pinned: false,
+        status: 'READY',
+        isFileCard: false,
+      });
 
-    if (newNote) {
-      openCardDetail(newNote.id);
+      if (newNote) {
+        openCardDetail(newNote.id);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleQuickEntry = async () => {
-    if (!quickEntry.trim() || !workspace) return;
+    if (!quickEntry.trim() || !workspace || isSubmitting) return;
 
-    const timestamp = format(new Date(), 'HH:mm');
-    const entryHtml = `<p><strong>${timestamp}</strong> - ${quickEntry.trim()}</p>`;
+    // Set submitting immediately to prevent race conditions
+    setIsSubmitting(true);
+    const entryText = quickEntry.trim();
+    setQuickEntry(''); // Clear immediately for better UX
 
-    if (note) {
-      const newContent = note.content ? `${note.content}${entryHtml}` : entryHtml;
-      await updateCard(note.id, { content: newContent });
-    } else {
+    try {
+      const timestamp = format(new Date(), 'h:mm a');
+      const entryHtml = `<p><strong>${timestamp}</strong> - ${entryText}</p>`;
+
+      // STRATEGY: Trust Zustand state first (survives sync overwrites), then fall back to DB
+      // This handles the case where sync wipes IndexedDB but Zustand still has the note
+
+      // 1. If we have a note in Zustand state, try to use it
+      if (note) {
+        console.log('[DailyLog] Found note in Zustand state:', note.id);
+
+        // Try to get fresh content from DB (in case it was updated elsewhere)
+        const freshNote = await db.cards.get(note.id);
+
+        if (freshNote && !freshNote._deleted) {
+          // Note exists in DB - append to it
+          console.log('[DailyLog] Note exists in DB, appending');
+          const newContent = freshNote.content
+            ? `${freshNote.content}${entryHtml}`
+            : entryHtml;
+          await updateCard(note.id, { content: newContent });
+          return;
+        } else {
+          // Note was deleted from DB (likely by sync) but we still have it in Zustand
+          // Re-create it with the existing content + new entry
+          console.log('[DailyLog] Note missing from DB (sync issue), re-creating with existing content');
+          const newContent = note.content
+            ? `${note.content}${entryHtml}`
+            : entryHtml;
+          await createCard({
+            workspaceId: workspace.id,
+            type: 'md-note',
+            url: '',
+            title: format(date, 'MMMM d, yyyy'),
+            content: newContent,
+            isDailyNote: true,
+            scheduledDate: date,
+            tags: ['daily-note'],
+            collections: [],
+            pinned: false,
+            status: 'READY',
+            isFileCard: false,
+          });
+          return;
+        }
+      }
+
+      // 2. No note in Zustand - query DB directly (fresh page load scenario)
+      console.log('[DailyLog] No note in Zustand, querying DB');
+      const existingNotes = await db.cards
+        .where('workspaceId')
+        .equals(workspace.id)
+        .filter(
+          (c) =>
+            c.isDailyNote === true &&
+            c.scheduledDate != null &&
+            isSameDay(new Date(c.scheduledDate), date) &&
+            c._deleted !== true
+        )
+        .toArray();
+
+      console.log('[DailyLog] Found in DB:', existingNotes.length);
+
+      if (existingNotes.length > 0) {
+        // Found existing active daily note - append to it
+        const sortedNotes = existingNotes.sort(
+          (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+        const existingNote = sortedNotes[0];
+        const newContent = existingNote.content
+          ? `${existingNote.content}${entryHtml}`
+          : entryHtml;
+        await updateCard(existingNote.id, { content: newContent });
+        return;
+      }
+
+      // Check for trashed daily notes - restore instead of creating new
       const trashedCards = await db.cards
         .where('workspaceId')
         .equals(workspace.id)
@@ -136,26 +233,30 @@ export function DailyLogWidget() {
           _deleted: false,
           content: newContent,
         });
-      } else {
-        await createCard({
-          workspaceId: workspace.id,
-          type: 'md-note',
-          url: '',
-          title: format(date, 'MMMM d, yyyy'),
-          content: entryHtml,
-          isDailyNote: true,
-          scheduledDate: date,
-          tags: ['daily-note'],
-          collections: [],
-          pinned: false,
-          status: 'READY',
-          isFileCard: false,
-        });
+        return;
       }
-    }
 
-    setQuickEntry('');
-    setIsAddingEntry(false);
+      // No existing note found - create new
+      await createCard({
+        workspaceId: workspace.id,
+        type: 'md-note',
+        url: '',
+        title: format(date, 'MMMM d, yyyy'),
+        content: entryHtml,
+        isDailyNote: true,
+        scheduledDate: date,
+        tags: ['daily-note'],
+        collections: [],
+        pinned: false,
+        status: 'READY',
+        isFileCard: false,
+      });
+    } finally {
+      setIsSubmitting(false);
+      // Trigger sync immediately after entry is complete
+      // (Daily log entries are discrete actions, unlike typing in notes)
+      triggerSync();
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -164,7 +265,7 @@ export function DailyLogWidget() {
       handleQuickEntry();
     } else if (e.key === 'Escape') {
       setQuickEntry('');
-      setIsAddingEntry(false);
+      inputRef.current?.blur();
     }
   };
 
@@ -183,7 +284,7 @@ export function DailyLogWidget() {
   // Parse entries from note content for preview
   const entries = useMemo(() => {
     if (!note?.content) return [];
-    const regex = /<p><strong>(\d{2}:\d{2})<\/strong>\s*-\s*(.+?)<\/p>/g;
+    const regex = /<p><strong>(\d{1,2}:\d{2}(?:\s*[AP]M)?)<\/strong>\s*-\s*(.+?)<\/p>/g;
     const found: { time: string; text: string }[] = [];
     let match;
     while ((match = regex.exec(note.content)) !== null) {
@@ -202,82 +303,72 @@ export function DailyLogWidget() {
   const hasTimestampedEntries = entries.length > 0;
 
   return (
-    <Card className="border-border-subtle bg-bg-surface-2">
-      <CardContent className="p-5">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-[var(--color-accent)]/20">
-              <Calendar className="h-5 w-5 text-[var(--color-accent)]" />
+    <Card className="border-border-subtle bg-bg-surface-2 h-full py-0">
+      <CardContent className="p-3 h-full flex flex-col">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-[var(--color-accent)]/20">
+              <Calendar className="h-4 w-4 text-[var(--color-accent)]" />
             </div>
             <div>
-              <h3 className="font-semibold text-text-primary text-lg">
+              <h3 className="font-medium text-text-primary text-sm">
                 {isToday ? "Today's Log" : 'Daily Log'}
               </h3>
-              <p className="text-sm text-text-muted">{formattedDate}</p>
+              <p className="text-xs text-text-muted">{formattedDate}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handlePrevDay}>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handlePrevDay}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            {!isToday && (
-              <Button variant="ghost" size="sm" className="h-8 px-3 text-xs" onClick={handleToday}>
-                Today
-              </Button>
-            )}
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleNextDay}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={handleToday}
+              disabled={isToday}
+            >
+              Today
+            </Button>
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleNextDay}>
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
 
         {isLoading ? (
-          <div className="h-24 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center">
             <div className="animate-pulse text-text-muted text-sm">Loading...</div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="flex-1 flex flex-col gap-3">
+            {/* Quick entry - always visible for today */}
             {isToday && (
-              <div className="flex items-center gap-2">
-                {isAddingEntry ? (
-                  <div className="flex-1 flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 text-xs text-text-muted">
-                      <Clock className="h-3.5 w-3.5" />
-                      <span>{format(new Date(), 'HH:mm')}</span>
-                    </div>
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      value={quickEntry}
-                      onChange={(e) => setQuickEntry(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      onBlur={() => {
-                        if (!quickEntry.trim()) setIsAddingEntry(false);
-                      }}
-                      placeholder="What's on your mind?"
-                      className={cn(
-                        'flex-1 px-3 py-2 rounded-lg text-sm',
-                        'bg-bg-surface-3 border border-border-subtle',
-                        'focus:outline-none focus:border-[var(--color-accent)]/50',
-                        'placeholder:text-text-muted'
-                      )}
-                    />
-                    <Button size="sm" onClick={handleQuickEntry} disabled={!quickEntry.trim()}>
-                      Add
-                    </Button>
-                  </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full justify-start text-text-muted hover:text-text-primary"
-                    onClick={() => setIsAddingEntry(true)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Quick entry...
-                  </Button>
-                )}
+              <div className="flex gap-2">
+                {/* Textarea - takes available width */}
+                <textarea
+                  ref={inputRef}
+                  rows={3}
+                  value={quickEntry}
+                  onChange={(e) => setQuickEntry(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="What's on your mind?"
+                  className={cn(
+                    'flex-1 px-3 py-2 rounded-lg text-sm resize-none',
+                    'bg-bg-surface-3 border border-border-subtle',
+                    'focus:outline-none focus:border-[var(--color-accent)]/50',
+                    'placeholder:text-text-muted'
+                  )}
+                />
+                {/* Add button - full height of textarea */}
+                <Button
+                  className="h-auto px-4 shrink-0"
+                  onClick={handleQuickEntry}
+                  disabled={!quickEntry.trim() || isSubmitting}
+                >
+                  {isSubmitting ? '...' : 'Add'}
+                </Button>
               </div>
             )}
 
@@ -285,23 +376,27 @@ export function DailyLogWidget() {
               <button
                 onClick={() => openCardDetail(note.id)}
                 className={cn(
-                  'w-full text-left p-4 rounded-xl transition-colors',
+                  'flex-1 w-full text-left p-3 rounded-lg transition-colors',
                   'bg-bg-surface-3/50 hover:bg-bg-surface-3',
-                  'border border-transparent hover:border-[var(--color-accent)]/30'
+                  'border border-transparent hover:border-[var(--color-accent)]/30',
+                  'flex flex-col'
                 )}
               >
                 {hasTimestampedEntries ? (
-                  <div className="space-y-2">
-                    {entries.slice(-3).map((entry, i) => (
-                      <div key={i} className="flex items-start gap-2 text-sm">
-                        <span className="text-text-muted font-mono text-xs shrink-0 pt-0.5">
-                          {entry.time}
-                        </span>
-                        <span className="text-text-secondary line-clamp-1">{entry.text}</span>
-                      </div>
-                    ))}
-                    {entries.length > 3 && (
-                      <p className="text-xs text-text-muted">+{entries.length - 3} more entries</p>
+                  <div className="flex-1 flex flex-col">
+                    {/* Show newest entries first (reverse order), show up to 8 */}
+                    <div className="flex-1 space-y-1.5 overflow-hidden">
+                      {[...entries].reverse().slice(0, 8).map((entry, i) => (
+                        <div key={i} className="flex items-start gap-2 text-sm">
+                          <span className="text-text-muted font-mono text-xs shrink-0 pt-0.5">
+                            {entry.time}
+                          </span>
+                          <span className="text-text-secondary line-clamp-1">{entry.text}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {entries.length > 8 && (
+                      <p className="text-xs text-text-muted mt-1">+{entries.length - 8} more entries</p>
                     )}
                   </div>
                 ) : previewText ? (
@@ -311,7 +406,7 @@ export function DailyLogWidget() {
                 ) : (
                   <p className="text-sm text-text-muted italic">Empty note</p>
                 )}
-                <div className="flex items-center gap-1 mt-3 text-xs text-text-muted">
+                <div className="flex items-center gap-1 text-xs text-text-muted pt-2 border-t border-border-subtle/50 mt-auto">
                   <Edit3 className="h-3 w-3" />
                   <span>Click to open full editor</span>
                 </div>
@@ -320,7 +415,7 @@ export function DailyLogWidget() {
               <button
                 onClick={handleCreateNote}
                 className={cn(
-                  'w-full p-6 rounded-xl transition-colors',
+                  'flex-1 w-full p-4 rounded-lg transition-colors',
                   'border-2 border-dashed border-border-subtle',
                   'hover:border-[var(--color-accent)]/50 hover:bg-bg-surface-3/30',
                   'flex flex-col items-center justify-center gap-2'

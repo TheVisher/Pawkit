@@ -11,6 +11,7 @@ export interface SyncMetadata {
   _synced: boolean;           // Has been synced to server
   _lastModified: Date;        // Local modification timestamp
   _deleted: boolean;          // Soft delete for sync (true = pending delete sync)
+  _deletedAt?: Date;          // When the item was soft deleted (for auto-purge)
   _serverVersion?: string;    // Server's updatedAt for conflict detection
   _localOnly?: boolean;       // Created offline, never synced
 }
