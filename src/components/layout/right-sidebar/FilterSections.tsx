@@ -1,15 +1,26 @@
-'use client';
+"use client";
 
 /**
  * Filter Sections
  * Content type, sort, quick filter, grouping, sub-pawkit, and tags sections
  */
 
-import { useState } from 'react';
-import { Filter, ArrowUpDown, Inbox, Layers, Tag, Folder, BookOpen, Link, RefreshCw, Copy } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
-import type { SubPawkitSize } from '@/lib/stores/view-store';
+import { useState } from "react";
+import {
+  Filter,
+  ArrowUpDown,
+  Inbox,
+  Layers,
+  Tag,
+  Folder,
+  BookOpen,
+  Link,
+  RefreshCw,
+  Copy,
+} from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import type { SubPawkitSize } from "@/lib/stores/view-store";
 import {
   CONTENT_FILTERS,
   SORT_OPTIONS,
@@ -24,7 +35,7 @@ import {
   type UnsortedFilter,
   type ReadingFilter,
   type LinkStatusFilter,
-} from './config';
+} from "./config";
 
 // Content Type Filter Section
 interface ContentTypeFilterProps {
@@ -33,7 +44,11 @@ interface ContentTypeFilterProps {
   onClear: () => void;
 }
 
-export function ContentTypeFilter({ filters, onToggle, onClear }: ContentTypeFilterProps) {
+export function ContentTypeFilter({
+  filters,
+  onToggle,
+  onClear,
+}: ContentTypeFilterProps) {
   return (
     <>
       <div>
@@ -60,10 +75,10 @@ export function ContentTypeFilter({ filters, onToggle, onClear }: ContentTypeFil
                 key={filter.id}
                 onClick={() => onToggle(filter.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors',
+                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all duration-200",
                   isActive
-                    ? 'bg-[var(--color-accent)] text-white'
-                    : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                    ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
+                    : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -84,7 +99,7 @@ export function ContentTypeFilter({ filters, onToggle, onClear }: ContentTypeFil
 // Sort Options Section
 interface SortOptionsProps {
   sortBy: string;
-  sortOrder: 'asc' | 'desc';
+  sortOrder: "asc" | "desc";
   onSortByChange: (sortBy: string) => void;
   onToggleSortOrder: () => void;
   onSettingChange: () => void;
@@ -119,16 +134,16 @@ export function SortOptions({
                   onSettingChange();
                 }}
                 className={cn(
-                  'w-full flex items-center justify-between px-3 py-1.5 text-sm rounded-md transition-colors',
+                  "w-full flex items-center justify-between px-3 py-1.5 text-sm rounded-md transition-all duration-200",
                   isActive
-                    ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
-                    : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
+                    ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
+                    : "border border-transparent text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary",
                 )}
               >
                 <span>{option.label}</span>
                 {isActive && (
                   <span className="text-xs opacity-70">
-                    {sortOrder === 'desc' ? '↓' : '↑'}
+                    {sortOrder === "desc" ? "↓" : "↑"}
                   </span>
                 )}
               </button>
@@ -164,10 +179,10 @@ export function QuickFilter({ filter, onFilterChange }: QuickFilterProps) {
                 key={option.id}
                 onClick={() => onFilterChange(option.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors',
+                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all duration-200",
                   isActive
-                    ? 'bg-[var(--color-accent)] text-white'
-                    : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                    ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
+                    : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
                 )}
               >
                 {Icon && <Icon className="h-3.5 w-3.5" />}
@@ -188,7 +203,10 @@ interface ReadingStatusFilterProps {
   onFilterChange: (filter: ReadingFilter) => void;
 }
 
-export function ReadingStatusFilter({ filter, onFilterChange }: ReadingStatusFilterProps) {
+export function ReadingStatusFilter({
+  filter,
+  onFilterChange,
+}: ReadingStatusFilterProps) {
   return (
     <>
       <div>
@@ -205,10 +223,10 @@ export function ReadingStatusFilter({ filter, onFilterChange }: ReadingStatusFil
                 key={option.id}
                 onClick={() => onFilterChange(option.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors',
+                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all duration-200",
                   isActive
-                    ? 'bg-[var(--color-accent)] text-white'
-                    : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                    ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
+                    : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -230,7 +248,11 @@ interface LinkStatusFilterSectionProps {
   onRecheckAll?: () => Promise<number>;
 }
 
-export function LinkStatusFilterSection({ filter, onFilterChange, onRecheckAll }: LinkStatusFilterSectionProps) {
+export function LinkStatusFilterSection({
+  filter,
+  onFilterChange,
+  onRecheckAll,
+}: LinkStatusFilterSectionProps) {
   const [isRechecking, setIsRechecking] = useState(false);
   const [recheckCount, setRecheckCount] = useState<number | null>(null);
 
@@ -262,8 +284,10 @@ export function LinkStatusFilterSection({ filter, onFilterChange, onRecheckAll }
               disabled={isRechecking}
               className="text-xs text-text-muted hover:text-text-primary transition-colors disabled:opacity-50 flex items-center gap-1"
             >
-              <RefreshCw className={cn('h-3 w-3', isRechecking && 'animate-spin')} />
-              {isRechecking ? 'Checking...' : 'Re-check'}
+              <RefreshCw
+                className={cn("h-3 w-3", isRechecking && "animate-spin")}
+              />
+              {isRechecking ? "Checking..." : "Re-check"}
             </button>
           )}
         </div>
@@ -276,10 +300,10 @@ export function LinkStatusFilterSection({ filter, onFilterChange, onRecheckAll }
                 key={option.id}
                 onClick={() => onFilterChange(option.id)}
                 className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors',
+                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all duration-200",
                   isActive
-                    ? 'bg-[var(--color-accent)] text-white'
-                    : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                    ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
+                    : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
                 )}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -290,7 +314,8 @@ export function LinkStatusFilterSection({ filter, onFilterChange, onRecheckAll }
         </div>
         {recheckCount !== null && (
           <p className="text-xs text-text-muted mt-2">
-            Queued {recheckCount} link{recheckCount !== 1 ? 's' : ''} for checking
+            Queued {recheckCount} link{recheckCount !== 1 ? "s" : ""} for
+            checking
           </p>
         )}
       </div>
@@ -306,7 +331,11 @@ interface DuplicatesFilterProps {
   onToggle: (show: boolean) => void;
 }
 
-export function DuplicatesFilter({ showDuplicatesOnly, duplicateCount, onToggle }: DuplicatesFilterProps) {
+export function DuplicatesFilter({
+  showDuplicatesOnly,
+  duplicateCount,
+  onToggle,
+}: DuplicatesFilterProps) {
   return (
     <>
       <div>
@@ -316,23 +345,27 @@ export function DuplicatesFilter({ showDuplicatesOnly, duplicateCount, onToggle 
             <span className="text-xs font-medium uppercase">Duplicates</span>
           </div>
           {duplicateCount > 0 && (
-            <span className="text-xs text-text-muted">{duplicateCount} found</span>
+            <span className="text-xs text-text-muted">
+              {duplicateCount} found
+            </span>
           )}
         </div>
         <button
           onClick={() => onToggle(!showDuplicatesOnly)}
           className={cn(
-            'w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors',
+            "w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-all duration-200",
             showDuplicatesOnly
-              ? 'bg-[var(--color-accent)] text-white'
-              : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+              ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
+              : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
           )}
         >
           <span>Show duplicates only</span>
           {showDuplicatesOnly && <span className="text-xs opacity-70">✓</span>}
         </button>
         {duplicateCount === 0 && (
-          <p className="text-xs text-text-muted mt-2 italic">No duplicates found</p>
+          <p className="text-xs text-text-muted mt-2 italic">
+            No duplicates found
+          </p>
         )}
       </div>
       <Separator className="bg-border-subtle" />
@@ -377,10 +410,10 @@ export function GroupingSection({
                     onSettingChange();
                   }}
                   className={cn(
-                    'flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-colors',
+                    "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all duration-200",
                     isActive
-                      ? 'bg-[var(--color-accent)] text-white'
-                      : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                      ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
+                      : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
                   )}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -391,9 +424,11 @@ export function GroupingSection({
           </div>
 
           {/* Date grouping options (only when groupBy === 'date') */}
-          {groupBy === 'date' && (
+          {groupBy === "date" && (
             <div>
-              <label className="text-xs text-text-secondary mb-2 block">Date Range</label>
+              <label className="text-xs text-text-secondary mb-2 block">
+                Date Range
+              </label>
               <div className="grid grid-cols-5 gap-1">
                 {DATE_GROUP_OPTIONS.map((option) => {
                   const isActive = dateGrouping === option.id;
@@ -405,10 +440,10 @@ export function GroupingSection({
                         onSettingChange();
                       }}
                       className={cn(
-                        'px-2 py-1.5 text-xs rounded-md transition-colors',
+                        "px-2 py-1.5 text-xs rounded-md transition-all duration-200",
                         isActive
-                          ? 'bg-[var(--color-accent)] text-white'
-                          : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                          ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
+                          : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
                       )}
                     >
                       {option.label}
@@ -452,9 +487,11 @@ export function SubPawkitSettings({
         <div className="space-y-4">
           {/* Size options */}
           <div>
-            <label className="text-xs text-text-secondary mb-2 block">Card Size</label>
+            <label className="text-xs text-text-secondary mb-2 block">
+              Card Size
+            </label>
             <div className="grid grid-cols-3 gap-1">
-              {(['compact', 'normal', 'large'] as SubPawkitSize[]).map((s) => (
+              {(["compact", "normal", "large"] as SubPawkitSize[]).map((s) => (
                 <button
                   key={s}
                   onClick={() => {
@@ -462,10 +499,10 @@ export function SubPawkitSettings({
                     onSettingChange();
                   }}
                   className={cn(
-                    'px-2 py-1.5 text-xs rounded-md transition-colors capitalize',
+                    "px-2 py-1.5 text-xs rounded-md transition-all duration-200 capitalize",
                     size === s
-                      ? 'bg-[var(--color-accent)] text-white'
-                      : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                      ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
+                      : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
                   )}
                 >
                   {s}
@@ -510,7 +547,12 @@ interface TagsFilterProps {
   onClearTags: () => void;
 }
 
-export function TagsFilter({ allTags, selectedTags, onToggleTag, onClearTags }: TagsFilterProps) {
+export function TagsFilter({
+  allTags,
+  selectedTags,
+  onToggleTag,
+  onClearTags,
+}: TagsFilterProps) {
   return (
     <div>
       <div className="flex items-center justify-between text-text-muted mb-3">
@@ -538,10 +580,10 @@ export function TagsFilter({ allTags, selectedTags, onToggleTag, onClearTags }: 
                 key={tag}
                 onClick={() => onToggleTag(tag)}
                 className={cn(
-                  'px-2 py-1 text-xs rounded-md transition-colors',
+                  "px-2 py-1 text-xs rounded-md transition-all duration-200",
                   isSelected
-                    ? 'bg-[var(--color-accent)] text-white'
-                    : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                    ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
+                    : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
                 )}
               >
                 {tag}
