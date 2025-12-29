@@ -54,8 +54,7 @@ import {
   SortOptions,
   QuickFilter,
   ReadingStatusFilter,
-  LinkStatusFilterSection,
-  DuplicatesFilter,
+  AdvancedFilterSection,
   GroupingSection,
   SubPawkitSettings,
   TagsFilter,
@@ -333,7 +332,7 @@ export function RightSidebar() {
           <div
             key={displayedPathname}
             className={cn(
-              'space-y-4 transition-all ease-out',
+              "space-y-0 transition-all ease-out",
               isAnimating || isTransitioning
                 ? "opacity-0 translate-y-2"
                 : "opacity-100 translate-y-0",
@@ -342,11 +341,15 @@ export function RightSidebar() {
           >
             {viewConfig.showContentFilters && (
               <>
-                <ContentTypeFilter
-                  filters={contentTypeFilters}
-                  onToggle={toggleContentType}
-                  onClear={clearContentTypes}
-                />
+                {viewConfig.showTags && (
+                  <TagsFilter
+                    allTags={allTags}
+                    selectedTags={selectedTags}
+                    onToggleTag={toggleTag}
+                    onClearTags={clearTags}
+                  />
+                )}
+
                 <SortOptions
                   sortBy={sortBy}
                   sortOrder={sortOrder}
@@ -354,28 +357,7 @@ export function RightSidebar() {
                   onToggleSortOrder={toggleSortOrder}
                   onSettingChange={handleSettingChange}
                 />
-                <QuickFilter
-                  filter={unsortedFilter}
-                  onFilterChange={setUnsortedFilter}
-                />
-                <ReadingStatusFilter
-                  filter={readingFilter}
-                  onFilterChange={setReadingFilter}
-                />
-                <LinkStatusFilterSection
-                  filter={linkStatusFilter}
-                  onFilterChange={setLinkStatusFilter}
-                  onRecheckAll={
-                    workspace
-                      ? () => forceRecheckAllLinks(workspace.id)
-                      : undefined
-                  }
-                />
-                <DuplicatesFilter
-                  showDuplicatesOnly={showDuplicatesOnly}
-                  duplicateCount={duplicateCount}
-                  onToggle={setShowDuplicatesOnly}
-                />
+
                 <GroupingSection
                   groupBy={groupBy}
                   dateGrouping={dateGrouping}
@@ -383,48 +365,68 @@ export function RightSidebar() {
                   onDateGroupingChange={setDateGrouping}
                   onSettingChange={handleSettingChange}
                 />
+
+                <ReadingStatusFilter
+                  filter={readingFilter}
+                  onFilterChange={setReadingFilter}
+                />
+
+                <ContentTypeFilter
+                  filters={contentTypeFilters}
+                  onToggle={toggleContentType}
+                  onClear={clearContentTypes}
+                />
+
+                <QuickFilter
+                  filter={unsortedFilter}
+                  onFilterChange={setUnsortedFilter}
+                />
+
+                {viewConfig.showSubPawkitSettings && (
+                  <SubPawkitSettings
+                    size={subPawkitSize}
+                    columns={subPawkitColumns}
+                    onSizeChange={setSubPawkitSize}
+                    onColumnsChange={setSubPawkitColumns}
+                    onSettingChange={handleSettingChange}
+                  />
+                )}
+
+                {viewConfig.showCardDisplay && (
+                  <CardDisplaySettings
+                    layout={layout}
+                    cardSize={cardSize}
+                    cardPadding={cardPadding}
+                    cardSpacing={cardSpacing}
+                    showMetadataFooter={showMetadataFooter}
+                    showUrlPill={showUrlPill}
+                    showTitles={showTitles}
+                    showTags={showTags}
+                    onLayoutChange={setLayout}
+                    onCardSizeChange={setCardSize}
+                    onCardPaddingChange={setCardPadding}
+                    onCardSpacingChange={setCardSpacing}
+                    onShowMetadataFooterChange={setShowMetadataFooter}
+                    onShowUrlPillChange={setShowUrlPill}
+                    onShowTitlesChange={setShowTitles}
+                    onShowTagsChange={setShowTags}
+                    onSettingChange={handleSettingChange}
+                  />
+                )}
+
+                <AdvancedFilterSection
+                  linkStatusFilter={linkStatusFilter}
+                  onLinkStatusChange={setLinkStatusFilter}
+                  onRecheckLinks={
+                    workspace
+                      ? () => forceRecheckAllLinks(workspace.id)
+                      : undefined
+                  }
+                  showDuplicatesOnly={showDuplicatesOnly}
+                  duplicateCount={duplicateCount}
+                  onToggleDuplicates={setShowDuplicatesOnly}
+                />
               </>
-            )}
-
-            {viewConfig.showSubPawkitSettings && (
-              <SubPawkitSettings
-                size={subPawkitSize}
-                columns={subPawkitColumns}
-                onSizeChange={setSubPawkitSize}
-                onColumnsChange={setSubPawkitColumns}
-                onSettingChange={handleSettingChange}
-              />
-            )}
-
-            {viewConfig.showCardDisplay && (
-              <CardDisplaySettings
-                layout={layout}
-                cardSize={cardSize}
-                cardPadding={cardPadding}
-                cardSpacing={cardSpacing}
-                showMetadataFooter={showMetadataFooter}
-                showUrlPill={showUrlPill}
-                showTitles={showTitles}
-                showTags={showTags}
-                onLayoutChange={setLayout}
-                onCardSizeChange={setCardSize}
-                onCardPaddingChange={setCardPadding}
-                onCardSpacingChange={setCardSpacing}
-                onShowMetadataFooterChange={setShowMetadataFooter}
-                onShowUrlPillChange={setShowUrlPill}
-                onShowTitlesChange={setShowTitles}
-                onShowTagsChange={setShowTags}
-                onSettingChange={handleSettingChange}
-              />
-            )}
-
-            {viewConfig.showTags && (
-              <TagsFilter
-                allTags={allTags}
-                selectedTags={selectedTags}
-                onToggleTag={toggleTag}
-                onClearTags={clearTags}
-              />
             )}
 
             {/* Placeholder views */}

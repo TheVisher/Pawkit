@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
   Library,
@@ -245,13 +245,23 @@ export function LeftSidebar() {
             </div>
 
             {/* Collapsible Pawkits Tree */}
-            {pawkitsExpanded && (
-              <SidebarContextMenu>
-                <div className="mt-1 pl-2">
-                  <PawkitsTree />
-                </div>
-              </SidebarContextMenu>
-            )}
+            <AnimatePresence initial={false}>
+              {pawkitsExpanded && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.2, ease: "easeInOut" }}
+                  className="overflow-hidden"
+                >
+                  <SidebarContextMenu>
+                    <div className="mt-1 pl-2">
+                      <PawkitsTree />
+                    </div>
+                  </SidebarContextMenu>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           {/* Tags Nav Item */}
