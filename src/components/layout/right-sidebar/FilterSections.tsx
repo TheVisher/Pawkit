@@ -510,7 +510,6 @@ export function SubPawkitSettings({
               ))}
             </div>
           </div>
-
           {/* Columns slider */}
           <div>
             <div className="flex items-center justify-between mb-2">

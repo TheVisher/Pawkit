@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 /**
  * Card Display Settings
@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import type { CardSize } from './config';
 
-type Layout = 'grid' | 'masonry' | 'list' | 'timeline' | 'board';
+type Layout = "grid" | "masonry" | "list" | "timeline" | "board";
 
 interface CardDisplaySettingsProps {
   layout: Layout;
@@ -280,18 +280,16 @@ function ToggleSwitch({
       <button
         onClick={() => onChange(!checked)}
         className={cn(
-          'relative w-9 h-5 rounded-full transition-all duration-200 flex items-center',
+          "relative w-9 h-5 rounded-full transition-all duration-200 flex items-center",
           checked
-            ? 'bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30'
-            : 'bg-bg-surface-3 border border-transparent'
+            ? "bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30"
+            : "bg-bg-surface-3 border border-transparent",
         )}
       >
         <span
           className={cn(
-            'absolute left-0.5 w-4 h-4 rounded-full transition-all duration-200 shadow-sm',
-            checked
-              ? 'translate-x-4 bg-white'
-              : 'bg-text-muted'
+            "absolute left-0.5 w-4 h-4 rounded-full transition-all duration-200 shadow-sm",
+            checked ? "translate-x-4 bg-white" : "bg-text-muted",
           )}
         />
       </button>
