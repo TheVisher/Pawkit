@@ -1,35 +1,54 @@
-'use client';
+"use client";
 
 /**
  * Right Sidebar
  * Main component that orchestrates the sidebar panels
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { usePathname } from 'next/navigation';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { usePathname } from "next/navigation";
 import {
-  ArrowRightToLine, ArrowLeftFromLine, Maximize2, Minimize2,
-  Moon, Sun, SunMoon, Home, Calendar,
-} from 'lucide-react';
-import { useTheme } from 'next-themes';
-import { useRightSidebar } from '@/lib/stores/ui-store';
-import { useViewStore, useCardDisplaySettings, useSubPawkitSettings } from '@/lib/stores/view-store';
-import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useModalStore } from '@/lib/stores/modal-store';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+  ArrowRightToLine,
+  ArrowLeftFromLine,
+  Maximize2,
+  Minimize2,
+  Moon,
+  Sun,
+  SunMoon,
+  Home,
+  Calendar,
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import { useRightSidebar } from "@/lib/stores/ui-store";
+import {
+  useViewStore,
+  useCardDisplaySettings,
+  useSubPawkitSettings,
+} from "@/lib/stores/view-store";
+import { useCurrentWorkspace } from "@/lib/stores/workspace-store";
+import { useDataStore } from "@/lib/stores/data-store";
+import { useModalStore } from "@/lib/stores/modal-store";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
 
-import { getViewConfig, type ContentType, type GroupBy, type DateGrouping, type UnsortedFilter, type ReadingFilter, type LinkStatusFilter } from './config';
-import { forceRecheckAllLinks } from '@/lib/services/link-check-service';
-import { CardDetailsPanel } from './CardDetailsPanel';
-import { CardDisplaySettings } from './CardDisplaySettings';
+import {
+  getViewConfig,
+  type ContentType,
+  type GroupBy,
+  type DateGrouping,
+  type UnsortedFilter,
+  type ReadingFilter,
+  type LinkStatusFilter,
+} from "./config";
+import { forceRecheckAllLinks } from "@/lib/services/link-check-service";
+import { CardDetailsPanel } from "./CardDetailsPanel";
+import { CardDisplaySettings } from "./CardDisplaySettings";
 import {
   ContentTypeFilter,
   SortOptions,
@@ -40,14 +59,16 @@ import {
   GroupingSection,
   SubPawkitSettings,
   TagsFilter,
-} from './FilterSections';
-import { findDuplicateCardIds } from '@/lib/stores/view-store';
+} from "./FilterSections";
+import { findDuplicateCardIds } from "@/lib/stores/view-store";
 
 export function RightSidebar() {
   const [mounted, setMounted] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [displayedPathname, setDisplayedPathname] = useState('');
-  const [displayMode, setDisplayMode] = useState<'filters' | 'card-details'>('filters');
+  const [displayedPathname, setDisplayedPathname] = useState("");
+  const [displayMode, setDisplayMode] = useState<"filters" | "card-details">(
+    "filters",
+  );
   const [isTransitioning, setIsTransitioning] = useState(false);
   const pathname = usePathname();
   const { isOpen, isAnchored, toggleAnchored, setOpen } = useRightSidebar();
@@ -58,17 +79,20 @@ export function RightSidebar() {
   const activeCardId = useModalStore((s) => s.activeCardId);
   const allCards = useDataStore((s) => s.cards);
   const allCollections = useDataStore((s) => s.collections);
-  const activeCard = useMemo(() =>
-    activeCardId ? allCards.find(c => c.id === activeCardId) : null,
-    [activeCardId, allCards]
+  const activeCard = useMemo(
+    () => (activeCardId ? allCards.find((c) => c.id === activeCardId) : null),
+    [activeCardId, allCards],
   );
 
   // Get view-specific configuration
-  const viewConfig = useMemo(() => getViewConfig(displayedPathname || pathname), [displayedPathname, pathname]);
+  const viewConfig = useMemo(
+    () => getViewConfig(displayedPathname || pathname),
+    [displayedPathname, pathname],
+  );
 
   // Handle transition between filters and card details view
   useEffect(() => {
-    const targetMode = activeCardId ? 'card-details' : 'filters';
+    const targetMode = activeCardId ? "card-details" : "filters";
 
     if (targetMode !== displayMode && mounted) {
       setIsTransitioning(true);
@@ -100,11 +124,21 @@ export function RightSidebar() {
   }, [pathname, displayedPathname, mounted]);
 
   // Card display settings
-  const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
+  const {
+    cardPadding,
+    cardSpacing,
+    cardSize,
+    showMetadataFooter,
+    showUrlPill,
+    showTitles,
+    showTags,
+  } = useCardDisplaySettings();
   const layout = useViewStore((s) => s.layout);
   const sortBy = useViewStore((s) => s.sortBy);
   const sortOrder = useViewStore((s) => s.sortOrder);
-  const contentTypeFilters = useViewStore((s) => s.contentTypeFilters) as ContentType[];
+  const contentTypeFilters = useViewStore(
+    (s) => s.contentTypeFilters,
+  ) as ContentType[];
   const setLayout = useViewStore((s) => s.setLayout);
   const setSortBy = useViewStore((s) => s.setSortBy);
   const toggleSortOrder = useViewStore((s) => s.toggleSortOrder);
@@ -121,11 +155,15 @@ export function RightSidebar() {
   const selectedTags = useViewStore((s) => s.selectedTags);
   const toggleTag = useViewStore((s) => s.toggleTag);
   const clearTags = useViewStore((s) => s.clearTags);
-  const unsortedFilter = useViewStore((s) => s.unsortedFilter) as UnsortedFilter;
+  const unsortedFilter = useViewStore(
+    (s) => s.unsortedFilter,
+  ) as UnsortedFilter;
   const setUnsortedFilter = useViewStore((s) => s.setUnsortedFilter);
   const readingFilter = useViewStore((s) => s.readingFilter) as ReadingFilter;
   const setReadingFilter = useViewStore((s) => s.setReadingFilter);
-  const linkStatusFilter = useViewStore((s) => s.linkStatusFilter) as LinkStatusFilter;
+  const linkStatusFilter = useViewStore(
+    (s) => s.linkStatusFilter,
+  ) as LinkStatusFilter;
   const setLinkStatusFilter = useViewStore((s) => s.setLinkStatusFilter);
   const showDuplicatesOnly = useViewStore((s) => s.showDuplicatesOnly);
   const setShowDuplicatesOnly = useViewStore((s) => s.setShowDuplicatesOnly);
@@ -135,7 +173,12 @@ export function RightSidebar() {
   const setDateGrouping = useViewStore((s) => s.setDateGrouping);
 
   // Sub-Pawkit display settings
-  const { subPawkitSize, subPawkitColumns, setSubPawkitSize, setSubPawkitColumns } = useSubPawkitSettings();
+  const {
+    subPawkitSize,
+    subPawkitColumns,
+    setSubPawkitSize,
+    setSubPawkitColumns,
+  } = useSubPawkitSettings();
 
   // Get all tags from cards and calculate duplicates
   const cards = useDataStore((s) => s.cards);
@@ -177,17 +220,20 @@ export function RightSidebar() {
 
   // Cycle through themes
   const cycleTheme = () => {
-    if (theme === 'system') setTheme('dark');
-    else if (theme === 'dark') setTheme('light');
-    else setTheme('system');
+    if (theme === "system") setTheme("dark");
+    else if (theme === "dark") setTheme("light");
+    else setTheme("system");
   };
 
   const getThemeIcon = () => {
-    if (!mounted) return { icon: SunMoon, label: 'System theme' };
+    if (!mounted) return { icon: SunMoon, label: "System theme" };
     switch (theme) {
-      case 'dark': return { icon: Moon, label: 'Dark mode' };
-      case 'light': return { icon: Sun, label: 'Light mode' };
-      default: return { icon: SunMoon, label: 'System theme' };
+      case "dark":
+        return { icon: Moon, label: "Dark mode" };
+      case "light":
+        return { icon: Sun, label: "Light mode" };
+      default:
+        return { icon: SunMoon, label: "System theme" };
     }
   };
 
@@ -210,11 +256,18 @@ export function RightSidebar() {
                   onClick={handleToggleOpen}
                   className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
                 >
-                  {open ? <ArrowRightToLine className="h-5 w-5" /> : <ArrowLeftFromLine className="h-5 w-5" />}
+                  {open ? (
+                    <ArrowRightToLine className="h-5 w-5" />
+                  ) : (
+                    <ArrowLeftFromLine className="h-5 w-5" />
+                  )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className={displayMode === 'card-details' ? 'z-[70]' : ''}>
-                <p>{open ? 'Close sidebar' : 'Open sidebar'}</p>
+              <TooltipContent
+                side="bottom"
+                className={displayMode === "card-details" ? "z-[70]" : ""}
+              >
+                <p>{open ? "Close sidebar" : "Open sidebar"}</p>
               </TooltipContent>
             </Tooltip>
             <Tooltip>
@@ -225,11 +278,18 @@ export function RightSidebar() {
                   onClick={toggleAnchored}
                   className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
                 >
-                  {anchored ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+                  {anchored ? (
+                    <Minimize2 className="h-5 w-5" />
+                  ) : (
+                    <Maximize2 className="h-5 w-5" />
+                  )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className={displayMode === 'card-details' ? 'z-[70]' : ''}>
-                <p>{anchored ? 'Float panel' : 'Anchor panel'}</p>
+              <TooltipContent
+                side="bottom"
+                className={displayMode === "card-details" ? "z-[70]" : ""}
+              >
+                <p>{anchored ? "Float panel" : "Anchor panel"}</p>
               </TooltipContent>
             </Tooltip>
             <Tooltip>
@@ -243,21 +303,24 @@ export function RightSidebar() {
                   <ThemeIcon className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="bottom" className={displayMode === 'card-details' ? 'z-[70]' : ''}>
+              <TooltipContent
+                side="bottom"
+                className={displayMode === "card-details" ? "z-[70]" : ""}
+              >
                 <p>{themeInfo.label}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
         <span className="text-sm font-medium text-text-secondary">
-          {displayMode === 'card-details' ? 'Card Details' : viewConfig.title}
+          {displayMode === "card-details" ? "Card Details" : viewConfig.title}
         </span>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {/* Card Details Panel */}
-        {displayMode === 'card-details' && activeCard && (
+        {displayMode === "card-details" && activeCard && (
           <CardDetailsPanel
             card={activeCard}
             collections={allCollections}
@@ -266,16 +329,16 @@ export function RightSidebar() {
         )}
 
         {/* Filters Panel */}
-        {displayMode === 'filters' && (
+        {displayMode === "filters" && (
           <div
             key={displayedPathname}
             className={cn(
               'space-y-4 transition-all ease-out',
               isAnimating || isTransitioning
-                ? 'opacity-0 translate-y-2'
-                : 'opacity-100 translate-y-0'
+                ? "opacity-0 translate-y-2"
+                : "opacity-100 translate-y-0",
             )}
-            style={{ transitionDuration: '250ms' }}
+            style={{ transitionDuration: "250ms" }}
           >
             {viewConfig.showContentFilters && (
               <>
@@ -302,7 +365,11 @@ export function RightSidebar() {
                 <LinkStatusFilterSection
                   filter={linkStatusFilter}
                   onFilterChange={setLinkStatusFilter}
-                  onRecheckAll={workspace ? () => forceRecheckAllLinks(workspace.id) : undefined}
+                  onRecheckAll={
+                    workspace
+                      ? () => forceRecheckAllLinks(workspace.id)
+                      : undefined
+                  }
                 />
                 <DuplicatesFilter
                   showDuplicatesOnly={showDuplicatesOnly}
@@ -361,19 +428,23 @@ export function RightSidebar() {
             )}
 
             {/* Placeholder views */}
-            {viewConfig.type === 'home' && (
+            {viewConfig.type === "home" && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Home className="h-10 w-10 text-text-muted mb-3" />
                 <p className="text-sm text-text-secondary">Welcome to Pawkit</p>
-                <p className="text-xs text-text-muted mt-1">View your stats and get started</p>
+                <p className="text-xs text-text-muted mt-1">
+                  View your stats and get started
+                </p>
               </div>
             )}
 
-            {viewConfig.type === 'calendar' && (
+            {viewConfig.type === "calendar" && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <Calendar className="h-10 w-10 text-text-muted mb-3" />
                 <p className="text-sm text-text-secondary">Calendar Options</p>
-                <p className="text-xs text-text-muted mt-1">Calendar filters coming soon</p>
+                <p className="text-xs text-text-muted mt-1">
+                  Calendar filters coming soon
+                </p>
               </div>
             )}
           </div>

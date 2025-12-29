@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   Home,
   Library,
@@ -143,13 +144,25 @@ export function LeftSidebar() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center px-3 py-2 text-sm transition-all duration-200 group relative",
+                  "flex items-center px-3 py-2 text-sm transition-colors duration-200 group relative rounded-xl",
                   isActive
-                    ? "rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)] font-medium"
-                    : "rounded-xl text-text-secondary hover:text-text-primary",
+                    ? "text-text-primary font-medium"
+                    : "text-text-secondary hover:text-text-primary",
                 )}
               >
-                <span className="relative flex items-center gap-3">
+                {isActive && (
+                  <motion.div
+                    layoutId="active-sidebar-item"
+                    className="absolute inset-0 rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)]"
+                    initial={false}
+                    transition={{
+                      type: "spring",
+                      stiffness: 500,
+                      damping: 30,
+                    }}
+                  />
+                )}
+                <span className="relative z-10 flex items-center gap-3">
                   <item.icon
                     className={cn(
                       "h-5 w-5 shrink-0 transition-colors",
@@ -172,49 +185,63 @@ export function LeftSidebar() {
           <div>
             <div
               className={cn(
-                "flex items-center px-3 py-2 text-sm transition-all duration-200 group relative cursor-pointer",
+                "flex items-center px-3 py-2 text-sm transition-colors duration-200 group relative rounded-xl cursor-pointer",
                 isPawkitsActive
-                  ? "rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)] font-medium"
-                  : "rounded-xl text-text-secondary hover:text-text-primary",
+                  ? "text-text-primary font-medium"
+                  : "text-text-secondary hover:text-text-primary",
               )}
             >
-              <Link
-                href="/pawkits"
-                className="flex items-center flex-1 min-w-0"
-              >
-                <span className="relative flex items-center gap-3">
-                  <FolderOpen
-                    className={cn(
-                      "h-5 w-5 shrink-0 transition-colors",
-                      isPawkitsActive
-                        ? "text-[var(--color-accent)]"
-                        : "group-hover:text-[var(--color-accent)]/80",
+              {isPawkitsActive && (
+                <motion.div
+                  layoutId="active-sidebar-item"
+                  className="absolute inset-0 rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)]"
+                  initial={false}
+                  transition={{
+                    type: "spring",
+                    stiffness: 500,
+                    damping: 30,
+                  }}
+                />
+              )}
+              <div className="relative z-10 flex items-center flex-1 min-w-0">
+                <Link
+                  href="/pawkits"
+                  className="flex items-center flex-1 min-w-0"
+                >
+                  <span className="relative flex items-center gap-3">
+                    <FolderOpen
+                      className={cn(
+                        "h-5 w-5 shrink-0 transition-colors",
+                        isPawkitsActive
+                          ? "text-[var(--color-accent)]"
+                          : "group-hover:text-[var(--color-accent)]/80",
+                      )}
+                    />
+                    <span>Pawkits</span>
+                    {/* Hover Glow Line (Content Width) */}
+                    {!isPawkitsActive && (
+                      <div className="absolute -bottom-1 -left-2 -right-2 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-accent)] via-50% to-transparent opacity-0 transition-all duration-300 group-hover:opacity-100 blur-[0.5px]" />
                     )}
-                  />
-                  <span>Pawkits</span>
-                  {/* Hover Glow Line (Content Width) */}
-                  {!isPawkitsActive && (
-                    <div className="absolute -bottom-1 -left-2 -right-2 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-accent)] via-50% to-transparent opacity-0 transition-all duration-300 group-hover:opacity-100 blur-[0.5px]" />
+                  </span>
+                </Link>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setPawkitsExpanded(!pawkitsExpanded);
+                  }}
+                  className={cn(
+                    "h-6 w-6 flex items-center justify-center rounded-xl shrink-0 ml-1",
+                    "hover:bg-black/5 dark:hover:bg-white/10 transition-colors",
+                    isPawkitsActive ? "text-text-primary" : "text-text-muted",
                   )}
-                </span>
-              </Link>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPawkitsExpanded(!pawkitsExpanded);
-                }}
-                className={cn(
-                  "h-6 w-6 flex items-center justify-center rounded-xl shrink-0 ml-1",
-                  "hover:bg-black/5 dark:hover:bg-white/10 transition-colors",
-                  isPawkitsActive ? "text-text-primary" : "text-text-muted",
-                )}
-              >
-                {pawkitsExpanded ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronRight className="h-4 w-4" />
-                )}
-              </button>
+                >
+                  {pawkitsExpanded ? (
+                    <ChevronDown className="h-4 w-4" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Collapsible Pawkits Tree */}
@@ -231,13 +258,25 @@ export function LeftSidebar() {
           <Link
             href="/tags"
             className={cn(
-              "flex items-center px-3 py-2 text-sm transition-all duration-200 group relative",
+              "flex items-center px-3 py-2 text-sm transition-colors duration-200 group relative rounded-xl",
               pathname === "/tags"
-                ? "rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)] font-medium"
-                : "rounded-xl text-text-secondary hover:text-text-primary",
+                ? "text-text-primary font-medium"
+                : "text-text-secondary hover:text-text-primary",
             )}
           >
-            <span className="relative flex items-center gap-3">
+            {pathname === "/tags" && (
+              <motion.div
+                layoutId="active-sidebar-item"
+                className="absolute inset-0 rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)]"
+                initial={false}
+                transition={{
+                  type: "spring",
+                  stiffness: 500,
+                  damping: 30,
+                }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-3">
               <Tags
                 className={cn(
                   "h-5 w-5 shrink-0 transition-colors",

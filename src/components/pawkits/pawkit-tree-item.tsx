@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useDroppable } from "@dnd-kit/core";
+import { motion } from "framer-motion";
 import { ChevronRight, ChevronDown, Folder, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PawkitContextMenu } from "@/components/context-menus";
@@ -45,19 +46,31 @@ export function PawkitTreeItem({
         <div
           ref={setNodeRef}
           className={cn(
-            "group flex items-center justify-between py-2 px-2 rounded-xl transition-all duration-200 cursor-pointer text-sm border border-transparent",
+            "group flex items-center justify-between py-2 px-2 rounded-xl transition-colors duration-200 cursor-pointer text-sm border border-transparent relative",
             isActive
-              ? "bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)] font-medium"
+              ? "text-text-primary font-medium"
               : "text-text-secondary hover:text-text-primary",
             isOver &&
               "bg-[var(--color-accent)]/20 ring-2 ring-inset ring-[var(--color-accent)]",
           )}
           style={{ paddingLeft: `${level * 12 + 8}px` }}
         >
+          {isActive && (
+            <motion.div
+              layoutId="active-sidebar-item"
+              className="absolute inset-0 rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)]"
+              initial={false}
+              transition={{
+                type: "spring",
+                stiffness: 500,
+                damping: 30,
+              }}
+            />
+          )}
           {/* Link to Pawkit Page */}
           <Link
             href={`/pawkits/${collection.slug}`}
-            className="flex items-center flex-1 min-w-0"
+            className="flex items-center flex-1 min-w-0 z-10 relative"
           >
             <span className="relative flex items-center gap-2 min-w-0">
               {isActive ? (
@@ -74,7 +87,7 @@ export function PawkitTreeItem({
           </Link>
 
           {/* Right side: Card count and Expand/Collapse */}
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1 shrink-0 z-10 relative">
             {cardCount > 0 && (
               <span className="text-xs text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
                 {cardCount}
