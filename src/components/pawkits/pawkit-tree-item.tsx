@@ -1,94 +1,104 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useDroppable } from '@dnd-kit/core';
-import { ChevronRight, ChevronDown, Folder, FolderOpen } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { PawkitContextMenu } from '@/components/context-menus';
-import type { LocalCollection } from '@/lib/db';
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useDroppable } from "@dnd-kit/core";
+import { ChevronRight, ChevronDown, Folder, FolderOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { PawkitContextMenu } from "@/components/context-menus";
+import type { LocalCollection } from "@/lib/db";
 
 interface PawkitTreeItemProps {
-    collection: LocalCollection;
-    childCollections?: LocalCollection[];
-    level?: number;
-    isExpanded?: boolean;
-    onToggleExpand?: (id: string) => void;
-    cardCount?: number;
+  collection: LocalCollection;
+  childCollections?: LocalCollection[];
+  level?: number;
+  isExpanded?: boolean;
+  onToggleExpand?: (id: string) => void;
+  cardCount?: number;
 }
 
 export function PawkitTreeItem({
-    collection,
-    childCollections = [],
-    level = 0,
-    isExpanded = false,
-    onToggleExpand,
-    cardCount = 0,
+  collection,
+  childCollections = [],
+  level = 0,
+  isExpanded = false,
+  onToggleExpand,
+  cardCount = 0,
 }: PawkitTreeItemProps) {
-    const pathname = usePathname();
-    const isActive = pathname === `/pawkits/${collection.slug}`;
-    const hasChildren = childCollections.length > 0;
+  const pathname = usePathname();
+  const isActive = pathname === `/pawkits/${collection.slug}`;
+  const hasChildren = childCollections.length > 0;
 
-    // DnD Drop Target
-    const { setNodeRef, isOver } = useDroppable({
-        id: `collection-${collection.slug}`,
-        data: {
-            type: 'collection',
-            slug: collection.slug,
-            name: collection.name,
-        },
-    });
+  // DnD Drop Target
+  const { setNodeRef, isOver } = useDroppable({
+    id: `collection-${collection.slug}`,
+    data: {
+      type: "collection",
+      slug: collection.slug,
+      name: collection.name,
+    },
+  });
 
-    return (
-        <PawkitContextMenu collection={collection}>
-            <div className="select-none">
-                <div
-                    ref={setNodeRef}
-                    className={cn(
-                        'group flex items-center justify-between py-2.5 md:py-1 px-2 rounded-md transition-colors cursor-pointer text-sm',
-                        isActive
-                            ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] font-medium'
-                            : 'text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary',
-                        isOver && 'bg-[var(--color-accent)]/20 ring-2 ring-inset ring-[var(--color-accent)]'
-                    )}
-                    style={{ paddingLeft: `${level * 12 + 8}px` }}
-                >
-                        {/* Link to Pawkit Page */}
-                    <Link href={`/pawkits/${collection.slug}`} className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-                        {isActive ? (
-                            <FolderOpen className="h-4 w-4 shrink-0 text-[var(--color-accent)]" />
-                        ) : (
-                            <Folder className="h-4 w-4 shrink-0" />
-                        )}
-                        <span className="truncate">{collection.name}</span>
-                    </Link>
+  return (
+    <PawkitContextMenu collection={collection}>
+      <div className="select-none relative">
+        <div
+          ref={setNodeRef}
+          className={cn(
+            "group flex items-center justify-between py-2 px-2 rounded-xl transition-all duration-200 cursor-pointer text-sm border border-transparent",
+            isActive
+              ? "bg-black/5 dark:bg-white/10 backdrop-blur-md border-black/5 dark:border-white/10 text-text-primary shadow-sm font-medium"
+              : "text-text-secondary hover:text-text-primary",
+            isOver &&
+              "bg-[var(--color-accent)]/20 ring-2 ring-inset ring-[var(--color-accent)]",
+          )}
+          style={{ paddingLeft: `${level * 12 + 8}px` }}
+        >
+          {/* Link to Pawkit Page */}
+          <Link
+            href={`/pawkits/${collection.slug}`}
+            className="flex items-center flex-1 min-w-0"
+          >
+            <span className="relative flex items-center gap-2 min-w-0">
+              {isActive ? (
+                <FolderOpen className="h-4 w-4 shrink-0 text-[var(--color-accent)]" />
+              ) : (
+                <Folder className="h-4 w-4 shrink-0 group-hover:text-[var(--color-accent)]/80 transition-colors" />
+              )}
+              <span className="truncate">{collection.name}</span>
+              {/* Hover Glow Line (Content Width + Extension) */}
+              {!isActive && (
+                <div className="absolute -bottom-1 -left-2 -right-2 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-accent)] via-50% to-transparent opacity-0 transition-all duration-300 group-hover:opacity-100 blur-[0.5px]" />
+              )}
+            </span>
+          </Link>
 
-                    {/* Right side: Card count and Expand/Collapse */}
-                    <div className="flex items-center gap-1 shrink-0">
-                        {cardCount > 0 && (
-                            <span className="text-xs text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
-                                {cardCount}
-                            </span>
-                        )}
-                        {hasChildren && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    onToggleExpand?.(collection.id);
-                                }}
-                                className="h-5 w-5 flex items-center justify-center rounded-sm hover:bg-bg-surface-2 transition-colors"
-                            >
-                                {isExpanded ? (
-                                    <ChevronDown className="h-3.5 w-3.5" />
-                                ) : (
-                                    <ChevronRight className="h-3.5 w-3.5" />
-                                )}
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
-        </PawkitContextMenu>
-    );
+          {/* Right side: Card count and Expand/Collapse */}
+          <div className="flex items-center gap-1 shrink-0">
+            {cardCount > 0 && (
+              <span className="text-xs text-text-muted opacity-0 group-hover:opacity-100 transition-opacity">
+                {cardCount}
+              </span>
+            )}
+            {hasChildren && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onToggleExpand?.(collection.id);
+                }}
+                className="h-5 w-5 flex items-center justify-center rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              >
+                {isExpanded ? (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronRight className="h-3.5 w-3.5" />
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </PawkitContextMenu>
+  );
 }
