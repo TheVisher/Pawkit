@@ -165,6 +165,80 @@ These decisions were made during V2 planning and differ from V1 patterns:
 | **Database** | Supabase PostgreSQL | Managed, RLS, extensions |
 | **Extensions** | pgvector | Future AI embeddings |
 
+### Claude Code Plugins (Recommended)
+
+Development tools to install for optimal Claude Code experience:
+
+| Plugin | Purpose | Install |
+|--------|---------|---------|
+| **playwright** | Run tests in conversation, debug failures | `claude plugin add playwright` |
+| **security-guidance** | Auto-warns about security issues (XSS, injection) | `claude plugin add security-guidance` |
+| **commit-commands** | Streamlined git workflows | `claude plugin add commit-commands` |
+| **code-review** | Automated PR reviews | `claude plugin add code-review` |
+| **frontend-design** | UI component assistance | `claude plugin add frontend-design` |
+
+**Highly Recommended**: `playwright`, `security-guidance`, `commit-commands`
+
+**Usage Examples**:
+```bash
+# Run tests with Playwright plugin
+claude --plugin playwright test src/__tests__/sync.spec.ts
+
+# Get security review
+claude --plugin security-guidance review src/app/api/
+
+# Create commit
+claude /commit
+```
+
+### TypeScript Code Quality Standards
+
+**Current Grade**: A- (excellent, minor debt in large components)
+
+| Standard | Status | Notes |
+|----------|--------|-------|
+| Zero `any` usage | ✅ | Extremely high type discipline |
+| Strict mode | ✅ | All strict flags enabled |
+| Zod validation | ✅ | API request/response schemas |
+| Component prop types | ✅ | Explicit interfaces for all |
+| Environment validation | ✅ | Runtime checks for required vars |
+
+**Type Patterns Used**:
+```typescript
+// Discriminated unions for sync operations
+type SyncOperation =
+  | { type: 'create'; payload: Card }
+  | { type: 'update'; payload: Partial<Card> & { id: string } }
+  | { type: 'delete'; payload: { id: string } };
+
+// Zod schemas for API validation
+const CreateCardSchema = z.object({
+  url: z.string().url(),
+  title: z.string().optional(),
+  collectionId: z.string().uuid().optional(),
+});
+```
+
+**File Size Guidelines**:
+- Target: <300 lines per file
+- Maximum: 500 lines (refactor if exceeded)
+- See ROADMAP.md Section 9.4 for current violations
+
+### Code Quality Automation
+
+| Tool | Purpose | Status |
+|------|---------|--------|
+| ESLint | Catch errors during dev | ✅ Configured |
+| Prettier | Consistent formatting | ✅ Configured |
+| TypeScript strict | Block type errors | ✅ Enabled |
+| `pnpm build` | Type check + bundle | ✅ CI ready |
+
+**Future Additions**:
+- [ ] Bundle size tracking
+- [ ] Performance budgets (Lighthouse)
+- [ ] Unused code detection
+- [ ] Dependency auditing
+
 ---
 
 ## 4. Data Model
