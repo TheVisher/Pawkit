@@ -1,36 +1,51 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
-import { Home, Library, Calendar, Trash2, LogOut, Settings, FolderOpen, ArrowLeftToLine, ArrowRightFromLine, Maximize2, Minimize2, ChevronRight, ChevronDown, Tags } from 'lucide-react';
-import { PawkitsTree } from '@/components/pawkits/pawkits-tree';
-import { SidebarContextMenu } from '@/components/context-menus';
-import { useLeftSidebar } from '@/lib/stores/ui-store';
-import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { getClient } from '@/lib/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  Home,
+  Library,
+  Calendar,
+  Trash2,
+  LogOut,
+  Settings,
+  FolderOpen,
+  ArrowLeftToLine,
+  ArrowRightFromLine,
+  Maximize2,
+  Minimize2,
+  ChevronRight,
+  ChevronDown,
+  Tags,
+} from "lucide-react";
+import { PawkitsTree } from "@/components/pawkits/pawkits-tree";
+import { SidebarContextMenu } from "@/components/context-menus";
+import { useLeftSidebar } from "@/lib/stores/ui-store";
+import { useCurrentWorkspace } from "@/lib/stores/workspace-store";
+import { getClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { cn } from '@/lib/utils';
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip';
+} from "@/components/ui/tooltip";
 
 const navItems = [
-  { href: '/home', label: 'Home', icon: Home },
-  { href: '/library', label: 'Library', icon: Library },
-  { href: '/calendar', label: 'Calendar', icon: Calendar },
+  { href: "/home", label: "Home", icon: Home },
+  { href: "/library", label: "Library", icon: Library },
+  { href: "/calendar", label: "Calendar", icon: Calendar },
 ];
 
 export function LeftSidebar() {
@@ -45,13 +60,13 @@ export function LeftSidebar() {
     setMounted(true);
   }, []);
 
-  // Check if we're on a pawkits route
-  const isPawkitsActive = pathname === '/pawkits' || pathname.startsWith('/pawkits/');
+  // Check if we're on a pawkits route - strict check to avoid double highlight
+  const isPawkitsActive = pathname === "/pawkits";
 
   const handleSignOut = async () => {
     const supabase = getClient();
     await supabase.auth.signOut();
-    router.push('/login');
+    router.push("/login");
     router.refresh();
   };
 
@@ -83,11 +98,15 @@ export function LeftSidebar() {
                   onClick={toggleAnchored}
                   className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
                 >
-                  {anchored ? <Minimize2 className="h-5 w-5" /> : <Maximize2 className="h-5 w-5" />}
+                  {anchored ? (
+                    <Minimize2 className="h-5 w-5" />
+                  ) : (
+                    <Maximize2 className="h-5 w-5" />
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <p>{anchored ? 'Float panel' : 'Anchor panel'}</p>
+                <p>{anchored ? "Float panel" : "Anchor panel"}</p>
               </TooltipContent>
             </Tooltip>
             <Tooltip>
@@ -98,11 +117,15 @@ export function LeftSidebar() {
                   onClick={handleToggleOpen}
                   className="h-7 w-7 text-text-muted hover:text-text-primary hover:bg-bg-surface-2"
                 >
-                  {open ? <ArrowLeftToLine className="h-5 w-5" /> : <ArrowRightFromLine className="h-5 w-5" />}
+                  {open ? (
+                    <ArrowLeftToLine className="h-5 w-5" />
+                  ) : (
+                    <ArrowRightFromLine className="h-5 w-5" />
+                  )}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="bottom">
-                <p>{open ? 'Close sidebar' : 'Open sidebar'}</p>
+                <p>{open ? "Close sidebar" : "Open sidebar"}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -113,20 +136,34 @@ export function LeftSidebar() {
       <div className="flex-1 overflow-y-auto px-2 py-4 flex flex-col">
         <nav className="space-y-1">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isActive =
+              pathname === item.href || pathname.startsWith(`${item.href}/`);
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                  "flex items-center px-3 py-2 text-sm transition-all duration-200 group relative",
                   isActive
-                    ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
-                    : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
+                    ? "rounded-xl bg-black/5 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-sm font-medium"
+                    : "rounded-xl text-text-secondary hover:text-text-primary",
                 )}
               >
-                <item.icon className="h-6 w-6 shrink-0" />
-                <span>{item.label}</span>
+                <span className="relative flex items-center gap-3">
+                  <item.icon
+                    className={cn(
+                      "h-5 w-5 shrink-0 transition-colors",
+                      isActive
+                        ? "text-[var(--color-accent)]"
+                        : "group-hover:text-[var(--color-accent)]/80",
+                    )}
+                  />
+                  <span>{item.label}</span>
+                  {/* Hover Glow Line (Content Width + Extension) */}
+                  {!isActive && (
+                    <div className="absolute -bottom-1 -left-2 -right-2 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-accent)] via-50% to-transparent opacity-0 transition-all duration-300 group-hover:opacity-100 blur-[0.5px]" />
+                  )}
+                </span>
               </Link>
             );
           })}
@@ -135,18 +172,31 @@ export function LeftSidebar() {
           <div>
             <div
               className={cn(
-                'flex items-center rounded-lg px-3 py-2 text-sm transition-colors',
+                "flex items-center px-3 py-2 text-sm transition-all duration-200 group relative cursor-pointer",
                 isPawkitsActive
-                  ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
-                  : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
+                  ? "rounded-xl bg-black/5 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-sm font-medium"
+                  : "rounded-xl text-text-secondary hover:text-text-primary",
               )}
             >
               <Link
                 href="/pawkits"
-                className="flex items-center gap-3 flex-1 min-w-0"
+                className="flex items-center flex-1 min-w-0"
               >
-                <FolderOpen className="h-6 w-6 shrink-0" />
-                <span>Pawkits</span>
+                <span className="relative flex items-center gap-3">
+                  <FolderOpen
+                    className={cn(
+                      "h-5 w-5 shrink-0 transition-colors",
+                      isPawkitsActive
+                        ? "text-[var(--color-accent)]"
+                        : "group-hover:text-[var(--color-accent)]/80",
+                    )}
+                  />
+                  <span>Pawkits</span>
+                  {/* Hover Glow Line (Content Width) */}
+                  {!isPawkitsActive && (
+                    <div className="absolute -bottom-1 -left-2 -right-2 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-accent)] via-50% to-transparent opacity-0 transition-all duration-300 group-hover:opacity-100 blur-[0.5px]" />
+                  )}
+                </span>
               </Link>
               <button
                 onClick={(e) => {
@@ -154,9 +204,9 @@ export function LeftSidebar() {
                   setPawkitsExpanded(!pawkitsExpanded);
                 }}
                 className={cn(
-                  'h-6 w-6 flex items-center justify-center rounded-md shrink-0',
-                  'hover:bg-bg-surface-3 transition-colors',
-                  isPawkitsActive ? 'text-[var(--color-accent)]' : 'text-text-muted'
+                  "h-6 w-6 flex items-center justify-center rounded-xl shrink-0 ml-1",
+                  "hover:bg-black/5 dark:hover:bg-white/10 transition-colors",
+                  isPawkitsActive ? "text-text-primary" : "text-text-muted",
                 )}
               >
                 {pawkitsExpanded ? (
@@ -170,7 +220,7 @@ export function LeftSidebar() {
             {/* Collapsible Pawkits Tree */}
             {pawkitsExpanded && (
               <SidebarContextMenu>
-                <div className="mt-1">
+                <div className="mt-1 pl-2">
                   <PawkitsTree />
                 </div>
               </SidebarContextMenu>
@@ -181,14 +231,27 @@ export function LeftSidebar() {
           <Link
             href="/tags"
             className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
-              pathname === '/tags'
-                ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)]'
-                : 'text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary'
+              "flex items-center px-3 py-2 text-sm transition-all duration-200 group relative",
+              pathname === "/tags"
+                ? "rounded-xl bg-black/5 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-sm font-medium"
+                : "rounded-xl text-text-secondary hover:text-text-primary",
             )}
           >
-            <Tags className="h-6 w-6 shrink-0" />
-            <span>Tags</span>
+            <span className="relative flex items-center gap-3">
+              <Tags
+                className={cn(
+                  "h-5 w-5 shrink-0 transition-colors",
+                  pathname === "/tags"
+                    ? "text-[var(--color-accent)]"
+                    : "group-hover:text-[var(--color-accent)]/80",
+                )}
+              />
+              <span>Tags</span>
+              {/* Hover Glow Line (Content Width + Extension) */}
+              {pathname !== "/tags" && (
+                <div className="absolute -bottom-1 -left-2 -right-2 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-accent)] via-50% to-transparent opacity-0 transition-all duration-300 group-hover:opacity-100 blur-[0.5px]" />
+              )}
+            </span>
           </Link>
         </nav>
       </div>
@@ -205,15 +268,20 @@ export function LeftSidebar() {
             >
               <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-bg-surface-3 text-text-secondary text-xs">
-                  {workspace?.name?.charAt(0).toUpperCase() ?? 'U'}
+                  {workspace?.name?.charAt(0).toUpperCase() ?? "U"}
                 </AvatarFallback>
               </Avatar>
-              <span className="truncate text-sm">{workspace?.name ?? 'Workspace'}</span>
+              <span className="truncate text-sm">
+                {workspace?.name ?? "Workspace"}
+              </span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56 bg-bg-surface-1 border-border-subtle">
+          <DropdownMenuContent
+            align="start"
+            className="w-56 bg-bg-surface-1 border-border-subtle"
+          >
             <DropdownMenuItem
-              onClick={() => router.push('/trash')}
+              onClick={() => router.push("/trash")}
               className="text-text-secondary focus:bg-bg-surface-2 focus:text-text-primary"
             >
               <Trash2 className="mr-2 h-4 w-4" />
