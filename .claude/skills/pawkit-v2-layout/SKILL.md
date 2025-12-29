@@ -263,6 +263,26 @@ function MyPageWithActions() {
 
 ---
 
+## PAGE CONTENT AREA PADDING
+
+All dashboard pages must use consistent padding for the main content area below the header:
+
+```tsx
+<div className="px-4 md:px-6 pt-4 pb-6">
+  {/* Page content here */}
+</div>
+```
+
+| Property | Value | Purpose |
+|----------|-------|---------|
+| `px-4 md:px-6` | 16px mobile, 24px desktop | Horizontal padding |
+| `pt-4` | 16px | Top padding (space below header/omnibar) |
+| `pb-6` | 24px | Bottom padding |
+
+**Why `pt-4` is required**: Creates consistent spacing between the omnibar/header area and the page content across all views. Without it, content sits too close to the omnibar.
+
+---
+
 ## CSS VARIABLES FOR LAYOUT
 
 ```css
