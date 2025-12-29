@@ -5,7 +5,7 @@
  * Controls for card layout, size, padding, and visibility toggles
  */
 
-import { Sliders, LayoutDashboard, LayoutGrid, List, Columns3 } from 'lucide-react';
+import { Sliders, LayoutDashboard, LayoutGrid, List, Columns3, Grid3x3, Grid2x2, Square, Maximize } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import type { CardSize } from './config';
@@ -150,21 +150,27 @@ export function CardDisplaySettings({
               <div>
                 <label className="text-xs text-text-secondary mb-2 block">Card Size</label>
                 <div className="grid grid-cols-4 gap-1">
-                  {(['small', 'medium', 'large', 'xl'] as CardSize[]).map((size) => (
+                  {([
+                    { size: 'small' as CardSize, icon: Grid3x3, title: 'Small' },
+                    { size: 'medium' as CardSize, icon: Grid2x2, title: 'Medium' },
+                    { size: 'large' as CardSize, icon: Square, title: 'Large' },
+                    { size: 'xl' as CardSize, icon: Maximize, title: 'Extra Large' },
+                  ]).map(({ size, icon: Icon, title }) => (
                     <button
                       key={size}
                       onClick={() => {
                         onCardSizeChange(size);
                         onSettingChange();
                       }}
+                      title={title}
                       className={cn(
-                        'px-2 py-1.5 text-xs rounded-md transition-colors capitalize',
+                        'flex items-center justify-center py-2 rounded-md transition-all duration-200',
                         cardSize === size
-                          ? 'bg-[var(--color-accent)] text-white'
-                          : 'bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
+                          ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm'
+                          : 'bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary'
                       )}
                     >
-                      {size === 'xl' ? 'XL' : size.charAt(0).toUpperCase() + size.slice(1, 3)}
+                      <Icon className="h-4 w-4" />
                     </button>
                   ))}
                 </div>
@@ -274,14 +280,18 @@ function ToggleSwitch({
       <button
         onClick={() => onChange(!checked)}
         className={cn(
-          'relative w-9 h-5 rounded-full transition-colors',
-          checked ? 'bg-[var(--color-accent)]' : 'bg-bg-surface-3'
+          'relative w-9 h-5 rounded-full transition-all duration-200 flex items-center',
+          checked
+            ? 'bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30'
+            : 'bg-bg-surface-3 border border-transparent'
         )}
       >
         <span
           className={cn(
-            'absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform',
-            checked && 'translate-x-4'
+            'absolute left-0.5 w-4 h-4 rounded-full transition-all duration-200 shadow-sm',
+            checked
+              ? 'translate-x-4 bg-white'
+              : 'bg-text-muted'
           )}
         />
       </button>
