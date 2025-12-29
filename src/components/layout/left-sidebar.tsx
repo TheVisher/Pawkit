@@ -145,7 +145,7 @@ export function LeftSidebar() {
                 className={cn(
                   "flex items-center px-3 py-2 text-sm transition-all duration-200 group relative",
                   isActive
-                    ? "rounded-xl bg-black/5 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-sm font-medium"
+                    ? "rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)] font-medium"
                     : "rounded-xl text-text-secondary hover:text-text-primary",
                 )}
               >
@@ -174,7 +174,7 @@ export function LeftSidebar() {
               className={cn(
                 "flex items-center px-3 py-2 text-sm transition-all duration-200 group relative cursor-pointer",
                 isPawkitsActive
-                  ? "rounded-xl bg-black/5 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-sm font-medium"
+                  ? "rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)] font-medium"
                   : "rounded-xl text-text-secondary hover:text-text-primary",
               )}
             >
@@ -233,7 +233,7 @@ export function LeftSidebar() {
             className={cn(
               "flex items-center px-3 py-2 text-sm transition-all duration-200 group relative",
               pathname === "/tags"
-                ? "rounded-xl bg-black/5 dark:bg-white/10 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-sm font-medium"
+                ? "rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)] font-medium"
                 : "rounded-xl text-text-secondary hover:text-text-primary",
             )}
           >
