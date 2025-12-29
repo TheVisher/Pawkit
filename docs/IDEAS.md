@@ -1239,10 +1239,15 @@ collection.isSession = true
 |---------|----------|
 | Email-to-Pawkit | Forward newsletters, receipts, confirmations |
 | Telegram Bot | Share links from mobile chat |
+| WhatsApp Bot | Save from WhatsApp conversations |
 | iOS/Android Share Sheet | Already implemented - extend it |
 | Discord Bot | Save from community servers |
 | Slack Integration | Capture work-related content |
 | Apple Shortcuts | iOS automation integration |
+| Voice Assistants | "Hey Siri/Google, save to Pawkit" |
+| Screenshot OCR | Extract URLs from screenshot images |
+| QR Code Scanner | Physical-to-digital bridge |
+| Browser History Import | Bulk save frequently visited sites |
 | Zapier/Make | Connect 1000s of apps |
 
 **Email-to-Pawkit**:
@@ -1263,6 +1268,41 @@ collection.isSession = true
 - [ ] Custom URL scheme - `pawkit://save?url=...&tags=...`
 - [ ] Shortcuts actions - "Save to Pawkit", "Search Pawkit"
 - [ ] Automation triggers - Save articles when added to Reading List
+
+**WhatsApp Bot**:
+- [ ] Same concept as Telegram bot for WhatsApp users
+- [ ] Forward messages - Bot extracts links automatically
+- [ ] `/save [url]` - Quick save command
+- [ ] Business API integration - More reliable than personal WhatsApp
+- [ ] Note: WhatsApp API more restrictive than Telegram
+
+**Voice Assistants**:
+- [ ] "Hey Siri, save to Pawkit" - iOS Shortcuts integration
+- [ ] "Hey Google, save to Pawkit" - Google Assistant Actions
+- [ ] Voice-to-note - Dictate quick notes hands-free
+- [ ] "Save current tab" - Browser extension + voice bridge
+- [ ] Accessibility benefit - Hands-free capture while driving, cooking
+
+**Screenshot OCR**:
+- [ ] Paste screenshot → Extract URLs automatically
+- [ ] OCR processing - Tesseract.js or cloud OCR
+- [ ] URL pattern detection - Find links in image text
+- [ ] Use case: Save URLs from social media screenshots, presentations
+- [ ] Mobile: Share screenshot to Pawkit → OCR extracts links
+
+**QR Code Scanner**:
+- [ ] Mobile app QR scanner - Scan → Save URL to Pawkit
+- [ ] Physical-to-digital bridge - Scan poster, menu, business card
+- [ ] Conference badge scanning - Save contact info as card
+- [ ] Browser extension: Right-click QR image → Decode and save
+- [ ] Use case: "I saw this interesting poster, want to save for later"
+
+**Browser History Import**:
+- [ ] Bulk import from Chrome/Firefox/Safari history
+- [ ] Frequency-based filtering - "Sites visited 5+ times"
+- [ ] Date range selection - "Last 30 days"
+- [ ] Deduplication - Skip already-saved URLs
+- [ ] Use case: Retroactively capture frequently visited sites
 
 **Why this matters**: Browser is one touchpoint. Modern users save from everywhere.
 
