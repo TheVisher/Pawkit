@@ -150,12 +150,21 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     ensureWorkspace();
   }, [workspaces, workspacesLoading, userId, createWorkspace, setWorkspaces, setCurrentWorkspace, isInitialized]);
 
+  const purgeOldTrash = useDataStore((s) => s.purgeOldTrash);
+
   useEffect(() => {
     // Load data when workspace is available
     if (currentWorkspace) {
       loadAll(currentWorkspace.id);
+
+      // Auto-purge trash items older than 30 days
+      purgeOldTrash(currentWorkspace.id, 30).then((purgedCount) => {
+        if (purgedCount > 0) {
+          log.info(`Auto-purged ${purgedCount} old trash items`);
+        }
+      });
     }
-  }, [currentWorkspace, loadAll]);
+  }, [currentWorkspace, loadAll, purgeOldTrash]);
 
   // Use defaults during SSR to prevent hydration mismatch
   // Defaults: left open, right closed, both floating (not anchored)
