@@ -68,7 +68,7 @@ export function Omnibar({ isCompact }: OmnibarProps) {
     <>
       <motion.div
         className={cn(
-          'omnibar-container relative flex flex-col justify-start overflow-hidden',
+          'omnibar-container relative flex flex-col justify-start overflow-hidden mx-auto',
           'bg-[var(--glass-panel-bg)] backdrop-blur-[var(--glass-blur)]',
           'border border-[var(--glass-border)]',
           'shadow-[var(--glass-shadow)]',
