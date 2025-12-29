@@ -47,7 +47,7 @@ export function PawkitTreeItem({
           className={cn(
             "group flex items-center justify-between py-2 px-2 rounded-xl transition-all duration-200 cursor-pointer text-sm border border-transparent",
             isActive
-              ? "bg-black/5 dark:bg-white/10 backdrop-blur-md border-black/5 dark:border-white/10 text-text-primary shadow-sm font-medium"
+              ? "bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)] font-medium"
               : "text-text-secondary hover:text-text-primary",
             isOver &&
               "bg-[var(--color-accent)]/20 ring-2 ring-inset ring-[var(--color-accent)]",
