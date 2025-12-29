@@ -2,13 +2,13 @@
 component: "layout"
 complexity: "high"
 status: "stable"
-last_updated: "2025-12-23"
+last_updated: "2025-12-29"
 maintainer: "Claude Code"
 ---
 
 # Layout
 
-> The persistent 3-panel shell, navigation, and global application chrome
+> The persistent 3-panel shell, navigation, and global application chrome.
 
 ---
 
@@ -20,6 +20,7 @@ The Layout system defines the physical structure of the application. It enforces
 - **Responsive Behavior**: Collapsing panels on mobile/tablet.
 - **Global Navigation**: Workspace switching, Pawkits tree, and view controls.
 - **Omnibar**: Central command palette and toast notification system.
+- **Visual Consistency**: Unified glass-morphism effects, sliding highlights, and "purple glow" hover states.
 
 ---
 
@@ -31,14 +32,24 @@ The Layout system defines the physical structure of the application. It enforces
 DashboardLayout
   ├── DashboardShell (State Provider for UI)
   │    ├── LeftSidebar
-  │    │    ├── WorkspaceSwitcher
-  │    │    └── PawkitsTree
+  │    │    ├── Navigation Links (Home, Library, Calendar)
+  │    │    ├── PawkitsTree (Collapsible, Draggable)
+  │    │    ├── Tags Link
+  │    │    └── User/Workspace Menu
   │    ├── CenterPanel
   │    │    ├── Omnibar (Floating)
   │    │    └── {Children / Page Content}
   │    └── RightSidebar
-  │         ├── ThemeToggle
-  │         └── ViewSettings
+  │         ├── Header (Toggle, Theme, Info)
+  │         ├── CardDetailsPanel (when card active)
+  │         └── FiltersPanel (Default)
+  │              ├── SidebarSection (Accordion Wrapper)
+  │              │    ├── TagsFilter
+  │              │    ├── SortOptions
+  │              │    ├── GroupingSection
+  │              │    ├── ContentTypeFilter
+  │              │    ├── CardDisplaySettings
+  │              │    └── AdvancedFilterSection
   └── MobileNav (Bottom bar, visible < 768px)
 ```
 
@@ -46,18 +57,11 @@ DashboardLayout
 
 | Dependency | Purpose |
 |------------|---------|
-| `useUIStore` | Panel collapse state, modal open state |
-| `useViewStore` | View-specific settings (right sidebar content) |
-| `framer-motion` | Smooth panel slide/collapse animations |
-| `dnd-kit` | Droppable zones in sidebar (Pawkits tree) |
-
-### State Management
-
-- **Local state**: Transient hover states, drag-over indicators.
-- **Store connections**: 
-  - `useUIStore`: `leftSidebarOpen`, `rightSidebarOpen`, `isMobile`.
-  - `useWorkspaceStore`: Current workspace context.
-- **Props**: Most layout components consume state directly from stores.
+| `useUIStore` | Panel collapse state, modal open state. |
+| `useViewStore` | View-specific settings (right sidebar content). |
+| `framer-motion` | Smooth panel slide, tree expansion, and "sliding highlight" animations. |
+| `dnd-kit` | Droppable zones in sidebar (Pawkits tree). |
+| `lucide-react` | Consistent iconography (h-5 w-5 standard). |
 
 ---
 
@@ -65,22 +69,37 @@ DashboardLayout
 
 ```
 src/components/layout/
-├── left-sidebar.tsx     # Navigation tree, workspace switcher
-├── right-sidebar.tsx    # Context-aware settings panel
-├── omnibar.tsx          # Search bar + Toast notifications container
-├── mobile-nav.tsx       # Bottom navigation for mobile
-├── page-header.tsx      # Top bar of the center panel
-├── toast-stack.tsx      # Physics-based toast notification stack
-└── index.ts             # Exports
+├── left-sidebar.tsx               # Primary navigation and Pawkits tree
+├── right-sidebar/                 # Right sidebar module
+│   ├── index.tsx                  # Main orchestration
+│   ├── SidebarSection.tsx         # Reusable accordion component
+│   ├── FilterSections.tsx         # Individual filter logic/UI
+│   ├── CardDetailsPanel.tsx       # "Inspector" view for active card
+│   └── CardDisplaySettings.tsx    # Grid/View customization controls
+├── omnibar.tsx                    # Search bar + Toast notifications container
+├── mobile-nav.tsx                 # Bottom navigation for mobile
+├── page-header.tsx                # Top bar of the center panel
+├── toast-stack.tsx                # Physics-based toast notification stack
+└── index.ts                       # Exports
 ```
 
-### File Responsibilities
+### Key Components & Patterns
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `omnibar.tsx` | ~280 | Complex morphing UI. Transforms from search input to toast notification. |
-| `left-sidebar.tsx` | ~200 | Host for the recursive Pawkits tree and DnD drop zones. |
-| `right-sidebar.tsx` | ~350 | Dynamic content based on current view (Library vs. Calendar options). |
+#### Left Sidebar (`left-sidebar.tsx`)
+- **Sliding Highlight**: Uses `framer-motion`'s `layoutId="active-sidebar-item"` to animate the active background state between nav items.
+- **Pawkits Tree**: A nested, collapsible tree structure wrapped in `AnimatePresence` for smooth height/opacity transitions.
+- **Hover Effects**: Features a subtle "Purple Glow" line gradient at the bottom of items on hover.
+
+#### Right Sidebar (`right-sidebar/`)
+- **Modular Sections**: Split into `FilterSections.tsx` to handle specific filter logic (Tags, Sort, Group, etc.).
+- **SidebarSection**: A reusable accordion component (`SidebarSection.tsx`) that enforces:
+    -   Standard LTR layout (Title Left, Chevron Right).
+    -   "Thread line" style: A left-border indicator for expanded content.
+    -   Smooth expand/collapse animations.
+- **Filter Styles**:
+    -   **Single-Select** (Sort, Group): Clean text, purple background wrapper when active.
+    -   **Multi-Select** (Content Type, Tags): Button-like appearance with background/border.
+    -   **Icons**: Uses `lucide-react` icons for grid controls (Grid3x3, Grid2x2, Square) instead of text.
 
 ---
 
@@ -88,41 +107,47 @@ src/components/layout/
 
 ### What's Working
 
-- [x] **3-Panel Shell**: Fully implemented with pixel-perfect V1 dimensions.
-- [x] **Collapsible Sidebars**: Smooth framer-motion animations.
+- [x] **3-Panel Shell**: Fully implemented with pixel-perfect V2 dimensions.
+- [x] **Collapsible Sidebars**: Smooth framer-motion animations for panels and internal sections.
+- [x] **Visual Polish**:
+    -   Unified "purple glow" hover effects.
+    -   Sliding glass-morphism active states.
+    -   Softer accent tints for clearer visual hierarchy.
+- [x] **Right Sidebar Refactor**: Broken down into manageable sub-components with consistent accordion behavior.
 - [x] **Omnibar**: Unified search/command/capture interface.
-  - **Modes**: Quick Note (default), Command (`/`), Tag (`#`), Collection (`@`).
-  - **Search**: Full-text local search across cards and content.
-  - **Toasts**: Elastic morphing animations and toast integration.
 - [x] **Responsive**: Mobile bottom nav activates correctly on small screens.
-- [x] **Glass Morphism**: Panels use the standard V2 glass theme.
-- [x] **DnD Zones**: Left sidebar acts as a drop target for cards.
 
 ### What's Not Implemented
 
 - [ ] **Keyboard Shortcuts**: Global hotkeys for toggling sidebars (Cmd+\, Cmd+/).
-- [ ] **Context Menu**: Right-click on sidebar items.
+- [ ] **Context Menu**: Right-click on sidebar items (partial implementation).
 
 ### Recent Changes
 
-| Date | Change | Commit/PR |
-|------|--------|-----------|
-| 2025-12-20 | Implemented scroll-aware Omnibar collapse. | — |
-| 2025-12-20 | Fixed janky right-sidebar animations during anchor toggle. | — |
-| 2025-12-20 | Added `dnd-kit` DropTarget support to Left Sidebar. | — |
-
----
-
-## Known Issues
-
-| Issue | Severity | Workaround |
-|-------|----------|------------|
-| Omnibar collision | Low | Omnibar overlaps page title on very narrow screens. |
-| Mobile height 100vh | Medium | iOS Safari address bar quirks need `dvh` unit tuning. |
+| Date | Change | Implementation Details |
+|------|--------|------------------------|
+| 2025-12-29 | **Right Sidebar Refactor** | Modularized into `right-sidebar/` directory; added `SidebarSection` component. |
+| 2025-12-29 | **Sidebar Animations** | Added sliding active background and smooth tree expansion logic. |
+| 2025-12-29 | **Visual Styling** | Adopted "purple glow" hovers and distinct single/multi-select filter styles. |
+| 2025-12-29 | **Filter Organization** | Moved Link Status/Duplicates to "Advanced" accordion; optimized layout for Tags/Content Type. |
 
 ---
 
 ## Usage Examples
+
+### Sidebar Section (Accordion)
+
+```tsx
+// src/components/layout/right-sidebar/SidebarSection.tsx
+<SidebarSection 
+  title="Sort By" 
+  icon={ArrowUpDown} 
+  defaultOpen={true}
+>
+  {/* Content here gets the "thread line" styling automatically */}
+  <SortOptions ... />
+</SidebarSection>
+```
 
 ### Dashboard Shell
 
@@ -146,9 +171,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 ## Testing Notes
 
 - **Responsive**: Resize window from 1920px down to 375px. Verify panels collapse/hide.
-- **Animation**: Toggle sidebars rapidly. Ensure no layout thrashing or jumps.
-- **Drag & Drop**: Drag a card from center to left sidebar. Verify highlight effect.
-- **Toasts**: Trigger a sync error to see the Omnibar morph into an error toast.
+- **Animation**: 
+    -   Toggle sidebars rapidly.
+    -   Expand/collapse "Pawkits" tree and "Filter" sections.
+    -   Navigate between tabs to see the sliding highlight.
+- **Drag & Drop**: Drag a card from center to left sidebar Pawkits.
+- **Interactions**: Hover over nav items to verify the "purple glow" effect.
 
 ---
 

@@ -50,7 +50,7 @@ export type LinkStatusFilter =
   | "broken"
   | "redirect"
   | "unchecked";
-export type ViewType = "cards" | "pawkit" | "home" | "calendar" | "other";
+export type ViewType = "cards" | "pawkit" | "pawkits-overview" | "home" | "calendar" | "other";
 
 export interface ViewConfig {
   type: ViewType;
@@ -58,6 +58,7 @@ export interface ViewConfig {
   showContentFilters: boolean;
   showCardDisplay: boolean;
   showSubPawkitSettings: boolean;
+  showPawkitOverviewSettings: boolean;
   showTags: boolean;
 }
 
@@ -150,6 +151,7 @@ const VIEW_CONFIGS: Record<ViewType, Omit<ViewConfig, "title">> = {
     showContentFilters: true,
     showCardDisplay: true,
     showSubPawkitSettings: false,
+    showPawkitOverviewSettings: false,
     showTags: true,
   },
   pawkit: {
@@ -157,13 +159,23 @@ const VIEW_CONFIGS: Record<ViewType, Omit<ViewConfig, "title">> = {
     showContentFilters: true,
     showCardDisplay: true,
     showSubPawkitSettings: true,
+    showPawkitOverviewSettings: false,
     showTags: true,
+  },
+  "pawkits-overview": {
+    type: "pawkits-overview",
+    showContentFilters: false,
+    showCardDisplay: false,
+    showSubPawkitSettings: false,
+    showPawkitOverviewSettings: true,
+    showTags: false,
   },
   home: {
     type: "home",
     showContentFilters: false,
     showCardDisplay: false,
     showSubPawkitSettings: false,
+    showPawkitOverviewSettings: false,
     showTags: false,
   },
   calendar: {
@@ -171,6 +183,7 @@ const VIEW_CONFIGS: Record<ViewType, Omit<ViewConfig, "title">> = {
     showContentFilters: false,
     showCardDisplay: false,
     showSubPawkitSettings: false,
+    showPawkitOverviewSettings: false,
     showTags: false,
   },
   other: {
@@ -178,6 +191,7 @@ const VIEW_CONFIGS: Record<ViewType, Omit<ViewConfig, "title">> = {
     showContentFilters: false,
     showCardDisplay: false,
     showSubPawkitSettings: false,
+    showPawkitOverviewSettings: false,
     showTags: false,
   },
 };
@@ -186,6 +200,10 @@ export function getViewConfig(pathname: string): ViewConfig {
   // Pawkit detail pages show sub-pawkit settings
   if (pathname.startsWith("/pawkits/") && pathname !== "/pawkits") {
     return { ...VIEW_CONFIGS.pawkit, title: "Pawkit" };
+  }
+  // Pawkits overview page
+  if (pathname === "/pawkits") {
+    return { ...VIEW_CONFIGS["pawkits-overview"], title: "Pawkits" };
   }
   // Library shows card controls
   if (pathname === "/library") {

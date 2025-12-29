@@ -11,16 +11,33 @@ import { cn } from '@/lib/utils';
 import { useDataStore } from '@/lib/stores/data-store';
 import { PawkitContextMenu } from '@/components/context-menus';
 import type { LocalCollection } from '@/lib/db';
-import type { SubPawkitSize } from '@/lib/stores/view-store';
+import type { SubPawkitSize, PawkitOverviewSize } from '@/lib/stores/view-store';
 
 interface PawkitCardProps {
   collection: LocalCollection;
   isActive?: boolean;
   isDragging?: boolean;
-  size?: SubPawkitSize;
+  size?: SubPawkitSize | PawkitOverviewSize;
+  showThumbnails?: boolean;
+  showItemCount?: boolean;
 }
 
-export function PawkitCard({ collection, isActive = false, isDragging = false, size = 'normal' }: PawkitCardProps) {
+// Map PawkitOverviewSize to internal size keys
+function normalizeSize(size: SubPawkitSize | PawkitOverviewSize): 'compact' | 'normal' | 'large' {
+  if (size === 'small') return 'compact';
+  if (size === 'medium') return 'normal';
+  return size as 'compact' | 'normal' | 'large';
+}
+
+export function PawkitCard({
+  collection,
+  isActive = false,
+  isDragging = false,
+  size = 'normal',
+  showThumbnails = true,
+  showItemCount = true,
+}: PawkitCardProps) {
+  const normalizedSize = normalizeSize(size);
   const cards = useDataStore((state) => state.cards);
   const collections = useDataStore((state) => state.collections);
 
@@ -55,7 +72,7 @@ export function PawkitCard({ collection, isActive = false, isDragging = false, s
     },
   };
 
-  const sizeStyle = sizeClasses[size];
+  const sizeStyle = sizeClasses[normalizedSize];
 
   // Sortable for reordering pawkits
   const {
@@ -157,47 +174,51 @@ export function PawkitCard({ collection, isActive = false, isDragging = false, s
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className={cn('text-text-muted', sizeStyle.countSize)}>
-              {itemCount} {itemCount === 1 ? 'item' : 'items'}
-            </span>
+            {showItemCount && (
+              <span className={cn('text-text-muted', sizeStyle.countSize)}>
+                {itemCount} {itemCount === 1 ? 'item' : 'items'}
+              </span>
+            )}
             {hasChildren && (
-              <ChevronRight className={cn('text-text-muted', size === 'compact' ? 'h-3 w-3' : 'h-4 w-4')} />
+              <ChevronRight className={cn('text-text-muted', normalizedSize === 'compact' ? 'h-3 w-3' : 'h-4 w-4')} />
             )}
           </div>
         </div>
 
         {/* Thumbnail grid */}
-        <div className={cn('pt-0', sizeStyle.padding)}>
-          {thumbnails.length > 0 ? (
-            <div className={cn('grid gap-2', sizeStyle.thumbnailGrid, sizeStyle.thumbnailAspect)}>
-              {thumbnails.map((src, idx) => (
-                <div
-                  key={idx}
-                  className="relative overflow-hidden rounded-lg bg-bg-surface-3"
-                >
-                  <Image
-                    src={src}
-                    alt=""
-                    fill
-                    sizes="150px"
-                    className="object-cover"
+        {showThumbnails && (
+          <div className={cn('pt-0', sizeStyle.padding)}>
+            {thumbnails.length > 0 ? (
+              <div className={cn('grid gap-2', sizeStyle.thumbnailGrid, sizeStyle.thumbnailAspect)}>
+                {thumbnails.map((src, idx) => (
+                  <div
+                    key={idx}
+                    className="relative overflow-hidden rounded-lg bg-bg-surface-3"
+                  >
+                    <Image
+                      src={src}
+                      alt=""
+                      fill
+                      sizes="150px"
+                      className="object-cover"
+                    />
+                  </div>
+                ))}
+                {/* Fill empty slots */}
+                {[...Array(Math.max(0, 4 - thumbnails.length))].map((_, idx) => (
+                  <div
+                    key={`empty-${idx}`}
+                    className="rounded-lg bg-bg-surface-3"
                   />
-                </div>
-              ))}
-              {/* Fill empty slots */}
-              {[...Array(Math.max(0, 4 - thumbnails.length))].map((_, idx) => (
-                <div
-                  key={`empty-${idx}`}
-                  className="rounded-lg bg-bg-surface-3"
-                />
-              ))}
-            </div>
-          ) : (
-            <div className={cn('flex items-center justify-center rounded-lg bg-bg-surface-3', sizeStyle.thumbnailAspect)}>
-              <Folder className={cn('text-text-muted opacity-50', sizeStyle.emptyIconSize)} />
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            ) : (
+              <div className={cn('flex items-center justify-center rounded-lg bg-bg-surface-3', sizeStyle.thumbnailAspect)}>
+                <Folder className={cn('text-text-muted opacity-50', sizeStyle.emptyIconSize)} />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Hover glow effect */}
         <div

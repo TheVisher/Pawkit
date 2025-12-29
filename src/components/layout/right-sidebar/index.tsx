@@ -24,6 +24,8 @@ import {
   useViewStore,
   useCardDisplaySettings,
   useSubPawkitSettings,
+  usePawkitOverviewSettings,
+  findDuplicateCardIds,
 } from "@/lib/stores/view-store";
 import { useCurrentWorkspace } from "@/lib/stores/workspace-store";
 import { useDataStore } from "@/lib/stores/data-store";
@@ -58,8 +60,9 @@ import {
   GroupingSection,
   SubPawkitSettings,
   TagsFilter,
+  PawkitOverviewSettings,
 } from "./FilterSections";
-import { findDuplicateCardIds } from "@/lib/stores/view-store";
+import { CalendarSidebar } from "./calendar/CalendarSidebar";
 
 export function RightSidebar() {
   const [mounted, setMounted] = useState(false);
@@ -179,18 +182,60 @@ export function RightSidebar() {
     setSubPawkitColumns,
   } = useSubPawkitSettings();
 
+  // Pawkit Overview display settings
+  const {
+    pawkitOverviewSize,
+    pawkitOverviewColumns,
+    pawkitOverviewShowThumbnails,
+    pawkitOverviewShowItemCount,
+    pawkitOverviewSortBy,
+    setPawkitOverviewSize,
+    setPawkitOverviewColumns,
+    setPawkitOverviewShowThumbnails,
+    setPawkitOverviewShowItemCount,
+    setPawkitOverviewSortBy,
+  } = usePawkitOverviewSettings();
+
   // Get all tags from cards and calculate duplicates
   const cards = useDataStore((s) => s.cards);
 
-  // Calculate duplicate count
+  // For pawkit views, scope cards to the current pawkit
+  const { scopedCards, hasSubPawkits } = useMemo(() => {
+    // Check if we're on a pawkit detail page
+    const pawkitMatch = pathname.match(/^\/pawkits\/([^/]+)$/);
+    if (!pawkitMatch) return { scopedCards: cards, hasSubPawkits: false };
+
+    const slug = pawkitMatch[1];
+    const collection = allCollections.find(
+      (c) => c.slug === slug && !c._deleted,
+    );
+    if (!collection) return { scopedCards: cards, hasSubPawkits: false };
+
+    // Check if this collection has any child collections
+    const childCollections = allCollections.filter(
+      (c) => c.parentId === collection.id && !c._deleted,
+    );
+
+    // Return only cards in this collection (collections is an array of slugs)
+    const filtered = cards.filter(
+      (card) => card.collections?.includes(slug) && !card._deleted,
+    );
+
+    return {
+      scopedCards: filtered,
+      hasSubPawkits: childCollections.length > 0,
+    };
+  }, [cards, allCollections, pathname]);
+
+  // Calculate duplicate count (use scoped cards for pawkit views)
   const duplicateCount = useMemo(() => {
-    const duplicateIds = findDuplicateCardIds(cards);
+    const duplicateIds = findDuplicateCardIds(scopedCards);
     return duplicateIds.size;
-  }, [cards]);
+  }, [scopedCards]);
 
   const allTags = useMemo(() => {
     const tagCounts = new Map<string, number>();
-    for (const card of cards) {
+    for (const card of scopedCards) {
       if (card._deleted) continue;
       for (const tag of card.tags || []) {
         tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
@@ -199,7 +244,7 @@ export function RightSidebar() {
     return Array.from(tagCounts.entries())
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .map(([tag, count]) => ({ tag, count }));
-  }, [cards]);
+  }, [scopedCards]);
 
   useEffect(() => {
     setMounted(true);
@@ -380,9 +425,10 @@ export function RightSidebar() {
                 <QuickFilter
                   filter={unsortedFilter}
                   onFilterChange={setUnsortedFilter}
+                  viewType={viewConfig.type === "pawkit" ? "pawkit" : "library"}
                 />
 
-                {viewConfig.showSubPawkitSettings && (
+                {viewConfig.showSubPawkitSettings && hasSubPawkits && (
                   <SubPawkitSettings
                     size={subPawkitSize}
                     columns={subPawkitColumns}
@@ -429,6 +475,23 @@ export function RightSidebar() {
               </>
             )}
 
+            {/* Pawkits Overview Settings */}
+            {viewConfig.showPawkitOverviewSettings && (
+              <PawkitOverviewSettings
+                size={pawkitOverviewSize}
+                columns={pawkitOverviewColumns}
+                showThumbnails={pawkitOverviewShowThumbnails}
+                showItemCount={pawkitOverviewShowItemCount}
+                sortBy={pawkitOverviewSortBy}
+                onSizeChange={setPawkitOverviewSize}
+                onColumnsChange={setPawkitOverviewColumns}
+                onShowThumbnailsChange={setPawkitOverviewShowThumbnails}
+                onShowItemCountChange={setPawkitOverviewShowItemCount}
+                onSortByChange={setPawkitOverviewSortBy}
+                onSettingChange={handleSettingChange}
+              />
+            )}
+
             {/* Placeholder views */}
             {viewConfig.type === "home" && (
               <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -440,15 +503,7 @@ export function RightSidebar() {
               </div>
             )}
 
-            {viewConfig.type === "calendar" && (
-              <div className="flex flex-col items-center justify-center py-8 text-center">
-                <Calendar className="h-10 w-10 text-text-muted mb-3" />
-                <p className="text-sm text-text-secondary">Calendar Options</p>
-                <p className="text-xs text-text-muted mt-1">
-                  Calendar filters coming soon
-                </p>
-              </div>
-            )}
+            {viewConfig.type === "calendar" && <CalendarSidebar />}
           </div>
         )}
       </div>
