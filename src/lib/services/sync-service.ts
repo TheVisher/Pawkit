@@ -3,6 +3,7 @@ export {
   syncService,
   fullSync,
   deltaSync,
+  pushOnlySync,
   scheduleQueueProcess,
   processQueueNow,
   clearLocalData,

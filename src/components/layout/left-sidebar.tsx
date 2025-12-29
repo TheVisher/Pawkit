@@ -31,7 +31,6 @@ const navItems = [
   { href: '/home', label: 'Home', icon: Home },
   { href: '/library', label: 'Library', icon: Library },
   { href: '/calendar', label: 'Calendar', icon: Calendar },
-  { href: '/trash', label: 'Trash', icon: Trash2 },
 ];
 
 export function LeftSidebar() {
@@ -213,6 +212,13 @@ export function LeftSidebar() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-56 bg-bg-surface-1 border-border-subtle">
+            <DropdownMenuItem
+              onClick={() => router.push('/trash')}
+              className="text-text-secondary focus:bg-bg-surface-2 focus:text-text-primary"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Trash
+            </DropdownMenuItem>
             <DropdownMenuItem className="text-text-secondary focus:bg-bg-surface-2 focus:text-text-primary">
               <Settings className="mr-2 h-4 w-4" />
               Settings
