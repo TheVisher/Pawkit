@@ -38,7 +38,7 @@ import {
   type LinkStatusFilter,
 } from "./config";
 
-// Content Type Filter Section
+// Content Type Filter Section (Grid Layout)
 interface ContentTypeFilterProps {
   filters: ContentType[];
   onToggle: (type: ContentType) => void;
@@ -66,7 +66,7 @@ export function ContentTypeFilter({
         )
       }
     >
-      <div className="flex flex-wrap gap-1.5">
+      <div className="grid grid-cols-2 gap-2">
         {CONTENT_FILTERS.map((filter) => {
           const Icon = filter.icon;
           const isActive = filters.includes(filter.id);
@@ -75,26 +75,28 @@ export function ContentTypeFilter({
               key={filter.id}
               onClick={() => onToggle(filter.id)}
               className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all duration-200",
+                "flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-all duration-200 w-full justify-start",
                 isActive
                   ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
                   : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
               )}
             >
-              <Icon className="h-3.5 w-3.5" />
-              <span>{filter.label}</span>
+              <Icon className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{filter.label}</span>
             </button>
           );
         })}
       </div>
       {filters.length === 0 && (
-        <p className="text-xs text-text-muted mt-2 italic">All types shown</p>
+        <p className="text-xs text-text-muted mt-2 italic px-1">
+          All types shown
+        </p>
       )}
     </SidebarSection>
   );
 }
 
-// Sort Options Section
+// Sort Options Section (Vertical List)
 interface SortOptionsProps {
   sortBy: string;
   sortOrder: "asc" | "desc";
@@ -112,7 +114,7 @@ export function SortOptions({
 }: SortOptionsProps) {
   return (
     <SidebarSection title="Sort By" icon={ArrowUpDown} defaultOpen={true}>
-      <div className="space-y-0.5">
+      <div className="flex flex-col gap-1">
         {SORT_OPTIONS.map((option) => {
           const isActive = sortBy === option.id;
           return (
@@ -127,7 +129,7 @@ export function SortOptions({
                 onSettingChange();
               }}
               className={cn(
-                "w-full flex items-center justify-between px-3 py-1.5 text-sm rounded-md transition-all duration-200",
+                "w-full flex items-center justify-between px-3 py-2 text-xs rounded-md transition-all duration-200",
                 isActive
                   ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
                   : "border border-transparent text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary",
@@ -147,7 +149,7 @@ export function SortOptions({
   );
 }
 
-// Quick Filter Section
+// Quick Filter Section (Vertical List)
 interface QuickFilterProps {
   filter: UnsortedFilter;
   onFilterChange: (filter: UnsortedFilter) => void;
@@ -159,7 +161,7 @@ export function QuickFilter({ filter, onFilterChange }: QuickFilterProps) {
 
   return (
     <SidebarSection title="Quick Filter" icon={Inbox}>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-col gap-1">
         {options.map((option) => {
           const Icon = option.icon;
           const isActive = filter === option.id;
@@ -168,13 +170,13 @@ export function QuickFilter({ filter, onFilterChange }: QuickFilterProps) {
               key={option.id}
               onClick={() => onFilterChange(option.id)}
               className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all duration-200",
+                "flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-all duration-200 w-full justify-start",
                 isActive
                   ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
-                  : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
+                  : "text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary",
               )}
             >
-              {Icon && <Icon className="h-3.5 w-3.5" />}
+              <Icon className="h-3.5 w-3.5 shrink-0" />
               <span>{option.label}</span>
             </button>
           );
@@ -184,7 +186,7 @@ export function QuickFilter({ filter, onFilterChange }: QuickFilterProps) {
   );
 }
 
-// Reading Status Filter Section
+// Reading Status Filter Section (Vertical List)
 interface ReadingStatusFilterProps {
   filter: ReadingFilter;
   onFilterChange: (filter: ReadingFilter) => void;
@@ -196,7 +198,7 @@ export function ReadingStatusFilter({
 }: ReadingStatusFilterProps) {
   return (
     <SidebarSection title="Reading Status" icon={BookOpen}>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-col gap-1">
         {READING_FILTER_OPTIONS.map((option) => {
           const Icon = option.icon;
           const isActive = filter === option.id;
@@ -205,13 +207,13 @@ export function ReadingStatusFilter({
               key={option.id}
               onClick={() => onFilterChange(option.id)}
               className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all duration-200",
+                "flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-all duration-200 w-full justify-start",
                 isActive
                   ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
-                  : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
+                  : "text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary",
               )}
             >
-              <Icon className="h-3.5 w-3.5" />
+              <Icon className="h-3.5 w-3.5 shrink-0" />
               <span>{option.label}</span>
             </button>
           );
@@ -221,7 +223,7 @@ export function ReadingStatusFilter({
   );
 }
 
-// Advanced Section (Combines Link Status and Duplicates)
+// Advanced Section (Combines Link Status and Duplicates) - Vertical Lists
 interface AdvancedFilterSectionProps {
   linkStatusFilter: LinkStatusFilter;
   onLinkStatusChange: (filter: LinkStatusFilter) => void;
@@ -260,7 +262,7 @@ export function AdvancedFilterSection({
       <div className="space-y-4">
         {/* Link Status Subsection */}
         <div>
-          <div className="flex items-center justify-between text-text-secondary mb-2">
+          <div className="flex items-center justify-between text-text-secondary mb-2 px-1">
             <div className="flex items-center gap-2">
               <Link className="h-3.5 w-3.5" />
               <span className="text-xs font-medium">Link Status</span>
@@ -278,7 +280,7 @@ export function AdvancedFilterSection({
               </button>
             )}
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-col gap-1">
             {LINK_STATUS_FILTER_OPTIONS.map((option) => {
               const Icon = option.icon;
               const isActive = linkStatusFilter === option.id;
@@ -287,20 +289,20 @@ export function AdvancedFilterSection({
                   key={option.id}
                   onClick={() => onLinkStatusChange(option.id)}
                   className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all duration-200",
+                    "flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-all duration-200 w-full justify-start",
                     isActive
                       ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
-                      : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
+                      : "text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary",
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
                   <span>{option.label}</span>
                 </button>
               );
             })}
           </div>
           {recheckCount !== null && (
-            <p className="text-xs text-text-muted mt-2">
+            <p className="text-xs text-text-muted mt-2 px-1">
               Queued {recheckCount} link{recheckCount !== 1 ? "s" : ""} for
               checking
             </p>
@@ -309,7 +311,7 @@ export function AdvancedFilterSection({
 
         {/* Duplicates Subsection */}
         <div>
-          <div className="flex items-center justify-between text-text-secondary mb-2">
+          <div className="flex items-center justify-between text-text-secondary mb-2 px-1">
             <div className="flex items-center gap-2">
               <Copy className="h-3.5 w-3.5" />
               <span className="text-xs font-medium">Duplicates</span>
@@ -323,10 +325,10 @@ export function AdvancedFilterSection({
           <button
             onClick={() => onToggleDuplicates(!showDuplicatesOnly)}
             className={cn(
-              "w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-all duration-200",
+              "w-full flex items-center justify-between px-3 py-2 text-xs rounded-md transition-all duration-200",
               showDuplicatesOnly
                 ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
-                : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
+                : "text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary",
             )}
           >
             <span>Show duplicates only</span>
@@ -340,7 +342,7 @@ export function AdvancedFilterSection({
   );
 }
 
-// Grouping Section
+// Grouping Section (Vertical List)
 interface GroupingSectionProps {
   groupBy: GroupBy;
   dateGrouping: DateGrouping;
@@ -360,7 +362,7 @@ export function GroupingSection({
     <SidebarSection title="Group By" icon={Layers}>
       <div className="space-y-3">
         {/* Group by options */}
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-col gap-1">
           {GROUP_OPTIONS.map((option) => {
             const Icon = option.icon;
             const isActive = groupBy === option.id;
@@ -372,13 +374,13 @@ export function GroupingSection({
                   onSettingChange();
                 }}
                 className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-md transition-all duration-200",
+                  "flex items-center gap-2 px-3 py-2 text-xs rounded-md transition-all duration-200 w-full justify-start",
                   isActive
                     ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
-                    : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
+                    : "text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary",
                 )}
               >
-                <Icon className="h-3.5 w-3.5" />
+                <Icon className="h-3.5 w-3.5 shrink-0" />
                 <span>{option.label}</span>
               </button>
             );
@@ -388,7 +390,7 @@ export function GroupingSection({
         {/* Date grouping options (only when groupBy === 'date') */}
         {groupBy === "date" && (
           <div>
-            <label className="text-xs text-text-secondary mb-2 block">
+            <label className="text-xs text-text-secondary mb-2 block px-1">
               Date Range
             </label>
             <div className="grid grid-cols-5 gap-1">
@@ -405,7 +407,7 @@ export function GroupingSection({
                       "px-2 py-1.5 text-xs rounded-md transition-all duration-200",
                       isActive
                         ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
-                        : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
+                        : "text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary",
                     )}
                   >
                     {option.label}
@@ -420,7 +422,7 @@ export function GroupingSection({
   );
 }
 
-// Sub-Pawkit Settings Section
+// Sub-Pawkit Settings Section (Grid for size, slider for columns)
 interface SubPawkitSettingsProps {
   size: SubPawkitSize;
   columns: number;
@@ -441,7 +443,7 @@ export function SubPawkitSettings({
       <div className="space-y-4">
         {/* Size options */}
         <div>
-          <label className="text-xs text-text-secondary mb-2 block">
+          <label className="text-xs text-text-secondary mb-2 block px-1">
             Card Size
           </label>
           <div className="grid grid-cols-3 gap-1">
@@ -456,7 +458,7 @@ export function SubPawkitSettings({
                   "px-2 py-1.5 text-xs rounded-md transition-all duration-200 capitalize",
                   size === s
                     ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
-                    : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
+                    : "text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary",
                 )}
               >
                 {s}
@@ -467,7 +469,7 @@ export function SubPawkitSettings({
 
         {/* Columns slider */}
         <div>
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 px-1">
             <label className="text-xs text-text-secondary">Columns</label>
             <span className="text-xs text-text-muted">{columns}</span>
           </div>
@@ -491,7 +493,7 @@ export function SubPawkitSettings({
   );
 }
 
-// Tags Filter Section
+// Tags Filter Section (Organic Flex Wrap)
 interface TagsFilterProps {
   allTags: Array<{ tag: string; count: number }>;
   selectedTags: string[];
@@ -521,7 +523,7 @@ export function TagsFilter({
       }
     >
       {allTags.length === 0 ? (
-        <p className="text-xs text-text-muted italic">No tags yet</p>
+        <p className="text-xs text-text-muted italic px-1">No tags yet</p>
       ) : (
         <div className="flex flex-wrap gap-1.5">
           {allTags.map(({ tag, count }) => {
@@ -531,10 +533,10 @@ export function TagsFilter({
                 key={tag}
                 onClick={() => onToggleTag(tag)}
                 className={cn(
-                  "px-2 py-1 text-xs rounded-md transition-all duration-200",
+                  "px-2 py-1 text-xs rounded-md transition-all duration-200 border",
                   isSelected
-                    ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
-                    : "bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
+                    ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-[var(--color-accent)]/20 shadow-sm font-medium"
+                    : "bg-bg-surface-2 border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
                 )}
               >
                 {tag}
