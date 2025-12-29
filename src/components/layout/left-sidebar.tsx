@@ -58,6 +58,7 @@ export function LeftSidebar() {
   const workspace = useCurrentWorkspace();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard SSR hydration pattern
     setMounted(true);
   }, []);
 

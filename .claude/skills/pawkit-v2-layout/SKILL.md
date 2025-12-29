@@ -370,4 +370,136 @@ className={cn(
 
 ---
 
-**Last Updated**: December 28, 2025
+---
+
+## SIDEBAR STYLING PATTERNS
+
+### Navigation Item Styling (Left Sidebar & Pawkit Tree)
+
+**Active State:**
+```tsx
+// Uses Framer Motion for animated sliding highlight
+<motion.div
+  layoutId="active-sidebar-item"
+  className="absolute inset-0 rounded-xl bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)]"
+  initial={false}
+  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+/>
+// Text: text-text-primary font-medium
+// Icon: text-[var(--color-accent)]
+```
+
+**Inactive State:**
+```tsx
+// No background (transparent)
+className="text-text-secondary hover:text-text-primary"
+// Icon: group-hover:text-[var(--color-accent)]/80
+```
+
+**Hover Glow Line (applied when inactive):**
+```tsx
+<div className="absolute -bottom-1 -left-2 -right-2 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-accent)] via-50% to-transparent opacity-0 transition-all duration-300 group-hover:opacity-100 blur-[0.5px]" />
+```
+
+---
+
+### Filter Button Styling (Right Sidebar)
+
+**Single-Select Sections** (Sort, Group By, Reading Status, Quick Filter, Link Status):
+- Minimal inactive state - no background, reduces visual noise
+```tsx
+// Active:
+"bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
+
+// Inactive:
+"text-text-secondary hover:bg-bg-surface-2 hover:text-text-primary"
+```
+
+**Multi-Select Sections** (Content Type, Tags):
+- Pill-style buttons - has background to indicate they're toggleable
+```tsx
+// Active: (same as single-select)
+"bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium"
+
+// Inactive:
+"bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary"
+```
+
+---
+
+### Collapsible Section Pattern (SidebarSection)
+
+**File:** `src/components/layout/right-sidebar/SidebarSection.tsx`
+
+```tsx
+// Header styling
+className="flex items-center justify-between px-3 py-2 cursor-pointer transition-colors group relative rounded-xl select-none"
+
+// Chevron rotation
+className={cn("h-4 w-4 text-text-muted transition-transform duration-200", isOpen && "rotate-90")}
+
+// Expanded content border
+className="pb-2 pt-1 px-3 border-l-2 border-[var(--color-accent)]/30 ml-4 pl-3"
+
+// Animation (Framer Motion)
+initial={{ height: 0, opacity: 0 }}
+animate={{ height: "auto", opacity: 1 }}
+exit={{ height: 0, opacity: 0 }}
+transition={{ duration: 0.2, ease: "easeInOut" }}
+```
+
+---
+
+### Toggle Switch Styling
+
+**File:** `src/components/layout/right-sidebar/CardDisplaySettings.tsx`
+
+```tsx
+// Track
+className={cn(
+  "relative w-9 h-5 rounded-full transition-all duration-200 flex items-center",
+  checked
+    ? "bg-[var(--color-accent)]/20 border border-[var(--color-accent)]/30"
+    : "bg-bg-surface-3 border border-transparent"
+)}
+
+// Thumb
+className={cn(
+  "absolute left-0.5 w-4 h-4 rounded-full transition-all duration-200 shadow-sm",
+  checked ? "translate-x-4 bg-white" : "bg-text-muted"
+)}
+```
+
+---
+
+### Card Size Icons
+
+Use icons instead of text for card size buttons:
+
+| Size | Icon | Import |
+|------|------|--------|
+| Small | `Grid3x3` | lucide-react |
+| Medium | `Grid2x2` | lucide-react |
+| Large | `Square` | lucide-react |
+| XL | `Maximize` | lucide-react |
+
+---
+
+### "All" Option Icons
+
+Use `LayoutGrid` (lucide-react) for "All" options in filter sections instead of `Circle` to avoid confusion with "Unread" status.
+
+---
+
+### Transition Timing
+
+| Element | Duration | Easing |
+|---------|----------|--------|
+| Button states | 200ms | ease (transition-all) |
+| Hover glow line | 300ms | linear (opacity only) |
+| Collapsible sections | 200ms | ease-in-out |
+| Nav highlight slide | spring | stiffness: 500, damping: 30 |
+
+---
+
+**Last Updated**: December 29, 2025
