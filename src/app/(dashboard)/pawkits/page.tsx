@@ -7,6 +7,7 @@ import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { FolderPlus, Folder } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useModalStore } from '@/lib/stores/modal-store';
+import { usePawkitOverviewSettings } from '@/lib/stores/view-store';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
 import { PageHeader } from '@/components/layout/page-header';
 import { PawkitCard } from '@/components/pawkits/pawkit-card';
@@ -17,9 +18,19 @@ import type { LocalCollection } from '@/lib/db';
 
 export default function PawkitsPage() {
   const collections = useDataStore((state) => state.collections);
+  const cards = useDataStore((state) => state.cards);
   const isLoading = useDataStore((state) => state.isLoading);
   const updateCollection = useDataStore((state) => state.updateCollection);
   const openCreatePawkitModal = useModalStore((state) => state.openCreatePawkitModal);
+
+  // Pawkit overview display settings
+  const {
+    pawkitOverviewSize,
+    pawkitOverviewColumns,
+    pawkitOverviewShowThumbnails,
+    pawkitOverviewShowItemCount,
+    pawkitOverviewSortBy,
+  } = usePawkitOverviewSettings();
 
   // Collision detection for omnibar
   const headerRef = useRef<HTMLDivElement>(null);
@@ -27,15 +38,54 @@ export default function PawkitsPage() {
 
   const [activeCollection, setActiveCollection] = useState<LocalCollection | null>(null);
 
-  // Get root-level collections (no parent)
+  // Calculate card counts per collection
+  const cardCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const card of cards) {
+      if (card._deleted) continue;
+      for (const slug of card.collections || []) {
+        counts.set(slug, (counts.get(slug) || 0) + 1);
+      }
+    }
+    return counts;
+  }, [cards]);
+
+  // Get root-level collections (no parent) and sort based on settings
   const rootCollections = useMemo(() => {
-    return collections
-      .filter((c) => !c.parentId && !c._deleted)
-      .sort((a, b) => a.position - b.position);
-  }, [collections]);
+    const filtered = collections.filter((c) => !c.parentId && !c._deleted);
+
+    // Sort based on pawkitOverviewSortBy
+    return filtered.sort((a, b) => {
+      switch (pawkitOverviewSortBy) {
+        case 'alphabetical':
+          return a.name.localeCompare(b.name);
+        case 'dateCreated':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'dateModified':
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        case 'itemCount':
+          return (cardCounts.get(b.slug) || 0) - (cardCounts.get(a.slug) || 0);
+        case 'manual':
+        default:
+          return a.position - b.position;
+      }
+    });
+  }, [collections, pawkitOverviewSortBy, cardCounts]);
 
   // Collection IDs for SortableContext
   const collectionIds = useMemo(() => rootCollections.map((c) => c.id), [rootCollections]);
+
+  // Get grid columns class based on pawkitOverviewColumns setting
+  const getGridCols = () => {
+    switch (pawkitOverviewColumns) {
+      case 2: return 'grid-cols-1 sm:grid-cols-2';
+      case 3: return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+      case 4: return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+      case 5: return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5';
+      case 6: return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6';
+      default: return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+    }
+  };
 
   // Handle reordering collections
   const handleReorder = useCallback(async (activeId: string, overId: string) => {
@@ -137,12 +187,15 @@ export default function PawkitsPage() {
               />
             ) : (
               <SortableContext items={collectionIds} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className={cn('grid gap-4', getGridCols())}>
                   {rootCollections.map((collection) => (
                     <PawkitCard
                       key={collection.id}
                       collection={collection}
                       isDragging={activeCollection?.id === collection.id}
+                      size={pawkitOverviewSize}
+                      showThumbnails={pawkitOverviewShowThumbnails}
+                      showItemCount={pawkitOverviewShowItemCount}
                     />
                   ))}
                 </div>

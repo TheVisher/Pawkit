@@ -14,6 +14,8 @@ export type SortOrder = 'asc' | 'desc';
 export type ContentType = 'bookmarks' | 'notes' | 'quick-notes' | 'video' | 'images' | 'docs' | 'audio' | 'other';
 export type CardSize = 'small' | 'medium' | 'large' | 'xl';
 export type SubPawkitSize = 'compact' | 'normal' | 'large';
+export type PawkitOverviewSize = 'small' | 'medium' | 'large';
+export type PawkitOverviewSortBy = 'manual' | 'alphabetical' | 'dateCreated' | 'dateModified' | 'itemCount';
 // Grouping options
 export type GroupBy = 'none' | 'date' | 'tags' | 'type' | 'domain';
 export type DateGrouping = 'smart' | 'day' | 'week' | 'month' | 'year'; // smart = Today/Yesterday/This Week/etc
@@ -236,6 +238,13 @@ interface ViewState {
   subPawkitSize: SubPawkitSize;
   subPawkitColumns: number; // 2-6 columns
 
+  // Pawkits Overview display (persisted, for /pawkits main page)
+  pawkitOverviewSize: PawkitOverviewSize;
+  pawkitOverviewColumns: number; // 2-6 columns
+  pawkitOverviewShowThumbnails: boolean;
+  pawkitOverviewShowItemCount: boolean;
+  pawkitOverviewSortBy: PawkitOverviewSortBy;
+
   // Loading state
   isLoading: boolean;
 
@@ -259,6 +268,11 @@ interface ViewState {
   setDateGrouping: (grouping: DateGrouping) => void;
   setSubPawkitSize: (size: SubPawkitSize) => void;
   setSubPawkitColumns: (columns: number) => void;
+  setPawkitOverviewSize: (size: PawkitOverviewSize) => void;
+  setPawkitOverviewColumns: (columns: number) => void;
+  setPawkitOverviewShowThumbnails: (show: boolean) => void;
+  setPawkitOverviewShowItemCount: (show: boolean) => void;
+  setPawkitOverviewSortBy: (sortBy: PawkitOverviewSortBy) => void;
   setSelectedTags: (tags: string[]) => void;
   toggleTag: (tag: string) => void; // Add/remove tag from selection
   clearTags: () => void;
@@ -301,6 +315,12 @@ const DEFAULT_VIEW_SETTINGS = {
   // Sub-Pawkits display
   subPawkitSize: 'normal' as SubPawkitSize,
   subPawkitColumns: 4,
+  // Pawkits Overview display
+  pawkitOverviewSize: 'medium' as PawkitOverviewSize,
+  pawkitOverviewColumns: 4,
+  pawkitOverviewShowThumbnails: true,
+  pawkitOverviewShowItemCount: true,
+  pawkitOverviewSortBy: 'manual' as PawkitOverviewSortBy,
   // List view column settings
   listColumnOrder: [] as string[],
   listColumnWidths: {} as Record<string, number>,
@@ -388,6 +408,16 @@ export const useViewStore = create<ViewState>((set, get) => ({
 
   setSubPawkitColumns: (columns) => set({ subPawkitColumns: Math.max(2, Math.min(6, columns)) }),
 
+  setPawkitOverviewSize: (size) => set({ pawkitOverviewSize: size }),
+
+  setPawkitOverviewColumns: (columns) => set({ pawkitOverviewColumns: Math.max(2, Math.min(6, columns)) }),
+
+  setPawkitOverviewShowThumbnails: (show) => set({ pawkitOverviewShowThumbnails: show }),
+
+  setPawkitOverviewShowItemCount: (show) => set({ pawkitOverviewShowItemCount: show }),
+
+  setPawkitOverviewSortBy: (sortBy) => set({ pawkitOverviewSortBy: sortBy }),
+
   // Manual ordering actions
   setCardOrder: (ids) => set({ cardOrder: ids }),
 
@@ -433,6 +463,11 @@ export const useViewStore = create<ViewState>((set, get) => ({
           dateGrouping?: DateGrouping;
           subPawkitSize?: SubPawkitSize;
           subPawkitColumns?: number;
+          pawkitOverviewSize?: PawkitOverviewSize;
+          pawkitOverviewColumns?: number;
+          pawkitOverviewShowThumbnails?: boolean;
+          pawkitOverviewShowItemCount?: boolean;
+          pawkitOverviewSortBy?: PawkitOverviewSortBy;
         };
         set({
           layout: s.layout as Layout,
@@ -454,6 +489,11 @@ export const useViewStore = create<ViewState>((set, get) => ({
           dateGrouping: s.dateGrouping || DEFAULT_VIEW_SETTINGS.dateGrouping,
           subPawkitSize: s.subPawkitSize || DEFAULT_VIEW_SETTINGS.subPawkitSize,
           subPawkitColumns: s.subPawkitColumns ?? DEFAULT_VIEW_SETTINGS.subPawkitColumns,
+          pawkitOverviewSize: s.pawkitOverviewSize || DEFAULT_VIEW_SETTINGS.pawkitOverviewSize,
+          pawkitOverviewColumns: s.pawkitOverviewColumns ?? DEFAULT_VIEW_SETTINGS.pawkitOverviewColumns,
+          pawkitOverviewShowThumbnails: s.pawkitOverviewShowThumbnails ?? DEFAULT_VIEW_SETTINGS.pawkitOverviewShowThumbnails,
+          pawkitOverviewShowItemCount: s.pawkitOverviewShowItemCount ?? DEFAULT_VIEW_SETTINGS.pawkitOverviewShowItemCount,
+          pawkitOverviewSortBy: s.pawkitOverviewSortBy || DEFAULT_VIEW_SETTINGS.pawkitOverviewSortBy,
           isLoading: false,
         });
       } else {
@@ -472,7 +512,9 @@ export const useViewStore = create<ViewState>((set, get) => ({
       currentView, layout, sortBy, sortOrder, showTitles, showUrls, showTags,
       cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, cardOrder,
       listColumnOrder, listColumnWidths, listColumnVisibility, groupBy, dateGrouping,
-      subPawkitSize, subPawkitColumns
+      subPawkitSize, subPawkitColumns,
+      pawkitOverviewSize, pawkitOverviewColumns, pawkitOverviewShowThumbnails,
+      pawkitOverviewShowItemCount, pawkitOverviewSortBy
     } = get();
 
     try {
@@ -504,6 +546,11 @@ export const useViewStore = create<ViewState>((set, get) => ({
           dateGrouping,
           subPawkitSize,
           subPawkitColumns,
+          pawkitOverviewSize,
+          pawkitOverviewColumns,
+          pawkitOverviewShowThumbnails,
+          pawkitOverviewShowItemCount,
+          pawkitOverviewSortBy,
           updatedAt: new Date(),
         });
         await db.viewSettings.put(updated);
@@ -532,6 +579,11 @@ export const useViewStore = create<ViewState>((set, get) => ({
           dateGrouping,
           subPawkitSize,
           subPawkitColumns,
+          pawkitOverviewSize,
+          pawkitOverviewColumns,
+          pawkitOverviewShowThumbnails,
+          pawkitOverviewShowItemCount,
+          pawkitOverviewSortBy,
           createdAt: new Date(),
           updatedAt: new Date(),
           ...createSyncMetadata(),
@@ -544,6 +596,11 @@ export const useViewStore = create<ViewState>((set, get) => ({
           dateGrouping: DateGrouping;
           subPawkitSize: SubPawkitSize;
           subPawkitColumns: number;
+          pawkitOverviewSize: PawkitOverviewSize;
+          pawkitOverviewColumns: number;
+          pawkitOverviewShowThumbnails: boolean;
+          pawkitOverviewShowItemCount: boolean;
+          pawkitOverviewSortBy: PawkitOverviewSortBy;
         };
         await db.viewSettings.add(newSettings);
       }
@@ -688,6 +745,23 @@ export function useSubPawkitSettings() {
       subPawkitColumns: state.subPawkitColumns,
       setSubPawkitSize: state.setSubPawkitSize,
       setSubPawkitColumns: state.setSubPawkitColumns,
+    }))
+  );
+}
+
+export function usePawkitOverviewSettings() {
+  return useViewStore(
+    useShallow((state) => ({
+      pawkitOverviewSize: state.pawkitOverviewSize,
+      pawkitOverviewColumns: state.pawkitOverviewColumns,
+      pawkitOverviewShowThumbnails: state.pawkitOverviewShowThumbnails,
+      pawkitOverviewShowItemCount: state.pawkitOverviewShowItemCount,
+      pawkitOverviewSortBy: state.pawkitOverviewSortBy,
+      setPawkitOverviewSize: state.setPawkitOverviewSize,
+      setPawkitOverviewColumns: state.setPawkitOverviewColumns,
+      setPawkitOverviewShowThumbnails: state.setPawkitOverviewShowThumbnails,
+      setPawkitOverviewShowItemCount: state.setPawkitOverviewShowItemCount,
+      setPawkitOverviewSortBy: state.setPawkitOverviewSortBy,
     }))
   );
 }

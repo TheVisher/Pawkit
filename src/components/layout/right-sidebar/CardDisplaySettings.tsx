@@ -5,6 +5,8 @@
  * Controls for card layout, size, padding, and visibility toggles
  */
 
+import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Sliders,
   LayoutDashboard,
@@ -61,13 +63,54 @@ export function CardDisplaySettings({
   onShowTagsChange,
   onSettingChange,
 }: CardDisplaySettingsProps) {
+  const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Update dropdown position when opening
+  useEffect(() => {
+    if (viewDropdownOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [viewDropdownOpen]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!viewDropdownOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      // Check if click is outside both button and dropdown
+      if (
+        buttonRef.current &&
+        !buttonRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
+        setViewDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [viewDropdownOpen]);
+
   return (
     <SidebarSection title="Card Display" icon={Sliders} defaultOpen={true}>
       <div className="space-y-4">
         {/* View Dropdown - Always visible */}
-        <div className="group/view relative flex items-center justify-between">
+        <div className="flex items-center justify-between">
           <label className="text-xs text-text-secondary">View</label>
-          <button className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary transition-colors">
+          <button
+            ref={buttonRef}
+            onClick={() => setViewDropdownOpen(!viewDropdownOpen)}
+            className="flex items-center gap-1.5 px-2 py-1 text-xs rounded-md bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary transition-colors"
+          >
             {layout === "masonry" && (
               <LayoutDashboard className="h-3.5 w-3.5" />
             )}
@@ -78,77 +121,88 @@ export function CardDisplaySettings({
               {layout === "board" ? "Kanban" : layout}
             </span>
           </button>
-          {/* Hover dropdown */}
-          <div className="absolute right-0 top-full mt-1 z-50 opacity-0 invisible group-hover/view:opacity-100 group-hover/view:visible transition-all duration-150">
-            <div
-              className="py-1 rounded-lg shadow-lg min-w-[120px]"
-              style={{
-                background: "var(--color-bg-surface-2)",
-                border: "1px solid var(--border-subtle)",
-              }}
-            >
-              <button
-                onClick={() => {
-                  onLayoutChange("masonry");
-                  onSettingChange();
+
+          {/* Portal dropdown */}
+          {viewDropdownOpen &&
+            typeof document !== "undefined" &&
+            createPortal(
+              <div
+                ref={dropdownRef}
+                className="fixed z-[100] py-1 rounded-lg shadow-lg min-w-[120px]"
+                style={{
+                  top: dropdownPosition.top,
+                  right: dropdownPosition.right,
+                  background: "var(--color-bg-surface-2)",
+                  border: "1px solid var(--border-subtle)",
                 }}
-                className={cn(
-                  "w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors",
-                  layout === "masonry"
-                    ? "text-[var(--color-accent)]"
-                    : "text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
-                )}
               >
-                <LayoutDashboard className="h-3.5 w-3.5" />
-                <span>Masonry</span>
-              </button>
-              <button
-                onClick={() => {
-                  onLayoutChange("grid");
-                  onSettingChange();
-                }}
-                className={cn(
-                  "w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors",
-                  layout === "grid"
-                    ? "text-[var(--color-accent)]"
-                    : "text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
-                )}
-              >
-                <LayoutGrid className="h-3.5 w-3.5" />
-                <span>Grid</span>
-              </button>
-              <button
-                onClick={() => {
-                  onLayoutChange("list");
-                  onSettingChange();
-                }}
-                className={cn(
-                  "w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors",
-                  layout === "list"
-                    ? "text-[var(--color-accent)]"
-                    : "text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
-                )}
-              >
-                <List className="h-3.5 w-3.5" />
-                <span>List</span>
-              </button>
-              <button
-                onClick={() => {
-                  onLayoutChange("board");
-                  onSettingChange();
-                }}
-                className={cn(
-                  "w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors",
-                  layout === "board"
-                    ? "text-[var(--color-accent)]"
-                    : "text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
-                )}
-              >
-                <Columns3 className="h-3.5 w-3.5" />
-                <span>Kanban</span>
-              </button>
-            </div>
-          </div>
+                <button
+                  onClick={() => {
+                    onLayoutChange("masonry");
+                    onSettingChange();
+                    setViewDropdownOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors",
+                    layout === "masonry"
+                      ? "text-[var(--color-accent)]"
+                      : "text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
+                  )}
+                >
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  <span>Masonry</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onLayoutChange("grid");
+                    onSettingChange();
+                    setViewDropdownOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors",
+                    layout === "grid"
+                      ? "text-[var(--color-accent)]"
+                      : "text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
+                  )}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" />
+                  <span>Grid</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onLayoutChange("list");
+                    onSettingChange();
+                    setViewDropdownOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors",
+                    layout === "list"
+                      ? "text-[var(--color-accent)]"
+                      : "text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
+                  )}
+                >
+                  <List className="h-3.5 w-3.5" />
+                  <span>List</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onLayoutChange("board");
+                    onSettingChange();
+                    setViewDropdownOpen(false);
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors",
+                    layout === "board"
+                      ? "text-[var(--color-accent)]"
+                      : "text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary",
+                  )}
+                >
+                  <Columns3 className="h-3.5 w-3.5" />
+                  <span>Kanban</span>
+                </button>
+              </div>,
+              document.body,
+            )}
         </div>
 
         {/* Card options - Hidden in List View since they don't apply */}
