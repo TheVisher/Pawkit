@@ -60,10 +60,9 @@ export function DayCell({
             // Selected (User Clicked)
             isSelected &&
               !isToday &&
-              "bg-white/10 border-[var(--color-accent)] text-text-primary",
+              "bg-white/10 border-brand text-text-primary",
             // Today (Current Date)
-            isToday &&
-              "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-[var(--color-accent)]/20",
+            isToday && "bg-brand/10 text-brand border-brand/20",
             // Selected AND Today (Focus Ring) - REMOVED to match subtle look request
             // isSelected && isToday && 'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-bg-surface-1',
             // Normal

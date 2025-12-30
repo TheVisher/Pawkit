@@ -11,12 +11,34 @@ import { useShallow } from 'zustand/react/shallow';
 type CardSize = 'small' | 'medium' | 'large';
 type ModalType = 'card-detail' | 'create-card' | 'create-collection' | 'settings' | 'task' | null;
 
+// Right sidebar expansion modes (extensible for future features)
+type RightSidebarExpandedMode = 'settings' | 'split-view' | 'calendar-schedule' | null;
+type SettingsTab = 'appearance' | 'account' | 'data' | null;
+
+// Width configuration for each expansion mode
+export const SIDEBAR_WIDTHS: Record<string, number> = {
+  default: 325,
+  settings: 480,
+  'split-view': 600,
+  'calendar-schedule': 600,
+};
+
+// Helper to get current sidebar width based on mode
+export function getRightSidebarWidth(mode: RightSidebarExpandedMode): number {
+  if (!mode) return SIDEBAR_WIDTHS.default;
+  return SIDEBAR_WIDTHS[mode] ?? SIDEBAR_WIDTHS.default;
+}
+
 interface UIState {
   // Sidebar state (persisted)
   leftSidebarOpen: boolean;
   rightSidebarOpen: boolean;
   leftSidebarAnchored: boolean;
   rightSidebarAnchored: boolean;
+
+  // Right sidebar expansion (not persisted - resets on reload)
+  rightSidebarExpandedMode: RightSidebarExpandedMode;
+  settingsTab: SettingsTab;
 
   // Display preferences (persisted)
   cardSize: CardSize;
@@ -35,6 +57,9 @@ interface UIState {
   setRightSidebarOpen: (open: boolean) => void;
   toggleLeftSidebarAnchored: () => void;
   toggleRightSidebarAnchored: () => void;
+  setRightSidebarExpandedMode: (mode: RightSidebarExpandedMode) => void;
+  toggleSettingsMode: () => void;
+  setSettingsTab: (tab: SettingsTab) => void;
   setCardSize: (size: CardSize) => void;
   openModal: (modal: ModalType, data?: Record<string, unknown>) => void;
   closeModal: () => void;
@@ -50,6 +75,8 @@ export const useUIStore = create<UIState>()(
       rightSidebarOpen: false,
       leftSidebarAnchored: true,
       rightSidebarAnchored: false,
+      rightSidebarExpandedMode: null,
+      settingsTab: null,
       cardSize: 'medium',
       activeModal: null,
       modalData: null,
@@ -71,6 +98,24 @@ export const useUIStore = create<UIState>()(
 
       toggleRightSidebarAnchored: () =>
         set((state) => ({ rightSidebarAnchored: !state.rightSidebarAnchored })),
+
+      // Right sidebar expansion actions
+      setRightSidebarExpandedMode: (mode) =>
+        set({
+          rightSidebarExpandedMode: mode,
+          // Reset settings tab when closing
+          settingsTab: mode === 'settings' ? 'appearance' : null,
+        }),
+
+      toggleSettingsMode: () =>
+        set((state) => ({
+          rightSidebarExpandedMode: state.rightSidebarExpandedMode === 'settings' ? null : 'settings',
+          settingsTab: state.rightSidebarExpandedMode === 'settings' ? null : 'appearance',
+          // Ensure sidebar is open when entering settings
+          rightSidebarOpen: state.rightSidebarExpandedMode === 'settings' ? state.rightSidebarOpen : true,
+        })),
+
+      setSettingsTab: (tab) => set({ settingsTab: tab }),
 
       // Display actions
       setCardSize: (size) => set({ cardSize: size }),
@@ -108,6 +153,8 @@ export const selectLeftSidebarOpen = (state: UIState) => state.leftSidebarOpen;
 export const selectRightSidebarOpen = (state: UIState) => state.rightSidebarOpen;
 export const selectLeftSidebarAnchored = (state: UIState) => state.leftSidebarAnchored;
 export const selectRightSidebarAnchored = (state: UIState) => state.rightSidebarAnchored;
+export const selectRightSidebarExpandedMode = (state: UIState) => state.rightSidebarExpandedMode;
+export const selectSettingsTab = (state: UIState) => state.settingsTab;
 export const selectCardSize = (state: UIState) => state.cardSize;
 export const selectActiveModal = (state: UIState) => state.activeModal;
 export const selectModalData = (state: UIState) => state.modalData;
@@ -134,9 +181,22 @@ export function useRightSidebar() {
     useShallow((state) => ({
       isOpen: state.rightSidebarOpen,
       isAnchored: state.rightSidebarAnchored,
+      expandedMode: state.rightSidebarExpandedMode,
       toggle: state.toggleRightSidebar,
       setOpen: state.setRightSidebarOpen,
       toggleAnchored: state.toggleRightSidebarAnchored,
+      setExpandedMode: state.setRightSidebarExpandedMode,
+    }))
+  );
+}
+
+export function useRightSidebarSettings() {
+  return useUIStore(
+    useShallow((state) => ({
+      isSettingsMode: state.rightSidebarExpandedMode === 'settings',
+      settingsTab: state.settingsTab,
+      toggleSettings: state.toggleSettingsMode,
+      setTab: state.setSettingsTab,
     }))
   );
 }
@@ -179,6 +239,7 @@ export function useLayoutAnchors() {
       rightOpen: state.rightSidebarOpen,
       leftAnchored: state.leftSidebarAnchored,
       rightAnchored: state.rightSidebarAnchored,
+      rightExpandedMode: state.rightSidebarExpandedMode,
     }))
   );
 }

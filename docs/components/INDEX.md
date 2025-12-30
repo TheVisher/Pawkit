@@ -2,7 +2,7 @@
 
 > Centralized lookup for component documentation in Pawkit V2
 
-**Last Updated**: December 26, 2025
+**Last Updated**: December 30, 2025
 
 ---
 
@@ -27,6 +27,7 @@
 | **modals** | Yes | [modals.md](./modals.md) | High | 2025-12-26 | Added Cover Image Picker |
 | **pawkits** | No | — | Medium | 2025-12-26 | Tree, Headers, and Card logic |
 | **providers** | No | — | Low | — | Single theme-provider.tsx |
+| **settings** | No | — | Medium | 2025-12-30 | Settings sections (Appearance, Account, Data) |
 | **ui** | N/A | — | Low | — | shadcn/ui standard - no docs needed |
 
 ---
@@ -95,6 +96,11 @@ src/components/
 │   └── pawkits-tree.tsx              2.4KB
 ├── providers/
 │   └── theme-provider.tsx            0.3KB
+├── settings/
+│   └── sections/
+│       ├── appearance-section.tsx   12.0KB  ⚠️ Watch limit
+│       ├── account-section.tsx       3.0KB
+│       └── data-section.tsx          5.5KB
 └── ui/                              [shadcn - not tracked]
 ```
 
