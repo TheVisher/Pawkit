@@ -6,6 +6,7 @@ import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useSync } from '@/lib/hooks/use-sync';
 import { useLayoutAnchors } from '@/lib/stores/ui-store';
+import { useApplySettings } from '@/lib/stores/settings-store';
 import { useActiveToast } from '@/lib/stores/toast-store';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightSidebar } from '@/components/layout/right-sidebar';
@@ -69,6 +70,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
 
   // Initialize sync engine (gets workspace from useWorkspaceStore internally)
   useSync();
+
+  // Apply appearance settings (accent color, background) as CSS variables
+  useApplySettings();
 
   // Layout anchor state for visual merging
   const { leftOpen, rightOpen, leftAnchored, rightAnchored } = useLayoutAnchors();

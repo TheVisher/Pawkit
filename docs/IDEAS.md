@@ -2513,6 +2513,23 @@ interface NoteVersion {
 - [ ] Vim-style navigation (j/k, gg, G)
 - [ ] User-configurable bindings
 
+### Condensed Sidebar Mode
+
+**Concept**: Icon-only sidebar mode as a third option alongside anchored open and hover overlay.
+
+**Current sidebar modes**:
+- Anchored open - Full sidebar always visible
+- Hover overlay - Hidden, pops out on hover
+
+**Proposed third mode**:
+- Condensed/icon-only - Shows only icons (Home, Library, Calendar, Pawkits, Tags)
+- Click icon to navigate
+- Pawkits icon opens popover/context menu showing sub-pawkits
+
+**Status**: Speculative. Current hover overlay already provides minimal-footprint navigation. Revisit if hover behavior proves intrusive or users want more deliberate click-to-navigate UX.
+
+**When to build**: Only if real friction emerges with hover behavior.
+
 ### Other Ideas
 
 - [ ] Highlights - Select text, highlight, annotate

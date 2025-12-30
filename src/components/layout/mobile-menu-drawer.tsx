@@ -1,11 +1,12 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { Drawer } from 'vaul';
-import { 
-  Settings, 
-  Tags, 
-  Folder, 
-  User, 
+import {
+  Settings,
+  Tags,
+  Folder,
+  User,
   LogOut,
   Moon,
   Sun,
@@ -25,6 +26,7 @@ interface MobileMenuDrawerProps {
 }
 
 export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) {
+  const router = useRouter();
   const { theme, setTheme } = useTheme();
   const user = useAuthStore((s) => s.user);
   const userEmail = user?.email;
@@ -87,7 +89,14 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
 
             {/* Footer Actions */}
             <div className="pt-4 space-y-2">
-              <Button variant="ghost" className="w-full justify-start gap-3 h-12 text-text-secondary">
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-3 h-12 text-text-secondary"
+                onClick={() => {
+                  onOpenChange(false);
+                  router.push('/settings');
+                }}
+              >
                 <Settings className="h-5 w-5" />
                 <span>Settings</span>
               </Button>
