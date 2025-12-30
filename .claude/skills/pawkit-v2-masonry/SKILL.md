@@ -354,6 +354,82 @@ const getColumnCount = (containerWidth: number, minColumnWidth: number): number 
 
 ---
 
+## LAYOUT CACHING & STABILITY SYSTEM
+
+### The Problem
+Cards would visually shift/rearrange every time the user navigated to the Library:
+1. First render uses estimated heights
+2. ResizeObserver measures actual heights (may differ by pixels)
+3. Positions recalculate, causing visible "stacking" then "unstacking"
+
+### The Solution: Layout Cache + Stability Gate
+
+**1. Layout Cache Store** (`src/lib/stores/layout-cache-store.ts`)
+- Caches measured card heights in memory (not persisted)
+- Uses content hash for invalidation (title length, image presence, tag count)
+- Width tolerance of 5px - reuses cache if width is similar
+
+```typescript
+interface CardHeightEntry {
+  height: number;
+  contentHash: string;
+  measuredAtWidth: number;
+}
+```
+
+**2. Stability Gate** (`src/components/cards/masonry-grid.tsx`)
+- Cards render with `visibility: hidden` until layout is stable
+- `isStable` state tracks when heights are confirmed
+- After ResizeObserver settles, cards fade in at correct positions
+
+```typescript
+// Cards hidden until stable
+style={{
+  visibility: isStable ? 'visible' : 'hidden',
+  opacity: isStable ? 1 : 0,
+  transition: isStable ? 'opacity 150ms ease-out, ...' : 'none',
+}}
+```
+
+**3. Stability Timeout**
+```typescript
+// CRITICAL: 10ms minimum delay before marking stable
+// Lower values (0-5ms) cause cards to shift
+// Higher values (50ms+) feel slow
+// If users with many cards see shifting, increase to 20-50ms
+stabilityCheckRef.current = setTimeout(() => {
+  setIsStable(true);
+}, 10); // <-- TUNING POINT
+```
+
+### Tuning the Stability Delay
+
+| Cards | Recommended Delay |
+|-------|-------------------|
+| < 50  | 10ms (current)    |
+| 50-100| 15-20ms           |
+| 100+  | 30-50ms           |
+
+**To adjust**: Search for `setIsStable(true)` in `masonry-grid.tsx` (around line 467-480)
+
+### Content Hash Function
+```typescript
+// src/lib/stores/layout-cache-store.ts
+function generateCardContentHash(card) {
+  return [
+    card.type,
+    card.image ? '1' : '0',
+    card.title?.length || 0,
+    card.tags?.length || 0,
+    card.type === 'quick-note' ? card.content?.length : '',
+  ].join(':');
+}
+```
+
+Cache invalidates when any height-affecting field changes.
+
+---
+
 ## VIRTUALIZATION (Large Lists)
 
 ```typescript
@@ -366,4 +442,4 @@ const virtualItems = virtualizer.getVirtualItems();
 
 ---
 
-**Last Updated**: December 20, 2025
+**Last Updated**: December 29, 2025

@@ -461,10 +461,12 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
       }
 
       // Schedule stability check - mark stable after measurements settle
+      // NOTE: 10ms is the minimum stable value. Lower causes cards to shift.
+      // If users with many cards see shifting, try increasing to 20-50ms.
       if (stabilityCheckRef.current) clearTimeout(stabilityCheckRef.current);
       stabilityCheckRef.current = setTimeout(() => {
         setIsStable(true);
-      }, 50);
+      }, 10);
     });
 
     // Observe all card elements for resize (images loading, content changes)
@@ -475,7 +477,7 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
     if (allCached) {
       stabilityCheckRef.current = setTimeout(() => {
         setIsStable(true);
-      }, 50);
+      }, 10);
     }
 
     return () => {
