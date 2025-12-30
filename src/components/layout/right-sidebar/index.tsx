@@ -17,9 +17,11 @@ import {
   SunMoon,
   Home,
   Calendar,
+  Settings,
+  X,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useRightSidebar } from "@/lib/stores/ui-store";
+import { useRightSidebar, useRightSidebarSettings } from "@/lib/stores/ui-store";
 import {
   useViewStore,
   useCardDisplaySettings,
@@ -63,6 +65,7 @@ import {
   PawkitOverviewSettings,
 } from "./FilterSections";
 import { CalendarSidebar } from "./calendar/CalendarSidebar";
+import { SettingsPanel } from "./SettingsPanel";
 
 export function RightSidebar() {
   const [mounted, setMounted] = useState(false);
@@ -74,6 +77,7 @@ export function RightSidebar() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const pathname = usePathname();
   const { isOpen, isAnchored, toggleAnchored, setOpen } = useRightSidebar();
+  const { isSettingsMode, toggleSettings } = useRightSidebarSettings();
   const { theme, setTheme } = useTheme();
   const workspace = useCurrentWorkspace();
 
@@ -97,6 +101,7 @@ export function RightSidebar() {
     const targetMode = activeCardId ? "card-details" : "filters";
 
     if (targetMode !== displayMode && mounted) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsTransitioning(true);
       const timer = setTimeout(() => {
         setDisplayMode(targetMode);
@@ -111,11 +116,13 @@ export function RightSidebar() {
   // Handle view transitions with animation
   useEffect(() => {
     if (!mounted) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplayedPathname(pathname);
       return;
     }
 
     if (pathname !== displayedPathname) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsAnimating(true);
       const timer = setTimeout(() => {
         setDisplayedPathname(pathname);
@@ -247,6 +254,7 @@ export function RightSidebar() {
   }, [scopedCards]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -354,17 +362,64 @@ export function RightSidebar() {
                 <p>{themeInfo.label}</p>
               </TooltipContent>
             </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleSettings}
+                  className={cn(
+                    "h-7 w-7 hover:bg-bg-surface-2 relative",
+                    isSettingsMode
+                      ? "text-text-primary"
+                      : "text-text-muted hover:text-text-primary"
+                  )}
+                >
+                  {/* Gear icon - visible when not in settings mode */}
+                  <Settings
+                    className={cn(
+                      "h-5 w-5 absolute transition-all duration-200",
+                      isSettingsMode
+                        ? "opacity-0 rotate-90 scale-75"
+                        : "opacity-100 rotate-0 scale-100"
+                    )}
+                  />
+                  {/* X icon - visible when in settings mode */}
+                  <X
+                    className={cn(
+                      "h-5 w-5 absolute transition-all duration-200",
+                      isSettingsMode
+                        ? "opacity-100 rotate-0 scale-100"
+                        : "opacity-0 -rotate-90 scale-75"
+                    )}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="bottom"
+                className={displayMode === "card-details" ? "z-[70]" : ""}
+              >
+                <p>{isSettingsMode ? "Close settings" : "Settings"}</p>
+              </TooltipContent>
+            </Tooltip>
           </TooltipProvider>
         </div>
         <span className="text-sm font-medium text-text-secondary">
-          {displayMode === "card-details" ? "Card Details" : viewConfig.title}
+          {isSettingsMode
+            ? "Settings"
+            : displayMode === "card-details"
+              ? "Card Details"
+              : viewConfig.title}
         </span>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
+        {/* Settings Panel - takes priority when active */}
+        {isSettingsMode && <SettingsPanel />}
+
         {/* Card Details Panel */}
-        {displayMode === "card-details" && activeCard && (
+        {!isSettingsMode && displayMode === "card-details" && activeCard && (
           <CardDetailsPanel
             card={activeCard}
             collections={allCollections}
@@ -373,7 +428,7 @@ export function RightSidebar() {
         )}
 
         {/* Filters Panel */}
-        {displayMode === "filters" && (
+        {!isSettingsMode && displayMode === "filters" && (
           <div
             key={displayedPathname}
             className={cn(

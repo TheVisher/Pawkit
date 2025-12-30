@@ -5,7 +5,7 @@ import { useAuthStore } from '@/lib/stores/auth-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useSync } from '@/lib/hooks/use-sync';
-import { useLayoutAnchors } from '@/lib/stores/ui-store';
+import { useLayoutAnchors, getRightSidebarWidth } from '@/lib/stores/ui-store';
 import { useApplySettings } from '@/lib/stores/settings-store';
 import { useActiveToast } from '@/lib/stores/toast-store';
 import { LeftSidebar } from '@/components/layout/left-sidebar';
@@ -75,7 +75,10 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   useApplySettings();
 
   // Layout anchor state for visual merging
-  const { leftOpen, rightOpen, leftAnchored, rightAnchored } = useLayoutAnchors();
+  const { leftOpen, rightOpen, leftAnchored, rightAnchored, rightExpandedMode } = useLayoutAnchors();
+
+  // Dynamic right sidebar width based on expansion mode
+  const rightSidebarWidth = getRightSidebarWidth(rightExpandedMode);
 
   // Check if card detail modal is open (sidebar needs higher z-index to stay above backdrop)
   const activeCardId = useModalStore((s) => s.activeCardId);
@@ -429,9 +432,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
               // Left margin: account for left sidebar when it's in flow (open, not just hovered)
               marginLeft: leftInFlow ? (leftMerged ? 325 : 341) : 0,
               // Right margin: account for right sidebar when it's in flow
-              // When merged: 325 (flush with sidebar, container padding provides offset when not fullscreen)
-              // When not merged: 341 (sidebar width + 16px gap)
-              marginRight: rightInFlow ? (rightMerged ? 325 : 341) : 0,
+              // When merged: sidebar width (flush, container padding provides offset when not fullscreen)
+              // When not merged: sidebar width + 16px gap
+              marginRight: rightInFlow ? (rightMerged ? rightSidebarWidth : rightSidebarWidth + 16) : 0,
               transition: 'margin 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
             }}
           >
@@ -460,11 +463,11 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
             </div>
           </main>
 
-          {/* RIGHT SIDEBAR - Fixed position, slides in/out */}
+          {/* RIGHT SIDEBAR - Fixed position, slides in/out, width varies with expansion mode */}
           {/* z-index bumps to 60 when card modal is open so sidebar stays above backdrop */}
           <aside
             className={cn(
-              'hidden xl:flex fixed w-[325px]',
+              'hidden xl:flex fixed',
               isCardModalOpen ? 'z-[60]' : 'z-40',
               panelBase,
               // Always apply shadow when not merged (slides with panel during animation)
@@ -475,12 +478,13 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
                 : 'rounded-2xl'
             )}
             style={{
+              width: rightSidebarWidth,
               top: rightEdgeOffset,
               right: rightEdgeOffset,
               bottom: rightEdgeOffset,
               // Slide completely off-screen when not visible
               transform: isRightVisible ? 'translateX(0)' : 'translateX(calc(100% + 32px))',
-              transition: 'transform 300ms ease-out, top 300ms ease-out, right 300ms ease-out, bottom 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
+              transition: 'width 300ms ease-out, transform 300ms ease-out, top 300ms ease-out, right 300ms ease-out, bottom 300ms ease-out, border-radius 300ms ease-out, box-shadow 300ms ease-out',
             }}
             onMouseEnter={handleRightMouseEnter}
             onMouseLeave={handleRightMouseLeave}

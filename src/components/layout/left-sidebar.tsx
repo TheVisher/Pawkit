@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { PawkitsTree } from "@/components/pawkits/pawkits-tree";
 import { SidebarContextMenu } from "@/components/context-menus";
-import { useLeftSidebar } from "@/lib/stores/ui-store";
+import { useLeftSidebar, useRightSidebarSettings } from "@/lib/stores/ui-store";
 import { useCurrentWorkspace } from "@/lib/stores/workspace-store";
 import { getClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -55,6 +55,7 @@ export function LeftSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isOpen, isAnchored, toggleAnchored, setOpen } = useLeftSidebar();
+  const { toggleSettings } = useRightSidebarSettings();
   const workspace = useCurrentWorkspace();
 
   useEffect(() => {
@@ -338,7 +339,7 @@ export function LeftSidebar() {
               Trash
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => router.push('/settings')}
+              onClick={toggleSettings}
               className="text-text-secondary focus:bg-bg-surface-2 focus:text-text-primary"
             >
               <Settings className="mr-2 h-4 w-4" />

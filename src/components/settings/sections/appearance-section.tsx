@@ -2,13 +2,14 @@
 
 import { useState, useCallback } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, Monitor, ChevronDown, Plus, X } from 'lucide-react';
+import { Sun, Moon, Monitor, ChevronDown, Plus, X, Sparkles, Square, Contrast } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useAppearanceSettings,
   ACCENT_COLOR_PRESETS,
   BACKGROUND_PRESETS,
   type BackgroundPreset,
+  type VisualStyle,
   hslToHex,
   hexToHsl,
   isValidHex,
@@ -24,6 +25,7 @@ export function AppearanceSection() {
     accentLightness,
     savedColors,
     backgroundPreset,
+    visualStyle,
     setAccentHue,
     setAccentSaturation,
     setAccentLightness,
@@ -32,6 +34,7 @@ export function AppearanceSection() {
     removeSavedColor,
     applySavedColor,
     setBackgroundPreset,
+    setVisualStyle,
   } = useAppearanceSettings();
   const [showCustomHue, setShowCustomHue] = useState(false);
   const [hexInput, setHexInput] = useState('');
@@ -76,6 +79,36 @@ export function AppearanceSection() {
 
   return (
     <div className="space-y-8">
+      {/* Visual Style */}
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-sm font-medium text-text-primary">Visual Style</h3>
+          <p className="text-xs text-text-muted mt-0.5">
+            Choose your preferred visual aesthetic
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <StyleButton
+            active={visualStyle === 'glass'}
+            onClick={() => setVisualStyle('glass')}
+            icon={Sparkles}
+            label="Glass"
+          />
+          <StyleButton
+            active={visualStyle === 'flat'}
+            onClick={() => setVisualStyle('flat')}
+            icon={Square}
+            label="Flat"
+          />
+          <StyleButton
+            active={visualStyle === 'highContrast'}
+            onClick={() => setVisualStyle('highContrast')}
+            icon={Contrast}
+            label="High Contrast"
+          />
+        </div>
+      </div>
+
       {/* Theme Mode */}
       <div className="space-y-3">
         <div>
@@ -407,6 +440,34 @@ function ThemeButton({
   active: boolean;
   onClick: () => void;
   icon: typeof Sun;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200',
+        active
+          ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium'
+          : 'bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary',
+      )}
+    >
+      <Icon className="h-4 w-4" />
+      <span className="text-sm">{label}</span>
+    </button>
+  );
+}
+
+// Style toggle button component
+function StyleButton({
+  active,
+  onClick,
+  icon: Icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: typeof Sparkles;
   label: string;
 }) {
   return (

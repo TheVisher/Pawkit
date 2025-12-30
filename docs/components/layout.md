@@ -2,7 +2,7 @@
 component: "layout"
 complexity: "high"
 status: "stable"
-last_updated: "2025-12-29"
+last_updated: "2025-12-30"
 maintainer: "Claude Code"
 ---
 
@@ -40,7 +40,9 @@ DashboardLayout
   │    │    ├── Omnibar (Floating)
   │    │    └── {Children / Page Content}
   │    └── RightSidebar
-  │         ├── Header (Toggle, Theme, Info)
+  │         ├── Header (Toggle, Theme, Settings Icon)
+  │         ├── SettingsPanel (when settings mode active)
+  │         │    └── AppearanceSection / AccountSection / DataSection
   │         ├── CardDetailsPanel (when card active)
   │         └── FiltersPanel (Default)
   │              ├── SidebarSection (Accordion Wrapper)
@@ -75,12 +77,20 @@ src/components/layout/
 │   ├── SidebarSection.tsx         # Reusable accordion component
 │   ├── FilterSections.tsx         # Individual filter logic/UI
 │   ├── CardDetailsPanel.tsx       # "Inspector" view for active card
-│   └── CardDisplaySettings.tsx    # Grid/View customization controls
+│   ├── CardDisplaySettings.tsx    # Grid/View customization controls
+│   ├── SettingsPanel.tsx          # Settings panel with tabbed navigation
+│   └── calendar/                  # Calendar-specific sidebar content
 ├── omnibar.tsx                    # Search bar + Toast notifications container
 ├── mobile-nav.tsx                 # Bottom navigation for mobile
 ├── page-header.tsx                # Top bar of the center panel
 ├── toast-stack.tsx                # Physics-based toast notification stack
 └── index.ts                       # Exports
+
+src/components/settings/
+└── sections/
+    ├── appearance-section.tsx     # Visual style, theme, accent color, background
+    ├── account-section.tsx        # User info, workspace settings
+    └── data-section.tsx           # Danger zone, data deletion
 ```
 
 ### Key Components & Patterns
@@ -114,6 +124,8 @@ src/components/layout/
     -   Sliding glass-morphism active states.
     -   Softer accent tints for clearer visual hierarchy.
 - [x] **Right Sidebar Refactor**: Broken down into manageable sub-components with consistent accordion behavior.
+- [x] **Settings Panel**: Integrated into right sidebar with animated gear/X icon toggle.
+- [x] **Visual Styles**: Glass, Flat, and High Contrast themes with CSS variable system.
 - [x] **Omnibar**: Unified search/command/capture interface.
 - [x] **Responsive**: Mobile bottom nav activates correctly on small screens.
 
@@ -126,6 +138,9 @@ src/components/layout/
 
 | Date | Change | Implementation Details |
 |------|--------|------------------------|
+| 2025-12-30 | **Settings Panel** | Added `SettingsPanel` to right sidebar with gear/X icon transition; tabs for Appearance, Account, Data. |
+| 2025-12-30 | **Visual Styles System** | Implemented Glass, Flat, and High Contrast visual styles with CSS variable overrides. |
+| 2025-12-30 | **Danger Zone** | Added data deletion options (delete notes/bookmarks/all) to Data section. |
 | 2025-12-29 | **Right Sidebar Refactor** | Modularized into `right-sidebar/` directory; added `SidebarSection` component. |
 | 2025-12-29 | **Sidebar Animations** | Added sliding active background and smooth tree expansion logic. |
 | 2025-12-29 | **Visual Styling** | Adopted "purple glow" hovers and distinct single/multi-select filter styles. |

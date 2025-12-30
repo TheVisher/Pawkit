@@ -18,6 +18,7 @@ import { TagTree } from '@/components/tags/tag-tree';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/lib/stores/auth-store';
+import { useRightSidebarSettings } from '@/lib/stores/ui-store';
 import { cn } from '@/lib/utils';
 
 interface MobileMenuDrawerProps {
@@ -29,6 +30,7 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const user = useAuthStore((s) => s.user);
+  const { toggleSettings } = useRightSidebarSettings();
   const userEmail = user?.email;
   
   const cycleTheme = () => {
@@ -94,7 +96,7 @@ export function MobileMenuDrawer({ open, onOpenChange }: MobileMenuDrawerProps) 
                 className="w-full justify-start gap-3 h-12 text-text-secondary"
                 onClick={() => {
                   onOpenChange(false);
-                  router.push('/settings');
+                  toggleSettings();
                 }}
               >
                 <Settings className="h-5 w-5" />

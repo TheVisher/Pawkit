@@ -544,4 +544,108 @@ These classes are registered in `app/globals.css` via `@theme inline`:
 
 ---
 
-**Last Updated**: December 21, 2025
+---
+
+## VISUAL STYLES SYSTEM
+
+**Purpose**: Support multiple visual aesthetics beyond glass morphism for accessibility and user preference.
+
+### Available Visual Styles
+
+| Style | Class Applied | Description |
+|-------|---------------|-------------|
+| **Glass** | (default) | Glass morphism with blur, translucent panels, soft glow shadows |
+| **Flat** | `visual-style-flat` | Solid colors, no blur, clean minimal aesthetic |
+| **High Contrast** | `visual-style-high-contrast` | WCAG AAA compliant, pure black/white, bold borders |
+
+### How Visual Styles Work
+
+Visual styles override CSS variables at the `html` element level. The base theme (dark/light) provides defaults, and visual style classes override specific properties.
+
+**Selector specificity pattern** (Tailwind v4):
+```css
+/* Must include 'html' for proper specificity */
+html.visual-style-flat.dark {
+    --glass-blur: 0px;
+    /* ... other overrides */
+}
+```
+
+**Why `html.` prefix is required**: In Tailwind v4, class selectors like `.visual-style-flat.dark` may not win specificity against `:root` and `.dark` base definitions. Adding `html` increases specificity without resorting to `!important`.
+
+### Settings Store Integration
+
+**File**: `src/lib/stores/settings-store.ts`
+
+```typescript
+export type VisualStyle = 'glass' | 'flat' | 'highContrast';
+
+// State
+visualStyle: VisualStyle;  // default: 'glass'
+
+// Action
+setVisualStyle: (style: VisualStyle) => void;
+```
+
+### Applying Visual Styles at Runtime
+
+The `useApplySettings()` hook (called in app root) handles:
+
+1. **Class application** - Adds/removes `visual-style-*` classes on `document.documentElement`
+2. **Gradient bypass** - High contrast mode sets `--bg-gradient-image: none` via JavaScript to override any preset gradients
+
+```typescript
+useEffect(() => {
+  document.documentElement.classList.remove('visual-style-flat', 'visual-style-high-contrast');
+  if (visualStyle === 'flat') {
+    document.documentElement.classList.add('visual-style-flat');
+  } else if (visualStyle === 'highContrast') {
+    document.documentElement.classList.add('visual-style-high-contrast');
+  }
+}, [visualStyle]);
+
+useEffect(() => {
+  // Skip gradient for high contrast - set pure background
+  if (visualStyle === 'highContrast') {
+    const isDark = document.documentElement.classList.contains('dark');
+    document.documentElement.style.setProperty('--bg-gradient-base', isDark ? '#000000' : '#ffffff');
+    document.documentElement.style.setProperty('--bg-gradient-image', 'none');
+    return;
+  }
+  // ... normal gradient application
+}, [backgroundPreset, visualStyle]);
+```
+
+### High Contrast Specifics
+
+High contrast uses `!important` on all CSS variable overrides because:
+1. JavaScript in `useApplySettings` sets some variables dynamically
+2. Ensures accessibility overrides always win regardless of load order
+
+**Key high contrast characteristics:**
+- Pure black (`#000`) or pure white (`#fff`) backgrounds
+- Visible white/black borders (not subtle transparency)
+- No blur effects (`--glass-blur: 0px`)
+- No soft shadows (replaced with solid 2px outlines)
+- Increased accent saturation for visibility
+
+### Adding New Visual Styles
+
+1. Add to `VisualStyle` type in `settings-store.ts`
+2. Add CSS overrides in `globals.css` using `html.visual-style-{name}.dark` and `.light` selectors
+3. Add UI button in `appearance-section.tsx`
+4. Update `useApplySettings()` to handle the new class
+
+### CSS Variables Affected by Visual Styles
+
+| Variable | Glass | Flat | High Contrast |
+|----------|-------|------|---------------|
+| `--glass-blur` | 12px | 0px | 0px |
+| `--glass-bg` | hsl(0 0% 100% / 0.1) | hsl(0 0% 18%) | hsl(0 0% 12%) |
+| `--glass-border` | hsl(0 0% 100% / 0.15) | hsl(0 0% 22%) | hsl(0 0% 100%) |
+| `--glass-shadow` | Multi-layer soft | Single simpler | Solid 2px outline |
+| `--bg-gradient-image` | Radial gradients | Radial gradients | none |
+
+---
+
+**Last Updated**: December 30, 2025

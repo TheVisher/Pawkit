@@ -502,4 +502,129 @@ Use `LayoutGrid` (lucide-react) for "All" options in filter sections instead of 
 
 ---
 
-**Last Updated**: December 29, 2025
+---
+
+## SETTINGS PANEL IN RIGHT SIDEBAR
+
+### Overview
+
+Settings is accessed via a gear icon in the right sidebar header. When clicked, the sidebar content switches to a settings panel with tabbed sections.
+
+### Settings Mode Toggle
+
+**Location**: Right sidebar header, after theme toggle button
+
+**Icon Transition** (gear ↔ X):
+```tsx
+<Button onClick={toggleSettings}>
+  {/* Gear - visible when NOT in settings */}
+  <Settings className={cn(
+    "absolute transition-all duration-200",
+    isSettingsMode
+      ? "opacity-0 rotate-90 scale-75"
+      : "opacity-100 rotate-0 scale-100"
+  )} />
+  {/* X - visible when IN settings */}
+  <X className={cn(
+    "absolute transition-all duration-200",
+    isSettingsMode
+      ? "opacity-100 rotate-0 scale-100"
+      : "opacity-0 -rotate-90 scale-75"
+  )} />
+</Button>
+```
+
+### Settings State Management
+
+**File**: `src/lib/stores/ui-store.ts`
+
+```typescript
+// Right sidebar settings state
+interface RightSidebarSettingsState {
+  isSettingsMode: boolean;
+  settingsTab: 'appearance' | 'account' | 'data' | null;
+  toggleSettings: () => void;
+  setTab: (tab: 'appearance' | 'account' | 'data') => void;
+}
+
+// Hook
+export const useRightSidebarSettings = () => useUIStore(
+  useShallow((s) => ({
+    isSettingsMode: s.rightSidebarSettingsMode,
+    settingsTab: s.rightSidebarSettingsTab,
+    toggleSettings: s.toggleRightSidebarSettings,
+    setTab: s.setRightSidebarSettingsTab,
+  }))
+);
+```
+
+### Settings Panel Structure
+
+**File**: `src/components/layout/right-sidebar/SettingsPanel.tsx`
+
+```tsx
+<div className="flex flex-col h-full -mx-4">
+  {/* Floating pill tabs */}
+  <div className="flex gap-1.5 px-3 pt-3">
+    {/* Appearance | Account | Data tabs */}
+  </div>
+
+  {/* Content area */}
+  <div className="flex-1 overflow-y-auto px-4 py-4">
+    {activeTab === "appearance" && <AppearanceSection />}
+    {activeTab === "account" && <AccountSection />}
+    {activeTab === "data" && <DataSection />}
+  </div>
+</div>
+```
+
+### Settings Tab Styling
+
+**Active Tab**:
+```tsx
+className="text-text-primary bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)] rounded-xl"
+// Icon: text-[var(--color-accent)]
+```
+
+**Inactive Tab**:
+```tsx
+className="text-text-muted hover:text-text-secondary hover:bg-black/5 dark:hover:bg-white/5 rounded-xl"
+```
+
+### Settings Sections
+
+| Tab | Component | Location | Features |
+|-----|-----------|----------|----------|
+| **Appearance** | `AppearanceSection` | `src/components/settings/sections/appearance-section.tsx` | Visual style, theme, accent color, background |
+| **Account** | `AccountSection` | `src/components/settings/sections/account-section.tsx` | User info, workspace settings |
+| **Data** | `DataSection` | `src/components/settings/sections/data-section.tsx` | Danger zone, data deletion |
+
+### Appearance Settings (Detail)
+
+The Appearance section provides:
+
+1. **Visual Style** - Glass / Flat / High Contrast
+2. **Theme** - Light / Dark / System
+3. **Accent Color** - Preset hues + custom HSL picker
+4. **Background** - Gradient presets (Purple Glow, Minimal, Blue Glow, etc.)
+
+See `pawkit-v2-ui` skill for Visual Styles System documentation.
+
+### Render Priority
+
+In `RightSidebar`, settings mode takes priority over all other content:
+
+```tsx
+{/* Settings Panel - takes priority when active */}
+{isSettingsMode && <SettingsPanel />}
+
+{/* Card Details Panel */}
+{!isSettingsMode && displayMode === "card-details" && <CardDetailsPanel />}
+
+{/* Filters Panel */}
+{!isSettingsMode && displayMode === "filters" && <FilterContent />}
+```
+
+---
+
+**Last Updated**: December 30, 2025

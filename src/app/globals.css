@@ -309,6 +309,181 @@
     --panel-inset-opacity: 0.15;
 }
 
+/* ==========================================================================
+   FLAT/MODERN VISUAL STYLE OVERRIDES
+   When .visual-style-flat is applied, disable glass effects
+   ========================================================================== */
+
+html.visual-style-flat.dark {
+    /* Flat backgrounds - solid colors */
+    --glass-bg: hsl(0 0% 18%);
+    --glass-bg-hover: hsl(0 0% 22%);
+    --glass-bg-active: hsl(0 0% 26%);
+
+    /* Flat panel background (solid) */
+    --glass-panel-bg: hsl(0 0% 12%);
+
+    /* Flat borders (more visible) */
+    --glass-border: hsl(0 0% 22%);
+    --glass-border-hover: hsl(0 0% 28%);
+
+    /* Disable blur effect */
+    --glass-blur: 0px;
+    --glass-saturate: 1;
+
+    /* Flat shadow (simpler, no glow) */
+    --glass-shadow: 0 4px 12px hsl(0 0% 0% / 0.4);
+
+    /* Flat card shadow */
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+    /* Surface colors for flat style */
+    --color-bg-surface-1: hsl(0 0% 10%);
+    --color-bg-surface-2: hsl(0 0% 14%);
+    --color-bg-surface-3: hsl(0 0% 18%);
+
+    /* Cleaner borders */
+    --color-border-subtle: hsl(0 0% 18%);
+    --color-border-default: hsl(0 0% 24%);
+
+    /* Remove purple glow shadows */
+    --shadow-1: 0 2px 8px hsl(0 0% 0% / 0.3);
+    --shadow-2: 0 4px 16px hsl(0 0% 0% / 0.4);
+    --shadow-3: 0 8px 32px hsl(0 0% 0% / 0.5);
+}
+
+html.visual-style-flat.light {
+    /* Flat backgrounds - solid colors */
+    --glass-bg: hsl(0 0% 96%);
+    --glass-bg-hover: hsl(0 0% 92%);
+    --glass-bg-active: hsl(0 0% 88%);
+
+    /* Flat panel background (solid white) */
+    --glass-panel-bg: hsl(0 0% 100%);
+
+    /* Flat borders (more visible) */
+    --glass-border: hsl(0 0% 88%);
+    --glass-border-hover: hsl(0 0% 80%);
+
+    /* Disable blur effect */
+    --glass-blur: 0px;
+    --glass-saturate: 1;
+
+    /* Flat shadow (simpler, no glow) */
+    --glass-shadow: 0 4px 12px hsl(0 0% 0% / 0.08);
+
+    /* Flat card shadow */
+    --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+    /* Surface colors for flat style */
+    --color-bg-surface-1: hsl(0 0% 100%);
+    --color-bg-surface-2: hsl(0 0% 97%);
+    --color-bg-surface-3: hsl(0 0% 94%);
+
+    /* Cleaner borders */
+    --color-border-subtle: hsl(0 0% 90%);
+    --color-border-default: hsl(0 0% 85%);
+
+    /* Remove purple glow shadows */
+    --shadow-1: 0 2px 8px hsl(0 0% 0% / 0.06);
+    --shadow-2: 0 4px 16px hsl(0 0% 0% / 0.08);
+    --shadow-3: 0 8px 32px hsl(0 0% 0% / 0.1);
+}
+
+/* ==========================================================================
+   HIGH CONTRAST VISUAL STYLE
+   Accessibility-focused theme with maximum contrast and visibility
+   WCAG AAA compliant (7:1+ contrast ratios)
+   ========================================================================== */
+
+html.visual-style-high-contrast.dark {
+    /* Pure black background */
+    --color-bg-base: hsl(0 0% 0%) !important;
+    --color-bg-surface-1: hsl(0 0% 0%) !important;
+    --color-bg-surface-2: hsl(0 0% 8%) !important;
+    --color-bg-surface-3: hsl(0 0% 12%) !important;
+
+    /* High contrast backgrounds */
+    --glass-bg: hsl(0 0% 12%) !important;
+    --glass-bg-hover: hsl(0 0% 18%) !important;
+    --glass-bg-active: hsl(0 0% 24%) !important;
+    --glass-panel-bg: hsl(0 0% 0%) !important;
+
+    /* Bright, visible borders */
+    --glass-border: hsl(0 0% 100%) !important;
+    --glass-border-hover: hsl(0 0% 100%) !important;
+    --color-border-subtle: hsl(0 0% 40%) !important;
+    --color-border-default: hsl(0 0% 100%) !important;
+
+    /* No blur - crisp edges */
+    --glass-blur: 0px !important;
+    --glass-saturate: 1 !important;
+
+    /* No soft shadows - clear definition */
+    --glass-shadow: 0 0 0 2px hsl(0 0% 100%) !important;
+    --shadow-1: none !important;
+    --shadow-2: none !important;
+    --shadow-3: none !important;
+    --card-shadow: 0 0 0 2px hsl(0 0% 40%) !important;
+
+    /* Pure white text */
+    --color-text-primary: hsl(0 0% 100%) !important;
+    --color-text-secondary: hsl(0 0% 100%) !important;
+    --color-text-muted: hsl(0 0% 80%) !important;
+
+    /* Bright accent for visibility */
+    --light-accent: 70% !important;
+    --sat-accent: 100% !important;
+
+    /* Remove gradient backgrounds */
+    --bg-gradient-base: #000000 !important;
+    --bg-gradient-image: none !important;
+}
+
+html.visual-style-high-contrast.light {
+    /* Pure white background */
+    --color-bg-base: hsl(0 0% 100%) !important;
+    --color-bg-surface-1: hsl(0 0% 100%) !important;
+    --color-bg-surface-2: hsl(0 0% 96%) !important;
+    --color-bg-surface-3: hsl(0 0% 92%) !important;
+
+    /* High contrast backgrounds */
+    --glass-bg: hsl(0 0% 92%) !important;
+    --glass-bg-hover: hsl(0 0% 85%) !important;
+    --glass-bg-active: hsl(0 0% 78%) !important;
+    --glass-panel-bg: hsl(0 0% 100%) !important;
+
+    /* Dark, visible borders */
+    --glass-border: hsl(0 0% 0%) !important;
+    --glass-border-hover: hsl(0 0% 0%) !important;
+    --color-border-subtle: hsl(0 0% 50%) !important;
+    --color-border-default: hsl(0 0% 0%) !important;
+
+    /* No blur - crisp edges */
+    --glass-blur: 0px !important;
+    --glass-saturate: 1 !important;
+
+    /* No soft shadows - clear definition */
+    --glass-shadow: 0 0 0 2px hsl(0 0% 0%) !important;
+    --shadow-1: none !important;
+    --shadow-2: none !important;
+    --shadow-3: none !important;
+    --card-shadow: 0 0 0 2px hsl(0 0% 50%) !important;
+
+    /* Pure black text */
+    --color-text-primary: hsl(0 0% 0%) !important;
+    --color-text-secondary: hsl(0 0% 0%) !important;
+    --color-text-muted: hsl(0 0% 30%) !important;
+
+    /* Darker accent for visibility on light bg */
+    --light-accent: 35% !important;
+    --sat-accent: 100% !important;
+
+    /* Remove gradient backgrounds */
+    --bg-gradient-base: #ffffff !important;
+    --bg-gradient-image: none !important;
+}
+
 @layer base {
     * {
         @apply border-border outline-ring/50;

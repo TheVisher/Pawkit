@@ -14,6 +14,7 @@ import { useEffect } from 'react';
 // =============================================================================
 
 export type BackgroundPreset = 'default' | 'minimal' | 'blue' | 'teal' | 'warm';
+export type VisualStyle = 'glass' | 'flat' | 'highContrast';
 
 export interface AccentColorPreset {
   name: string;
@@ -206,6 +207,7 @@ interface SettingsState {
   accentLightness: number;
   savedColors: SavedColor[];
   backgroundPreset: BackgroundPreset;
+  visualStyle: VisualStyle;
 
   // Actions
   setAccentHue: (hue: number) => void;
@@ -216,6 +218,7 @@ interface SettingsState {
   removeSavedColor: (id: string) => void;
   applySavedColor: (id: string) => void;
   setBackgroundPreset: (preset: BackgroundPreset) => void;
+  setVisualStyle: (style: VisualStyle) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -227,6 +230,7 @@ export const useSettingsStore = create<SettingsState>()(
       accentLightness: 55,
       savedColors: [],
       backgroundPreset: 'default',
+      visualStyle: 'glass',
 
       // Actions
       setAccentHue: (hue) => set({ accentHue: hue }),
@@ -262,6 +266,7 @@ export const useSettingsStore = create<SettingsState>()(
         }
       },
       setBackgroundPreset: (preset) => set({ backgroundPreset: preset }),
+      setVisualStyle: (style) => set({ visualStyle: style }),
     }),
     {
       name: 'pawkit-settings',
@@ -291,6 +296,7 @@ export function useAppearanceSettings() {
       accentLightness: state.accentLightness,
       savedColors: state.savedColors,
       backgroundPreset: state.backgroundPreset,
+      visualStyle: state.visualStyle,
       setAccentHue: state.setAccentHue,
       setAccentSaturation: state.setAccentSaturation,
       setAccentLightness: state.setAccentLightness,
@@ -299,6 +305,7 @@ export function useAppearanceSettings() {
       removeSavedColor: state.removeSavedColor,
       applySavedColor: state.applySavedColor,
       setBackgroundPreset: state.setBackgroundPreset,
+      setVisualStyle: state.setVisualStyle,
     }))
   );
 }
@@ -312,6 +319,7 @@ export function useApplySettings() {
   const accentSaturation = useSettingsStore((state) => state.accentSaturation);
   const accentLightness = useSettingsStore((state) => state.accentLightness);
   const backgroundPreset = useSettingsStore((state) => state.backgroundPreset);
+  const visualStyle = useSettingsStore((state) => state.visualStyle);
 
   useEffect(() => {
     // Apply accent HSL values
@@ -321,6 +329,24 @@ export function useApplySettings() {
   }, [accentHue, accentSaturation, accentLightness]);
 
   useEffect(() => {
+    // Apply visual style class
+    document.documentElement.classList.remove('visual-style-flat', 'visual-style-high-contrast');
+    if (visualStyle === 'flat') {
+      document.documentElement.classList.add('visual-style-flat');
+    } else if (visualStyle === 'highContrast') {
+      document.documentElement.classList.add('visual-style-high-contrast');
+    }
+  }, [visualStyle]);
+
+  useEffect(() => {
+    // Skip gradient application for high contrast mode
+    if (visualStyle === 'highContrast') {
+      const isDark = document.documentElement.classList.contains('dark');
+      document.documentElement.style.setProperty('--bg-gradient-base', isDark ? '#000000' : '#ffffff');
+      document.documentElement.style.setProperty('--bg-gradient-image', 'none');
+      return;
+    }
+
     // Apply background gradient based on current theme
     const preset = BACKGROUND_PRESETS[backgroundPreset];
     if (!preset) return;
@@ -346,5 +372,5 @@ export function useApplySettings() {
     observer.observe(document.documentElement, { attributes: true });
 
     return () => observer.disconnect();
-  }, [backgroundPreset]);
+  }, [backgroundPreset, visualStyle]);
 }
