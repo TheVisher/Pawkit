@@ -15,7 +15,7 @@ import {
   type DateGrouping,
 } from '@/components/layout/right-sidebar/config';
 
-// Import components from right-sidebar refactor
+// Import components from right-sidebar sections
 import {
   ContentTypeFilter as ContentTypeFilterComponent,
   SortOptions as SortOptionsComponent,
@@ -23,7 +23,7 @@ import {
   GroupingSection as GroupingSectionComponent,
   SubPawkitSettings as SubPawkitSettingsComponent,
   TagsFilter as TagsFilterComponent,
-} from '@/components/layout/right-sidebar/FilterSections';
+} from '@/components/layout/right-sidebar/sections';
 
 interface MobileViewOptionsProps {
   viewType: 'library' | 'pawkit' | 'home';

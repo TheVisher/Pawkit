@@ -63,7 +63,7 @@ import {
   SubPawkitSettings,
   TagsFilter,
   PawkitOverviewSettings,
-} from "./FilterSections";
+} from "./sections";
 import { CalendarSidebar } from "./calendar/CalendarSidebar";
 import { SettingsPanel } from "./SettingsPanel";
 
