@@ -43,6 +43,16 @@ export function useOmnibar(isCompact: boolean) {
     !addMode.isAddMode &&
     !kitMode.isKitMode;
 
+  // Wrapped setter that coordinates mode switching
+  const setIsQuickNoteMode = useCallback((mode: boolean) => {
+    if (mode) {
+      // Close other modes when entering search/quick note mode
+      addMode.closeAddMode();
+      kitMode.closeKitMode();
+    }
+    search.setIsQuickNoteMode(mode);
+  }, [addMode, kitMode, search]);
+
   // ==========================================================================
   // MODE TOGGLE HANDLERS (for UI buttons)
   // ==========================================================================
@@ -183,7 +193,7 @@ export function useOmnibar(isCompact: boolean) {
     quickNoteText: search.quickNoteText,
     setQuickNoteText: search.setQuickNoteText,
     isQuickNoteMode: search.isQuickNoteMode,
-    setIsQuickNoteMode: search.setIsQuickNoteMode,
+    setIsQuickNoteMode, // Use wrapped version that coordinates modes
     showDiscardConfirm: search.showDiscardConfirm,
     forceExpanded: search.forceExpanded,
     selectedIndex: search.selectedIndex,

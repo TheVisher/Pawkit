@@ -35,7 +35,7 @@ export function SearchResultsPanel({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto mt-2 border-t border-[var(--glass-border)] pt-2">
+    <div className="flex-1 overflow-y-auto mt-2 border-t border-[var(--glass-border)] pt-2 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]" style={{ scrollbarWidth: 'none' }}>
       {/* Cards Section */}
       {searchResults.cards.length > 0 && (
         <div className="mb-2">
