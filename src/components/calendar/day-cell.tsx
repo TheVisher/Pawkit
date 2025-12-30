@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { EventItem } from './event-item';
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { EventItem } from "./event-item";
 
 interface CalendarItem {
   id: string;
   title: string;
   date: string;
   color?: string;
-  type: 'event' | 'card' | 'todo';
+  type: "event" | "card" | "todo";
   isAllDay?: boolean;
   startTime?: string;
   source?: {
@@ -37,7 +37,7 @@ export function DayCell({
   isToday,
   onClick,
 }: DayCellProps) {
-  const dayNumber = format(date, 'd');
+  const dayNumber = format(date, "d");
   const visibleItems = items.slice(0, MAX_VISIBLE_ITEMS);
   const hiddenCount = items.length - MAX_VISIBLE_ITEMS;
 
@@ -45,26 +45,29 @@ export function DayCell({
     <div
       onClick={onClick}
       className={cn(
-        'p-2 cursor-pointer transition-all flex flex-col rounded-lg',
-        'bg-bg-surface-1 hover:bg-bg-surface-2',
-        'border border-border-subtle/50',
-        'shadow-sm hover:shadow-md',
-        !isCurrentMonth && 'bg-bg-surface-1/50 text-text-muted'
+        "p-2 cursor-pointer transition-all flex flex-col rounded-lg",
+        "bg-bg-surface-1 hover:bg-bg-surface-2",
+        "border border-border-subtle/50",
+        "shadow-sm hover:shadow-md",
+        !isCurrentMonth && "bg-bg-surface-1/50 text-text-muted",
       )}
     >
       {/* Day number */}
       <div className="flex items-center justify-between mb-2">
         <span
           className={cn(
-            'inline-flex items-center justify-center w-6 h-6 text-xs font-medium rounded-full',
-            isSelected && !isToday && 'ring-2 ring-accent-primary',
-            !isToday && !isSelected && isCurrentMonth && 'text-text-primary',
-            !isToday && !isSelected && !isCurrentMonth && 'text-text-muted'
+            "inline-flex items-center justify-center w-7 h-7 text-xs font-medium rounded-md transition-all border border-transparent",
+            // Selected (User Clicked)
+            isSelected &&
+              !isToday &&
+              "bg-white/10 border-[var(--color-accent)] text-text-primary",
+            // Today (Current Date)
+            isToday &&
+              "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-[var(--color-accent)]/20",
+            // Selected AND Today (Focus Ring) - REMOVED to match subtle look request
+            // isSelected && isToday && 'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-bg-surface-1',
+            // Normal
           )}
-          style={isToday ? {
-            backgroundColor: 'var(--color-accent)',
-            color: 'white',
-          } : undefined}
         >
           {dayNumber}
         </span>

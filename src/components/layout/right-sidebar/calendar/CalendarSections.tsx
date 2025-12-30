@@ -11,10 +11,68 @@ import {
 import { SidebarSection } from "../SidebarSection";
 import { Calendar } from "@/components/ui/calendar"; // Assuming standard UI calendar exists
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { DayButton, getDefaultClassNames } from "react-day-picker";
 
 // --- Shared Components ---
+
+// Custom DayButton to override the hardcoded bg-primary in shadcn's default implementation
+function CustomDayButton({
+  className,
+  day,
+  modifiers,
+  ...props
+}: React.ComponentProps<typeof DayButton>) {
+  const defaultClassNames = getDefaultClassNames();
+  const ref = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (modifiers.focused) ref.current?.focus();
+  }, [modifiers.focused]);
+
+  // Determine styling based on state
+  const isToday = modifiers.today;
+  const isSelected = modifiers.selected;
+
+  return (
+    <Button
+      ref={ref}
+      variant="ghost"
+      size="icon"
+      data-day={day.date.toLocaleDateString()}
+      data-selected-single={
+        isSelected &&
+        !modifiers.range_start &&
+        !modifiers.range_end &&
+        !modifiers.range_middle
+      }
+      className={cn(
+        "h-9 w-full p-0 font-normal aspect-square rounded-md border border-transparent transition-all",
+        // Default hover
+        "hover:bg-bg-surface-3 hover:text-text-primary focus:bg-bg-surface-3 focus:text-text-primary",
+
+        // Today Styling (Purple Translucent)
+        isToday &&
+          "bg-[var(--color-accent)]/10 text-[var(--color-accent)] border-[var(--color-accent)]/20 hover:bg-[var(--color-accent)]/20 hover:text-[var(--color-accent)] font-medium",
+
+        // Selected Styling (White bg with Purple Border) - Overrides today if both are true? Or combines?
+        // If selected AND today: Keep purple bg, add stronger border?
+        // Let's make Selected distinct:
+        isSelected &&
+          !isToday &&
+          "bg-white/10 border-[var(--color-accent)] text-text-primary",
+        isSelected &&
+          isToday &&
+          "ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-bg-surface-1", // Focus ring effect for today+selected
+
+        defaultClassNames.day,
+        className,
+      )}
+      {...props}
+    />
+  );
+}
 
 // 1. Mini Calendar (Navigator)
 export function MiniCalendar() {
@@ -26,17 +84,18 @@ export function MiniCalendar() {
         mode="single"
         selected={date}
         onSelect={setDate}
+        components={{ DayButton: CustomDayButton }}
         className="rounded-md border border-border-subtle bg-bg-surface-2 w-full"
         classNames={{
           root: "w-full flex justify-center",
           month: "space-y-4 w-full flex flex-col items-center",
-          table: "w-full border-collapse space-y-1 max-w-[280px]",
+          table: "w-full border-collapse space-y-1 max-w-[280px] mx-auto",
           head_row: "grid grid-cols-7 w-full",
           row: "grid grid-cols-7 w-full mt-2",
           head_cell:
             "text-muted-foreground rounded-md w-full font-normal text-[0.8rem]",
-          cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-          day: "h-9 w-full p-0 font-normal aria-selected:opacity-100 aspect-square",
+          cell: "text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
+          day: "", // Empty to prevent double application of styles
         }}
       />
     </div>
