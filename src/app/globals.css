@@ -404,36 +404,42 @@ html.visual-style-high-contrast.dark {
     --color-bg-surface-3: hsl(0 0% 12%) !important;
 
     /* High contrast backgrounds */
-    --glass-bg: hsl(0 0% 12%) !important;
-    --glass-bg-hover: hsl(0 0% 18%) !important;
-    --glass-bg-active: hsl(0 0% 24%) !important;
+    --glass-bg: hsl(0 0% 15%) !important;
+    --glass-bg-hover: hsl(0 0% 22%) !important;
+    --glass-bg-active: hsl(0 0% 28%) !important;
     --glass-panel-bg: hsl(0 0% 0%) !important;
 
-    /* Bright, visible borders */
-    --glass-border: hsl(0 0% 100%) !important;
-    --glass-border-hover: hsl(0 0% 100%) !important;
-    --color-border-subtle: hsl(0 0% 40%) !important;
+    /* Bright, visible borders - thicker appearance */
+    --glass-border: hsl(0 0% 60%) !important;
+    --glass-border-hover: hsl(0 0% 80%) !important;
+    --color-border-subtle: hsl(0 0% 50%) !important;
     --color-border-default: hsl(0 0% 100%) !important;
 
     /* No blur - crisp edges */
     --glass-blur: 0px !important;
     --glass-saturate: 1 !important;
 
-    /* No soft shadows - clear definition */
+    /* No soft shadows - clear definition with thicker borders */
     --glass-shadow: 0 0 0 2px hsl(0 0% 100%) !important;
     --shadow-1: none !important;
     --shadow-2: none !important;
     --shadow-3: none !important;
-    --card-shadow: 0 0 0 2px hsl(0 0% 40%) !important;
+    --card-shadow: 0 0 0 2px hsl(0 0% 50%) !important;
 
-    /* Pure white text */
+    /* Pure white text - muted text brighter for readability */
     --color-text-primary: hsl(0 0% 100%) !important;
-    --color-text-secondary: hsl(0 0% 100%) !important;
-    --color-text-muted: hsl(0 0% 80%) !important;
+    --color-text-secondary: hsl(0 0% 95%) !important;
+    --color-text-muted: hsl(0 0% 70%) !important; /* 7:1+ contrast on black */
 
     /* Bright accent for visibility */
-    --light-accent: 70% !important;
+    --light-accent: 75% !important;
     --sat-accent: 100% !important;
+
+    /* Tags - high contrast variant */
+    --tag-saturation: 100% !important;
+    --tag-lightness: 25% !important;
+    --tag-text-saturation: 100% !important;
+    --tag-text-lightness: 95% !important;
 
     /* Remove gradient backgrounds */
     --bg-gradient-base: #000000 !important;
@@ -448,40 +454,278 @@ html.visual-style-high-contrast.light {
     --color-bg-surface-3: hsl(0 0% 92%) !important;
 
     /* High contrast backgrounds */
-    --glass-bg: hsl(0 0% 92%) !important;
-    --glass-bg-hover: hsl(0 0% 85%) !important;
-    --glass-bg-active: hsl(0 0% 78%) !important;
+    --glass-bg: hsl(0 0% 90%) !important;
+    --glass-bg-hover: hsl(0 0% 82%) !important;
+    --glass-bg-active: hsl(0 0% 75%) !important;
     --glass-panel-bg: hsl(0 0% 100%) !important;
 
-    /* Dark, visible borders */
-    --glass-border: hsl(0 0% 0%) !important;
-    --glass-border-hover: hsl(0 0% 0%) !important;
-    --color-border-subtle: hsl(0 0% 50%) !important;
+    /* Dark, visible borders - thicker appearance */
+    --glass-border: hsl(0 0% 35%) !important;
+    --glass-border-hover: hsl(0 0% 20%) !important;
+    --color-border-subtle: hsl(0 0% 40%) !important;
     --color-border-default: hsl(0 0% 0%) !important;
 
     /* No blur - crisp edges */
     --glass-blur: 0px !important;
     --glass-saturate: 1 !important;
 
-    /* No soft shadows - clear definition */
+    /* No soft shadows - clear definition with thicker borders */
     --glass-shadow: 0 0 0 2px hsl(0 0% 0%) !important;
     --shadow-1: none !important;
     --shadow-2: none !important;
     --shadow-3: none !important;
-    --card-shadow: 0 0 0 2px hsl(0 0% 50%) !important;
+    --card-shadow: 0 0 0 2px hsl(0 0% 40%) !important;
 
-    /* Pure black text */
+    /* Pure black text - muted text darker for readability */
     --color-text-primary: hsl(0 0% 0%) !important;
-    --color-text-secondary: hsl(0 0% 0%) !important;
-    --color-text-muted: hsl(0 0% 30%) !important;
+    --color-text-secondary: hsl(0 0% 5%) !important;
+    --color-text-muted: hsl(0 0% 25%) !important; /* 7:1+ contrast on white */
 
     /* Darker accent for visibility on light bg */
     --light-accent: 35% !important;
     --sat-accent: 100% !important;
 
+    /* Tags - high contrast variant */
+    --tag-saturation: 100% !important;
+    --tag-lightness: 85% !important;
+    --tag-text-saturation: 100% !important;
+    --tag-text-lightness: 15% !important;
+
     /* Remove gradient backgrounds */
     --bg-gradient-base: #ffffff !important;
     --bg-gradient-image: none !important;
+}
+
+/* High contrast link styling - always underlined for visibility */
+html.visual-style-high-contrast a:not([class*="no-underline"]) {
+    text-decoration: underline !important;
+    text-underline-offset: 2px !important;
+}
+
+html.visual-style-high-contrast a:hover:not([class*="no-underline"]) {
+    text-decoration-thickness: 2px !important;
+}
+
+/* High contrast focus indicators */
+html.visual-style-high-contrast *:focus-visible {
+    outline: 3px solid var(--color-accent) !important;
+    outline-offset: 2px !important;
+}
+
+/* ==========================================================================
+   HIGH CONTRAST - INPUT FIELDS
+   Make all input fields clearly visible
+   ========================================================================== */
+html.visual-style-high-contrast.dark input,
+html.visual-style-high-contrast.dark textarea {
+    background: hsl(0 0% 12%) !important;
+    border: 2px solid hsl(0 0% 40%) !important;
+    color: hsl(0 0% 100%) !important;
+}
+
+html.visual-style-high-contrast.dark input:focus,
+html.visual-style-high-contrast.dark textarea:focus {
+    border-color: var(--color-accent) !important;
+    box-shadow: 0 0 0 3px hsl(var(--hue-accent) 100% 50% / 0.3) !important;
+}
+
+html.visual-style-high-contrast.dark input::placeholder,
+html.visual-style-high-contrast.dark textarea::placeholder {
+    color: hsl(0 0% 60%) !important;
+    opacity: 1 !important;
+}
+
+html.visual-style-high-contrast.light input,
+html.visual-style-high-contrast.light textarea {
+    background: hsl(0 0% 100%) !important;
+    border: 2px solid hsl(0 0% 50%) !important;
+    color: hsl(0 0% 0%) !important;
+}
+
+html.visual-style-high-contrast.light input:focus,
+html.visual-style-high-contrast.light textarea:focus {
+    border-color: var(--color-accent) !important;
+    box-shadow: 0 0 0 3px hsl(var(--hue-accent) 100% 35% / 0.3) !important;
+}
+
+html.visual-style-high-contrast.light input::placeholder,
+html.visual-style-high-contrast.light textarea::placeholder {
+    color: hsl(0 0% 40%) !important;
+    opacity: 1 !important;
+}
+
+/* ==========================================================================
+   HIGH CONTRAST - BUTTON OVERRIDES
+   Ensure buttons are clearly visible
+   ========================================================================== */
+html.visual-style-high-contrast.dark [data-slot="button"][data-variant="default"] {
+    background: hsl(var(--hue-accent) 100% 30%) !important;
+    color: hsl(0 0% 100%) !important;
+    border: 2px solid hsl(var(--hue-accent) 100% 50%) !important;
+    font-weight: 600 !important;
+}
+
+html.visual-style-high-contrast.dark [data-slot="button"][data-variant="default"]:hover {
+    background: hsl(var(--hue-accent) 100% 40%) !important;
+}
+
+html.visual-style-high-contrast.dark [data-slot="button"][data-variant="ghost"],
+html.visual-style-high-contrast.dark [data-slot="button"][data-variant="outline"] {
+    border: 2px solid hsl(0 0% 40%) !important;
+    color: hsl(0 0% 100%) !important;
+}
+
+html.visual-style-high-contrast.dark [data-slot="button"][data-variant="ghost"]:hover,
+html.visual-style-high-contrast.dark [data-slot="button"][data-variant="outline"]:hover {
+    background: hsl(0 0% 20%) !important;
+    border-color: hsl(0 0% 60%) !important;
+}
+
+html.visual-style-high-contrast.light [data-slot="button"][data-variant="default"] {
+    background: hsl(var(--hue-accent) 100% 35%) !important;
+    color: hsl(0 0% 100%) !important;
+    border: 2px solid hsl(var(--hue-accent) 100% 25%) !important;
+    font-weight: 600 !important;
+}
+
+html.visual-style-high-contrast.light [data-slot="button"][data-variant="ghost"],
+html.visual-style-high-contrast.light [data-slot="button"][data-variant="outline"] {
+    border: 2px solid hsl(0 0% 50%) !important;
+    color: hsl(0 0% 0%) !important;
+}
+
+html.visual-style-high-contrast.dark [data-slot="card"] {
+    border: 2px solid hsl(0 0% 35%) !important;
+}
+
+html.visual-style-high-contrast.light [data-slot="card"] {
+    border: 2px solid hsl(0 0% 60%) !important;
+}
+
+/* ==========================================================================
+   HIGH CONTRAST - EMPTY STATES
+   Make empty state text clearly visible (remove opacity modifiers)
+   ========================================================================== */
+html.visual-style-high-contrast .text-text-muted\/50,
+html.visual-style-high-contrast .text-text-muted\/70,
+html.visual-style-high-contrast [class*="text-muted"][class*="/"] {
+    opacity: 1 !important;
+    color: var(--color-text-muted) !important;
+}
+
+/* Empty state icons - make more visible */
+html.visual-style-high-contrast.dark svg[class*="text-muted"] {
+    opacity: 1 !important;
+    color: hsl(0 0% 55%) !important;
+}
+
+html.visual-style-high-contrast.light svg[class*="text-muted"] {
+    opacity: 1 !important;
+    color: hsl(0 0% 40%) !important;
+}
+
+/* ==========================================================================
+   HIGH CONTRAST - WIDGET CARDS
+   Make widget backgrounds more visible against page background
+   ========================================================================== */
+html.visual-style-high-contrast.dark .bg-bg-surface-2 {
+    background: hsl(0 0% 10%) !important;
+    border: 2px solid hsl(0 0% 30%) !important;
+}
+
+html.visual-style-high-contrast.dark .bg-bg-surface-3,
+html.visual-style-high-contrast.dark .bg-bg-surface-3\/50 {
+    background: hsl(0 0% 15%) !important;
+}
+
+html.visual-style-high-contrast.light .bg-bg-surface-2 {
+    background: hsl(0 0% 96%) !important;
+    border: 2px solid hsl(0 0% 60%) !important;
+}
+
+html.visual-style-high-contrast.light .bg-bg-surface-3,
+html.visual-style-high-contrast.light .bg-bg-surface-3\/50 {
+    background: hsl(0 0% 90%) !important;
+}
+
+/* ==========================================================================
+   HIGH CONTRAST - CALENDAR EVENTS
+   Better text truncation and visibility for calendar event items
+   ========================================================================== */
+html.visual-style-high-contrast .truncate {
+    text-overflow: ellipsis !important;
+}
+
+/* Calendar event items - ensure visibility */
+html.visual-style-high-contrast.dark [class*="event-item"],
+html.visual-style-high-contrast.dark [class*="EventItem"] {
+    border-left-width: 3px !important;
+}
+
+/* ==========================================================================
+   HIGH CONTRAST - OMNIBAR/SEARCH FOCUS
+   Strong focus indicator for search bar
+   ========================================================================== */
+html.visual-style-high-contrast.dark .omnibar-container:focus-within {
+    border: 2px solid var(--color-accent) !important;
+    box-shadow: 0 0 0 4px hsl(var(--hue-accent) 100% 50% / 0.25) !important;
+}
+
+html.visual-style-high-contrast.light .omnibar-container:focus-within {
+    border: 2px solid var(--color-accent) !important;
+    box-shadow: 0 0 0 4px hsl(var(--hue-accent) 100% 35% / 0.25) !important;
+}
+
+/* ==========================================================================
+   HIGH CONTRAST - FILTER TOGGLE BUTTONS
+   Stronger active states for content type filters and similar buttons
+   ========================================================================== */
+/* Active filter buttons - make them pop more */
+html.visual-style-high-contrast.dark [class*="bg-\[var\(--color-accent\)\]\/10"] {
+    background: hsl(var(--hue-accent) 100% 25%) !important;
+    border: 2px solid hsl(var(--hue-accent) 100% 50%) !important;
+    color: hsl(0 0% 100%) !important;
+}
+
+/* Inactive filter buttons - visible border */
+html.visual-style-high-contrast.dark .bg-bg-surface-2:not([class*="accent"]) {
+    border: 1px solid hsl(0 0% 35%) !important;
+}
+
+html.visual-style-high-contrast.light [class*="bg-\[var\(--color-accent\)\]\/10"] {
+    background: hsl(var(--hue-accent) 100% 90%) !important;
+    border: 2px solid hsl(var(--hue-accent) 100% 35%) !important;
+    color: hsl(0 0% 0%) !important;
+}
+
+/* ==========================================================================
+   HIGH CONTRAST - MINI CALENDAR TODAY HIGHLIGHT
+   Make today's date stand out prominently
+   ========================================================================== */
+html.visual-style-high-contrast.dark [class*="bg-brand"] {
+    background: hsl(var(--hue-accent) 100% 30%) !important;
+    color: hsl(0 0% 100%) !important;
+    border: 2px solid hsl(var(--hue-accent) 100% 60%) !important;
+    font-weight: 700 !important;
+}
+
+html.visual-style-high-contrast.light [class*="bg-brand"] {
+    background: hsl(var(--hue-accent) 100% 85%) !important;
+    color: hsl(0 0% 0%) !important;
+    border: 2px solid hsl(var(--hue-accent) 100% 40%) !important;
+    font-weight: 700 !important;
+}
+
+/* ==========================================================================
+   HIGH CONTRAST - DAY CELL BORDERS
+   Calendar grid cells more visible
+   ========================================================================== */
+html.visual-style-high-contrast.dark .border-border-subtle\/50 {
+    border-color: hsl(0 0% 35%) !important;
+}
+
+html.visual-style-high-contrast.light .border-border-subtle\/50 {
+    border-color: hsl(0 0% 50%) !important;
 }
 
 @layer base {

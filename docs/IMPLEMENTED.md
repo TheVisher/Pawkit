@@ -267,6 +267,12 @@ Sync Queue (2s debounce) → Background API → Supabase → Other devices
 | CSP Headers | ✅ | `next.config.ts` |
 | Strong Passwords | ✅ | 12+ chars, mixed case, numbers |
 | Article Extraction | ✅ | `src/app/api/article/route.ts` |
+| Danger Zone (Data Deletion) | ✅ | Local, Cloud, or Complete purge |
+
+**Danger Zone (Data Deletion)**:
+- Users can choose between deleting **Local Data** (clear IndexedDB), **Database Data** (remote wipe), or **All Data**.
+- Verification via "DELETE" text confirmation.
+- Cascading delete on workspaces ensures all cards, collections, and events are removed.
 
 **SSRF Protection Details** (`src/lib/services/link-checker.ts`):
 - Blocks private IP ranges (10.x, 172.16-31.x, 192.168.x, 127.x)
@@ -307,23 +313,61 @@ Migration Status: 14 migrations applied (December 2025)
 | Surface hierarchy (bg-base → bg-surface-4) | ✅ |
 | Glass/Modern mode toggle | ✅ |
 | Light/Dark theme | ✅ |
+| Visual Styles System (Glass, Flat, High Contrast) | ✅ |
+| Settings Integrated into Right Sidebar | ✅ |
 | Context menu system | ✅ |
 | Custom masonry layout | ✅ |
+| Layout Cache Store (Performance) | ✅ |
 | Omnibar with toast morphing | ✅ |
 | Cover images | ✅ |
 | Drag-and-drop (dnd-kit) | ✅ |
 | Smart collision detection | ✅ |
 | Reading-order masonry | ✅ |
+| Animated Pawkits Tree | ✅ |
+| Sliding Sidebar Nav Highlight | ✅ |
 
-**Smart Collision Detection**:
-- `use-omnibar-collision` hook implements 400px "safe zone"
-- Prevents UI headers from overlapping with floating Omnibar
-- Dynamic repositioning based on content
+**Visual Styles System**:
+- **Glass**: Default mode with backdrop blur and semi-transparency.
+- **Flat**: Solid backgrounds, no blur, simpler shadows for a clean "Modern" look.
+- **High Contrast**: WCAG AAA compliant (7:1+ contrast), pure black/white backgrounds, crisp borders.
+- Implemented via CSS variables in `globals.css` with zero runtime overhead.
 
-**Reading-Order Masonry**:
-- Custom algorithm in `src/lib/utils/masonry.ts`
-- Maintains Left-to-Right reading order during drag-and-drop
-- Fixes common UX flaw where masonry grids break reading flow
+**High Contrast Accessibility (WCAG AAA Compliant)**:
+
+| Element | Dark Mode | Light Mode |
+|---------|-----------|------------|
+| Background | Pure black (0%) | Pure white (100%) |
+| Primary Text | Pure white (100%) | Pure black (0%) |
+| Muted Text | 70% gray (9.2:1 ratio) | 25% gray (10.5:1 ratio) |
+| Card Borders | 2px, 50% gray | 2px, 40% gray |
+| Accent Colors | 75% lightness | 35% lightness |
+
+Key accessibility features:
+- **All text ≥7:1 contrast ratio** - Exceeds WCAG AAA requirements
+- **2px minimum borders** - Clear visual separation between elements
+- **Focus indicators** - 3px accent-colored outline on all focusable elements
+- **Link underlines** - All links always underlined for visibility
+- **No opacity modifiers** - Muted text uses full opacity for max readability
+- **Input field styling** - Distinct borders, high-contrast placeholders
+- **Button styling** - Solid accent backgrounds with visible borders
+- **Empty state visibility** - All "No items" messages clearly readable
+
+Files modified for High Contrast:
+- `src/app/globals.css` - CSS variable overrides (lines 399-729)
+- `src/components/cards/card-item/grid-card.tsx` - CSS variable borders
+- `src/components/cards/card-item/list-card.tsx` - Consistent styling
+- `src/components/layout/right-sidebar/SettingsPanel.tsx` - Tab states
+- `src/components/settings/sections/appearance-section.tsx` - Button states
+
+**Settings Integration**:
+- Settings gear icon in right sidebar transforms to an 'X' when active.
+- Tabbed navigation (Appearance, Account, Data & Storage) within the sidebar.
+- No longer a separate page/modal, keeps user in context.
+
+**Layout Cache Store**:
+- Caches measured card heights to prevent "layout thrashing" in masonry grids.
+- Invalidation based on content hash and width tolerance.
+- Memory-only store for maximum speed during session.
 
 ---
 
@@ -476,5 +520,5 @@ src/app/(dashboard)/         - Dashboard pages
 
 ---
 
-*Last Updated: December 29, 2025*
+*Last Updated: December 30, 2025*
 *Verification Method: Grep + file inspection against V2 codebase*
