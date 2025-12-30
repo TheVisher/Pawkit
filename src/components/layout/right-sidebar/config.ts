@@ -28,6 +28,7 @@ import {
   ArrowRightLeft,
   LayoutGrid,
 } from "lucide-react";
+import type { PawkitOverviewSortBy } from "@/lib/stores/view-store";
 
 // Types
 export type CardSize = "small" | "medium" | "large" | "xl";
@@ -142,6 +143,15 @@ export const LINK_STATUS_FILTER_OPTIONS: {
   { id: "ok", label: "Valid", icon: Link2 },
   { id: "broken", label: "Broken", icon: AlertTriangle },
   { id: "redirect", label: "Redirect", icon: ArrowRightLeft },
+];
+
+// Pawkit overview sort options
+export const PAWKIT_SORT_OPTIONS: { id: PawkitOverviewSortBy; label: string }[] = [
+  { id: "manual", label: "Manual" },
+  { id: "alphabetical", label: "A-Z" },
+  { id: "dateCreated", label: "Created" },
+  { id: "dateModified", label: "Modified" },
+  { id: "itemCount", label: "Items" },
 ];
 
 // View configurations per view type
