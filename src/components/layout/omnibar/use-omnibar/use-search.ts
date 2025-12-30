@@ -596,9 +596,11 @@ export function getSearchHeight(
 
   if (searchResults && isQuickNoteMode) {
     const { cards, collections, actions, tags } = searchResults;
-    const itemHeight = 44;
+    // Item heights: py-3 (24px) + two text lines (~36px) = ~60px, but md:py-2 reduces to ~52px
+    const itemHeight = 52;
     const headerHeight = 28;
-    const tipsHeight = 48;
+    const tipsHeight = 52;
+    const containerPadding = 16; // mt-2 + pt-2 + border
 
     let sectionsWithItems = 0;
     let totalItems = 0;
@@ -609,8 +611,12 @@ export function getSearchHeight(
     if (actions.length > 0) { sectionsWithItems++; totalItems += actions.length; }
 
     if (totalItems > 0) {
-      height += 16;
+      height += containerPadding;
       height += (sectionsWithItems * headerHeight) + (totalItems * itemHeight);
+      // Add margin between sections (mb-2 = 8px per section except last)
+      if (sectionsWithItems > 1) {
+        height += (sectionsWithItems - 1) * 8;
+      }
     }
 
     if (!hasTypedContent && cards.length > 0) {

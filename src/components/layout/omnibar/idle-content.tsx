@@ -173,7 +173,7 @@ export function IdleContent({
       {/* ADD MODE PANEL - Expandable menu for adding items                  */}
       {/* =================================================================== */}
       {isAddMode && (
-        <div className="flex-1 overflow-y-auto mt-2 border-t border-[var(--glass-border)] pt-2">
+        <div className="flex-1 overflow-y-auto mt-2 border-t border-[var(--glass-border)] pt-2 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]" style={{ scrollbarWidth: 'none' }}>
           <div className="px-3 py-1 text-[11px] font-medium text-text-muted uppercase tracking-wider">
             Create New
           </div>
@@ -203,7 +203,7 @@ export function IdleContent({
       {/* KIT MODE PANEL - AI Chat menu                                       */}
       {/* =================================================================== */}
       {isKitMode && (
-        <div className="flex-1 overflow-y-auto mt-2 border-t border-[var(--glass-border)] pt-2">
+        <div className="flex-1 overflow-y-auto mt-2 border-t border-[var(--glass-border)] pt-2 scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]" style={{ scrollbarWidth: 'none' }}>
           <div className="px-3 py-1 text-[11px] font-medium text-text-muted uppercase tracking-wider">
             Kit AI
           </div>
