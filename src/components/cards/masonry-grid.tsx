@@ -204,9 +204,11 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
   const [measuredHeights, setMeasuredHeights] = useState<Map<string, number>>(new Map());
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
-  // Track if initial layout is complete to disable transitions on mount
-  const hasInitializedRef = useRef(false);
-  const [enableTransitions, setEnableTransitions] = useState(false);
+  // Track if layout is stable (heights confirmed by ResizeObserver)
+  // Cards render with opacity:0 until stable, then fade in
+  const [isStable, setIsStable] = useState(false);
+  const stabilityCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevCardsLengthRef = useRef(cards.length);
 
   // Layout cache for persistent heights across navigation
   const { getHeightsMap, setHeights } = useLayoutCacheStore();
@@ -320,18 +322,13 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
     return { positions: posMap, totalHeight: maxHeight > 0 ? maxHeight - cardSpacing : 0 };
   }, [cards, columnCount, cardWidth, measuredHeights, cardSpacing]);
 
-  // Enable transitions only after initial layout is complete
+  // Reset stability when cards array changes significantly
   useEffect(() => {
-    if (positions.size > 0 && !hasInitializedRef.current) {
-      hasInitializedRef.current = true;
-      // Use requestAnimationFrame to ensure positions are applied before enabling transitions
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setEnableTransitions(true);
-        });
-      });
+    if (cards.length !== prevCardsLengthRef.current) {
+      prevCardsLengthRef.current = cards.length;
+      setIsStable(false);
     }
-  }, [positions]);
+  }, [cards.length]);
 
   // Measure card heights after render and when cards resize (e.g., images load)
   useEffect(() => {
@@ -437,8 +434,9 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
         }
 
         if (newHeights.size > 0) {
+          let hasChanges = false;
+
           setMeasuredHeights(prev => {
-            let hasChanges = false;
             for (const [id, h] of newHeights) {
               // Only update if height changed by more than 2px (ignore sub-pixel differences)
               const prevHeight = prev.get(id);
@@ -461,14 +459,28 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
           }
         }
       }
+
+      // Schedule stability check - mark stable after measurements settle
+      if (stabilityCheckRef.current) clearTimeout(stabilityCheckRef.current);
+      stabilityCheckRef.current = setTimeout(() => {
+        setIsStable(true);
+      }, 50);
     });
 
     // Observe all card elements for resize (images loading, content changes)
     const cardElements = container.querySelectorAll('[data-card-id]');
     cardElements.forEach((el) => resizeObserver.observe(el));
 
+    // Initial stability timeout for when all cards are cached and no resize needed
+    if (allCached) {
+      stabilityCheckRef.current = setTimeout(() => {
+        setIsStable(true);
+      }, 50);
+    }
+
     return () => {
       if (timer) clearTimeout(timer);
+      if (stabilityCheckRef.current) clearTimeout(stabilityCheckRef.current);
       resizeObserver.disconnect();
     };
   }, [containerWidth, cards, cardWidth, contentHashes, getHeightsMap, setHeights]);
@@ -542,7 +554,7 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
               ))}
             </div>
           ) : (
-            // Masonry layout
+            // Masonry layout - each card fades in when stable
             cards.map((card) => {
               const pos = positions.get(card.id);
               if (!pos) {
@@ -559,8 +571,11 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
                     width: cardWidth,
                     left: pos.x,
                     top: pos.y,
-                    // Only enable transitions after initial layout to prevent animation on mount
-                    transition: !enableTransitions || activeId ? 'none' : 'all 250ms ease',
+                    // Hide until layout is stable - use visibility to prevent flash
+                    visibility: isStable ? 'visible' : 'hidden',
+                    opacity: isStable ? 1 : 0,
+                    // Transitions: opacity for fade-in, position for drag reordering
+                    transition: isStable && !activeId ? 'opacity 150ms ease-out, left 250ms ease, top 250ms ease' : 'none',
                   }}
                 >
                   <SortableCard
