@@ -1,26 +1,78 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useTheme } from 'next-themes';
-import { Sun, Moon, Monitor, ChevronDown } from 'lucide-react';
+import { Sun, Moon, Monitor, ChevronDown, Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   useAppearanceSettings,
   ACCENT_COLOR_PRESETS,
   BACKGROUND_PRESETS,
   type BackgroundPreset,
+  hslToHex,
+  hexToHsl,
+  isValidHex,
 } from '@/lib/stores/settings-store';
 import { cn } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
 
 export function AppearanceSection() {
   const { theme, setTheme } = useTheme();
-  const { accentHue, backgroundPreset, setAccentHue, setBackgroundPreset } =
-    useAppearanceSettings();
+  const {
+    accentHue,
+    accentSaturation,
+    accentLightness,
+    savedColors,
+    backgroundPreset,
+    setAccentHue,
+    setAccentSaturation,
+    setAccentLightness,
+    setAccentHSL,
+    addSavedColor,
+    removeSavedColor,
+    applySavedColor,
+    setBackgroundPreset,
+  } = useAppearanceSettings();
   const [showCustomHue, setShowCustomHue] = useState(false);
+  const [hexInput, setHexInput] = useState('');
+  const [hexError, setHexError] = useState(false);
+  const [savingColor, setSavingColor] = useState(false);
+  const [colorName, setColorName] = useState('');
 
-  // Check if current hue matches a preset
-  const isPresetSelected = ACCENT_COLOR_PRESETS.some((p) => p.hue === accentHue);
+  // Check if current hue matches a preset (with default saturation/lightness)
+  const isPresetSelected = ACCENT_COLOR_PRESETS.some(
+    (p) => p.hue === accentHue && accentSaturation === 60 && accentLightness === 55
+  );
+
+  // Current color as hex
+  const currentHex = hslToHex(accentHue, accentSaturation, accentLightness);
+
+  // Handle hex input
+  const handleHexChange = useCallback(
+    (value: string) => {
+      setHexInput(value);
+      const cleaned = value.startsWith('#') ? value : `#${value}`;
+      if (isValidHex(cleaned)) {
+        setHexError(false);
+        const hsl = hexToHsl(cleaned);
+        if (hsl) {
+          setAccentHSL(hsl.h, hsl.s, hsl.l);
+        }
+      } else if (value.length >= 4) {
+        setHexError(true);
+      }
+    },
+    [setAccentHSL]
+  );
+
+  // Handle saving color
+  const handleSaveColor = useCallback(() => {
+    if (colorName.trim()) {
+      addSavedColor(colorName.trim());
+      setColorName('');
+      setSavingColor(false);
+    }
+  }, [colorName, addSavedColor]);
 
   return (
     <div className="space-y-8">
@@ -67,13 +119,14 @@ export function AppearanceSection() {
             <button
               key={preset.hue}
               onClick={() => {
-                setAccentHue(preset.hue);
+                setAccentHSL(preset.hue, 60, 55);
                 setShowCustomHue(false);
+                setHexInput('');
               }}
               className={cn(
                 'w-10 h-10 rounded-full transition-all duration-200',
                 'ring-offset-2 ring-offset-bg-base',
-                accentHue === preset.hue
+                accentHue === preset.hue && accentSaturation === 60 && accentLightness === 55
                   ? 'ring-2 ring-[var(--color-accent)] scale-110'
                   : 'hover:scale-105',
               )}
@@ -105,7 +158,7 @@ export function AppearanceSection() {
           </button>
         </div>
 
-        {/* Custom hue slider */}
+        {/* Custom color controls */}
         <AnimatePresence>
           {showCustomHue && (
             <motion.div
@@ -115,12 +168,40 @@ export function AppearanceSection() {
               transition={{ duration: 0.2 }}
               className="overflow-hidden"
             >
-              <div className="pt-3 space-y-3">
-                <div className="flex items-center gap-4">
+              <div className="pt-3 space-y-4">
+                {/* Color preview and hex input */}
+                <div className="flex items-center gap-3">
                   <div
-                    className="w-8 h-8 rounded-full shrink-0"
-                    style={{ backgroundColor: `hsl(${accentHue} 60% 55%)` }}
+                    className="w-12 h-12 rounded-xl shrink-0 border border-border-default"
+                    style={{ backgroundColor: `hsl(${accentHue} ${accentSaturation}% ${accentLightness}%)` }}
                   />
+                  <div className="flex-1">
+                    <label className="text-xs text-text-muted block mb-1">Hex Code</label>
+                    <input
+                      type="text"
+                      value={hexInput || currentHex}
+                      onChange={(e) => handleHexChange(e.target.value)}
+                      onFocus={() => setHexInput(currentHex)}
+                      onBlur={() => setHexInput('')}
+                      placeholder="#000000"
+                      className={cn(
+                        'w-full px-3 py-1.5 rounded-lg text-sm font-mono',
+                        'bg-bg-surface-2 border transition-colors',
+                        hexError
+                          ? 'border-red-500 focus:border-red-500'
+                          : 'border-border-default focus:border-[var(--color-accent)]',
+                        'focus:outline-none'
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Hue slider */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-muted">Hue</label>
+                    <span className="text-xs text-text-muted tabular-nums">{accentHue}°</span>
+                  </div>
                   <Slider
                     value={[accentHue]}
                     onValueChange={(values: number[]) => setAccentHue(values[0])}
@@ -129,21 +210,141 @@ export function AppearanceSection() {
                     step={1}
                     className="flex-1"
                   />
-                  <span className="text-xs text-text-muted w-8 text-right tabular-nums">
-                    {accentHue}°
-                  </span>
+                  <div
+                    className="h-2 rounded-full"
+                    style={{
+                      background:
+                        'linear-gradient(to right, hsl(0 60% 55%), hsl(60 60% 55%), hsl(120 60% 55%), hsl(180 60% 55%), hsl(240 60% 55%), hsl(300 60% 55%), hsl(360 60% 55%))',
+                    }}
+                  />
                 </div>
-                <div
-                  className="h-2 rounded-full"
-                  style={{
-                    background:
-                      'linear-gradient(to right, hsl(0 60% 55%), hsl(60 60% 55%), hsl(120 60% 55%), hsl(180 60% 55%), hsl(240 60% 55%), hsl(300 60% 55%), hsl(360 60% 55%))',
-                  }}
-                />
+
+                {/* Saturation slider */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-muted">Saturation</label>
+                    <span className="text-xs text-text-muted tabular-nums">{accentSaturation}%</span>
+                  </div>
+                  <Slider
+                    value={[accentSaturation]}
+                    onValueChange={(values: number[]) => setAccentSaturation(values[0])}
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="flex-1"
+                  />
+                  <div
+                    className="h-2 rounded-full"
+                    style={{
+                      background: `linear-gradient(to right, hsl(${accentHue} 0% ${accentLightness}%), hsl(${accentHue} 100% ${accentLightness}%))`,
+                    }}
+                  />
+                </div>
+
+                {/* Lightness slider */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-text-muted">Lightness</label>
+                    <span className="text-xs text-text-muted tabular-nums">{accentLightness}%</span>
+                  </div>
+                  <Slider
+                    value={[accentLightness]}
+                    onValueChange={(values: number[]) => setAccentLightness(values[0])}
+                    min={0}
+                    max={100}
+                    step={1}
+                    className="flex-1"
+                  />
+                  <div
+                    className="h-2 rounded-full"
+                    style={{
+                      background: `linear-gradient(to right, hsl(${accentHue} ${accentSaturation}% 0%), hsl(${accentHue} ${accentSaturation}% 50%), hsl(${accentHue} ${accentSaturation}% 100%))`,
+                    }}
+                  />
+                </div>
+
+                {/* Save color button */}
+                <div className="pt-2 border-t border-border-default">
+                  {!savingColor ? (
+                    <button
+                      onClick={() => setSavingColor(true)}
+                      className="flex items-center gap-2 text-sm text-text-secondary hover:text-[var(--color-accent)] transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Save this color
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={colorName}
+                        onChange={(e) => setColorName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSaveColor()}
+                        placeholder="Color name..."
+                        autoFocus
+                        className="flex-1 px-3 py-1.5 rounded-lg text-sm bg-bg-surface-2 border border-border-default focus:border-[var(--color-accent)] focus:outline-none"
+                      />
+                      <button
+                        onClick={handleSaveColor}
+                        disabled={!colorName.trim()}
+                        className="px-3 py-1.5 rounded-lg text-sm bg-[var(--color-accent)] text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSavingColor(false);
+                          setColorName('');
+                        }}
+                        className="p-1.5 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-surface-2 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Saved Colors */}
+        {savedColors.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-xs text-text-muted font-medium">Saved Colors</h4>
+            <div className="flex flex-wrap gap-2">
+              {savedColors.map((color) => (
+                <div key={color.id} className="group relative">
+                  <button
+                    onClick={() => applySavedColor(color.id)}
+                    className={cn(
+                      'w-10 h-10 rounded-full transition-all duration-200',
+                      'ring-offset-2 ring-offset-bg-base hover:scale-105',
+                      accentHue === color.hsl.h &&
+                        accentSaturation === color.hsl.s &&
+                        accentLightness === color.hsl.l
+                        ? 'ring-2 ring-[var(--color-accent)] scale-110'
+                        : '',
+                    )}
+                    style={{
+                      backgroundColor: `hsl(${color.hsl.h} ${color.hsl.s}% ${color.hsl.l}%)`,
+                    }}
+                    title={color.name}
+                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeSavedColor(color.id);
+                    }}
+                    className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-bg-surface-3 border border-border-default text-text-muted hover:text-red-500 hover:border-red-500 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center"
+                  >
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Background */}

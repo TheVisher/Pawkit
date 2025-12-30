@@ -1,13 +1,78 @@
 'use client';
 
-import { User, Mail, Shield } from 'lucide-react';
+import { User, Mail, Shield, AlertTriangle, Trash2, UserX } from 'lucide-react';
+import { useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { useCurrentWorkspace, useWorkspaceStore } from '@/lib/stores/workspace-store';
+import { useAuthStore } from '@/lib/stores/auth-store';
 
 export function AccountSection() {
   const workspace = useCurrentWorkspace();
+  const { workspaces } = useWorkspaceStore();
+  const user = useAuthStore((state) => state.user);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteLocal = async () => {
+    const databases = await indexedDB.databases();
+    await Promise.all(
+      databases.map((db) => {
+        return new Promise<void>((resolve, reject) => {
+          if (!db.name) {
+            resolve();
+            return;
+          }
+          const request = indexedDB.deleteDatabase(db.name);
+          request.onsuccess = () => resolve();
+          request.onerror = () => reject(request.error);
+        });
+      })
+    );
+  };
+
+  const handleDeleteAccount = async () => {
+    if (confirmText !== 'DELETE') return;
+
+    setIsDeleting(true);
+    try {
+      // 1. Delete local IndexedDB data
+      await handleDeleteLocal();
+
+      // 2. Delete database and user account via API
+      const response = await fetch('/api/user/delete-account', {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete account');
+      }
+
+      // 3. Redirect to home/login page
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Delete account failed:', error);
+      alert(`Failed to delete account: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setIsDeleting(false);
+    }
+  };
+
+  const closeDialog = () => {
+    setShowDeleteDialog(false);
+    setConfirmText('');
+  };
 
   return (
     <div className="space-y-8">
@@ -37,7 +102,7 @@ export function AccountSection() {
             </div>
             <div className="flex items-center gap-1.5 mt-1 text-sm text-text-muted">
               <Mail className="h-3.5 w-3.5" />
-              <span className="truncate">user@example.com</span>
+              <span className="truncate">{user?.email ?? 'user@example.com'}</span>
             </div>
             <Button
               variant="outline"
@@ -86,6 +151,93 @@ export function AccountSection() {
           </div>
         </div>
       </div>
+
+      {/* Danger Zone */}
+      <div className="space-y-4">
+        <div>
+          <h3 className="text-sm font-medium text-red-500 flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Danger Zone
+          </h3>
+          <p className="text-xs text-text-muted mt-0.5">
+            Irreversible actions - proceed with caution
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-red-500/30 overflow-hidden">
+          <div className="p-4 flex items-center gap-3 bg-bg-surface-1">
+            <div className="p-2 rounded-lg bg-red-500/10">
+              <UserX className="h-5 w-5 text-red-500" />
+            </div>
+            <div className="flex-1">
+              <h4 className="text-sm font-medium text-text-primary">
+                Delete Account
+              </h4>
+              <p className="text-xs text-text-muted mt-0.5">
+                Permanently delete your account and all associated data. This cannot be undone.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:text-red-500"
+              onClick={() => setShowDeleteDialog(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+              Delete Account
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Delete Account Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={(open) => !open && closeDialog()}>
+        <DialogContent className="bg-bg-surface-1 border-border-subtle">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-500">
+              <AlertTriangle className="h-5 w-5" />
+              Delete Account
+            </DialogTitle>
+            <DialogDescription asChild>
+              <div className="text-text-muted">
+                <p>This will permanently delete your account including:</p>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>All local browser data</li>
+                  <li>All cloud database data ({workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''})</li>
+                  <li>Your user account and authentication</li>
+                </ul>
+                <p className="mt-2 font-medium text-red-500">This action cannot be undone.</p>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-4">
+            <p className="text-sm text-text-secondary">
+              Type <span className="font-mono font-bold text-red-500">DELETE</span> to confirm:
+            </p>
+            <Input
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder="Type DELETE"
+              className="font-mono"
+              autoComplete="off"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeDialog} disabled={isDeleting}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={confirmText !== 'DELETE' || isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete My Account'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
