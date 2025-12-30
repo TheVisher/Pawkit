@@ -18,6 +18,7 @@ import { QuickNoteCard } from './quick-note-card';
 import { CardContextMenu } from '@/components/context-menus';
 import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
+import { useLayoutCacheStore, generateCardContentHash } from '@/lib/stores/layout-cache-store';
 
 // Custom modifier that centers the overlay on cursor based on overlay size
 const centerOverlayOnCursor: Modifier = ({ transform, draggingNodeRect }) => {
@@ -203,6 +204,22 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
   const [measuredHeights, setMeasuredHeights] = useState<Map<string, number>>(new Map());
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
+  // Track if initial layout is complete to disable transitions on mount
+  const hasInitializedRef = useRef(false);
+  const [enableTransitions, setEnableTransitions] = useState(false);
+
+  // Layout cache for persistent heights across navigation
+  const { getHeightsMap, setHeights } = useLayoutCacheStore();
+
+  // Generate content hashes for all cards (for cache invalidation)
+  const contentHashes = useMemo(() => {
+    const hashes = new Map<string, string>();
+    for (const card of cards) {
+      hashes.set(card.id, generateCardContentHash(card));
+    }
+    return hashes;
+  }, [cards]);
+
   // Get minimum card width based on size setting
   const minCardWidth = CARD_SIZE_WIDTHS[cardSize];
 
@@ -249,6 +266,25 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
     return (containerWidth - totalGap) / columnCount;
   }, [containerWidth, columnCount, minCardWidth, cardSpacing]);
 
+  // Initialize measured heights from cache when component mounts or cards change
+  useEffect(() => {
+    if (cardWidth <= 0 || cards.length === 0) return;
+
+    const cardIds = cards.map(c => c.id);
+    const cachedHeights = getHeightsMap(cardIds, cardWidth, contentHashes);
+
+    if (cachedHeights.size > 0) {
+      setMeasuredHeights(prev => {
+        // Merge cached heights with any existing measurements
+        const merged = new Map(prev);
+        for (const [id, height] of cachedHeights) {
+          merged.set(id, height);
+        }
+        return merged;
+      });
+    }
+  }, [cards, cardWidth, getHeightsMap, contentHashes]);
+
   // Calculate masonry positions
   const { positions, totalHeight } = useMemo(() => {
     if (cards.length === 0) {
@@ -284,23 +320,58 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
     return { positions: posMap, totalHeight: maxHeight > 0 ? maxHeight - cardSpacing : 0 };
   }, [cards, columnCount, cardWidth, measuredHeights, cardSpacing]);
 
+  // Enable transitions only after initial layout is complete
+  useEffect(() => {
+    if (positions.size > 0 && !hasInitializedRef.current) {
+      hasInitializedRef.current = true;
+      // Use requestAnimationFrame to ensure positions are applied before enabling transitions
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setEnableTransitions(true);
+        });
+      });
+    }
+  }, [positions]);
+
   // Measure card heights after render and when cards resize (e.g., images load)
   useEffect(() => {
-    if (containerWidth === 0) return;
+    if (containerWidth === 0 || cardWidth <= 0) return;
 
     const container = containerRef.current;
     if (!container) return;
 
-    const measureCards = () => {
+    // Check which cards need measurement (don't have valid cached height)
+    const cardIds = cards.map(c => c.id);
+    const cachedHeights = getHeightsMap(cardIds, cardWidth, contentHashes);
+    const cardsNeedingMeasurement = cardIds.filter(id => !cachedHeights.has(id));
+
+    // If all cards have cached heights, skip initial measurement entirely
+    const allCached = cardsNeedingMeasurement.length === 0;
+
+    const measureCards = (forceAll = false) => {
       const newHeights = new Map<string, number>();
+      const cacheEntries: Array<{ cardId: string; height: number; width: number; contentHash: string }> = [];
       const cardElements = container.querySelectorAll('[data-card-id]');
 
       cardElements.forEach((el) => {
         const id = el.getAttribute('data-card-id');
-        if (id) {
-          const rect = el.getBoundingClientRect();
-          if (rect.height > 0) {
-            newHeights.set(id, rect.height);
+        if (!id) return;
+
+        // Skip cards that already have valid cached heights (unless forced)
+        if (!forceAll && cachedHeights.has(id)) return;
+
+        const rect = el.getBoundingClientRect();
+        if (rect.height > 0) {
+          newHeights.set(id, rect.height);
+          // Prepare cache entry
+          const hash = contentHashes.get(id);
+          if (hash) {
+            cacheEntries.push({
+              cardId: id,
+              height: rect.height,
+              width: cardWidth,
+              contentHash: hash,
+            });
           }
         }
       });
@@ -323,26 +394,84 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
           }
           return merged;
         });
+
+        // Save measurements to global cache for persistence across navigation
+        if (cacheEntries.length > 0) {
+          setHeights(cacheEntries);
+        }
       }
     };
 
-    // Initial measurement after a short delay
-    const timer = setTimeout(measureCards, 150);
+    // Only schedule initial measurement if there are cards without cached heights
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    if (!allCached) {
+      const delay = cardsNeedingMeasurement.length < cards.length * 0.5 ? 0 : 150;
+      timer = setTimeout(() => measureCards(false), delay);
+    }
 
-    // Also observe size changes on card elements (for when images load)
-    const resizeObserver = new ResizeObserver(() => {
-      measureCards();
+    // ResizeObserver for when images load - only measure cards that resize
+    const resizeObserver = new ResizeObserver((entries) => {
+      // Only measure the specific cards that resized
+      const resizedIds = new Set<string>();
+      for (const entry of entries) {
+        const id = (entry.target as HTMLElement).getAttribute('data-card-id');
+        if (id) resizedIds.add(id);
+      }
+
+      if (resizedIds.size > 0) {
+        const newHeights = new Map<string, number>();
+        const cacheEntries: Array<{ cardId: string; height: number; width: number; contentHash: string }> = [];
+
+        for (const id of resizedIds) {
+          const el = container.querySelector(`[data-card-id="${id}"]`);
+          if (el) {
+            const rect = el.getBoundingClientRect();
+            if (rect.height > 0) {
+              newHeights.set(id, rect.height);
+              const hash = contentHashes.get(id);
+              if (hash) {
+                cacheEntries.push({ cardId: id, height: rect.height, width: cardWidth, contentHash: hash });
+              }
+            }
+          }
+        }
+
+        if (newHeights.size > 0) {
+          setMeasuredHeights(prev => {
+            let hasChanges = false;
+            for (const [id, h] of newHeights) {
+              // Only update if height changed by more than 2px (ignore sub-pixel differences)
+              const prevHeight = prev.get(id);
+              if (!prevHeight || Math.abs(prevHeight - h) > 2) {
+                hasChanges = true;
+                break;
+              }
+            }
+            if (!hasChanges) return prev;
+
+            const merged = new Map(prev);
+            for (const [id, h] of newHeights) {
+              merged.set(id, h);
+            }
+            return merged;
+          });
+
+          if (cacheEntries.length > 0) {
+            setHeights(cacheEntries);
+          }
+        }
+      }
     });
 
-    // Observe all card elements
+    // Observe all card elements for resize (images loading, content changes)
     const cardElements = container.querySelectorAll('[data-card-id]');
     cardElements.forEach((el) => resizeObserver.observe(el));
 
     return () => {
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       resizeObserver.disconnect();
     };
-  }, [containerWidth, cards]);
+  }, [containerWidth, cards, cardWidth, contentHashes, getHeightsMap, setHeights]);
 
 
 
@@ -430,7 +559,8 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
                     width: cardWidth,
                     left: pos.x,
                     top: pos.y,
-                    transition: activeId ? 'none' : 'all 250ms ease',
+                    // Only enable transitions after initial layout to prevent animation on mount
+                    transition: !enableTransitions || activeId ? 'none' : 'all 250ms ease',
                   }}
                 >
                   <SortableCard

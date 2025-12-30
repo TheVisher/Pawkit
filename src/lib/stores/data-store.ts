@@ -8,6 +8,7 @@ import { db, createSyncMetadata, markModified, markDeleted, markRestored } from 
 import type { LocalCard, LocalCollection, LocalCalendarEvent, LocalTodo } from '@/lib/db';
 import { addToQueue, clearAllSyncQueue } from '@/lib/services/sync-queue';
 import { queueMetadataFetch } from '@/lib/services/metadata-service';
+import { useLayoutCacheStore } from './layout-cache-store';
 
 // Expose debug helper on window for console access
 if (typeof window !== 'undefined') {
@@ -172,6 +173,9 @@ export const useDataStore = create<DataState>((set, get) => ({
     set({
       cards: get().cards.filter((c) => c.id !== id),
     });
+
+    // Clear from layout cache
+    useLayoutCacheStore.getState().removeHeight(id);
 
     // Queue sync
     await addToQueue('card', id, 'delete');
