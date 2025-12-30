@@ -69,7 +69,7 @@ export function ListCard({
             className="w-5 h-5 rounded-full flex items-center justify-center"
             style={{ background: 'var(--glass-bg)' }}
           >
-            <Icon className="h-3 w-3" style={{ color: 'var(--text-muted)' }} />
+            <Icon className="h-3 w-3" style={{ color: 'var(--color-text-muted)' }} />
           </div>
         )}
       </div>
@@ -81,7 +81,7 @@ export function ListCard({
             'flex-1 font-medium text-sm truncate transition-colors',
             'group-hover:text-[var(--color-accent)]'
           )}
-          style={{ color: 'var(--text-primary)' }}
+          style={{ color: 'var(--color-text-primary)' }}
         >
           {card.title || 'Untitled'}
         </h3>
@@ -93,7 +93,8 @@ export function ListCard({
           className="px-2 py-0.5 rounded-full text-xs truncate max-w-[150px]"
           style={{
             background: 'var(--glass-bg)',
-            color: 'var(--text-muted)',
+            color: 'var(--color-text-muted)',
+            border: '1px solid var(--glass-border)',
           }}
         >
           {domain}
@@ -102,7 +103,7 @@ export function ListCard({
 
       {/* Syncing indicator */}
       {isSyncing && (
-        <div className="flex items-center gap-1" style={{ color: 'var(--text-muted)' }}>
+        <div className="flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
           <Loader2 className="h-3 w-3 animate-spin" />
         </div>
       )}
@@ -121,7 +122,8 @@ export function ListCard({
               className="px-2 py-0.5 text-[10px] font-medium rounded-full"
               style={{
                 background: 'var(--glass-bg)',
-                color: 'var(--text-muted)',
+                color: 'var(--color-text-muted)',
+                border: '1px solid var(--glass-border)',
               }}
             >
               {tag}
@@ -132,7 +134,8 @@ export function ListCard({
               className="px-2 py-0.5 text-[10px] font-medium rounded-full"
               style={{
                 background: 'var(--glass-bg)',
-                color: 'var(--text-muted)',
+                color: 'var(--color-text-muted)',
+                border: '1px solid var(--glass-border)',
               }}
             >
               +{card.tags.length - 2}

@@ -93,18 +93,21 @@ export function AppearanceSection() {
             onClick={() => setVisualStyle('glass')}
             icon={Sparkles}
             label="Glass"
+            isHighContrast={visualStyle === 'highContrast'}
           />
           <StyleButton
             active={visualStyle === 'flat'}
             onClick={() => setVisualStyle('flat')}
             icon={Square}
             label="Flat"
+            isHighContrast={visualStyle === 'highContrast'}
           />
           <StyleButton
             active={visualStyle === 'highContrast'}
             onClick={() => setVisualStyle('highContrast')}
             icon={Contrast}
             label="High Contrast"
+            isHighContrast={visualStyle === 'highContrast'}
           />
         </div>
       </div>
@@ -123,18 +126,21 @@ export function AppearanceSection() {
             onClick={() => setTheme('light')}
             icon={Sun}
             label="Light"
+            isHighContrast={visualStyle === 'highContrast'}
           />
           <ThemeButton
             active={theme === 'dark'}
             onClick={() => setTheme('dark')}
             icon={Moon}
             label="Dark"
+            isHighContrast={visualStyle === 'highContrast'}
           />
           <ThemeButton
             active={theme === 'system'}
             onClick={() => setTheme('system')}
             icon={Monitor}
             label="System"
+            isHighContrast={visualStyle === 'highContrast'}
           />
         </div>
       </div>
@@ -436,20 +442,26 @@ function ThemeButton({
   onClick,
   icon: Icon,
   label,
+  isHighContrast = false,
 }: {
   active: boolean;
   onClick: () => void;
   icon: typeof Sun;
   label: string;
+  isHighContrast?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       className={cn(
         'flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200',
-        active
-          ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium'
-          : 'bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary',
+        isHighContrast
+          ? active
+            ? 'bg-bg-surface-3 text-[var(--color-accent)] border-2 border-[var(--color-accent)] font-bold'
+            : 'bg-bg-surface-2 border border-border-subtle text-text-primary hover:bg-bg-surface-3 hover:border-text-muted'
+          : active
+            ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium'
+            : 'bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary',
       )}
     >
       <Icon className="h-4 w-4" />
@@ -464,20 +476,26 @@ function StyleButton({
   onClick,
   icon: Icon,
   label,
+  isHighContrast = false,
 }: {
   active: boolean;
   onClick: () => void;
   icon: typeof Sparkles;
   label: string;
+  isHighContrast?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       className={cn(
         'flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-200',
-        active
-          ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium'
-          : 'bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary',
+        isHighContrast
+          ? active
+            ? 'bg-bg-surface-3 text-[var(--color-accent)] border-2 border-[var(--color-accent)] font-bold'
+            : 'bg-bg-surface-2 border border-border-subtle text-text-primary hover:bg-bg-surface-3 hover:border-text-muted'
+          : active
+            ? 'bg-[var(--color-accent)]/10 text-[var(--color-accent)] border border-[var(--color-accent)]/20 shadow-sm font-medium'
+            : 'bg-bg-surface-2 border border-transparent text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary',
       )}
     >
       <Icon className="h-4 w-4" />

@@ -6,6 +6,7 @@
  */
 
 import { useRightSidebarSettings } from "@/lib/stores/ui-store";
+import { useSettingsStore } from "@/lib/stores/settings-store";
 import { AppearanceSection } from "@/components/settings/sections/appearance-section";
 import { AccountSection } from "@/components/settings/sections/account-section";
 import { DataSection } from "@/components/settings/sections/data-section";
@@ -22,7 +23,9 @@ const TABS: { id: SettingsTab; label: string; icon: typeof Palette }[] = [
 
 export function SettingsPanel() {
   const { settingsTab, setTab } = useRightSidebarSettings();
+  const visualStyle = useSettingsStore((s) => s.visualStyle);
   const activeTab = settingsTab || "appearance";
+  const isHighContrast = visualStyle === 'highContrast';
 
   return (
     <div className="flex flex-col h-full -mx-4">
@@ -40,9 +43,15 @@ export function SettingsPanel() {
                 "flex items-center gap-2 px-4 py-2 text-sm font-medium transition-all duration-200 relative",
                 // Fully rounded squircle pills
                 "rounded-xl",
-                isActive
-                  ? "text-text-primary bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)]"
-                  : "text-text-muted hover:text-text-secondary hover:bg-black/5 dark:hover:bg-white/5"
+                // High contrast mode styles
+                isHighContrast
+                  ? isActive
+                    ? "text-[var(--color-accent)] bg-bg-surface-3 border-2 border-[var(--color-accent)] font-bold"
+                    : "text-text-primary border border-border-subtle hover:border-text-muted hover:bg-bg-surface-2"
+                  // Default glass styles
+                  : isActive
+                    ? "text-text-primary bg-black/5 dark:bg-white/5 backdrop-blur-md border border-black/5 dark:border-white/10 shadow-[0_6px_16px_-4px_rgba(0,0,0,0.6)]"
+                    : "text-text-muted hover:text-text-secondary hover:bg-black/5 dark:hover:bg-white/5"
               )}
             >
               <Icon className={cn(

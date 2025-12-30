@@ -122,7 +122,7 @@ export function GridCard({
             ? `${sidePadding}px`
             : `${sidePadding}px ${sidePadding}px ${bottomPadding}px ${sidePadding}px`,
           boxShadow: 'var(--card-shadow)',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
+          border: '1px solid var(--glass-border)',
         }}
       >
         {/* Blurred thumbnail background - creates colored blur padding */}
@@ -234,12 +234,12 @@ export function GridCard({
           {settings.showUrlPill && domain && (
             <div className="absolute bottom-3 left-0 right-0 flex justify-center px-3">
               <div
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm domain-pill"
                 style={{
-                  background: 'rgba(0, 0, 0, 0.5)',
-                  backdropFilter: 'blur(12px) saturate(1.5)',
-                  WebkitBackdropFilter: 'blur(12px) saturate(1.5)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  background: 'var(--glass-bg)',
+                  backdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
+                  WebkitBackdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
+                  border: '1px solid var(--glass-border)',
                 }}
               >
                 {hasFavicon ? (
@@ -252,9 +252,9 @@ export function GridCard({
                     onError={() => setImageError(true)}
                   />
                 ) : (
-                  <Globe className="h-4 w-4 shrink-0 text-white/70" />
+                  <Globe className="h-4 w-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} />
                 )}
-                <span className="truncate text-white/90 max-w-[180px]">{domain}</span>
+                <span className="truncate max-w-[180px]" style={{ color: 'var(--color-text-primary)' }}>{domain}</span>
               </div>
             </div>
           )}

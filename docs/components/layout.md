@@ -101,6 +101,15 @@ src/components/settings/
 - **Hover Effects**: Features a subtle "Purple Glow" line gradient at the bottom of items on hover.
 
 #### Right Sidebar (`right-sidebar/`)
+- **Flexible Expansion System**: The sidebar supports multiple width modes defined in `ui-store.ts`.
+    - `default`: 325px (Filters/Card Details)
+    - `settings`: 480px (Settings Panel)
+    - `split-view`: 600px (Future: Markdown Preview)
+    - `calendar-schedule`: 600px (Future: Drag-drop scheduling)
+- **Settings Toggle**: The header features a Settings gear that:
+    - Rotates and transforms into an 'X' via CSS transitions.
+    - Expands the sidebar to 480px smoothly.
+    - Displays browser-style tabs for Settings navigation.
 - **Modular Sections**: Split into `FilterSections.tsx` to handle specific filter logic (Tags, Sort, Group, etc.).
 - **SidebarSection**: A reusable accordion component (`SidebarSection.tsx`) that enforces:
     -   Standard LTR layout (Title Left, Chevron Right).
@@ -138,6 +147,7 @@ src/components/settings/
 
 | Date | Change | Implementation Details |
 |------|--------|------------------------|
+| 2025-12-30 | **High Contrast WCAG AAA** | Full accessibility compliance for High Contrast mode: 7:1+ text ratios, 2px borders, focus indicators, link underlines, input/button styling. |
 | 2025-12-30 | **Settings Panel** | Added `SettingsPanel` to right sidebar with gear/X icon transition; tabs for Appearance, Account, Data. |
 | 2025-12-30 | **Visual Styles System** | Implemented Glass, Flat, and High Contrast visual styles with CSS variable overrides. |
 | 2025-12-30 | **Danger Zone** | Added data deletion options (delete notes/bookmarks/all) to Data section. |

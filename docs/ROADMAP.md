@@ -229,13 +229,15 @@
 
 ### 9.2 UX Polish
 
-- [ ] Keyboard shortcuts
-- [ ] Vim-style navigation
-- [ ] Weekly email digest
-- [ ] In-app feedback system
-- [ ] **Sync Notifications** - Toast/badge when data updates from another device
-- [ ] **Bulk Tagging** - Complete `bulkAddTags()` stub in `selection-store.ts`
-- [ ] **Bulk Collection Moving** - Complete `bulkAddToCollection()` stub
+- [x] **Settings Panel Integration** - Right sidebar gear icon expansion.
+- [x] **Visual Style System** - Glass, Flat, High Contrast options.
+- [x] **High Contrast WCAG AAA** - Full accessibility compliance (7:1+ contrast ratios, 2px borders, focus indicators, link underlines).
+- [x] **Danger Zone** - Data deletion options implemented.
+- [x] **Sidebar sliding highlight** - Added animated background for nav items.
+- [x] **Pawkits Tree expansion** - Smooth slide animations added.
+- [ ] **Keyboard shortcuts** - Global hotkeys for toggling sidebars (Cmd+\, Cmd+/).
+- [ ] **Context Menu** - Right-click on sidebar items (partial implementation).
+- [ ] **Vim-style navigation** - Early planning phase.
 
 ### 9.3 Mobile App
 
@@ -323,4 +325,4 @@ These were discussed but intentionally NOT planned:
 
 ---
 
-*Last Updated: December 29, 2025*
+*Last Updated: December 30, 2025*
