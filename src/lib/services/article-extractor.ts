@@ -71,6 +71,36 @@ function preprocessHtml(html: string): string {
 }
 
 /**
+ * Extract published time from document meta tags
+ */
+function extractPublishedTime(document: Document): string | null {
+  // Common meta tag selectors for publish date
+  const selectors = [
+    'meta[property="article:published_time"]',
+    'meta[property="og:article:published_time"]',
+    'meta[name="pubdate"]',
+    'meta[name="publishdate"]',
+    'meta[name="date"]',
+    'meta[name="DC.date.issued"]',
+    'meta[itemprop="datePublished"]',
+    'time[datetime]',
+    'time[itemprop="datePublished"]',
+  ];
+
+  for (const selector of selectors) {
+    const element = document.querySelector(selector);
+    if (element) {
+      const value = element.getAttribute('content') || element.getAttribute('datetime');
+      if (value) {
+        return value;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Extract article content from a URL
  * With timeout to prevent hanging
  */
@@ -116,6 +146,9 @@ export async function extractArticle(url: string): Promise<ExtractionResult> {
     const dom = new JSDOM(html, { url });
     console.log('[ArticleExtractor] JSDOM parsed in', Date.now() - jsdomStart, 'ms');
 
+    // Extract published time from meta tags before Readability processes the DOM
+    const publishedTime = extractPublishedTime(dom.window.document);
+
     const readerStart = Date.now();
     const reader = new Readability(dom.window.document);
     const article = reader.parse();
@@ -140,7 +173,7 @@ export async function extractArticle(url: string): Promise<ExtractionResult> {
         siteName: article.siteName || null,
         wordCount,
         readingTime: calculateReadingTime(wordCount),
-        publishedTime: null,
+        publishedTime,
       },
     };
   } catch (error) {
