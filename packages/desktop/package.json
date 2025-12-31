@@ -1,0 +1,17 @@
+{
+  "name": "@pawkit/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "pnpm portal:build && tauri dev",
+    "build": "pnpm portal:build && tauri build",
+    "build:standalone": "node scripts/build-standalone.js",
+    "portal:dev": "cd portal && pnpm dev",
+    "portal:build": "cd portal && pnpm install --ignore-workspace && pnpm build",
+    "portal:install": "cd portal && pnpm install"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0"
+  }
+}
