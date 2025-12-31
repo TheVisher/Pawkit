@@ -12,7 +12,7 @@ import { LeftSidebar } from '@/components/layout/left-sidebar';
 import { RightSidebar } from '@/components/layout/right-sidebar';
 import { MobileNav } from '@/components/layout/mobile-nav';
 import { AddCardModal } from '@/components/modals/add-card-modal';
-import { CardDetailModal } from '@/components/modals/card-detail-modal';
+import { CardDetailModal } from '@/components/modals/card-detail';
 import { CreatePawkitModal } from '@/components/modals/create-pawkit-modal';
 import { CoverImagePickerModal } from '@/components/modals/cover-image-picker-modal';
 import { useModalStore } from '@/lib/stores/modal-store';

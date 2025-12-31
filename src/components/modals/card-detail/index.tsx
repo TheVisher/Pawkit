@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * Card Detail Modal
+ * Shell component that handles modal wrapper, backdrop, and responsive behavior
+ */
+
 import { useEffect, useCallback } from 'react';
 import { Drawer } from 'vaul';
 import { useModalStore } from '@/lib/stores/modal-store';
@@ -7,7 +12,7 @@ import { useUIStore } from '@/lib/stores/ui-store';
 import { useMobile } from '@/lib/hooks/use-mobile';
 import { triggerSync } from '@/lib/services/sync-queue';
 import { cn } from '@/lib/utils';
-import { CardDetailContent } from './card-detail-content';
+import { CardDetailContent } from './content';
 
 export function CardDetailModal() {
   const activeCardId = useModalStore((s) => s.activeCardId);
@@ -88,3 +93,6 @@ export function CardDetailModal() {
     </>
   );
 }
+
+// Re-export for convenience
+export { CardDetailContent } from './content';
