@@ -68,6 +68,9 @@ export default function App() {
     document.documentElement.style.setProperty('--light-accent', `${accentLightness}%`);
   }, [accentHue, accentSaturation, accentLightness]);
 
+  // Get setupSyncListener from store
+  const setupSyncListener = usePortalDataStore((s) => s.setupSyncListener);
+
   // Initialize - hydrate from IndexedDB
   useEffect(() => {
     async function init() {
@@ -95,13 +98,41 @@ export default function App() {
     init();
   }, [hydrateSettings, hydrateWorkspace, loadFromIndexedDB]);
 
-  // Handle URL drop from external source
-  const handleUrlDrop = useCallback(async (url: string) => {
-    console.log('[Portal] URL dropped:', url, 'target:', dropTargetPawkit || selectedPawkit || 'Library');
+  // Set up BroadcastChannel listener for sync events from main app
+  useEffect(() => {
+    const cleanup = setupSyncListener();
+    return cleanup;
+  }, [setupSyncListener]);
 
-    // Invoke Tauri command to add URL via main app
-    // The collection slug is passed; if null, it goes to Library
-    const targetCollection = dropTargetPawkit || selectedPawkit;
+  // Detect pawkit under cursor position
+  const detectPawkitAtPosition = useCallback((x: number, y: number) => {
+    const element = document.elementFromPoint(x, y);
+    if (!element) return null;
+
+    // Look for a pawkit item with data-pawkit-slug attribute
+    const pawkitItem = element.closest('[data-pawkit-slug]');
+    if (pawkitItem) {
+      return pawkitItem.getAttribute('data-pawkit-slug');
+    }
+
+    // Check if over Library button
+    const libraryItem = element.closest('[data-library-drop]');
+    if (libraryItem) {
+      return null; // null means Library
+    }
+
+    return undefined; // undefined means not over any drop target
+  }, []);
+
+  // Handle URL drop from external source
+  const handleUrlDrop = useCallback(async (payload: { url: string; x: number; y: number }) => {
+    const { url, x, y } = payload;
+
+    // Detect what's under the cursor at drop time
+    const targetAtDrop = detectPawkitAtPosition(x, y);
+    const targetCollection = targetAtDrop !== undefined ? targetAtDrop : (dropTargetPawkit || selectedPawkit);
+
+    console.log('[Portal] URL dropped:', url, 'at:', x, y, 'target:', targetCollection || 'Library');
 
     try {
       await invoke('add_url_from_portal', {
@@ -116,7 +147,7 @@ export default function App() {
     // Reset drag state
     setIsDraggingOver(false);
     setDropTargetPawkit(null);
-  }, [dropTargetPawkit, selectedPawkit]);
+  }, [dropTargetPawkit, selectedPawkit, detectPawkitAtPosition]);
 
   // Listen for Tauri drag/drop events
   useEffect(() => {
@@ -125,45 +156,51 @@ export default function App() {
 
     async function setupListeners() {
       try {
-        console.log('[Portal] Registering tauri-drag-enter listener...');
         // Drag enters portal window
-        const unlistenEnter = await listen('tauri-drag-enter', (event) => {
-          console.log('[Portal] 🟢 DRAG ENTER EVENT RECEIVED:', event);
+        const unlistenEnter = await listen<{ x: number; y: number }>('tauri-drag-enter', (event) => {
+          console.log('[Portal] 🟢 DRAG ENTER:', event.payload);
           setIsDraggingOver(true);
         });
         unlisteners.push(unlistenEnter);
-        console.log('[Portal] ✓ tauri-drag-enter registered');
 
-        console.log('[Portal] Registering tauri-drag-leave listener...');
+        // Drag moves over portal window (continuous position updates)
+        const unlistenOver = await listen<{ x: number; y: number }>('tauri-drag-over', (event) => {
+          const { x, y } = event.payload;
+          const target = detectPawkitAtPosition(x, y);
+
+          // Only log occasionally to avoid spam
+          // console.log('[Portal] Drag over:', x, y, 'target:', target);
+
+          if (target !== undefined) {
+            setDropTargetPawkit(target);
+          }
+        });
+        unlisteners.push(unlistenOver);
+
         // Drag leaves portal window
-        const unlistenLeave = await listen('tauri-drag-leave', (event) => {
-          console.log('[Portal] 🔴 DRAG LEAVE EVENT RECEIVED:', event);
+        const unlistenLeave = await listen('tauri-drag-leave', () => {
+          console.log('[Portal] 🔴 DRAG LEAVE');
           setIsDraggingOver(false);
           setDropTargetPawkit(null);
         });
         unlisteners.push(unlistenLeave);
-        console.log('[Portal] ✓ tauri-drag-leave registered');
 
-        console.log('[Portal] Registering tauri-drop-url listener...');
         // URL dropped
-        const unlistenDropUrl = await listen<string>('tauri-drop-url', (event) => {
-          console.log('[Portal] 🎯 URL DROP EVENT RECEIVED:', event.payload);
+        const unlistenDropUrl = await listen<{ url: string; x: number; y: number }>('tauri-drop-url', (event) => {
+          console.log('[Portal] 🎯 URL DROP:', event.payload);
           handleUrlDrop(event.payload);
         });
         unlisteners.push(unlistenDropUrl);
-        console.log('[Portal] ✓ tauri-drop-url registered');
 
-        console.log('[Portal] Registering tauri-drop listener...');
-        // File dropped (non-URL) - could handle later
-        const unlistenDrop = await listen('tauri-drop', (event) => {
-          console.log('[Portal] 📁 FILE DROP EVENT RECEIVED:', event.payload);
+        // File dropped (non-URL)
+        const unlistenDrop = await listen('tauri-drop', () => {
+          console.log('[Portal] 📁 FILE DROP');
           setIsDraggingOver(false);
           setDropTargetPawkit(null);
         });
         unlisteners.push(unlistenDrop);
-        console.log('[Portal] ✓ tauri-drop registered');
 
-        console.log('[Portal] ✅ All Tauri event listeners registered successfully!');
+        console.log('[Portal] ✅ All Tauri event listeners registered');
       } catch (error) {
         console.error('[Portal] ❌ Failed to setup Tauri listeners:', error);
       }
@@ -172,24 +209,10 @@ export default function App() {
     setupListeners();
 
     return () => {
-      console.log('[Portal] Cleaning up Tauri event listeners...');
       unlisteners.forEach((unlisten) => unlisten());
     };
-  }, [handleUrlDrop]);
+  }, [handleUrlDrop, detectPawkitAtPosition]);
 
-  // Auto-expand sidebar when external drag is active
-  useEffect(() => {
-    if (isDraggingOver && !sidebarAnchored) {
-      // Sidebar will show via CSS when dragging over (see portal-sidebar-floating)
-      // We just need to ensure it's visible during drag
-    }
-  }, [isDraggingOver, sidebarAnchored]);
-
-  // Handle pawkit hover during external drag
-  const handleExternalDragHover = useCallback((slug: string | null) => {
-    console.log('[Portal] Hover target changed:', slug);
-    setDropTargetPawkit(slug);
-  }, []);
 
   // Filter cards based on selection
   const visibleCards = useMemo(() => {
@@ -286,8 +309,8 @@ export default function App() {
               </div>
               <div className="sidebar-list">
                 <button
+                  data-library-drop
                   onClick={() => setSelectedPawkit(null)}
-                  onMouseEnter={() => isDraggingOver && setDropTargetPawkit(null)}
                   className={`flex items-center gap-2 w-full px-2 py-2 rounded-xl text-sm text-left transition-colors ${
                     selectedPawkit === null
                       ? 'text-text-primary font-medium bg-black/5 dark:bg-white/5'
@@ -303,7 +326,6 @@ export default function App() {
                     onSelectPawkit={setSelectedPawkit}
                     isExternalDragActive={isDraggingOver}
                     dropTargetSlug={dropTargetPawkit}
-                    onExternalDragHover={handleExternalDragHover}
                   />
                 </div>
               </div>
@@ -331,8 +353,8 @@ export default function App() {
                 </div>
                 <div className="sidebar-list">
                   <button
+                    data-library-drop
                     onClick={() => setSelectedPawkit(null)}
-                    onMouseEnter={() => isDraggingOver && setDropTargetPawkit(null)}
                     className={`flex items-center gap-2 w-full px-2 py-2 rounded-xl text-sm text-left transition-colors ${
                       selectedPawkit === null
                         ? 'text-text-primary font-medium bg-black/5 dark:bg-white/5'
@@ -348,7 +370,6 @@ export default function App() {
                       onSelectPawkit={setSelectedPawkit}
                       isExternalDragActive={isDraggingOver}
                       dropTargetSlug={dropTargetPawkit}
-                      onExternalDragHover={handleExternalDragHover}
                     />
                   </div>
                 </div>

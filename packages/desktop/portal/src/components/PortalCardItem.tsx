@@ -1,11 +1,13 @@
 /**
  * Portal-specific card item - simplified version without main app dependencies
  * Matches the visual style but avoids React instance conflicts
+ * Supports drag OUT to external apps
  */
 
 import { useState } from 'react';
-import { Pin, Globe, FileText, ExternalLink } from 'lucide-react';
+import { Pin, Globe, FileText, ExternalLink, GripVertical } from 'lucide-react';
 import type { LocalCard } from '../stores/portal-stores';
+import { useDragOut } from '../hooks/use-drag-out';
 
 interface PortalCardItemProps {
   card: LocalCard;
@@ -14,6 +16,14 @@ interface PortalCardItemProps {
 
 export function PortalCardItem({ card, onClick }: PortalCardItemProps) {
   const [imageError, setImageError] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Drag out hook
+  const { dragProps, isDraggable } = useDragOut({
+    card,
+    onDragStart: () => setIsDragging(true),
+    onDragEnd: () => setIsDragging(false),
+  });
 
   const hasImage = card.image && !imageError;
   const isNote = card.type === 'md-note' || card.type === 'quick-note';
@@ -22,9 +32,12 @@ export function PortalCardItem({ card, onClick }: PortalCardItemProps) {
   const domain = card.domain || (card.url ? new URL(card.url).hostname.replace('www.', '') : '');
 
   return (
-    <button
+    <div
+      {...dragProps}
       onClick={onClick}
-      className="group relative w-full h-full text-left transition-all duration-300 ease-out hover:-translate-y-1 focus:outline-none"
+      className={`group relative w-full h-full text-left transition-all duration-300 ease-out hover:-translate-y-1 focus:outline-none cursor-pointer ${
+        isDragging ? 'opacity-50 scale-95' : ''
+      } ${isDraggable ? 'cursor-grab active:cursor-grabbing' : ''}`}
     >
       <div
         className="relative overflow-hidden rounded-2xl h-full flex flex-col"
@@ -131,6 +144,21 @@ export function PortalCardItem({ card, onClick }: PortalCardItemProps) {
               <Pin className="h-3 w-3" />
             </div>
           )}
+
+          {/* Drag handle indicator for URL cards */}
+          {isDraggable && !card.pinned && (
+            <div
+              className="absolute top-2 left-2 p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+              style={{
+                background: 'var(--glass-bg)',
+                backdropFilter: 'blur(12px)',
+                border: '1px solid var(--glass-border)',
+              }}
+              title="Drag to external apps"
+            >
+              <GripVertical className="h-3 w-3 text-text-muted" />
+            </div>
+          )}
         </div>
 
         {/* Title footer */}
@@ -151,6 +179,6 @@ export function PortalCardItem({ card, onClick }: PortalCardItemProps) {
           }}
         />
       </div>
-    </button>
+    </div>
   );
 }

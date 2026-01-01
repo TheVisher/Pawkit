@@ -27,7 +27,6 @@ interface PortalPawkitItemProps {
   // External drag targeting
   isExternalDragActive?: boolean;
   isDropTarget?: boolean;
-  onExternalDragHover?: (slug: string | null) => void;
 }
 
 export function PortalPawkitItem({
@@ -41,7 +40,6 @@ export function PortalPawkitItem({
   cardCount = 0,
   isExternalDragActive = false,
   isDropTarget = false,
-  onExternalDragHover,
 }: PortalPawkitItemProps) {
   const hasChildren = childCollections.length > 0;
 
@@ -55,19 +53,6 @@ export function PortalPawkitItem({
     },
   });
 
-  // Handle external drag hover (from Tauri/OS drag events)
-  const handleMouseEnter = () => {
-    if (isExternalDragActive) {
-      onExternalDragHover?.(collection.slug);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    if (isExternalDragActive) {
-      onExternalDragHover?.(null);
-    }
-  };
-
   // Highlight when either internal or external drag is over this item
   const isHighlighted = isOver || isDropTarget;
 
@@ -79,6 +64,7 @@ export function PortalPawkitItem({
     <div className="select-none relative">
       <div
         ref={setNodeRef}
+        data-pawkit-slug={collection.slug}
         className={cn(
           'group flex items-center justify-between py-2 px-2 rounded-xl transition-colors duration-200 cursor-pointer text-sm border border-transparent relative',
           isSelected
@@ -88,8 +74,6 @@ export function PortalPawkitItem({
         )}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
         onClick={handleClick}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
       >
         {isSelected && (
           <motion.div

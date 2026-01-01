@@ -194,13 +194,13 @@ body {
   flex-shrink: 0;
 }
 
-/* Floating sidebar container */
+/* Floating sidebar container - higher z-index than drop overlay */
 .portal-sidebar-floating {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  z-index: 10;
+  z-index: 50;
   width: 28px;
 }
 
@@ -322,18 +322,7 @@ body {
   to { transform: rotate(360deg); }
 }
 
-/* Drop overlay */
-.drop-overlay {
-  position: absolute;
-  inset: 0;
-  background: hsl(var(--hue-accent) var(--sat-accent) 50% / 0.1);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  border-radius: 16px;
-}
+/* Drop overlay - no longer used, overlay is inline in App.tsx */
 
 .drop-zone {
   padding: 24px 48px;

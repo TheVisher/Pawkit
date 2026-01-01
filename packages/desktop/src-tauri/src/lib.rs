@@ -208,8 +208,8 @@ pub fn run() {
 
                 if let tauri::WindowEvent::DragDrop(drag_event) = event {
                     match drag_event {
-                        tauri::DragDropEvent::Drop { paths, position: _ } => {
-                            log::info!("Portal drop paths: {:?}", paths);
+                        tauri::DragDropEvent::Drop { paths, position } => {
+                            log::info!("Portal drop at {:?}, paths: {:?}", position, paths);
 
                             // If paths is empty, try to get URL from drag pasteboard
                             let url = if paths.is_empty() {
@@ -223,15 +223,30 @@ pub fn run() {
 
                             if let Some(url) = url {
                                 log::info!("Portal drop URL: {}", url);
-                                let _ = window.emit("tauri-drop-url", &url);
+                                // Emit with position so frontend knows where drop occurred
+                                let _ = window.emit("tauri-drop-url", serde_json::json!({
+                                    "url": url,
+                                    "x": position.x,
+                                    "y": position.y
+                                }));
                             } else {
                                 log::info!("No URL found in drop");
                                 let _ = window.emit("tauri-drop", &paths);
                             }
                         }
-                        tauri::DragDropEvent::Enter { paths, position: _ } => {
-                            log::info!("Portal drag enter: {:?}", paths);
-                            let _ = window.emit("tauri-drag-enter", &paths);
+                        tauri::DragDropEvent::Enter { paths, position } => {
+                            log::info!("Portal drag enter at {:?}: {:?}", position, paths);
+                            let _ = window.emit("tauri-drag-enter", serde_json::json!({
+                                "x": position.x,
+                                "y": position.y
+                            }));
+                        }
+                        tauri::DragDropEvent::Over { position } => {
+                            // Emit position continuously during drag for hover detection
+                            let _ = window.emit("tauri-drag-over", serde_json::json!({
+                                "x": position.x,
+                                "y": position.y
+                            }));
                         }
                         tauri::DragDropEvent::Leave => {
                             log::info!("Portal drag leave");

@@ -14,7 +14,6 @@ interface PortalPawkitsTreeProps {
   // External drag targeting
   isExternalDragActive?: boolean;
   dropTargetSlug?: string | null;
-  onExternalDragHover?: (slug: string | null) => void;
 }
 
 export function PortalPawkitsTree({
@@ -22,7 +21,6 @@ export function PortalPawkitsTree({
   onSelectPawkit,
   isExternalDragActive = false,
   dropTargetSlug = null,
-  onExternalDragHover,
 }: PortalPawkitsTreeProps) {
   const collections = usePortalDataStore((state) => state.collections);
   const cards = usePortalDataStore((state) => state.cards);
@@ -80,7 +78,6 @@ export function PortalPawkitsTree({
           cardCount={getCardCount(collection.slug)}
           isExternalDragActive={isExternalDragActive}
           isDropTarget={isDropTarget}
-          onExternalDragHover={onExternalDragHover}
         />
         <AnimatePresence initial={false}>
           {isExpanded && hasChildren && (
