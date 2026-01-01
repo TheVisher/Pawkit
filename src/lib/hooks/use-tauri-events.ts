@@ -96,6 +96,7 @@ export function useTauriEvents() {
               collections: targetCollections,
               tags: [],
               pinned: false,
+              isFileCard: false,
               status: 'PENDING', // Triggers metadata fetching
             });
             log.info('Card created from portal URL');

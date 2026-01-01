@@ -7,6 +7,9 @@ import { db } from '@/lib/db';
 import { createUrlCard } from '@/lib/services/metadata-service';
 import { PortalPawkitsTree } from './components/portal-pawkits-tree';
 import { PortalCardItem } from './components/portal-card-item';
+import { createModuleLogger } from '@/lib/utils/logger';
+
+const log = createModuleLogger('Portal');
 
 /**
  * Pawkit Portal - Mini browser for quick access
@@ -142,10 +145,10 @@ export default function PortalPage() {
       const targetCollection =
         targetAtDrop !== undefined ? targetAtDrop : dropTargetPawkit || selectedPawkit;
 
-      console.log('[Portal] URL dropped:', url, 'target:', targetCollection || 'Library');
+      log.info('URL dropped:', url, 'target:', targetCollection || 'Library');
 
       if (!currentWorkspace) {
-        console.warn('[Portal] No workspace yet, waiting...');
+        log.warn('No workspace yet, waiting...');
         setIsDraggingOver(false);
         setDropTargetPawkit(null);
         return;
@@ -159,9 +162,9 @@ export default function PortalPage() {
           workspaceId: currentWorkspace.id,
           collections: targetCollection ? [targetCollection] : [],
         });
-        console.log('[Portal] Card created, metadata fetching...');
+        log.info('Card created, metadata fetching...');
       } catch (error) {
-        console.error('[Portal] Failed to create card:', error);
+        log.error('Failed to create card:', error);
       }
 
       setIsDraggingOver(false);
@@ -214,9 +217,9 @@ export default function PortalPage() {
         });
         unlisteners.push(u5);
 
-        console.log('[Portal] Tauri listeners registered');
+        log.info('Tauri listeners registered');
       } catch (error) {
-        console.error('[Portal] Failed to setup listeners:', error);
+        log.error('Failed to setup listeners:', error);
       }
     }
 
@@ -234,7 +237,7 @@ export default function PortalPage() {
       const appWindow = getCurrentWindow();
       await appWindow.hide();
     } catch (e) {
-      console.error('Failed to hide window:', e);
+      log.error('Failed to hide window:', e);
     }
   };
 
@@ -244,7 +247,7 @@ export default function PortalPage() {
       const appWindow = getCurrentWindow();
       await appWindow.minimize();
     } catch (e) {
-      console.error('Failed to minimize window:', e);
+      log.error('Failed to minimize window:', e);
     }
   };
 
@@ -295,9 +298,9 @@ export default function PortalPage() {
           offsetX: 0.0,
           offsetY: 0.0,
         });
-        console.log('[Portal] Native rounded corners enabled');
+        log.info('Native rounded corners enabled');
       } catch (e) {
-        console.log('[Portal] Not in Tauri context or rounded corners failed:', e);
+        log.debug('Not in Tauri context or rounded corners failed:', e);
       }
     }
 

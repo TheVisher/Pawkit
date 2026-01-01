@@ -5,7 +5,7 @@
  * Main component that orchestrates the sidebar panels
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
 import {
   ArrowRightToLine,
@@ -64,6 +64,7 @@ import { CalendarSidebar } from "./calendar/CalendarSidebar";
 import { SettingsPanel } from "./SettingsPanel";
 
 export function RightSidebar() {
+  const hasMountedRef = useRef(false);
   const [mounted, setMounted] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [displayedPathname, setDisplayedPathname] = useState("");
@@ -96,29 +97,26 @@ export function RightSidebar() {
   useEffect(() => {
     const targetMode = activeCardId ? "card-details" : "filters";
 
-    if (targetMode !== displayMode && mounted) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (targetMode !== displayMode && hasMountedRef.current) {
       setIsTransitioning(true);
       const timer = setTimeout(() => {
         setDisplayMode(targetMode);
         setTimeout(() => setIsTransitioning(false), 100);
       }, 200);
       return () => clearTimeout(timer);
-    } else if (!mounted) {
+    } else if (!hasMountedRef.current) {
       setDisplayMode(targetMode);
     }
-  }, [activeCardId, displayMode, mounted]);
+  }, [activeCardId, displayMode]);
 
   // Handle view transitions with animation
   useEffect(() => {
-    if (!mounted) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!hasMountedRef.current) {
       setDisplayedPathname(pathname);
       return;
     }
 
     if (pathname !== displayedPathname) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsAnimating(true);
       const timer = setTimeout(() => {
         setDisplayedPathname(pathname);
@@ -126,7 +124,7 @@ export function RightSidebar() {
       }, 200);
       return () => clearTimeout(timer);
     }
-  }, [pathname, displayedPathname, mounted]);
+  }, [pathname, displayedPathname]);
 
   // Card display settings
   const {
@@ -256,8 +254,9 @@ export function RightSidebar() {
     return { allTags: sortedTags, noTagsCount: noTags, noPawkitsCount: noPawkits };
   }, [scopedCards]);
 
+  // Track mount state - ref for animation logic, state for hydration safety
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    hasMountedRef.current = true;
     setMounted(true);
   }, []);
 
