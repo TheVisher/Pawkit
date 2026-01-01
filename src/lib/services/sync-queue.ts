@@ -6,9 +6,8 @@
 import { db } from '@/lib/db';
 import type { SyncQueueItem, LocalCard } from '@/lib/db';
 import { useSyncStore } from '@/lib/stores/sync-store';
-import { useDataStore } from '@/lib/stores/data-store';
 import { createModuleLogger } from '@/lib/utils/logger';
-import { CONFLICT_TAG, addConflictTag, removeConflictTag } from '@/lib/utils/system-tags';
+import { addConflictTag, removeConflictTag } from '@/lib/utils/system-tags';
 
 const log = createModuleLogger('SyncQueue');
 
@@ -370,21 +369,11 @@ async function markEntitySynced(entityType: EntityType, entityId: string): Promi
       break;
     case 'collection':
       await db.collections.update(entityId, updates);
-      // Update Zustand store for collections
-      useDataStore.setState((state) => ({
-        collections: state.collections.map((c) =>
-          c.id === entityId ? { ...c, _synced: true } : c
-        ),
-      }));
+      // useLiveQuery will auto-update any observing components
       break;
     case 'card':
       await db.cards.update(entityId, updates);
-      // Update Zustand store for cards
-      useDataStore.setState((state) => ({
-        cards: state.cards.map((c) =>
-          c.id === entityId ? { ...c, _synced: true } : c
-        ),
-      }));
+      // useLiveQuery will auto-update any observing components
       break;
     case 'event':
       await db.calendarEvents.update(entityId, updates);
@@ -716,29 +705,8 @@ async function handleCardConflict(
     _lastModified: new Date(),
   });
 
-  // Update Zustand store with both cards
-  const dataStore = useDataStore.getState();
-  const currentCards = dataStore.cards;
-
-  // Update the original card in state
-  const updatedCards = currentCards.map((c) => {
-    if (c.id === localCardId) {
-      return {
-        ...c,
-        title: serverCard.title as string,
-        tags: addConflictTag(serverTags),
-        conflictWithId: conflictCopyId,
-        version: serverVersion,
-        _synced: true,
-      };
-    }
-    return c;
-  });
-
-  // Add the conflict copy
-  updatedCards.push(conflictCopy);
-
-  useDataStore.setState({ cards: updatedCards });
+  // Note: Both cards are now in Dexie (original updated above, conflict copy added)
+  // useLiveQuery will auto-update any observing components
 
   // Queue the conflict copy for creation on server
   await addToQueue('card', conflictCopyId, 'create');
@@ -770,15 +738,7 @@ export async function resolveConflictOnDelete(deletedCardId: string): Promise<vo
       _lastModified: new Date(),
       _synced: false,
     });
-
-    // Update Zustand store
-    useDataStore.setState((state) => ({
-      cards: state.cards.map((c) =>
-        c.id === partnerId
-          ? { ...c, tags: updatedTags, conflictWithId: undefined, _synced: false }
-          : c
-      ),
-    }));
+    // useLiveQuery will auto-update any observing components
 
     // Queue the partner card update
     await addToQueue('card', partnerId, 'update', {

@@ -9,7 +9,6 @@ import { persist } from 'zustand/middleware';
 import { useShallow } from 'zustand/react/shallow';
 import { db } from '@/lib/db';
 import { buildTagStats, type TagTreeNode, type TagStats } from '@/lib/utils/tag-hierarchy';
-import { useDataStore } from './data-store';
 
 interface TagState {
   // Computed from Dexie (not persisted)
@@ -263,17 +262,6 @@ export const useTagStore = create<TagState>()(
         // Refresh to get accurate counts
         await get().refreshTags(workspaceId);
 
-        // Update data-store cards directly (preserve _synced state in UI)
-        const dataStore = useDataStore.getState();
-        const cardIds = new Set(cards.map((c) => c.id));
-        dataStore.setCards(
-          dataStore.cards.map((c) =>
-            cardIds.has(c.id)
-              ? { ...c, tags: c.tags.map((t) => (t === oldTag ? newTag : t)) }
-              : c
-          )
-        );
-
         return cards.length;
       },
 
@@ -305,17 +293,6 @@ export const useTagStore = create<TagState>()(
 
         // Refresh to get accurate counts
         await get().refreshTags(workspaceId);
-
-        // Update data-store cards directly (preserve _synced state in UI)
-        const dataStore = useDataStore.getState();
-        const cardIds = new Set(cards.map((c) => c.id));
-        dataStore.setCards(
-          dataStore.cards.map((c) =>
-            cardIds.has(c.id)
-              ? { ...c, tags: c.tags.filter((t) => t !== tag) }
-              : c
-          )
-        );
 
         return cards.length;
       },
@@ -363,17 +340,6 @@ export const useTagStore = create<TagState>()(
 
         // Refresh to get accurate counts
         await get().refreshTags(workspaceId);
-
-        // Update data-store cards directly (preserve _synced state in UI)
-        const dataStore = useDataStore.getState();
-        const cardIds = new Set(cards.map((c) => c.id));
-        dataStore.setCards(
-          dataStore.cards.map((c) =>
-            cardIds.has(c.id)
-              ? { ...c, tags: getMergedTags(c.tags) }
-              : c
-          )
-        );
 
         return cards.length;
       },

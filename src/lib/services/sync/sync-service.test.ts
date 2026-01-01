@@ -245,6 +245,7 @@ describe('Queue Processing - Retry Logic', () => {
       _lastModified: new Date(),
       _deleted: false,
       isFileCard: false,
+      version: 1,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -262,6 +263,7 @@ describe('Queue Processing - Retry Logic', () => {
       _lastModified: new Date(),
       _deleted: false,
       isFileCard: false,
+      version: 1,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -556,6 +558,7 @@ describe('API Error Handling', () => {
       _lastModified: new Date(),
       _deleted: false,
       isFileCard: false,
+      version: 1,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

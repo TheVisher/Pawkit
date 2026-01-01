@@ -41,6 +41,8 @@ export function useTauriEvents() {
 
     async function setupListener() {
       try {
+        // Re-check inside async function for TypeScript null safety
+        if (!window.__TAURI__) return;
         const { listen } = window.__TAURI__.event;
 
         // Listen for URLs dropped in the Portal window
