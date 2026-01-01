@@ -16,14 +16,9 @@ interface PortalCardItemProps {
 
 export function PortalCardItem({ card, onClick }: PortalCardItemProps) {
   const [imageError, setImageError] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
 
-  // Drag out hook
-  const { dragProps, isDraggable } = useDragOut({
-    card,
-    onDragStart: () => setIsDragging(true),
-    onDragEnd: () => setIsDragging(false),
-  });
+  // Drag out hook - provides native file drag
+  const { dragProps, isDraggable, isDragging } = useDragOut({ card });
 
   const hasImage = card.image && !imageError;
   const isNote = card.type === 'md-note' || card.type === 'quick-note';

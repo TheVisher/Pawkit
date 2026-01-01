@@ -19,12 +19,16 @@ import {
   ChevronRight,
   ChevronDown,
   Tags,
+  RefreshCw,
 } from "lucide-react";
 import { PawkitsTree } from "@/components/pawkits/pawkits-tree";
 import { SidebarContextMenu } from "@/components/context-menus";
 import { useLeftSidebar, useRightSidebarSettings } from "@/lib/stores/ui-store";
 import { useCurrentWorkspace } from "@/lib/stores/workspace-store";
+import { useSyncStore } from "@/lib/stores/sync-store";
 import { getClient } from "@/lib/supabase/client";
+import { fullSync } from "@/lib/services";
+import { useDataStore } from "@/lib/stores/data-store";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -57,6 +61,7 @@ export function LeftSidebar() {
   const { isOpen, isAnchored, toggleAnchored, setOpen } = useLeftSidebar();
   const { toggleSettings } = useRightSidebarSettings();
   const workspace = useCurrentWorkspace();
+  const isSyncing = useSyncStore((s) => s.status === 'syncing');
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard SSR hydration pattern
@@ -71,6 +76,14 @@ export function LeftSidebar() {
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
+  };
+
+  const handleSync = async () => {
+    await fullSync();
+    // Reload data from Dexie into Zustand after sync
+    if (workspace) {
+      await useDataStore.getState().loadAll(workspace.id);
+    }
   };
 
   const handleToggleOpen = () => {
@@ -331,6 +344,14 @@ export function LeftSidebar() {
             align="start"
             className="w-56 bg-bg-surface-1 border-border-subtle"
           >
+            <DropdownMenuItem
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="text-text-secondary focus:bg-bg-surface-2 focus:text-text-primary"
+            >
+              <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")} />
+              {isSyncing ? "Syncing..." : "Sync from server"}
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => router.push("/trash")}
               className="text-text-secondary focus:bg-bg-surface-2 focus:text-text-primary"

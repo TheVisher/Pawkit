@@ -14,6 +14,8 @@ import {
 } from 'date-fns';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useCards } from '@/lib/hooks/use-live-data';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { DayCell } from './day-cell';
 import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
 
@@ -36,7 +38,8 @@ interface CalendarItem {
 export function MonthView() {
   const { currentDate, setDate, setViewMode } = useCalendarStore();
   const events = useDataStore((state) => state.events);
-  const cards = useDataStore((state) => state.cards);
+  const workspace = useCurrentWorkspace();
+  const cards = useCards(workspace?.id);
 
   // Calculate the 6-week grid (42 days)
   const calendarDays = useMemo(() => {

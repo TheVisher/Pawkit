@@ -13,13 +13,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useCards } from '@/lib/hooks/use-live-data';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
 
 export function TodaysNoteWidget() {
   const [date, setDate] = useState(new Date());
   const workspace = useCurrentWorkspace();
-  const cards = useDataStore((s) => s.cards);
+  const cards = useCards(workspace?.id);
   const isLoading = useDataStore((s) => s.isLoading);
   const createCard = useDataStore((s) => s.createCard);
   const openCardDetail = useModalStore((s) => s.openCardDetail);

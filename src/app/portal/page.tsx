@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Library, ChevronRight, Maximize2, Minimize2, Plus } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, createSyncMetadata } from '@/lib/db';
-import type { LocalCard } from '@/lib/db/types';
+import { db } from '@/lib/db';
+import { createUrlCard } from '@/lib/services/metadata-service';
 import { PortalPawkitsTree } from './components/portal-pawkits-tree';
 import { PortalCardItem } from './components/portal-card-item';
 
@@ -133,7 +133,8 @@ export default function PortalPage() {
     return undefined;
   }, []);
 
-  // Handle URL drop - create card directly via Dexie
+  // Handle URL drop - create card and fetch metadata directly
+  // No round-trip to main app needed - uses shared Dexie and metadata service
   const handleUrlDrop = useCallback(
     async (payload: { url: string; x: number; y: number }) => {
       const { url, x, y } = payload;
@@ -144,43 +145,21 @@ export default function PortalPage() {
       console.log('[Portal] URL dropped:', url, 'target:', targetCollection || 'Library');
 
       if (!currentWorkspace) {
-        console.warn('[Portal] No workspace');
+        console.warn('[Portal] No workspace yet, waiting...');
+        setIsDraggingOver(false);
+        setDropTargetPawkit(null);
         return;
       }
 
       try {
-        // Create card directly in Dexie
-        const card: LocalCard = {
-          id: crypto.randomUUID(),
-          type: 'url',
+        // Create card and fetch metadata - all in one call
+        // Uses shared Dexie, portal sees update via liveQuery
+        await createUrlCard({
           url: url,
-          title: url,
-          content: '',
           workspaceId: currentWorkspace.id,
           collections: targetCollection ? [targetCollection] : [],
-          tags: [],
-          pinned: false,
-          status: 'PENDING', // Triggers metadata fetching
-          isFileCard: false,
-          version: 1,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          ...createSyncMetadata(),
-        };
-
-        await db.cards.add(card);
-
-        // Queue sync
-        await db.syncQueue.add({
-          entityType: 'card',
-          entityId: card.id,
-          operation: 'create',
-          payload: card as unknown as Record<string, unknown>,
-          retryCount: 0,
-          createdAt: new Date(),
         });
-
-        console.log('[Portal] Card created - metadata will be fetched automatically');
+        console.log('[Portal] Card created, metadata fetching...');
       } catch (error) {
         console.error('[Portal] Failed to create card:', error);
       }

@@ -6,9 +6,10 @@
 import { create } from 'zustand';
 import { db, createSyncMetadata, markModified, markDeleted, markRestored } from '@/lib/db';
 import type { LocalCard, LocalCollection, LocalCalendarEvent, LocalTodo } from '@/lib/db';
-import { addToQueue, clearAllSyncQueue } from '@/lib/services/sync-queue';
+import { addToQueue, clearAllSyncQueue, resolveConflictOnDelete } from '@/lib/services/sync-queue';
 import { queueMetadataFetch } from '@/lib/services/metadata-service';
 import { useLayoutCacheStore } from './layout-cache-store';
+import { getUpdatedScheduleTagsIfNeeded } from '@/lib/utils/system-tags';
 
 // Expose debug helper on window for console access
 if (typeof window !== 'undefined') {
@@ -16,24 +17,19 @@ if (typeof window !== 'undefined') {
 }
 
 interface DataState {
-  // State
-  cards: LocalCard[];
-  collections: LocalCollection[];
+  // State (cards/collections removed - use useLiveQuery hooks from use-live-data.ts)
   events: LocalCalendarEvent[];
   todos: LocalTodo[];
   isLoading: boolean;
   error: string | null;
 
   // Setters
-  setCards: (cards: LocalCard[]) => void;
-  setCollections: (collections: LocalCollection[]) => void;
   setEvents: (events: LocalCalendarEvent[]) => void;
   setTodos: (todos: LocalTodo[]) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
 
-  // Card actions
-  loadCards: (workspaceId: string) => Promise<void>;
+  // Card actions (write to Dexie, useLiveQuery auto-updates UI)
   createCard: (card: Omit<LocalCard, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalCard>;
   updateCard: (id: string, updates: Partial<LocalCard>) => Promise<void>;
   deleteCard: (id: string) => Promise<void>;
@@ -47,8 +43,7 @@ interface DataState {
   emptyTrash: (workspaceId: string) => Promise<void>;
   purgeOldTrash: (workspaceId: string, maxAgeDays?: number) => Promise<number>;
 
-  // Collection actions
-  loadCollections: (workspaceId: string) => Promise<void>;
+  // Collection actions (write to Dexie, useLiveQuery auto-updates UI)
   createCollection: (collection: Omit<LocalCollection, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalCollection>;
   updateCollection: (id: string, updates: Partial<LocalCollection>) => Promise<void>;
   deleteCollection: (id: string) => Promise<void>;
@@ -72,17 +67,13 @@ interface DataState {
 
 
 export const useDataStore = create<DataState>((set, get) => ({
-  // Initial state
-  cards: [],
-  collections: [],
+  // Initial state (cards/collections removed - use useLiveQuery from use-live-data.ts)
   events: [],
   todos: [],
   isLoading: false,
   error: null,
 
   // Setters
-  setCards: (cards) => set({ cards }),
-  setCollections: (collections) => set({ collections }),
   setEvents: (events) => set({ events }),
   setTodos: (todos) => set({ todos }),
   setLoading: (isLoading) => set({ isLoading }),
@@ -92,19 +83,6 @@ export const useDataStore = create<DataState>((set, get) => ({
   // CARD ACTIONS
   // ==========================================================================
 
-  loadCards: async (workspaceId) => {
-    try {
-      const cards = await db.cards
-        .where('workspaceId')
-        .equals(workspaceId)
-        .filter((c) => !c._deleted)
-        .toArray();
-      set({ cards });
-    } catch (error) {
-      set({ error: (error as Error).message });
-    }
-  },
-
   createCard: async (cardData) => {
     // For URL cards, set status to PENDING for metadata fetching
     const isUrlCard = cardData.type === 'url' && cardData.url;
@@ -113,16 +91,14 @@ export const useDataStore = create<DataState>((set, get) => ({
       ...cardData,
       id: crypto.randomUUID(),
       status: isUrlCard ? 'PENDING' : 'READY',
+      version: 1, // Initial version for conflict detection
       createdAt: new Date(),
       updatedAt: new Date(),
       ...createSyncMetadata(),
     };
 
-    // Write to Dexie first (local-first)
+    // Write to Dexie (useLiveQuery will auto-update any observing components)
     await db.cards.add(card);
-
-    // Update Zustand state immediately (optimistic)
-    set({ cards: [...get().cards, card] });
 
     // Queue sync (addToQueue handles merging duplicate updates)
     await addToQueue('card', card.id, 'create');
@@ -148,13 +124,8 @@ export const useDataStore = create<DataState>((set, get) => ({
       updatedAt: new Date(),
     });
 
-    // Write to Dexie
+    // Write to Dexie (useLiveQuery will auto-update any observing components)
     await db.cards.put(updated);
-
-    // Update Zustand state
-    set({
-      cards: get().cards.map((c) => (c.id === id ? updated : c)),
-    });
 
     // Queue sync (addToQueue handles merging duplicate updates)
     await addToQueue('card', id, 'update', updates as Record<string, unknown>);
@@ -164,15 +135,15 @@ export const useDataStore = create<DataState>((set, get) => ({
     const existing = await db.cards.get(id);
     if (!existing) return;
 
+    // If this card has a conflict partner, resolve the conflict first
+    if (existing.conflictWithId) {
+      await resolveConflictOnDelete(id);
+    }
+
     const deleted = markDeleted(existing);
 
-    // Soft delete in Dexie
+    // Soft delete in Dexie (useLiveQuery will auto-update any observing components)
     await db.cards.put(deleted);
-
-    // Remove from Zustand state
-    set({
-      cards: get().cards.filter((c) => c.id !== id),
-    });
 
     // Clear from layout cache
     useLayoutCacheStore.getState().removeHeight(id);
@@ -187,26 +158,16 @@ export const useDataStore = create<DataState>((set, get) => ({
 
     const restored = markRestored(existing);
 
-    // Update in Dexie
+    // Update in Dexie (useLiveQuery will auto-update any observing components)
     await db.cards.put(restored);
-
-    // Add back to Zustand state
-    set({
-      cards: [...get().cards, restored],
-    });
 
     // Queue sync (restore = update with _deleted: false)
     await addToQueue('card', id, 'update', { _deleted: false });
   },
 
   permanentDeleteCard: async (id) => {
-    // Actually remove from IndexedDB
+    // Actually remove from IndexedDB (useLiveQuery will auto-update any observing components)
     await db.cards.delete(id);
-
-    // Ensure removed from Zustand state
-    set({
-      cards: get().cards.filter((c) => c.id !== id),
-    });
 
     // Note: We don't queue a sync here because the card should already
     // be marked as deleted on the server. If needed, handle server-side
@@ -214,7 +175,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   addCardToCollection: async (cardId: string, collectionSlug: string) => {
-    const card = get().cards.find(c => c.id === cardId);
+    const card = await db.cards.get(cardId);
     if (!card) return;
 
     // Avoid duplicates
@@ -226,7 +187,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   removeCardFromCollection: async (cardId: string, collectionSlug: string) => {
-    const card = get().cards.find(c => c.id === cardId);
+    const card = await db.cards.get(cardId);
     if (!card) return;
 
     const newCollections = card.collections.filter(s => s !== collectionSlug);
@@ -282,36 +243,25 @@ export const useDataStore = create<DataState>((set, get) => ({
   // COLLECTION ACTIONS
   // ==========================================================================
 
-  loadCollections: async (workspaceId) => {
-    try {
-      const collections = await db.collections
-        .where('workspaceId')
-        .equals(workspaceId)
-        .filter((c) => !c._deleted)
-        .sortBy('position');
-      set({ collections });
-    } catch (error) {
-      set({ error: (error as Error).message });
-    }
-  },
-
   createCollection: async (collectionData) => {
-    const { collections } = get();
+    // Get current collection count for position
+    const existingCount = await db.collections
+      .where('workspaceId')
+      .equals(collectionData.workspaceId)
+      .filter((c) => !c._deleted)
+      .count();
 
     const collection: LocalCollection = {
       ...collectionData,
       id: crypto.randomUUID(),
-      position: collections.length, // Add to end
+      position: existingCount, // Add to end
       createdAt: new Date(),
       updatedAt: new Date(),
       ...createSyncMetadata(),
     };
 
-    // Write to Dexie
+    // Write to Dexie (useLiveQuery will auto-update any observing components)
     await db.collections.add(collection);
-
-    // Update Zustand state
-    set({ collections: [...collections, collection] });
 
     // Queue sync
     await addToQueue('collection', collection.id, 'create');
@@ -329,13 +279,8 @@ export const useDataStore = create<DataState>((set, get) => ({
       updatedAt: new Date(),
     });
 
-    // Write to Dexie
+    // Write to Dexie (useLiveQuery will auto-update any observing components)
     await db.collections.put(updated);
-
-    // Update Zustand state
-    set({
-      collections: get().collections.map((c) => (c.id === id ? updated : c)),
-    });
 
     // Queue sync
     await addToQueue('collection', id, 'update', updates as Record<string, unknown>);
@@ -347,13 +292,8 @@ export const useDataStore = create<DataState>((set, get) => ({
 
     const deleted = markDeleted(existing);
 
-    // Soft delete in Dexie
+    // Soft delete in Dexie (useLiveQuery will auto-update any observing components)
     await db.collections.put(deleted);
-
-    // Remove from Zustand state
-    set({
-      collections: get().collections.filter((c) => c.id !== id),
-    });
 
     // Queue sync
     await addToQueue('collection', id, 'delete');
@@ -366,9 +306,33 @@ export const useDataStore = create<DataState>((set, get) => ({
   loadAll: async (workspaceId) => {
     set({ isLoading: true, error: null });
     try {
+      // Sync schedule tags for cards (handle day changes: scheduled -> due-today -> overdue)
+      const cards = await db.cards
+        .where('workspaceId')
+        .equals(workspaceId)
+        .filter((c) => !c._deleted)
+        .toArray();
+
+      const cardsToUpdate: { id: string; tags: string[] }[] = [];
+      for (const card of cards) {
+        const updatedTags = getUpdatedScheduleTagsIfNeeded(card);
+        if (updatedTags) {
+          cardsToUpdate.push({ id: card.id, tags: updatedTags });
+        }
+      }
+
+      // Batch update cards that need schedule tag sync
+      if (cardsToUpdate.length > 0) {
+        await Promise.all(
+          cardsToUpdate.map(async ({ id, tags }) => {
+            await db.cards.update(id, { tags, _synced: false, _lastModified: new Date() });
+            await addToQueue('card', id, 'update', { tags });
+          })
+        );
+      }
+
+      // Load events and todos (these still use Zustand state)
       await Promise.all([
-        get().loadCards(workspaceId),
-        get().loadCollections(workspaceId),
         get().loadEvents(workspaceId),
         get().loadTodos(workspaceId),
       ]);
@@ -379,7 +343,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   clearData: () => {
-    set({ cards: [], collections: [], events: [], todos: [], error: null });
+    set({ events: [], todos: [], error: null });
   },
 
   // ==========================================================================
@@ -544,39 +508,10 @@ export const useDataStore = create<DataState>((set, get) => ({
 }));
 
 // =============================================================================
-// SELECTORS
+// SELECTORS (cards/collections removed - use useLiveQuery hooks from use-live-data.ts)
 // =============================================================================
 
-export const selectCards = (state: DataState) => state.cards;
-export const selectCollections = (state: DataState) => state.collections;
 export const selectIsLoading = (state: DataState) => state.isLoading;
-
-export const selectCardById = (id: string) => (state: DataState) =>
-  state.cards.find((c) => c.id === id);
-
-export const selectCollectionBySlug = (slug: string) => (state: DataState) =>
-  state.collections.find((c) => c.slug === slug);
-
-export const selectCardsByCollection = (collectionSlug: string) => (state: DataState) =>
-  state.cards.filter((c) => c.collections.includes(collectionSlug));
-
-export const selectCardsByType = (type: string) => (state: DataState) =>
-  state.cards.filter((c) => c.type === type);
-
-export const selectPinnedCards = (state: DataState) =>
-  state.cards.filter((c) => c.pinned);
-
-// =============================================================================
-// HOOKS
-// =============================================================================
-
-export function useCards() {
-  return useDataStore(selectCards);
-}
-
-export function useCollections() {
-  return useDataStore(selectCollections);
-}
 
 export function useDataLoading() {
   return useDataStore(selectIsLoading);

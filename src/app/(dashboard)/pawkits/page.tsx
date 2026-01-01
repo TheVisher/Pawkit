@@ -6,6 +6,8 @@ import { DragOverlay, useDndMonitor } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { FolderPlus, Folder } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { usePawkitOverviewSettings } from '@/lib/stores/view-store';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
@@ -17,8 +19,9 @@ import { cn } from '@/lib/utils';
 import type { LocalCollection } from '@/lib/db';
 
 export default function PawkitsPage() {
-  const collections = useDataStore((state) => state.collections);
-  const cards = useDataStore((state) => state.cards);
+  const workspace = useCurrentWorkspace();
+  const collections = useCollections(workspace?.id);
+  const cards = useCards(workspace?.id);
   const isLoading = useDataStore((state) => state.isLoading);
   const updateCollection = useDataStore((state) => state.updateCollection);
   const openCreatePawkitModal = useModalStore((state) => state.openCreatePawkitModal);

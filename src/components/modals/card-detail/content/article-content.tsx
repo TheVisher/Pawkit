@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Reader } from '@/components/reader';
 import { calculateReadingTime } from '@/lib/db/schema';
 import { getDomain, getContentStats } from '../types';
+import { updateReadingTimeTag, updateReadTag } from '@/lib/utils/system-tags';
 import type { LocalCard } from '@/lib/db';
 
 interface ArticleContentProps {
@@ -117,6 +118,12 @@ export function ArticleContent({
         ...(data.article.publishedTime && { publishedTime: data.article.publishedTime }),
       };
 
+      // Add reading time tag if we have a reading time
+      const currentTags = card.tags || [];
+      const newTags = data.article.readingTime
+        ? updateReadingTimeTag(currentTags, data.article.readingTime)
+        : currentTags;
+
       await updateCard(card.id, {
         articleContent: data.article.content || undefined,
         wordCount: data.article.wordCount,
@@ -124,6 +131,7 @@ export function ArticleContent({
         isRead: false,
         readProgress: 0,
         metadata: Object.keys(newMetadata).length > 0 ? newMetadata : undefined,
+        tags: newTags,
       });
     } catch (error) {
       console.error('[ArticleContent] Extraction failed:', error);
@@ -133,19 +141,31 @@ export function ArticleContent({
     }
   }, [card.id, card.url, isExtractingArticle, updateCard]);
 
-  // Handle reading progress
-  const handleReadingProgress = useCallback((progress: number, scrollPosition: number) => {
-    const updates: Record<string, unknown> = {
+  // Save scroll progress (just for progress bar and resume position, not for read marking)
+  const saveScrollProgress = useCallback((progress: number, scrollPosition: number) => {
+    updateCard(card.id, {
       readProgress: progress,
       lastScrollPosition: scrollPosition,
-    };
-    if (progress >= 95) {
-      updates.isRead = true;
-    }
-    updateCard(card.id, updates);
+    });
   }, [card.id, updateCard]);
 
+  // Simple auto-read marking: 15 seconds with modal open = marked as read
+  // Unless user has manually marked it as unread (sticky unread)
+  useEffect(() => {
+    // Only auto-mark if: has article content, not already read, not manually marked unread
+    if (!hasArticleContent || card.isRead || card.manuallyMarkedUnread) return;
+
+    const timer = setTimeout(() => {
+      // Add 'read' tag to the card's tags
+      const newTags = updateReadTag(card.tags || [], true);
+      updateCard(card.id, { isRead: true, tags: newTags });
+    }, 15000); // 15 seconds
+
+    return () => clearTimeout(timer);
+  }, [hasArticleContent, card.id, card.isRead, card.manuallyMarkedUnread, card.tags, updateCard]);
+
   // Track scroll progress in modal view - use direct DOM manipulation to avoid re-renders
+  // This is just for the visual progress bar and saving scroll position for resume
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || !hasArticleContent) return;
@@ -165,10 +185,10 @@ export function ArticleContent({
         progressBarRef.current.style.width = `${progress}%`;
       }
 
-      // Debounced save to DB
+      // Debounced save to DB (progress bar + scroll position only)
       clearTimeout(saveTimeout);
       saveTimeout = setTimeout(() => {
-        handleReadingProgress(progress, scrollTop);
+        saveScrollProgress(progress, scrollTop);
       }, 500);
     };
 
@@ -182,7 +202,7 @@ export function ArticleContent({
       container.removeEventListener('scroll', handleScroll);
       clearTimeout(saveTimeout);
     };
-  }, [hasArticleContent, card.lastScrollPosition, handleReadingProgress]);
+  }, [hasArticleContent, card.lastScrollPosition, saveScrollProgress]);
 
   // Full viewport reader mode
   if (showFullReader && hasArticleContent) {
@@ -195,7 +215,7 @@ export function ArticleContent({
         wordCount={wordCount}
         readingTime={readingTime}
         initialProgress={card.readProgress || 0}
-        onProgressChange={handleReadingProgress}
+        onProgressChange={saveScrollProgress}
         onClose={() => setShowFullReader(false)}
         onMinimize={() => setShowFullReader(false)}
       />

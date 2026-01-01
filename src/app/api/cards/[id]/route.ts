@@ -221,10 +221,33 @@ export async function PATCH(request: Request, context: RouteContext) {
         : null;
     }
 
-    // 6. Update the card
+    // Conflict tracking
+    if ('conflictWithId' in updates) updateData.conflictWithId = updates.conflictWithId;
+
+    // 6. Check for version conflict if expectedVersion provided
+    if (updates.expectedVersion !== undefined) {
+      if (existingCard.version > updates.expectedVersion) {
+        // Version conflict! Server has a newer version than client expected
+        return NextResponse.json(
+          {
+            error: 'Version conflict',
+            code: 'VERSION_CONFLICT',
+            serverCard: existingCard,
+            serverVersion: existingCard.version,
+            expectedVersion: updates.expectedVersion,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    // 7. Update the card with version increment
     const card = await prisma.card.update({
       where: { id },
-      data: updateData,
+      data: {
+        ...updateData,
+        version: { increment: 1 }, // Always increment version on server update
+      },
     });
 
     // 7. Return updated card

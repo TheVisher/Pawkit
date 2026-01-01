@@ -214,17 +214,18 @@ export default function App() {
   }, [handleUrlDrop, detectPawkitAtPosition]);
 
 
-  // Filter cards based on selection
+  // Filter cards based on selection and sort by newest first
   const visibleCards = useMemo(() => {
     const nonDeletedCards = cards.filter((c) => !c._deleted);
 
-    if (selectedPawkit) {
-      // Show cards in selected pawkit
-      return nonDeletedCards.filter((c) => c.collections?.includes(selectedPawkit));
-    }
+    const filtered = selectedPawkit
+      ? nonDeletedCards.filter((c) => c.collections?.includes(selectedPawkit))
+      : nonDeletedCards;
 
-    // Show all cards (Library view)
-    return nonDeletedCards;
+    // Sort by createdAt descending (newest first)
+    return filtered.sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   }, [cards, selectedPawkit]);
 
   // Get current location name for breadcrumb
@@ -233,6 +234,9 @@ export default function App() {
     const collection = collections.find((c) => c.slug === selectedPawkit);
     return collection?.name || 'Library';
   }, [selectedPawkit, collections]);
+
+  // Get refresh function from store
+  const refreshData = usePortalDataStore((s) => s.refresh);
 
   // Window control handlers
   const handleClose = async () => {
@@ -244,6 +248,36 @@ export default function App() {
     const appWindow = getCurrentWindow();
     await appWindow.minimize();
   };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
+      // Escape: Hide portal
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        await handleClose();
+        return;
+      }
+
+      // Cmd/Ctrl+R: Refresh data
+      if ((e.metaKey || e.ctrlKey) && e.key === 'r') {
+        e.preventDefault();
+        console.log('[Portal] Refreshing data...');
+        await refreshData();
+        return;
+      }
+
+      // Backspace: Go back to Library (when not in input)
+      if (e.key === 'Backspace' && selectedPawkit && !(e.target as HTMLElement).closest('input, textarea')) {
+        e.preventDefault();
+        setSelectedPawkit(null);
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedPawkit, refreshData]);
 
   // Start window drag on mousedown (Tauri 2 approach)
   const handleStartDrag = async (e: React.MouseEvent) => {
@@ -405,7 +439,7 @@ export default function App() {
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   {visibleCards.slice(0, 50).map((card) => (
-                    <div key={card.id} className="aspect-[4/5]">
+                    <div key={card.id} className="aspect-[4/5] overflow-hidden rounded-2xl">
                       <PortalCardItem card={card} />
                     </div>
                   ))}

@@ -12,6 +12,8 @@ import {
 } from 'date-fns';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useCards } from '@/lib/hooks/use-live-data';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { EventItem } from './event-item';
 import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
 
@@ -40,7 +42,8 @@ interface DayGroup {
 export function AgendaView() {
   const { currentDate } = useCalendarStore();
   const events = useDataStore((state) => state.events);
-  const cards = useDataStore((state) => state.cards);
+  const workspace = useCurrentWorkspace();
+  const cards = useCards(workspace?.id);
 
   // Group items by day for the next 30 days
   const groupedItems = useMemo(() => {

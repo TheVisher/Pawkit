@@ -29,7 +29,7 @@ const centerOverlayOnCursor: Modifier = ({ transform, draggingNodeRect }) => {
   return transform;
 };
 
-export function CardListView({ cards, groups, groupIcon, onReorder, currentCollection }: CardListViewProps) {
+export function CardListView({ cards, groups, groupIcon, onReorder, currentCollection, onTagClick, onSystemTagClick }: CardListViewProps) {
   const {
     columnOrder,
     columnWidths,
@@ -114,12 +114,13 @@ export function CardListView({ cards, groups, groupIcon, onReorder, currentColle
         return (
           <div onClick={(e) => e.stopPropagation()}>
             <EditableTagsCell
-              tags={tags}
-              cardId={card.id}
+              card={card}
               onSave={handleSaveCell}
               isEditing={isEditing(card.id, 'tags')}
               onStartEdit={() => handleStartEdit(card.id, 'tags')}
               onCancelEdit={handleCancelEdit}
+              onTagClick={onTagClick}
+              onSystemTagClick={onSystemTagClick}
             />
           </div>
         );

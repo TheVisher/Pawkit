@@ -1,11 +1,30 @@
 'use client';
 
 import { useEffect } from 'react';
+import { db } from '@/lib/db';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { createModuleLogger } from '@/lib/utils/logger';
+import { processDroppedUrl } from '@/lib/utils/url-normalizer';
 
 const log = createModuleLogger('TauriEvents');
+
+/**
+ * Notify the portal window that data has changed
+ * Uses Tauri events since BroadcastChannel doesn't work across origins
+ */
+async function notifyPortalDataChanged() {
+  if (typeof window === 'undefined' || !window.__TAURI__) return;
+
+  try {
+    // Use window.__TAURI__ since the main app doesn't have @tauri-apps/api installed
+    const { invoke } = window.__TAURI__.core;
+    await invoke('notify_portal_data_changed');
+    log.info('Notified portal of data change');
+  } catch (error) {
+    log.error('Failed to notify portal:', error);
+  }
+}
 
 /**
  * Hook to listen for Tauri events from the desktop app
@@ -31,23 +50,35 @@ export function useTauriEvents() {
         }
 
         unlisten = await listen<PortalDropPayload>('add-url-from-portal', async (event) => {
-          const { url, collection_slug } = event.payload;
-          log.info('Received URL from portal:', url, '-> collection:', collection_slug || 'Library');
+          const { url: rawUrl, collection_slug } = event.payload;
+          log.info('Received URL from portal:', rawUrl, '-> collection:', collection_slug || 'Library');
 
-          // Get fresh values from stores at event time (not stale closure values)
+          // Process the URL - convert image/thumbnail URLs to page URLs where possible
+          const { url, warning } = processDroppedUrl(rawUrl);
+          if (warning) {
+            log.warn(warning);
+          }
+          if (url !== rawUrl) {
+            log.info('URL converted:', rawUrl, '→', url);
+          }
+
+          // Get fresh values at event time (not stale closure values)
           const workspace = useWorkspaceStore.getState().currentWorkspace;
           const createCard = useDataStore.getState().createCard;
-          const collections = useDataStore.getState().collections;
 
           if (!workspace) {
             log.warn('No workspace available yet, ignoring drop');
             return;
           }
 
-          // Find collection ID from slug if provided
+          // Find collection from Dexie if slug provided
           const targetCollections: string[] = [];
           if (collection_slug) {
-            const collection = collections.find((c) => c.slug === collection_slug);
+            const collection = await db.collections
+              .where('workspaceId')
+              .equals(workspace.id)
+              .filter((c) => c.slug === collection_slug && !c._deleted)
+              .first();
             if (collection) {
               targetCollections.push(collection.slug);
             }
@@ -67,15 +98,10 @@ export function useTauriEvents() {
               pinned: false,
               status: 'PENDING', // Triggers metadata fetching
             });
-            log.info('Card created from portal URL - metadata fetch will trigger sync');
+            log.info('Card created from portal URL');
 
-            // Broadcast to portal to refresh its view
-            if ('BroadcastChannel' in window) {
-              const channel = new BroadcastChannel('pawkit-sync');
-              channel.postMessage({ type: 'data-changed', source: 'portal-drop' });
-              channel.close();
-              log.info('Broadcast data-changed to portal');
-            }
+            // Notify portal to refresh its view via Tauri event
+            await notifyPortalDataChanged();
           } catch (error) {
             log.error('Failed to create card from portal:', error);
           }

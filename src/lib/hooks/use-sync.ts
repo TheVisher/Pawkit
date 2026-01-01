@@ -19,7 +19,7 @@ import {
   clearLocalData,
   setWorkspace,
 } from '@/lib/services/sync-service';
-import { triggerSync } from '@/lib/services/sync-queue';
+import { triggerSync, initializeFailedEntities } from '@/lib/services/sync-queue';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { createClient } from '@/lib/supabase/client';
 import { createModuleLogger } from '@/lib/utils/logger';
@@ -105,6 +105,9 @@ export function useSync(options: UseSyncOptions = {}): UseSyncReturn {
   // Auto-sync on mount
   useEffect(() => {
     if (!autoSync || !currentWorkspace?.id) return;
+
+    // Initialize failed entity tracking from queue
+    initializeFailedEntities();
 
     // Delay initial sync slightly to let UI settle
     const timer = setTimeout(() => {

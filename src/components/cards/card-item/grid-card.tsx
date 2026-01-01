@@ -3,11 +3,13 @@
 import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import DOMPurify from 'dompurify';
-import { Globe, Pin, Loader2, Clock, CheckCircle2, AlertTriangle, CalendarDays } from 'lucide-react';
+import { Globe, Pin, AlertTriangle, ExternalLink } from 'lucide-react';
+import { SyncStatusIndicator } from '@/components/cards/sync-status-indicator';
 import { cn } from '@/lib/utils';
 import type { LocalCard } from '@/lib/db';
-import { calculateReadingTime } from '@/lib/db/schema';
 import { TagBadgeList } from '@/components/tags/tag-badge';
+import { getSystemTagsForCard } from '@/lib/utils/system-tags';
+import type { SystemTag } from '@/lib/utils/system-tags';
 import {
   type CardDisplaySettings,
   DEFAULT_CARD_DISPLAY,
@@ -25,6 +27,10 @@ interface GridCardProps {
   onClick?: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
   uniformHeight?: boolean;
+  /** Called when a user tag in the footer is clicked (for filtering) */
+  onTagClick?: (tag: string) => void;
+  /** Called when a system tag in the footer is clicked (for filtering) */
+  onSystemTagClick?: (tag: SystemTag) => void;
 }
 
 /**
@@ -36,13 +42,14 @@ export function GridCard({
   onClick,
   displaySettings = {},
   uniformHeight = false,
+  onTagClick,
+  onSystemTagClick,
 }: GridCardProps) {
   const [imageError, setImageError] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
   const [isDarkBackground, setIsDarkBackground] = useState(true); // Default to dark (safer for overlays)
   const Icon = getCardIcon(card.type);
   const domain = card.domain || getDomain(card.url);
-  const isSyncing = !card._synced;
 
   // Merge with defaults
   const settings: CardDisplaySettings = { ...DEFAULT_CARD_DISPLAY, ...displaySettings };
@@ -61,12 +68,12 @@ export function GridCard({
 
       // Calculate average color and determine if background is dark
       // The blurred background has a 20% black overlay, so we account for that
-      const avgColor = getAverageColor(img);
-      if (avgColor) {
+      const extractedColor = getAverageColor(img);
+      if (extractedColor) {
         // Apply the 20% black overlay effect to the average color
-        const overlayedR = avgColor.r * 0.8;
-        const overlayedG = avgColor.g * 0.8;
-        const overlayedB = avgColor.b * 0.8;
+        const overlayedR = extractedColor.r * 0.8;
+        const overlayedG = extractedColor.g * 0.8;
+        const overlayedB = extractedColor.b * 0.8;
         const luminance = getLuminance(overlayedR, overlayedG, overlayedB);
         // If luminance > 0.4, background is light enough to need dark text
         setIsDarkBackground(luminance <= 0.4);
@@ -230,51 +237,46 @@ export function GridCard({
             </div>
           )}
 
-          {/* Glass pill overlay at bottom - CENTERED domain/URL (toggleable) */}
-          {settings.showUrlPill && domain && (
-            <div className="absolute bottom-3 left-0 right-0 flex justify-center px-3">
-              <div
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm domain-pill"
-                style={{
-                  background: 'var(--glass-bg)',
-                  backdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
-                  WebkitBackdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
-                  border: '1px solid var(--glass-border)',
-                }}
-              >
-                {hasFavicon ? (
-                  <Image
-                    src={card.favicon!}
-                    alt=""
-                    width={16}
-                    height={16}
-                    className="rounded-full shrink-0"
-                    onError={() => setImageError(true)}
-                  />
-                ) : (
-                  <Globe className="h-4 w-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} />
-                )}
-                <span className="truncate max-w-[180px]" style={{ color: 'var(--color-text-primary)' }}>{domain}</span>
-              </div>
-            </div>
+          {/* Hover-reveal link button - opens URL directly */}
+          {card.url && (
+            <a
+              href={card.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                'absolute bottom-3 right-3 p-2 rounded-lg',
+                'opacity-0 group-hover:opacity-100',
+                'translate-y-1 group-hover:translate-y-0',
+                'transition-all duration-200 ease-out',
+                'hover:scale-110 active:scale-95',
+                'z-10'
+              )}
+              style={{
+                background: 'var(--glass-bg)',
+                backdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
+                WebkitBackdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
+                border: '1px solid var(--glass-border)',
+              }}
+              title={`Open ${domain || 'link'}`}
+            >
+              {hasFavicon ? (
+                <Image
+                  src={card.favicon!}
+                  alt=""
+                  width={18}
+                  height={18}
+                  className="rounded-sm"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <ExternalLink className="h-4.5 w-4.5" style={{ color: 'var(--color-text-primary)' }} />
+              )}
+            </a>
           )}
 
-          {/* Top right indicators */}
+          {/* Top right indicators - only broken link and pinned (scheduled moved to footer as system tag) */}
           <div className="absolute top-3 right-3 flex items-center gap-1.5">
-            {/* Scheduled date indicator */}
-            {card.scheduledDate && (
-              <div
-                className="p-1.5 rounded-full"
-                style={{
-                  background: 'rgba(59, 130, 246, 0.9)',
-                  color: 'white',
-                }}
-                title={`Scheduled for ${new Date(card.scheduledDate).toLocaleDateString()}`}
-              >
-                <CalendarDays className="h-3.5 w-3.5" />
-              </div>
-            )}
-
             {/* Broken link warning */}
             {card.linkStatus === 'broken' && (
               <div
@@ -303,57 +305,12 @@ export function GridCard({
             )}
           </div>
 
-          {/* Reading time and status badges - top left */}
-          {!isNoteCard(card.type) && (card.readingTime || card.wordCount || card.isRead) && (() => {
-            // Calculate reading time from wordCount if not stored
-            const displayReadingTime = card.readingTime || (card.wordCount ? calculateReadingTime(card.wordCount) : 0);
-
-            return (
-            <div className="absolute top-3 left-3 flex items-center gap-1.5">
-              {displayReadingTime > 0 && !card.isRead && (
-                <div
-                  className="flex items-center gap-1 px-2 py-1 rounded-full text-xs"
-                  style={{
-                    background: 'rgba(0, 0, 0, 0.6)',
-                    backdropFilter: 'blur(8px)',
-                    color: 'white',
-                  }}
-                >
-                  <Clock className="h-3 w-3" />
-                  <span>{displayReadingTime}m</span>
-                </div>
-              )}
-              {card.isRead && (
-                <div
-                  className="flex items-center gap-1 px-2 py-1 rounded-full text-xs"
-                  style={{
-                    background: 'rgba(34, 197, 94, 0.8)',
-                    backdropFilter: 'blur(8px)',
-                    color: 'white',
-                  }}
-                >
-                  <CheckCircle2 className="h-3 w-3" />
-                  <span>Read</span>
-                </div>
-              )}
-            </div>
-            );
-          })()}
-
-          {/* Syncing indicator - only show if no reading badges */}
-          {isSyncing && !card.readingTime && !card.wordCount && !card.isRead && (
-            <div
-              className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded-full text-xs"
-              style={{
-                background: 'rgba(0, 0, 0, 0.6)',
-                backdropFilter: 'blur(8px)',
-                color: 'white',
-              }}
-            >
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Syncing</span>
-            </div>
-          )}
+          {/* Sync status indicator - top left (shows queued, syncing, or failed) */}
+          <SyncStatusIndicator
+            cardId={card.id}
+            isSynced={card._synced}
+            variant="pill"
+          />
 
           {/* Reading progress bar - shown for in-progress articles */}
           {!isNoteCard(card.type) && card.readProgress !== undefined && card.readProgress > 0 && !card.isRead && (
@@ -389,17 +346,26 @@ export function GridCard({
               </h3>
             )}
 
-            {/* Tags with deterministic colors */}
-            {settings.showTags && card.tags && card.tags.length > 0 && (
-              <div className="mt-1.5">
-                <TagBadgeList
-                  tags={card.tags}
-                  maxVisible={3}
-                  size="sm"
-                  showLeafOnly
-                />
-              </div>
-            )}
+            {/* Tags - system tags (read, scheduled, reading time) + user tags */}
+            {settings.showTags && (() => {
+              const systemTags = getSystemTagsForCard(card);
+              const userTags = card.tags || [];
+              // Show tags section if we have any tags (system or user)
+              if (systemTags.length === 0 && userTags.length === 0) return null;
+              return (
+                <div className="mt-1.5">
+                  <TagBadgeList
+                    tags={userTags}
+                    systemTags={systemTags}
+                    maxVisible={4}
+                    size="sm"
+                    showLeafOnly
+                    onTagClick={onTagClick}
+                    onSystemTagClick={onSystemTagClick}
+                  />
+                </div>
+              );
+            })()}
           </div>
         )}
 

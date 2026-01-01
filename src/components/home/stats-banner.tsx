@@ -2,7 +2,8 @@
 
 import { useMemo } from 'react';
 import { Flame } from 'lucide-react';
-import { useCards } from '@/lib/stores/data-store';
+import { useCards } from '@/lib/hooks/use-live-data';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import type { LocalCard } from '@/lib/db';
 
 /**
@@ -57,7 +58,8 @@ function calculateStreak(cards: LocalCard[]): number {
  * Hook to get stats data - used by both inline and banner versions
  */
 export function useHomeStats() {
-  const cards = useCards();
+  const workspace = useCurrentWorkspace();
+  const cards = useCards(workspace?.id);
 
   return useMemo(() => {
     const now = new Date();

@@ -2,13 +2,15 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useDataStore } from "@/lib/stores/data-store";
+import { useCollections } from "@/lib/hooks/use-live-data";
+import { useCurrentWorkspace } from "@/lib/stores/workspace-store";
 import { PawkitTreeItem } from "./pawkit-tree-item";
 import type { LocalCollection } from "@/lib/db";
 import { CreatePawkitButton } from "./create-pawkit-button";
 
 export function PawkitsTree() {
-  const collections = useDataStore((state) => state.collections);
+  const workspace = useCurrentWorkspace();
+  const collections = useCollections(workspace?.id);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   // Build tree structure

@@ -1,8 +1,5 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { useDataStore } from '@/lib/stores/data-store';
 import {
   CalendarHeader,
   MonthView,
@@ -14,16 +11,9 @@ import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { ContentAreaContextMenu } from '@/components/context-menus';
 
 export default function CalendarPage() {
-  const workspace = useCurrentWorkspace();
-  const loadCards = useDataStore((state) => state.loadCards);
   const { viewMode } = useCalendarStore();
 
-  // Load cards on mount (events not yet implemented)
-  useEffect(() => {
-    if (workspace) {
-      loadCards(workspace.id);
-    }
-  }, [workspace, loadCards]);
+  // Cards are loaded reactively via useLiveQuery in calendar views
 
   return (
     <ContentAreaContextMenu>

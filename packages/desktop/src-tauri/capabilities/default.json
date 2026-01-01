@@ -12,6 +12,7 @@
     "shell:allow-spawn",
     "shell:allow-execute",
     "shell:allow-kill",
+    "shell:allow-open",
     "global-shortcut:allow-register",
     "global-shortcut:allow-unregister",
     "global-shortcut:allow-is-registered",

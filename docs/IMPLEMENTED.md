@@ -318,13 +318,20 @@ Migration Status: 14 migrations applied (December 2025)
 | Context menu system | ✅ |
 | Custom masonry layout | ✅ |
 | Layout Cache Store (Performance) | ✅ |
-| Omnibar with toast morphing | ✅ |
+| Modular Omnibar (Search/Add/Kit Modes) | ✅ |
 | Cover images | ✅ |
 | Drag-and-drop (dnd-kit) | ✅ |
 | Smart collision detection | ✅ |
 | Reading-order masonry | ✅ |
 | Animated Pawkits Tree | ✅ |
 | Sliding Sidebar Nav Highlight | ✅ |
+
+**Modular Omnibar**:
+- Refactored into specialized hooks: `useSearch`, `useAddMode`, `useKitMode`.
+- **Mode Coordination**: Orchestrator ensures only one mode is active at a time.
+- **Search Mode**: Debounced search with card, collection, action, and tag matching.
+- **Add Mode**: Dropdown for quick creation of cards, notes, and pawkits.
+- **Kit Mode**: AI chat dropdown for context-aware assistance.
 
 **Visual Styles System**:
 - **Glass**: Default mode with backdrop blur and semi-transparency.
@@ -358,6 +365,12 @@ Files modified for High Contrast:
 - `src/components/cards/card-item/list-card.tsx` - Consistent styling
 - `src/components/layout/right-sidebar/SettingsPanel.tsx` - Tab states
 - `src/components/settings/sections/appearance-section.tsx` - Button states
+
+**Card Detail Modal (Redesigned)**:
+- Modularized into `Header`, `Content`, and specialized `Reader` components.
+- **CNN-style Article Reader**: Immersive, high-typography layout for long-form content.
+- Inline reader support within the modal with theme toggles (Dark, Sepia, Light).
+- Integration with `Reader` component for full-viewport reading.
 
 **Settings Integration**:
 - Settings gear icon in right sidebar transforms to an 'X' when active.

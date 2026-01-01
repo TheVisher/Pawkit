@@ -30,7 +30,6 @@ interface CardDisplaySettingsProps {
   cardPadding: number;
   cardSpacing: number;
   showMetadataFooter: boolean;
-  showUrlPill: boolean;
   showTitles: boolean;
   showTags: boolean;
   onLayoutChange: (layout: Layout) => void;
@@ -38,7 +37,6 @@ interface CardDisplaySettingsProps {
   onCardPaddingChange: (padding: number) => void;
   onCardSpacingChange: (spacing: number) => void;
   onShowMetadataFooterChange: (show: boolean) => void;
-  onShowUrlPillChange: (show: boolean) => void;
   onShowTitlesChange: (show: boolean) => void;
   onShowTagsChange: (show: boolean) => void;
   onSettingChange: () => void;
@@ -50,7 +48,6 @@ export function CardDisplaySettings({
   cardPadding,
   cardSpacing,
   showMetadataFooter,
-  showUrlPill,
   showTitles,
   showTags,
   onLayoutChange,
@@ -58,7 +55,6 @@ export function CardDisplaySettings({
   onCardPaddingChange,
   onCardSpacingChange,
   onShowMetadataFooterChange,
-  onShowUrlPillChange,
   onShowTitlesChange,
   onShowTagsChange,
   onSettingChange,
@@ -299,14 +295,6 @@ export function CardDisplaySettings({
                 checked={showMetadataFooter}
                 onChange={(checked) => {
                   onShowMetadataFooterChange(checked);
-                  onSettingChange();
-                }}
-              />
-              <ToggleSwitch
-                label="URL Pill"
-                checked={showUrlPill}
-                onChange={(checked) => {
-                  onShowUrlPillChange(checked);
                   onSettingChange();
                 }}
               />

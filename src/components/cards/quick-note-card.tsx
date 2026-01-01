@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
-import { Pin, Loader2, ArrowRight, X, ListTodo } from 'lucide-react';
+import { Pin, ArrowRight, X, ListTodo } from 'lucide-react';
+import { SyncStatusIndicator } from '@/components/cards/sync-status-indicator';
 import type { LocalCard } from '@/lib/db';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useToastStore } from '@/lib/stores/toast-store';
@@ -60,8 +61,6 @@ export const QuickNoteCard = memo(function QuickNoteCard({
   const createTodo = useDataStore((s) => s.createTodo);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const toast = useToastStore((s) => s.toast);
-
-  const isSyncing = !card._synced;
 
   // Get plain text content for display
   const plainContent = stripHtmlForDisplay(card.content || '');
@@ -319,10 +318,12 @@ export const QuickNoteCard = memo(function QuickNoteCard({
                 </button>
               )}
 
-              {/* Syncing indicator */}
-              {isSyncing && (
-                <Loader2 className="h-3 w-3 animate-spin text-[var(--color-text-muted)]" />
-              )}
+              {/* Sync status indicator */}
+              <SyncStatusIndicator
+                cardId={card.id}
+                isSynced={card._synced}
+                variant="icon"
+              />
 
               {/* Pinned indicator */}
               {card.pinned && (
