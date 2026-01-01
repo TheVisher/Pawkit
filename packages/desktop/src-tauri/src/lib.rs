@@ -1,7 +1,68 @@
 mod server;
+mod plugins;
 
+use std::fs;
+use std::path::PathBuf;
+use std::sync::Mutex;
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
+
+// =============================================================================
+// PORTAL WINDOW STATE PERSISTENCE
+// =============================================================================
+
+#[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
+struct PortalWindowState {
+    x: i32,
+    y: i32,
+    width: u32,
+    height: u32,
+}
+
+impl Default for PortalWindowState {
+    fn default() -> Self {
+        Self {
+            x: 100,
+            y: 100,
+            width: 500,
+            height: 600,
+        }
+    }
+}
+
+fn get_portal_state_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    app.path().app_data_dir().ok().map(|dir| dir.join("portal-window-state.json"))
+}
+
+fn load_portal_state(app: &tauri::AppHandle) -> PortalWindowState {
+    if let Some(path) = get_portal_state_path(app) {
+        if let Ok(content) = fs::read_to_string(&path) {
+            if let Ok(state) = serde_json::from_str::<PortalWindowState>(&content) {
+                log::info!("Loaded portal state: {:?}", state);
+                return state;
+            }
+        }
+    }
+    PortalWindowState::default()
+}
+
+fn save_portal_state(app: &tauri::AppHandle, state: &PortalWindowState) {
+    if let Some(path) = get_portal_state_path(app) {
+        // Ensure directory exists
+        if let Some(parent) = path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        if let Ok(content) = serde_json::to_string_pretty(state) {
+            let _ = fs::write(&path, content);
+            log::debug!("Saved portal state: {:?}", state);
+        }
+    }
+}
+
+// State holder for debouncing saves
+struct PortalStateHolder {
+    state: Mutex<PortalWindowState>,
+}
 
 #[cfg(target_os = "macos")]
 mod macos_pasteboard {
@@ -31,7 +92,7 @@ mod macos_pasteboard {
 
         // Try to read URL type
         let url_type = NSString::alloc(nil).init_str("public.url");
-        let url_string_type = NSString::alloc(nil).init_str("public.url-name");
+        let _url_string_type = NSString::alloc(nil).init_str("public.url-name");
         let string_type = NSString::alloc(nil).init_str("public.utf8-plain-text");
 
         // Try URL first
@@ -84,6 +145,22 @@ struct PortalDropPayload {
     collection_slug: Option<String>,
 }
 
+/// Notify the portal window that data has changed (called from main app)
+#[tauri::command]
+async fn notify_portal_data_changed(app: tauri::AppHandle) -> Result<(), String> {
+    if let Some(portal) = app.get_webview_window("portal") {
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis())
+            .unwrap_or(0);
+        portal
+            .emit("portal-data-changed", serde_json::json!({ "timestamp": timestamp }))
+            .map_err(|e| e.to_string())?;
+        log::info!("Emitted portal-data-changed to portal window");
+    }
+    Ok(())
+}
+
 #[tauri::command]
 async fn add_url_from_portal(
     app: tauri::AppHandle,
@@ -115,43 +192,370 @@ async fn add_url_from_portal(
     Ok(())
 }
 
-fn create_portal_window(app: &tauri::AppHandle) -> tauri::Result<()> {
-    // Get main window position to spawn portal nearby
-    let position = if let Some(main_window) = app.get_webview_window("main") {
-        main_window.outer_position().ok()
-    } else {
-        None
-    };
+// =============================================================================
+// DRAG FILE CREATION - For dragging cards as files to Discord/iMessage/Slack
+// =============================================================================
 
-    // TODO: Load saved position from store (multi-monitor aware)
-    // For now, use default size and position near main window
-    let default_width = 500.0;
-    let default_height = 600.0;
+/// Sanitize filename for filesystem safety
+fn sanitize_filename(name: &str) -> String {
+    name.chars()
+        .map(|c| match c {
+            '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
+            _ => c,
+        })
+        .take(100) // Limit length
+        .collect::<String>()
+        .trim()
+        .to_string()
+}
 
-    let mut builder = WebviewWindowBuilder::new(
+/// Create a .webloc file (macOS URL bookmark) for dragging
+#[tauri::command]
+async fn create_webloc_file(url: String, title: String) -> Result<String, String> {
+    let temp_dir = std::env::temp_dir().join("pawkit-drag");
+    std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
+
+    let filename = format!("{}.webloc", sanitize_filename(&title));
+    let filepath = temp_dir.join(&filename);
+
+    let webloc_content = format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>URL</key>
+    <string>{}</string>
+</dict>
+</plist>"#,
+        url.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+    );
+
+    std::fs::write(&filepath, webloc_content).map_err(|e| e.to_string())?;
+    log::info!("Created webloc file: {:?}", filepath);
+
+    Ok(filepath.to_string_lossy().to_string())
+}
+
+/// Create a rich HTML card file with styling and metadata
+#[tauri::command]
+async fn create_rich_card_file(
+    url: String,
+    title: String,
+    description: Option<String>,
+    image: Option<String>,
+    content: Option<String>,
+    notes: Option<String>,
+) -> Result<String, String> {
+    let temp_dir = std::env::temp_dir().join("pawkit-drag");
+    std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
+
+    let filename = format!("{}.html", sanitize_filename(&title));
+    let filepath = temp_dir.join(&filename);
+
+    let desc_html = description
+        .map(|d| format!(r#"<p class="description">{}</p>"#, html_escape(&d)))
+        .unwrap_or_default();
+
+    let image_html = image
+        .map(|i| format!(r#"<img src="{}" alt="Preview" class="preview-image">"#, html_escape(&i)))
+        .unwrap_or_default();
+
+    let content_html = content
+        .map(|c| format!(r#"<div class="content">{}</div>"#, c)) // Content is already HTML
+        .unwrap_or_default();
+
+    let notes_html = notes
+        .map(|n| format!(r#"<div class="notes"><h3>Notes</h3><p>{}</p></div>"#, html_escape(&n)))
+        .unwrap_or_default();
+
+    let html_content = format!(
+        r#"<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="0; url={url}">
+    <title>{title}</title>
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e8e8e8;
+            min-height: 100vh;
+            padding: 24px;
+        }}
+        .card {{
+            max-width: 600px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.05);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }}
+        .preview-image {{
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+        }}
+        .card-body {{
+            padding: 20px;
+        }}
+        h1 {{
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            color: #fff;
+        }}
+        h1 a {{
+            color: inherit;
+            text-decoration: none;
+        }}
+        h1 a:hover {{
+            color: #7c3aed;
+        }}
+        .description {{
+            color: #a0a0a0;
+            margin-bottom: 16px;
+            line-height: 1.5;
+        }}
+        .url {{
+            font-size: 0.85rem;
+            color: #7c3aed;
+            word-break: break-all;
+        }}
+        .content {{
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            line-height: 1.7;
+        }}
+        .notes {{
+            margin-top: 24px;
+            padding: 16px;
+            background: rgba(124, 58, 237, 0.1);
+            border-radius: 8px;
+            border-left: 3px solid #7c3aed;
+        }}
+        .notes h3 {{
+            font-size: 0.9rem;
+            color: #7c3aed;
+            margin-bottom: 8px;
+        }}
+        .redirect-notice {{
+            text-align: center;
+            padding: 12px;
+            background: rgba(124, 58, 237, 0.2);
+            font-size: 0.85rem;
+        }}
+        .redirect-notice a {{
+            color: #7c3aed;
+        }}
+    </style>
+</head>
+<body>
+    <div class="redirect-notice">
+        Redirecting to <a href="{url}">{url}</a>...
+    </div>
+    <div class="card">
+        {image_html}
+        <div class="card-body">
+            <h1><a href="{url}">{title}</a></h1>
+            {desc_html}
+            <p class="url">{url}</p>
+            {content_html}
+            {notes_html}
+        </div>
+    </div>
+</body>
+</html>"#,
+        url = html_escape(&url),
+        title = html_escape(&title),
+        image_html = image_html,
+        desc_html = desc_html,
+        content_html = content_html,
+        notes_html = notes_html,
+    );
+
+    std::fs::write(&filepath, html_content).map_err(|e| e.to_string())?;
+    log::info!("Created rich card file: {:?}", filepath);
+
+    Ok(filepath.to_string_lossy().to_string())
+}
+
+/// Create a markdown file for note cards
+#[tauri::command]
+async fn create_note_file(title: String, content: String) -> Result<String, String> {
+    let temp_dir = std::env::temp_dir().join("pawkit-drag");
+    std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
+
+    let filename = format!("{}.md", sanitize_filename(&title));
+    let filepath = temp_dir.join(&filename);
+
+    // Strip HTML tags and convert to plain text/markdown
+    let clean_content = strip_html_to_markdown(&content);
+    let md_content = format!("# {}\n\n{}", title, clean_content);
+
+    std::fs::write(&filepath, md_content).map_err(|e| e.to_string())?;
+    log::info!("Created note file: {:?}", filepath);
+
+    Ok(filepath.to_string_lossy().to_string())
+}
+
+/// Strip HTML tags and convert to basic markdown
+fn strip_html_to_markdown(html: &str) -> String {
+    let mut result = html.to_string();
+
+    // Convert common HTML to markdown
+    result = result.replace("<br>", "\n");
+    result = result.replace("<br/>", "\n");
+    result = result.replace("<br />", "\n");
+    result = result.replace("</p>", "\n\n");
+    result = result.replace("<p>", "");
+    result = result.replace("</div>", "\n");
+    result = result.replace("<div>", "");
+    result = result.replace("<strong>", "**");
+    result = result.replace("</strong>", "**");
+    result = result.replace("<b>", "**");
+    result = result.replace("</b>", "**");
+    result = result.replace("<em>", "_");
+    result = result.replace("</em>", "_");
+    result = result.replace("<i>", "_");
+    result = result.replace("</i>", "_");
+    result = result.replace("&nbsp;", " ");
+    result = result.replace("&amp;", "&");
+    result = result.replace("&lt;", "<");
+    result = result.replace("&gt;", ">");
+    result = result.replace("&quot;", "\"");
+
+    // Remove any remaining HTML tags
+    let tag_regex = regex::Regex::new(r"<[^>]+>").unwrap_or_else(|_| regex::Regex::new(r"$^").unwrap());
+    result = tag_regex.replace_all(&result, "").to_string();
+
+    // Clean up multiple newlines
+    let newline_regex = regex::Regex::new(r"\n{3,}").unwrap_or_else(|_| regex::Regex::new(r"$^").unwrap());
+    result = newline_regex.replace_all(&result, "\n\n").to_string();
+
+    result.trim().to_string()
+}
+
+/// Clean up a temporary drag file
+#[tauri::command]
+async fn cleanup_drag_file(path: String) -> Result<(), String> {
+    if path.contains("pawkit-drag") {
+        std::fs::remove_file(&path).map_err(|e| e.to_string())?;
+        log::debug!("Cleaned up drag file: {}", path);
+    }
+    Ok(())
+}
+
+/// Create a simple drag icon (32x32 purple square PNG)
+#[tauri::command]
+async fn create_drag_icon() -> Result<String, String> {
+    let temp_dir = std::env::temp_dir().join("pawkit-drag");
+    std::fs::create_dir_all(&temp_dir).map_err(|e| e.to_string())?;
+
+    let filepath = temp_dir.join("drag-icon.png");
+
+    // Only create if doesn't exist
+    if !filepath.exists() {
+        // Minimal 1x1 transparent PNG
+        let png_data: [u8; 67] = [
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk length + type
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, // 1x1
+            0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, // RGBA, CRC
+            0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, // IDAT chunk length + type
+            0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, // compressed data
+            0x0D, 0x0A, 0x2D, 0xB4, // CRC
+            0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, // IEND chunk
+            0xAE, 0x42, 0x60, 0x82, // CRC
+        ];
+
+        std::fs::write(&filepath, &png_data).map_err(|e| e.to_string())?;
+        log::info!("Created drag icon: {:?}", filepath);
+    }
+
+    Ok(filepath.to_string_lossy().to_string())
+}
+
+/// Helper to escape HTML entities
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
+
+fn create_portal_window(app: &tauri::AppHandle, port: u16) -> tauri::Result<()> {
+    // Load saved window state
+    let state = load_portal_state(app);
+
+    // Validate position is on a visible monitor, otherwise use default
+    let (x, y) = validate_portal_position(app, state.x, state.y, state.width, state.height);
+
+    // Portal loads from the same Next.js server as the main app
+    // This means same origin, shared stores, shared API routes - no complexity!
+    let portal_url = format!("http://localhost:{}/portal", port);
+    let url = url::Url::parse(&portal_url).expect("Failed to parse portal URL");
+
+    let builder = WebviewWindowBuilder::new(
         app,
         "portal",
-        // Load the new React portal app
-        WebviewUrl::App("portal/index.html".into()),
+        WebviewUrl::External(url),
     )
     .title("Pawkit Portal")
-    .inner_size(default_width, default_height)
+    .inner_size(state.width as f64, state.height as f64)
+    .position(x as f64, y as f64)
     .min_inner_size(300.0, 350.0)  // Minimum for compact mode
-    .resizable(true)               // Now resizable!
+    .resizable(true)
     .always_on_top(true)
     .visible(false)
     .decorations(false)            // Frameless - no native title bar
     .skip_taskbar(true);
 
-    // Position near main window if available
-    if let Some(pos) = position {
-        builder = builder.position((pos.x + 50) as f64, (pos.y + 50) as f64);
+    let _portal = builder.build()?;
+
+    log::info!("Portal window created at ({}, {}) size {}x{} -> {}", x, y, state.width, state.height, portal_url);
+    Ok(())
+}
+
+/// Validate that the portal position is visible on some monitor
+/// Returns the position if valid, or a default position near center of primary monitor
+fn validate_portal_position(app: &tauri::AppHandle, x: i32, y: i32, width: u32, height: u32) -> (i32, i32) {
+    // Try to get available monitors
+    if let Some(main_window) = app.get_webview_window("main") {
+        if let Ok(monitors) = main_window.available_monitors() {
+            // Check if position is visible on any monitor
+            for monitor in &monitors {
+                let pos = monitor.position();
+                let size = monitor.size();
+                let mon_x = pos.x;
+                let mon_y = pos.y;
+                let mon_w = size.width as i32;
+                let mon_h = size.height as i32;
+
+                // Check if at least part of the window is visible on this monitor
+                if x + (width as i32) > mon_x && x < mon_x + mon_w &&
+                   y + (height as i32) > mon_y && y < mon_y + mon_h {
+                    log::info!("Portal position valid on monitor");
+                    return (x, y);
+                }
+            }
+
+            // Position not visible, use primary monitor
+            if let Some(monitor) = monitors.first() {
+                let pos = monitor.position();
+                let size = monitor.size();
+                let new_x = pos.x + (size.width as i32 - width as i32) / 2;
+                let new_y = pos.y + (size.height as i32 - height as i32) / 2;
+                log::info!("Portal position invalid, centering on primary monitor");
+                return (new_x, new_y);
+            }
+        }
     }
 
-    let portal = builder.build()?;
-
-    log::info!("Portal window created: {:?}", portal.label());
-    Ok(())
+    // Fallback to saved position
+    (x, y)
 }
 
 fn toggle_portal(app: &tauri::AppHandle) {
@@ -167,7 +571,15 @@ fn toggle_portal(app: &tauri::AppHandle) {
         None => {
             // Window was destroyed (e.g., red X clicked), recreate it
             log::info!("Portal window not found, recreating...");
-            if let Err(e) = create_portal_window(app) {
+
+            // Get the server port - dev mode uses 3000, release uses ServerState
+            let port: u16 = if cfg!(debug_assertions) {
+                3000
+            } else {
+                app.state::<server::ServerState>().port()
+            };
+
+            if let Err(e) = create_portal_window(app, port) {
                 log::error!("Failed to recreate portal: {}", e);
                 return;
             }
@@ -187,6 +599,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_drag::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, _shortcut, event| {
@@ -204,6 +617,33 @@ pub fn run() {
                     let _ = window.hide();
                     log::info!("Portal close requested - hiding instead");
                     return;
+                }
+
+                // Save position/size on move or resize
+                match event {
+                    tauri::WindowEvent::Moved(position) => {
+                        if let Ok(size) = window.inner_size() {
+                            let state = PortalWindowState {
+                                x: position.x,
+                                y: position.y,
+                                width: size.width,
+                                height: size.height,
+                            };
+                            save_portal_state(window.app_handle(), &state);
+                        }
+                    }
+                    tauri::WindowEvent::Resized(size) => {
+                        if let Ok(position) = window.outer_position() {
+                            let state = PortalWindowState {
+                                x: position.x,
+                                y: position.y,
+                                width: size.width,
+                                height: size.height,
+                            };
+                            save_portal_state(window.app_handle(), &state);
+                        }
+                    }
+                    _ => {}
                 }
 
                 if let tauri::WindowEvent::DragDrop(drag_event) = event {
@@ -260,12 +700,19 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
 
-            // Start the Next.js server
-            let server_state = server::start_server(&handle)?;
-            let port = server_state.port();
-
-            // Store server state for later access
-            app.manage(server_state);
+            // In dev mode, use the external Next.js dev server on port 3000
+            // In release mode, start the bundled standalone server
+            let port: u16 = if cfg!(debug_assertions) {
+                log::info!("Dev mode: using external Next.js dev server on port 3000");
+                3000
+            } else {
+                // Start the Next.js server
+                let server_state = server::start_server(&handle)?;
+                let p = server_state.port();
+                // Store server state for later access
+                app.manage(server_state);
+                p
+            };
 
             // Navigate to the local server once ready
             let main_window = app.get_webview_window("main")
@@ -274,19 +721,27 @@ pub fn run() {
             let url = format!("http://localhost:{}", port);
             log::info!("Navigating to {}", url);
 
+            // Create the portal window (hidden by default) - needs port for Next.js URL
+            let app_handle = app.handle().clone();
+            let portal_port = port;
+
             // Navigate once server is ready
             tauri::async_runtime::spawn(async move {
-                // Wait for server to be ready
-                server::wait_for_server(port).await;
+                // Wait for server to be ready (skip in dev mode - assume it's running)
+                if !cfg!(debug_assertions) {
+                    server::wait_for_server(port).await;
+                }
 
-                // Use Tauri's navigate API
+                // Use Tauri's navigate API for main window
                 if let Ok(url) = url::Url::parse(&url) {
                     let _ = main_window.navigate(url);
                 }
-            });
 
-            // Create the portal window (hidden by default)
-            create_portal_window(app.handle())?;
+                // Create portal window after server is ready (so it can load the page)
+                if let Err(e) = create_portal_window(&app_handle, portal_port) {
+                    log::error!("Failed to create portal window: {}", e);
+                }
+            });
 
             // Register global shortcut: Cmd+Shift+P (macOS)
             let shortcut = Shortcut::new(Some(Modifiers::SUPER | Modifiers::SHIFT), Code::KeyP);
@@ -295,7 +750,20 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_server_port, add_url_from_portal])
+        .invoke_handler(tauri::generate_handler![
+            get_server_port,
+            add_url_from_portal,
+            notify_portal_data_changed,
+            create_webloc_file,
+            create_rich_card_file,
+            create_note_file,
+            cleanup_drag_file,
+            create_drag_icon,
+            // macOS rounded corners plugin
+            plugins::mac_rounded_corners::enable_rounded_corners,
+            plugins::mac_rounded_corners::enable_modern_window_style,
+            plugins::mac_rounded_corners::reposition_traffic_lights
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
