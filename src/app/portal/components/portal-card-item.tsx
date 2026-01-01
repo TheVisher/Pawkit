@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { Pin, Globe, FileText, ExternalLink, GripVertical } from 'lucide-react';
 import type { LocalCard } from '@/lib/db/types';
+import { setInternalDragActive } from '../utils/drag-state';
 
 interface PortalCardItemProps {
   card: LocalCard;
@@ -53,6 +54,9 @@ export function PortalCardItem({ card, onClick }: PortalCardItemProps) {
       if (distance > 5) {
         mouseDownPos.current = null;
         setIsDragging(true);
+        // Mark that this is an internal drag (from portal card)
+        // This prevents the drop zone from showing and tracks the URL to prevent duplicates
+        setInternalDragActive(true, card.url || undefined);
 
         try {
           const { invoke } = await import('@tauri-apps/api/core');
@@ -77,6 +81,9 @@ export function PortalCardItem({ card, onClick }: PortalCardItemProps) {
           console.error('[Portal] Native drag failed:', e);
         } finally {
           setIsDragging(false);
+          // Clear internal drag flag - the URL will be tracked for 2 more seconds
+          // as a safety net for edge cases
+          setInternalDragActive(false);
         }
       }
     },
