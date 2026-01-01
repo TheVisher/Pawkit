@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Library, ChevronRight, Maximize2, Minimize2, Plus } from 'lucide-react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { createUrlCard } from '@/lib/services/metadata-service';
 import { PortalPawkitsTree } from './components/portal-pawkits-tree';
-import { PortalCardItem } from './components/portal-card-item';
+import { PortalMasonryGrid } from './components/portal-masonry-grid';
+import { isInternalDragActive, isDraggedUrl, normalizeUrlForComparison } from './utils/drag-state';
 import { createModuleLogger } from '@/lib/utils/logger';
 
 const log = createModuleLogger('Portal');
@@ -155,6 +156,34 @@ export default function PortalPage() {
       }
 
       try {
+        // Safety net 1: Check if this URL was just being dragged from within the portal
+        // (handles edge case where user drags off and back on)
+        if (isDraggedUrl(url)) {
+          log.info('URL is being dragged from portal, ignoring drop:', url);
+          setIsDraggingOver(false);
+          setDropTargetPawkit(null);
+          return;
+        }
+
+        // Safety net 2: Check if this URL already exists in the workspace (prevent duplicates)
+        // Uses normalized comparison to catch URLs with different tracking params
+        const normalizedDroppedUrl = normalizeUrlForComparison(url);
+        const existingCard = await db.cards
+          .where('workspaceId')
+          .equals(currentWorkspace.id)
+          .filter((card) => {
+            if (!card.url || card._deleted) return false;
+            return normalizeUrlForComparison(card.url) === normalizedDroppedUrl;
+          })
+          .first();
+
+        if (existingCard) {
+          log.info('Card with this URL already exists, skipping duplicate:', existingCard.id);
+          setIsDraggingOver(false);
+          setDropTargetPawkit(null);
+          return;
+        }
+
         // Create card and fetch metadata - all in one call
         // Uses shared Dexie, portal sees update via liveQuery
         await createUrlCard({
@@ -173,48 +202,75 @@ export default function PortalPage() {
     [currentWorkspace, dropTargetPawkit, selectedPawkit, detectPawkitAtPosition]
   );
 
-  // Tauri drag/drop events
+  // Use refs to access current values in listeners without re-registering
+  const handleUrlDropRef = useRef(handleUrlDrop);
+  const detectPawkitRef = useRef(detectPawkitAtPosition);
+
+  // Keep refs updated
+  useEffect(() => {
+    handleUrlDropRef.current = handleUrlDrop;
+  }, [handleUrlDrop]);
+
+  useEffect(() => {
+    detectPawkitRef.current = detectPawkitAtPosition;
+  }, [detectPawkitAtPosition]);
+
+  // Tauri drag/drop events - registered ONCE, uses refs for current values
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
     const tauri = (window as { __TAURI__?: { event: { listen: Function } } }).__TAURI__;
     if (!tauri) return;
 
+    let cancelled = false;
     const unlisteners: (() => void)[] = [];
 
     async function setupListeners() {
       try {
         const { listen } = await import('@tauri-apps/api/event');
 
+        if (cancelled) return;
+
         const u1 = await listen<{ x: number; y: number }>('tauri-drag-enter', () => {
+          // Ignore if this is an internal drag (card being dragged out of portal)
+          if (isInternalDragActive()) return;
           setIsDraggingOver(true);
         });
+        if (cancelled) { u1(); return; }
         unlisteners.push(u1);
 
         const u2 = await listen<{ x: number; y: number }>('tauri-drag-over', (event) => {
+          // Ignore if this is an internal drag (card being dragged out of portal)
+          if (isInternalDragActive()) return;
           const { x, y } = event.payload;
-          const target = detectPawkitAtPosition(x, y);
+          const target = detectPawkitRef.current(x, y);
           if (target !== undefined) {
             setDropTargetPawkit(target);
           }
         });
+        if (cancelled) { u2(); return; }
         unlisteners.push(u2);
 
         const u3 = await listen('tauri-drag-leave', () => {
           setIsDraggingOver(false);
           setDropTargetPawkit(null);
         });
+        if (cancelled) { u3(); return; }
         unlisteners.push(u3);
 
         const u4 = await listen<{ url: string; x: number; y: number }>('tauri-drop-url', (event) => {
-          handleUrlDrop(event.payload);
+          // Ignore if this is an internal drag (card being dragged out of portal)
+          if (isInternalDragActive()) return;
+          handleUrlDropRef.current(event.payload);
         });
+        if (cancelled) { u4(); return; }
         unlisteners.push(u4);
 
         const u5 = await listen('tauri-drop', () => {
           setIsDraggingOver(false);
           setDropTargetPawkit(null);
         });
+        if (cancelled) { u5(); return; }
         unlisteners.push(u5);
 
         log.info('Tauri listeners registered');
@@ -226,9 +282,10 @@ export default function PortalPage() {
     setupListeners();
 
     return () => {
+      cancelled = true;
       unlisteners.forEach((u) => u());
     };
-  }, [handleUrlDrop, detectPawkitAtPosition]);
+  }, []); // Empty deps - register only ONCE, use refs for current values
 
   // Window controls (Tauri)
   const handleClose = async () => {
@@ -441,11 +498,7 @@ export default function PortalPage() {
                 {selectedPawkit ? 'No cards in this pawkit' : 'No cards yet. Drag URLs here!'}
               </div>
             ) : (
-              <div className="portal-masonry">
-                {visibleCards.slice(0, 50).map((card) => (
-                  <PortalCardItem key={card.id} card={card} />
-                ))}
-              </div>
+              <PortalMasonryGrid cards={visibleCards.slice(0, 50)} />
             )}
           </div>
 

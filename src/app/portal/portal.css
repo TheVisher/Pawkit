@@ -261,41 +261,9 @@ body.portal-window {
   container-name: cards-container;
 }
 
-/* Masonry layout - responsive based on container width */
-.portal-masonry {
-  column-gap: 12px;
-  /* Default: 2 columns when container is wide enough */
-  column-count: 2;
-}
-
-/* Card minimum width styling */
-.portal-masonry > * {
-  break-inside: avoid;
-  margin-bottom: 12px;
-  animation: cardFadeIn 0.3s ease-out;
-  /* Ensure cards have a reasonable minimum width */
-  min-width: 0;
-}
-
-/* Responsive columns using container queries */
-/* Switch to 1 column when container is less than 380px */
-@container cards-container (max-width: 380px) {
-  .portal-masonry {
-    column-count: 1;
-  }
-}
-
-/* 2 columns when container is 380px or wider */
-@container cards-container (min-width: 381px) {
-  .portal-masonry {
-    column-count: 2;
-  }
-}
-
-@keyframes cardFadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
-}
+/* Note: Masonry layout is now handled by PortalMasonryGrid component
+   using JavaScript-based "shortest column first" algorithm for proper
+   left-to-right ordering (same as main app). */
 
 /* ============================================================================
    DROP ZONE

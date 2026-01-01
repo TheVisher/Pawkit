@@ -8,60 +8,86 @@ use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 // =============================================================================
-// PORTAL WINDOW STATE PERSISTENCE
+// WINDOW STATE PERSISTENCE
 // =============================================================================
 
 #[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
-struct PortalWindowState {
+struct WindowState {
     x: i32,
     y: i32,
     width: u32,
     height: u32,
+    maximized: bool,
 }
 
-impl Default for PortalWindowState {
+impl Default for WindowState {
     fn default() -> Self {
         Self {
             x: 100,
             y: 100,
-            width: 500,
-            height: 600,
+            width: 1200,
+            height: 800,
+            maximized: false,
         }
     }
 }
 
-fn get_portal_state_path(app: &tauri::AppHandle) -> Option<PathBuf> {
-    app.path().app_data_dir().ok().map(|dir| dir.join("portal-window-state.json"))
+// Portal-specific defaults
+fn default_portal_state() -> WindowState {
+    WindowState {
+        x: 100,
+        y: 100,
+        width: 500,
+        height: 600,
+        maximized: false,
+    }
 }
 
-fn load_portal_state(app: &tauri::AppHandle) -> PortalWindowState {
-    if let Some(path) = get_portal_state_path(app) {
+fn get_window_state_path(app: &tauri::AppHandle, window_name: &str) -> Option<PathBuf> {
+    app.path().app_data_dir().ok().map(|dir| dir.join(format!("{}-window-state.json", window_name)))
+}
+
+fn load_window_state(app: &tauri::AppHandle, window_name: &str, default: WindowState) -> WindowState {
+    if let Some(path) = get_window_state_path(app, window_name) {
         if let Ok(content) = fs::read_to_string(&path) {
-            if let Ok(state) = serde_json::from_str::<PortalWindowState>(&content) {
-                log::info!("Loaded portal state: {:?}", state);
+            if let Ok(state) = serde_json::from_str::<WindowState>(&content) {
+                log::info!("Loaded {} window state: {:?}", window_name, state);
                 return state;
             }
         }
     }
-    PortalWindowState::default()
+    default
 }
 
-fn save_portal_state(app: &tauri::AppHandle, state: &PortalWindowState) {
-    if let Some(path) = get_portal_state_path(app) {
+fn save_window_state(app: &tauri::AppHandle, window_name: &str, state: &WindowState) {
+    if let Some(path) = get_window_state_path(app, window_name) {
         // Ensure directory exists
         if let Some(parent) = path.parent() {
             let _ = fs::create_dir_all(parent);
         }
         if let Ok(content) = serde_json::to_string_pretty(state) {
             let _ = fs::write(&path, content);
-            log::debug!("Saved portal state: {:?}", state);
+            log::debug!("Saved {} window state: {:?}", window_name, state);
         }
     }
 }
 
+// Legacy compatibility aliases
+fn get_portal_state_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    get_window_state_path(app, "portal")
+}
+
+fn load_portal_state(app: &tauri::AppHandle) -> WindowState {
+    load_window_state(app, "portal", default_portal_state())
+}
+
+fn save_portal_state(app: &tauri::AppHandle, state: &WindowState) {
+    save_window_state(app, "portal", state)
+}
+
 // State holder for debouncing saves
 struct PortalStateHolder {
-    state: Mutex<PortalWindowState>,
+    state: Mutex<WindowState>,
 }
 
 #[cfg(target_os = "macos")]
@@ -564,8 +590,9 @@ fn toggle_portal(app: &tauri::AppHandle) {
             if portal.is_visible().unwrap_or(false) {
                 let _ = portal.hide();
             } else {
-                let _ = portal.show();
-                let _ = portal.set_focus();
+                // Show the portal without activating the main application
+                // This keeps the main window minimized if it was minimized
+                show_portal_without_activating_app(&portal);
             }
         }
         None => {
@@ -585,11 +612,39 @@ fn toggle_portal(app: &tauri::AppHandle) {
             }
             // Show the newly created window
             if let Some(portal) = app.get_webview_window("portal") {
-                let _ = portal.show();
-                let _ = portal.set_focus();
+                show_portal_without_activating_app(&portal);
             }
         }
     }
+}
+
+/// Show the portal window without activating the main application.
+/// On macOS, this uses NSWindow.orderFrontRegardless to bring the window forward
+/// without making the app active (which would unminimize other windows).
+#[cfg(target_os = "macos")]
+fn show_portal_without_activating_app(portal: &tauri::WebviewWindow) {
+    use cocoa::base::id;
+    use objc::{msg_send, sel, sel_impl};
+
+    // Show the window first
+    let _ = portal.show();
+
+    // Get the NSWindow and use orderFrontRegardless to bring it forward
+    // without activating the entire application
+    unsafe {
+        if let Ok(raw_handle) = portal.ns_window() {
+            let ns_window: id = raw_handle as id;
+            // orderFrontRegardless brings window to front without activating app
+            // This keeps minimized windows minimized
+            let _: () = msg_send![ns_window, orderFrontRegardless];
+        }
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn show_portal_without_activating_app(portal: &tauri::WebviewWindow) {
+    let _ = portal.show();
+    let _ = portal.set_focus();
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -623,22 +678,24 @@ pub fn run() {
                 match event {
                     tauri::WindowEvent::Moved(position) => {
                         if let Ok(size) = window.inner_size() {
-                            let state = PortalWindowState {
+                            let state = WindowState {
                                 x: position.x,
                                 y: position.y,
                                 width: size.width,
                                 height: size.height,
+                                maximized: false,
                             };
                             save_portal_state(window.app_handle(), &state);
                         }
                     }
                     tauri::WindowEvent::Resized(size) => {
                         if let Ok(position) = window.outer_position() {
-                            let state = PortalWindowState {
+                            let state = WindowState {
                                 x: position.x,
                                 y: position.y,
                                 width: size.width,
                                 height: size.height,
+                                maximized: false,
                             };
                             save_portal_state(window.app_handle(), &state);
                         }
@@ -696,6 +753,42 @@ pub fn run() {
                     }
                 }
             }
+
+            // Main window state persistence
+            if window.label() == "main" {
+                match event {
+                    tauri::WindowEvent::Moved(position) => {
+                        // Don't save if maximized (position is managed by OS)
+                        if !window.is_maximized().unwrap_or(false) {
+                            if let Ok(size) = window.inner_size() {
+                                let state = WindowState {
+                                    x: position.x,
+                                    y: position.y,
+                                    width: size.width,
+                                    height: size.height,
+                                    maximized: false,
+                                };
+                                save_window_state(window.app_handle(), "main", &state);
+                            }
+                        }
+                    }
+                    tauri::WindowEvent::Resized(size) => {
+                        // Don't save if maximized (size is managed by OS)
+                        let is_maximized = window.is_maximized().unwrap_or(false);
+                        if let Ok(position) = window.outer_position() {
+                            let state = WindowState {
+                                x: position.x,
+                                y: position.y,
+                                width: size.width,
+                                height: size.height,
+                                maximized: is_maximized,
+                            };
+                            save_window_state(window.app_handle(), "main", &state);
+                        }
+                    }
+                    _ => {}
+                }
+            }
         })
         .setup(|app| {
             let handle = app.handle().clone();
@@ -717,6 +810,21 @@ pub fn run() {
             // Navigate to the local server once ready
             let main_window = app.get_webview_window("main")
                 .expect("main window not found");
+
+            // Restore main window state (position, size)
+            let main_state = load_window_state(app.handle(), "main", WindowState::default());
+            log::info!("Restoring main window state: {:?}", main_state);
+
+            // Apply saved state
+            let _ = main_window.set_position(tauri::Position::Physical(
+                tauri::PhysicalPosition::new(main_state.x, main_state.y)
+            ));
+            let _ = main_window.set_size(tauri::Size::Physical(
+                tauri::PhysicalSize::new(main_state.width, main_state.height)
+            ));
+            if main_state.maximized {
+                let _ = main_window.maximize();
+            }
 
             let url = format!("http://localhost:{}", port);
             log::info!("Navigating to {}", url);
