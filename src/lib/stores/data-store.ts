@@ -11,9 +11,16 @@ import { queueMetadataFetch } from '@/lib/services/metadata-service';
 import { useLayoutCacheStore } from './layout-cache-store';
 import { getUpdatedScheduleTagsIfNeeded } from '@/lib/utils/system-tags';
 
+// Type declaration for debug helpers exposed on window
+declare global {
+  interface Window {
+    __clearSyncQueue?: typeof clearAllSyncQueue;
+  }
+}
+
 // Expose debug helper on window for console access
 if (typeof window !== 'undefined') {
-  (window as unknown as Record<string, unknown>).__clearSyncQueue = clearAllSyncQueue;
+  window.__clearSyncQueue = clearAllSyncQueue;
 }
 
 interface DataState {
@@ -30,7 +37,7 @@ interface DataState {
   setError: (error: string | null) => void;
 
   // Card actions (write to Dexie, useLiveQuery auto-updates UI)
-  createCard: (card: Omit<LocalCard, 'id' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalCard>;
+  createCard: (card: Omit<LocalCard, 'id' | 'version' | 'createdAt' | 'updatedAt' | '_synced' | '_lastModified' | '_deleted'>) => Promise<LocalCard>;
   updateCard: (id: string, updates: Partial<LocalCard>) => Promise<void>;
   deleteCard: (id: string) => Promise<void>;
   restoreCard: (id: string) => Promise<void>;

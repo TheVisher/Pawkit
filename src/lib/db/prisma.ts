@@ -8,9 +8,13 @@
 
 import { PrismaClient } from '@/generated/prisma';
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
+// Type declaration for Prisma singleton on globalThis
+declare global {
+  // eslint-disable-next-line no-var
+  var prisma: PrismaClient | undefined;
+}
+
+const globalForPrisma = globalThis;
 
 export const prisma =
   globalForPrisma.prisma ??

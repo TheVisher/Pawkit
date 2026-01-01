@@ -94,7 +94,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       entityType: 'workspace',
       entityId: workspace.id,
       operation: 'create',
-      payload: workspace as unknown as Record<string, unknown>,
+      payload: {
+        id: workspace.id,
+        name: workspace.name,
+        icon: workspace.icon,
+        userId: workspace.userId,
+        isDefault: workspace.isDefault,
+        createdAt: workspace.createdAt,
+        updatedAt: workspace.updatedAt,
+      },
       retryCount: 0,
       createdAt: new Date(),
     });

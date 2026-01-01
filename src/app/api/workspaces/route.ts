@@ -12,6 +12,9 @@ import {
   createWorkspaceSchema,
   listWorkspacesQuerySchema,
 } from '@/lib/validations/workspace';
+import { createModuleLogger } from '@/lib/utils/logger';
+
+const log = createModuleLogger('WorkspacesAPI');
 
 /**
  * GET /api/workspaces
@@ -88,7 +91,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error('GET /api/workspaces error:', error);
+    log.error('GET /api/workspaces error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -194,7 +197,7 @@ export async function POST(request: Request) {
     // 8. Return created workspace
     return NextResponse.json({ workspace }, { status: 201 });
   } catch (error) {
-    console.error('POST /api/workspaces error:', error);
+    log.error('POST /api/workspaces error:', error);
 
     // Handle unique constraint violations
     if (

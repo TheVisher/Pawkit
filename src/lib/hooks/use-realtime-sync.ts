@@ -7,12 +7,14 @@
  * to the local database. This enables real-time sync across devices.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { getClient } from '@/lib/supabase/client';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
-import { db } from '@/lib/db';
+import { db, type LocalCard } from '@/lib/db';
 import { createModuleLogger } from '@/lib/utils/logger';
 import type { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+
+type RealtimeStatus = 'SUBSCRIBED' | 'TIMED_OUT' | 'CLOSED' | 'CHANNEL_ERROR';
 
 const log = createModuleLogger('RealtimeSync');
 
@@ -91,7 +93,7 @@ export function useRealtimeSync() {
             handleCardChange(payload);
           }
         )
-        .subscribe((status) => {
+        .subscribe((status: RealtimeStatus) => {
           log.info(`Realtime subscription status: ${status}`);
           if (status === 'SUBSCRIBED') {
             activeChannel = channel;
@@ -119,7 +121,8 @@ async function handleCardChange(
   payload: RealtimePostgresChangesPayload<CardPayload>
 ): Promise<void> {
   const { eventType, new: newRecord, old: oldRecord } = payload;
-  const record = newRecord || oldRecord;
+  // Cast to CardPayload since we know the structure from our subscription
+  const record = (newRecord || oldRecord) as CardPayload | undefined;
 
   log.info(`Realtime: Received ${eventType} event`, {
     id: record?.id,
@@ -259,7 +262,7 @@ async function handleDelete(serverCard: CardPayload): Promise<void> {
 /**
  * Convert server card format to local card format
  */
-function serverToLocal(serverCard: CardPayload): Record<string, unknown> {
+function serverToLocal(serverCard: CardPayload): LocalCard {
   const {
     id,
     workspaceId,
@@ -323,8 +326,7 @@ function serverToLocal(serverCard: CardPayload): Record<string, unknown> {
     _localOnly: false,
     createdAt: createdAt ? new Date(createdAt as string) : new Date(),
     updatedAt: updatedAt ? new Date(updatedAt as string) : new Date(),
-    ...rest,
-  };
+  } as LocalCard;
 }
 
 export default useRealtimeSync;

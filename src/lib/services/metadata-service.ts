@@ -204,8 +204,6 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
     const updates: Partial<LocalCard> = {
       status: 'READY',
       updatedAt: new Date(),
-      _changedAt: Date.now(),
-      _dirty: true,
     };
 
     // Only update fields if we got values
@@ -249,11 +247,25 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
     // Notify portal about the update (main app uses useLiveQuery, auto-updates)
     await notifyPortal();
 
-    // NOTE: Article extraction disabled - was causing 2+ minute hangs
-    // TODO: Re-enable when article API is optimized or make it user-triggered
-    // if (card.url && isArticleUrl(card.url)) {
-    //   queueArticleExtraction(cardId);
-    // }
+    /**
+     * DISABLED: Automatic article extraction
+     *
+     * This was causing 2+ minute hangs during metadata fetching due to:
+     * 1. The article extraction API (/api/article) performs heavy DOM parsing
+     * 2. Some sites have slow response times or require multiple retries
+     * 3. Running extraction for every URL card created significant queue backlog
+     *
+     * Next steps to re-enable:
+     * - Add timeout limits to the article extraction API (max 10s per request)
+     * - Implement user-triggered extraction via "Extract Article" button in card detail
+     * - Consider background job processing instead of client-side queuing
+     * - Add progress indicator in UI when extraction is running
+     *
+     * Original code:
+     * if (card.url && isArticleUrl(card.url)) {
+     *   queueArticleExtraction(cardId);
+     * }
+     */
   } catch (error) {
     console.error('[MetadataService] Error fetching metadata:', error);
 
@@ -315,8 +327,6 @@ async function extractArticleForCard(cardId: string): Promise<void> {
       isRead: false,
       readProgress: 0,
       updatedAt: new Date(),
-      _changedAt: Date.now(),
-      _dirty: true,
     });
 
     console.log('[MetadataService] Article extracted:', cardId, {
