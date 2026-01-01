@@ -5,19 +5,17 @@
  * Main orchestrator - renders header and routes to type-specific content
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useCard } from '@/lib/hooks/use-live-data';
 import { cn } from '@/lib/utils';
 import { CardDetailHeader } from './header';
 import { ContentRouter } from './content/index';
 import type { CardDetailContentProps } from './types';
 
 export function CardDetailContent({ cardId, onClose, className }: CardDetailContentProps) {
-  const cards = useDataStore((s) => s.cards);
+  const card = useCard(cardId);
   const updateCard = useDataStore((s) => s.updateCard);
-
-  // Find the active card
-  const card = useMemo(() => cards.find((c) => c.id === cardId), [cards, cardId]);
 
   // Title state (shared across all card types)
   const [title, setTitle] = useState(card?.title || '');

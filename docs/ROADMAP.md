@@ -265,7 +265,7 @@
 | File | Lines | Issue | Recommended Split |
 |------|-------|-------|-------------------|
 | `card-list-view.tsx` | 1,515 | Massive "God Component" | ListRow, ColumnHeader, SortControls |
-| `omnibar.tsx` | 1,495 | Search + toasts + navigation | ToastContainer, SearchResults |
+| `omnibar.tsx` | <300 | [x] **Refactored** | Split into focused mode hooks |
 | `card-item.tsx` | 623 | Too many responsibilities | CardImage, CardActions, CardMeta |
 | `sync-service.ts` | 615 | Core sync logic | SyncQueue, ConflictResolver, OfflineHandler |
 

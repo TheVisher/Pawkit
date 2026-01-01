@@ -8,7 +8,8 @@
 import { useMemo } from 'react';
 import { Layers, ChevronRight, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useCards } from '@/lib/stores/data-store';
+import { useCards } from '@/lib/hooks/use-live-data';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
 import type { LocalCard } from '@/lib/db';
@@ -120,7 +121,8 @@ function RecentCardListItem({ card, onClick }: RecentCardItemProps) {
 }
 
 export function RecentCardsWidget() {
-  const cards = useCards();
+  const workspace = useCurrentWorkspace();
+  const cards = useCards(workspace?.id);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   const recentCards = useMemo(() => {

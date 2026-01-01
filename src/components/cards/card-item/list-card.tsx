@@ -2,20 +2,26 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Pin, Loader2 } from 'lucide-react';
+import { Pin } from 'lucide-react';
+import { SyncStatusIndicator } from '@/components/cards/sync-status-indicator';
 import { cn } from '@/lib/utils';
 import type { LocalCard } from '@/lib/db';
 import {
   type CardDisplaySettings,
   DEFAULT_CARD_DISPLAY,
   getCardIcon,
-  getDomain,
 } from './types';
+import { TagBadgeList } from '@/components/tags/tag-badge';
+import { getSystemTagsForCard, type SystemTag } from '@/lib/utils/system-tags';
 
 interface ListCardProps {
   card: LocalCard;
   onClick?: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
+  /** Called when a user tag in the footer is clicked (for filtering) */
+  onTagClick?: (tag: string) => void;
+  /** Called when a system tag in the footer is clicked (for filtering) */
+  onSystemTagClick?: (tag: SystemTag) => void;
 }
 
 /**
@@ -25,11 +31,11 @@ export function ListCard({
   card,
   onClick,
   displaySettings = {},
+  onTagClick,
+  onSystemTagClick,
 }: ListCardProps) {
   const [imageError, setImageError] = useState(false);
   const Icon = getCardIcon(card.type);
-  const domain = card.domain || getDomain(card.url);
-  const isSyncing = !card._synced;
 
   // Merge with defaults
   const settings: CardDisplaySettings = { ...DEFAULT_CARD_DISPLAY, ...displaySettings };
@@ -87,62 +93,36 @@ export function ListCard({
         </h3>
       )}
 
-      {/* Domain - Pill shaped */}
-      {settings.showUrlPill && domain && (
-        <span
-          className="px-2 py-0.5 rounded-full text-xs truncate max-w-[150px]"
-          style={{
-            background: 'var(--glass-bg)',
-            color: 'var(--color-text-muted)',
-            border: '1px solid var(--glass-border)',
-          }}
-        >
-          {domain}
-        </span>
-      )}
-
-      {/* Syncing indicator */}
-      {isSyncing && (
-        <div className="flex items-center gap-1" style={{ color: 'var(--color-text-muted)' }}>
-          <Loader2 className="h-3 w-3 animate-spin" />
-        </div>
-      )}
+      {/* Sync status indicator */}
+      <SyncStatusIndicator
+        cardId={card.id}
+        isSynced={card._synced}
+        variant="icon"
+      />
 
       {/* Pinned */}
       {card.pinned && (
         <Pin className="h-4 w-4 flex-shrink-0" style={{ color: 'var(--color-accent)' }} />
       )}
 
-      {/* Tags - Pill shaped */}
-      {settings.showTags && card.tags && card.tags.length > 0 && (
-        <div className="flex gap-1">
-          {card.tags.slice(0, 2).map((tag) => (
-            <span
-              key={tag}
-              className="px-2 py-0.5 text-[10px] font-medium rounded-full"
-              style={{
-                background: 'var(--glass-bg)',
-                color: 'var(--color-text-muted)',
-                border: '1px solid var(--glass-border)',
-              }}
-            >
-              {tag}
-            </span>
-          ))}
-          {card.tags.length > 2 && (
-            <span
-              className="px-2 py-0.5 text-[10px] font-medium rounded-full"
-              style={{
-                background: 'var(--glass-bg)',
-                color: 'var(--color-text-muted)',
-                border: '1px solid var(--glass-border)',
-              }}
-            >
-              +{card.tags.length - 2}
-            </span>
-          )}
-        </div>
-      )}
+      {/* Tags - system tags (read, scheduled, reading time) + user tags */}
+      {settings.showTags && (() => {
+        const systemTags = getSystemTagsForCard(card);
+        const userTags = card.tags || [];
+        // Show tags section if we have any tags (system or user)
+        if (systemTags.length === 0 && userTags.length === 0) return null;
+        return (
+          <TagBadgeList
+            tags={userTags}
+            systemTags={systemTags}
+            maxVisible={3}
+            size="sm"
+            showLeafOnly
+            onTagClick={onTagClick}
+            onSystemTagClick={onSystemTagClick}
+          />
+        );
+      })()}
 
     </button>
   );

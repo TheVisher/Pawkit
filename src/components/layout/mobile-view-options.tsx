@@ -7,10 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useViewStore, useCardDisplaySettings, useSubPawkitSettings, type SubPawkitSize } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useCards } from '@/lib/hooks/use-live-data';
 import {
   type ContentType,
-  type UnsortedFilter,
   type GroupBy,
   type DateGrouping,
 } from '@/components/layout/right-sidebar/config';
@@ -19,7 +18,6 @@ import {
 import {
   ContentTypeFilter as ContentTypeFilterComponent,
   SortOptions as SortOptionsComponent,
-  QuickFilter as QuickFilterComponent,
   GroupingSection as GroupingSectionComponent,
   SubPawkitSettings as SubPawkitSettingsComponent,
   TagsFilter as TagsFilterComponent,
@@ -38,38 +36,52 @@ export function MobileViewOptions({ viewType }: MobileViewOptionsProps) {
   const sortBy = useViewStore((s) => s.sortBy);
   const sortOrder = useViewStore((s) => s.sortOrder);
   const contentTypeFilters = useViewStore((s) => s.contentTypeFilters) as ContentType[];
-  const unsortedFilter = useViewStore((s) => s.unsortedFilter) as UnsortedFilter;
   const groupBy = useViewStore((s) => s.groupBy) as GroupBy;
   const dateGrouping = useViewStore((s) => s.dateGrouping) as DateGrouping;
   const selectedTags = useViewStore((s) => s.selectedTags);
-  
+  const showNoTagsOnly = useViewStore((s) => s.showNoTagsOnly);
+  const showNoPawkitsOnly = useViewStore((s) => s.showNoPawkitsOnly);
+
   // Actions
   const setSortBy = useViewStore((s) => s.setSortBy);
   const toggleSortOrder = useViewStore((s) => s.toggleSortOrder);
   const toggleContentType = useViewStore((s) => s.toggleContentType);
   const clearContentTypes = useViewStore((s) => s.clearContentTypes);
-  const setUnsortedFilter = useViewStore((s) => s.setUnsortedFilter);
   const setGroupBy = useViewStore((s) => s.setGroupBy);
   const setDateGrouping = useViewStore((s) => s.setDateGrouping);
   const toggleTag = useViewStore((s) => s.toggleTag);
   const clearTags = useViewStore((s) => s.clearTags);
+  const setShowNoTagsOnly = useViewStore((s) => s.setShowNoTagsOnly);
+  const setShowNoPawkitsOnly = useViewStore((s) => s.setShowNoPawkitsOnly);
 
   // Sub-Pawkit Settings
   const { subPawkitSize, subPawkitColumns, setSubPawkitSize, setSubPawkitColumns } = useSubPawkitSettings();
 
   // All Tags
-  const cards = useDataStore((s) => s.cards);
-  const allTags = cards
-    .filter(c => !c._deleted)
-    .flatMap(c => c.tags || [])
-    .reduce((acc, tag) => {
-      acc.set(tag, (acc.get(tag) || 0) + 1);
-      return acc;
-    }, new Map<string, number>());
-  
-  const sortedTags = Array.from(allTags.entries())
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([tag, count]) => ({ tag, count }));
+  const cards = useCards(workspace?.id);
+  const { sortedTags, noTagsCount, noPawkitsCount } = (() => {
+    const tagCounts = new Map<string, number>();
+    let noTags = 0;
+    let noPawkits = 0;
+    for (const card of cards) {
+      if (card._deleted) continue;
+      const tags = card.tags || [];
+      const collections = card.collections || [];
+      if (tags.length === 0) {
+        noTags++;
+      }
+      if (collections.length === 0) {
+        noPawkits++;
+      }
+      for (const tag of tags) {
+        tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
+      }
+    }
+    const sorted = Array.from(tagCounts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([tag, count]) => ({ tag, count }));
+    return { sortedTags: sorted, noTagsCount: noTags, noPawkitsCount: noPawkits };
+  })();
 
   const handleSettingChange = () => {
     if (workspace) {
@@ -153,17 +165,18 @@ export function MobileViewOptions({ viewType }: MobileViewOptionsProps) {
                   clearTags();
                   handleSettingChange();
                 }}
-              />
-            )}
-            
-            {/* Quick Filter */}
-            {viewType !== 'home' && (
-              <QuickFilterComponent
-                filter={unsortedFilter}
-                onFilterChange={(f) => {
-                  setUnsortedFilter(f);
+                showNoTagsOnly={showNoTagsOnly}
+                onToggleNoTags={(show) => {
+                  setShowNoTagsOnly(show);
                   handleSettingChange();
                 }}
+                noTagsCount={noTagsCount}
+                showNoPawkitsOnly={showNoPawkitsOnly}
+                onToggleNoPawkits={(show) => {
+                  setShowNoPawkitsOnly(show);
+                  handleSettingChange();
+                }}
+                noPawkitsCount={noPawkitsCount}
               />
             )}
           </div>

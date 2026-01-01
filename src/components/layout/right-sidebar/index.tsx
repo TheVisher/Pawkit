@@ -30,7 +30,7 @@ import {
   findDuplicateCardIds,
 } from "@/lib/stores/view-store";
 import { useCurrentWorkspace } from "@/lib/stores/workspace-store";
-import { useDataStore } from "@/lib/stores/data-store";
+import { useCards, useCollections } from "@/lib/hooks/use-live-data";
 import { useModalStore } from "@/lib/stores/modal-store";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -46,8 +46,6 @@ import {
   type ContentType,
   type GroupBy,
   type DateGrouping,
-  type UnsortedFilter,
-  type ReadingFilter,
   type LinkStatusFilter,
 } from "./config";
 import { forceRecheckAllLinks } from "@/lib/services/link-check-service";
@@ -56,8 +54,6 @@ import { CardDisplaySettings } from "./CardDisplaySettings";
 import {
   ContentTypeFilter,
   SortOptions,
-  QuickFilter,
-  ReadingStatusFilter,
   AdvancedFilterSection,
   GroupingSection,
   SubPawkitSettings,
@@ -83,8 +79,8 @@ export function RightSidebar() {
 
   // Get active card from modal store
   const activeCardId = useModalStore((s) => s.activeCardId);
-  const allCards = useDataStore((s) => s.cards);
-  const allCollections = useDataStore((s) => s.collections);
+  const allCards = useCards(workspace?.id);
+  const allCollections = useCollections(workspace?.id);
   const activeCard = useMemo(
     () => (activeCardId ? allCards.find((c) => c.id === activeCardId) : null),
     [activeCardId, allCards],
@@ -138,7 +134,6 @@ export function RightSidebar() {
     cardSpacing,
     cardSize,
     showMetadataFooter,
-    showUrlPill,
     showTitles,
     showTags,
   } = useCardDisplaySettings();
@@ -157,19 +152,16 @@ export function RightSidebar() {
   const setCardSpacing = useViewStore((s) => s.setCardSpacing);
   const setCardSize = useViewStore((s) => s.setCardSize);
   const setShowMetadataFooter = useViewStore((s) => s.setShowMetadataFooter);
-  const setShowUrlPill = useViewStore((s) => s.setShowUrlPill);
   const setShowTitles = useViewStore((s) => s.setShowTitles);
   const setShowTags = useViewStore((s) => s.setShowTags);
   const saveViewSettings = useViewStore((s) => s.saveViewSettings);
   const selectedTags = useViewStore((s) => s.selectedTags);
   const toggleTag = useViewStore((s) => s.toggleTag);
   const clearTags = useViewStore((s) => s.clearTags);
-  const unsortedFilter = useViewStore(
-    (s) => s.unsortedFilter,
-  ) as UnsortedFilter;
-  const setUnsortedFilter = useViewStore((s) => s.setUnsortedFilter);
-  const readingFilter = useViewStore((s) => s.readingFilter) as ReadingFilter;
-  const setReadingFilter = useViewStore((s) => s.setReadingFilter);
+  const showNoTagsOnly = useViewStore((s) => s.showNoTagsOnly);
+  const setShowNoTagsOnly = useViewStore((s) => s.setShowNoTagsOnly);
+  const showNoPawkitsOnly = useViewStore((s) => s.showNoPawkitsOnly);
+  const setShowNoPawkitsOnly = useViewStore((s) => s.setShowNoPawkitsOnly);
   const linkStatusFilter = useViewStore(
     (s) => s.linkStatusFilter,
   ) as LinkStatusFilter;
@@ -203,8 +195,8 @@ export function RightSidebar() {
     setPawkitOverviewSortBy,
   } = usePawkitOverviewSettings();
 
-  // Get all tags from cards and calculate duplicates
-  const cards = useDataStore((s) => s.cards);
+  // Get all tags from cards and calculate duplicates (reuse allCards from parent scope)
+  const cards = allCards;
 
   // For pawkit views, scope cards to the current pawkit
   const { scopedCards, hasSubPawkits } = useMemo(() => {
@@ -240,17 +232,28 @@ export function RightSidebar() {
     return duplicateIds.size;
   }, [scopedCards]);
 
-  const allTags = useMemo(() => {
+  const { allTags, noTagsCount, noPawkitsCount } = useMemo(() => {
     const tagCounts = new Map<string, number>();
+    let noTags = 0;
+    let noPawkits = 0;
     for (const card of scopedCards) {
       if (card._deleted) continue;
-      for (const tag of card.tags || []) {
+      const tags = card.tags || [];
+      const collections = card.collections || [];
+      if (tags.length === 0) {
+        noTags++;
+      }
+      if (collections.length === 0) {
+        noPawkits++;
+      }
+      for (const tag of tags) {
         tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
       }
     }
-    return Array.from(tagCounts.entries())
+    const sortedTags = Array.from(tagCounts.entries())
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .map(([tag, count]) => ({ tag, count }));
+    return { allTags: sortedTags, noTagsCount: noTags, noPawkitsCount: noPawkits };
   }, [scopedCards]);
 
   useEffect(() => {
@@ -447,6 +450,12 @@ export function RightSidebar() {
                     selectedTags={selectedTags}
                     onToggleTag={toggleTag}
                     onClearTags={clearTags}
+                    showNoTagsOnly={showNoTagsOnly}
+                    onToggleNoTags={setShowNoTagsOnly}
+                    noTagsCount={noTagsCount}
+                    showNoPawkitsOnly={showNoPawkitsOnly}
+                    onToggleNoPawkits={setShowNoPawkitsOnly}
+                    noPawkitsCount={noPawkitsCount}
                   />
                 )}
 
@@ -466,21 +475,10 @@ export function RightSidebar() {
                   onSettingChange={handleSettingChange}
                 />
 
-                <ReadingStatusFilter
-                  filter={readingFilter}
-                  onFilterChange={setReadingFilter}
-                />
-
                 <ContentTypeFilter
                   filters={contentTypeFilters}
                   onToggle={toggleContentType}
                   onClear={clearContentTypes}
-                />
-
-                <QuickFilter
-                  filter={unsortedFilter}
-                  onFilterChange={setUnsortedFilter}
-                  viewType={viewConfig.type === "pawkit" ? "pawkit" : "library"}
                 />
 
                 {viewConfig.showSubPawkitSettings && hasSubPawkits && (
@@ -500,7 +498,6 @@ export function RightSidebar() {
                     cardPadding={cardPadding}
                     cardSpacing={cardSpacing}
                     showMetadataFooter={showMetadataFooter}
-                    showUrlPill={showUrlPill}
                     showTitles={showTitles}
                     showTags={showTags}
                     onLayoutChange={setLayout}
@@ -508,7 +505,6 @@ export function RightSidebar() {
                     onCardPaddingChange={setCardPadding}
                     onCardSpacingChange={setCardSpacing}
                     onShowMetadataFooterChange={setShowMetadataFooter}
-                    onShowUrlPillChange={setShowUrlPill}
                     onShowTitlesChange={setShowTitles}
                     onShowTagsChange={setShowTags}
                     onSettingChange={handleSettingChange}

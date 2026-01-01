@@ -3,7 +3,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link2, FileText, Loader2, AlertCircle } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
-import { useCurrentWorkspaceId, useCollections } from '@/lib/stores';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useCards, useCollections } from '@/lib/hooks/use-live-data';
 import { useToast } from '@/lib/stores/toast-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { normalizeUrl } from '@/lib/utils/url-normalizer';
@@ -28,9 +29,10 @@ interface AddCardFormProps {
 
 export function AddCardForm({ defaultTab, onSuccess, onCancel }: AddCardFormProps) {
   const createCard = useDataStore((state) => state.createCard);
-  const allCards = useDataStore((state) => state.cards);
-  const workspaceId = useCurrentWorkspaceId();
-  const collections = useCollections();
+  const workspace = useCurrentWorkspace();
+  const workspaceId = workspace?.id;
+  const allCards = useCards(workspaceId);
+  const collections = useCollections(workspaceId);
   const { success, error } = useToast();
   const openCardDetail = useModalStore((state) => state.openCardDetail);
 

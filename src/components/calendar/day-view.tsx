@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { FileText, Plus } from 'lucide-react';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useCards } from '@/lib/hooks/use-live-data';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { Button } from '@/components/ui/button';
@@ -33,9 +34,9 @@ interface CalendarItem {
 export function DayView() {
   const { currentDate } = useCalendarStore();
   const events = useDataStore((state) => state.events);
-  const cards = useDataStore((state) => state.cards);
-  const createCard = useDataStore((state) => state.createCard);
   const workspace = useCurrentWorkspace();
+  const cards = useCards(workspace?.id);
+  const createCard = useDataStore((state) => state.createCard);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   const dateKey = format(currentDate, 'yyyy-MM-dd');

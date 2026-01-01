@@ -12,7 +12,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { useDataStore, useCollections } from '@/lib/stores/data-store';
+import { useDataStore } from '@/lib/stores/data-store';
+import { useCollections } from '@/lib/hooks/use-live-data';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { slugify } from '@/lib/utils';
@@ -24,8 +25,8 @@ interface CreatePawkitFormProps {
 
 export function CreatePawkitForm({ onSuccess, onCancel }: CreatePawkitFormProps) {
     const createCollection = useDataStore((state) => state.createCollection);
-    const collections = useCollections();
     const workspace = useCurrentWorkspace();
+    const collections = useCollections(workspace?.id);
     const toast = useToastStore((s) => s.toast);
 
     const [name, setName] = useState('');

@@ -2,7 +2,7 @@
 component: "modals"
 complexity: "high"
 status: "stable"
-last_updated: "2025-12-23"
+last_updated: "2025-12-30"
 maintainer: "Claude Code"
 ---
 
@@ -35,7 +35,7 @@ UI Component (Button)
        ↓
    Modal Registry (Switch Statement)
        ↓
-   CardDetailModal
+   CardDetailModal (Orchestrator)
 ```
 
 ### Key Dependencies
@@ -45,10 +45,11 @@ UI Component (Button)
 | `useModalStore` | Single source of truth for active modal and props. |
 | `@radix-ui/react-dialog` | Accessible, robust modal primitives. |
 | `useDataStore` | Modals often fetch/write data directly (e.g. edit card). |
+| `DOMPurify` | Sanitizes article content for the reader view. |
 
 ### State Management
 
-- **Local state**: Form state (dirty checking), tabs (Read/Edit).
+- **Local state**: Form state (dirty checking), reading progress, reader theme.
 - **Store connections**: `useModalStore` controls visibility.
 - **Props**: Injected via the store's `props` object.
 
@@ -58,7 +59,15 @@ UI Component (Button)
 
 ```
 src/components/modals/
-├── card-detail-modal.tsx   # Complex: Editor, Reader, Auto-save
+├── card-detail/            # Modularized detail view
+│   ├── index.tsx           # Radix Dialog wrapper
+│   ├── header.tsx          # Card thumbnail and metadata
+│   ├── content.tsx         # Main orchestrator (Form/Reader/Stats)
+│   ├── content/            # Sub-sections
+│   │   ├── EditorSection.tsx
+│   │   ├── ReaderSection.tsx
+│   │   └── StatsSection.tsx
+│   └── types.ts            # Local type definitions
 ├── add-card-modal.tsx      # Create new bookmark/note
 ├── create-pawkit-modal.tsx # Create/Edit collection
 └── index.ts                # Exports and Registry
@@ -68,7 +77,7 @@ src/components/modals/
 
 | File | Lines | Purpose |
 |------|-------|---------|
-| `card-detail-modal.tsx` | ~400 | The most complex component. Handles Markdown editing, metadata display, and reader mode. |
+| `card-detail/content.tsx` | ~450 | Orchestrates editing, stats, and the CNN-style reader mode. |
 | `add-card-modal.tsx` | ~150 | Multi-step wizard for adding URLs or Notes. |
 | `create-pawkit-modal.tsx` | ~100 | Simple form for collection management. |
 
@@ -79,10 +88,11 @@ src/components/modals/
 ### What's Working
 
 - [x] **Global Registry**: Modals are mounted at the root level in `DashboardLayout`.
-- [x] **Card Detail**: Full editing capabilities, auto-save, and tag management.
-- [x] **Reader Mode**: Integrated `dompurify` for safe HTML rendering of article content.
-- [x] **Glass Theme**: All modals use the V2 standard backdrop and border styles.
+- [x] **Redesigned Card Detail**: Modularized architecture for better maintainability.
+- [x] **CNN-Style Reader**: Immersive, high-typography article reading experience within the modal.
+- [x] **Inline Reader Themes**: Support for Dark, Sepia, and Light themes in the reader view.
 - [x] **Auto-Save**: The detail modal saves changes on blur or close.
+- [x] **Cover Image Picker**: IntegratedPositioning and height sliders for card/collection covers.
 
 ### What's Not Implemented
 
@@ -91,10 +101,11 @@ src/components/modals/
 
 ### Recent Changes
 
-| Date | Change | Commit/PR |
-|------|--------|-----------|
-| 2025-12-20 | Implemented `CardDetailModal` with auto-save. | — |
-| 2025-12-20 | Added `CreatePawkitModal` for Phase 4. | — |
+| Date | Change | Implementation Details |
+|------|--------|------------------------|
+| 2025-12-30 | **Card Detail Refactor** | Split `card-detail-modal.tsx` into modular `Header`, `Content`, and `Reader` components. |
+| 2025-12-30 | **CNN-Style Reader** | Added immersive article reader with progress tracking and theme switching. |
+| 2025-12-26 | **Cover Image Picker** | Implemented position and height adjustments for cover images. |
 
 ---
 
@@ -103,61 +114,6 @@ src/components/modals/
 | Issue | Severity | Workaround |
 |-------|----------|------------|
 | Mobile scroll locking | Low | Radix UI handles this, but address bar can interfere. |
-
----
-
-## Usage Examples
-
-### Opening a Modal
-
-```tsx
-import { useModalStore } from '@/lib/stores/modal-store';
-
-function EditButton({ cardId }) {
-  const { openModal } = useModalStore();
-
-  return (
-    <button onClick={() => openModal('card-detail', { cardId })}>
-      Edit
-    </button>
-  );
-}
-```
-
-### Defining the Registry (Layout)
-
-```tsx
-// src/app/(dashboard)/layout.tsx
-import { useModalStore } from '@/lib/stores/modal-store';
-import { CardDetailModal } from '@/components/modals/card-detail-modal';
-
-export default function Layout() {
-  const { type, isOpen, close, props } = useModalStore();
-
-  return (
-    <>
-      {/* ... app content ... */}
-      
-      {/* Modal Mount Point */}
-      {isOpen && type === 'card-detail' && (
-        <CardDetailModal 
-          isOpen={isOpen} 
-          onClose={close} 
-          cardId={props.cardId} 
-        />
-      )}
-    </>
-  );
-}
-```
-
----
-
-## Testing Notes
-
-- **State Persistence**: Edit a card title, close modal without clicking save. Re-open to verify auto-save (or persistence).
-- **Overflow**: Open a card with a very long note. Verify inner scrolling works while body scroll is locked.
-- **Mobile**: Open modal on mobile. Verify close button is accessible.
 
 ---
 

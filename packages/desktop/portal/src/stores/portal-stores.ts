@@ -1,10 +1,14 @@
 /**
  * Portal-specific stores
- * Read from localStorage to share state with main app without React conflicts
+ *
+ * Uses Dexie's liveQuery for automatic real-time sync with main app.
+ * Both apps share the same IndexedDB - liveQuery automatically reacts
+ * to changes made by either window. No events or polling needed!
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import Dexie from 'dexie';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 // =============================================================================
 // TYPES (copied from main app to avoid imports)
@@ -166,26 +170,29 @@ export const usePortalDataStore = create<PortalDataState>()((set, get) => ({
     await get().loadFromIndexedDB(workspaceId);
   },
 
-  // Listen for sync events from main app via BroadcastChannel
+  // Listen for sync events from main app via Tauri events
+  // (BroadcastChannel doesn't work across different origins)
   setupSyncListener: () => {
-    const channel = new BroadcastChannel('pawkit-sync');
+    let unlisten: (() => void) | undefined;
 
-    const handleMessage = (event: MessageEvent) => {
-      console.log('[Portal] Received sync message:', event.data);
-      // Refresh data when main app broadcasts a sync event
-      const type = event.data?.type;
-      if (type === 'sync-complete' || type === 'data-changed') {
+    // Set up Tauri event listener
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen<{ timestamp: number }>('portal-data-changed', (event) => {
+        console.log('[Portal] Received portal-data-changed:', event.payload);
         get().refresh();
-      }
-    };
-
-    channel.addEventListener('message', handleMessage);
-    console.log('[Portal] BroadcastChannel listener set up');
+      }).then((unlistenFn) => {
+        unlisten = unlistenFn;
+        console.log('[Portal] Tauri event listener set up');
+      });
+    }).catch((e) => {
+      console.error('[Portal] Failed to set up Tauri listener:', e);
+    });
 
     // Return cleanup function
     return () => {
-      channel.removeEventListener('message', handleMessage);
-      channel.close();
+      if (unlisten) {
+        unlisten();
+      }
     };
   },
 }));

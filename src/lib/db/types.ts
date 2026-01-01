@@ -44,7 +44,6 @@ export interface LocalViewSettings extends SyncMetadata {
   cardSpacing: number;        // 0-40 pixels (gap between cards)
   cardSize: string;           // small, medium, large, xl
   showMetadataFooter: boolean; // Toggle card footer (title, tags inside card)
-  showUrlPill: boolean;       // Toggle URL pill overlay on thumbnail
   // List view column settings
   listColumnOrder?: string[];              // Column order (array of column IDs)
   listColumnWidths?: Record<string, number>;  // Column widths by ID
@@ -113,8 +112,9 @@ export interface LocalCard extends SyncMetadata {
   wordCount?: number;           // Word count of article content
   readingTime?: number;         // Estimated minutes (wordCount / 225 WPM)
   readProgress?: number;        // 0-100 scroll percentage
-  isRead?: boolean;             // Manual toggle or auto at 100%
+  isRead?: boolean;             // Manual toggle or auto after 15s in modal
   lastScrollPosition?: number;  // Pixel position for resume reading
+  manuallyMarkedUnread?: boolean; // If user marks unread, never auto-mark read again
 
   // Link Health
   linkStatus?: 'ok' | 'broken' | 'redirect' | 'unchecked';
@@ -123,6 +123,10 @@ export interface LocalCard extends SyncMetadata {
 
   // Daily Note
   isDailyNote?: boolean;        // Flag for daily note cards
+
+  // Sync conflict tracking
+  version: number;              // Incremented on each server update (for conflict detection)
+  conflictWithId?: string;      // Links to conflicting card (both cards reference each other)
 
   // Timestamps
   createdAt: Date;

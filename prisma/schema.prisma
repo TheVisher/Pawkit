@@ -191,6 +191,10 @@ model Card {
   // Daily Note
   isDailyNote Boolean @default(false)
 
+  // Sync conflict tracking
+  version        Int     @default(1) // Incremented on each server update
+  conflictWithId String? // Links to conflicting card (both cards reference each other)
+
   // Junction for notes in Pawkits
   collectionNotes CollectionNote[]
 

@@ -30,18 +30,10 @@ export {
 } from './workspace-store';
 
 // Data (cards, collections)
+// Note: useCards and useCollections are now in @/lib/hooks/use-live-data
 export {
   useDataStore,
-  useCards,
-  useCollections,
   useDataLoading,
-  selectCards,
-  selectCollections,
-  selectCardById,
-  selectCollectionBySlug,
-  selectCardsByCollection,
-  selectCardsByType,
-  selectPinnedCards,
 } from './data-store';
 
 // UI

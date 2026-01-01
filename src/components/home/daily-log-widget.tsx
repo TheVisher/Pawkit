@@ -13,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useCards } from '@/lib/hooks/use-live-data';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { triggerSync } from '@/lib/services/sync-queue';
 import { cn } from '@/lib/utils';
@@ -23,7 +24,7 @@ export function DailyLogWidget() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const workspace = useCurrentWorkspace();
-  const cards = useDataStore((s) => s.cards);
+  const cards = useCards(workspace?.id);
   const isLoading = useDataStore((s) => s.isLoading);
   const createCard = useDataStore((s) => s.createCard);
   const updateCard = useDataStore((s) => s.updateCard);

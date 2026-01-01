@@ -87,6 +87,10 @@ export const createCardSchema = z.object({
   // Smart Detection
   convertedToTodo: z.boolean().default(false),
   dismissedTodoSuggestion: z.boolean().default(false),
+
+  // Sync conflict tracking
+  version: z.number().int().min(1).default(1),
+  conflictWithId: z.string().nullish(),
 });
 
 /**
@@ -149,6 +153,13 @@ export const updateCardSchema = z.object({
   // Soft delete (allow setting via PATCH for sync)
   deleted: z.boolean().optional(),
   deletedAt: z.string().datetime().nullish(),
+
+  // Sync conflict tracking
+  version: z.number().int().min(1).optional(),
+  conflictWithId: z.string().nullish(),
+
+  // Expected version for conflict detection (client sends this)
+  expectedVersion: z.number().int().min(1).optional(),
 });
 
 /**

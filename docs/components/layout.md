@@ -75,12 +75,24 @@ src/components/layout/
 ├── right-sidebar/                 # Right sidebar module
 │   ├── index.tsx                  # Main orchestration
 │   ├── SidebarSection.tsx         # Reusable accordion component
-│   ├── FilterSections.tsx         # Individual filter logic/UI
+│   ├── sections/                  # Modular filter and display components
+│   │   ├── TagsFilter.tsx
+│   │   ├── ContentTypeFilter.tsx
+│   │   ├── SortOptions.tsx
+│   │   └── ...
 │   ├── CardDetailsPanel.tsx       # "Inspector" view for active card
 │   ├── CardDisplaySettings.tsx    # Grid/View customization controls
 │   ├── SettingsPanel.tsx          # Settings panel with tabbed navigation
 │   └── calendar/                  # Calendar-specific sidebar content
-├── omnibar.tsx                    # Search bar + Toast notifications container
+├── omnibar/                       # Unified command palette module
+│   ├── index.tsx                  # UI bridge/container
+│   ├── idle-content.tsx           # Search/Capture UI
+│   ├── search-results-panel.tsx   # Results list
+│   └── use-omnibar/               # Specialized logic hooks
+│       ├── index.ts               # Mode orchestrator
+│       ├── use-search.ts          # Search/Capture logic
+│       ├── use-add-mode.ts        # Dropdown logic
+│       └── use-kit-mode.ts        # AI chat logic
 ├── mobile-nav.tsx                 # Bottom navigation for mobile
 ├── page-header.tsx                # Top bar of the center panel
 ├── toast-stack.tsx                # Physics-based toast notification stack
@@ -88,17 +100,18 @@ src/components/layout/
 
 src/components/settings/
 └── sections/
-    ├── appearance-section.tsx     # Visual style, theme, accent color, background
+    ├── appearance-section.tsx     # Visual style, theme, background
+    ├── accent-color-picker.tsx    # Modular color selection
     ├── account-section.tsx        # User info, workspace settings
     └── data-section.tsx           # Danger zone, data deletion
 ```
 
 ### Key Components & Patterns
 
-#### Left Sidebar (`left-sidebar.tsx`)
-- **Sliding Highlight**: Uses `framer-motion`'s `layoutId="active-sidebar-item"` to animate the active background state between nav items.
-- **Pawkits Tree**: A nested, collapsible tree structure wrapped in `AnimatePresence` for smooth height/opacity transitions.
-- **Hover Effects**: Features a subtle "Purple Glow" line gradient at the bottom of items on hover.
+#### Modular Omnibar (`omnibar/`)
+- **Mode Coordination**: Orchestrates between **Search/Quick Note**, **Add**, and **Kit AI** modes. Ensures only one mode is active to prevent UI overlap.
+- **Specialized Hooks**: Decouples search logic from UI, making it easier to maintain and test. `useSearch` manages the complexity of debounced queries and result execution.
+- **Context Awareness**: Omnibar detects the current page (e.g., `/tags`) to provide context-specific filtering behaviors.
 
 #### Right Sidebar (`right-sidebar/`)
 - **Flexible Expansion System**: The sidebar supports multiple width modes defined in `ui-store.ts`.
@@ -110,15 +123,11 @@ src/components/settings/
     - Rotates and transforms into an 'X' via CSS transitions.
     - Expands the sidebar to 480px smoothly.
     - Displays browser-style tabs for Settings navigation.
-- **Modular Sections**: Split into `FilterSections.tsx` to handle specific filter logic (Tags, Sort, Group, etc.).
+- **Modular Sections**: Split into `sections/` directory to handle specific filter logic (Tags, Sort, Group, etc.), reducing the "God Component" complexity of `FilterSections.tsx`.
 - **SidebarSection**: A reusable accordion component (`SidebarSection.tsx`) that enforces:
     -   Standard LTR layout (Title Left, Chevron Right).
     -   "Thread line" style: A left-border indicator for expanded content.
     -   Smooth expand/collapse animations.
-- **Filter Styles**:
-    -   **Single-Select** (Sort, Group): Clean text, purple background wrapper when active.
-    -   **Multi-Select** (Content Type, Tags): Button-like appearance with background/border.
-    -   **Icons**: Uses `lucide-react` icons for grid controls (Grid3x3, Grid2x2, Square) instead of text.
 
 ---
 
@@ -132,10 +141,10 @@ src/components/settings/
     -   Unified "purple glow" hover effects.
     -   Sliding glass-morphism active states.
     -   Softer accent tints for clearer visual hierarchy.
-- [x] **Right Sidebar Refactor**: Broken down into manageable sub-components with consistent accordion behavior.
+- [x] **Right Sidebar Refactor**: Broken down into modular sections and a reusable accordion system.
 - [x] **Settings Panel**: Integrated into right sidebar with animated gear/X icon toggle.
 - [x] **Visual Styles**: Glass, Flat, and High Contrast themes with CSS variable system.
-- [x] **Omnibar**: Unified search/command/capture interface.
+- [x] **Omnibar Refactor**: Decoupled mode-based architecture with specialized hooks.
 - [x] **Responsive**: Mobile bottom nav activates correctly on small screens.
 
 ### What's Not Implemented
@@ -147,6 +156,8 @@ src/components/settings/
 
 | Date | Change | Implementation Details |
 |------|--------|------------------------|
+| 2025-12-30 | **Omnibar Refactor** | Split `use-omnibar.ts` into focused hooks for Search, Add, and Kit modes with a central orchestrator. |
+| 2025-12-30 | **Modular Filters** | Split `FilterSections.tsx` into individual files in `right-sidebar/sections/`. |
 | 2025-12-30 | **High Contrast WCAG AAA** | Full accessibility compliance for High Contrast mode: 7:1+ text ratios, 2px borders, focus indicators, link underlines, input/button styling. |
 | 2025-12-30 | **Settings Panel** | Added `SettingsPanel` to right sidebar with gear/X icon transition; tabs for Appearance, Account, Data. |
 | 2025-12-30 | **Visual Styles System** | Implemented Glass, Flat, and High Contrast visual styles with CSS variable overrides. |

@@ -25,6 +25,8 @@ export type UnsortedFilter = 'none' | 'no-pawkits' | 'no-tags' | 'both';
 export type ReadingFilter = 'all' | 'unread' | 'in-progress' | 'read';
 // Link status filter
 export type LinkStatusFilter = 'all' | 'ok' | 'broken' | 'redirect' | 'unchecked';
+// Scheduled status filter
+export type ScheduledFilter = 'all' | 'scheduled' | 'overdue' | 'not-scheduled';
 
 // File extensions for uploaded files
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v'];
@@ -212,7 +214,6 @@ interface ViewState {
   // Card display settings
   cardSize: CardSize; // small, medium, large, xl
   showMetadataFooter: boolean; // Toggle card footer (title, tags inside card)
-  showUrlPill: boolean; // Toggle URL pill overlay on thumbnail
 
   // Manual card order (per-view, stored as array of card IDs)
   cardOrder: string[];
@@ -225,9 +226,12 @@ interface ViewState {
   // Local-only filters (not persisted)
   contentTypeFilters: ContentType[]; // Multi-select, OR logic
   selectedTags: string[]; // Filter by these tags (AND logic)
-  unsortedFilter: UnsortedFilter; // Quick filter for unorganized items
-  readingFilter: ReadingFilter; // Filter by reading status
+  unsortedFilter: UnsortedFilter; // Quick filter for unorganized items (legacy, kept for compat)
+  readingFilter: ReadingFilter; // Filter by reading status (legacy, kept for compat)
+  showNoTagsOnly: boolean; // Filter to show only cards with no tags
+  showNoPawkitsOnly: boolean; // Filter to show only cards not in any Pawkit
   linkStatusFilter: LinkStatusFilter; // Filter by link health status
+  scheduledFilter: ScheduledFilter; // Filter by scheduled status
   showDuplicatesOnly: boolean; // Show only cards with duplicate URLs
 
   // Grouping (persisted)
@@ -261,7 +265,6 @@ interface ViewState {
   setCardSpacing: (spacing: number) => void;
   setCardSize: (size: CardSize) => void;
   setShowMetadataFooter: (show: boolean) => void;
-  setShowUrlPill: (show: boolean) => void;
   toggleContentType: (type: ContentType) => void; // Add/remove content type from selection
   clearContentTypes: () => void;
   setGroupBy: (groupBy: GroupBy) => void;
@@ -278,7 +281,10 @@ interface ViewState {
   clearTags: () => void;
   setUnsortedFilter: (filter: UnsortedFilter) => void;
   setReadingFilter: (filter: ReadingFilter) => void;
+  setShowNoTagsOnly: (show: boolean) => void;
+  setShowNoPawkitsOnly: (show: boolean) => void;
   setLinkStatusFilter: (filter: LinkStatusFilter) => void;
+  setScheduledFilter: (filter: ScheduledFilter) => void;
   setShowDuplicatesOnly: (show: boolean) => void;
 
   // Manual ordering
@@ -307,7 +313,6 @@ const DEFAULT_VIEW_SETTINGS = {
   cardSpacing: 16, // 0-40 pixels (gap between cards)
   cardSize: 'medium' as CardSize,
   showMetadataFooter: true,
-  showUrlPill: true,
   cardOrder: [] as string[],
   // Grouping
   groupBy: 'none' as GroupBy,
@@ -335,7 +340,10 @@ export const useViewStore = create<ViewState>((set, get) => ({
   selectedTags: [],
   unsortedFilter: 'none' as UnsortedFilter,
   readingFilter: 'all' as ReadingFilter,
+  showNoTagsOnly: false,
+  showNoPawkitsOnly: false,
   linkStatusFilter: 'all' as LinkStatusFilter,
+  scheduledFilter: 'all' as ScheduledFilter,
   showDuplicatesOnly: false,
   isLoading: false,
 
@@ -366,8 +374,6 @@ export const useViewStore = create<ViewState>((set, get) => ({
 
   setShowMetadataFooter: (show) => set({ showMetadataFooter: show }),
 
-  setShowUrlPill: (show) => set({ showUrlPill: show }),
-
   toggleContentType: (type) => set((state) => {
     const current = state.contentTypeFilters;
     if (current.includes(type)) {
@@ -396,7 +402,13 @@ export const useViewStore = create<ViewState>((set, get) => ({
 
   setReadingFilter: (filter) => set({ readingFilter: filter }),
 
+  setShowNoTagsOnly: (show) => set({ showNoTagsOnly: show }),
+
+  setShowNoPawkitsOnly: (show) => set({ showNoPawkitsOnly: show }),
+
   setLinkStatusFilter: (filter) => set({ linkStatusFilter: filter }),
+
+  setScheduledFilter: (filter) => set({ scheduledFilter: filter }),
 
   setShowDuplicatesOnly: (show) => set({ showDuplicatesOnly: show }),
 
@@ -455,7 +467,6 @@ export const useViewStore = create<ViewState>((set, get) => ({
           cardOrder?: string[];
           cardSize?: CardSize;
           showMetadataFooter?: boolean;
-          showUrlPill?: boolean;
           listColumnOrder?: string[];
           listColumnWidths?: Record<string, number>;
           listColumnVisibility?: Record<string, boolean>;
@@ -480,7 +491,6 @@ export const useViewStore = create<ViewState>((set, get) => ({
           cardSpacing: s.cardSpacing ?? DEFAULT_VIEW_SETTINGS.cardSpacing,
           cardSize: s.cardSize || DEFAULT_VIEW_SETTINGS.cardSize,
           showMetadataFooter: s.showMetadataFooter ?? DEFAULT_VIEW_SETTINGS.showMetadataFooter,
-          showUrlPill: s.showUrlPill ?? DEFAULT_VIEW_SETTINGS.showUrlPill,
           cardOrder: s.cardOrder || [],
           listColumnOrder: s.listColumnOrder || [],
           listColumnWidths: s.listColumnWidths || {},
@@ -510,7 +520,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
   saveViewSettings: async (workspaceId) => {
     const {
       currentView, layout, sortBy, sortOrder, showTitles, showUrls, showTags,
-      cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, cardOrder,
+      cardPadding, cardSpacing, cardSize, showMetadataFooter, cardOrder,
       listColumnOrder, listColumnWidths, listColumnVisibility, groupBy, dateGrouping,
       subPawkitSize, subPawkitColumns,
       pawkitOverviewSize, pawkitOverviewColumns, pawkitOverviewShowThumbnails,
@@ -537,7 +547,6 @@ export const useViewStore = create<ViewState>((set, get) => ({
           cardSpacing,
           cardSize,
           showMetadataFooter,
-          showUrlPill,
           cardOrder,
           listColumnOrder,
           listColumnWidths,
@@ -570,7 +579,6 @@ export const useViewStore = create<ViewState>((set, get) => ({
           cardSpacing,
           cardSize,
           showMetadataFooter,
-          showUrlPill,
           cardOrder,
           listColumnOrder,
           listColumnWidths,
@@ -610,7 +618,7 @@ export const useViewStore = create<ViewState>((set, get) => ({
   },
 
   // Reset to defaults (without saving)
-  resetToDefaults: () => set({ ...DEFAULT_VIEW_SETTINGS, contentTypeFilters: [], selectedTags: [], readingFilter: 'all' as ReadingFilter, linkStatusFilter: 'all' as LinkStatusFilter, showDuplicatesOnly: false }),
+  resetToDefaults: () => set({ ...DEFAULT_VIEW_SETTINGS, contentTypeFilters: [], selectedTags: [], readingFilter: 'all' as ReadingFilter, linkStatusFilter: 'all' as LinkStatusFilter, scheduledFilter: 'all' as ScheduledFilter, showDuplicatesOnly: false }),
 }));
 
 // =============================================================================
@@ -633,7 +641,6 @@ export const selectDisplaySettings = (state: ViewState) => ({
   cardSpacing: state.cardSpacing,
   cardSize: state.cardSize,
   showMetadataFooter: state.showMetadataFooter,
-  showUrlPill: state.showUrlPill,
 });
 
 export const selectCardSize = (state: ViewState) => state.cardSize;
@@ -657,7 +664,6 @@ export function useViewSettings() {
       cardSpacing: state.cardSpacing,
       cardSize: state.cardSize,
       showMetadataFooter: state.showMetadataFooter,
-      showUrlPill: state.showUrlPill,
       cardOrder: state.cardOrder,
     }))
   );
@@ -677,7 +683,6 @@ export function useViewActions() {
       setCardSpacing: state.setCardSpacing,
       setCardSize: state.setCardSize,
       setShowMetadataFooter: state.setShowMetadataFooter,
-      setShowUrlPill: state.setShowUrlPill,
       setCardOrder: state.setCardOrder,
       reorderCards: state.reorderCards,
       loadViewSettings: state.loadViewSettings,
@@ -695,7 +700,6 @@ export function useCardDisplaySettings() {
       cardSpacing: state.cardSpacing,
       cardSize: state.cardSize,
       showMetadataFooter: state.showMetadataFooter,
-      showUrlPill: state.showUrlPill,
       showTitles: state.showTitles,
       showTags: state.showTags,
     }))
