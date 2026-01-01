@@ -68,6 +68,14 @@ export function useTauriEvents() {
               status: 'PENDING', // Triggers metadata fetching
             });
             log.info('Card created from portal URL - metadata fetch will trigger sync');
+
+            // Broadcast to portal to refresh its view
+            if ('BroadcastChannel' in window) {
+              const channel = new BroadcastChannel('pawkit-sync');
+              channel.postMessage({ type: 'data-changed', source: 'portal-drop' });
+              channel.close();
+              log.info('Broadcast data-changed to portal');
+            }
           } catch (error) {
             log.error('Failed to create card from portal:', error);
           }
