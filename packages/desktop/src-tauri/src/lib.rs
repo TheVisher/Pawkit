@@ -506,7 +506,7 @@ fn create_portal_window(app: &tauri::AppHandle, port: u16) -> tauri::Result<()> 
     .title("Pawkit Portal")
     .inner_size(state.width as f64, state.height as f64)
     .position(x as f64, y as f64)
-    .min_inner_size(300.0, 350.0)  // Minimum for compact mode
+    .min_inner_size(320.0, 400.0)  // Minimum: single column cards with floating sidebar
     .resizable(true)
     .always_on_top(true)
     .visible(false)

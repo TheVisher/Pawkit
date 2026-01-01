@@ -32,6 +32,7 @@ body.portal-window {
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-width: 320px; /* Matches Tauri minimum */
   height: 100vh;
   /* Gradient background - panels float on top */
   background-color: var(--bg-gradient-base);
@@ -248,6 +249,7 @@ body.portal-window {
 
 /* ============================================================================
    CARDS GRID - THE ONLY ELEMENT THAT SCROLLS
+   Uses container queries for responsive column layout
    ============================================================================ */
 
 .cards-grid {
@@ -255,18 +257,39 @@ body.portal-window {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 16px;
+  container-type: inline-size;
+  container-name: cards-container;
 }
 
-/* Masonry layout */
+/* Masonry layout - responsive based on container width */
 .portal-masonry {
-  column-count: 2;
   column-gap: 12px;
+  /* Default: 2 columns when container is wide enough */
+  column-count: 2;
 }
 
+/* Card minimum width styling */
 .portal-masonry > * {
   break-inside: avoid;
   margin-bottom: 12px;
   animation: cardFadeIn 0.3s ease-out;
+  /* Ensure cards have a reasonable minimum width */
+  min-width: 0;
+}
+
+/* Responsive columns using container queries */
+/* Switch to 1 column when container is less than 380px */
+@container cards-container (max-width: 380px) {
+  .portal-masonry {
+    column-count: 1;
+  }
+}
+
+/* 2 columns when container is 380px or wider */
+@container cards-container (min-width: 381px) {
+  .portal-masonry {
+    column-count: 2;
+  }
 }
 
 @keyframes cardFadeIn {

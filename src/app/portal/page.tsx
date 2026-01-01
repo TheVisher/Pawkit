@@ -15,13 +15,52 @@ import { PortalCardItem } from './components/portal-card-item';
  * The portal is a separate webview with its own JS runtime,
  * so we query IndexedDB directly for automatic reactivity.
  */
+// Responsive breakpoints for Portal window
+const BREAKPOINTS = {
+  // Below this width, sidebar auto-floats
+  SIDEBAR_FLOAT: 500,
+  // Minimum window width (enforced in Tauri, but also in CSS)
+  MIN_WIDTH: 320,
+};
+
 export default function PortalPage() {
   const [selectedPawkit, setSelectedPawkit] = useState<string | null>(null);
-  const [sidebarAnchored, setSidebarAnchored] = useState(true);
+
+  // Sidebar state - tracks both user preference and auto state
+  const [userPrefersAnchored, setUserPrefersAnchored] = useState(true);
+  const [autoFloatedByResize, setAutoFloatedByResize] = useState(false);
+
+  // Computed sidebar anchored state
+  const sidebarAnchored = userPrefersAnchored && !autoFloatedByResize;
 
   // External drag state
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [dropTargetPawkit, setDropTargetPawkit] = useState<string | null>(null);
+
+  // Track window width for responsive behavior
+  useEffect(() => {
+    const handleResize = () => {
+      const width = window.innerWidth;
+
+      // Auto-float sidebar when window is too narrow
+      if (width < BREAKPOINTS.SIDEBAR_FLOAT) {
+        setAutoFloatedByResize(true);
+      } else {
+        setAutoFloatedByResize(false);
+      }
+    };
+
+    // Initial check
+    handleResize();
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Handler for manual sidebar toggle (user preference)
+  const handleToggleSidebarAnchored = (anchored: boolean) => {
+    setUserPrefersAnchored(anchored);
+  };
 
   // Get the default workspace directly from Dexie
   const currentWorkspace = useLiveQuery(
@@ -313,7 +352,7 @@ export default function PortalPage() {
             <div className="sidebar-header">
               <span>Pawkits</span>
               <button
-                onClick={() => setSidebarAnchored(false)}
+                onClick={() => handleToggleSidebarAnchored(false)}
                 className="h-5 w-5 flex items-center justify-center rounded text-text-muted hover:text-text-primary hover:bg-glass-bg transition-colors"
                 title="Float sidebar"
               >
@@ -358,7 +397,7 @@ export default function PortalPage() {
               <div className="sidebar-header">
                 <span>Pawkits</span>
                 <button
-                  onClick={() => setSidebarAnchored(true)}
+                  onClick={() => handleToggleSidebarAnchored(true)}
                   className="h-5 w-5 flex items-center justify-center rounded text-text-muted hover:text-text-primary hover:bg-glass-bg transition-colors"
                   title="Anchor sidebar"
                 >
