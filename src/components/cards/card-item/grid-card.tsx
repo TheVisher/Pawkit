@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import DOMPurify from 'dompurify';
-import { Globe, Pin, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Globe, Pin, AlertTriangle, ExternalLink, Phone, Mail, MessageSquare } from 'lucide-react';
+import { extractContactInfo } from '@/lib/tags/supertags';
 import { SyncStatusIndicator } from '@/components/cards/sync-status-indicator';
 import { cn } from '@/lib/utils';
 import type { LocalCard } from '@/lib/db';
@@ -106,6 +107,20 @@ export function GridCard({
   const sanitizedContent = isNoteCard(card.type)
     ? DOMPurify.sanitize(card.content || '<p>Empty note</p>')
     : '';
+
+  // Check if this is a contact card and extract contact info for quick actions
+  const isContactCard = useMemo(
+    () => (card.tags || []).some((t) => t.toLowerCase() === 'contact'),
+    [card.tags]
+  );
+
+  const contactInfo = useMemo(
+    () => isContactCard ? extractContactInfo(card.content || '') : null,
+    [isContactCard, card.content]
+  );
+
+  // Check if we have any quick actions to show
+  const hasQuickActions = contactInfo && (contactInfo.phone || contactInfo.email);
 
   return (
     <button
@@ -273,6 +288,80 @@ export function GridCard({
                 <ExternalLink className="h-4.5 w-4.5" style={{ color: 'var(--color-text-primary)' }} />
               )}
             </a>
+          )}
+
+          {/* Contact quick actions - Call, Email, Message - centered at bottom of thumbnail */}
+          {hasQuickActions && (
+            <div
+              className={cn(
+                'absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5',
+                'opacity-0 group-hover:opacity-100',
+                'translate-y-1 group-hover:translate-y-0',
+                'transition-all duration-200 ease-out',
+                'z-10'
+              )}
+            >
+              {contactInfo?.phone && (
+                <a
+                  href={`tel:${contactInfo.phone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn(
+                    'p-2 rounded-lg',
+                    'hover:scale-110 active:scale-95',
+                    'transition-transform duration-150'
+                  )}
+                  style={{
+                    background: 'var(--glass-bg)',
+                    backdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
+                    WebkitBackdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
+                    border: '1px solid var(--glass-border)',
+                  }}
+                  title="Call"
+                >
+                  <Phone className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+                </a>
+              )}
+              {contactInfo?.email && (
+                <a
+                  href={`mailto:${contactInfo.email}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn(
+                    'p-2 rounded-lg',
+                    'hover:scale-110 active:scale-95',
+                    'transition-transform duration-150'
+                  )}
+                  style={{
+                    background: 'var(--glass-bg)',
+                    backdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
+                    WebkitBackdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
+                    border: '1px solid var(--glass-border)',
+                  }}
+                  title="Email"
+                >
+                  <Mail className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+                </a>
+              )}
+              {contactInfo?.phone && (
+                <a
+                  href={`sms:${contactInfo.phone}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn(
+                    'p-2 rounded-lg',
+                    'hover:scale-110 active:scale-95',
+                    'transition-transform duration-150'
+                  )}
+                  style={{
+                    background: 'var(--glass-bg)',
+                    backdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
+                    WebkitBackdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
+                    border: '1px solid var(--glass-border)',
+                  }}
+                  title="Message"
+                >
+                  <MessageSquare className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+                </a>
+              )}
+            </div>
           )}
 
           {/* Top right indicators - only broken link and pinned (scheduled moved to footer as system tag) */}
