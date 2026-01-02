@@ -10,6 +10,11 @@ import { addToQueue, clearAllSyncQueue, resolveConflictOnDelete } from '@/lib/se
 import { queueMetadataFetch } from '@/lib/services/metadata-service';
 import { useLayoutCacheStore } from './layout-cache-store';
 import { getUpdatedScheduleTagsIfNeeded } from '@/lib/utils/system-tags';
+import {
+  addCardToPawkit,
+  removeCardFromPawkit,
+  moveCardToPawkit,
+} from '@/lib/migrations/tag-architecture-migration';
 
 // Type declaration for debug helpers exposed on window
 declare global {
@@ -181,25 +186,37 @@ export const useDataStore = create<DataState>((set, get) => ({
     // permanent deletion separately.
   },
 
+  // Add card to Pawkit using tag-based architecture
+  // This adds the Pawkit slug AND all ancestor slugs to the card's tags
+  // See: .claude/skills/pawkit-tag-architecture/SKILL.md
   addCardToCollection: async (cardId: string, collectionSlug: string) => {
     const card = await db.cards.get(cardId);
     if (!card) return;
 
-    // Avoid duplicates
-    if (card.collections.includes(collectionSlug)) return;
+    // Use tag-based Pawkit assignment (adds ancestor tags)
+    await addCardToPawkit(cardId, collectionSlug, card.workspaceId);
 
-    const newCollections = [...card.collections, collectionSlug];
-
-    await get().updateCard(cardId, { collections: newCollections });
+    // Queue sync for the updated tags
+    const updatedCard = await db.cards.get(cardId);
+    if (updatedCard) {
+      await addToQueue('card', cardId, 'update', { tags: updatedCard.tags });
+    }
   },
 
+  // Remove card from Pawkit using tag-based architecture
+  // This removes the Pawkit slug AND all ancestor slugs from the card's tags
   removeCardFromCollection: async (cardId: string, collectionSlug: string) => {
     const card = await db.cards.get(cardId);
     if (!card) return;
 
-    const newCollections = card.collections.filter(s => s !== collectionSlug);
+    // Use tag-based Pawkit removal (removes ancestor tags)
+    await removeCardFromPawkit(cardId, collectionSlug, card.workspaceId);
 
-    await get().updateCard(cardId, { collections: newCollections });
+    // Queue sync for the updated tags
+    const updatedCard = await db.cards.get(cardId);
+    if (updatedCard) {
+      await addToQueue('card', cardId, 'update', { tags: updatedCard.tags });
+    }
   },
 
   // ==========================================================================

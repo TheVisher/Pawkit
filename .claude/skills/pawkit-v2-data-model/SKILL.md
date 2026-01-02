@@ -4,6 +4,13 @@
 
 **Created**: December 20, 2025
 
+**Updated**: January 2, 2026 - Tag-based architecture (see `.claude/skills/pawkit-tag-architecture/SKILL.md`)
+
+---
+
+> **IMPORTANT**: The `collections` field has been REMOVED. All organization is now done via `tags`.
+> See [Tag Architecture SKILL.md](../pawkit-tag-architecture/SKILL.md) for the complete tag system design.
+
 ---
 
 ## CORE ENTITIES
@@ -32,15 +39,13 @@ model Card {
   metadata        Json?
   status          String    @default("PENDING")  // PENDING, READY, ERROR
 
-  // Organization
-  tags            String[]
-  collections     String[]  // Array of collection SLUGS (not IDs)
+  // Organization - TAGS ONLY (no collections field)
+  tags            String[]  // Includes Pawkit slugs, user tags, date tags, supertags
   pinned          Boolean   @default(false)
 
-  // Scheduling
-  scheduledDate   DateTime?
-  scheduledStartTime String?
-  scheduledEndTime   String?
+  // Scheduling - NOW DONE VIA DATE TAGS (e.g., #2026-01-30, #time-14-00)
+  // scheduledDate, scheduledStartTime, scheduledEndTime are DEPRECATED
+  // Use date tags instead: card.tags.includes('2026-01-30')
 
   // Soft delete
   deleted         Boolean   @default(false)
@@ -49,6 +54,17 @@ model Card {
   updatedAt       DateTime  @updatedAt
 }
 ```
+
+### Tag Types (All in `tags` array)
+
+| Tag Type | Example | Purpose |
+|----------|---------|---------|
+| Pawkit slug | `recipes`, `work` | Organization (replaces collections) |
+| User tag | `favorite`, `to-read` | Personal categorization |
+| Date tag | `2026-01-30` | Scheduling (replaces scheduledDate) |
+| Time tag | `time-14-00` | Time scheduling |
+| Supertag | `contact`, `todo` | Behavior/template hints |
+| System tag | `read`, `5m` | Auto-generated metadata |
 
 ### Card Types
 
@@ -115,10 +131,11 @@ model Workspace {
 - **Example**: `clxyz123abc456def789`
 - **Why**: Collision-resistant, sortable, works offline
 
-### Collection References
-- **Cards reference collections by SLUG, not ID**
-- **Why**: User-friendly URLs, readable in data
-- **Example**: `card.collections = ["restaurants", "to-visit"]`
+### Pawkit References (via Tags)
+- **Cards reference Pawkits via TAGS, not a separate field**
+- **Pawkit slug IS the tag**: `card.tags = ["restaurants", "to-visit", "favorite"]`
+- **Ancestor inheritance**: Card in nested Pawkit gets all ancestor tags
+- **See**: [Tag Architecture SKILL.md](../pawkit-tag-architecture/SKILL.md)
 
 ### Workspace Isolation
 - **ALL queries filter by `workspaceId`**
@@ -145,9 +162,10 @@ class PawkitDB extends Dexie {
     super('pawkit');
 
     this.version(1).stores({
-      cards: 'id, workspaceId, [workspaceId+deleted], [workspaceId+type], [workspaceId+status], updatedAt',
-      collections: 'id, workspaceId, [workspaceId+slug], [workspaceId+deleted], parentId',
-      events: 'id, workspaceId, [workspaceId+date], [workspaceId+deleted]',
+      // CRITICAL: *tags is a multi-entry index for tag-based queries
+      cards: 'id, workspaceId, [workspaceId+_deleted], [workspaceId+type], [workspaceId+status], *tags, updatedAt',
+      collections: 'id, workspaceId, [workspaceId+slug], [workspaceId+_deleted], parentId',
+      events: 'id, workspaceId, [workspaceId+date], [workspaceId+_deleted]',
       todos: 'id, workspaceId, [workspaceId+completed], [workspaceId+dueDate]',
       syncQueue: '++id, entityType, entityId, operation, createdAt',
       metadata: 'key',
@@ -158,10 +176,11 @@ class PawkitDB extends Dexie {
 }
 ```
 
-### Compound Indexes
-- `[workspaceId+deleted]` - Fast filtered queries
+### Indexes
+- `*tags` - **CRITICAL**: Multi-entry index for tag-based queries (Pawkits, dates, supertags)
+- `[workspaceId+_deleted]` - Fast filtered queries
 - `[workspaceId+type]` - Content type filtering
-- `[workspaceId+slug]` - Collection lookup
+- `[workspaceId+slug]` - Pawkit lookup
 
 ---
 
@@ -169,9 +188,16 @@ class PawkitDB extends Dexie {
 
 ```typescript
 interface LocalCard extends Card {
+  // Sync metadata
   _localOnly?: boolean;      // Not yet synced to server
-  _pendingSync?: boolean;    // Has unsynced changes
+  _synced?: boolean;         // Sync status
+  _lastModified?: Date;      // Local modification time
   _serverVersion?: string;   // Server's updatedAt for conflict detection
+  _deleted?: boolean;        // Soft delete flag
+  _deletedAt?: Date;
+
+  // NOTE: No `collections` field - use `tags` for Pawkit membership
+  // Tags include: Pawkit slugs, user tags, date tags, supertags
 }
 ```
 
@@ -182,13 +208,26 @@ interface LocalCard extends Card {
 ```
 User (1) ─────────> (*) Workspace
 Workspace (1) ─────> (*) Card
-Workspace (1) ─────> (*) Collection
+Workspace (1) ─────> (*) Pawkit (Collection entity)
 Workspace (1) ─────> (*) CalendarEvent
 Workspace (1) ─────> (*) Todo
 
-Card (*) ────────── (*) Collection (via slugs in card.collections array)
-Card (1) ─────────> (*) CollectionNote (junction for notes in Pawkits)
-Collection (1) ───> (*) Collection (self-reference via parentId for nesting)
+Card ←──── tags ────> Pawkit (via tag matching Pawkit slug)
+Pawkit (1) ───> (*) Pawkit (self-reference via parentId for nesting)
+```
+
+### Tag-Based Relationship
+
+```
+Card has tags: ["contacts", "work", "favorite", "2026-01-30"]
+                    ↑         ↑         ↑            ↑
+                 Pawkit    Pawkit    User tag    Date tag
+                 (root)    (leaf)
+
+Pawkit "work" has parentId → Pawkit "contacts"
+
+Query "work" Pawkit: cards where tags.includes("work") AND no descendant tags
+Query Library + #contacts: cards where tags.includes("contacts")
 ```
 
 ---
@@ -198,7 +237,11 @@ Collection (1) ───> (*) Collection (self-reference via parentId for nestin
 | Decision | Rationale |
 |----------|-----------|
 | No separate Notes view | Notes are cards with `type: 'md-note'`, filtered via Library |
-| Collections by slug | Readable data, user-friendly URLs |
+| **Tags as universal primitive** | Single array for Pawkits, scheduling, supertags, user tags |
+| **No collections field** | Pawkit membership via tags (see Tag Architecture SKILL.md) |
+| **Ancestor tag inheritance** | Cards in nested Pawkits get all ancestor tags as breadcrumbs |
+| **Leaf-only display** | Cards show in deepest Pawkit only, not parents |
+| **Date tags for scheduling** | `#2026-01-30` instead of `scheduledDate` field |
 | Soft delete everywhere | Recovery possible, sync-friendly |
 | Status field on Card | Async metadata fetch tracking |
 | `notes` separate from `content` | User annotations vs scraped content |
@@ -212,28 +255,58 @@ Collection (1) ───> (*) Collection (self-reference via parentId for nestin
 const bookmarks = await db.cards
   .where('[workspaceId+type]')
   .equals([workspaceId, 'url'])
-  .filter(c => !c.deleted)
+  .filter(c => !c._deleted)
   .toArray();
 ```
 
-### Get all cards in a collection
+### Get all cards in a Pawkit (leaf-only display)
 ```typescript
-const cards = await db.cards
-  .where('workspaceId')
-  .equals(workspaceId)
-  .filter(c => !c.deleted && c.collections.includes(collectionSlug))
+function getCardsInPawkit(workspaceId: string, pawkitSlug: string): Promise<Card[]> {
+  const descendants = getDescendantSlugs(pawkitSlug);
+
+  return db.cards
+    .where('tags')
+    .equals(pawkitSlug)
+    .filter(card =>
+      card.workspaceId === workspaceId &&
+      !card._deleted &&
+      !descendants.some(d => card.tags.includes(d))  // Exclude cards in child Pawkits
+    )
+    .toArray();
+}
+```
+
+### Get all cards with a tag (Library cross-cutting search)
+```typescript
+const allContacts = await db.cards
+  .where('tags')
+  .equals('contacts')  // Shows ALL contacts, including those in child Pawkits
+  .filter(c => c.workspaceId === workspaceId && !c._deleted)
   .toArray();
 ```
 
-### Get nested collections
+### Get cards for a date (calendar)
+```typescript
+const cardsOnDate = await db.cards
+  .where('tags')
+  .equals('2026-01-30')  // Date tag
+  .filter(c => c.workspaceId === workspaceId && !c._deleted)
+  .toArray();
+```
+
+### Get nested Pawkits
 ```typescript
 const children = await db.collections
   .where('parentId')
-  .equals(parentCollectionId)
-  .filter(c => !c.deleted)
+  .equals(parentPawkitId)
+  .filter(c => !c._deleted)
   .toArray();
 ```
 
 ---
 
-**Last Updated**: December 20, 2025
+> **See Also**: [Tag Architecture SKILL.md](../pawkit-tag-architecture/SKILL.md) for complete tag system documentation.
+
+---
+
+**Last Updated**: January 2, 2026

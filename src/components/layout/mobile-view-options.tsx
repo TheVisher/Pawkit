@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { useViewStore, useCardDisplaySettings, useSubPawkitSettings, type SubPawkitSize } from '@/lib/stores/view-store';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { useCards, useCollections } from '@/lib/hooks/use-live-data';
 import {
   type ContentType,
   type GroupBy,
@@ -59,6 +59,11 @@ export function MobileViewOptions({ viewType }: MobileViewOptionsProps) {
 
   // All Tags
   const cards = useCards(workspace?.id);
+  const collections = useCollections(workspace?.id);
+
+  // Build set of Pawkit slugs to check if card has any Pawkit tags
+  const pawkitSlugs = new Set(collections.map((c) => c.slug));
+
   const { sortedTags, noTagsCount, noPawkitsCount } = (() => {
     const tagCounts = new Map<string, number>();
     let noTags = 0;
@@ -66,11 +71,12 @@ export function MobileViewOptions({ viewType }: MobileViewOptionsProps) {
     for (const card of cards) {
       if (card._deleted) continue;
       const tags = card.tags || [];
-      const collections = card.collections || [];
+      // A card is "in a Pawkit" if any of its tags match a Pawkit slug
+      const hasAnyPawkitTag = tags.some((tag) => pawkitSlugs.has(tag));
       if (tags.length === 0) {
         noTags++;
       }
-      if (collections.length === 0) {
+      if (!hasAnyPawkitTag) {
         noPawkits++;
       }
       for (const tag of tags) {

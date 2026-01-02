@@ -155,7 +155,7 @@ export function CardContextMenu({ card, children, currentCollection }: CardConte
         </ContextMenuItem>
 
         {/* Add to Pawkit submenu */}
-        <AddToPawkitSubmenu cardId={card.id} cardCollections={card.collections || []} />
+        <AddToPawkitSubmenu cardId={card.id} cardCollections={card.tags || []} />
 
         {/* Schedule submenu - for bookmark cards */}
         {isBookmark && (

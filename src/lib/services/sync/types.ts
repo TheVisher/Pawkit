@@ -81,6 +81,7 @@ export interface ServerCard {
   collections: string[];
   pinned: boolean;
   scheduledDate?: string;
+  version: number; // For conflict detection
   deleted: boolean;
   deletedAt?: string;
   createdAt: string;

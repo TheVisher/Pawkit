@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useDataStore } from '@/lib/stores/data-store';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { useCards, useCollections } from '@/lib/hooks/use-live-data';
 import { useViewStore, useCardDisplaySettings, cardMatchesContentTypes, cardMatchesUnsortedFilter, cardMatchesReadingFilter, cardMatchesLinkStatusFilter, findDuplicateCardIds } from '@/lib/stores/view-store';
 import type { GroupBy, DateGrouping, UnsortedFilter, ReadingFilter, LinkStatusFilter, ScheduledFilter } from '@/lib/stores/view-store';
 import { isOverdue } from '@/lib/utils/system-tags';
@@ -75,7 +75,14 @@ interface CardGroup {
 export default function LibraryPage() {
   const workspace = useCurrentWorkspace();
   const cards = useCards(workspace?.id);
+  const collections = useCollections(workspace?.id);
   const isLoading = useDataStore((state) => state.isLoading);
+
+  // Build set of Pawkit slugs for "No Pawkits" filter
+  // A card is "in a Pawkit" if any of its tags match a Pawkit slug
+  const pawkitSlugs = useMemo(() => {
+    return new Set(collections.map((c) => c.slug));
+  }, [collections]);
 
   // Collision detection for omnibar
   const headerRef = useRef<HTMLDivElement>(null);
@@ -150,10 +157,12 @@ export default function LibraryPage() {
         const cardTags = card.tags || [];
         if (cardTags.length > 0) return false;
       }
-      // No Pawkits filter - card must not be in any collection
+      // No Pawkits filter - card must not have any Pawkit tags
+      // A card is "in a Pawkit" if any of its tags match a Pawkit slug
       if (showNoPawkitsOnly) {
-        const cardCollections = card.collections || [];
-        if (cardCollections.length > 0) return false;
+        const cardTags = card.tags || [];
+        const hasAnyPawkitTag = cardTags.some((tag) => pawkitSlugs.has(tag));
+        if (hasAnyPawkitTag) return false;
       }
       // Unsorted/Quick filter
       if (!cardMatchesUnsortedFilter(card, unsortedFilter)) return false;
@@ -173,7 +182,7 @@ export default function LibraryPage() {
       if (showDuplicatesOnly && !duplicateCardIds.has(card.id)) return false;
       return true;
     });
-  }, [cards, contentTypeFilters, selectedTags, showNoTagsOnly, showNoPawkitsOnly, unsortedFilter, readingFilter, linkStatusFilter, scheduledFilter, showDuplicatesOnly, duplicateCardIds]);
+  }, [cards, contentTypeFilters, selectedTags, showNoTagsOnly, showNoPawkitsOnly, pawkitSlugs, unsortedFilter, readingFilter, linkStatusFilter, scheduledFilter, showDuplicatesOnly, duplicateCardIds]);
 
   // Sort cards based on current sort settings
   const sortedCards = useMemo(() => {

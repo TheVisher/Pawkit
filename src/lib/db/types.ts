@@ -81,9 +81,10 @@ export interface LocalCard extends SyncMetadata {
   structuredData?: Record<string, unknown>;
   source?: Record<string, unknown>;
 
-  // Organization
+  // Organization - ALL via tags now (Pawkit slugs, user tags, date tags, supertags)
+  // See: .claude/skills/pawkit-tag-architecture/SKILL.md
   tags: string[];
-  collections: string[];      // Array of collection slugs
+  // collections: string[];   // REMOVED - Pawkit membership is now via tags
   pinned: boolean;
 
   // Scheduling

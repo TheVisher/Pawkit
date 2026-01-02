@@ -86,16 +86,28 @@ export function cardMatchesContentTypes(
 }
 
 /**
- * Check if a card matches the unsorted filter criteria
+ * Check if card matches unsorted filter
+ *
+ * NOTE: With tag-based architecture, determining if a card is "in a Pawkit"
+ * requires knowing the Pawkit slugs. This function now accepts an optional
+ * pawkitSlugs set for accurate filtering. If not provided, it falls back
+ * to checking if the card has any tags (less accurate but works for basic filtering).
  */
 export function cardMatchesUnsortedFilter(
-  card: { tags?: string[]; collections?: string[] },
-  filter: UnsortedFilter
+  card: { tags?: string[] },
+  filter: UnsortedFilter,
+  pawkitSlugs?: Set<string>
 ): boolean {
   if (filter === 'none') return true;
 
-  const hasTags = (card.tags || []).length > 0;
-  const hasPawkits = (card.collections || []).length > 0;
+  const tags = card.tags || [];
+  const hasTags = tags.length > 0;
+
+  // If pawkitSlugs provided, check if any tag matches a Pawkit slug
+  // Otherwise fall back to just checking if tags exist (less accurate)
+  const hasPawkits = pawkitSlugs
+    ? tags.some((tag) => pawkitSlugs.has(tag))
+    : hasTags; // Fallback: assume if has tags, might be in a Pawkit
 
   switch (filter) {
     case 'no-pawkits': return !hasPawkits;

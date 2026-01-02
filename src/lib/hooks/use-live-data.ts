@@ -100,30 +100,96 @@ export function useCollection(
 }
 
 /**
- * Get cards in a specific collection
+ * Get cards in a specific Pawkit (collection)
+ *
+ * Uses TAG-BASED architecture with LEAF-ONLY display:
+ * - Cards are in a Pawkit if they have the Pawkit's slug as a tag
+ * - Cards only show in their DEEPEST Pawkit (not parent Pawkits)
+ * - A card in "Contacts > Work" has tags [#contacts, #work] but only shows in "Work"
+ *
+ * See: .claude/skills/pawkit-tag-architecture/SKILL.md
  */
 export function useCardsInCollection(
   workspaceId: string | undefined,
   collectionSlug: string | undefined
 ): LocalCard[] {
-  const cards = useLiveQuery(
+  // Get all collections to build descendant lookup
+  const collections = useLiveQuery(
     async () => {
       if (!workspaceId) return [];
-      const allCards = await db.cards
+      return db.collections
         .where('workspaceId')
         .equals(workspaceId)
         .filter((c) => !c._deleted)
         .toArray();
-
-      if (!collectionSlug) return allCards;
-
-      return allCards.filter((c) => c.collections?.includes(collectionSlug));
     },
-    [workspaceId, collectionSlug],
+    [workspaceId],
+    []
+  );
+
+  const cards = useLiveQuery(
+    async () => {
+      if (!workspaceId) return [];
+
+      // If no collection specified, return all cards
+      if (!collectionSlug) {
+        return db.cards
+          .where('workspaceId')
+          .equals(workspaceId)
+          .filter((c) => !c._deleted)
+          .toArray();
+      }
+
+      // Build descendant slugs for this Pawkit
+      const descendantSlugs = getDescendantSlugsSync(collectionSlug, collections);
+
+      // Use indexed tag query, then filter for leaf-only display
+      const cardsWithTag = await db.cards
+        .where('tags')
+        .equals(collectionSlug)
+        .filter((c) => c.workspaceId === workspaceId && !c._deleted)
+        .toArray();
+
+      // Leaf-only: exclude cards that have a descendant Pawkit tag
+      // (those cards "live" in the child Pawkit, not this one)
+      return cardsWithTag.filter((card) => {
+        const hasDescendantTag = descendantSlugs.some((d) =>
+          card.tags?.includes(d)
+        );
+        return !hasDescendantTag;
+      });
+    },
+    [workspaceId, collectionSlug, collections],
     []
   );
 
   return cards;
+}
+
+/**
+ * Helper: Get all descendant Pawkit slugs synchronously
+ * (Used in useLiveQuery where we can't await)
+ */
+function getDescendantSlugsSync(
+  pawkitSlug: string,
+  collections: LocalCollection[]
+): string[] {
+  // Find the Pawkit by slug
+  const pawkit = collections.find((c) => c.slug === pawkitSlug);
+  if (!pawkit) return [];
+
+  const descendants: string[] = [];
+
+  function findChildren(parentId: string) {
+    const children = collections.filter((c) => c.parentId === parentId);
+    for (const child of children) {
+      descendants.push(child.slug);
+      findChildren(child.id);
+    }
+  }
+
+  findChildren(pawkit.id);
+  return descendants;
 }
 
 /**

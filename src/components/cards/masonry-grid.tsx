@@ -163,7 +163,6 @@ const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis,
     prevProps.isDropTarget === nextProps.isDropTarget &&
     prevProps.currentCollection === nextProps.currentCollection &&
     JSON.stringify(prevProps.card.tags) === JSON.stringify(nextProps.card.tags) &&
-    JSON.stringify(prevProps.card.collections) === JSON.stringify(nextProps.card.collections) &&
     JSON.stringify(prevProps.displaySettings) === JSON.stringify(nextProps.displaySettings)
   );
 });

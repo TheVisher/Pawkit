@@ -110,23 +110,28 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
           <FolderOpen className="h-5 w-5" />
           <span className="text-xs font-medium uppercase">Pawkits</span>
         </div>
-        {card.collections && card.collections.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {card.collections.map((collectionSlug) => {
-              const collection = collections.find(c => c.slug === collectionSlug);
-              return (
-                <span
-                  key={collectionSlug}
-                  className="px-2.5 py-1 text-xs rounded-md bg-bg-surface-2 text-text-primary border border-border-subtle"
-                >
-                  {collection?.name || collectionSlug}
-                </span>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-xs text-text-muted italic">Not in any Pawkit</p>
-        )}
+        {/* Filter card.tags to only show Pawkit tags (tags that match a Pawkit slug) */}
+        {(() => {
+          const pawkitSlugs = new Set(collections.map(c => c.slug));
+          const cardPawkitTags = (card.tags || []).filter(tag => pawkitSlugs.has(tag));
+          return cardPawkitTags.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5">
+              {cardPawkitTags.map((collectionSlug) => {
+                const collection = collections.find(c => c.slug === collectionSlug);
+                return (
+                  <span
+                    key={collectionSlug}
+                    className="px-2.5 py-1 text-xs rounded-md bg-bg-surface-2 text-text-primary border border-border-subtle"
+                  >
+                    {collection?.name || collectionSlug}
+                  </span>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-text-muted italic">Not in any Pawkit</p>
+          );
+        })()}
       </div>
 
       <Separator className="bg-border-subtle" />
