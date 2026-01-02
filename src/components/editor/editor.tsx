@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Bold, Italic, Code, Link as LinkIcon, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlashCommandMenu } from './slash-command-menu';
+import { AutoPhoneLink } from '@/lib/tiptap/extensions/auto-phone-link';
 
 export interface EditorProps {
   content: string;
@@ -68,9 +69,15 @@ export function Editor({
         emptyNodeClass: 'is-node-empty',
       }),
       Link.configure({
-        openOnClick: false,
+        openOnClick: true,
+        autolink: true, // Keep for URLs - our extension handles phone/email
+        protocols: ['http', 'https', 'mailto', 'tel', 'sms'],
         HTMLAttributes: {
-          class: 'text-[var(--color-accent)] underline hover:text-[var(--color-accent-hover)]',
+          class: 'text-[var(--color-text-primary)] underline decoration-[var(--color-accent)] hover:text-[var(--color-accent)] cursor-pointer',
+          rel: 'noopener noreferrer nofollow',
+        },
+        validate: (url) => {
+          return /^(https?:\/\/|mailto:|tel:|sms:)/i.test(url);
         },
       }),
       TaskList.configure({
@@ -94,6 +101,7 @@ export function Editor({
       TableRow,
       TableHeader,
       TableCell,
+      AutoPhoneLink,
     ],
     content,
     editable,
@@ -273,13 +281,19 @@ export function Editor({
   useEffect(() => {
     const handleSetLinkEvent = () => setLink();
     const handleToggleStrike = () => editor?.chain().focus().toggleStrike().run();
+    const handleUndo = () => editor?.chain().focus().undo().run();
+    const handleRedo = () => editor?.chain().focus().redo().run();
 
     window.addEventListener('editor-set-link', handleSetLinkEvent);
     window.addEventListener('editor-toggle-strike', handleToggleStrike);
+    window.addEventListener('editor-undo', handleUndo);
+    window.addEventListener('editor-redo', handleRedo);
 
     return () => {
       window.removeEventListener('editor-set-link', handleSetLinkEvent);
       window.removeEventListener('editor-toggle-strike', handleToggleStrike);
+      window.removeEventListener('editor-undo', handleUndo);
+      window.removeEventListener('editor-redo', handleRedo);
     };
   }, [setLink, editor]);
 
@@ -485,19 +499,42 @@ export function Editor({
           margin: 1.5rem 0;
         }
 
+        /* Section headers - tighter to content below */
+        .tiptap h2 {
+          font-size: 0.875rem !important;
+          font-weight: 600 !important;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          color: var(--color-text-muted) !important;
+          margin-top: 1.5rem !important;
+          margin-bottom: 0.5rem !important;
+        }
+
+        .tiptap h2:first-child {
+          margin-top: 0 !important;
+        }
+
         /* Bullet list styling */
         .tiptap ul:not([data-type="taskList"]) {
           list-style-type: disc;
           padding-left: 1.5rem;
-          margin: 0.5rem 0;
+          margin: 0 0 0.5rem 0;
         }
 
         .tiptap ul:not([data-type="taskList"]) li {
           padding-left: 0.25rem;
+          margin-bottom: 0.5rem;
         }
 
         .tiptap ul:not([data-type="taskList"]) li::marker {
           color: var(--color-text-muted);
+        }
+
+        /* Field label styling - clean bold labels */
+        .tiptap ul:not([data-type="taskList"]) li strong:first-child {
+          color: var(--color-text-secondary);
+          font-weight: 500;
+          margin-right: 0.25rem;
         }
 
         /* Nested bullet lists */
@@ -537,35 +574,64 @@ export function Editor({
           margin: 0;
         }
 
-        /* Table styling */
+        /* Table styling - minimal, clean look */
         .tiptap table {
           border-collapse: collapse;
           width: 100%;
-          margin: 1rem 0;
+          margin: 0.5rem 0;
           overflow: hidden;
         }
 
         .tiptap table th,
         .tiptap table td {
-          border: 1px solid var(--glass-border);
-          padding: 0.5rem 0.75rem;
+          border: none;
+          padding: 0.4rem 0.75rem 0.4rem 0;
           text-align: left;
           vertical-align: top;
-          min-width: 100px;
         }
 
-        .tiptap table th {
-          background: var(--glass-bg);
-          font-weight: 600;
-          color: var(--color-text-primary);
+        /* First column (labels) - fixed width for alignment across sections */
+        .tiptap table td:first-child {
+          width: 160px !important;
+          min-width: 160px !important;
+          max-width: 160px !important;
+          white-space: nowrap;
+          padding-right: 1rem;
+          color: var(--color-text-muted);
         }
 
-        .tiptap table td {
+        /* Bold labels in first column */
+        .tiptap table td:first-child strong {
+          font-weight: 500;
           color: var(--color-text-secondary);
         }
 
-        .tiptap table tr:hover td {
-          background: var(--glass-bg);
+        /* Second column (values) - takes remaining space */
+        .tiptap table td:last-child {
+          width: 100%;
+          color: var(--color-text-primary);
+          padding-left: 1rem;
+        }
+
+        .tiptap table th {
+          font-weight: 600;
+          color: var(--color-text-primary);
+          border-bottom: 1px solid var(--glass-border);
+          padding-bottom: 0.5rem;
+        }
+
+        /* Subtle row separators - always visible but very light */
+        .tiptap table tr {
+          border-bottom: 1px solid color-mix(in srgb, var(--glass-border) 40%, transparent);
+        }
+
+        .tiptap table tr:last-child {
+          border-bottom: none;
+        }
+
+        /* Subtle vertical divider between label and value columns */
+        .tiptap table td:first-child {
+          border-right: 1px solid color-mix(in srgb, var(--glass-border) 30%, transparent);
         }
 
         /* Column resize handle */
@@ -588,6 +654,46 @@ export function Editor({
         /* Selected cells */
         .tiptap .selectedCell {
           background: hsla(var(--accent-h) var(--accent-s) 50% / 0.15);
+        }
+
+        /* Drag handle for block elements */
+        .tiptap > *:not(table) {
+          position: relative;
+        }
+
+        .tiptap > p:hover::before,
+        .tiptap > h1:hover::before,
+        .tiptap > h2:hover::before,
+        .tiptap > h3:hover::before,
+        .tiptap > ul:hover::before,
+        .tiptap > ol:hover::before,
+        .tiptap > blockquote:hover::before,
+        .tiptap > pre:hover::before {
+          content: '⋮⋮';
+          position: absolute;
+          left: -1.5rem;
+          top: 0;
+          font-size: 0.75rem;
+          color: var(--color-text-muted);
+          cursor: grab;
+          opacity: 0.5;
+          transition: opacity 0.15s;
+          user-select: none;
+          letter-spacing: -2px;
+        }
+
+        .tiptap > *:hover::before {
+          opacity: 0.8;
+        }
+
+        .tiptap > *:active::before {
+          cursor: grabbing;
+        }
+
+        /* Hide drag handle for empty paragraphs */
+        .tiptap > p.is-editor-empty::before,
+        .tiptap > p.is-node-empty::before {
+          display: none;
         }
       `}</style>
     </div>
