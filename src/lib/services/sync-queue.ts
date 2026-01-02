@@ -212,11 +212,17 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
       if (entityType === 'card') {
         const localCard = await db.cards.get(entityId);
         if (localCard) {
-          // Send the current local version as expectedVersion
-          body = JSON.stringify({
-            ...payload,
-            expectedVersion: localCard.version || 1,
-          });
+          // Only send expectedVersion if we have a valid version (> 0)
+          // Version 0 indicates corrupted/unsynced data, so skip conflict check
+          if (localCard.version && localCard.version > 0) {
+            body = JSON.stringify({
+              ...payload,
+              expectedVersion: localCard.version,
+            });
+          } else {
+            // No valid version - don't send expectedVersion, let server accept without conflict check
+            body = JSON.stringify(payload);
+          }
         } else {
           body = JSON.stringify(payload);
         }
