@@ -56,6 +56,12 @@ export function ArticleContent({
   const readingTime = card.readingTime || (wordCount ? calculateReadingTime(wordCount) : 0);
   const domain = card.domain || getDomain(card.url || '');
 
+  // Check if extraction might be in progress (card created recently)
+  // Automatic extraction runs ~500ms after metadata, give it 30 seconds to complete
+  const cardAge = card.createdAt ? Date.now() - new Date(card.createdAt).getTime() : Infinity;
+  const isRecentCard = cardAge < 30000; // 30 seconds
+  const mightBeExtracting = !hasArticleContent && isRecentCard && card.status === 'READY';
+
   // Sanitize article content with DOMPurify before rendering
   const sanitizedContent = useMemo(() => {
     if (typeof window === 'undefined' || !articleContent) return '';
@@ -238,40 +244,50 @@ export function ArticleContent({
             )}
           </div>
         </div>
-      ) : (
-        // Reader mode button - centered, prominent
+      ) : mightBeExtracting ? (
+        // Auto-extraction in progress - show loading state
         <div className="flex-1 flex flex-col items-center justify-center py-16 px-6">
           <div className="text-center max-w-md">
-            <BookOpen className="h-16 w-16 mx-auto mb-6 text-text-muted opacity-50" />
-            <h3 className="text-xl font-medium text-text-primary mb-2">
-              Read this article
+            <Loader2 className="h-12 w-12 mx-auto mb-4 text-[var(--color-accent)] animate-spin" />
+            <h3 className="text-lg font-medium text-text-primary mb-2">
+              Extracting article...
             </h3>
-            <p className="text-text-muted mb-6">
-              Extract the article content for a clean, distraction-free reading experience.
+            <p className="text-text-muted text-sm">
+              Preparing a clean reading experience
+            </p>
+          </div>
+        </div>
+      ) : (
+        // Fallback - extraction failed or timed out
+        <div className="flex-1 flex flex-col items-center justify-center py-16 px-6">
+          <div className="text-center max-w-md">
+            <BookOpen className="h-12 w-12 mx-auto mb-4 text-text-muted opacity-50" />
+            <h3 className="text-lg font-medium text-text-primary mb-2">
+              Article not available
+            </h3>
+            <p className="text-text-muted text-sm mb-6">
+              {extractionError || "Couldn't extract article content automatically. Try extracting manually."}
             </p>
 
             <Button
-              size="lg"
+              size="default"
+              variant="outline"
               onClick={handleExtractArticle}
               disabled={isExtractingArticle}
               className="gap-2"
             >
               {isExtractingArticle ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Extracting...
                 </>
               ) : (
                 <>
-                  <BookOpen className="h-5 w-5" />
-                  Extract Article
+                  <BookOpen className="h-4 w-4" />
+                  Try Again
                 </>
               )}
             </Button>
-
-            {extractionError && (
-              <p className="mt-4 text-sm text-red-400">{extractionError}</p>
-            )}
           </div>
         </div>
       )}
