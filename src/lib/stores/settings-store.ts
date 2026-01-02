@@ -209,6 +209,9 @@ interface SettingsState {
   backgroundPreset: BackgroundPreset;
   visualStyle: VisualStyle;
 
+  // Playback settings
+  videoAutoResume: boolean;
+
   // Actions
   setAccentHue: (hue: number) => void;
   setAccentSaturation: (saturation: number) => void;
@@ -219,6 +222,7 @@ interface SettingsState {
   applySavedColor: (id: string) => void;
   setBackgroundPreset: (preset: BackgroundPreset) => void;
   setVisualStyle: (style: VisualStyle) => void;
+  setVideoAutoResume: (enabled: boolean) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -231,6 +235,7 @@ export const useSettingsStore = create<SettingsState>()(
       savedColors: [],
       backgroundPreset: 'default',
       visualStyle: 'glass',
+      videoAutoResume: true,
 
       // Actions
       setAccentHue: (hue) => set({ accentHue: hue }),
@@ -267,6 +272,7 @@ export const useSettingsStore = create<SettingsState>()(
       },
       setBackgroundPreset: (preset) => set({ backgroundPreset: preset }),
       setVisualStyle: (style) => set({ visualStyle: style }),
+      setVideoAutoResume: (enabled) => set({ videoAutoResume: enabled }),
     }),
     {
       name: 'pawkit-settings',
@@ -306,6 +312,18 @@ export function useAppearanceSettings() {
       applySavedColor: state.applySavedColor,
       setBackgroundPreset: state.setBackgroundPreset,
       setVisualStyle: state.setVisualStyle,
+    }))
+  );
+}
+
+/**
+ * Hook for playback settings
+ */
+export function usePlaybackSettings() {
+  return useSettingsStore(
+    useShallow((state) => ({
+      videoAutoResume: state.videoAutoResume,
+      setVideoAutoResume: state.setVideoAutoResume,
     }))
   );
 }

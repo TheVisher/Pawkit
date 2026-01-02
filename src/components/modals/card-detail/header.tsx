@@ -4,10 +4,12 @@
  * Card Detail Header Component
  * Hero header with image, gradient fade, and overlaid title
  * Top-right corner: URL pill + fullscreen button (for articles)
+ * Supports expandable image mode with smooth animation
  */
 
+import { useState } from 'react';
 import Image from 'next/image';
-import { Globe, ExternalLink, Maximize2 } from 'lucide-react';
+import { Globe, ExternalLink, Maximize2, ZoomIn } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getCardIcon } from './types';
 
@@ -32,6 +34,9 @@ interface CardDetailHeaderProps {
   onFullscreen?: () => void;
   // Show article metadata header (domain, title with accent border, date, author)
   showArticleMetadata?: boolean;
+  // Expandable image
+  onImageClick?: () => void;
+  isImageExpanded?: boolean;
 }
 
 /**
@@ -61,7 +66,10 @@ export function CardDetailHeader({
   showFullscreen,
   onFullscreen,
   showArticleMetadata,
+  onImageClick,
+  isImageExpanded,
 }: CardDetailHeaderProps) {
+  const [imageHovered, setImageHovered] = useState(false);
   const Icon = getCardIcon(card.type);
   const hasImage = card.image && !imageError;
   const isArticle = card.type === 'url';
@@ -71,30 +79,52 @@ export function CardDetailHeader({
       {hasImage ? (
         // Image header with gradient fade
         <div className="relative">
-          {/* Image with mask fade - same technique as Pawkit headers */}
+          {/* Image container - clickable for expand */}
           <div
-            className="relative w-full h-80"
+            className={cn(
+              "relative w-full h-80 overflow-hidden",
+              onImageClick && "cursor-pointer"
+            )}
             style={{
               maskImage: 'linear-gradient(to bottom, black 0%, black 35%, rgba(0,0,0,0.8) 55%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0.15) 85%, transparent 100%)',
               WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 35%, rgba(0,0,0,0.8) 55%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0.15) 85%, transparent 100%)',
             }}
+            onClick={onImageClick}
+            onMouseEnter={() => setImageHovered(true)}
+            onMouseLeave={() => setImageHovered(false)}
           >
             <Image
               src={card.image!}
               alt={card.title || 'Card thumbnail'}
               fill
-              className="object-cover"
+              className={cn(
+                "object-cover transition-transform duration-300",
+                imageHovered && onImageClick && "scale-[1.02]"
+              )}
               onError={() => setImageError(true)}
             />
+            {/* Zoom indicator on hover */}
+            {onImageClick && imageHovered && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/20 transition-opacity duration-200">
+                <div className="bg-black/60 backdrop-blur-sm rounded-full p-3">
+                  <ZoomIn className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Overlaid content - either simple title or full metadata */}
+          {/* Overlaid title - with strong shadow for readability on any background */}
           <div className="absolute bottom-4 left-0 right-0 px-6">
             {showArticleMetadata ? (
               // Article metadata header - CNN style with accent border
               <div>
                 {/* Domain + Read time */}
-                <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white/70 mb-2">
+                <div
+                  className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-white mb-2"
+                  style={{
+                    textShadow: '0 1px 3px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.5)',
+                  }}
+                >
                   <span>{card.domain || 'Article'}</span>
                   {card.readingTime && card.readingTime > 0 && (
                     <>
@@ -123,7 +153,7 @@ export function CardDetailHeader({
                     )}
                     style={{
                       color: 'white',
-                      textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                      textShadow: '0 2px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.6)',
                       overflow: 'hidden',
                     }}
                     onKeyDown={(e) => {
@@ -137,7 +167,12 @@ export function CardDetailHeader({
 
                 {/* Date and author */}
                 {(card.metadata?.author || card.metadata?.publishedTime) ? (
-                  <div className="mt-2 pl-4 space-y-0.5 text-sm text-white/70">
+                  <div
+                    className="mt-2 pl-4 space-y-0.5 text-sm text-white"
+                    style={{
+                      textShadow: '0 1px 3px rgba(0,0,0,0.8), 0 0 8px rgba(0,0,0,0.5)',
+                    }}
+                  >
                     {card.metadata?.publishedTime ? (
                       <div className="uppercase tracking-wide text-xs">
                         Updated {formatPublishedDate(card.metadata.publishedTime as string)}
@@ -165,7 +200,7 @@ export function CardDetailHeader({
                 )}
                 style={{
                   color: 'white',
-                  textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                  textShadow: '0 2px 4px rgba(0,0,0,0.8), 0 0 12px rgba(0,0,0,0.6)',
                   overflow: 'hidden',
                 }}
                 onKeyDown={(e) => {
@@ -260,6 +295,7 @@ export function CardDetailHeader({
           )}
         </div>
       )}
+
     </div>
   );
 }

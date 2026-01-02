@@ -6,14 +6,16 @@
  */
 
 import { useTheme } from 'next-themes';
-import { Sun, Moon, Monitor, Sparkles, Square, Contrast } from 'lucide-react';
+import { Sun, Moon, Monitor, Sparkles, Square, Contrast, Play } from 'lucide-react';
 import {
   useAppearanceSettings,
+  usePlaybackSettings,
   BACKGROUND_PRESETS,
   type BackgroundPreset,
 } from '@/lib/stores/settings-store';
 import { cn } from '@/lib/utils';
 import { AccentColorPicker } from './accent-color-picker';
+import { Switch } from '@/components/ui/switch';
 
 export function AppearanceSection() {
   const { theme, setTheme } = useTheme();
@@ -36,6 +38,8 @@ export function AppearanceSection() {
   } = useAppearanceSettings();
 
   const isHighContrast = visualStyle === 'highContrast';
+
+  const { videoAutoResume, setVideoAutoResume } = usePlaybackSettings();
 
   return (
     <div className="space-y-8">
@@ -164,6 +168,31 @@ export function AppearanceSection() {
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Playback */}
+      <div className="space-y-3">
+        <div>
+          <h3 className="text-sm font-medium text-text-primary">Playback</h3>
+          <p className="text-xs text-text-muted mt-0.5">
+            Video playback preferences
+          </p>
+        </div>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Play className="h-4 w-4 text-text-muted" />
+              <div>
+                <p className="text-sm text-text-primary">Auto-play videos</p>
+                <p className="text-xs text-text-muted">Start playing when opened (position always saved)</p>
+              </div>
+            </div>
+            <Switch
+              checked={videoAutoResume}
+              onCheckedChange={setVideoAutoResume}
+            />
+          </div>
         </div>
       </div>
     </div>

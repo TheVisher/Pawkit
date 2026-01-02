@@ -236,10 +236,11 @@ export function GridCard({
               <div
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm domain-pill"
                 style={{
-                  background: 'var(--glass-bg)',
-                  backdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
-                  WebkitBackdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
-                  border: '1px solid var(--glass-border)',
+                  background: 'rgba(0, 0, 0, 0.65)',
+                  backdropFilter: 'blur(12px) saturate(180%)',
+                  WebkitBackdropFilter: 'blur(12px) saturate(180%)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
                 }}
               >
                 {hasFavicon ? (
@@ -252,9 +253,9 @@ export function GridCard({
                     onError={() => setImageError(true)}
                   />
                 ) : (
-                  <Globe className="h-4 w-4 shrink-0" style={{ color: 'var(--color-text-muted)' }} />
+                  <Globe className="h-4 w-4 shrink-0 text-white/70" />
                 )}
-                <span className="truncate max-w-[180px]" style={{ color: 'var(--color-text-primary)' }}>{domain}</span>
+                <span className="truncate max-w-[180px] text-white/90">{domain}</span>
               </div>
             </div>
           )}

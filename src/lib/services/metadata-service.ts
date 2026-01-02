@@ -1,10 +1,16 @@
 /**
  * Metadata Service
  * Client-side queue for fetching URL metadata and article content
+ *
+ * Flow:
+ * 1. Card created → skeleton appears immediately
+ * 2. Metadata fetched → thumbnail/title populate (~1-2s)
+ * 3. Article extraction queued → runs in background after metadata
  */
 
 import { db } from '@/lib/db';
 import { useDataStore } from '@/lib/stores/data-store';
+import { isYouTubeUrl } from '@/lib/utils/url-detection';
 
 /**
  * Check if a URL is likely to have readable article content
@@ -211,11 +217,14 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
       hasImage: !!metadata.image,
     });
 
-    // NOTE: Article extraction disabled - was causing 2+ minute hangs
-    // TODO: Re-enable when article API is optimized or make it user-triggered
-    // if (card.url && isArticleUrl(card.url)) {
-    //   queueArticleExtraction(cardId);
-    // }
+    // Queue article extraction after metadata is done
+    // Skip YouTube videos (they don't have article content)
+    if (card.url && isArticleUrl(card.url) && !isYouTubeUrl(card.url)) {
+      // Small delay to ensure thumbnail appears first in UI
+      setTimeout(() => {
+        queueArticleExtraction(cardId);
+      }, 500);
+    }
   } catch (error) {
     console.error('[MetadataService] Error fetching metadata:', error);
 
