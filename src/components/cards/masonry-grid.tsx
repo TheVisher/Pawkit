@@ -14,6 +14,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CardItem, type CardDisplaySettings } from './card-item';
+import type { SystemTag } from '@/lib/utils/system-tags';
 import { QuickNoteCard } from './quick-note-card';
 import { CardContextMenu } from '@/components/context-menus';
 import type { LocalCard } from '@/lib/db';
@@ -51,6 +52,10 @@ interface MasonryGridProps {
   cardSpacing?: number;
   displaySettings?: Partial<CardDisplaySettings>;
   currentCollection?: string;
+  /** Called when a user tag in the footer is clicked (for filtering) */
+  onTagClick?: (tag: string) => void;
+  /** Called when a system tag in the footer is clicked (for filtering) */
+  onSystemTagClick?: (tag: SystemTag) => void;
 }
 
 interface SortableCardProps {
@@ -58,6 +63,8 @@ interface SortableCardProps {
   onClick: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
   currentCollection?: string;
+  onTagClick?: (tag: string) => void;
+  onSystemTagClick?: (tag: SystemTag) => void;
 }
 
 interface SortableCardInnerProps extends SortableCardProps {
@@ -73,7 +80,7 @@ interface SortableCardInnerProps extends SortableCardProps {
  * absolute positioning. Transforms would conflict and cause offset issues.
  * The DragOverlay handles the visual dragging instead.
  */
-const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis, isDropTarget, displaySettings, currentCollection }: SortableCardInnerProps) {
+const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis, isDropTarget, displaySettings, currentCollection, onTagClick, onSystemTagClick }: SortableCardInnerProps) {
   const {
     attributes,
     listeners,
@@ -124,7 +131,7 @@ const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis,
           {card.type === 'quick-note' ? (
             <QuickNoteCard card={card} onClick={onClick} isDragging={isDraggingThis} />
           ) : (
-            <CardItem card={card} variant="grid" onClick={onClick} displaySettings={displaySettings} />
+            <CardItem card={card} variant="grid" onClick={onClick} displaySettings={displaySettings} onTagClick={onTagClick} onSystemTagClick={onSystemTagClick} />
           )}
         </div>
       </div>
@@ -196,7 +203,7 @@ function estimateHeight(card: LocalCard, cardWidth: number): number {
 /**
  * Masonry grid layout with drag-and-drop support
  */
-export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing = DEFAULT_GAP, displaySettings, currentCollection }: MasonryGridProps) {
+export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing = DEFAULT_GAP, displaySettings, currentCollection, onTagClick, onSystemTagClick }: MasonryGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -587,6 +594,8 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
                     isDropTarget={overId === card.id && activeId !== card.id}
                     displaySettings={displaySettings}
                     currentCollection={currentCollection}
+                    onTagClick={onTagClick}
+                    onSystemTagClick={onSystemTagClick}
                   />
                 </div>
               );

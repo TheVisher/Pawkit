@@ -5,6 +5,8 @@ import { useAuthStore } from '@/lib/stores/auth-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useSync } from '@/lib/hooks/use-sync';
+import { useTauriEvents } from '@/lib/hooks/use-tauri-events';
+import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
 import { useLayoutAnchors, getRightSidebarWidth } from '@/lib/stores/ui-store';
 import { useApplySettings } from '@/lib/stores/settings-store';
 import { useActiveToast } from '@/lib/stores/toast-store';
@@ -70,6 +72,12 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
 
   // Initialize sync engine (gets workspace from useWorkspaceStore internally)
   useSync();
+
+  // Listen for Tauri events (desktop app portal, etc.)
+  useTauriEvents();
+
+  // Subscribe to Supabase Realtime for cross-device sync
+  useRealtimeSync();
 
   // Apply appearance settings (accent color, background) as CSS variables
   useApplySettings();

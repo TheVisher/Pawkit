@@ -13,6 +13,9 @@ import {
   createCardSchema,
   listCardsQuerySchema,
 } from '@/lib/validations/card';
+import { createModuleLogger } from '@/lib/utils/logger';
+
+const log = createModuleLogger('CardsAPI');
 
 /**
  * GET /api/cards
@@ -114,7 +117,7 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
-    console.error('GET /api/cards error:', error);
+    log.error('GET /api/cards error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -252,7 +255,7 @@ export async function POST(request: Request) {
     // 6. Return created card
     return NextResponse.json({ card }, { status: 201 });
   } catch (error) {
-    console.error('POST /api/cards error:', error);
+    log.error('POST /api/cards error:', error);
 
     // Handle unique constraint violations
     if (

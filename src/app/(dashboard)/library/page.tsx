@@ -2,8 +2,11 @@
 
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useCards } from '@/lib/hooks/use-live-data';
 import { useViewStore, useCardDisplaySettings, cardMatchesContentTypes, cardMatchesUnsortedFilter, cardMatchesReadingFilter, cardMatchesLinkStatusFilter, findDuplicateCardIds } from '@/lib/stores/view-store';
-import type { GroupBy, DateGrouping, UnsortedFilter, ReadingFilter, LinkStatusFilter } from '@/lib/stores/view-store';
+import type { GroupBy, DateGrouping, UnsortedFilter, ReadingFilter, LinkStatusFilter, ScheduledFilter } from '@/lib/stores/view-store';
+import { isOverdue } from '@/lib/utils/system-tags';
+import type { SystemTag } from '@/lib/utils/system-tags';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
@@ -70,7 +73,8 @@ interface CardGroup {
 }
 
 export default function LibraryPage() {
-  const cards = useDataStore((state) => state.cards);
+  const workspace = useCurrentWorkspace();
+  const cards = useCards(workspace?.id);
   const isLoading = useDataStore((state) => state.isLoading);
 
   // Collision detection for omnibar
@@ -82,16 +86,21 @@ export default function LibraryPage() {
   const cardOrder = useViewStore((state) => state.cardOrder);
   const contentTypeFilters = useViewStore((state) => state.contentTypeFilters);
   const selectedTags = useViewStore((state) => state.selectedTags);
+  const showNoTagsOnly = useViewStore((state) => state.showNoTagsOnly);
+  const showNoPawkitsOnly = useViewStore((state) => state.showNoPawkitsOnly);
   const unsortedFilter = useViewStore((state) => state.unsortedFilter) as UnsortedFilter;
   const readingFilter = useViewStore((state) => state.readingFilter) as ReadingFilter;
   const linkStatusFilter = useViewStore((state) => state.linkStatusFilter) as LinkStatusFilter;
+  const scheduledFilter = useViewStore((state) => state.scheduledFilter) as ScheduledFilter;
   const showDuplicatesOnly = useViewStore((state) => state.showDuplicatesOnly);
   const groupBy = useViewStore((state) => state.groupBy) as GroupBy;
   const dateGrouping = useViewStore((state) => state.dateGrouping) as DateGrouping;
   const reorderCards = useViewStore((state) => state.reorderCards);
   const loadViewSettings = useViewStore((state) => state.loadViewSettings);
+  const toggleTag = useViewStore((state) => state.toggleTag);
+  const setReadingFilter = useViewStore((state) => state.setReadingFilter);
+  const setScheduledFilter = useViewStore((state) => state.setScheduledFilter);
   const openAddCard = useModalStore((state) => state.openAddCard);
-  const workspace = useCurrentWorkspace();
 
   // Load library-specific view settings on mount
   useEffect(() => {
@@ -101,7 +110,7 @@ export default function LibraryPage() {
   }, [workspace, loadViewSettings]);
 
   // Card display settings
-  const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
+  const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showTitles, showTags } = useCardDisplaySettings();
 
   // Calculate duplicate card IDs (memoized)
   const duplicateCardIds = useMemo(() => {
@@ -117,11 +126,14 @@ export default function LibraryPage() {
   const hasActiveFilters = useMemo(() => {
     return contentTypeFilters.length > 0 ||
            selectedTags.length > 0 ||
+           showNoTagsOnly ||
+           showNoPawkitsOnly ||
            unsortedFilter !== 'none' ||
            readingFilter !== 'all' ||
            linkStatusFilter !== 'all' ||
+           scheduledFilter !== 'all' ||
            showDuplicatesOnly;
-  }, [contentTypeFilters, selectedTags, unsortedFilter, readingFilter, linkStatusFilter, showDuplicatesOnly]);
+  }, [contentTypeFilters, selectedTags, showNoTagsOnly, showNoPawkitsOnly, unsortedFilter, readingFilter, linkStatusFilter, scheduledFilter, showDuplicatesOnly]);
 
   // Filter out deleted cards and apply content type + tag + unsorted + reading filters
   const activeCards = useMemo(() => {
@@ -133,17 +145,35 @@ export default function LibraryPage() {
         const cardTags = card.tags || [];
         if (!selectedTags.every(tag => cardTags.includes(tag))) return false;
       }
+      // No tags filter - card must have no tags
+      if (showNoTagsOnly) {
+        const cardTags = card.tags || [];
+        if (cardTags.length > 0) return false;
+      }
+      // No Pawkits filter - card must not be in any collection
+      if (showNoPawkitsOnly) {
+        const cardCollections = card.collections || [];
+        if (cardCollections.length > 0) return false;
+      }
       // Unsorted/Quick filter
       if (!cardMatchesUnsortedFilter(card, unsortedFilter)) return false;
       // Reading status filter
       if (!cardMatchesReadingFilter(card, readingFilter)) return false;
       // Link status filter
       if (!cardMatchesLinkStatusFilter(card, linkStatusFilter)) return false;
+      // Scheduled status filter
+      if (scheduledFilter !== 'all') {
+        const hasSchedule = !!card.scheduledDate;
+        const cardIsOverdue = hasSchedule && isOverdue(card.scheduledDate);
+        if (scheduledFilter === 'scheduled' && (!hasSchedule || cardIsOverdue)) return false;
+        if (scheduledFilter === 'overdue' && !cardIsOverdue) return false;
+        if (scheduledFilter === 'not-scheduled' && hasSchedule) return false;
+      }
       // Duplicates filter
       if (showDuplicatesOnly && !duplicateCardIds.has(card.id)) return false;
       return true;
     });
-  }, [cards, contentTypeFilters, selectedTags, unsortedFilter, readingFilter, linkStatusFilter, showDuplicatesOnly, duplicateCardIds]);
+  }, [cards, contentTypeFilters, selectedTags, showNoTagsOnly, showNoPawkitsOnly, unsortedFilter, readingFilter, linkStatusFilter, scheduledFilter, showDuplicatesOnly, duplicateCardIds]);
 
   // Sort cards based on current sort settings
   const sortedCards = useMemo(() => {
@@ -261,6 +291,23 @@ export default function LibraryPage() {
     reorderCards(reorderedIds);
   }, [reorderCards]);
 
+  // Handle user tag click in card footer - filter by tag
+  const handleTagClick = useCallback((tag: string) => {
+    toggleTag(tag);
+  }, [toggleTag]);
+
+  // Handle system tag click in card footer - filter by status
+  const handleSystemTagClick = useCallback((tag: SystemTag) => {
+    if (tag.type === 'read') {
+      setReadingFilter('read');
+    } else if (tag.type === 'scheduled') {
+      setScheduledFilter('scheduled');
+    } else if (tag.type === 'overdue') {
+      setScheduledFilter('overdue');
+    }
+    // Reading time tags are clickable via regular tag filtering now
+  }, [setReadingFilter, setScheduledFilter]);
+
   // Get icon for group header based on groupBy type
   const getGroupIcon = () => {
     switch (groupBy) {
@@ -352,7 +399,9 @@ export default function LibraryPage() {
               onReorder={handleReorder}
               cardSize={cardSize}
               cardSpacing={cardSpacing}
-              displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+              displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
+              onTagClick={handleTagClick}
+              onSystemTagClick={handleSystemTagClick}
             />
           ) : layout === 'list' ? (
             // List view with grouping - pass groups to single CardGrid for inline separators
@@ -362,9 +411,11 @@ export default function LibraryPage() {
               onReorder={handleReorder}
               cardSize={cardSize}
               cardSpacing={cardSpacing}
-              displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+              displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
               groups={groupedCards}
               groupIcon={GroupIcon || undefined}
+              onTagClick={handleTagClick}
+              onSystemTagClick={handleSystemTagClick}
             />
           ) : (
             // Masonry/Grid view with grouping - separate sections with headers
@@ -388,7 +439,9 @@ export default function LibraryPage() {
                     onReorder={handleReorder}
                     cardSize={cardSize}
                     cardSpacing={cardSpacing}
-                    displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+                    displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
+                    onTagClick={handleTagClick}
+                    onSystemTagClick={handleSystemTagClick}
                   />
                 </div>
               ))}

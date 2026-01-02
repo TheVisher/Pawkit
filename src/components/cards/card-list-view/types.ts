@@ -1,5 +1,6 @@
 import { Bookmark, FileText, Image as ImageIcon } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
+import type { SystemTag } from '@/lib/utils/system-tags';
 
 // =============================================================================
 // TYPES
@@ -35,6 +36,10 @@ export interface CardListViewProps {
   groupIcon?: React.ComponentType<{ className?: string }>;
   onReorder?: (reorderedIds: string[]) => void;
   currentCollection?: string;
+  /** Called when a user tag in the footer is clicked (for filtering) */
+  onTagClick?: (tag: string) => void;
+  /** Called when a system tag in the footer is clicked (for filtering) */
+  onSystemTagClick?: (tag: SystemTag) => void;
 }
 
 // =============================================================================

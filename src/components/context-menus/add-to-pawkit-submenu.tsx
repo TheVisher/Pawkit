@@ -10,6 +10,8 @@ import {
 import { FolderPlus, Check, ChevronRight } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useToastStore } from '@/lib/stores/toast-store';
+import { useCollections } from '@/lib/hooks/use-live-data';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import type { LocalCollection } from '@/lib/db';
 import { cn } from '@/lib/utils';
 
@@ -121,7 +123,8 @@ function CollectionItem({
 }
 
 export function AddToPawkitSubmenu({ cardId, cardCollections }: AddToPawkitSubmenuProps) {
-  const collections = useDataStore((s) => s.collections);
+  const workspace = useCurrentWorkspace();
+  const collections = useCollections(workspace?.id);
   const addCardToCollection = useDataStore((s) => s.addCardToCollection);
   const removeCardFromCollection = useDataStore((s) => s.removeCardFromCollection);
   const toast = useToastStore((s) => s.toast);

@@ -2,7 +2,7 @@
 component: "cards"
 complexity: "high"
 status: "stable"
-last_updated: "2025-12-23"
+last_updated: "2025-12-30"
 maintainer: "Claude Code"
 ---
 
@@ -102,8 +102,9 @@ src/components/cards/
 
 ### Recent Changes
 
-| Date | Change | Commit/PR |
-|------|--------|-----------|
+| Date | Change | Implementation Details |
+|------|--------|------------------------|
+| 2025-12-30 | **Card Detail Integration** | Redesigned integration with the CNN-style card detail modal. |
 | 2025-12-20 | Implemented `React.memo` optimization for `CardItem`. | — |
 | 2025-12-20 | Added `dnd-kit` integration to `MasonryGrid`. | — |
 | 2025-12-20 | Finalized glass morphism styles for V1 parity. | — |
@@ -116,43 +117,6 @@ src/components/cards/
 |-------|----------|------------|
 | Large notes truncation | Low | CSS line-clamp handles this gracefully. |
 | Image loading layout shift | Low | Fixed aspect ratios mostly mitigate this. |
-
----
-
-## Usage Examples
-
-### Basic Usage
-
-```tsx
-import { CardItem } from '@/components/cards/card-item';
-
-<CardItem
-  card={cardData}
-  layout="masonry"
-  style={{ ...positionStyles }} // For masonry absolute positioning
-/>
-```
-
-### Grid Container
-
-```tsx
-import { MasonryGrid } from '@/components/cards/masonry-grid';
-
-<MasonryGrid
-  cards={allCards}
-  columns={4}
-  onOrderChange={handleReorder}
-/>
-```
-
----
-
-## Testing Notes
-
-- **Drag & Drop**: Test dragging cards between columns and into the sidebar.
-- **Resize**: Verify masonry recalculates correctly on window resize.
-- **Performance**: Scroll rapidly with >100 cards to ensure frame rate holds.
-- **Sync**: Disconnect network, create card, verify "pending" state visually.
 
 ---
 

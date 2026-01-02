@@ -18,6 +18,9 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useToastStore } from '@/lib/stores/toast-store';
+import { useCards } from '@/lib/hooks/use-live-data';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { updateScheduleTags } from '@/lib/utils/system-tags';
 
 interface ScheduleSubmenuProps {
   cardId: string;
@@ -27,6 +30,8 @@ interface ScheduleSubmenuProps {
 export function ScheduleSubmenu({ cardId, currentSchedule }: ScheduleSubmenuProps) {
   const [showCalendar, setShowCalendar] = useState(false);
   const updateCard = useDataStore((s) => s.updateCard);
+  const workspace = useCurrentWorkspace();
+  const cards = useCards(workspace?.id);
   const toast = useToastStore((s) => s.toast);
 
   const today = new Date();
@@ -34,8 +39,14 @@ export function ScheduleSubmenu({ cardId, currentSchedule }: ScheduleSubmenuProp
   const monday = nextMonday(today);
   const nextMonth = startOfMonth(addMonths(today, 1));
 
+  // Get current card's tags
+  const currentCard = cards.find(c => c.id === cardId);
+  const currentTags = currentCard?.tags || [];
+
   const handleSchedule = async (date: Date | undefined) => {
-    await updateCard(cardId, { scheduledDate: date });
+    // Update schedule tags based on the new date
+    const newTags = updateScheduleTags(currentTags, date);
+    await updateCard(cardId, { scheduledDate: date, tags: newTags });
     toast({
       type: 'success',
       message: date ? `Scheduled for ${format(date, 'MMM d')}` : 'Schedule removed',

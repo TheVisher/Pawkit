@@ -11,7 +11,8 @@ import { useToastStore } from '@/lib/stores/toast-store';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
-import { useWorkspaceStore } from '@/lib/stores/workspace-store';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useCards, useCollections } from '@/lib/hooks/use-live-data';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { SEARCHABLE_ACTIONS, type SearchResults } from '../types';
 import { normalizeUrl } from '@/lib/utils/url-normalizer';
@@ -63,9 +64,9 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   const openAddCard = useModalStore((s) => s.openAddCard);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const createCard = useDataStore((s) => s.createCard);
-  const cards = useDataStore((s) => s.cards);
-  const collections = useDataStore((s) => s.collections);
-  const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
+  const currentWorkspace = useCurrentWorkspace();
+  const cards = useCards(currentWorkspace?.id);
+  const collections = useCollections(currentWorkspace?.id);
 
   // Debounce search query
   const debouncedQuery = useDebounce(quickNoteText, 150);

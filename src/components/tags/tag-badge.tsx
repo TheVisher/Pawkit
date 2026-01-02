@@ -1,9 +1,11 @@
 'use client';
 
-import { X } from 'lucide-react';
+import { X, Clock, Check, CalendarDays, AlertTriangle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getTagColor, getTagStyle } from '@/lib/utils/tag-colors';
 import { getTagName } from '@/lib/utils/tag-hierarchy';
+import { type SystemTag, isReadingTimeTag, READ_TAG, SCHEDULED_TAG, DUE_TODAY_TAG, OVERDUE_TAG, CONFLICT_TAG } from '@/lib/utils/system-tags';
+import { SystemTagBadge } from './system-tag-badge';
 
 export interface TagBadgeProps {
   /** The full tag path (e.g., "dev/react") */
@@ -28,6 +30,20 @@ export interface TagBadgeProps {
  * Uses deterministic coloring based on tag name.
  * Colors adapt to light/dark theme via CSS variables.
  */
+/**
+ * Get icon for system tags (reading time, read, scheduled, etc.)
+ * Returns null for regular user tags
+ */
+function getSystemTagIcon(tag: string) {
+  if (isReadingTimeTag(tag)) return Clock;
+  if (tag === READ_TAG) return Check;
+  if (tag === SCHEDULED_TAG) return CalendarDays;
+  if (tag === DUE_TODAY_TAG) return CalendarDays;
+  if (tag === OVERDUE_TAG) return AlertTriangle;
+  if (tag === CONFLICT_TAG) return AlertCircle;
+  return null;
+}
+
 export function TagBadge({
   tag,
   size = 'sm',
@@ -39,6 +55,7 @@ export function TagBadge({
 }: TagBadgeProps) {
   const displayName = showLeafOnly ? getTagName(tag) : tag;
   const colors = getTagColor(tag);
+  const Icon = getSystemTagIcon(tag);
 
   const handleClick = (e: React.MouseEvent) => {
     if (onClick) {
@@ -76,6 +93,7 @@ export function TagBadge({
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
     >
+      {Icon && <Icon className={cn('flex-shrink-0', size === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5')} />}
       <span className="truncate max-w-[120px]">{displayName}</span>
 
       {onRemove && (
@@ -98,15 +116,20 @@ export function TagBadge({
 
 /**
  * TagBadgeList - Display a list of tag badges with optional overflow
+ * Supports both user tags and system tags (read, scheduled, reading time, etc.)
  */
 export interface TagBadgeListProps {
   tags: string[];
+  /** System-generated tags (read status, scheduled, etc.) - rendered first */
+  systemTags?: SystemTag[];
   /** Maximum number of tags to show before "+N" indicator */
   maxVisible?: number;
   /** Size variant */
   size?: 'sm' | 'md';
-  /** Called when a tag is clicked */
+  /** Called when a user tag is clicked */
   onTagClick?: (tag: string) => void;
+  /** Called when a system tag is clicked */
+  onSystemTagClick?: (tag: SystemTag) => void;
   /** Called when a tag remove button is clicked */
   onTagRemove?: (tag: string) => void;
   /** Additional class names for the container */
@@ -117,23 +140,41 @@ export interface TagBadgeListProps {
 
 export function TagBadgeList({
   tags,
+  systemTags = [],
   maxVisible = 3,
   size = 'sm',
   onTagClick,
+  onSystemTagClick,
   onTagRemove,
   className,
   showLeafOnly = false,
 }: TagBadgeListProps) {
-  if (!tags || tags.length === 0) {
+  // If no tags at all, return null
+  if ((!tags || tags.length === 0) && systemTags.length === 0) {
     return null;
   }
 
-  const visibleTags = tags.slice(0, maxVisible);
-  const hiddenCount = tags.length - maxVisible;
+  // Calculate how many user tags we can show after system tags
+  const systemTagCount = systemTags.length;
+  const remainingSlots = Math.max(0, maxVisible - systemTagCount);
+  const visibleUserTags = tags.slice(0, remainingSlots);
+  const totalTags = systemTagCount + tags.length;
+  const hiddenCount = Math.max(0, totalTags - maxVisible);
 
   return (
     <div className={cn('flex flex-wrap items-center gap-1', className)}>
-      {visibleTags.map((tag) => (
+      {/* System tags first (read, scheduled, reading time, etc.) */}
+      {systemTags.map((systemTag) => (
+        <SystemTagBadge
+          key={systemTag.id}
+          tag={systemTag}
+          size={size}
+          onClick={onSystemTagClick ? () => onSystemTagClick(systemTag) : undefined}
+        />
+      ))}
+
+      {/* User tags */}
+      {visibleUserTags.map((tag) => (
         <TagBadge
           key={tag}
           tag={tag}
@@ -145,6 +186,7 @@ export function TagBadgeList({
         />
       ))}
 
+      {/* Hidden count indicator */}
       {hiddenCount > 0 && (
         <span
           className={cn(

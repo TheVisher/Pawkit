@@ -329,4 +329,44 @@ await db.transaction('rw', [db.cards, db.collections], async () => {
 
 ---
 
-**Last Updated**: December 20, 2025
+## SUPABASE REALTIME SETUP
+
+### Required After Prisma Migrations
+
+**IMPORTANT**: After running any Prisma migration (`prisma migrate` or `prisma db push`), you MUST run these grants in Supabase SQL Editor:
+
+```sql
+GRANT SELECT ON "public"."Card" TO authenticated;
+GRANT SELECT ON "public"."Card" TO anon;
+```
+
+Prisma wipes out Postgres grants. Without these, Supabase Realtime returns 401 errors.
+
+### Realtime Configuration (One-time setup)
+
+```sql
+-- Enable realtime on Card table
+ALTER PUBLICATION supabase_realtime ADD TABLE "Card";
+
+-- Enable full payload for updates/deletes
+ALTER TABLE "Card" REPLICA IDENTITY FULL;
+
+-- RLS policy for authenticated users
+CREATE POLICY "Users can read own workspace cards via realtime"
+ON "public"."Card"
+FOR SELECT
+TO authenticated
+USING ("workspaceId" IN (
+  SELECT id FROM "Workspace" WHERE "userId" = (auth.uid())::text
+));
+```
+
+### Realtime Hook Location
+
+- Hook: `src/lib/hooks/use-realtime-sync.ts`
+- Used in: `src/app/(dashboard)/dashboard-shell.tsx`
+- Handles: INSERT, UPDATE, DELETE events from other devices
+
+---
+
+**Last Updated**: December 31, 2025

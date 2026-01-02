@@ -23,12 +23,11 @@
 | **cards** | Yes | [cards.md](./cards.md) | High | 2025-12-23 | Core visual entity, DnD enabled |
 | **card-list-view** | Yes | [card-list-view.md](./card-list-view.md) | High | 2025-12-23 | Table view with inline edit |
 | **editor** | Yes | [editor.md](./editor.md) | High | 2025-12-23 | Phase 7.1 - Tiptap rich text editor |
-| **layout** | Yes | [layout.md](./layout.md) | High | 2025-12-26 | Right sidebar complexity spike |
-| **modals** | Yes | [modals.md](./modals.md) | High | 2025-12-26 | Added Cover Image Picker |
-| **pawkits** | No | — | Medium | 2025-12-26 | Tree, Headers, and Card logic |
+| **layout** | Yes | [layout.md](./layout.md) | High | 2025-12-30 | Refactored Omnibar and Filter sections |
+| **modals** | Yes | [modals.md](./modals.md) | High | 2025-12-30 | Refactored Card Detail Modal |
+| **pawkits** | No | — | Medium | 2025-12-30 | Tree, Headers, and Card logic |
 | **providers** | No | — | Low | — | Single theme-provider.tsx |
-| **settings** | No | — | Medium | 2025-12-30 | Settings sections (Appearance, Account, Data) |
-| **ui** | N/A | — | Low | — | shadcn/ui standard - no docs needed |
+| **settings** | No | — | Medium | 2025-12-30 | Settings sections (Modularized Appearance) |
 
 ---
 
@@ -51,7 +50,7 @@
 
 ### Maintenance
 
-1. **right-sidebar** - Needs refactoring (46KB single file)
+1. **right-sidebar** - Refactor in progress (Split filters into modular components)
 2. **pawkits** - Should be documented next as complexity grows (nested tree logic)
 
 ---
@@ -78,13 +77,22 @@ src/components/
 ├── layout/
 │   ├── left-sidebar.tsx              8.1KB
 │   ├── mobile-nav.tsx                1.8KB
-│   ├── omnibar.tsx                  <1.0KB  (Refactored bridge)
 │   ├── page-header.tsx               1.6KB
 │   ├── right-sidebar.tsx            46.0KB  🚨 CRITICAL - SPLIT ASAP
+│   │   └── sections/                        (Modularized filters)
+│   ├── omnibar/
+│   │   ├── index.tsx                 6.6KB
+│   │   ├── idle-content.tsx         14.0KB  ⚠️ Watch limit
+│   │   └── use-omnibar/
+│   │       ├── index.ts              7.0KB
+│   │       └── use-search.ts        20.0KB  ⚠️ Watch limit
 │   └── toast-stack.tsx               5.5KB
 ├── modals/
 │   ├── add-card-modal.tsx           13.0KB  ⚠️ Watch limit
-│   ├── card-detail-modal.tsx        12.0KB  ⚠️ Watch limit
+│   ├── card-detail/
+│   │   ├── index.tsx                 3.3KB
+│   │   ├── header.tsx                8.9KB
+│   │   └── content.tsx               2.5KB
 │   ├── cover-image-picker-modal.tsx 18.0KB  ⚠️ Watch limit
 │   └── create-pawkit-modal.tsx       6.2KB
 ├── pawkits/
@@ -98,7 +106,8 @@ src/components/
 │   └── theme-provider.tsx            0.3KB
 ├── settings/
 │   └── sections/
-│       ├── appearance-section.tsx   12.0KB  ⚠️ Watch limit
+│       ├── appearance-section.tsx    6.4KB
+│       ├── accent-color-picker.tsx  10.0KB  ⚠️ Watch limit
 │       ├── account-section.tsx       3.0KB
 │       └── data-section.tsx          5.5KB
 └── ui/                              [shadcn - not tracked]

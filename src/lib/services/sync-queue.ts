@@ -4,10 +4,10 @@
  */
 
 import { db } from '@/lib/db';
-import type { SyncQueueItem } from '@/lib/db';
+import type { SyncQueueItem, LocalCard } from '@/lib/db';
 import { useSyncStore } from '@/lib/stores/sync-store';
-import { useDataStore } from '@/lib/stores/data-store';
 import { createModuleLogger } from '@/lib/utils/logger';
+import { addConflictTag, removeConflictTag } from '@/lib/utils/system-tags';
 
 const log = createModuleLogger('SyncQueue');
 
@@ -22,11 +22,25 @@ export const QUEUE_DEBOUNCE_MS = 2000;
  * Only syncs if there are pending items - no wasted requests
  */
 export async function triggerSync(): Promise<void> {
-  if (typeof navigator !== 'undefined' && navigator.onLine) {
-    const count = await getPendingItemCount();
-    if (count > 0) {
-      await processQueue();
-    }
+  log.debug('triggerSync called');
+
+  if (typeof navigator === 'undefined') {
+    log.debug('triggerSync: navigator undefined (SSR?)');
+    return;
+  }
+
+  if (!navigator.onLine) {
+    log.debug('triggerSync: offline, skipping');
+    return;
+  }
+
+  const count = await getPendingItemCount();
+  log.debug(`triggerSync: ${count} pending items`);
+
+  if (count > 0) {
+    log.debug('triggerSync: calling processQueue');
+    await processQueue();
+    log.debug('triggerSync: processQueue completed');
   }
 }
 
@@ -142,6 +156,9 @@ export async function processQueue(): Promise<QueueProcessResult> {
           retryCount: newRetryCount,
           lastError: errorMessage,
         });
+
+        // Track failed entity in store for UI
+        useSyncStore.getState().addFailedEntity(item.entityId);
       } else {
         // Update retry count for later retry
         await db.syncQueue.update(item.id!, {
@@ -168,74 +185,108 @@ export async function processQueue(): Promise<QueueProcessResult> {
 async function processQueueItem(item: SyncQueueItem): Promise<void> {
   const { entityType, entityId, operation, payload } = item;
 
-  // Get API endpoint
-  const { url, method } = getApiEndpoint(entityType, operation, entityId);
+  // Track that this entity is actively syncing
+  useSyncStore.getState().addActivelySyncing(entityId);
 
-  log.debug(`${method} ${url} (${entityType}/${operation})`);
+  try {
+    // Get API endpoint
+    const { url, method } = getApiEndpoint(entityType, operation, entityId);
 
-  // Prepare request body
-  let body: string | undefined;
+    log.debug(`${method} ${url} (${entityType}/${operation})`);
 
-  if (operation === 'create') {
-    // For create, we need the full entity from local DB
-    const entity = await getLocalEntity(entityType, entityId);
-    if (!entity) {
-      // Entity was deleted locally, remove from queue
-      await db.syncQueue.delete(item.id!);
-      return;
+    // Prepare request body
+    let body: string | undefined;
+
+    if (operation === 'create') {
+      // For create, we need the full entity from local DB
+      const entity = await getLocalEntity(entityType, entityId);
+      if (!entity) {
+        // Entity was deleted locally, remove from queue
+        await db.syncQueue.delete(item.id!);
+        return;
+      }
+      body = JSON.stringify(prepareForServer(entity, entityType));
+    } else if (operation === 'update' && payload) {
+      // For update, use the payload (partial update)
+      // For cards, include expectedVersion for conflict detection
+      if (entityType === 'card') {
+        const localCard = await db.cards.get(entityId);
+        if (localCard) {
+          // Send the current local version as expectedVersion
+          body = JSON.stringify({
+            ...payload,
+            expectedVersion: localCard.version || 1,
+          });
+        } else {
+          body = JSON.stringify(payload);
+        }
+      } else {
+        body = JSON.stringify(payload);
+      }
     }
-    body = JSON.stringify(prepareForServer(entity, entityType));
-  } else if (operation === 'update' && payload) {
-    // For update, use the payload (partial update)
-    body = JSON.stringify(payload);
-  }
-  // For delete, no body needed
+    // For delete, no body needed
 
-  // Make API request
-  const response = await fetch(url, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body,
-    credentials: 'include', // Include cookies for auth
-  });
+    // Make API request
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body,
+      credentials: 'include', // Include cookies for auth
+    });
 
-  // Handle response
-  if (!response.ok) {
-    // Check for idempotent create (200 OK means already exists)
-    if (operation === 'create' && response.status === 200) {
-      // Already exists on server, this is fine (idempotent)
-      await db.syncQueue.delete(item.id!);
+    // Handle response
+    if (!response.ok) {
+      // Check for idempotent create (200 OK means already exists)
+      if (operation === 'create' && response.status === 200) {
+        // Already exists on server, this is fine (idempotent)
+        await db.syncQueue.delete(item.id!);
+        await markEntitySynced(entityType, entityId);
+        return;
+      }
+
+      // Handle 401 (not authenticated) - don't retry
+      if (response.status === 401) {
+        throw new Error('Not authenticated');
+      }
+
+      // Handle 409 (version conflict) for card updates
+      if (response.status === 409 && entityType === 'card' && operation === 'update') {
+        const conflictData = await response.json();
+        if (conflictData.code === 'VERSION_CONFLICT') {
+          log.warn(`Version conflict detected for card ${entityId}`);
+          await handleCardConflict(entityId, conflictData.serverCard);
+          // Remove from queue - conflict has been handled
+          await db.syncQueue.delete(item.id!);
+          return;
+        }
+      }
+
+      // Handle 404 for update/delete - entity doesn't exist on server
+      if (response.status === 404 && (operation === 'update' || operation === 'delete')) {
+        // Entity doesn't exist on server, remove from queue
+        await db.syncQueue.delete(item.id!);
+        // Mark as synced locally to prevent re-queueing on future edits
+        await markEntitySynced(entityType, entityId);
+        log.debug(`Entity ${entityId} not found on server, marked as synced locally`);
+        return;
+      }
+
+      // Other errors
+      const errorBody = await response.text();
+      throw new Error(`API error ${response.status}: ${errorBody}`);
+    }
+
+    // Success - remove from queue and mark as synced
+    await db.syncQueue.delete(item.id!);
+
+    if (operation !== 'delete') {
       await markEntitySynced(entityType, entityId);
-      return;
     }
-
-    // Handle 401 (not authenticated) - don't retry
-    if (response.status === 401) {
-      throw new Error('Not authenticated');
-    }
-
-    // Handle 404 for update/delete - entity doesn't exist on server
-    if (response.status === 404 && (operation === 'update' || operation === 'delete')) {
-      // Entity doesn't exist on server, remove from queue
-      await db.syncQueue.delete(item.id!);
-      // Mark as synced locally to prevent re-queueing on future edits
-      await markEntitySynced(entityType, entityId);
-      log.debug(`Entity ${entityId} not found on server, marked as synced locally`);
-      return;
-    }
-
-    // Other errors
-    const errorBody = await response.text();
-    throw new Error(`API error ${response.status}: ${errorBody}`);
-  }
-
-  // Success - remove from queue and mark as synced
-  await db.syncQueue.delete(item.id!);
-
-  if (operation !== 'delete') {
-    await markEntitySynced(entityType, entityId);
+  } finally {
+    // Always remove from actively syncing, regardless of success or failure
+    useSyncStore.getState().removeActivelySyncing(entityId);
   }
 }
 
@@ -318,21 +369,11 @@ async function markEntitySynced(entityType: EntityType, entityId: string): Promi
       break;
     case 'collection':
       await db.collections.update(entityId, updates);
-      // Update Zustand store for collections
-      useDataStore.setState((state) => ({
-        collections: state.collections.map((c) =>
-          c.id === entityId ? { ...c, _synced: true } : c
-        ),
-      }));
+      // useLiveQuery will auto-update any observing components
       break;
     case 'card':
       await db.cards.update(entityId, updates);
-      // Update Zustand store for cards
-      useDataStore.setState((state) => ({
-        cards: state.cards.map((c) =>
-          c.id === entityId ? { ...c, _synced: true } : c
-        ),
-      }));
+      // useLiveQuery will auto-update any observing components
       break;
     case 'event':
       await db.calendarEvents.update(entityId, updates);
@@ -437,6 +478,9 @@ export async function clearFailedItems(): Promise<void> {
 
   await db.syncQueue.bulkDelete(failedIds);
 
+  // Clear failed entities from store
+  useSyncStore.getState().clearFailedEntities();
+
   // After clearing failed, remaining are all pending
   const count = await getPendingItemCount();
   useSyncStore.getState().setPendingCount(count);
@@ -455,6 +499,9 @@ export async function retryFailedItems(): Promise<void> {
       lastError: undefined,
     });
   }
+
+  // Clear failed entities from store since we're retrying
+  useSyncStore.getState().clearFailedEntities();
 }
 
 /**
@@ -470,19 +517,235 @@ export async function clearAllSyncQueue(): Promise<void> {
   await db.syncQueue.clear();
 
   // Mark all cards as synced in IndexedDB
+  // (useLiveQuery will automatically update any components observing cards)
   const cardCount = await db.cards.count();
   console.log(`[SyncQueue] Marking ${cardCount} cards as synced in IndexedDB...`);
   await db.cards.toCollection().modify({ _synced: true });
-
-  // Update Zustand store
-  const storeCards = useDataStore.getState().cards;
-  console.log(`[SyncQueue] Updating ${storeCards.length} cards in Zustand store...`);
-  useDataStore.setState({
-    cards: storeCards.map((c) => ({ ...c, _synced: true })),
-  });
 
   // Reset pending count
   useSyncStore.getState().setPendingCount(0);
 
   console.log('[SyncQueue] Done! All cards marked as synced.');
+}
+
+// =============================================================================
+// ENTITY-LEVEL SYNC STATUS
+// =============================================================================
+
+export type EntitySyncStatus = 'synced' | 'queued' | 'syncing' | 'failed';
+
+export interface EntitySyncInfo {
+  status: EntitySyncStatus;
+  retryCount?: number;
+  lastError?: string;
+}
+
+/**
+ * Get the sync status for a specific entity
+ * This allows cards to show whether they're queued, actively syncing, or failed
+ */
+export async function getSyncStatusForEntity(entityId: string): Promise<EntitySyncInfo> {
+  // Check if actively syncing right now
+  const activelySyncing = useSyncStore.getState().activelySyncingIds;
+  if (activelySyncing.has(entityId)) {
+    return { status: 'syncing' };
+  }
+
+  // Check the sync queue for this entity
+  const queueItem = await db.syncQueue
+    .where('entityId')
+    .equals(entityId)
+    .first();
+
+  if (!queueItem) {
+    return { status: 'synced' };
+  }
+
+  // Check if failed (exceeded max retries)
+  if ((queueItem.retryCount || 0) >= MAX_RETRIES) {
+    return {
+      status: 'failed',
+      retryCount: queueItem.retryCount,
+      lastError: queueItem.lastError,
+    };
+  }
+
+  // In queue, waiting to be processed
+  return {
+    status: 'queued',
+    retryCount: queueItem.retryCount,
+  };
+}
+
+/**
+ * Force sync a specific entity immediately
+ * Resets retry count if failed and triggers immediate sync
+ */
+export async function forceSyncEntity(entityId: string): Promise<boolean> {
+  // Check if online
+  if (!navigator.onLine) {
+    log.debug('Offline, cannot force sync');
+    return false;
+  }
+
+  // Get the queue item for this entity
+  const queueItem = await db.syncQueue
+    .where('entityId')
+    .equals(entityId)
+    .first();
+
+  if (!queueItem) {
+    log.debug(`No queue item found for entity ${entityId}`);
+    return false;
+  }
+
+  // Reset retry count if failed
+  if ((queueItem.retryCount || 0) >= MAX_RETRIES) {
+    await db.syncQueue.update(queueItem.id!, {
+      retryCount: 0,
+      lastError: undefined,
+    });
+    // Remove from failed entities since we're retrying
+    useSyncStore.getState().removeFailedEntity(entityId);
+    log.debug(`Reset retry count for entity ${entityId}`);
+  }
+
+  // Process this specific item immediately
+  try {
+    const freshItem = await db.syncQueue.get(queueItem.id!);
+    if (freshItem) {
+      await processQueueItem(freshItem);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    log.error(`Force sync failed for entity ${entityId}:`, error);
+    return false;
+  }
+}
+
+/**
+ * Initialize failed entity IDs from the queue
+ * Call this on app startup to restore failed state
+ */
+export async function initializeFailedEntities(): Promise<void> {
+  const items = await db.syncQueue.toArray();
+  const failedItems = items.filter((item) => (item.retryCount || 0) >= MAX_RETRIES);
+
+  const store = useSyncStore.getState();
+  store.clearFailedEntities();
+
+  for (const item of failedItems) {
+    store.addFailedEntity(item.entityId);
+  }
+
+  log.debug(`Initialized ${failedItems.length} failed entities`);
+}
+
+// =============================================================================
+// CONFLICT HANDLING
+// =============================================================================
+
+/**
+ * Handle a version conflict for a card
+ * Creates a conflict copy of the local card and links both with conflict tag
+ */
+async function handleCardConflict(
+  localCardId: string,
+  serverCard: Record<string, unknown>
+): Promise<void> {
+  log.info(`Handling conflict for card ${localCardId}`);
+
+  // Get the local card
+  const localCard = await db.cards.get(localCardId);
+  if (!localCard) {
+    log.error(`Local card ${localCardId} not found for conflict resolution`);
+    return;
+  }
+
+  // Create a conflict copy of the local card with a new ID
+  const conflictCopyId = crypto.randomUUID();
+  const conflictCopy: LocalCard = {
+    ...localCard,
+    id: conflictCopyId,
+    title: localCard.title ? `${localCard.title} (Conflict)` : 'Untitled (Conflict)',
+    tags: addConflictTag(localCard.tags || []),
+    conflictWithId: localCardId, // Link to the original
+    version: 1, // Reset version for the copy
+    _synced: false,
+    _lastModified: new Date(),
+    _localOnly: true, // Mark as local only initially
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  // Save the conflict copy to local DB
+  await db.cards.add(conflictCopy);
+
+  // Update the original local card with server data + conflict tag
+  const serverVersion = (serverCard.version as number) || 1;
+  const serverTags = (serverCard.tags as string[]) || [];
+
+  await db.cards.update(localCardId, {
+    // Update with server values
+    title: serverCard.title as string,
+    description: serverCard.description as string | undefined,
+    content: serverCard.content as string | undefined,
+    notes: serverCard.notes as string | undefined,
+    image: serverCard.image as string | undefined,
+    domain: serverCard.domain as string | undefined,
+    favicon: serverCard.favicon as string | undefined,
+    tags: addConflictTag(serverTags),
+    collections: serverCard.collections as string[] || [],
+    pinned: serverCard.pinned as boolean || false,
+    status: serverCard.status as string || 'READY',
+    version: serverVersion,
+    conflictWithId: conflictCopyId, // Link to the conflict copy
+    _synced: true, // Server version is authoritative
+    _lastModified: new Date(),
+  });
+
+  // Note: Both cards are now in Dexie (original updated above, conflict copy added)
+  // useLiveQuery will auto-update any observing components
+
+  // Queue the conflict copy for creation on server
+  await addToQueue('card', conflictCopyId, 'create');
+
+  log.info(`Created conflict copy ${conflictCopyId} for card ${localCardId}`);
+}
+
+/**
+ * Resolve a conflict when one of the conflicting cards is deleted
+ * Removes the conflict tag and link from the remaining card
+ */
+export async function resolveConflictOnDelete(deletedCardId: string): Promise<void> {
+  // Get the deleted card to find its conflict partner
+  const deletedCard = await db.cards.get(deletedCardId);
+  if (!deletedCard?.conflictWithId) {
+    return; // No conflict to resolve
+  }
+
+  const partnerId = deletedCard.conflictWithId;
+  const partnerCard = await db.cards.get(partnerId);
+
+  if (partnerCard) {
+    // Remove conflict tag and link from the partner
+    const updatedTags = removeConflictTag(partnerCard.tags || []);
+
+    await db.cards.update(partnerId, {
+      tags: updatedTags,
+      conflictWithId: undefined,
+      _lastModified: new Date(),
+      _synced: false,
+    });
+    // useLiveQuery will auto-update any observing components
+
+    // Queue the partner card update
+    await addToQueue('card', partnerId, 'update', {
+      tags: updatedTags,
+      conflictWithId: null,
+    });
+
+    log.info(`Resolved conflict: removed conflict tag from card ${partnerId}`);
+  }
 }

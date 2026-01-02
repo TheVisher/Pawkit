@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { DragOverlay, useDndMonitor, type Modifier } from '@dnd-kit/core';
 import { SortableContext, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CardItem, type CardDisplaySettings } from './card-item';
+import type { SystemTag } from '@/lib/utils/system-tags';
 import { QuickNoteCard } from './quick-note-card';
 import { MasonryGrid } from './masonry-grid';
 import { CardListView, type CardGroup } from './card-list-view';
@@ -42,6 +43,8 @@ const SortableGridCard = memo(function SortableGridCard({
   isDraggingThis,
   isDropTarget,
   currentCollection,
+  onTagClick,
+  onSystemTagClick,
 }: {
   card: LocalCard;
   onClick: () => void;
@@ -49,6 +52,8 @@ const SortableGridCard = memo(function SortableGridCard({
   isDraggingThis: boolean;
   isDropTarget: boolean;
   currentCollection?: string;
+  onTagClick?: (tag: string) => void;
+  onSystemTagClick?: (tag: SystemTag) => void;
 }) {
   const { attributes, listeners, setNodeRef } = useSortable({
     id: card.id,
@@ -103,6 +108,8 @@ const SortableGridCard = memo(function SortableGridCard({
           onClick={onClick}
           displaySettings={displaySettings}
           uniformHeight
+          onTagClick={onTagClick}
+          onSystemTagClick={onSystemTagClick}
         />
       </div>
     </CardContextMenu>
@@ -120,6 +127,10 @@ interface CardGridProps {
   groupIcon?: React.ComponentType<{ className?: string }>;
   /** Current collection slug for context menu actions */
   currentCollection?: string;
+  /** Called when a user tag in the footer is clicked (for filtering) */
+  onTagClick?: (tag: string) => void;
+  /** Called when a system tag in the footer is clicked (for filtering) */
+  onSystemTagClick?: (tag: SystemTag) => void;
 }
 
 export function CardGrid({
@@ -132,6 +143,8 @@ export function CardGrid({
   groups,
   groupIcon,
   currentCollection,
+  onTagClick,
+  onSystemTagClick,
 }: CardGridProps) {
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
@@ -198,6 +211,8 @@ export function CardGrid({
         cardSpacing={cardSpacing}
         displaySettings={displaySettings}
         currentCollection={currentCollection}
+        onTagClick={onTagClick}
+        onSystemTagClick={onSystemTagClick}
       />
     );
   }
@@ -211,6 +226,8 @@ export function CardGrid({
         groupIcon={groupIcon}
         onReorder={onReorder}
         currentCollection={currentCollection}
+        onTagClick={onTagClick}
+        onSystemTagClick={onSystemTagClick}
       />
     );
   }
@@ -237,6 +254,8 @@ export function CardGrid({
               isDraggingThis={activeId === card.id}
               isDropTarget={overId === card.id && activeId !== card.id}
               currentCollection={currentCollection}
+              onTagClick={onTagClick}
+              onSystemTagClick={onSystemTagClick}
             />
           ))}
         </div>
