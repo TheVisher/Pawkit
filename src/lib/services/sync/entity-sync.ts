@@ -150,7 +150,7 @@ function serverCardToLocal(server: ServerCard): LocalCard {
     pinned: server.pinned,
     scheduledDate: server.scheduledDate ? new Date(server.scheduledDate) : undefined,
     isFileCard: false, // Default, not in server type
-    version: 0, // Default version for synced items
+    version: server.version || 1, // Use server version for conflict detection
     createdAt: new Date(server.createdAt),
     updatedAt: new Date(server.updatedAt),
     ...createSyncMetadataFromServer(server.updatedAt, server.deleted),

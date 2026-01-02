@@ -242,6 +242,22 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
       if (operation === 'create' && response.status === 200) {
         // Already exists on server, this is fine (idempotent)
         await db.syncQueue.delete(item.id!);
+        // For cards, update version from server response
+        if (entityType === 'card') {
+          try {
+            const responseData = await response.json();
+            if (responseData.card?.version) {
+              await db.cards.update(entityId, {
+                version: responseData.card.version,
+                _synced: true,
+                _serverVersion: new Date().toISOString(),
+              });
+              return;
+            }
+          } catch {
+            // Fall through to mark as synced
+          }
+        }
         await markEntitySynced(entityType, entityId);
         return;
       }
@@ -282,6 +298,24 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
     await db.syncQueue.delete(item.id!);
 
     if (operation !== 'delete') {
+      // For cards, update the version from server response to prevent future conflicts
+      if (entityType === 'card' && (operation === 'create' || operation === 'update')) {
+        try {
+          const responseData = await response.json();
+          if (responseData.card?.version) {
+            await db.cards.update(entityId, {
+              version: responseData.card.version,
+              _synced: true,
+              _serverVersion: new Date().toISOString(),
+            });
+            log.debug(`Updated card ${entityId} to version ${responseData.card.version}`);
+            return;
+          }
+        } catch {
+          // If response parsing fails, fall back to just marking as synced
+          log.debug(`Could not parse response for card ${entityId}, marking as synced without version update`);
+        }
+      }
       await markEntitySynced(entityType, entityId);
     }
   } finally {

@@ -57,11 +57,11 @@ export function CoverImagePickerModal() {
         return collections.find(c => c.id === coverImageCollectionId);
     }, [collections, coverImageCollectionId]);
 
-    // Get cards with images from this collection
+    // Get cards with images from this Pawkit (using tags)
     const collectionCards = useMemo(() => {
         if (!collection) return [];
         return cards.filter(
-            card => card.collections.includes(collection.slug) && !card._deleted && card.image
+            card => card.tags?.includes(collection.slug) && !card._deleted && card.image
         );
     }, [cards, collection]);
 

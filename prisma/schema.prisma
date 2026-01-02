@@ -140,9 +140,11 @@ model Card {
   structuredData Json? // Kit-extracted rich data (dates, ingredients, etc.)
   source         Json? // { type: 'manual' | 'extension' | 'kit' | 'reddit' | 'youtube', ... }
 
-  // Organization (via Pawkits + Tags, NOT separate note folders)
-  tags        String[] // Array of tag names
-  collections String[] // Array of collection slugs (for quick filtering)
+  // Organization - ALL via tags now
+  // Pawkit membership, user tags, date tags (#2026-01-30), supertags (#contact)
+  // See: .claude/skills/pawkit-tag-architecture/SKILL.md
+  tags        String[] // Includes Pawkit slugs + user tags + date tags + supertags
+  collections String[] // DEPRECATED - kept for migration, will be removed. Use tags instead.
   pinned      Boolean  @default(false)
 
   // Scheduling (for calendar integration)

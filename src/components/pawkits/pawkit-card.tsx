@@ -115,10 +115,11 @@ export function PawkitCard({
     transition,
   };
 
-  // Get cards in this collection
+  // Get cards in this Pawkit (using tags)
+  // A card is in a Pawkit if it has the Pawkit's slug as a tag
   const collectionCards = useMemo(() => {
     return cards.filter(
-      (card) => card.collections.includes(collection.slug) && !card._deleted
+      (card) => card.tags?.includes(collection.slug) && !card._deleted
     );
   }, [cards, collection.slug]);
 

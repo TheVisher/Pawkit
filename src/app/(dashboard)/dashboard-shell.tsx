@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
+import { runTagArchitectureMigration, normalizeAllTags } from '@/lib/migrations/tag-architecture-migration';
 import { useSync } from '@/lib/hooks/use-sync';
 import { useTauriEvents } from '@/lib/hooks/use-tauri-events';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
@@ -170,6 +171,29 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   useEffect(() => {
     // Load data when workspace is available
     if (currentWorkspace) {
+      // Run tag architecture migration (one-time, merges collections into tags)
+      // See: .claude/skills/pawkit-tag-architecture/SKILL.md
+      runTagArchitectureMigration(false, currentWorkspace.id)
+        .then((result) => {
+          if (result.cardsUpdated > 0) {
+            log.info(`Tag migration: updated ${result.cardsUpdated} cards`);
+          }
+        })
+        .catch((error) => {
+          log.error('Tag migration failed:', error);
+        });
+
+      // Normalize all tags to lowercase (one-time, ensures consistent matching)
+      normalizeAllTags(currentWorkspace.id)
+        .then((result) => {
+          if (result.cardsUpdated > 0) {
+            log.info(`Tag normalization: updated ${result.cardsUpdated} cards`);
+          }
+        })
+        .catch((error) => {
+          log.error('Tag normalization failed:', error);
+        });
+
       loadAll(currentWorkspace.id);
 
       // Auto-purge trash items older than 30 days

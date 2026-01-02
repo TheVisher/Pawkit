@@ -41,17 +41,26 @@ export default function PawkitsPage() {
 
   const [activeCollection, setActiveCollection] = useState<LocalCollection | null>(null);
 
-  // Calculate card counts per collection
+  // Build set of valid Pawkit slugs
+  const pawkitSlugs = useMemo(() => {
+    return new Set(collections.map((c) => c.slug));
+  }, [collections]);
+
+  // Calculate card counts per Pawkit (using tags)
+  // A card counts toward a Pawkit if it has that Pawkit's slug as a tag
   const cardCounts = useMemo(() => {
     const counts = new Map<string, number>();
     for (const card of cards) {
       if (card._deleted) continue;
-      for (const slug of card.collections || []) {
-        counts.set(slug, (counts.get(slug) || 0) + 1);
+      for (const tag of card.tags || []) {
+        // Only count tags that are Pawkit slugs
+        if (pawkitSlugs.has(tag)) {
+          counts.set(tag, (counts.get(tag) || 0) + 1);
+        }
       }
     }
     return counts;
-  }, [cards]);
+  }, [cards, pawkitSlugs]);
 
   // Get root-level collections (no parent) and sort based on settings
   const rootCollections = useMemo(() => {

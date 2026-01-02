@@ -64,15 +64,15 @@ import { CalendarSidebar } from "./calendar/CalendarSidebar";
 import { SettingsPanel } from "./SettingsPanel";
 
 export function RightSidebar() {
+  const pathname = usePathname();
   const hasMountedRef = useRef(false);
   const [mounted, setMounted] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [displayedPathname, setDisplayedPathname] = useState("");
+  const [displayedPathname, setDisplayedPathname] = useState(pathname);
   const [displayMode, setDisplayMode] = useState<"filters" | "card-details">(
     "filters",
   );
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const pathname = usePathname();
   const { isOpen, isAnchored, toggleAnchored, setOpen } = useRightSidebar();
   const { isSettingsMode, toggleSettings } = useRightSidebarSettings();
   const { theme, setTheme } = useTheme();
@@ -88,9 +88,11 @@ export function RightSidebar() {
   );
 
   // Get view-specific configuration
+  // Always use pathname for config (determines what to show)
+  // displayedPathname is only for animation purposes
   const viewConfig = useMemo(
-    () => getViewConfig(displayedPathname || pathname),
-    [displayedPathname, pathname],
+    () => getViewConfig(pathname),
+    [pathname],
   );
 
   // Handle transition between filters and card details view
@@ -213,9 +215,9 @@ export function RightSidebar() {
       (c) => c.parentId === collection.id && !c._deleted,
     );
 
-    // Return only cards in this collection (collections is an array of slugs)
+    // Return only cards in this Pawkit (using tags - Pawkit slug is a tag)
     const filtered = cards.filter(
-      (card) => card.collections?.includes(slug) && !card._deleted,
+      (card) => card.tags?.includes(slug) && !card._deleted,
     );
 
     return {
@@ -230,6 +232,11 @@ export function RightSidebar() {
     return duplicateIds.size;
   }, [scopedCards]);
 
+  // Build set of Pawkit slugs to check if card has any Pawkit tags
+  const pawkitSlugs = useMemo(() => {
+    return new Set(allCollections.map((c) => c.slug));
+  }, [allCollections]);
+
   const { allTags, noTagsCount, noPawkitsCount } = useMemo(() => {
     const tagCounts = new Map<string, number>();
     let noTags = 0;
@@ -237,11 +244,12 @@ export function RightSidebar() {
     for (const card of scopedCards) {
       if (card._deleted) continue;
       const tags = card.tags || [];
-      const collections = card.collections || [];
+      // A card is "in a Pawkit" if any of its tags match a Pawkit slug
+      const hasAnyPawkitTag = tags.some((tag) => pawkitSlugs.has(tag));
       if (tags.length === 0) {
         noTags++;
       }
-      if (collections.length === 0) {
+      if (!hasAnyPawkitTag) {
         noPawkits++;
       }
       for (const tag of tags) {
@@ -252,7 +260,7 @@ export function RightSidebar() {
       .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
       .map(([tag, count]) => ({ tag, count }));
     return { allTags: sortedTags, noTagsCount: noTags, noPawkitsCount: noPawkits };
-  }, [scopedCards]);
+  }, [scopedCards, pawkitSlugs]);
 
   // Track mount state - ref for animation logic, state for hydration safety
   useEffect(() => {

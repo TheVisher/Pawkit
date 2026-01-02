@@ -68,7 +68,9 @@ export function CardListView({ cards, groups, groupIcon, onReorder, currentColle
     const modifiedDate = card.updatedAt ? format(new Date(card.updatedAt), 'MM/dd/yyyy') : '-';
     const scheduledDateFormatted = card.scheduledDate ? format(new Date(card.scheduledDate), 'MM/dd/yyyy') : '-';
     const tags = card.tags || [];
-    const collections = card.collections || [];
+    // Pawkits are now tags - filter to only show Pawkit-related tags for the collections column
+    // For now, just use tags (the column will show all tags which includes Pawkit slugs)
+    const collections = tags;
 
     switch (column) {
       case 'name':

@@ -57,6 +57,8 @@ export class PawkitDB extends Dexie {
       viewSettings: 'id, workspaceId, [workspaceId+viewKey]',
 
       // Content entities
+      // IMPORTANT: *tags is a multi-entry index for tag-based queries
+      // See: .claude/skills/pawkit-tag-architecture/SKILL.md
       cards: [
         'id',
         'workspaceId',
@@ -68,6 +70,7 @@ export class PawkitDB extends Dexie {
         '[workspaceId+isRead]',
         '[workspaceId+isDailyNote]',
         '[workspaceId+linkStatus]',
+        '*tags', // Multi-entry index for Pawkit membership, date tags, supertags
         'updatedAt',
         '_synced',
         '_lastModified',

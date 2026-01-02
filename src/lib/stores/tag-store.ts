@@ -162,15 +162,19 @@ export const useTagStore = create<TagState>()(
 
       /**
        * Add a tag to a card
+       * Tags are normalized to lowercase for consistent matching
        */
       addTagToCard: async (cardId: string, tag: string) => {
         const card = await db.cards.get(cardId);
         if (!card) return;
 
-        const currentTags = card.tags || [];
-        if (currentTags.includes(tag)) return;
+        // Normalize tag to lowercase
+        const normalizedTag = tag.toLowerCase();
 
-        const newTags = [...currentTags, tag];
+        const currentTags = card.tags || [];
+        if (currentTags.includes(normalizedTag)) return;
+
+        const newTags = [...currentTags, normalizedTag];
         await db.cards.update(cardId, {
           tags: newTags,
           updatedAt: new Date(),
@@ -178,19 +182,19 @@ export const useTagStore = create<TagState>()(
           _synced: false,
         });
 
-        // Record usage
-        get().recordTagUse(tag);
+        // Record usage (with normalized tag)
+        get().recordTagUse(normalizedTag);
 
-        // Update local counts
+        // Update local counts (using normalized tag)
         const { tagCounts } = get();
         set({
           tagCounts: {
             ...tagCounts,
-            [tag]: (tagCounts[tag] || 0) + 1,
+            [normalizedTag]: (tagCounts[normalizedTag] || 0) + 1,
           },
-          uniqueTags: tagCounts[tag]
+          uniqueTags: tagCounts[normalizedTag]
             ? get().uniqueTags
-            : [...get().uniqueTags, tag].sort((a, b) =>
+            : [...get().uniqueTags, normalizedTag].sort((a, b) =>
                 a.toLowerCase().localeCompare(b.toLowerCase())
               ),
         });
