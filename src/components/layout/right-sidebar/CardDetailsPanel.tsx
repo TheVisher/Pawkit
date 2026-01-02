@@ -5,10 +5,14 @@
  * Shown in the right sidebar when a card modal is open
  */
 
-import { useState } from 'react';
-import { Tag, FolderOpen, Link2, Paperclip, MessageSquare, Copy, Check, ExternalLink } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Tag, FolderOpen, Link2, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, User, Undo2, Redo2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { TagInput } from '@/components/tags/tag-input';
+import { useDataStore } from '@/lib/stores/data-store';
+import { checkSupertagAddition, applyTemplate } from '@/lib/utils/template-applicator';
+import { ContactTemplatePanel } from './ContactTemplatePanel';
 import type { LocalCard, LocalCollection } from '@/lib/db';
 
 interface CardDetailsPanelProps {
@@ -19,6 +23,61 @@ interface CardDetailsPanelProps {
 
 export function CardDetailsPanel({ card, collections, isTransitioning }: CardDetailsPanelProps) {
   const [copied, setCopied] = useState(false);
+  const [isEditingTags, setIsEditingTags] = useState(false);
+  const updateCard = useDataStore((s) => s.updateCard);
+
+  // Check if card has #contact tag
+  const isContactCard = useMemo(
+    () => (card.tags || []).some((t) => t.toLowerCase() === 'contact'),
+    [card.tags]
+  );
+
+  // Check if card is a note type (has editor)
+  const isNoteCard = useMemo(
+    () => ['md-note', 'text-note', 'quick-note'].includes(card.type),
+    [card.type]
+  );
+
+  // Handle content changes from template panel
+  const handleContentChange = useCallback(
+    (newContent: string) => {
+      updateCard(card.id, { content: newContent });
+    },
+    [card.id, updateCard]
+  );
+
+  // Undo/Redo handlers
+  const handleUndo = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('editor-undo'));
+  }, []);
+
+  const handleRedo = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('editor-redo'));
+  }, []);
+
+  // Handle tag changes with template auto-apply
+  const handleTagsChange = useCallback((newTags: string[]) => {
+    const oldTags = card.tags || [];
+
+    // Update tags
+    updateCard(card.id, { tags: newTags });
+
+    // Check for supertag template application
+    const result = checkSupertagAddition(oldTags, newTags, card.content);
+    if (result.shouldApply && result.template) {
+      // Auto-apply template to empty card
+      const newContent = applyTemplate(card.content, result.template);
+      updateCard(card.id, { content: newContent });
+    } else if (result.needsPrompt && result.template) {
+      // For cards with content, show a confirmation
+      const confirmed = window.confirm(
+        `Apply ${result.supertagName} template? This will replace your existing content.`
+      );
+      if (confirmed) {
+        updateCard(card.id, { content: result.template });
+      }
+    }
+  }, [card.id, card.tags, card.content, updateCard]);
 
   const handleCopyUrl = async () => {
     if (!card.url) return;
@@ -80,14 +139,70 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
         </>
       )}
 
+      {/* Undo/Redo for note cards */}
+      {isNoteCard && (
+        <>
+          <div className="flex gap-2">
+            <button
+              onClick={handleUndo}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs rounded-md bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary border border-border-subtle transition-colors"
+              title="Undo (Cmd+Z)"
+            >
+              <Undo2 className="h-3.5 w-3.5" />
+              Undo
+            </button>
+            <button
+              onClick={handleRedo}
+              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-xs rounded-md bg-bg-surface-2 text-text-secondary hover:bg-bg-surface-3 hover:text-text-primary border border-border-subtle transition-colors"
+              title="Redo (Cmd+Shift+Z)"
+            >
+              <Redo2 className="h-3.5 w-3.5" />
+              Redo
+            </button>
+          </div>
+          <Separator className="bg-border-subtle" />
+        </>
+      )}
+
       {/* Tags Section */}
       <div>
-        <div className="flex items-center gap-2 text-text-muted mb-3">
-          <Tag className="h-5 w-5" />
-          <span className="text-xs font-medium uppercase">Tags</span>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2 text-text-muted">
+            <Tag className="h-5 w-5" />
+            <span className="text-xs font-medium uppercase">Tags</span>
+          </div>
+          {!isEditingTags && (
+            <button
+              onClick={() => setIsEditingTags(true)}
+              className="p-1 rounded hover:bg-bg-surface-2 text-text-muted hover:text-text-primary transition-colors"
+              title="Add tags"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
         </div>
-        {card.tags && card.tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
+        {isEditingTags ? (
+          <div className="space-y-2">
+            <TagInput
+              value={card.tags || []}
+              onChange={handleTagsChange}
+              placeholder="Add tags..."
+              compact
+              autoFocus
+            />
+            <button
+              onClick={() => setIsEditingTags(false)}
+              className="text-xs text-text-muted hover:text-text-primary"
+            >
+              Done
+            </button>
+          </div>
+        ) : card.tags && card.tags.length > 0 ? (
+          <div
+            className="flex flex-wrap gap-1.5 cursor-pointer"
+            onClick={() => setIsEditingTags(true)}
+            title="Click to edit tags"
+          >
             {card.tags.map((tag) => (
               <span
                 key={tag}
@@ -98,11 +213,33 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
             ))}
           </div>
         ) : (
-          <p className="text-xs text-text-muted italic">No tags</p>
+          <button
+            onClick={() => setIsEditingTags(true)}
+            className="text-xs text-text-muted italic hover:text-text-primary"
+          >
+            Click to add tags
+          </button>
         )}
       </div>
 
       <Separator className="bg-border-subtle" />
+
+      {/* Contact Template Panel - only for #contact cards */}
+      {isContactCard && (
+        <>
+          <div>
+            <div className="flex items-center gap-2 text-text-muted mb-3">
+              <User className="h-5 w-5" />
+              <span className="text-xs font-medium uppercase">Contact Template</span>
+            </div>
+            <ContactTemplatePanel
+              content={card.content || ''}
+              onContentChange={handleContentChange}
+            />
+          </div>
+          <Separator className="bg-border-subtle" />
+        </>
+      )}
 
       {/* Pawkit (Collection) Section */}
       <div>

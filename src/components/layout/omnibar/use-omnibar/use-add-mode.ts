@@ -8,6 +8,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useModalStore } from '@/lib/stores/modal-store';
+import { useDataStore } from '@/lib/stores/data-store';
+import { useWorkspaceStore } from '@/lib/stores/workspace-store';
+import { getSupertagTemplate } from '@/lib/tags/supertags';
 import { addMenuItems } from '../types';
 
 export interface AddModeState {
@@ -24,6 +27,10 @@ export interface AddModeActions {
 export function useAddMode(onModeChange?: () => void): AddModeState & AddModeActions {
   const router = useRouter();
   const openAddCard = useModalStore((s) => s.openAddCard);
+  const openCardDetail = useModalStore((s) => s.openCardDetail);
+  const createCard = useDataStore((s) => s.createCard);
+  const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace);
+  const workspaceId = currentWorkspace?.id;
 
   const [isAddMode, setIsAddMode] = useState(false);
   const [addModeSelectedIndex, setAddModeSelectedIndex] = useState(-1);
@@ -97,7 +104,7 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
     setAddModeSelectedIndex(-1);
   }, []);
 
-  const handleAddModeAction = useCallback((action: string) => {
+  const handleAddModeAction = useCallback(async (action: string) => {
     switch (action) {
       case 'bookmark':
         openAddCard('bookmark');
@@ -105,6 +112,22 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
       case 'note':
       case 'quick-note':
         openAddCard('note');
+        break;
+      case 'contact':
+        // Create contact card with template and open for editing
+        if (workspaceId) {
+          const template = getSupertagTemplate('contact', { name: 'New Contact' }) || '';
+          const card = await createCard({
+            workspaceId,
+            type: 'md-note',
+            url: '',
+            title: 'New Contact',
+            content: template,
+            tags: ['contact'],
+            pinned: false,
+          });
+          openCardDetail(card.id);
+        }
         break;
       case 'upload':
         console.log('Upload action - coming soon');
@@ -120,7 +143,7 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
     }
     setIsAddMode(false);
     setAddModeSelectedIndex(-1);
-  }, [openAddCard, router]);
+  }, [openAddCard, openCardDetail, createCard, workspaceId, router]);
 
   return {
     isAddMode,

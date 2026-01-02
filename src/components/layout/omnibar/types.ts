@@ -15,6 +15,7 @@ import {
   PanelLeft,
   Folder,
   Hash,
+  User,
 } from 'lucide-react';
 import type { ToastType } from '@/lib/stores/toast-store';
 import type { LocalCard, LocalCollection } from '@/lib/db';
@@ -98,6 +99,7 @@ export const toastColors: Record<ToastType, string> = {
 export const addMenuItems = [
   { icon: Link2, label: 'Add Bookmark', action: 'bookmark', shortcut: '⌘⇧B' },
   { icon: FileText, label: 'New Note', action: 'note', shortcut: '⌘⇧N' },
+  { icon: User, label: 'New Contact', action: 'contact' },
   { icon: StickyNote, label: 'Quick Note', action: 'quick-note' },
   { icon: Upload, label: 'Upload File', action: 'upload' },
   { icon: Calendar, label: 'New Event', action: 'event' },
