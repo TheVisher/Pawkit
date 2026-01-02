@@ -187,14 +187,84 @@ async function scrapeMetadata(url: string, domain: string) {
     // Extract description
     const description = pickFirst(metaMap, DESCRIPTION_META_KEYS);
 
-    // Extract image
-    let image: string | null = pickFirst(metaMap, IMAGE_META_KEYS) ?? null;
-    if (image) {
-      // Resolve relative URLs
-      const resolved = resolveUrl(url, image);
-      // Validate image
-      image = resolved ? await validateImage(resolved) : null;
+    // Extract all images (primary + gallery)
+    const allImages: string[] = [];
+
+    // 1. Get all og:image tags (some sites have multiple)
+    $('meta[property="og:image"], meta[property="og:image:url"]').each((_, el) => {
+      const content = $(el).attr('content');
+      if (content) {
+        const resolved = resolveUrl(url, content);
+        if (resolved && !allImages.includes(resolved)) {
+          allImages.push(resolved);
+        }
+      }
+    });
+
+    // 2. Extract images from JSON-LD structured data (Product schema)
+    $('script[type="application/ld+json"]').each((_, el) => {
+      try {
+        const jsonText = $(el).html();
+        if (!jsonText) return;
+        const data = JSON.parse(jsonText);
+
+        // Handle @graph arrays (common pattern)
+        const items = data['@graph'] || [data];
+
+        for (const item of items) {
+          const itemType = item['@type'];
+          // Handle various product-related types (including arrays like ["Product", "IndividualProduct"])
+          const isProduct = Array.isArray(itemType)
+            ? itemType.some(t => t.includes('Product') || t === 'ItemPage')
+            : (itemType?.includes?.('Product') || itemType === 'ItemPage');
+
+          if (isProduct) {
+            const productImages = item.image;
+            if (Array.isArray(productImages)) {
+              for (const img of productImages) {
+                const imgUrl = typeof img === 'string' ? img : img?.url;
+                if (imgUrl) {
+                  const resolved = resolveUrl(url, imgUrl);
+                  if (resolved && !allImages.includes(resolved)) {
+                    allImages.push(resolved);
+                  }
+                }
+              }
+            } else if (typeof productImages === 'string') {
+              const resolved = resolveUrl(url, productImages);
+              if (resolved && !allImages.includes(resolved)) {
+                allImages.push(resolved);
+              }
+            }
+          }
+        }
+      } catch {
+        // Invalid JSON-LD, skip
+      }
+    });
+
+    // 3. Fallback to twitter:image if no images found
+    if (allImages.length === 0) {
+      const twitterImage = metaMap['twitter:image'] || metaMap['twitter:image:src'];
+      if (twitterImage) {
+        const resolved = resolveUrl(url, twitterImage);
+        if (resolved) allImages.push(resolved);
+      }
     }
+
+    // Validate images (limit to first 10 to avoid too many requests)
+    const validatedImages: string[] = [];
+    for (const imgUrl of allImages.slice(0, 10)) {
+      const validated = await validateImage(imgUrl);
+      if (validated) {
+        validatedImages.push(validated);
+      }
+    }
+
+    // Primary image is the first validated one
+    const image = validatedImages[0] || null;
+    // Additional images (excluding primary)
+    const images = validatedImages.length > 1 ? validatedImages : null;
 
     // Extract favicon
     let favicon: string | undefined;
@@ -214,6 +284,7 @@ async function scrapeMetadata(url: string, domain: string) {
       title: title || null,
       description: description || null,
       image: image || null,
+      images: images || null, // Array of all images for gallery view
       favicon: favicon || null,
       domain,
     };
@@ -226,6 +297,7 @@ async function scrapeMetadata(url: string, domain: string) {
       title: null,
       description: null,
       image: null,
+      images: null,
       favicon: FAVICON_ENDPOINT(url),
       domain,
     };

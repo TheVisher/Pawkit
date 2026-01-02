@@ -67,9 +67,13 @@ src/components/
 │   └── agenda-view.tsx              4.6KB
 ├── cards/
 │   ├── card-grid.tsx                 8.0KB
-│   ├── card-item.tsx               <1.0KB   (Memoized wrapper)
+│   ├── card-item/                    (Refactored - Modular)
+│   │   ├── grid-card.tsx             12.0KB  ⚠️ Watch limit
+│   │   └── list-card.tsx             4.0KB
+│   ├── card-list-view/               (Refactored - Modular)
+│   │   └── index.tsx                 11.0KB  ⚠️ Watch limit
 │   ├── empty-state.tsx               1.5KB
-│   └── masonry-grid.tsx             15.0KB  ⚠️ Watch limit
+│   └── masonry-grid.tsx             18.0KB  🚨 CRITICAL - SPLIT ASAP
 ├── editor/
 │   ├── editor.tsx                   17.0KB  ⚠️ Watch limit
 │   ├── slash-command-menu.tsx       10.0KB  ⚠️ Watch limit
@@ -78,8 +82,9 @@ src/components/
 │   ├── left-sidebar.tsx              8.1KB
 │   ├── mobile-nav.tsx                1.8KB
 │   ├── page-header.tsx               1.6KB
-│   ├── right-sidebar.tsx            46.0KB  🚨 CRITICAL - SPLIT ASAP
-│   │   └── sections/                        (Modularized filters)
+│   ├── right-sidebar/                (Refactored - Modular)
+│   │   ├── index.tsx                 15.0KB  ⚠️ Watch limit
+│   │   └── sections/                 (Individual filter modules)
 │   ├── omnibar/
 │   │   ├── index.tsx                 6.6KB
 │   │   ├── idle-content.tsx         14.0KB  ⚠️ Watch limit

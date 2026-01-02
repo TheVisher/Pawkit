@@ -245,9 +245,10 @@ Sync Queue (2s debounce) → Background API → Supabase → Other devices
 - **Sync-on-Close Strategy** - Modals trigger `triggerSync()` when dismissed for data consistency
 
 **Key Files**:
-- `src/lib/services/sync-service.ts`
-- `src/lib/services/local-storage.ts`
-- `src/lib/stores/data-store.ts`
+- `src/lib/services/sync/sync-service.ts` (Core logic)
+- `src/lib/services/sync-queue.ts` (Background queue)
+- `src/lib/db/schema.ts` (Dexie database)
+- `src/lib/stores/data-store.ts` (Zustand integration)
 
 **Duplicate Detection**:
 - `view-store.ts` implements custom `findDuplicateCardIds` with internal URL normalizer

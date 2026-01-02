@@ -7,18 +7,17 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Image from 'next/image';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useCard } from '@/lib/hooks/use-live-data';
 import { cn } from '@/lib/utils';
 import { CardDetailHeader } from './header';
 import { ContentRouter } from './content/index';
 import type { CardDetailContentProps } from './types';
 
 export function CardDetailContent({ cardId, onClose, className }: CardDetailContentProps) {
-  const cards = useDataStore((s) => s.cards);
+  const card = useCard(cardId);
   const updateCard = useDataStore((s) => s.updateCard);
-
-  // Find the active card
-  const card = useMemo(() => cards.find((c) => c.id === cardId), [cards, cardId]);
 
   // Title state (shared across all card types)
   const [title, setTitle] = useState(card?.title || '');
@@ -29,6 +28,19 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
 
   // Expanded image state
   const [showExpandedImage, setShowExpandedImage] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Gallery images (use images array if available, otherwise just primary image)
+  const galleryImages = useMemo(() => {
+    if (!card) return [];
+    if (card.images && card.images.length > 1) {
+      return card.images;
+    }
+    return card.image ? [card.image] : [];
+  }, [card?.images, card?.image]);
+
+  const hasMultipleImages = galleryImages.length > 1;
+  const currentImage = galleryImages[currentImageIndex] || card?.image;
 
   // Derived state
   const isArticle = card?.type === 'url';
@@ -39,8 +51,20 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
     if (card) {
       setTitle(card.title || '');
       setImageError(false);
+      setCurrentImageIndex(0); // Reset gallery to first image
     }
   }, [card?.id]);
+
+  // Gallery navigation
+  const nextImage = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((i) => (i + 1) % galleryImages.length);
+  }, [galleryImages.length]);
+
+  const prevImage = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setCurrentImageIndex((i) => (i - 1 + galleryImages.length) % galleryImages.length);
+  }, [galleryImages.length]);
 
   // Save title on blur
   const handleTitleBlur = useCallback(() => {
@@ -94,7 +118,7 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
         />
 
         {/* Full image overlay - appears when expanded */}
-        {card.image && !imageError && (
+        {currentImage && !imageError && (
           <div
             className={cn(
               "absolute inset-0 bg-black cursor-pointer",
@@ -106,11 +130,59 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
             onClick={toggleExpandedImage}
           >
             <Image
-              src={card.image}
+              src={currentImage}
               alt={card.title || 'Card image'}
               fill
               className="object-contain"
             />
+
+            {/* Gallery navigation - only show when multiple images */}
+            {hasMultipleImages && showExpandedImage && (
+              <>
+                {/* Previous button */}
+                <button
+                  onClick={prevImage}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                  aria-label="Previous image"
+                >
+                  <ChevronLeft className="h-6 w-6" />
+                </button>
+
+                {/* Next button */}
+                <button
+                  onClick={nextImage}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+                  aria-label="Next image"
+                >
+                  <ChevronRight className="h-6 w-6" />
+                </button>
+
+                {/* Image counter */}
+                <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-black/50 text-white text-sm font-medium">
+                  {currentImageIndex + 1} / {galleryImages.length}
+                </div>
+
+                {/* Dot indicators */}
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-2">
+                  {galleryImages.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentImageIndex(i);
+                      }}
+                      className={cn(
+                        "w-2 h-2 rounded-full transition-all",
+                        i === currentImageIndex
+                          ? "bg-white w-4"
+                          : "bg-white/50 hover:bg-white/70"
+                      )}
+                      aria-label={`Go to image ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

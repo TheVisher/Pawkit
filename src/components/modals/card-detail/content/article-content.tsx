@@ -16,6 +16,8 @@ import { Reader } from '@/components/reader';
 import { calculateReadingTime } from '@/lib/db/schema';
 import { getDomain, getContentStats } from '../types';
 import { updateReadingTimeTag, updateReadTag } from '@/lib/utils/system-tags';
+import { queueArticleExtraction } from '@/lib/services/metadata-service';
+import { isYouTubeUrl } from '@/lib/utils/url-detection';
 import type { LocalCard } from '@/lib/db';
 
 interface ArticleContentProps {
@@ -62,6 +64,21 @@ export function ArticleContent({
   const cardAge = card.createdAt ? Date.now() - new Date(card.createdAt).getTime() : Infinity;
   const isRecentCard = cardAge < 30000; // 30 seconds
   const mightBeExtracting = !hasArticleContent && isRecentCard && card.status === 'READY';
+
+  // Auto-trigger article extraction if card needs it
+  // This handles cases where the portal created the card but didn't finish extraction
+  // (e.g., portal window was hidden, different JS context, timing issues)
+  useEffect(() => {
+    if (
+      !hasArticleContent &&
+      card.url &&
+      card.status === 'READY' &&
+      !isYouTubeUrl(card.url)
+    ) {
+      // Queue extraction - the service will skip if already processed
+      queueArticleExtraction(card.id);
+    }
+  }, [card.id, card.url, card.status, hasArticleContent]);
 
   // Sanitize article content with DOMPurify before rendering
   const sanitizedContent = useMemo(() => {
