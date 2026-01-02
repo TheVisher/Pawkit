@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Required for Tauri desktop app - creates self-contained build
+  output: 'standalone',
+
   images: {
     remotePatterns: [
       // YouTube thumbnails
@@ -45,7 +48,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com ipc: tauri:",
               "media-src 'self' blob:",
               "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
               "object-src 'none'",

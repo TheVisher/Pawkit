@@ -10,7 +10,8 @@ import { format, isSameDay } from 'date-fns';
 import { CalendarCheck, ChevronRight, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useCards } from '@/lib/stores/data-store';
+import { useCards } from '@/lib/hooks/use-live-data';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
 import type { LocalCard } from '@/lib/db';
@@ -57,7 +58,8 @@ function ScheduledCardItem({ card, onClick }: ScheduledCardItemProps) {
 }
 
 export function ScheduledTodayWidget() {
-  const cards = useCards();
+  const workspace = useCurrentWorkspace();
+  const cards = useCards(workspace?.id);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   const scheduledToday = useMemo(() => {

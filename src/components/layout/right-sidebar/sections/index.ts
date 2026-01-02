@@ -5,8 +5,6 @@
 
 export { ContentTypeFilter } from "./ContentTypeFilter";
 export { SortOptions } from "./SortOptions";
-export { QuickFilter } from "./QuickFilter";
-export { ReadingStatusFilter } from "./ReadingStatusFilter";
 export { AdvancedFilterSection } from "./AdvancedFilterSection";
 export { GroupingSection } from "./GroupingSection";
 export { SubPawkitSettings } from "./SubPawkitSettings";

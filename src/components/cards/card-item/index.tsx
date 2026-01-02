@@ -6,6 +6,7 @@ import { QuickNoteCard } from '../quick-note-card';
 import { GridCard } from './grid-card';
 import { ListCard } from './list-card';
 import { type CardDisplaySettings, DEFAULT_CARD_DISPLAY } from './types';
+import type { SystemTag } from '@/lib/utils/system-tags';
 
 interface CardItemProps {
   card: LocalCard;
@@ -13,6 +14,10 @@ interface CardItemProps {
   onClick?: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
   uniformHeight?: boolean;
+  /** Called when a user tag in the footer is clicked (for filtering) */
+  onTagClick?: (tag: string) => void;
+  /** Called when a system tag in the footer is clicked (for filtering) */
+  onSystemTagClick?: (tag: SystemTag) => void;
 }
 
 /**
@@ -25,6 +30,8 @@ export const CardItem = memo(function CardItem({
   onClick,
   displaySettings = {},
   uniformHeight = false,
+  onTagClick,
+  onSystemTagClick,
 }: CardItemProps) {
   // Use specialized QuickNoteCard for quick-note types in grid mode
   if (variant === 'grid' && card.type === 'quick-note') {
@@ -39,6 +46,8 @@ export const CardItem = memo(function CardItem({
         onClick={onClick}
         displaySettings={displaySettings}
         uniformHeight={uniformHeight}
+        onTagClick={onTagClick}
+        onSystemTagClick={onSystemTagClick}
       />
     );
   }
@@ -49,6 +58,8 @@ export const CardItem = memo(function CardItem({
       card={card}
       onClick={onClick}
       displaySettings={displaySettings}
+      onTagClick={onTagClick}
+      onSystemTagClick={onSystemTagClick}
     />
   );
 }, (prevProps, nextProps) => {
@@ -73,7 +84,6 @@ export const CardItem = memo(function CardItem({
     // Compare display settings
     prevSettings.cardPadding === nextSettings.cardPadding &&
     prevSettings.showMetadataFooter === nextSettings.showMetadataFooter &&
-    prevSettings.showUrlPill === nextSettings.showUrlPill &&
     prevSettings.showTitles === nextSettings.showTitles &&
     prevSettings.showTags === nextSettings.showTags &&
     prevProps.uniformHeight === nextProps.uniformHeight
@@ -81,5 +91,6 @@ export const CardItem = memo(function CardItem({
 });
 
 // Re-export types and constants for backward compatibility
-export type { CardDisplaySettings, CardItemProps };
+export type { CardDisplaySettings } from './types';
+export type { CardItemProps };
 export { DEFAULT_CARD_DISPLAY } from './types';

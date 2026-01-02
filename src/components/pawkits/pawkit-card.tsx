@@ -8,7 +8,8 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Folder, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useDataStore } from '@/lib/stores/data-store';
+import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { PawkitContextMenu } from '@/components/context-menus';
 import type { LocalCollection } from '@/lib/db';
 import type { SubPawkitSize, PawkitOverviewSize } from '@/lib/stores/view-store';
@@ -38,8 +39,9 @@ export function PawkitCard({
   showItemCount = true,
 }: PawkitCardProps) {
   const normalizedSize = normalizeSize(size);
-  const cards = useDataStore((state) => state.cards);
-  const collections = useDataStore((state) => state.collections);
+  const workspace = useCurrentWorkspace();
+  const cards = useCards(workspace?.id);
+  const collections = useCollections(workspace?.id);
 
   // Size-based styling
   const sizeClasses = {

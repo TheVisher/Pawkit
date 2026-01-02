@@ -1,0 +1,315 @@
+/**
+ * Portal-specific styles
+ * The portal-container IS the app - fills the entire frameless window
+ * Only .cards-grid should scroll
+ */
+
+/* ============================================================================
+   ROOT ELEMENTS - No scrolling at html/body level
+   ============================================================================ */
+
+html.portal-html {
+  overflow: hidden !important;
+  width: 100%;
+  height: 100%;
+}
+
+body.portal-window {
+  width: 100%;
+  height: 100vh;
+  overflow: hidden !important;
+  margin: 0;
+  padding: 0;
+  /* Transparent for native rounded corners plugin to work */
+  background-color: transparent;
+}
+
+/* ============================================================================
+   PORTAL CONTAINER - This IS the app, fills entire window
+   ============================================================================ */
+
+.portal-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 320px; /* Matches Tauri minimum */
+  height: 100vh;
+  /* Gradient background - panels float on top */
+  background-color: var(--bg-gradient-base);
+  background-image: var(--bg-gradient-image);
+  /* Rounded corners for native window clipping */
+  border-radius: 12px;
+  /* CRITICAL: prevents any scrolling and clips content to rounded corners */
+  overflow: hidden;
+}
+
+/* Loading state */
+.portal-loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--glass-border, hsl(0 0% 100% / 0.15));
+  border-top-color: var(--color-accent, hsl(270 60% 55%));
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================================
+   HEADER - Fixed at top, never scrolls
+   ============================================================================ */
+
+.portal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 16px;
+  background: transparent;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.drag-region {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  cursor: grab;
+}
+
+.drag-region:active {
+  cursor: grabbing;
+}
+
+.portal-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted, hsl(240 4% 46%));
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.7;
+}
+
+
+/* ============================================================================
+   MAIN CONTENT - Contains sidebar and cards, fills remaining space
+   ============================================================================ */
+
+.portal-content {
+  display: flex;
+  flex: 1;
+  min-height: 0; /* CRITICAL: allows flex children to shrink and scroll */
+  overflow: hidden;
+  gap: 0; /* Panels have their own margins */
+}
+
+/* ============================================================================
+   SIDEBAR - Matches main app's glass panel styling
+   ============================================================================ */
+
+.portal-sidebar {
+  width: 180px;
+  margin: 8px;
+  margin-right: 0;
+  display: flex;
+  flex-direction: column;
+  /* Glass panel styling from main app */
+  background: var(--glass-panel-bg);
+  backdrop-filter: blur(var(--glass-blur, 12px)) saturate(var(--glass-saturate, 180%));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 12px)) saturate(var(--glass-saturate, 180%));
+  border: 1px solid var(--glass-border, hsl(0 0% 100% / 0.1));
+  border-radius: 16px;
+  box-shadow: var(--glass-shadow);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 12px 12px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.sidebar-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px 8px;
+}
+
+/* Floating sidebar - hover to reveal */
+.portal-sidebar-floating {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 50;
+  width: 28px;
+}
+
+.sidebar-trigger {
+  width: 28px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  transition: color 0.2s;
+}
+
+.sidebar-trigger:hover {
+  color: var(--color-text-primary);
+}
+
+.sidebar-panel {
+  position: absolute;
+  /* Floating panel has margin from edges, doesn't touch top/bottom */
+  left: 8px;
+  top: 8px;
+  bottom: 8px;
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  /* Glass panel styling from main app */
+  background: var(--glass-panel-bg);
+  backdrop-filter: blur(var(--glass-blur, 12px)) saturate(var(--glass-saturate, 180%));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 12px)) saturate(var(--glass-saturate, 180%));
+  border: 1px solid var(--glass-border, hsl(0 0% 100% / 0.1));
+  border-radius: 16px;
+  box-shadow: var(--glass-shadow);
+  /* Animation */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(-16px);
+  transition: opacity 0.25s ease-out, visibility 0.25s, transform 0.25s ease-out;
+}
+
+.portal-sidebar-floating:hover .sidebar-panel,
+.portal-sidebar-floating.drag-active .sidebar-panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+.portal-sidebar-floating:hover .sidebar-trigger,
+.portal-sidebar-floating.drag-active .sidebar-trigger {
+  visibility: hidden;
+}
+
+/* ============================================================================
+   CARDS AREA - Glass panel matching main app's center content
+   ============================================================================ */
+
+.portal-cards {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  /* Glass panel styling from main app */
+  margin: 8px;
+  background: var(--glass-panel-bg);
+  backdrop-filter: blur(var(--glass-blur, 12px)) saturate(var(--glass-saturate, 180%));
+  -webkit-backdrop-filter: blur(var(--glass-blur, 12px)) saturate(var(--glass-saturate, 180%));
+  border: 1px solid var(--glass-border, hsl(0 0% 100% / 0.1));
+  border-radius: 16px;
+  box-shadow: var(--glass-shadow);
+}
+
+.cards-header {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.breadcrumb {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* ============================================================================
+   CARDS GRID - THE ONLY ELEMENT THAT SCROLLS
+   Uses container queries for responsive column layout
+   ============================================================================ */
+
+.cards-grid {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  container-type: inline-size;
+  container-name: cards-container;
+}
+
+/* Note: Masonry layout is now handled by PortalMasonryGrid component
+   using JavaScript-based "shortest column first" algorithm for proper
+   left-to-right ordering (same as main app). */
+
+/* ============================================================================
+   DROP ZONE
+   ============================================================================ */
+
+.drop-zone {
+  padding: 24px 48px;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  border: 2px dashed var(--color-accent, hsl(270 60% 55%));
+  border-radius: 12px;
+  color: var(--color-accent, hsl(270 60% 55%));
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  animation: dropZonePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dropZonePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+/* ============================================================================
+   SCROLLBAR - Styled for both sidebar-list and cards-grid
+   ============================================================================ */
+
+.sidebar-list::-webkit-scrollbar,
+.cards-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-list::-webkit-scrollbar-track,
+.cards-grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-list::-webkit-scrollbar-thumb,
+.cards-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.sidebar-list::-webkit-scrollbar-thumb:hover,
+.cards-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}

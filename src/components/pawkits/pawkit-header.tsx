@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { PageHeader } from '@/components/layout/page-header';
 import { MobileViewOptions } from '@/components/layout/mobile-view-options';
-import { useCollections } from '@/lib/stores/data-store';
+import { useCollections } from '@/lib/hooks/use-live-data';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useOmnibarCollision } from '@/lib/hooks/use-omnibar-collision';
 import { cn } from '@/lib/utils';
@@ -24,7 +25,8 @@ interface PawkitHeaderProps {
 }
 
 export function PawkitHeader({ collection }: PawkitHeaderProps) {
-    const collections = useCollections();
+    const workspace = useCurrentWorkspace();
+    const collections = useCollections(workspace?.id);
     const openCoverImagePicker = useModalStore((s) => s.openCoverImagePicker);
 
     // Collision detection for omnibar

@@ -10,6 +10,9 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { prisma } from '@/lib/db/prisma';
 import { updateCardSchema } from '@/lib/validations/card';
+import { createModuleLogger } from '@/lib/utils/logger';
+
+const log = createModuleLogger('CardAPI');
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -84,7 +87,7 @@ export async function GET(request: Request, context: RouteContext) {
     const { workspace, ...cardData } = card;
     return NextResponse.json({ card: cardData });
   } catch (error) {
-    console.error('GET /api/cards/[id] error:', error);
+    log.error('GET /api/cards/[id] error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -221,16 +224,39 @@ export async function PATCH(request: Request, context: RouteContext) {
         : null;
     }
 
-    // 6. Update the card
+    // Conflict tracking
+    if ('conflictWithId' in updates) updateData.conflictWithId = updates.conflictWithId;
+
+    // 6. Check for version conflict if expectedVersion provided
+    if (updates.expectedVersion !== undefined) {
+      if (existingCard.version > updates.expectedVersion) {
+        // Version conflict! Server has a newer version than client expected
+        return NextResponse.json(
+          {
+            error: 'Version conflict',
+            code: 'VERSION_CONFLICT',
+            serverCard: existingCard,
+            serverVersion: existingCard.version,
+            expectedVersion: updates.expectedVersion,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
+    // 7. Update the card with version increment
     const card = await prisma.card.update({
       where: { id },
-      data: updateData,
+      data: {
+        ...updateData,
+        version: { increment: 1 }, // Always increment version on server update
+      },
     });
 
     // 7. Return updated card
     return NextResponse.json({ card });
   } catch (error) {
-    console.error('PATCH /api/cards/[id] error:', error);
+    log.error('PATCH /api/cards/[id] error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -300,7 +326,7 @@ export async function DELETE(request: Request, context: RouteContext) {
       },
     });
   } catch (error) {
-    console.error('DELETE /api/cards/[id] error:', error);
+    log.error('DELETE /api/cards/[id] error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

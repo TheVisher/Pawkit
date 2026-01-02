@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useParams, useRouter } from 'next/navigation';
 import { ChevronDown, ChevronRight, Folder, CalendarDays, Tag, Type, Globe } from 'lucide-react';
-import { useDataStore, selectCollectionBySlug, selectCardsByCollection } from '@/lib/stores/data-store';
+import { useDataStore } from '@/lib/stores/data-store';
+import { useCards, useCollections, useCollection, useCardsInCollection } from '@/lib/hooks/use-live-data';
 import {
     useViewStore,
     useViewActions,
@@ -18,6 +19,7 @@ import {
     findDuplicateCardIds,
 } from '@/lib/stores/view-store';
 import type { GroupBy, DateGrouping, UnsortedFilter, ReadingFilter, LinkStatusFilter } from '@/lib/stores/view-store';
+import type { SystemTag } from '@/lib/utils/system-tags';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { CardGrid } from '@/components/cards/card-grid';
 import { PawkitHeader } from '@/components/pawkits/pawkit-header';
@@ -84,19 +86,19 @@ export default function PawkitPage() {
     const params = useParams();
     const router = useRouter();
     const slug = params?.slug as string;
+    const workspace = useCurrentWorkspace();
 
-    const collection = useDataStore(selectCollectionBySlug(slug));
-    const collections = useDataStore((state) => state.collections);
-    const cards = useDataStore(useShallow(selectCardsByCollection(slug)));
+    const collection = useCollection(workspace?.id, slug);
+    const collections = useCollections(workspace?.id);
+    const cards = useCardsInCollection(workspace?.id, slug);
     const isLoading = useDataStore((state) => state.isLoading);
 
     // State for sub-pawkits section collapse
     const [subPawkitsExpanded, setSubPawkitsExpanded] = useState(true);
     const { loadViewSettings, reorderCards } = useViewActions();
     const { cardOrder, sortBy } = useViewSettings();
-    const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showUrlPill, showTitles, showTags } = useCardDisplaySettings();
+    const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showTitles, showTags } = useCardDisplaySettings();
     const { subPawkitSize, subPawkitColumns } = useSubPawkitSettings();
-    const workspace = useCurrentWorkspace();
 
     // Filter state from view store
     const layout = useViewStore((state) => state.layout);
@@ -109,6 +111,8 @@ export default function PawkitPage() {
     const showDuplicatesOnly = useViewStore((state) => state.showDuplicatesOnly);
     const groupBy = useViewStore((state) => state.groupBy) as GroupBy;
     const dateGrouping = useViewStore((state) => state.dateGrouping) as DateGrouping;
+    const toggleTag = useViewStore((state) => state.toggleTag);
+    const setReadingFilter = useViewStore((state) => state.setReadingFilter);
 
     // Get grid columns class based on subPawkitColumns setting
     const getSubPawkitGridCols = () => {
@@ -273,6 +277,20 @@ export default function PawkitPage() {
 
     const GroupIcon = getGroupIcon();
 
+    // Handle user tag click in card footer - filter by tag
+    const handleTagClick = useCallback((tag: string) => {
+        toggleTag(tag);
+    }, [toggleTag]);
+
+    // Handle system tag click in card footer - filter by status
+    const handleSystemTagClick = useCallback((tag: SystemTag) => {
+        if (tag.type === 'read') {
+            setReadingFilter('read');
+        }
+        // Reading time badge is informational only - no click action
+        // Scheduled/overdue could be filterable in the future
+    }, [setReadingFilter]);
+
     // Get child collections (sub-pawkits)
     const childCollections = useMemo(() => {
         if (!collection) return [];
@@ -368,8 +386,10 @@ export default function PawkitPage() {
                                     onReorder={reorderCards}
                                     cardSize={cardSize}
                                     cardSpacing={cardSpacing}
-                                    displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+                                    displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
                                     currentCollection={slug}
+                                    onTagClick={handleTagClick}
+                                    onSystemTagClick={handleSystemTagClick}
                                 />
                             ) : layout === 'list' ? (
                                 // List view with grouping - pass groups to single CardGrid for inline separators
@@ -379,10 +399,12 @@ export default function PawkitPage() {
                                     onReorder={reorderCards}
                                     cardSize={cardSize}
                                     cardSpacing={cardSpacing}
-                                    displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+                                    displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
                                     groups={groupedCards}
                                     groupIcon={GroupIcon || undefined}
                                     currentCollection={slug}
+                                    onTagClick={handleTagClick}
+                                    onSystemTagClick={handleSystemTagClick}
                                 />
                             ) : (
                                 // Masonry/Grid view with grouping - separate sections with headers
@@ -406,8 +428,10 @@ export default function PawkitPage() {
                                                 onReorder={reorderCards}
                                                 cardSize={cardSize}
                                                 cardSpacing={cardSpacing}
-                                                displaySettings={{ cardPadding, showMetadataFooter, showUrlPill, showTitles, showTags }}
+                                                displaySettings={{ cardPadding, showMetadataFooter, showTitles, showTags }}
                                                 currentCollection={slug}
+                                                onTagClick={handleTagClick}
+                                                onSystemTagClick={handleSystemTagClick}
                                             />
                                         </div>
                                     ))}

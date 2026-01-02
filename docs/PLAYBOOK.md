@@ -2656,13 +2656,38 @@ syncService.queueSync({
 });
 ```
 
+**Mode Coordination Pattern (Exclusivity):**
+When multiple UI modes exist in one space (e.g., Omnibar Search vs. Add Mode), use an orchestrator hook with coordination callbacks.
+```typescript
+// use-orchestrator.ts
+const search = useSearch(() => {
+  addMode.close();
+  kitMode.close();
+});
+const addMode = useAddMode(() => {
+  search.close();
+  kitMode.close();
+});
+```
+
+**Modular Component Pattern (The Directory Pattern):**
+For any component exceeding 300 lines or having multiple modes of operation:
+1. Create a directory: `src/components/feature/`
+2. `index.tsx`: Radix/Animation wrapper + Orchestrator bridge.
+3. `content.tsx`: Main UI logic, sub-section orchestration.
+4. `types.ts`: Shared interfaces.
+5. `feature-hooks/`: Directory for specialized logic (e.g., `use-feature-mode.ts`).
+
 ### File Size Guidelines
 
-- Components: < 300 lines
+- Components: < 300 lines (~9KB)
 - Stores: < 500 lines
 - Services: < 400 lines
-- If larger, split into smaller modules
-- **🆕 V1 violations to avoid: card-gallery.tsx (1,848 lines), card-detail-modal.tsx (2,756 lines), left-navigation-panel.tsx (2,112 lines)**
+- **Strict Rule**: If a file reaches 400 lines, it MUST be refactored into the Modular Component Pattern.
+- **Refactored Successes (V2)**:
+  - `omnibar.tsx`: Split into `use-search`, `use-add-mode`, `use-kit-mode`.
+  - `card-detail-modal.tsx`: Split into `Header`, `Content`, and `Reader` sub-modules.
+  - `FilterSections.tsx`: Split into modular filter components in `right-sidebar/sections/`.
 
 ---
 
@@ -2670,4 +2695,4 @@ syncService.queueSync({
 
 *This document should be updated as decisions are made during development.*
 
-**Last updated:** December 25, 2025 — V2 built, status markers updated (✅ stable, 🔵 planned).
+**Last updated:** December 30, 2025 — V2 Refactored for modularity.

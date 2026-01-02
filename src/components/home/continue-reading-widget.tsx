@@ -8,7 +8,8 @@
 import { useMemo } from 'react';
 import { BookOpen, ChevronRight, Clock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import { useCards } from '@/lib/stores/data-store';
+import { useCards } from '@/lib/hooks/use-live-data';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { cn } from '@/lib/utils';
 import { calculateReadingTime } from '@/lib/db/schema';
@@ -78,7 +79,8 @@ function ReadingCardItem({ card, onClick }: ReadingCardItemProps) {
 }
 
 export function ContinueReadingWidget() {
-  const cards = useCards();
+  const workspace = useCurrentWorkspace();
+  const cards = useCards(workspace?.id);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   const inProgressCards = useMemo(() => {

@@ -10,9 +10,19 @@ import type {
   LocalCard,
   LocalCalendarEvent,
   LocalTodo,
+  SyncMetadata,
 } from '@/lib/db';
 import { createModuleLogger } from '@/lib/utils/logger';
-import { type EntityName, ENTITY_ENDPOINTS, ENTITY_TYPE_MAP } from './types';
+import {
+  type EntityName,
+  type ServerWorkspace,
+  type ServerCollection,
+  type ServerCard,
+  type ServerEvent,
+  type ServerTodo,
+  ENTITY_ENDPOINTS,
+  ENTITY_TYPE_MAP,
+} from './types';
 
 const log = createModuleLogger('EntitySync');
 
@@ -68,6 +78,132 @@ export async function pullEntity(
 // =============================================================================
 
 /**
+ * Base sync metadata added to all server items when converting to local format
+ */
+function createSyncMetadataFromServer(serverUpdatedAt: string, deleted?: boolean): SyncMetadata {
+  return {
+    _synced: true,
+    _lastModified: new Date(serverUpdatedAt),
+    _deleted: deleted ?? false,
+    _serverVersion: serverUpdatedAt,
+  };
+}
+
+/**
+ * Convert server workspace to local format
+ */
+function serverWorkspaceToLocal(server: ServerWorkspace & { deleted?: boolean }): LocalWorkspace {
+  return {
+    id: server.id,
+    name: server.name,
+    icon: server.icon,
+    userId: server.userId,
+    isDefault: server.isDefault,
+    createdAt: new Date(server.createdAt),
+    updatedAt: new Date(server.updatedAt),
+    ...createSyncMetadataFromServer(server.updatedAt, server.deleted),
+  };
+}
+
+/**
+ * Convert server collection to local format
+ */
+function serverCollectionToLocal(server: ServerCollection): LocalCollection {
+  return {
+    id: server.id,
+    workspaceId: server.workspaceId,
+    name: server.name,
+    slug: server.slug,
+    parentId: server.parentId,
+    position: server.position,
+    coverImage: server.coverImage,
+    icon: server.icon,
+    isPrivate: server.isPrivate,
+    isSystem: server.isSystem,
+    hidePreview: server.hidePreview,
+    useCoverAsBackground: false, // Default, not in server type
+    pinned: server.pinned,
+    createdAt: new Date(server.createdAt),
+    updatedAt: new Date(server.updatedAt),
+    ...createSyncMetadataFromServer(server.updatedAt, server.deleted),
+  };
+}
+
+/**
+ * Convert server card to local format
+ */
+function serverCardToLocal(server: ServerCard): LocalCard {
+  return {
+    id: server.id,
+    workspaceId: server.workspaceId,
+    type: server.type,
+    url: server.url,
+    title: server.title,
+    description: server.description,
+    content: server.content,
+    domain: server.domain,
+    image: server.image,
+    favicon: server.favicon,
+    status: server.status,
+    tags: server.tags,
+    collections: server.collections,
+    pinned: server.pinned,
+    scheduledDate: server.scheduledDate ? new Date(server.scheduledDate) : undefined,
+    isFileCard: false, // Default, not in server type
+    version: 0, // Default version for synced items
+    createdAt: new Date(server.createdAt),
+    updatedAt: new Date(server.updatedAt),
+    ...createSyncMetadataFromServer(server.updatedAt, server.deleted),
+  };
+}
+
+/**
+ * Convert server event to local format
+ */
+function serverEventToLocal(server: ServerEvent): LocalCalendarEvent {
+  return {
+    id: server.id,
+    workspaceId: server.workspaceId,
+    title: server.title,
+    date: server.date,
+    endDate: server.endDate,
+    startTime: server.startTime,
+    endTime: server.endTime,
+    isAllDay: server.isAllDay,
+    description: server.description,
+    location: server.location,
+    url: server.url,
+    color: server.color,
+    recurrence: server.recurrence as LocalCalendarEvent['recurrence'],
+    recurrenceParentId: server.recurrenceParentId,
+    excludedDates: server.excludedDates,
+    isException: server.isException,
+    createdAt: new Date(server.createdAt),
+    updatedAt: new Date(server.updatedAt),
+    ...createSyncMetadataFromServer(server.updatedAt, server.deleted),
+  };
+}
+
+/**
+ * Convert server todo to local format
+ */
+function serverTodoToLocal(server: ServerTodo): LocalTodo {
+  return {
+    id: server.id,
+    workspaceId: server.workspaceId,
+    text: server.text,
+    completed: server.completed,
+    completedAt: server.completedAt ? new Date(server.completedAt) : undefined,
+    dueDate: server.dueDate ? new Date(server.dueDate) : undefined,
+    priority: server.priority,
+    linkedCardId: server.linkedCardId,
+    createdAt: new Date(server.createdAt),
+    updatedAt: new Date(server.updatedAt),
+    ...createSyncMetadataFromServer(server.updatedAt, server.deleted),
+  };
+}
+
+/**
  * Upsert items to local database with conflict resolution
  */
 export async function upsertItems(
@@ -79,48 +215,46 @@ export async function upsertItems(
   // Get IDs of items with pending local changes (don't overwrite)
   const pendingIds = await getPendingEntityIds(entity);
 
-  // Filter and convert items
-  const itemsToUpsert: Array<Record<string, unknown>> = [];
-
-  for (const item of items) {
-    const serverItem = item as { id: string; deleted?: boolean };
-
-    // Skip if we have pending local changes (LWW - local wins if pending)
+  // Filter items that don't have pending local changes
+  const filteredItems = items.filter((item) => {
+    const serverItem = item as { id: string };
     if (pendingIds.has(serverItem.id)) {
       log.debug(`Skipping ${entity}/${serverItem.id} (pending local changes)`);
-      continue;
+      return false;
     }
+    return true;
+  });
 
-    // Convert server item to local format
-    const localItem = serverToLocal(serverItem);
+  if (filteredItems.length === 0) return;
 
-    // Handle soft delete
-    if (serverItem.deleted) {
-      localItem._deleted = true;
-    }
-
-    itemsToUpsert.push(localItem);
-  }
-
-  if (itemsToUpsert.length === 0) return;
-
-  // Upsert by entity type (typed correctly for each table)
+  // Convert and upsert by entity type with proper typing
   switch (entity) {
-    case 'workspaces':
-      await db.workspaces.bulkPut(itemsToUpsert as unknown as LocalWorkspace[]);
+    case 'workspaces': {
+      const localItems = (filteredItems as (ServerWorkspace & { deleted?: boolean })[])
+        .map(serverWorkspaceToLocal);
+      await db.workspaces.bulkPut(localItems);
       break;
-    case 'collections':
-      await db.collections.bulkPut(itemsToUpsert as unknown as LocalCollection[]);
+    }
+    case 'collections': {
+      const localItems = (filteredItems as ServerCollection[]).map(serverCollectionToLocal);
+      await db.collections.bulkPut(localItems);
       break;
-    case 'cards':
-      await db.cards.bulkPut(itemsToUpsert as unknown as LocalCard[]);
+    }
+    case 'cards': {
+      const localItems = (filteredItems as ServerCard[]).map(serverCardToLocal);
+      await db.cards.bulkPut(localItems);
       break;
-    case 'events':
-      await db.calendarEvents.bulkPut(itemsToUpsert as unknown as LocalCalendarEvent[]);
+    }
+    case 'events': {
+      const localItems = (filteredItems as ServerEvent[]).map(serverEventToLocal);
+      await db.calendarEvents.bulkPut(localItems);
       break;
-    case 'todos':
-      await db.todos.bulkPut(itemsToUpsert as unknown as LocalTodo[]);
+    }
+    case 'todos': {
+      const localItems = (filteredItems as ServerTodo[]).map(serverTodoToLocal);
+      await db.todos.bulkPut(localItems);
       break;
+    }
   }
 }
 
@@ -138,27 +272,4 @@ async function getPendingEntityIds(entity: EntityName): Promise<Set<string>> {
     .toArray();
 
   return new Set(queueItems.map((item) => item.entityId));
-}
-
-/**
- * Convert server item to local format
- */
-function serverToLocal(serverItem: Record<string, unknown>): Record<string, unknown> {
-  const localItem: Record<string, unknown> = {
-    ...serverItem,
-    _synced: true,
-    _lastModified: new Date(serverItem.updatedAt as string),
-    _deleted: false,
-    _serverVersion: serverItem.updatedAt as string,
-  };
-
-  // Convert date strings to Date objects
-  const dateFields = ['createdAt', 'updatedAt', 'deletedAt', 'completedAt', 'scheduledDate', 'dueDate'];
-  for (const field of dateFields) {
-    if (localItem[field] && typeof localItem[field] === 'string') {
-      localItem[field] = new Date(localItem[field] as string);
-    }
-  }
-
-  return localItem;
 }

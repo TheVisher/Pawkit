@@ -18,13 +18,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useCards, useCollections } from '@/lib/hooks/use-live-data';
+import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { cn } from '@/lib/utils';
 
 export function CoverImagePickerModal() {
     const { isCoverImagePickerOpen, coverImageCollectionId, closeCoverImagePicker } = useModalStore();
-    const collections = useDataStore((state) => state.collections);
-    const cards = useDataStore((state) => state.cards);
+    const workspace = useCurrentWorkspace();
+    const collections = useCollections(workspace?.id);
+    const cards = useCards(workspace?.id);
     const updateCollection = useDataStore((state) => state.updateCollection);
     const toast = useToastStore((s) => s.toast);
 

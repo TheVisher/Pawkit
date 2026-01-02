@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { TagBadgeList } from '@/components/tags/tag-badge';
 import { TagInput } from '@/components/tags/tag-input';
+import { getSystemTagsForCard, type SystemTag } from '@/lib/utils/system-tags';
+import type { LocalCard } from '@/lib/db';
 
 // =============================================================================
 // EDITABLE CELL
@@ -110,22 +112,27 @@ export function EditableCell({
 // =============================================================================
 
 interface EditableTagsCellProps {
-  tags: string[];
-  cardId: string;
+  card: LocalCard;
   onSave: (cardId: string, field: string, value: string[]) => void;
   isEditing: boolean;
   onStartEdit: () => void;
   onCancelEdit: () => void;
+  onTagClick?: (tag: string) => void;
+  onSystemTagClick?: (tag: SystemTag) => void;
 }
 
 export function EditableTagsCell({
-  tags,
-  cardId,
+  card,
   onSave,
   isEditing,
   onStartEdit,
   onCancelEdit,
+  onTagClick,
+  onSystemTagClick,
 }: EditableTagsCellProps) {
+  const tags = card.tags || [];
+  const cardId = card.id;
+  const systemTags = getSystemTagsForCard(card);
   const [localTags, setLocalTags] = useState(tags);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -194,6 +201,9 @@ export function EditableTagsCell({
     );
   }
 
+  // Show tags section if we have any tags (system or user)
+  const hasTags = systemTags.length > 0 || tags.length > 0;
+
   return (
     <div
       onDoubleClick={(e) => {
@@ -203,12 +213,15 @@ export function EditableTagsCell({
       className="cursor-text min-h-[24px] flex items-center"
       title="Double-click to edit"
     >
-      {tags.length > 0 ? (
+      {hasTags ? (
         <TagBadgeList
           tags={tags}
-          maxVisible={2}
+          systemTags={systemTags}
+          maxVisible={3}
           size="sm"
           showLeafOnly
+          onTagClick={onTagClick}
+          onSystemTagClick={onSystemTagClick}
         />
       ) : (
         <span className="text-sm text-[var(--color-text-muted)]">-</span>

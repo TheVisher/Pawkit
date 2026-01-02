@@ -6,11 +6,31 @@
  * 1. Card created → skeleton appears immediately
  * 2. Metadata fetched → thumbnail/title populate (~1-2s)
  * 3. Article extraction queued → runs in background after metadata
+ *
+ * This service is designed to work from BOTH the main app and the portal.
+ * It uses Dexie directly (not Zustand) so it's portable across contexts.
  */
 
-import { db } from '@/lib/db';
-import { useDataStore } from '@/lib/stores/data-store';
+import { db, createSyncMetadata } from '@/lib/db';
+import type { LocalCard } from '@/lib/db/types';
+import { triggerSync } from './sync-queue';
 import { isYouTubeUrl } from '@/lib/utils/url-detection';
+
+/**
+ * Notify the portal that data has changed (for real-time updates)
+ */
+async function notifyPortal(): Promise<void> {
+  if (typeof window === 'undefined') return;
+
+  const tauri = (window as { __TAURI__?: { core: { invoke: (cmd: string) => Promise<unknown> } } }).__TAURI__;
+  if (!tauri) return;
+
+  try {
+    await tauri.core.invoke('notify_portal_data_changed');
+  } catch (e) {
+    // Ignore errors - portal may not be open
+  }
+}
 
 /**
  * Check if a URL is likely to have readable article content
@@ -186,8 +206,8 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
 
     const metadata: MetadataResponse = await response.json();
 
-    // Update card with metadata
-    const updates: Record<string, unknown> = {
+    // Update card with metadata directly in Dexie (works from portal or main app)
+    const updates: Partial<LocalCard> = {
       status: 'READY',
       updatedAt: new Date(),
     };
@@ -209,13 +229,29 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
       updates.domain = metadata.domain;
     }
 
-    // Update via data store (triggers sync)
-    await useDataStore.getState().updateCard(cardId, updates);
+    // Update directly in Dexie (portable - works from portal or main app)
+    await db.cards.update(cardId, updates);
+
+    // Queue for server sync
+    await db.syncQueue.add({
+      entityType: 'card',
+      entityId: cardId,
+      operation: 'update',
+      payload: updates as Record<string, unknown>,
+      retryCount: 0,
+      createdAt: new Date(),
+    });
 
     console.log('[MetadataService] Updated card:', cardId, {
       title: metadata.title?.substring(0, 30),
       hasImage: !!metadata.image,
     });
+
+    // Trigger sync to push metadata updates to server
+    await triggerSync();
+
+    // Notify portal about the update (main app uses useLiveQuery, auto-updates)
+    await notifyPortal();
 
     // Queue article extraction after metadata is done
     // Skip YouTube videos (they don't have article content)
@@ -230,8 +266,9 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
 
     // Mark as READY even on failure (stops UI spinner)
     try {
-      await useDataStore.getState().updateCard(cardId, {
+      await db.cards.update(cardId, {
         status: 'READY',
+        updatedAt: new Date(),
       });
     } catch {
       // Ignore update errors
@@ -276,14 +313,15 @@ async function extractArticleForCard(cardId: string): Promise<void> {
 
     const { article } = data;
 
-    // Update card with article content
-    await useDataStore.getState().updateCard(cardId, {
+    // Update card with article content directly in Dexie
+    await db.cards.update(cardId, {
       articleContent: article.content || undefined,
       wordCount: article.wordCount,
       readingTime: article.readingTime,
       // Set initial reading status
       isRead: false,
       readProgress: 0,
+      updatedAt: new Date(),
     });
 
     console.log('[MetadataService] Article extracted:', cardId, {
@@ -319,4 +357,60 @@ export function getMetadataQueueStatus() {
       processedCount: articleProcessed.size,
     },
   };
+}
+
+/**
+ * Create a URL card and fetch its metadata
+ * This is a portable function that works from both portal and main app.
+ * Uses Dexie directly, no Zustand dependencies.
+ */
+export async function createUrlCard(params: {
+  url: string;
+  workspaceId: string;
+  collections?: string[];
+  tags?: string[];
+}): Promise<string> {
+  const { url, workspaceId, collections = [], tags = [] } = params;
+
+  const cardId = crypto.randomUUID();
+
+  // Create card in Dexie
+  const card: LocalCard = {
+    id: cardId,
+    type: 'url',
+    url: url,
+    title: url, // Will be updated by metadata fetcher
+    content: '',
+    workspaceId: workspaceId,
+    collections: collections,
+    tags: tags,
+    pinned: false,
+    status: 'PENDING',
+    isFileCard: false,
+    version: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...createSyncMetadata(),
+  };
+
+  await db.cards.add(card);
+
+  // Queue for server sync
+  await db.syncQueue.add({
+    entityType: 'card',
+    entityId: cardId,
+    operation: 'create',
+    payload: card as unknown as Record<string, unknown>,
+    retryCount: 0,
+    createdAt: new Date(),
+  });
+
+  console.log('[MetadataService] Card created:', cardId);
+
+  // Queue metadata fetch (will run async)
+  queueMetadataFetch(cardId);
+
+  // Main app uses useLiveQuery, auto-updates when Dexie changes
+
+  return cardId;
 }

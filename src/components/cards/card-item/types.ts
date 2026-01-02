@@ -1,5 +1,6 @@
 import { Globe, FileText, StickyNote } from 'lucide-react';
 import type { LocalCard } from '@/lib/db';
+import type { SystemTag } from '@/lib/utils/system-tags';
 
 // =============================================================================
 // CONSTANTS
@@ -19,7 +20,6 @@ export const DEFAULT_ASPECT_RATIO = 16 / 10;
 export interface CardDisplaySettings {
   cardPadding: number;         // 0-40 pixels
   showMetadataFooter: boolean; // Show title/tags inside card
-  showUrlPill: boolean;        // Show URL pill overlay
   showTitles: boolean;         // Show title text
   showTags: boolean;           // Show tag pills
 }
@@ -28,7 +28,6 @@ export interface CardDisplaySettings {
 export const DEFAULT_CARD_DISPLAY: CardDisplaySettings = {
   cardPadding: 10,
   showMetadataFooter: true,
-  showUrlPill: true,
   showTitles: true,
   showTags: true,
 };
@@ -39,7 +38,14 @@ export interface CardItemProps {
   onClick?: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
   uniformHeight?: boolean; // For grid view - crops images to fit uniform aspect ratio
+  /** Called when a user tag in the footer is clicked (for filtering) */
+  onTagClick?: (tag: string) => void;
+  /** Called when a system tag in the footer is clicked (for filtering) */
+  onSystemTagClick?: (tag: SystemTag) => void;
 }
+
+// Re-export SystemTag for convenience
+export type { SystemTag } from '@/lib/utils/system-tags';
 
 // =============================================================================
 // UTILITY FUNCTIONS
