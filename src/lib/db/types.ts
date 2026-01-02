@@ -70,7 +70,8 @@ export interface LocalCard extends SyncMetadata {
 
   // Metadata
   domain?: string;
-  image?: string;             // Thumbnail URL
+  image?: string;             // Primary thumbnail URL
+  images?: string[];          // Gallery images (for product pages)
   favicon?: string;
   metadata?: Record<string, unknown>;
   status: string;             // PENDING, READY, ERROR

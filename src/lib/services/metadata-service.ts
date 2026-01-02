@@ -39,7 +39,29 @@ async function notifyPortal(): Promise<void> {
 function isArticleUrl(url: string): boolean {
   try {
     const parsed = new URL(url);
+    const hostname = parsed.hostname.toLowerCase();
     const path = parsed.pathname.toLowerCase();
+
+    // Skip domains known to produce garbage extractions (JS-heavy, placeholder content)
+    const nonArticleDomains = [
+      // Known bad extractors (heavy JS rendering, shows "Loading..." placeholders)
+      'target.com', 'www.target.com',
+      // Social media (not article content)
+      'twitter.com', 'x.com',
+      'instagram.com', 'www.instagram.com',
+      'facebook.com', 'www.facebook.com',
+      'tiktok.com', 'www.tiktok.com',
+      // Google apps (not articles)
+      'maps.google.com',
+      'drive.google.com',
+      'docs.google.com',
+      'sheets.google.com',
+      'calendar.google.com',
+    ];
+
+    if (nonArticleDomains.some(d => hostname === d || hostname.endsWith('.' + d))) {
+      return false;
+    }
 
     // Skip direct file URLs
     const nonArticleExtensions = [
@@ -54,7 +76,7 @@ function isArticleUrl(url: string): boolean {
       return false;
     }
 
-    // Skip common non-article patterns
+    // Skip common non-article path patterns
     const nonArticlePatterns = [
       /^\/api\//,
       /^\/static\//,
@@ -62,6 +84,19 @@ function isArticleUrl(url: string): boolean {
       /^\/cdn-cgi\//,
       /\/feed\/?$/,
       /\/rss\/?$/,
+      // E-commerce patterns
+      /^\/cart/,
+      /^\/checkout/,
+      /^\/account/,
+      /^\/login/,
+      /^\/signin/,
+      /^\/signup/,
+      /^\/search/,
+      /^\/s\?/, // Amazon search
+      /^\/pl\//, // Target product lists
+      /^\/dp\//, // Amazon product
+      /^\/gp\//, // Amazon
+      /^\/ip\//, // Walmart product
     ];
 
     if (nonArticlePatterns.some(pattern => pattern.test(path))) {
@@ -94,6 +129,7 @@ interface MetadataResponse {
   title: string | null;
   description: string | null;
   image: string | null;
+  images: string[] | null; // Gallery images for product pages
   favicon: string | null;
   domain: string;
 }
@@ -174,6 +210,39 @@ function processArticleQueue(): void {
 }
 
 /**
+ * Fetch with retry for rate limiting (429 errors)
+ */
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3
+): Promise<Response> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const response = await fetch(url, options);
+
+    if (response.ok) {
+      return response;
+    }
+
+    // Retry on rate limiting with exponential backoff
+    if (response.status === 429) {
+      const delay = Math.pow(2, attempt) * 1000 + Math.random() * 500; // 1s, 2s, 4s + jitter
+      console.log(`[MetadataService] Rate limited, retrying in ${Math.round(delay)}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      continue;
+    }
+
+    // Don't retry other errors
+    lastError = new Error(`API returned ${response.status}`);
+    break;
+  }
+
+  throw lastError || new Error('Max retries exceeded');
+}
+
+/**
  * Fetch metadata for a single card
  */
 async function fetchMetadataForCard(cardId: string): Promise<void> {
@@ -191,8 +260,8 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
 
     console.log('[MetadataService] Fetching metadata for:', card.url);
 
-    // Call API
-    const response = await fetch('/api/metadata', {
+    // Call API with retry logic for rate limiting
+    const response = await fetchWithRetry('/api/metadata', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -221,6 +290,9 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
     }
     if (metadata.image) {
       updates.image = metadata.image;
+    }
+    if (metadata.images && metadata.images.length > 1) {
+      updates.images = metadata.images; // Gallery images
     }
     if (metadata.favicon) {
       updates.favicon = metadata.favicon;
@@ -404,8 +476,6 @@ export async function createUrlCard(params: {
     retryCount: 0,
     createdAt: new Date(),
   });
-
-  console.log('[MetadataService] Card created:', cardId);
 
   // Queue metadata fetch (will run async)
   queueMetadataFetch(cardId);

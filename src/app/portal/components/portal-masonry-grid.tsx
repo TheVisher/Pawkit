@@ -129,9 +129,21 @@ export function PortalMasonryGrid({ cards, gap = DEFAULT_GAP }: PortalMasonryGri
     return { positions: posMap, totalHeight: maxHeight > 0 ? maxHeight - gap : 0 };
   }, [cards, columnCount, cardWidth, measuredHeights, gap]);
 
-  // Reset stability when cards change
+  // Reset stability when cards change - but don't hide existing cards
+  // Only reset measured heights for removed cards
   useEffect(() => {
-    setIsStable(false);
+    setMeasuredHeights(prev => {
+      const cardIds = new Set(cards.map(c => c.id));
+      const filtered = new Map<string, number>();
+      for (const [id, height] of prev) {
+        if (cardIds.has(id)) {
+          filtered.set(id, height);
+        }
+      }
+      return filtered;
+    });
+    // Mark as stable immediately - let the layout flow naturally
+    setIsStable(true);
   }, [cards.length]);
 
   // Measure card heights after render

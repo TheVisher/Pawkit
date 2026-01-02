@@ -29,6 +29,8 @@ const BREAKPOINTS = {
 
 export default function PortalPage() {
   const [selectedPawkit, setSelectedPawkit] = useState<string | null>(null);
+  const cardsGridRef = useRef<HTMLDivElement>(null);
+  const prevCardIdsRef = useRef<Set<string> | null>(null);
 
   // Sidebar state - tracks both user preference and auto state
   const [userPrefersAnchored, setUserPrefersAnchored] = useState(true);
@@ -106,11 +108,38 @@ export default function PortalPage() {
       ? nonDeleted.filter((c) => c.collections?.includes(selectedPawkit))
       : nonDeleted;
 
-    // Sort by newest first
-    return filtered.sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    );
+    // Sort by newest first (handle Date objects or ISO strings)
+    const sorted = [...filtered].sort((a, b) => {
+      const timeA = a.createdAt instanceof Date ? a.createdAt.getTime() : new Date(a.createdAt).getTime();
+      const timeB = b.createdAt instanceof Date ? b.createdAt.getTime() : new Date(b.createdAt).getTime();
+      return timeB - timeA;
+    });
+
+    return sorted;
   }, [cards, selectedPawkit]);
+
+  // Scroll to top when a new card is added (track by IDs, not count)
+  useEffect(() => {
+    if (!visibleCards.length || !cardsGridRef.current) return;
+
+    const currentIds = new Set(visibleCards.map(c => c.id));
+    const prevIds = prevCardIdsRef.current;
+
+    // Skip if this is the initial load
+    if (!prevIds) {
+      prevCardIdsRef.current = currentIds;
+      return;
+    }
+
+    // Check for new cards (IDs in current but not in previous)
+    const hasNewCard = [...currentIds].some(id => !prevIds.has(id));
+
+    if (hasNewCard) {
+      cardsGridRef.current.scrollTop = 0;
+    }
+
+    prevCardIdsRef.current = currentIds;
+  }, [visibleCards]);
 
   // Get current location name
   const currentLocationName = useMemo(() => {
@@ -473,7 +502,7 @@ export default function PortalPage() {
         )}
 
         {/* Cards area */}
-        <div className="portal-cards relative">
+        <div ref={cardsGridRef} className="portal-cards relative">
           <div className="cards-header">
             <div className="flex items-center gap-1.5">
               {selectedPawkit && (
