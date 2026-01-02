@@ -428,6 +428,69 @@ export function reorderSections(content: string, newOrder: string[]): string {
 }
 
 // =============================================================================
+// CONTACT INFO EXTRACTION (for quick actions)
+// =============================================================================
+
+/**
+ * Extract phone and email from card content for quick actions
+ */
+export function extractContactInfo(content: string): { phone?: string; email?: string } {
+  const result: { phone?: string; email?: string } = {};
+
+  // Extract phone - look for tel: links first (most reliable)
+  const telMatch = content.match(/href="tel:([^"]+)"/i);
+  if (telMatch && telMatch[1]) {
+    result.phone = telMatch[1].replace(/[^\d+]/g, '');
+  }
+
+  // Fallback: look for Phone: field with plain text
+  if (!result.phone) {
+    const phoneFieldMatch = content.match(/<strong>Phone:?<\/strong>(?:&nbsp;|\s)*([^<]+)/i);
+    if (phoneFieldMatch && phoneFieldMatch[1]) {
+      const phone = phoneFieldMatch[1].trim();
+      if (phone && phone !== '&nbsp;') {
+        result.phone = phone.replace(/[^\d+]/g, '');
+      }
+    }
+  }
+
+  // Extract email - look for mailto: links, preferring the displayed text over href
+  // The href might have partial email from aggressive auto-linking, but text is complete
+  const mailtoLinkMatch = content.match(/<a[^>]*href="mailto:[^"]*"[^>]*>([^<]+)<\/a>/i);
+  if (mailtoLinkMatch && mailtoLinkMatch[1]) {
+    const email = mailtoLinkMatch[1].trim();
+    // Only use if it looks like a complete email
+    if (email.includes('@') && email.split('@')[1]?.includes('.')) {
+      result.email = email;
+    }
+  }
+
+  // Fallback: check the mailto href itself
+  if (!result.email) {
+    const mailtoMatch = content.match(/href="mailto:([^"]+)"/i);
+    if (mailtoMatch && mailtoMatch[1]) {
+      const email = mailtoMatch[1];
+      if (email.includes('@') && email.split('@')[1]?.includes('.')) {
+        result.email = email;
+      }
+    }
+  }
+
+  // Fallback: look for Email: field with plain text
+  if (!result.email) {
+    const emailFieldMatch = content.match(/<strong>Email:?<\/strong>(?:&nbsp;|\s)*([^<]+)/i);
+    if (emailFieldMatch && emailFieldMatch[1]) {
+      const email = emailFieldMatch[1].trim();
+      if (email && email !== '&nbsp;' && email.includes('@')) {
+        result.email = email;
+      }
+    }
+  }
+
+  return result;
+}
+
+// =============================================================================
 // FORMAT CONVERSION (preserves field values)
 // =============================================================================
 

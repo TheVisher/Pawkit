@@ -235,8 +235,8 @@ export function ContactTemplatePanel({ content, onContentChange }: ContactTempla
             className={cn(
               'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs rounded transition-colors',
               format === 'list'
-                ? 'bg-[var(--color-accent)] text-white'
-                : 'text-text-secondary hover:text-text-primary'
+                ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/30'
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-surface-3/50'
             )}
           >
             <LayoutList className="h-3.5 w-3.5" />
@@ -247,8 +247,8 @@ export function ContactTemplatePanel({ content, onContentChange }: ContactTempla
             className={cn(
               'flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs rounded transition-colors',
               format === 'table'
-                ? 'bg-[var(--color-accent)] text-white'
-                : 'text-text-secondary hover:text-text-primary'
+                ? 'bg-[var(--color-accent)]/20 text-[var(--color-accent)] border border-[var(--color-accent)]/30'
+                : 'text-text-secondary hover:text-text-primary hover:bg-bg-surface-3/50'
             )}
           >
             <Table2 className="h-3.5 w-3.5" />
