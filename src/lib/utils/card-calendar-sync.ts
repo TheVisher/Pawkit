@@ -146,8 +146,8 @@ export async function syncCardToCalendar(
         stats.updated++;
       }
     } else {
-      // Create new event
-      await db.calendarEvents.add({
+      // Create new event (use put to handle race conditions)
+      await db.calendarEvents.put({
         ...eventData,
         createdAt: now,
         updatedAt: now,
