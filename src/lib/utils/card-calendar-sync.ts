@@ -5,26 +5,17 @@
 
 import { db } from '@/lib/db';
 import type { LocalCard, LocalCalendarEvent } from '@/lib/db';
-import { extractDatesFromCard, type ExtractedDate } from './card-date-extraction';
-import { getSupertagDefinition, findSupertagsInTags } from '@/lib/tags/supertags';
+import { extractDatesFromCard } from './card-date-extraction';
 
-// Emoji prefixes by supertag/field
+// Minimal unicode prefixes by field type
 const EVENT_PREFIXES: Record<string, string> = {
-  birthday: '🎂',
-  anniversary: '💑',
-  renewalDay: '💳',
-  renews: '💳',
-  expiryDate: '⚠️',
-  expiry: '⚠️',
-  date: '📅',
-};
-
-// Colors by supertag
-const SUPERTAG_COLORS: Record<string, string> = {
-  contact: '#3B82F6', // blue
-  subscription: '#8B5CF6', // purple
-  warranty: '#EF4444', // red
-  meeting: '#10B981', // green
+  birthday: '○',
+  anniversary: '○',
+  renewalDay: '↻',
+  renews: '↻',
+  expiryDate: '△',
+  expiry: '△',
+  date: '◇',
 };
 
 /**
@@ -54,12 +45,8 @@ export function generateEventsFromCard(
   const extractedDates = extractDatesFromCard(card);
   if (extractedDates.length === 0) return [];
 
-  const supertags = findSupertagsInTags(card.tags || []);
-  const primarySupertag = supertags[0]?.tag || 'default';
-  const color = SUPERTAG_COLORS[primarySupertag] || '#6B7280';
-
   return extractedDates.map((extracted) => {
-    const prefix = EVENT_PREFIXES[extracted.field.toLowerCase()] || '📌';
+    const prefix = EVENT_PREFIXES[extracted.field.toLowerCase()] || '◦';
     const cardTitle = card.title || 'Untitled';
 
     // Format title based on field type
@@ -90,7 +77,6 @@ export function generateEventsFromCard(
       title: eventTitle,
       date: formatDate(extracted.date!),
       isAllDay: true,
-      color,
       recurrence,
       excludedDates: [],
       isException: false,
