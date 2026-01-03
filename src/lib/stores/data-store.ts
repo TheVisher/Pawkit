@@ -28,6 +28,25 @@ if (typeof window !== 'undefined') {
   window.__clearSyncQueue = clearAllSyncQueue;
 }
 
+/**
+ * Check if an update only contains local-only fields that shouldn't trigger version conflicts.
+ * Local-only fields are organizational metadata that don't represent content changes.
+ */
+const LOCAL_ONLY_FIELDS = new Set([
+  'tags',
+  'collections',
+  'pinned',
+  'isRead',
+  'readProgress',
+  'headerGradientColor',
+  'headerImagePosition',
+]);
+
+function isLocalOnlyUpdate(updates: Partial<LocalCard>): boolean {
+  const updateKeys = Object.keys(updates);
+  return updateKeys.length > 0 && updateKeys.every(key => LOCAL_ONLY_FIELDS.has(key));
+}
+
 interface DataState {
   // State (cards/collections removed - use useLiveQuery hooks from use-live-data.ts)
   events: LocalCalendarEvent[];
@@ -139,8 +158,11 @@ export const useDataStore = create<DataState>((set, get) => ({
     // Write to Dexie (useLiveQuery will auto-update any observing components)
     await db.cards.put(updated);
 
+    // Check if this is a local-only update (tags, metadata) that shouldn't trigger conflicts
+    const skipConflictCheck = isLocalOnlyUpdate(updates);
+
     // Queue sync (addToQueue handles merging duplicate updates)
-    await addToQueue('card', id, 'update', updates as Record<string, unknown>);
+    await addToQueue('card', id, 'update', updates as Record<string, unknown>, { skipConflictCheck });
   },
 
   deleteCard: async (id) => {
@@ -350,7 +372,8 @@ export const useDataStore = create<DataState>((set, get) => ({
         await Promise.all(
           cardsToUpdate.map(async ({ id, tags }) => {
             await db.cards.update(id, { tags, _synced: false, _lastModified: new Date() });
-            await addToQueue('card', id, 'update', { tags });
+            // Schedule tag updates are local-only, skip conflict check
+            await addToQueue('card', id, 'update', { tags }, { skipConflictCheck: true });
           })
         );
       }
