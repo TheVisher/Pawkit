@@ -390,6 +390,18 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
   const visibleCardIds = useMemo(() => {
     if (cards.length === 0) return new Set<string>();
 
+    // On first render before scroll container is found, show first batch of cards
+    // This ensures immediate content display without waiting for scroll detection
+    if (!scrollContainerRef.current && scrollTop === 0) {
+      // Show enough cards to fill the viewport (estimate ~8-12 cards for 2-3 columns)
+      const initialVisible = new Set<string>();
+      const maxInitialCards = Math.min(cards.length, 20);
+      for (let i = 0; i < maxInitialCards; i++) {
+        initialVisible.add(cards[i].id);
+      }
+      return initialVisible;
+    }
+
     // Calculate visible range relative to container
     const viewStart = scrollTop - containerOffset - VIRTUALIZATION_OVERSCAN;
     const viewEnd = scrollTop - containerOffset + viewportHeight + VIRTUALIZATION_OVERSCAN;
@@ -646,22 +658,14 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
               ))}
             </div>
           ) : (
-            // Masonry layout with virtualization - only render visible cards
-            // This reduces DOM nodes from 180 to ~20-30 visible cards
-            cards.map((card) => {
-              const pos = positions.get(card.id);
-              if (!pos) {
-                console.warn('No position for card:', card.id);
-                return null;
-              }
+            // Masonry layout with TRUE virtualization - only create elements for visible cards
+            // This reduces React elements from 180 to ~20-30 (not just hiding, but not creating)
+            cards
+              .filter((card) => visibleCardIds.has(card.id))
+              .map((card) => {
+                const pos = positions.get(card.id);
+                if (!pos) return null;
 
-              // Virtualization: skip rendering cards outside viewport
-              // Keep placeholder div for position/height tracking
-              const isVisible = visibleCardIds.has(card.id);
-              const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
-
-              if (!isVisible) {
-                // Render invisible placeholder to maintain layout and allow measurement
                 return (
                   <div
                     key={card.id}
@@ -669,44 +673,28 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
                     style={{
                       position: 'absolute',
                       width: cardWidth,
-                      height: cardHeight,
                       left: pos.x,
                       top: pos.y,
-                      visibility: 'hidden',
+                      // Hide until layout is stable - use visibility to prevent flash
+                      visibility: isStable ? 'visible' : 'hidden',
+                      opacity: isStable ? 1 : 0,
+                      // Transitions: opacity for fade-in, position for drag reordering
+                      transition: isStable && !activeId ? 'opacity 150ms ease-out, left 250ms ease, top 250ms ease' : 'none',
                     }}
-                  />
+                  >
+                    <SortableCard
+                      card={card}
+                      onClick={() => openCardDetail(card.id)}
+                      isDraggingThis={activeId === card.id}
+                      isDropTarget={overId === card.id && activeId !== card.id}
+                      displaySettings={displaySettings}
+                      currentCollection={currentCollection}
+                      onTagClick={onTagClick}
+                      onSystemTagClick={onSystemTagClick}
+                    />
+                  </div>
                 );
-              }
-
-              return (
-                <div
-                  key={card.id}
-                  data-card-id={card.id}
-                  style={{
-                    position: 'absolute',
-                    width: cardWidth,
-                    left: pos.x,
-                    top: pos.y,
-                    // Hide until layout is stable - use visibility to prevent flash
-                    visibility: isStable ? 'visible' : 'hidden',
-                    opacity: isStable ? 1 : 0,
-                    // Transitions: opacity for fade-in, position for drag reordering
-                    transition: isStable && !activeId ? 'opacity 150ms ease-out, left 250ms ease, top 250ms ease' : 'none',
-                  }}
-                >
-                  <SortableCard
-                    card={card}
-                    onClick={() => openCardDetail(card.id)}
-                    isDraggingThis={activeId === card.id}
-                    isDropTarget={overId === card.id && activeId !== card.id}
-                    displaySettings={displaySettings}
-                    currentCollection={currentCollection}
-                    onTagClick={onTagClick}
-                    onSystemTagClick={onSystemTagClick}
-                  />
-                </div>
-              );
-            })
+              })
           )}
         </div>
       </SortableContext>
