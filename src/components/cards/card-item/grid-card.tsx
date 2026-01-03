@@ -183,10 +183,11 @@ export function GridCard({
   // Footer horizontal inset - provides breathing room from thumbnail edge
   const FOOTER_INSET = 4;
 
-  // Sanitize note content for safe rendering
-  const sanitizedContent = isNoteCard(card.type)
-    ? DOMPurify.sanitize(card.content || '<p>Empty note</p>')
-    : '';
+  // Sanitize note content for safe rendering (memoized to avoid parsing on every render)
+  const sanitizedContent = useMemo(
+    () => isNoteCard(card.type) ? DOMPurify.sanitize(card.content || '<p>Empty note</p>') : '',
+    [card.content, card.type]
+  );
 
   // Get actions for this card based on its tags
   const actions = useMemo(
@@ -245,6 +246,12 @@ export function GridCard({
   }, [actions, extractedInfo, card.tags]);
 
   const hasQuickActions = availableActions.length > 0;
+
+  // Cache system tags (memoized to avoid recomputation on every render)
+  const systemTags = useMemo(
+    () => getSystemTagsForCard(card),
+    [card.tags, card.scheduledDate, card.isRead, card.readProgress]
+  );
 
   return (
     <button
@@ -527,7 +534,6 @@ export function GridCard({
 
             {/* Tags - system tags (read, scheduled, reading time) + user tags */}
             {settings.showTags && (() => {
-              const systemTags = getSystemTagsForCard(card);
               const userTags = card.tags || [];
               // Show tags section if we have any tags (system or user)
               if (systemTags.length === 0 && userTags.length === 0) return null;
