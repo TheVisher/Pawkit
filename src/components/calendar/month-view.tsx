@@ -13,9 +13,9 @@ import {
   format,
 } from 'date-fns';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { useCards, useCalendarEvents } from '@/lib/hooks/use-live-data';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useModalStore } from '@/lib/stores/modal-store';
 import { DayCell } from './day-cell';
 import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
 
@@ -37,9 +37,10 @@ interface CalendarItem {
 
 export function MonthView() {
   const { currentDate, setDate, setViewMode } = useCalendarStore();
-  const events = useDataStore((state) => state.events);
   const workspace = useCurrentWorkspace();
+  const events = useCalendarEvents(workspace?.id);
   const cards = useCards(workspace?.id);
+  const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   // Calculate the 6-week grid (42 days)
   const calendarDays = useMemo(() => {
@@ -147,6 +148,7 @@ export function MonthView() {
               isSelected={isSelected}
               isToday={isTodayDate}
               onClick={() => handleDayClick(date)}
+              onItemClick={openCardDetail}
             />
           );
         })}

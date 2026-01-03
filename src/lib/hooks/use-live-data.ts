@@ -13,7 +13,7 @@
 
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
-import type { LocalCard, LocalCollection, LocalWorkspace } from '@/lib/db/types';
+import type { LocalCard, LocalCollection, LocalWorkspace, LocalCalendarEvent } from '@/lib/db/types';
 
 /**
  * Get all cards for a workspace
@@ -221,4 +221,26 @@ export function useDefaultWorkspace(): LocalWorkspace | null {
   );
 
   return workspace;
+}
+
+/**
+ * Get all calendar events for a workspace
+ * Automatically updates when events change in Dexie
+ * This enables real-time updates when supertag cards generate calendar events
+ */
+export function useCalendarEvents(workspaceId: string | undefined): LocalCalendarEvent[] {
+  const events = useLiveQuery(
+    async () => {
+      if (!workspaceId) return [];
+      return db.calendarEvents
+        .where('workspaceId')
+        .equals(workspaceId)
+        .filter((e) => !e._deleted)
+        .toArray();
+    },
+    [workspaceId],
+    []
+  );
+
+  return events;
 }

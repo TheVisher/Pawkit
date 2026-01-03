@@ -5,8 +5,8 @@
  * Enhanced daily note with timestamp-based entries
  */
 
-import { useState, useMemo, useRef } from 'react';
-import { format, isSameDay } from 'date-fns';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { format, isSameDay, startOfDay } from 'date-fns';
 import { db } from '@/lib/db';
 import { Calendar, Plus, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,6 +22,9 @@ export function DailyLogWidget() {
   const [date, setDate] = useState(new Date());
   const [quickEntry, setQuickEntry] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Track whether user is intentionally viewing "today" vs navigated to a specific date
+  // When true, date will auto-advance at midnight; when false, it stays on selected date
+  const [isViewingToday, setIsViewingToday] = useState(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const workspace = useCurrentWorkspace();
   const cards = useCards(workspace?.id);
@@ -29,6 +32,50 @@ export function DailyLogWidget() {
   const createCard = useDataStore((s) => s.createCard);
   const updateCard = useDataStore((s) => s.updateCard);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
+
+  // Auto-update date at midnight if we're viewing "today"
+  // This handles the case where the user keeps the app open past midnight
+  useEffect(() => {
+    // Only auto-advance if user is intentionally viewing "today"
+    // If they navigated to a specific past date, don't pull them back
+    if (!isViewingToday) return;
+
+    const checkDateChange = () => {
+      const now = new Date();
+      const nowStr = format(now, 'yyyy-MM-dd');
+
+      setDate((currentDate) => {
+        const currentStr = format(currentDate, 'yyyy-MM-dd');
+        // If the stored date is in the past compared to today, update to today
+        // This handles midnight rollover - if we were on "today" (Jan 2) and
+        // midnight passed, now is Jan 3 so we should advance
+        if (currentStr < nowStr) {
+          console.log('[DailyLog] Midnight rollover detected, advancing date from', currentStr, 'to', nowStr);
+          return now;
+        }
+        return currentDate;
+      });
+    };
+
+    // Check every minute for midnight rollover
+    const interval = setInterval(checkDateChange, 60000);
+
+    // Also check when the tab becomes visible (user returns to app)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkDateChange();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Check immediately on mount (handles app restart after midnight)
+    checkDateChange();
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isViewingToday]);
 
   const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
   const formattedDate = format(date, 'EEEE, MMMM d');
@@ -109,7 +156,7 @@ export function DailyLogWidget() {
         title: format(date, 'MMMM d, yyyy'),
         content: '',
         isDailyNote: true,
-        scheduledDate: date,
+        scheduledDate: startOfDay(date), // Normalize to midnight to avoid timezone drift
         tags: ['daily-note'],
         collections: [],
         pinned: false,
@@ -148,19 +195,19 @@ export function DailyLogWidget() {
         const freshNote = await db.cards.get(note.id);
 
         if (freshNote && !freshNote._deleted) {
-          // Note exists in DB - append to it
-          console.log('[DailyLog] Note exists in DB, appending');
+          // Note exists in DB - prepend new entry at top
+          console.log('[DailyLog] Note exists in DB, prepending');
           const newContent = freshNote.content
-            ? `${freshNote.content}${entryHtml}`
+            ? `${entryHtml}${freshNote.content}`
             : entryHtml;
           await updateCard(note.id, { content: newContent });
           return;
         } else {
           // Note was deleted from DB (likely by sync) but we still have it in Zustand
-          // Re-create it with the existing content + new entry
+          // Re-create it with new entry + existing content (newest at top)
           console.log('[DailyLog] Note missing from DB (sync issue), re-creating with existing content');
           const newContent = note.content
-            ? `${note.content}${entryHtml}`
+            ? `${entryHtml}${note.content}`
             : entryHtml;
           await createCard({
             workspaceId: workspace.id,
@@ -169,7 +216,7 @@ export function DailyLogWidget() {
             title: format(date, 'MMMM d, yyyy'),
             content: newContent,
             isDailyNote: true,
-            scheduledDate: date,
+            scheduledDate: startOfDay(date), // Normalize to midnight to avoid timezone drift
             tags: ['daily-note'],
             collections: [],
             pinned: false,
@@ -197,13 +244,13 @@ export function DailyLogWidget() {
       console.log('[DailyLog] Found in DB:', existingNotes.length);
 
       if (existingNotes.length > 0) {
-        // Found existing active daily note - append to it
+        // Found existing active daily note - prepend new entry at top
         const sortedNotes = existingNotes.sort(
           (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
         );
         const existingNote = sortedNotes[0];
         const newContent = existingNote.content
-          ? `${existingNote.content}${entryHtml}`
+          ? `${entryHtml}${existingNote.content}`
           : entryHtml;
         await updateCard(existingNote.id, { content: newContent });
         return;
@@ -228,7 +275,7 @@ export function DailyLogWidget() {
         );
         const trashedNote = sortedTrashed[0];
         const newContent = trashedNote.content
-          ? `${trashedNote.content}${entryHtml}`
+          ? `${entryHtml}${trashedNote.content}`
           : entryHtml;
         await updateCard(trashedNote.id, {
           _deleted: false,
@@ -245,7 +292,7 @@ export function DailyLogWidget() {
         title: format(date, 'MMMM d, yyyy'),
         content: entryHtml,
         isDailyNote: true,
-        scheduledDate: date,
+        scheduledDate: startOfDay(date), // Normalize to midnight to avoid timezone drift
         tags: ['daily-note'],
         collections: [],
         pinned: false,
@@ -271,14 +318,23 @@ export function DailyLogWidget() {
   };
 
   const handlePrevDay = () => {
+    setIsViewingToday(false); // User explicitly navigating to past
     setDate((d) => new Date(d.getTime() - 24 * 60 * 60 * 1000));
   };
 
   const handleNextDay = () => {
-    setDate((d) => new Date(d.getTime() + 24 * 60 * 60 * 1000));
+    // Check if navigating forward would land on today
+    const nextDay = new Date(date.getTime() + 24 * 60 * 60 * 1000);
+    const nextDayStr = format(nextDay, 'yyyy-MM-dd');
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    if (nextDayStr === todayStr) {
+      setIsViewingToday(true); // Back to viewing today
+    }
+    setDate(nextDay);
   };
 
   const handleToday = () => {
+    setIsViewingToday(true); // User wants to view today
     setDate(new Date());
   };
 
@@ -385,9 +441,9 @@ export function DailyLogWidget() {
               >
                 {hasTimestampedEntries ? (
                   <div className="flex-1 flex flex-col">
-                    {/* Show newest entries first (reverse order), show up to 8 */}
+                    {/* Show newest entries first (content is already stored newest-first), show up to 8 */}
                     <div className="flex-1 space-y-1.5 overflow-hidden">
-                      {[...entries].reverse().slice(0, 8).map((entry, i) => (
+                      {entries.slice(0, 8).map((entry, i) => (
                         <div key={i} className="flex items-start gap-2 text-sm">
                           <span className="text-text-muted font-mono text-xs shrink-0 pt-0.5">
                             {entry.time}

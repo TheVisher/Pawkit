@@ -7,6 +7,8 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import { format, isSameDay, startOfDay } from 'date-fns';
+import { db } from '@/lib/db';
 import { useToastStore } from '@/lib/stores/toast-store';
 import { useUIStore } from '@/lib/stores/ui-store';
 import { useModalStore } from '@/lib/stores/modal-store';
@@ -16,6 +18,8 @@ import { useCards, useCollections } from '@/lib/hooks/use-live-data';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 import { SEARCHABLE_ACTIONS, type SearchResults } from '../types';
 import { normalizeUrl } from '@/lib/utils/url-normalizer';
+import { detectTodo } from '@/lib/utils/todo-detection';
+import { addTaskToContent } from '@/lib/utils/parse-task-items';
 
 export interface SearchState {
   quickNoteText: string;
@@ -64,6 +68,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   const openAddCard = useModalStore((s) => s.openAddCard);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
   const createCard = useDataStore((s) => s.createCard);
+  const updateCard = useDataStore((s) => s.updateCard);
   const currentWorkspace = useCurrentWorkspace();
   const cards = useCards(currentWorkspace?.id);
   const collections = useCollections(currentWorkspace?.id);
@@ -378,7 +383,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
   }, []);
 
   // ==========================================================================
-  // SAVE QUICK NOTE
+  // ADD TO DAILY LOG (replaces quick note functionality)
   // ==========================================================================
 
   const saveQuickNote = useCallback(async () => {
@@ -387,6 +392,7 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     const trimmedText = quickNoteText.trim();
 
     try {
+      // Handle URLs - still create bookmarks as before
       if (isUrl(trimmedText)) {
         const url = normalizeUrlFn(trimmedText);
         const normalizedInput = normalizeUrl(url);
@@ -428,26 +434,95 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
         return;
       }
 
-      await createCard({
-        workspaceId: currentWorkspace.id,
-        type: 'quick-note',
-        url: '',
-        title: trimmedText.slice(0, 50) + (trimmedText.length > 50 ? '...' : ''),
-        content: `<p>${trimmedText.replace(/\n/g, '</p><p>')}</p>`,
-        tags: [],
-        collections: [],
-        pinned: false,
-        isFileCard: false,
-        status: 'READY',
-      });
+      // Add text to daily log instead of creating quick note
+      const today = new Date();
+      const timestamp = format(today, 'h:mm a');
+      const entryHtml = `<p><strong>${timestamp}</strong> - ${trimmedText.replace(/\n/g, '</p><p><strong>' + timestamp + '</strong> - ')}</p>`;
 
-      resetSearch();
-      toast({ type: 'success', message: 'Quick note saved' });
+      // Find today's daily note
+      const existingNotes = await db.cards
+        .where('workspaceId')
+        .equals(currentWorkspace.id)
+        .filter(
+          (c) =>
+            c.isDailyNote === true &&
+            c.scheduledDate != null &&
+            isSameDay(new Date(c.scheduledDate), today) &&
+            c._deleted !== true
+        )
+        .toArray();
+
+      let dailyNote = existingNotes.length > 0
+        ? existingNotes.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())[0]
+        : null;
+
+      if (dailyNote) {
+        // Prepend entry (newest at top)
+        const newContent = dailyNote.content
+          ? `${entryHtml}${dailyNote.content}`
+          : entryHtml;
+        await updateCard(dailyNote.id, { content: newContent });
+      } else {
+        // Create new daily note
+        await createCard({
+          workspaceId: currentWorkspace.id,
+          type: 'md-note',
+          url: '',
+          title: format(today, 'MMMM d, yyyy'),
+          content: entryHtml,
+          isDailyNote: true,
+          scheduledDate: startOfDay(today),
+          tags: ['daily-note'],
+          collections: [],
+          pinned: false,
+          isFileCard: false,
+          status: 'READY',
+        });
+      }
+
+      // Todo detection: if text is a task, also add to todo card
+      const todoResult = detectTodo(trimmedText);
+      if (todoResult.isTodo) {
+        // Find existing todo card
+        const todoCards = await db.cards
+          .where('workspaceId')
+          .equals(currentWorkspace.id)
+          .filter((c) => c.tags?.includes('todo') && c._deleted !== true)
+          .toArray();
+
+        const todoCard = todoCards.length > 0 ? todoCards[0] : null;
+
+        if (todoCard) {
+          const newContent = addTaskToContent(todoCard.content || '', trimmedText);
+          await updateCard(todoCard.id, { content: newContent });
+        } else {
+          // Create new todo card with task
+          const content = addTaskToContent('', trimmedText);
+          await createCard({
+            workspaceId: currentWorkspace.id,
+            type: 'md-note',
+            url: '',
+            title: 'Todos',
+            content,
+            tags: ['todo'],
+            collections: [],
+            pinned: false,
+            isFileCard: false,
+            status: 'READY',
+          });
+        }
+
+        resetSearch();
+        toast({ type: 'success', message: 'Added to daily log and tasks' });
+      } else {
+        resetSearch();
+        toast({ type: 'success', message: 'Added to daily log' });
+      }
     } catch (error) {
       console.error('Failed to save:', error);
       toast({ type: 'error', message: 'Failed to save' });
     }
-  }, [quickNoteText, currentWorkspace, createCard, toast, isUrl, normalizeUrlFn, cards, openCardDetail, resetSearch]);
+  }, [quickNoteText, currentWorkspace, createCard, updateCard, toast, isUrl, normalizeUrlFn, cards, openCardDetail, resetSearch]);
 
   // ==========================================================================
   // KEYBOARD HANDLERS

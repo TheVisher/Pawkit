@@ -11,9 +11,9 @@ import {
   parseISO,
 } from 'date-fns';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
-import { useDataStore } from '@/lib/stores/data-store';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { useCards, useCalendarEvents } from '@/lib/hooks/use-live-data';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
+import { useModalStore } from '@/lib/stores/modal-store';
 import { EventItem } from './event-item';
 import type { LocalCalendarEvent, LocalCard } from '@/lib/db/types';
 
@@ -37,9 +37,10 @@ interface CalendarItem {
 
 export function WeekView() {
   const { currentDate } = useCalendarStore();
-  const events = useDataStore((state) => state.events);
   const workspace = useCurrentWorkspace();
+  const events = useCalendarEvents(workspace?.id);
   const cards = useCards(workspace?.id);
+  const openCardDetail = useModalStore((s) => s.openCardDetail);
 
   // Get the 7 days of the week
   const weekDays = useMemo(() => {
@@ -144,7 +145,12 @@ export function WeekView() {
               >
                 <div className="flex flex-wrap gap-0.5">
                   {allDayItems.map((item) => (
-                    <EventItem key={item.id} item={item} compact />
+                    <EventItem
+                      key={item.id}
+                      item={item}
+                      compact
+                      onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
+                    />
                   ))}
                 </div>
               </div>
@@ -189,7 +195,12 @@ export function WeekView() {
                   >
                     <div className="space-y-0.5">
                       {hourItems.map((item) => (
-                        <EventItem key={item.id} item={item} compact />
+                        <EventItem
+                          key={item.id}
+                          item={item}
+                          compact
+                          onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
+                        />
                       ))}
                     </div>
                   </div>

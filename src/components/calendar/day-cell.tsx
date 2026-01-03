@@ -25,6 +25,7 @@ interface DayCellProps {
   isSelected: boolean;
   isToday: boolean;
   onClick: () => void;
+  onItemClick?: (cardId: string) => void;
 }
 
 const MAX_VISIBLE_ITEMS = 3;
@@ -36,6 +37,7 @@ export function DayCell({
   isSelected,
   isToday,
   onClick,
+  onItemClick,
 }: DayCellProps) {
   const dayNumber = format(date, "d");
   const visibleItems = items.slice(0, MAX_VISIBLE_ITEMS);
@@ -75,7 +77,12 @@ export function DayCell({
       {/* Events list */}
       <div className="space-y-1 flex-1">
         {visibleItems.map((item) => (
-          <EventItem key={item.id} item={item} compact />
+          <EventItem
+            key={item.id}
+            item={item}
+            compact
+            onClick={item.source?.cardId && onItemClick ? () => onItemClick(item.source!.cardId!) : undefined}
+          />
         ))}
 
         {/* "More" indicator */}
