@@ -172,34 +172,34 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
 
   useEffect(() => {
     // Load data when workspace is available
+    // Run all initialization tasks in parallel (Phase 4.1 optimization)
+    // See: Performance optimization plan - Phase 4.1
     if (currentWorkspace) {
-      // Run tag architecture migration (one-time, merges collections into tags)
-      // See: .claude/skills/pawkit-tag-architecture/SKILL.md
-      runTagArchitectureMigration(false, currentWorkspace.id)
-        .then((result) => {
-          if (result.cardsUpdated > 0) {
-            log.info(`Tag migration: updated ${result.cardsUpdated} cards`);
-          }
-        })
-        .catch((error) => {
+      const workspaceId = currentWorkspace.id;
+
+      // Fire all initialization tasks in parallel - don't await sequentially
+      Promise.all([
+        // Tag architecture migration (one-time, merges collections into tags)
+        runTagArchitectureMigration(false, workspaceId).catch((error) => {
           log.error('Tag migration failed:', error);
-        });
-
-      // Normalize all tags to lowercase (one-time, ensures consistent matching)
-      normalizeAllTags(currentWorkspace.id)
-        .then((result) => {
-          if (result.cardsUpdated > 0) {
-            log.info(`Tag normalization: updated ${result.cardsUpdated} cards`);
-          }
-        })
-        .catch((error) => {
+          return { cardsUpdated: 0 };
+        }),
+        // Normalize all tags to lowercase (one-time)
+        normalizeAllTags(workspaceId).catch((error) => {
           log.error('Tag normalization failed:', error);
-        });
-
-      loadAll(currentWorkspace.id);
-
-      // Auto-purge trash items older than 30 days
-      purgeOldTrash(currentWorkspace.id, 30).then((purgedCount) => {
+          return { cardsUpdated: 0 };
+        }),
+        // Load data from IndexedDB
+        loadAll(workspaceId),
+        // Auto-purge trash items older than 30 days
+        purgeOldTrash(workspaceId, 30).catch(() => 0),
+      ]).then(([migrationResult, normResult, , purgedCount]) => {
+        if (migrationResult.cardsUpdated > 0) {
+          log.info(`Tag migration: updated ${migrationResult.cardsUpdated} cards`);
+        }
+        if (normResult.cardsUpdated > 0) {
+          log.info(`Tag normalization: updated ${normResult.cardsUpdated} cards`);
+        }
         if (purgedCount > 0) {
           log.info(`Auto-purged ${purgedCount} old trash items`);
         }
