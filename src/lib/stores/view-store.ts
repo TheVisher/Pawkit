@@ -782,3 +782,30 @@ export function usePawkitOverviewSettings() {
   );
 }
 
+/**
+ * Hook for all filter-related state (batched for performance)
+ * Reduces 11 individual subscriptions to 1
+ *
+ * @see Phase 2 of performance optimization plan
+ */
+export function useFilterSettings() {
+  return useViewStore(
+    useShallow((state) => ({
+      // Filter state
+      contentTypeFilters: state.contentTypeFilters,
+      selectedTags: state.selectedTags,
+      showNoTagsOnly: state.showNoTagsOnly,
+      showNoPawkitsOnly: state.showNoPawkitsOnly,
+      unsortedFilter: state.unsortedFilter,
+      readingFilter: state.readingFilter,
+      linkStatusFilter: state.linkStatusFilter,
+      scheduledFilter: state.scheduledFilter,
+      showDuplicatesOnly: state.showDuplicatesOnly,
+      // Filter actions
+      toggleTag: state.toggleTag,
+      setReadingFilter: state.setReadingFilter,
+      setScheduledFilter: state.setScheduledFilter,
+    }))
+  );
+}
+
