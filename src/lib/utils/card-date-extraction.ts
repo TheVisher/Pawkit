@@ -153,9 +153,21 @@ export function extractDatesFromCard(card: LocalCard): ExtractedDate[] {
       // For yearly or one-time dates
       const date = parseDateString(value);
       if (date) {
+        // For yearly recurrence, calculate next occurrence
+        let eventDate = date;
+        if (recurrence === 'yearly') {
+          const now = new Date();
+          const thisYear = now.getFullYear();
+          // Create date for this year
+          eventDate = new Date(thisYear, date.getMonth(), date.getDate());
+          // If it's already passed this year, use next year
+          if (eventDate < now) {
+            eventDate = new Date(thisYear + 1, date.getMonth(), date.getDate());
+          }
+        }
         results.push({
           field,
-          date,
+          date: eventDate,
           recurrence,
           originalValue: value,
         });
