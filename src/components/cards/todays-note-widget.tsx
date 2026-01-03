@@ -6,7 +6,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { format, isSameDay } from 'date-fns';
+import { format, isSameDay, startOfDay } from 'date-fns';
 import { db } from '@/lib/db';
 import { Calendar, Plus, ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -86,7 +86,7 @@ export function TodaysNoteWidget() {
       title: format(date, 'MMMM d, yyyy'),
       content: '',
       isDailyNote: true,
-      scheduledDate: date,
+      scheduledDate: startOfDay(date), // Normalize to midnight to avoid timezone drift
       tags: ['daily-note'],
       collections: [],
       pinned: false,

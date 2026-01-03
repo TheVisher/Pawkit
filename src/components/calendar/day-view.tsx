@@ -1,12 +1,12 @@
 'use client';
 
 import { useMemo } from 'react';
-import { format, isToday, isSameDay } from 'date-fns';
+import { format, isToday, isSameDay, startOfDay } from 'date-fns';
 import { db } from '@/lib/db';
 import { FileText, Plus } from 'lucide-react';
 import { useCalendarStore } from '@/lib/stores/calendar-store';
 import { useDataStore } from '@/lib/stores/data-store';
-import { useCards } from '@/lib/hooks/use-live-data';
+import { useCards, useCalendarEvents } from '@/lib/hooks/use-live-data';
 import { useCurrentWorkspace } from '@/lib/stores/workspace-store';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { Button } from '@/components/ui/button';
@@ -33,8 +33,8 @@ interface CalendarItem {
 
 export function DayView() {
   const { currentDate } = useCalendarStore();
-  const events = useDataStore((state) => state.events);
   const workspace = useCurrentWorkspace();
+  const events = useCalendarEvents(workspace?.id);
   const cards = useCards(workspace?.id);
   const createCard = useDataStore((state) => state.createCard);
   const openCardDetail = useModalStore((s) => s.openCardDetail);
@@ -99,7 +99,7 @@ export function DayView() {
       title: format(currentDate, 'MMMM d, yyyy'),
       content: '',
       isDailyNote: true,
-      scheduledDate: currentDate,
+      scheduledDate: startOfDay(currentDate), // Normalize to midnight to avoid timezone drift
       tags: ['daily-note'],
       collections: [],
       pinned: false,
@@ -220,7 +220,12 @@ export function DayView() {
                 {dayItems
                   .filter(item => item.isAllDay)
                   .map((item) => (
-                    <EventItem key={item.id} item={item} compact />
+                    <EventItem
+                      key={item.id}
+                      item={item}
+                      compact
+                      onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
+                    />
                   ))}
               </div>
             </div>
@@ -258,7 +263,11 @@ export function DayView() {
                 >
                   <div className="space-y-1">
                     {hourItems.map((item) => (
-                      <EventItem key={item.id} item={item} />
+                      <EventItem
+                        key={item.id}
+                        item={item}
+                        onClick={item.source?.cardId ? () => openCardDetail(item.source!.cardId!) : undefined}
+                      />
                     ))}
                   </div>
                 </div>
