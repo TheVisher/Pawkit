@@ -8,8 +8,9 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Typography from '@tiptap/extension-typography';
 import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
+import GlobalDragHandle from 'tiptap-extension-global-drag-handle';
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { Bold, Italic, Code, Link as LinkIcon, X } from 'lucide-react';
+import { Bold, Italic, Code, Link as LinkIcon, X, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SlashCommandMenu } from './slash-command-menu';
 import { AutoPhoneLink } from '@/lib/tiptap/extensions/auto-phone-link';
@@ -31,6 +32,7 @@ export function Editor({
 }: EditorProps) {
   const [showToolbar, setShowToolbar] = useState(false);
   const [toolbarPosition, setToolbarPosition] = useState({ top: 0, left: 0 });
+  const [isInTable, setIsInTable] = useState(false);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const lastSavedContent = useRef(content);
   const saveDebounceRef = useRef<NodeJS.Timeout | null>(null);
@@ -102,6 +104,10 @@ export function Editor({
       TableHeader,
       TableCell,
       AutoPhoneLink,
+      GlobalDragHandle.configure({
+        dragHandleWidth: 1000, // Large value to detect hover across full row
+        scrollTreshold: 100,
+      }),
     ],
     content,
     editable,
@@ -149,6 +155,19 @@ export function Editor({
           return true;
         }
 
+        // Mod+Shift+Backspace to delete table when inside one
+        if (mod && event.shiftKey && event.key === 'Backspace') {
+          const { $from } = view.state.selection;
+          // Check if we're inside a table by looking for tableCell in ancestors
+          for (let d = $from.depth; d > 0; d--) {
+            if ($from.node(d).type.name === 'table') {
+              event.preventDefault();
+              window.dispatchEvent(new CustomEvent('editor-delete-table'));
+              return true;
+            }
+          }
+        }
+
         return false;
       },
     },
@@ -180,21 +199,26 @@ export function Editor({
     onSelectionUpdate: ({ editor }) => {
       const { from, to } = editor.state.selection;
       const hasSelection = from !== to;
+      const inTable = editor.isActive('table');
 
-      if (hasSelection && editor.view.dom) {
-        // Get the coordinates of the selection
+      // Track if cursor is in a table
+      setIsInTable(inTable);
+
+      // Show toolbar on text selection OR when in a table (for table controls)
+      if ((hasSelection || inTable) && editor.view.dom) {
+        // Get the coordinates of the selection/cursor
         const coords = editor.view.coordsAtPos(from);
         const editorRect = editor.view.dom.getBoundingClientRect();
-        
-        // Estimate toolbar width (approx 280px based on buttons)
-        const estimatedToolbarWidth = 280;
+
+        // Estimate toolbar width (approx 280px based on buttons, more if table controls shown)
+        const estimatedToolbarWidth = inTable ? 340 : 280;
         let left = coords.left - editorRect.left;
-        
+
         // Clamp to edges
         if (left + estimatedToolbarWidth > editorRect.width) {
           left = Math.max(0, editorRect.width - estimatedToolbarWidth);
         }
-        
+
         setToolbarPosition({
           top: coords.top - editorRect.top - 45,
           left,
@@ -277,25 +301,34 @@ export function Editor({
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
 
+  // Delete table handler
+  const deleteTable = useCallback(() => {
+    if (!editor) return;
+    editor.chain().focus().deleteTable().run();
+  }, [editor]);
+
   // Listen for keyboard shortcut custom events
   useEffect(() => {
     const handleSetLinkEvent = () => setLink();
     const handleToggleStrike = () => editor?.chain().focus().toggleStrike().run();
     const handleUndo = () => editor?.chain().focus().undo().run();
     const handleRedo = () => editor?.chain().focus().redo().run();
+    const handleDeleteTable = () => deleteTable();
 
     window.addEventListener('editor-set-link', handleSetLinkEvent);
     window.addEventListener('editor-toggle-strike', handleToggleStrike);
     window.addEventListener('editor-undo', handleUndo);
     window.addEventListener('editor-redo', handleRedo);
+    window.addEventListener('editor-delete-table', handleDeleteTable);
 
     return () => {
       window.removeEventListener('editor-set-link', handleSetLinkEvent);
       window.removeEventListener('editor-toggle-strike', handleToggleStrike);
       window.removeEventListener('editor-undo', handleUndo);
       window.removeEventListener('editor-redo', handleRedo);
+      window.removeEventListener('editor-delete-table', handleDeleteTable);
     };
-  }, [setLink, editor]);
+  }, [setLink, editor, deleteTable]);
 
   if (!editor) {
     return null;
@@ -377,6 +410,18 @@ export function Editor({
             >
               <X className="h-4 w-4" />
             </button>
+          )}
+          {isInTable && (
+            <>
+              <div className="w-px h-4 bg-[var(--glass-border)] mx-1" />
+              <button
+                onClick={deleteTable}
+                className="p-1.5 rounded-md text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+                title="Delete Table (Cmd+Shift+Backspace)"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </>
           )}
         </div>
       )}
@@ -656,44 +701,59 @@ export function Editor({
           background: hsla(var(--accent-h) var(--accent-s) 50% / 0.15);
         }
 
-        /* Drag handle for block elements */
-        .tiptap > *:not(table) {
+        /* Table positioning for toolbar */
+        .tiptap table {
           position: relative;
         }
 
-        .tiptap > p:hover::before,
-        .tiptap > h1:hover::before,
-        .tiptap > h2:hover::before,
-        .tiptap > h3:hover::before,
-        .tiptap > ul:hover::before,
-        .tiptap > ol:hover::before,
-        .tiptap > blockquote:hover::before,
-        .tiptap > pre:hover::before {
-          content: '⋮⋮';
-          position: absolute;
-          left: -1.5rem;
-          top: 0;
-          font-size: 0.75rem;
-          color: var(--color-text-muted);
+        /* Editor left padding for drag handle */
+        .tiptap {
+          padding-left: 1.75rem;
+        }
+
+        /* Global drag handle styling */
+        .drag-handle {
+          position: fixed;
+          width: 1.5rem;
+          height: 1.5rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: var(--glass-bg);
+          border: 1px solid var(--glass-border);
+          border-radius: 0.25rem;
           cursor: grab;
-          opacity: 0.5;
-          transition: opacity 0.15s;
+          opacity: 0;
+          transition: opacity 0.15s, background 0.15s;
           user-select: none;
+          z-index: 50;
+        }
+
+        .drag-handle::after {
+          content: '⋮⋮';
+          font-size: 0.75rem;
+          font-weight: 600;
           letter-spacing: -2px;
+          color: var(--color-text-muted);
         }
 
-        .tiptap > *:hover::before {
-          opacity: 0.8;
+        .drag-handle:hover {
+          opacity: 1 !important;
+          background: var(--glass-panel-bg);
         }
 
-        .tiptap > *:active::before {
+        .drag-handle:hover::after {
+          color: var(--color-text-primary);
+        }
+
+        .drag-handle:active {
           cursor: grabbing;
         }
 
-        /* Hide drag handle for empty paragraphs */
-        .tiptap > p.is-editor-empty::before,
-        .tiptap > p.is-node-empty::before {
-          display: none;
+        /* Show drag handle when hovering in editor */
+        .ProseMirror:hover .drag-handle,
+        .tiptap:hover .drag-handle {
+          opacity: 0.7;
         }
       `}</style>
     </div>

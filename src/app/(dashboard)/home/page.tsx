@@ -13,6 +13,8 @@ import {
   ScheduledTodayWidget,
   ContinueReadingWidget,
   RecentCardsWidget,
+  TodoWidget,
+  BillsWidget,
 } from '@/components/home';
 import { cn } from '@/lib/utils';
 
@@ -87,8 +89,18 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Recently Added - full width */}
-          <RecentCardsWidget />
+          {/* Bottom row: Recently Added (1/3) + Tasks (1/3) + Bills (1/3) */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
+            <div className="min-h-[200px]">
+              <RecentCardsWidget />
+            </div>
+            <div className="min-h-[200px]">
+              <TodoWidget />
+            </div>
+            <div className="min-h-[200px]">
+              <BillsWidget />
+            </div>
+          </div>
         </div>
       </div>
     </ContentAreaContextMenu>
