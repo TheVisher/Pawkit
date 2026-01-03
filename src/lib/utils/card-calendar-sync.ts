@@ -112,11 +112,11 @@ export async function syncCardToCalendar(
 ): Promise<{ created: number; updated: number; deleted: number }> {
   const stats = { created: 0, updated: 0, deleted: 0 };
 
-  // Get existing events for this card
+  // Get existing events for this card (filter since source.cardId isn't indexed)
   const existingEvents = await db.calendarEvents
-    .where('source.cardId')
-    .equals(card.id)
-    .filter((e) => !e._deleted)
+    .where('workspaceId')
+    .equals(workspaceId)
+    .filter((e) => !e._deleted && e.source?.cardId === card.id)
     .toArray();
 
   const existingMap = new Map(existingEvents.map((e) => [e.id, e]));
@@ -174,10 +174,9 @@ export async function syncCardToCalendar(
  * Remove all calendar events for a card
  */
 export async function removeCardFromCalendar(cardId: string): Promise<number> {
+  // Filter all events since source.cardId isn't indexed
   const events = await db.calendarEvents
-    .where('source.cardId')
-    .equals(cardId)
-    .filter((e) => !e._deleted)
+    .filter((e) => !e._deleted && e.source?.cardId === cardId)
     .toArray();
 
   const now = new Date();
