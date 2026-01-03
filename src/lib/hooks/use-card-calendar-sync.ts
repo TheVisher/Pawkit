@@ -40,8 +40,10 @@ export function useCardCalendarSync(card: LocalCard | null) {
     }
 
     // Debounced sync
-    timerRef.current = setTimeout(() => {
-      syncCardToCalendar(card, card.workspaceId);
+    timerRef.current = setTimeout(async () => {
+      console.log('[CalendarSync] Syncing card:', card.id, 'tags:', card.tags);
+      const result = await syncCardToCalendar(card, card.workspaceId);
+      console.log('[CalendarSync] Sync result:', result);
     }, SYNC_DEBOUNCE_MS);
 
     return () => {
