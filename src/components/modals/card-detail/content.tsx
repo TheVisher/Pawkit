@@ -13,6 +13,7 @@ import { useCard } from '@/lib/hooks/use-live-data';
 import { cn } from '@/lib/utils';
 import { CardDetailHeader } from './header';
 import { ContentRouter } from './content/index';
+import { isSupertag } from '@/lib/tags/supertags';
 import type { CardDetailContentProps } from './types';
 
 export function CardDetailContent({ cardId, onClose, className }: CardDetailContentProps) {
@@ -45,6 +46,11 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
   // Derived state
   const isArticle = card?.type === 'url';
   const hasArticleContent = isArticle && !!card?.articleContent;
+
+  // Check if this is a contact card (has custom header in NoteContent)
+  const isContactCard = useMemo(() => {
+    return card?.tags?.some(tag => isSupertag(tag) && tag.toLowerCase().replace(/^#/, '') === 'contact');
+  }, [card?.tags]);
 
   // Sync title when card changes (including external updates like Quick Convert)
   useEffect(() => {
@@ -102,6 +108,9 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
       onClick={(e) => e.stopPropagation()}
     >
       {/* Expandable header section - grows to fill modal */}
+      {/* Contact cards have their own header in NoteContent, skip the default header */}
+      {!isContactCard && (
+      <>
       <div
         className={cn(
           "relative flex-shrink-0 transition-all duration-500 ease-out",
@@ -212,6 +221,8 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
         </h2>
         <p className="text-white/50 text-xs mt-1">Click to collapse</p>
       </div>
+      </>
+      )}
 
       {/* Type-specific content - collapses when expanded */}
       <div

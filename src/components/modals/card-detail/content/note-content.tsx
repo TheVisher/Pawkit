@@ -6,12 +6,14 @@
  * The note content IS the primary content - editor takes center stage
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCardCalendarSync } from '@/lib/hooks/use-card-calendar-sync';
 import { Editor } from '@/components/editor';
 import { getContentStats } from '../types';
+import { ContactPhotoHeader } from '../contact-photo-header';
+import { isSupertag } from '@/lib/tags/supertags';
 import type { LocalCard } from '@/lib/db';
 
 interface NoteContentProps {
@@ -42,8 +44,16 @@ export function NoteContent({ card, className }: NoteContentProps) {
   // Calculate stats
   const stats = getContentStats(content);
 
+  // Check if this is a contact card (has #contact supertag)
+  const isContactCard = useMemo(() => {
+    return card.tags?.some(tag => isSupertag(tag) && tag.toLowerCase().replace(/^#/, '') === 'contact');
+  }, [card.tags]);
+
   return (
     <div className={cn('flex-1 flex flex-col overflow-hidden', className)}>
+      {/* Contact photo header - only for contact cards */}
+      {isContactCard && <ContactPhotoHeader card={card} />}
+
       {/* Stats bar */}
       <div className="flex justify-center py-2 text-xs text-text-muted">
         {stats.words.toLocaleString()} words · {stats.chars.toLocaleString()} chars

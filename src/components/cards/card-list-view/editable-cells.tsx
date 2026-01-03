@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { TagBadgeList } from '@/components/tags/tag-badge';
 import { TagInput } from '@/components/tags/tag-input';
 import { getSystemTagsForCard, type SystemTag } from '@/lib/utils/system-tags';
+import { checkSupertagAddition, applyTemplate } from '@/lib/utils/template-applicator';
 import type { LocalCard } from '@/lib/db';
 
 // =============================================================================
@@ -113,7 +114,7 @@ export function EditableCell({
 
 interface EditableTagsCellProps {
   card: LocalCard;
-  onSave: (cardId: string, field: string, value: string[]) => void;
+  onSave: (cardId: string, field: string, value: string[] | string) => void;
   isEditing: boolean;
   onStartEdit: () => void;
   onCancelEdit: () => void;
@@ -145,6 +146,22 @@ export function EditableTagsCell({
   const handleTagsChange = (newTags: string[]) => {
     setLocalTags(newTags);
     onSave(cardId, 'tags', newTags);
+
+    // Check if a supertag was added and apply template if card is empty
+    const result = checkSupertagAddition(tags, newTags, card.content);
+    if (result.shouldApply && result.template) {
+      // Auto-apply template to empty card
+      const newContent = applyTemplate(card.content, result.template);
+      onSave(cardId, 'content', newContent);
+    } else if (result.needsPrompt && result.template) {
+      // For cards with content, show a confirmation
+      const confirmed = window.confirm(
+        `Apply ${result.supertagName} template? This will replace your existing content.`
+      );
+      if (confirmed) {
+        onSave(cardId, 'content', result.template);
+      }
+    }
   };
 
   // Handle click outside to close

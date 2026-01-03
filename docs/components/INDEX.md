@@ -20,7 +20,7 @@
 | Component | Has Docs | Location | Complexity | Last Updated | Notes |
 |-----------|----------|----------|------------|--------------|-------|
 | **calendar** | Yes | [calendar.md](./calendar.md) | High | 2025-12-22 | Phase 5 - All views implemented |
-| **cards** | Yes | [cards.md](./cards.md) | High | 2025-12-23 | Core visual entity, DnD enabled |
+| **cards** | Yes | [cards.md](./cards.md) | High | 2026-01-02 | Core entity + Supertag Quick Actions |
 | **card-list-view** | Yes | [card-list-view.md](./card-list-view.md) | High | 2025-12-23 | Table view with inline edit |
 | **editor** | Yes | [editor.md](./editor.md) | High | 2025-12-23 | Phase 7.1 - Tiptap rich text editor |
 | **layout** | Yes | [layout.md](./layout.md) | High | 2025-12-30 | Refactored Omnibar and Filter sections |
@@ -28,6 +28,7 @@
 | **pawkits** | No | — | Medium | 2025-12-30 | Tree, Headers, and Card logic |
 | **providers** | No | — | Low | — | Single theme-provider.tsx |
 | **settings** | No | — | Medium | 2025-12-30 | Settings sections (Modularized Appearance) |
+| **supertags** | No | — | Medium | 2026-01-02 | Template system & Quick Actions logic |
 
 ---
 
@@ -116,6 +117,11 @@ src/components/
 │       ├── account-section.tsx       3.0KB
 │       └── data-section.tsx          5.5KB
 └── ui/                              [shadcn - not tracked]
+
+src/app/portal/components/
+├── portal-card-item.tsx         12.0KB  ⚠️ Watch limit
+├── portal-masonry-grid.tsx       8.0KB
+└── portal-pawkits-tree.tsx       8.0KB
 ```
 
 **Component limit**: 300 lines (~9KB). Files marked ⚠️ are approaching or exceeding recommended limits.

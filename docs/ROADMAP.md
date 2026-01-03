@@ -40,6 +40,16 @@
 - [ ] Note-to-Note links
 - [ ] Note-to-Card links
 
+### 1.4 Supertag System
+
+**Status**: Core implemented
+
+- [x] Supertag definitions & registry
+- [x] Quick Actions in Grid Card
+- [x] Template application in List View
+- [x] Omnibar integration
+- [ ] UI for custom supertags
+
 ---
 
 ## Phase 2: Kit AI & Cloud Storage
@@ -262,12 +272,13 @@
 
 *Large "God Components" that violate <300 line guideline*
 
-| File | Lines | Issue | Recommended Split |
-|------|-------|-------|-------------------|
-| `card-list-view.tsx` | 1,515 | Massive "God Component" | ListRow, ColumnHeader, SortControls |
-| `omnibar.tsx` | <300 | [x] **Refactored** | Split into focused mode hooks |
-| `card-item.tsx` | 623 | Too many responsibilities | CardImage, CardActions, CardMeta |
-| `sync-service.ts` | 615 | Core sync logic | SyncQueue, ConflictResolver, OfflineHandler |
+| File | Lines | Issue | Recommended Split | Status |
+|------|-------|-------|-------------------|--------|
+| `card-list-view.tsx` | ~380 | "God Component" | ListRow, ColumnHeader | ✅ **Refactored** |
+| `right-sidebar/index.tsx` | ~560 | Too many sections | SidebarSection, Filters | ✅ **Refactored** |
+| `card-item/grid-card.tsx` | ~380 | Too many responsibilities | CardImage, CardActions | ✅ **Refactored** |
+| `masonry-grid.tsx` | 637 | **NEW** Critical | Virtualization, Layout logic | 🚨 **Pending** |
+| `sync-service.ts` | 615 | Core sync logic | SyncQueue, ConflictResolver | 🔄 In Progress |
 
 **Approach**: Extract sub-components one at a time, test after each extraction.
 

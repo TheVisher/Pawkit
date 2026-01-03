@@ -27,6 +27,12 @@ interface ModalStore {
   coverImageCollectionId: string | null;
   openCoverImagePicker: (collectionId: string) => void;
   closeCoverImagePicker: () => void;
+
+  // Card Photo Picker Modal (for contact photos)
+  isCardPhotoPickerOpen: boolean;
+  cardPhotoCardId: string | null;
+  openCardPhotoPicker: (cardId: string) => void;
+  closeCardPhotoPicker: () => void;
 }
 
 export const useModalStore = create<ModalStore>((set) => ({
@@ -56,4 +62,10 @@ export const useModalStore = create<ModalStore>((set) => ({
   coverImageCollectionId: null,
   openCoverImagePicker: (collectionId) => set({ isCoverImagePickerOpen: true, coverImageCollectionId: collectionId }),
   closeCoverImagePicker: () => set({ isCoverImagePickerOpen: false, coverImageCollectionId: null }),
+
+  // Card Photo Picker Modal
+  isCardPhotoPickerOpen: false,
+  cardPhotoCardId: null,
+  openCardPhotoPicker: (cardId) => set({ isCardPhotoPickerOpen: true, cardPhotoCardId: cardId }),
+  closeCardPhotoPicker: () => set({ isCardPhotoPickerOpen: false, cardPhotoCardId: null }),
 }));

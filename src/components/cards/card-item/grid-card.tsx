@@ -3,8 +3,29 @@
 import { useState, useCallback, useMemo } from 'react';
 import Image from 'next/image';
 import DOMPurify from 'dompurify';
-import { Globe, Pin, AlertTriangle, ExternalLink, Phone, Mail, MessageSquare } from 'lucide-react';
-import { extractContactInfo } from '@/lib/tags/supertags';
+import {
+  Globe,
+  Pin,
+  AlertTriangle,
+  ExternalLink,
+  Phone,
+  Mail,
+  MessageSquare,
+  Video,
+  ShoppingCart,
+  Shield,
+  Gift,
+} from 'lucide-react';
+import {
+  getActionsForTags,
+  extractContactInfo,
+  extractSubscriptionInfo,
+  extractRecipeInfo,
+  extractReadingInfo,
+  extractMeetingInfo,
+  extractWishlistInfo,
+  extractWarrantyInfo,
+} from '@/lib/tags/supertags';
 import { SyncStatusIndicator } from '@/components/cards/sync-status-indicator';
 import { cn } from '@/lib/utils';
 import type { LocalCard } from '@/lib/db';
@@ -22,6 +43,65 @@ import {
   getAverageColor,
   isNoteCard,
 } from './types';
+
+// Icon mapping for action icons
+const ACTION_ICONS: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
+  'external-link': ExternalLink,
+  'phone': Phone,
+  'mail': Mail,
+  'message-square': MessageSquare,
+  'video': Video,
+  'shopping-cart': ShoppingCart,
+  'shield': Shield,
+  'gift': Gift,
+};
+
+// Extract all info from content based on tags
+function extractAllInfo(content: string, tags: string[]): Record<string, string | undefined> {
+  const info: Record<string, string | undefined> = {};
+  const tagSet = new Set(tags.map((t) => t.toLowerCase()));
+
+  if (tagSet.has('contact')) {
+    const contactInfo = extractContactInfo(content);
+    if (contactInfo.phone) info.phone = contactInfo.phone;
+    if (contactInfo.email) info.email = contactInfo.email;
+  }
+
+  if (tagSet.has('subscription')) {
+    const subInfo = extractSubscriptionInfo(content);
+    if (subInfo.websiteUrl) info.websiteUrl = subInfo.websiteUrl;
+    if (subInfo.accountEmail) info.accountEmail = subInfo.accountEmail;
+  }
+
+  if (tagSet.has('recipe')) {
+    const recipeInfo = extractRecipeInfo(content);
+    if (recipeInfo.sourceUrl) info.sourceUrl = recipeInfo.sourceUrl;
+  }
+
+  if (tagSet.has('reading')) {
+    const readingInfo = extractReadingInfo(content);
+    if (readingInfo.storeUrl) info.storeUrl = readingInfo.storeUrl;
+  }
+
+  if (tagSet.has('meeting')) {
+    const meetingInfo = extractMeetingInfo(content);
+    if (meetingInfo.meetingUrl) info.meetingUrl = meetingInfo.meetingUrl;
+  }
+
+  if (tagSet.has('wishlist')) {
+    const wishlistInfo = extractWishlistInfo(content);
+    if (wishlistInfo.storeUrl) info.storeUrl = wishlistInfo.storeUrl;
+  }
+
+  if (tagSet.has('warranty')) {
+    const warrantyInfo = extractWarrantyInfo(content);
+    if (warrantyInfo.supportUrl) info.supportUrl = warrantyInfo.supportUrl;
+    if (warrantyInfo.supportPhone) info.supportPhone = warrantyInfo.supportPhone;
+    if (warrantyInfo.supportEmail) info.supportEmail = warrantyInfo.supportEmail;
+  }
+
+  return info;
+}
 
 interface GridCardProps {
   card: LocalCard;
@@ -108,19 +188,63 @@ export function GridCard({
     ? DOMPurify.sanitize(card.content || '<p>Empty note</p>')
     : '';
 
-  // Check if this is a contact card and extract contact info for quick actions
-  const isContactCard = useMemo(
-    () => (card.tags || []).some((t) => t.toLowerCase() === 'contact'),
+  // Get actions for this card based on its tags
+  const actions = useMemo(
+    () => getActionsForTags(card.tags || []),
     [card.tags]
   );
 
-  const contactInfo = useMemo(
-    () => isContactCard ? extractContactInfo(card.content || '') : null,
-    [isContactCard, card.content]
+  // Extract all relevant info from content
+  const extractedInfo = useMemo(
+    () => extractAllInfo(card.content || '', card.tags || []),
+    [card.content, card.tags]
   );
 
-  // Check if we have any quick actions to show
-  const hasQuickActions = contactInfo && (contactInfo.phone || contactInfo.email);
+  // Build list of available quick actions (only those with extracted values)
+  const availableActions = useMemo(() => {
+    const result: Array<{
+      id: string;
+      label: string;
+      icon: string;
+      href: string;
+      isExternal?: boolean;
+    }> = [];
+
+    // Special handling for contact cards (call, email, sms)
+    const isContactCard = (card.tags || []).some((t) => t.toLowerCase() === 'contact');
+    if (isContactCard && extractedInfo.phone) {
+      result.push({ id: 'call', label: 'Call', icon: 'phone', href: `tel:${extractedInfo.phone}` });
+      result.push({ id: 'sms', label: 'Message', icon: 'message-square', href: `sms:${extractedInfo.phone}` });
+    }
+    if (isContactCard && extractedInfo.email) {
+      result.push({ id: 'email', label: 'Email', icon: 'mail', href: `mailto:${extractedInfo.email}` });
+    }
+
+    // Process other supertag actions
+    for (const action of actions) {
+      // Skip contact actions (handled specially above)
+      if (action.id === 'call' || action.id === 'email' || action.id === 'sms') continue;
+
+      const fieldValue = action.field ? extractedInfo[action.field] : undefined;
+      if (!fieldValue) continue;
+
+      const protocol = action.protocol || '';
+      const href = protocol ? `${protocol}${fieldValue}` : fieldValue;
+      const isExternal = !protocol || protocol === 'https://';
+
+      result.push({
+        id: action.id,
+        label: action.label,
+        icon: action.icon || 'external-link',
+        href,
+        isExternal,
+      });
+    }
+
+    return result;
+  }, [actions, extractedInfo, card.tags]);
+
+  const hasQuickActions = availableActions.length > 0;
 
   return (
     <button
@@ -290,7 +414,7 @@ export function GridCard({
             </a>
           )}
 
-          {/* Contact quick actions - Call, Email, Message - centered at bottom of thumbnail */}
+          {/* Quick actions - centered at bottom of thumbnail */}
           {hasQuickActions && (
             <div
               className={cn(
@@ -301,66 +425,32 @@ export function GridCard({
                 'z-10'
               )}
             >
-              {contactInfo?.phone && (
-                <a
-                  href={`tel:${contactInfo.phone}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    'p-2 rounded-lg',
-                    'hover:scale-110 active:scale-95',
-                    'transition-transform duration-150'
-                  )}
-                  style={{
-                    background: 'var(--glass-bg)',
-                    backdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
-                    WebkitBackdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
-                    border: '1px solid var(--glass-border)',
-                  }}
-                  title="Call"
-                >
-                  <Phone className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
-                </a>
-              )}
-              {contactInfo?.email && (
-                <a
-                  href={`mailto:${contactInfo.email}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    'p-2 rounded-lg',
-                    'hover:scale-110 active:scale-95',
-                    'transition-transform duration-150'
-                  )}
-                  style={{
-                    background: 'var(--glass-bg)',
-                    backdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
-                    WebkitBackdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
-                    border: '1px solid var(--glass-border)',
-                  }}
-                  title="Email"
-                >
-                  <Mail className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
-                </a>
-              )}
-              {contactInfo?.phone && (
-                <a
-                  href={`sms:${contactInfo.phone}`}
-                  onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    'p-2 rounded-lg',
-                    'hover:scale-110 active:scale-95',
-                    'transition-transform duration-150'
-                  )}
-                  style={{
-                    background: 'var(--glass-bg)',
-                    backdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
-                    WebkitBackdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
-                    border: '1px solid var(--glass-border)',
-                  }}
-                  title="Message"
-                >
-                  <MessageSquare className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
-                </a>
-              )}
+              {availableActions.map((action) => {
+                const IconComponent = ACTION_ICONS[action.icon] || ExternalLink;
+                return (
+                  <a
+                    key={action.id}
+                    href={action.href}
+                    target={action.isExternal ? '_blank' : undefined}
+                    rel={action.isExternal ? 'noopener noreferrer' : undefined}
+                    onClick={(e) => e.stopPropagation()}
+                    className={cn(
+                      'p-2 rounded-lg',
+                      'hover:scale-110 active:scale-95',
+                      'transition-transform duration-150'
+                    )}
+                    style={{
+                      background: 'var(--glass-bg)',
+                      backdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
+                      WebkitBackdropFilter: `blur(var(--glass-blur)) saturate(var(--glass-saturate))`,
+                      border: '1px solid var(--glass-border)',
+                    }}
+                    title={action.label}
+                  >
+                    <IconComponent className="h-4 w-4" style={{ color: 'var(--color-accent)' }} />
+                  </a>
+                );
+              })}
             </div>
           )}
 

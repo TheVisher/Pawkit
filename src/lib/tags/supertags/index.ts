@@ -19,7 +19,10 @@ import { todoSupertag } from './todo';
 import { recipeSupertag } from './recipe';
 import { readingSupertag } from './reading';
 import { projectSupertag } from './project';
-import { meetingSupertag, habitSupertag, wishlistSupertag, warrantySupertag } from './others';
+import { meetingSupertag } from './meeting';
+import { habitSupertag } from './habit';
+import { wishlistSupertag } from './wishlist';
+import { warrantySupertag } from './warranty';
 
 // Re-export contact utilities (used by SupertagPanel and grid-card)
 export {
@@ -39,12 +42,100 @@ export {
 } from './contact';
 
 // Re-export subscription utilities
-export { extractSubscriptionInfo, SUBSCRIPTION_SECTIONS } from './subscription';
+export {
+  SUBSCRIPTION_SECTIONS,
+  SUBSCRIPTION_TEMPLATE_TYPES,
+  buildSubscriptionTemplate,
+  getSubscriptionTemplate,
+  getSubscriptionSection,
+  extractSubscriptionInfo,
+  type SubscriptionTemplateType,
+} from './subscription';
 
-// Re-export other section definitions
-export { RECIPE_SECTIONS } from './recipe';
-export { READING_SECTIONS } from './reading';
-export { PROJECT_SECTIONS } from './project';
+// Re-export recipe utilities
+export {
+  RECIPE_SECTIONS,
+  RECIPE_TEMPLATE_TYPES,
+  buildRecipeTemplate,
+  getRecipeTemplate,
+  getRecipeSection,
+  extractRecipeInfo,
+  type RecipeTemplateType,
+} from './recipe';
+
+// Re-export reading utilities
+export {
+  READING_SECTIONS,
+  READING_TEMPLATE_TYPES,
+  buildReadingTemplate,
+  getReadingTemplate,
+  getReadingSection,
+  extractReadingInfo,
+  type ReadingTemplateType,
+} from './reading';
+
+// Re-export project utilities
+export {
+  PROJECT_SECTIONS,
+  PROJECT_TEMPLATE_TYPES,
+  buildProjectTemplate,
+  getProjectTemplate,
+  getProjectSection,
+  type ProjectTemplateType,
+} from './project';
+
+// Re-export todo utilities
+export {
+  TODO_SECTIONS,
+  TODO_TEMPLATE_TYPES,
+  buildTodoTemplate,
+  getTodoTemplate,
+  getTodoSection,
+  type TodoTemplateType,
+} from './todo';
+
+// Re-export meeting utilities
+export {
+  MEETING_SECTIONS,
+  MEETING_TEMPLATE_TYPES,
+  buildMeetingTemplate,
+  getMeetingTemplate,
+  getMeetingSection,
+  extractMeetingInfo,
+  type MeetingTemplateType,
+} from './meeting';
+
+// Re-export habit utilities
+export {
+  HABIT_SECTIONS,
+  HABIT_TEMPLATE_TYPES,
+  buildHabitTemplate,
+  getHabitTemplate,
+  getHabitSection,
+  type HabitTemplateType,
+} from './habit';
+
+// Re-export wishlist utilities
+export {
+  WISHLIST_SECTIONS,
+  WISHLIST_TEMPLATE_TYPES,
+  buildWishlistTemplate,
+  getWishlistTemplate,
+  getWishlistSection,
+  extractWishlistInfo,
+  type WishlistTemplateType,
+} from './wishlist';
+
+// Re-export warranty utilities
+export {
+  WARRANTY_SECTIONS,
+  WARRANTY_TEMPLATE_TYPES,
+  buildWarrantyTemplate,
+  getWarrantyTemplate,
+  getWarrantySection,
+  extractWarrantyInfo,
+  type WarrantyTemplateType,
+} from './warranty';
 
 // =============================================================================
 // REGISTRY
