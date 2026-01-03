@@ -105,8 +105,9 @@ export function IdleContent({
       exit={{ opacity: 0 }}
       transition={{ duration: 0.15 }}
     >
-      {/* Top Row: Plus Button + Search + Chat */}
-      <div className="flex w-full shrink-0 items-start pt-1">
+      {/* Top Row: Plus Button + Content + Search + Chat */}
+      {/* All buttons stay in DOM, flex layout handles positioning */}
+      <div className="flex w-full shrink-0 items-center pt-1 h-10">
         {/* Plus Button - Toggle Add Mode */}
         <button
           onClick={onToggleAddMode}
@@ -122,30 +123,62 @@ export function IdleContent({
           <Plus className="h-5 w-5 transition-transform duration-200" />
         </button>
 
-        {/* Content switches instantly - width animation handles the visual transition */}
-        {isCompact && !isQuickNoteMode ? (
-          <CompactButtons
-            onSearchClick={onSearchClick}
-            onForceExpand={onForceExpand}
-            isKitMode={isKitMode}
-            onToggleKitMode={onToggleKitMode}
-          />
-        ) : (
-          <ExpandedContent
-            onSearchClick={onSearchClick}
-            isQuickNoteMode={isQuickNoteMode}
-            setIsQuickNoteMode={setIsQuickNoteMode}
-            quickNoteText={quickNoteText}
-            setQuickNoteText={setQuickNoteText}
-            textareaRef={textareaRef}
-            onQuickNoteKeyDown={onQuickNoteKeyDown}
-            onQuickNoteBlur={onQuickNoteBlur}
-            onSaveQuickNote={onSaveQuickNote}
-            isKitMode={isKitMode}
-            onToggleKitMode={onToggleKitMode}
-            isOnTagsPage={isOnTagsPage}
-          />
-        )}
+        {/* Middle content - expands/collapses with flex */}
+        <div
+          className={cn(
+            "flex items-center transition-all duration-300 ease-out overflow-hidden",
+            isCompact && !isQuickNoteMode
+              ? "flex-0 w-0 opacity-0"
+              : "flex-1 min-w-0 opacity-100"
+          )}
+        >
+          <div className="flex-1 min-w-0 flex items-center h-10 px-2 gap-2 rounded-xl hover:bg-[var(--glass-bg)] transition-colors duration-150 cursor-text">
+            <Search className="h-4 w-4 shrink-0 text-text-muted" />
+            <input
+              type="text"
+              value={quickNoteText}
+              onChange={(e) => setQuickNoteText(e.target.value)}
+              onKeyDown={onQuickNoteKeyDown}
+              onBlur={onQuickNoteBlur}
+              placeholder={isOnTagsPage ? "Filter tags..." : "Search or quick note..."}
+              className="flex-1 bg-transparent text-sm text-text-muted placeholder:text-text-muted focus:outline-none"
+              onFocus={() => setIsQuickNoteMode(true)}
+            />
+          </div>
+        </div>
+
+        {/* Search Button - always visible */}
+        <motion.button
+          layout
+          onClick={onForceExpand}
+          className={cn(
+            'flex items-center justify-center shrink-0',
+            'w-10 h-10 rounded-xl',
+            'text-text-muted hover:text-text-primary',
+            'hover:bg-[var(--glass-bg)] active:bg-[var(--glass-bg-hover)]',
+            'transition-colors duration-150'
+          )}
+          title="Search (⌘K)"
+        >
+          <Search className="h-5 w-5" />
+        </motion.button>
+
+        {/* Kit Chat Button - always visible */}
+        <motion.button
+          layout
+          onClick={onToggleKitMode}
+          className={cn(
+            'flex items-center justify-center shrink-0',
+            'w-10 h-10 rounded-xl',
+            'text-text-muted hover:text-text-primary',
+            'hover:bg-[var(--glass-bg)] active:bg-[var(--glass-bg-hover)]',
+            'transition-colors duration-150',
+            isKitMode && 'bg-[var(--glass-bg)] text-[var(--color-accent)]'
+          )}
+          title="Kit AI Chat"
+        >
+          <MessageCircle className="h-5 w-5" />
+        </motion.button>
       </div>
 
       {/* Tags Page Filter Indicator */}
