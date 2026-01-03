@@ -110,7 +110,6 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
         openAddCard('bookmark');
         break;
       case 'note':
-      case 'quick-note':
         openAddCard('note');
         break;
       case 'contact':
