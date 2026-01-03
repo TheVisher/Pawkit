@@ -119,10 +119,11 @@ export default function LibraryPage() {
   // Card display settings
   const { cardPadding, cardSpacing, cardSize, showMetadataFooter, showTitles, showTags } = useCardDisplaySettings();
 
-  // Calculate duplicate card IDs (memoized)
+  // Calculate duplicate card IDs (memoized) - skip expensive O(n²) calculation when filter is disabled
   const duplicateCardIds = useMemo(() => {
+    if (!showDuplicatesOnly) return new Set<string>();
     return findDuplicateCardIds(cards);
-  }, [cards]);
+  }, [cards.length, showDuplicatesOnly]);
 
   // Count total non-deleted cards to distinguish between "no items" vs "no results"
   const totalCards = useMemo(() => {

@@ -150,16 +150,24 @@ export function useSync(options: UseSyncOptions = {}): UseSyncReturn {
     };
   }, [syncOnOnline]);
 
-  // Handle visibility change
+  // Handle visibility change (debounced to prevent rapid sync flooding)
+  const visibilityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (!syncOnVisible) return;
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        log.debug('Tab visible, checking for pending items...');
-        // Only push pending changes - don't do a full pull on every tab switch
-        // The user can manually refresh if they need latest server data
-        triggerSync();
+        // Clear any pending sync to debounce rapid tab switches
+        if (visibilityTimeoutRef.current) {
+          clearTimeout(visibilityTimeoutRef.current);
+        }
+
+        // Debounce sync by 300ms - fast enough to feel responsive, slow enough to batch
+        visibilityTimeoutRef.current = setTimeout(() => {
+          log.debug('Tab visible, checking for pending items...');
+          triggerSync();
+        }, 300);
       }
     };
 
@@ -167,6 +175,9 @@ export function useSync(options: UseSyncOptions = {}): UseSyncReturn {
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (visibilityTimeoutRef.current) {
+        clearTimeout(visibilityTimeoutRef.current);
+      }
     };
   }, [syncOnVisible]);
 

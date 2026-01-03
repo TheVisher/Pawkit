@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -53,6 +53,29 @@ const navItems = [
   { href: "/calendar", label: "Calendar", icon: Calendar },
 ];
 
+// Isolated component for sync menu item - prevents sidebar re-renders on sync status changes
+const SyncMenuItem = memo(function SyncMenuItem({ workspaceId }: { workspaceId?: string }) {
+  const isSyncing = useSyncStore((s) => s.status === 'syncing');
+
+  const handleSync = async () => {
+    await fullSync();
+    if (workspaceId) {
+      await useDataStore.getState().loadAll(workspaceId);
+    }
+  };
+
+  return (
+    <DropdownMenuItem
+      onClick={handleSync}
+      disabled={isSyncing}
+      className="text-text-secondary focus:bg-bg-surface-2 focus:text-text-primary"
+    >
+      <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")} />
+      {isSyncing ? "Syncing..." : "Sync from server"}
+    </DropdownMenuItem>
+  );
+});
+
 export function LeftSidebar() {
   const [mounted, setMounted] = useState(false);
   const [pawkitsExpanded, setPawkitsExpanded] = useState(true);
@@ -61,7 +84,6 @@ export function LeftSidebar() {
   const { isOpen, isAnchored, toggleAnchored, setOpen } = useLeftSidebar();
   const { toggleSettings } = useRightSidebarSettings();
   const workspace = useCurrentWorkspace();
-  const isSyncing = useSyncStore((s) => s.status === 'syncing');
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- Standard SSR hydration pattern
@@ -76,14 +98,6 @@ export function LeftSidebar() {
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
-  };
-
-  const handleSync = async () => {
-    await fullSync();
-    // Reload data from Dexie into Zustand after sync
-    if (workspace) {
-      await useDataStore.getState().loadAll(workspace.id);
-    }
   };
 
   const handleToggleOpen = () => {
@@ -172,8 +186,8 @@ export function LeftSidebar() {
                     initial={false}
                     transition={{
                       type: "spring",
-                      stiffness: 500,
-                      damping: 30,
+                      stiffness: 300,
+                      damping: 25,
                     }}
                   />
                 )}
@@ -213,8 +227,8 @@ export function LeftSidebar() {
                   initial={false}
                   transition={{
                     type: "spring",
-                    stiffness: 500,
-                    damping: 30,
+                    stiffness: 300,
+                    damping: 25,
                   }}
                 />
               )}
@@ -296,8 +310,8 @@ export function LeftSidebar() {
                 initial={false}
                 transition={{
                   type: "spring",
-                  stiffness: 500,
-                  damping: 30,
+                  stiffness: 300,
+                  damping: 25,
                 }}
               />
             )}
@@ -344,14 +358,7 @@ export function LeftSidebar() {
             align="start"
             className="w-56 bg-bg-surface-1 border-border-subtle"
           >
-            <DropdownMenuItem
-              onClick={handleSync}
-              disabled={isSyncing}
-              className="text-text-secondary focus:bg-bg-surface-2 focus:text-text-primary"
-            >
-              <RefreshCw className={cn("mr-2 h-4 w-4", isSyncing && "animate-spin")} />
-              {isSyncing ? "Syncing..." : "Sync from server"}
-            </DropdownMenuItem>
+            <SyncMenuItem workspaceId={workspace?.id} />
             <DropdownMenuItem
               onClick={() => router.push("/trash")}
               className="text-text-secondary focus:bg-bg-surface-2 focus:text-text-primary"
