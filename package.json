@@ -42,6 +42,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.89.0",
+    "@tanstack/react-virtual": "^3.13.16",
     "@tauri-apps/api": "^2.9.1",
     "@tiptap/core": "^3.14.0",
     "@tiptap/extension-bubble-menu": "^3.14.0",

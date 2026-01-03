@@ -21,6 +21,9 @@ import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useLayoutCacheStore, generateCardContentHash } from '@/lib/stores/layout-cache-store';
 
+// Virtualization: pixels of overscan above/below viewport
+const VIRTUALIZATION_OVERSCAN = 500;
+
 // Custom modifier that centers the overlay on cursor based on overlay size
 const centerOverlayOnCursor: Modifier = ({ transform, draggingNodeRect }) => {
   if (draggingNodeRect) {
@@ -216,6 +219,11 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
   const stabilityCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCardsLengthRef = useRef(cards.length);
 
+  // Virtualization: track scroll position to only render visible cards
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 1000);
+  const scrollContainerRef = useRef<HTMLElement | null>(null);
+
   // Layout cache for persistent heights across navigation
   const { getHeightsMap, setHeights } = useLayoutCacheStore();
 
@@ -252,6 +260,46 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
 
     observer.observe(container);
     return () => observer.disconnect();
+  }, []);
+
+  // Virtualization: Find scroll container and track scroll position
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    // Find the scroll container (parent with overflow)
+    let scrollContainer: HTMLElement | null = container.parentElement;
+    while (scrollContainer) {
+      const style = getComputedStyle(scrollContainer);
+      if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+        break;
+      }
+      scrollContainer = scrollContainer.parentElement;
+    }
+
+    if (!scrollContainer) {
+      // Fallback to window scroll
+      scrollContainerRef.current = null;
+      const handleWindowScroll = () => {
+        setScrollTop(window.scrollY);
+        setViewportHeight(window.innerHeight);
+      };
+      window.addEventListener('scroll', handleWindowScroll, { passive: true });
+      handleWindowScroll();
+      return () => window.removeEventListener('scroll', handleWindowScroll);
+    }
+
+    scrollContainerRef.current = scrollContainer;
+
+    const handleScroll = () => {
+      setScrollTop(scrollContainer!.scrollTop);
+      setViewportHeight(scrollContainer!.clientHeight);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Initial measurement
+
+    return () => scrollContainer?.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Calculate columns and card width
@@ -327,6 +375,42 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
     const maxHeight = Math.max(...columnHeights);
     return { positions: posMap, totalHeight: maxHeight > 0 ? maxHeight - cardSpacing : 0 };
   }, [cards, columnCount, cardWidth, measuredHeights, cardSpacing]);
+
+  // Virtualization: Calculate container offset and filter visible cards
+  const containerOffset = useMemo(() => {
+    const container = containerRef.current;
+    if (!container || !scrollContainerRef.current) return 0;
+    // Get container's position relative to scroll container
+    const containerRect = container.getBoundingClientRect();
+    const scrollRect = scrollContainerRef.current.getBoundingClientRect();
+    return containerRect.top - scrollRect.top + scrollContainerRef.current.scrollTop;
+  }, [scrollTop]); // Recalculate when scrolling
+
+  // Determine which cards are visible in viewport
+  const visibleCardIds = useMemo(() => {
+    if (cards.length === 0) return new Set<string>();
+
+    // Calculate visible range relative to container
+    const viewStart = scrollTop - containerOffset - VIRTUALIZATION_OVERSCAN;
+    const viewEnd = scrollTop - containerOffset + viewportHeight + VIRTUALIZATION_OVERSCAN;
+
+    const visible = new Set<string>();
+    for (const card of cards) {
+      const pos = positions.get(card.id);
+      if (!pos) continue;
+
+      const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
+      const cardTop = pos.y;
+      const cardBottom = pos.y + cardHeight;
+
+      // Card is visible if it overlaps with the viewport range
+      if (cardBottom >= viewStart && cardTop <= viewEnd) {
+        visible.add(card.id);
+      }
+    }
+
+    return visible;
+  }, [cards, positions, measuredHeights, scrollTop, containerOffset, viewportHeight, cardWidth]);
 
   // Reset stability when cards array changes significantly
   useEffect(() => {
@@ -562,12 +646,36 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
               ))}
             </div>
           ) : (
-            // Masonry layout - each card fades in when stable
+            // Masonry layout with virtualization - only render visible cards
+            // This reduces DOM nodes from 180 to ~20-30 visible cards
             cards.map((card) => {
               const pos = positions.get(card.id);
               if (!pos) {
                 console.warn('No position for card:', card.id);
                 return null;
+              }
+
+              // Virtualization: skip rendering cards outside viewport
+              // Keep placeholder div for position/height tracking
+              const isVisible = visibleCardIds.has(card.id);
+              const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
+
+              if (!isVisible) {
+                // Render invisible placeholder to maintain layout and allow measurement
+                return (
+                  <div
+                    key={card.id}
+                    data-card-id={card.id}
+                    style={{
+                      position: 'absolute',
+                      width: cardWidth,
+                      height: cardHeight,
+                      left: pos.x,
+                      top: pos.y,
+                      visibility: 'hidden',
+                    }}
+                  />
+                );
               }
 
               return (
