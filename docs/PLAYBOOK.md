@@ -1030,6 +1030,15 @@ Use shadcn/ui Dialog component for all modals.
   - `768px - 1024px`: Tablet (optional sidebars)
   - `> 1024px`: Desktop (full 3-panel)
 
+### Portal (Mini-Window)
+
+- **Architecture:** Next.js route at `/portal` (`src/app/portal/page.tsx`)
+- **Purpose:** Fast drop target and quick reference
+- **Frameless Window:** Loaded by Tauri as a separate frameless window
+- **Shared State:** Uses `BroadcastChannel` and `localStorage` to sync with main app instantly
+- **Components:** `src/app/portal/components/` (Specialized lightweight components)
+
+
 ---
 
 ## 7. Component Organization
@@ -2600,6 +2609,38 @@ Use this checklist to verify V2 has all V1 features:
 - [ ] Extension token auth
 - [x] View settings persistence
 - [ ] Export/import data
+
+---
+
+## 17. Supertag Architecture
+
+**Purpose:** Enhance standard tags (`#tag`) with structured templates, UI behaviors, and quick actions.
+
+### Core Concepts
+
+| Concept | Description |
+|---------|-------------|
+| **Definition** | Metadata defined in `src/lib/tags/supertags/` (Icon, Display Name, Suggested Fields). |
+| **Template** | Pre-defined HTML/Markdown content injected into notes (e.g., Recipe schema, Meeting notes). |
+| **UI Hints** | Controls where the supertag appears (Omnibar, Sidebar, etc.) and its visual behavior. |
+| **Extraction** | Logic to parse card content and extract fields (e.g., phone numbers from `#contact` cards). |
+
+### Implementation Pattern
+
+1.  **Registry (`src/lib/tags/supertags/index.ts`)**: Central registration of all supertag definitions.
+2.  **Definitions**: Individual files (e.g., `contact.ts`) exporting `SupertagDefinition` objects.
+3.  **Consumption**:
+    -   **`GridCard`**: Uses `extractContactInfo` / `extractSubscriptionInfo` to render Quick Actions (Call, Email).
+    -   **`Omnibar`**: Suggests tags via `suggestSupertagsFromContent`.
+    -   **`EditableCells`**: List view triggers template application when a supertag is added.
+
+### How to Add a New Supertag
+
+1.  Create `src/lib/tags/supertags/[name].ts`.
+2.  Define `template` (HTML string or sections).
+3.  Define `uiHints` (icon, color).
+4.  Register in `SUPERTAG_REGISTRY`.
+5.  (Optional) Add extraction logic in `supertags.ts` if it needs Card Quick Actions.
 
 ---
 

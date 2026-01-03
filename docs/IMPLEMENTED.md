@@ -340,6 +340,12 @@ Migration Status: 14 migrations applied (December 2025)
 - **High Contrast**: WCAG AAA compliant (7:1+ contrast), pure black/white backgrounds, crisp borders.
 - Implemented via CSS variables in `globals.css` with zero runtime overhead.
 
+**The Portal (Mini-Window)**:
+- **Architecture**: Implemented as a Next.js route at `/portal` (`src/app/portal/page.tsx`).
+- **Data Access**: Direct IndexedDB access via `useLiveQuery` (bypassing Zustand for speed in secondary window).
+- **Drag & Drop**: Bidirectional - Drag URLs *in* to save, drag Cards *out* to export as files.
+- **Note**: `packages/desktop/portal` is legacy code and should be ignored/removed.
+
 **High Contrast Accessibility (WCAG AAA Compliant)**:
 
 | Element | Dark Mode | Light Mode |

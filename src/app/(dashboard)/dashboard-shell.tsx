@@ -18,6 +18,7 @@ import { AddCardModal } from '@/components/modals/add-card-modal';
 import { CardDetailModal } from '@/components/modals/card-detail';
 import { CreatePawkitModal } from '@/components/modals/create-pawkit-modal';
 import { CoverImagePickerModal } from '@/components/modals/cover-image-picker-modal';
+import { CardPhotoPickerModal } from '@/components/modals/card-photo-picker-modal';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { CardsDragHandler } from '@/components/pawkits/cards-drag-handler';
 import { Omnibar } from '@/components/layout/omnibar';
@@ -529,6 +530,7 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
         <CardDetailModal />
         <CreatePawkitModal />
         <CoverImagePickerModal />
+        <CardPhotoPickerModal />
         <CardsDragHandler />
       </div>
     </AppDndProvider>

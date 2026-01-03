@@ -358,11 +358,24 @@ export async function addCardToPawkit(
   // Merge: non-Pawkit tags + new ancestry (all lowercase)
   const newTags = [...new Set([...nonPawkitTags, ...ancestry.map((t) => t.toLowerCase())])];
 
-  await db.cards.update(cardId, {
+  // Check if we're adding a supertag that has a template
+  // Import dynamically to avoid circular dependencies
+  const { checkSupertagAddition, applyTemplate } = await import('@/lib/utils/template-applicator');
+  const oldTags = card.tags || [];
+  const result = checkSupertagAddition(oldTags, newTags, card.content);
+
+  const updates: Record<string, unknown> = {
     tags: newTags,
     _synced: false,
     _lastModified: new Date(),
-  });
+  };
+
+  // Auto-apply template if card is empty and a supertag with template was added
+  if (result.shouldApply && result.template) {
+    updates.content = applyTemplate(card.content, result.template);
+  }
+
+  await db.cards.update(cardId, updates);
 }
 
 /**

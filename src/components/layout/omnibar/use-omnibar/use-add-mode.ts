@@ -129,6 +129,86 @@ export function useAddMode(onModeChange?: () => void): AddModeState & AddModeAct
           openCardDetail(card.id);
         }
         break;
+      case 'todo':
+        // Create todo card with template
+        if (workspaceId) {
+          const template = getSupertagTemplate('todo') || '';
+          const card = await createCard({
+            workspaceId,
+            type: 'md-note',
+            url: '',
+            title: 'New Todo',
+            content: template,
+            tags: ['todo'],
+            pinned: false,
+          });
+          openCardDetail(card.id);
+        }
+        break;
+      case 'subscription':
+        // Create subscription card with template
+        if (workspaceId) {
+          const template = getSupertagTemplate('subscription') || '';
+          const card = await createCard({
+            workspaceId,
+            type: 'md-note',
+            url: '',
+            title: 'New Subscription',
+            content: template,
+            tags: ['subscription'],
+            pinned: false,
+          });
+          openCardDetail(card.id);
+        }
+        break;
+      case 'recipe':
+        // Create recipe card with template
+        if (workspaceId) {
+          const template = getSupertagTemplate('recipe') || '';
+          const card = await createCard({
+            workspaceId,
+            type: 'md-note',
+            url: '',
+            title: 'New Recipe',
+            content: template,
+            tags: ['recipe'],
+            pinned: false,
+          });
+          openCardDetail(card.id);
+        }
+        break;
+      case 'reading':
+        // Create reading card with template
+        if (workspaceId) {
+          const template = getSupertagTemplate('reading') || '';
+          const card = await createCard({
+            workspaceId,
+            type: 'md-note',
+            url: '',
+            title: 'New Reading',
+            content: template,
+            tags: ['reading'],
+            pinned: false,
+          });
+          openCardDetail(card.id);
+        }
+        break;
+      case 'project':
+        // Create project card with template
+        if (workspaceId) {
+          const template = getSupertagTemplate('project') || '';
+          const card = await createCard({
+            workspaceId,
+            type: 'md-note',
+            url: '',
+            title: 'New Project',
+            content: template,
+            tags: ['project'],
+            pinned: false,
+          });
+          openCardDetail(card.id);
+        }
+        break;
       case 'upload':
         console.log('Upload action - coming soon');
         break;

@@ -126,6 +126,10 @@ export interface LocalCard extends SyncMetadata {
   // Daily Note
   isDailyNote?: boolean;        // Flag for daily note cards
 
+  // Contact photo header customization
+  headerGradientColor?: string;    // Hex color for gradient (default: accent color)
+  headerImagePosition?: number;    // 0-100 vertical position (default: 50)
+
   // Sync conflict tracking
   version: number;              // Incremented on each server update (for conflict detection)
   conflictWithId?: string;      // Links to conflicting card (both cards reference each other)
