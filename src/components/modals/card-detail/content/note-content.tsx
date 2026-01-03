@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { useDataStore } from '@/lib/stores/data-store';
+import { useCardCalendarSync } from '@/lib/hooks/use-card-calendar-sync';
 import { Editor } from '@/components/editor';
 import { getContentStats } from '../types';
 import type { LocalCard } from '@/lib/db';
@@ -24,7 +25,10 @@ export function NoteContent({ card, className }: NoteContentProps) {
   // Local state for content
   const [content, setContent] = useState(card.content || '');
 
-  // Sync local state when card changes
+  // Sync dates to calendar when card content changes
+  useCardCalendarSync(card);
+
+  // Sync local state when card changes (including external updates like Quick Convert)
   useEffect(() => {
     setContent(card.content || '');
   }, [card.id, card.content]);

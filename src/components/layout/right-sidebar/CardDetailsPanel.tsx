@@ -6,13 +6,15 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { Tag, FolderOpen, Link2, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, User, Undo2, Redo2 } from 'lucide-react';
+import { Tag, FolderOpen, Link2, Paperclip, MessageSquare, Copy, Check, ExternalLink, Plus, LayoutTemplate, Undo2, Redo2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/tags/tag-input';
 import { useDataStore } from '@/lib/stores/data-store';
 import { checkSupertagAddition, applyTemplate } from '@/lib/utils/template-applicator';
-import { ContactTemplatePanel } from './ContactTemplatePanel';
+import { SupertagPanel } from './SupertagPanel';
+import { SupertagSelector } from './SupertagSelector';
+import { findSupertagsInTags, getSupertagDefinition, getAllSupertags, getSupertagTemplate } from '@/lib/tags/supertags';
 import type { LocalCard, LocalCollection } from '@/lib/db';
 
 interface CardDetailsPanelProps {
@@ -26,11 +28,11 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
   const [isEditingTags, setIsEditingTags] = useState(false);
   const updateCard = useDataStore((s) => s.updateCard);
 
-  // Check if card has #contact tag
-  const isContactCard = useMemo(
-    () => (card.tags || []).some((t) => t.toLowerCase() === 'contact'),
-    [card.tags]
-  );
+  // Find supertags with sections (for template panel)
+  const supertagWithSections = useMemo(() => {
+    const supertags = findSupertagsInTags(card.tags || []);
+    return supertags.find((st) => st.sections && Object.keys(st.sections).length > 0) || null;
+  }, [card.tags]);
 
   // Check if card is a note type (has editor)
   const isNoteCard = useMemo(
@@ -164,6 +166,43 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
         </>
       )}
 
+      {/* Supertag Selector - for note cards */}
+      {isNoteCard && (
+        <>
+          <div>
+            <div className="text-xs font-medium uppercase text-text-muted mb-2">Quick Convert</div>
+            <SupertagSelector
+              currentTags={card.tags || []}
+              onSelectSupertag={async (newSupertagTag) => {
+                // Get all supertag names to filter out existing ones
+                const allSupertagNames = new Set(getAllSupertags().map(st => st.tag));
+
+                // Remove existing supertag tags, keep other tags
+                const nonSupertagTags = (card.tags || []).filter(
+                  t => !allSupertagNames.has(t.toLowerCase())
+                );
+
+                // Add the new supertag
+                const newTags = [...nonSupertagTags, newSupertagTag];
+
+                // Get the supertag definition and template
+                const supertagDef = getSupertagDefinition(newSupertagTag);
+                const newTitle = supertagDef ? `New ${supertagDef.displayName}` : card.title;
+                const newContent = getSupertagTemplate(newSupertagTag) || '';
+
+                // Update everything in one call - this is an explicit conversion action
+                await updateCard(card.id, {
+                  tags: newTags,
+                  title: newTitle,
+                  content: newContent,
+                });
+              }}
+            />
+          </div>
+          <Separator className="bg-border-subtle" />
+        </>
+      )}
+
       {/* Tags Section */}
       <div>
         <div className="flex items-center justify-between mb-3">
@@ -224,15 +263,16 @@ export function CardDetailsPanel({ card, collections, isTransitioning }: CardDet
 
       <Separator className="bg-border-subtle" />
 
-      {/* Contact Template Panel - only for #contact cards */}
-      {isContactCard && (
+      {/* Supertag Template Panel - for any supertag with sections */}
+      {supertagWithSections && (
         <>
           <div>
             <div className="flex items-center gap-2 text-text-muted mb-3">
-              <User className="h-5 w-5" />
-              <span className="text-xs font-medium uppercase">Contact Template</span>
+              <LayoutTemplate className="h-5 w-5" />
+              <span className="text-xs font-medium uppercase">{supertagWithSections.displayName} Template</span>
             </div>
-            <ContactTemplatePanel
+            <SupertagPanel
+              supertag={supertagWithSections}
               content={card.content || ''}
               onContentChange={handleContentChange}
             />

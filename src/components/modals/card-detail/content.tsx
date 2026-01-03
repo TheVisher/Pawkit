@@ -46,10 +46,16 @@ export function CardDetailContent({ cardId, onClose, className }: CardDetailCont
   const isArticle = card?.type === 'url';
   const hasArticleContent = isArticle && !!card?.articleContent;
 
-  // Sync title when card changes
+  // Sync title when card changes (including external updates like Quick Convert)
   useEffect(() => {
     if (card) {
       setTitle(card.title || '');
+    }
+  }, [card?.id, card?.title]);
+
+  // Reset image state when switching cards
+  useEffect(() => {
+    if (card) {
       setImageError(false);
       setCurrentImageIndex(0); // Reset gallery to first image
     }
