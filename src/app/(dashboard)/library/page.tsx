@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, useEffect, useRef } from 'react';
+import { useMemo, useCallback, useEffect, useRef, useDeferredValue } from 'react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCards, useCollections } from '@/lib/hooks/use-live-data';
 import {
@@ -87,9 +87,13 @@ interface CardGroup {
 
 export default function LibraryPage() {
   const workspace = useCurrentWorkspace();
-  const cards = useCards(workspace?.id);
+  const rawCards = useCards(workspace?.id);
   const collections = useCollections(workspace?.id);
   const isLoading = useDataStore((state) => state.isLoading);
+
+  // Defer card processing to avoid blocking initial paint
+  // This allows React to render the page shell first, then process cards
+  const cards = useDeferredValue(rawCards);
 
   // Build set of Pawkit slugs for "No Pawkits" filter
   // A card is "in a Pawkit" if any of its tags match a Pawkit slug
@@ -142,10 +146,8 @@ export default function LibraryPage() {
     return findDuplicateCardIds(cards);
   }, [cards.length, showDuplicatesOnly]);
 
-  // Count total non-deleted cards to distinguish between "no items" vs "no results"
-  const totalCards = useMemo(() => {
-    return cards.filter(c => !c._deleted).length;
-  }, [cards]);
+  // Count total cards - cards are already filtered for _deleted in DataContext
+  const totalCards = cards.length;
 
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
@@ -160,10 +162,10 @@ export default function LibraryPage() {
            showDuplicatesOnly;
   }, [contentTypeFilters, selectedTags, showNoTagsOnly, showNoPawkitsOnly, unsortedFilter, readingFilter, linkStatusFilter, scheduledFilter, showDuplicatesOnly]);
 
-  // Filter out deleted cards and apply content type + tag + unsorted + reading filters
+  // Apply content type + tag + unsorted + reading filters
+  // Note: cards are already filtered for _deleted in DataContext
   const activeCards = useMemo(() => {
     return cards.filter((card) => {
-      if (card._deleted) return false;
       if (!cardMatchesContentTypes(card, contentTypeFilters)) return false;
       // Tag filter - card must have ALL selected tags
       if (selectedTags.length > 0) {

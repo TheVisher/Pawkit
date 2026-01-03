@@ -122,7 +122,7 @@ export function IdleContent({
           <Plus className="h-5 w-5 transition-transform duration-200" />
         </button>
 
-        <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="sync">
           {isCompact && !isQuickNoteMode ? (
             <CompactButtons
               key="compact"
