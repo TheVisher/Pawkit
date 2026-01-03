@@ -181,11 +181,14 @@ export function useSearch(onModeChange?: () => void): SearchState & SearchAction
     return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
   }, []);
 
+  // Only compute recent cards when actually in quick note mode
+  // This avoids sorting 180 cards on every omnibar transition
   const recentCards = useMemo(() => {
+    if (!isQuickNoteMode) return [];
     return [...cards]
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .slice(0, 5);
-  }, [cards]);
+  }, [cards, isQuickNoteMode]);
 
   // Search effect
   useEffect(() => {

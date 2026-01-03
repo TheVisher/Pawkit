@@ -99,7 +99,7 @@ export function Omnibar({ isCompact }: OmnibarProps) {
         }}
         style={{ transformOrigin: 'center top' }}
       >
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="popLayout">
           {showToast ? (
             <ToastContent
               key="toast"
