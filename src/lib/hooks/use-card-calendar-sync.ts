@@ -16,7 +16,7 @@ const SYNC_DEBOUNCE_MS = 500;
  */
 export function useCardCalendarSync(card: LocalCard | null) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastContentRef = useRef<string | undefined>(undefined);
+  const lastSyncKeyRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!card) return;
@@ -29,10 +29,10 @@ export function useCardCalendarSync(card: LocalCard | null) {
       return;
     }
 
-    // Skip if content hasn't changed
-    const currentContent = card.content || '';
-    if (lastContentRef.current === currentContent) return;
-    lastContentRef.current = currentContent;
+    // Skip if nothing relevant has changed (content or title)
+    const syncKey = `${card.title}|${card.content}`;
+    if (lastSyncKeyRef.current === syncKey) return;
+    lastSyncKeyRef.current = syncKey;
 
     // Clear existing timer
     if (timerRef.current) {
