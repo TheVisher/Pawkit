@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Plus,
   Search,
@@ -122,33 +122,30 @@ export function IdleContent({
           <Plus className="h-5 w-5 transition-transform duration-200" />
         </button>
 
-        <AnimatePresence mode="sync">
-          {isCompact && !isQuickNoteMode ? (
-            <CompactButtons
-              key="compact"
-              onSearchClick={onSearchClick}
-              onForceExpand={onForceExpand}
-              isKitMode={isKitMode}
-              onToggleKitMode={onToggleKitMode}
-            />
-          ) : (
-            <ExpandedContent
-              key="expanded"
-              onSearchClick={onSearchClick}
-              isQuickNoteMode={isQuickNoteMode}
-              setIsQuickNoteMode={setIsQuickNoteMode}
-              quickNoteText={quickNoteText}
-              setQuickNoteText={setQuickNoteText}
-              textareaRef={textareaRef}
-              onQuickNoteKeyDown={onQuickNoteKeyDown}
-              onQuickNoteBlur={onQuickNoteBlur}
-              onSaveQuickNote={onSaveQuickNote}
-              isKitMode={isKitMode}
-              onToggleKitMode={onToggleKitMode}
-              isOnTagsPage={isOnTagsPage}
-            />
-          )}
-        </AnimatePresence>
+        {/* Content switches instantly - width animation handles the visual transition */}
+        {isCompact && !isQuickNoteMode ? (
+          <CompactButtons
+            onSearchClick={onSearchClick}
+            onForceExpand={onForceExpand}
+            isKitMode={isKitMode}
+            onToggleKitMode={onToggleKitMode}
+          />
+        ) : (
+          <ExpandedContent
+            onSearchClick={onSearchClick}
+            isQuickNoteMode={isQuickNoteMode}
+            setIsQuickNoteMode={setIsQuickNoteMode}
+            quickNoteText={quickNoteText}
+            setQuickNoteText={setQuickNoteText}
+            textareaRef={textareaRef}
+            onQuickNoteKeyDown={onQuickNoteKeyDown}
+            onQuickNoteBlur={onQuickNoteBlur}
+            onSaveQuickNote={onSaveQuickNote}
+            isKitMode={isKitMode}
+            onToggleKitMode={onToggleKitMode}
+            isOnTagsPage={isOnTagsPage}
+          />
+        )}
       </div>
 
       {/* Tags Page Filter Indicator */}
@@ -278,15 +275,11 @@ function ExpandedContent({
   const showHints = hasContent && !isSearchMode && !isOnTagsPage;
 
   return (
-    <motion.div
+    <div
       className={cn(
         "flex flex-1 min-w-0",
         hasContent ? "items-start" : "items-center h-10"
       )}
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -10 }}
-      transition={{ duration: 0.2 }}
     >
       {/* Input Area */}
       <div className={cn(
@@ -355,7 +348,7 @@ function ExpandedContent({
           <MessageCircle className="h-5 w-5" />
         </button>
       )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -372,13 +365,7 @@ interface CompactButtonsProps {
 
 function CompactButtons({ onForceExpand, isKitMode, onToggleKitMode }: CompactButtonsProps) {
   return (
-    <motion.div
-      className="flex items-center justify-center flex-1 h-10 gap-1"
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9 }}
-      transition={{ duration: 0.2 }}
-    >
+    <div className="flex items-center justify-center flex-1 h-10 gap-1">
       {/* Search Button - expands omnibar */}
       <button
         onClick={onForceExpand}
@@ -409,6 +396,6 @@ function CompactButtons({ onForceExpand, isKitMode, onToggleKitMode }: CompactBu
       >
         <MessageCircle className="h-5 w-5" />
       </button>
-    </motion.div>
+    </div>
   );
 }
