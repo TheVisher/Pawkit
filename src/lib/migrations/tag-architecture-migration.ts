@@ -12,6 +12,7 @@
 
 import { db } from '@/lib/db/schema';
 import type { LocalCard, LocalCollection } from '@/lib/db/types';
+import { addToQueue } from '@/lib/services/sync-queue';
 
 // =============================================================================
 // MIGRATION STATUS
@@ -78,6 +79,10 @@ export async function normalizeAllTags(
           _synced: false,
           _lastModified: new Date(),
         });
+
+        // Add to sync queue with skipConflictCheck (tag changes shouldn't trigger conflicts)
+        await addToQueue('card', card.id, 'update', { tags: dedupedTags }, { skipConflictCheck: true });
+
         cardsUpdated++;
       }
     }
@@ -294,6 +299,9 @@ export async function runTagArchitectureMigration(
               _synced: false,
               _lastModified: new Date(),
             });
+
+            // Add to sync queue with skipConflictCheck (migration shouldn't trigger conflicts)
+            await addToQueue('card', card.id, 'update', { tags: mergedTags }, { skipConflictCheck: true });
           }
         }
       }
@@ -376,6 +384,10 @@ export async function addCardToPawkit(
   }
 
   await db.cards.update(cardId, updates);
+
+  // Add to sync queue with skipConflictCheck (Pawkit changes shouldn't trigger conflicts)
+  // Only include tags in sync payload (content changes if any should be synced separately)
+  await addToQueue('card', cardId, 'update', { tags: newTags }, { skipConflictCheck: true });
 }
 
 /**
@@ -407,6 +419,9 @@ export async function removeCardFromPawkit(
     _synced: false,
     _lastModified: new Date(),
   });
+
+  // Add to sync queue with skipConflictCheck (Pawkit changes shouldn't trigger conflicts)
+  await addToQueue('card', cardId, 'update', { tags: newTags }, { skipConflictCheck: true });
 }
 
 /**

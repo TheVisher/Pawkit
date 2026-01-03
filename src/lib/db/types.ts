@@ -259,6 +259,7 @@ export interface SyncQueueItem {
   retryCount: number;
   lastError?: string;
   createdAt: Date;
+  skipConflictCheck?: boolean;  // Skip version conflict check for local-only updates (tags, metadata)
 }
 
 export interface MetadataEntry {

@@ -208,19 +208,23 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
       body = JSON.stringify(prepareForServer(entity, entityType));
     } else if (operation === 'update' && payload) {
       // For update, use the payload (partial update)
-      // For cards, include expectedVersion for conflict detection
+      // For cards, include expectedVersion for conflict detection (unless skipConflictCheck)
       if (entityType === 'card') {
         const localCard = await db.cards.get(entityId);
         if (localCard) {
-          // Only send expectedVersion if we have a valid version (> 0)
-          // Version 0 indicates corrupted/unsynced data, so skip conflict check
-          if (localCard.version && localCard.version > 0) {
+          // Skip conflict check if:
+          // 1. The queue item has skipConflictCheck flag (local-only update like tags)
+          // 2. Version is 0 (corrupted/unsynced data)
+          const shouldSkipConflictCheck = item.skipConflictCheck || !localCard.version || localCard.version === 0;
+
+          if (!shouldSkipConflictCheck) {
             body = JSON.stringify({
               ...payload,
               expectedVersion: localCard.version,
             });
           } else {
-            // No valid version - don't send expectedVersion, let server accept without conflict check
+            // Skip conflict check - don't send expectedVersion
+            log.debug(`Skipping conflict check for card ${entityId} (local-only update)`);
             body = JSON.stringify(payload);
           }
         } else {
@@ -277,6 +281,19 @@ async function processQueueItem(item: SyncQueueItem): Promise<void> {
       if (response.status === 409 && entityType === 'card' && operation === 'update') {
         const conflictData = await response.json();
         if (conflictData.code === 'VERSION_CONFLICT') {
+          // If skipConflictCheck is true, just accept server data without creating conflict copy
+          if (item.skipConflictCheck) {
+            log.debug(`Accepting server version for card ${entityId} (skipConflictCheck=true)`);
+            const serverCard = conflictData.serverCard;
+            await db.cards.update(entityId, {
+              version: serverCard.version,
+              _synced: true,
+              _serverVersion: new Date().toISOString(),
+            });
+            await db.syncQueue.delete(item.id!);
+            return;
+          }
+
           log.warn(`Version conflict detected for card ${entityId}`);
           await handleCardConflict(entityId, conflictData.serverCard);
           // Remove from queue - conflict has been handled
@@ -435,13 +452,21 @@ async function markEntitySynced(entityType: EntityType, entityId: string): Promi
 // =============================================================================
 
 /**
+ * Options for adding items to the sync queue
+ */
+export interface AddToQueueOptions {
+  skipConflictCheck?: boolean;  // Skip version conflict check for local-only updates
+}
+
+/**
  * Add an item to the sync queue
  */
 export async function addToQueue(
   entityType: EntityType,
   entityId: string,
   operation: Operation,
-  payload?: Record<string, unknown>
+  payload?: Record<string, unknown>,
+  options?: AddToQueueOptions
 ): Promise<void> {
   // Check if there's already a pending item for this entity
   const existing = await db.syncQueue
@@ -485,6 +510,7 @@ export async function addToQueue(
     payload,
     retryCount: 0,
     createdAt: new Date(),
+    skipConflictCheck: options?.skipConflictCheck,
   });
 
   // Update pending count (new items always have retryCount=0, so count all pending)
@@ -686,15 +712,41 @@ export async function initializeFailedEntities(): Promise<void> {
 // CONFLICT HANDLING
 // =============================================================================
 
+// Rate limiting for conflict creation to prevent mass duplications
+const CONFLICT_RATE_LIMIT = 5; // Max conflicts per minute
+const CONFLICT_RATE_WINDOW_MS = 60000; // 1 minute window
+let recentConflictTimestamps: number[] = [];
+
 /**
  * Handle a version conflict for a card
  * Creates a conflict copy of the local card and links both with conflict tag
+ *
+ * Rate limited to prevent mass duplications from bulk updates
  */
 async function handleCardConflict(
   localCardId: string,
   serverCard: Record<string, unknown>
 ): Promise<void> {
-  log.info(`Handling conflict for card ${localCardId}`);
+  // Rate limit check - prevent mass conflict creation
+  const now = Date.now();
+  recentConflictTimestamps = recentConflictTimestamps.filter(
+    t => now - t < CONFLICT_RATE_WINDOW_MS
+  );
+
+  if (recentConflictTimestamps.length >= CONFLICT_RATE_LIMIT) {
+    log.warn(`Conflict rate limit reached (${CONFLICT_RATE_LIMIT}/min) - accepting server version without creating conflict copy`);
+    // Just accept server version, don't create duplicate
+    const serverVersion = (serverCard.version as number) || 1;
+    await db.cards.update(localCardId, {
+      version: serverVersion,
+      _synced: true,
+      _serverVersion: new Date().toISOString(),
+    });
+    return;
+  }
+
+  recentConflictTimestamps.push(now);
+  log.info(`Handling conflict for card ${localCardId} (${recentConflictTimestamps.length}/${CONFLICT_RATE_LIMIT} this minute)`);
 
   // Get the local card
   const localCard = await db.cards.get(localCardId);
