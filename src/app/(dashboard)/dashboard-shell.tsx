@@ -25,6 +25,7 @@ import { Omnibar } from '@/components/layout/omnibar';
 import { ToastStack } from '@/components/layout/toast-stack';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { AppDndProvider } from '@/lib/contexts/dnd-context';
+import { DataProvider } from '@/lib/contexts/data-context';
 import { cn } from '@/lib/utils';
 import { createModuleLogger } from '@/lib/utils/logger';
 
@@ -369,8 +370,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
     : (isRightOpen ? 16 : 16 + floatingInset);
 
   return (
-    <AppDndProvider>
-      <div className="h-screen w-screen bg-bg-base text-text-primary">
+    <DataProvider>
+      <AppDndProvider>
+        <div className="h-screen w-screen bg-bg-base text-text-primary">
         {/* Mobile bottom nav - only shows < 768px */}
         <MobileNav className="md:hidden fixed bottom-0 left-0 right-0 z-50" />
 
@@ -532,7 +534,8 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
         <CoverImagePickerModal />
         <CardPhotoPickerModal />
         <CardsDragHandler />
-      </div>
-    </AppDndProvider>
+        </div>
+      </AppDndProvider>
+    </DataProvider>
   );
 }

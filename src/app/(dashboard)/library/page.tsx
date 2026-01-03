@@ -3,7 +3,20 @@
 import { useMemo, useCallback, useEffect, useRef } from 'react';
 import { useDataStore } from '@/lib/stores/data-store';
 import { useCards, useCollections } from '@/lib/hooks/use-live-data';
-import { useViewStore, useCardDisplaySettings, cardMatchesContentTypes, cardMatchesUnsortedFilter, cardMatchesReadingFilter, cardMatchesLinkStatusFilter, findDuplicateCardIds } from '@/lib/stores/view-store';
+import {
+  useLayout,
+  useSorting,
+  useGrouping,
+  useViewActions,
+  useCardDisplaySettings,
+  useFilterSettings,
+  useViewStore,
+  cardMatchesContentTypes,
+  cardMatchesUnsortedFilter,
+  cardMatchesReadingFilter,
+  cardMatchesLinkStatusFilter,
+  findDuplicateCardIds,
+} from '@/lib/stores/view-store';
 import type { GroupBy, DateGrouping, UnsortedFilter, ReadingFilter, LinkStatusFilter, ScheduledFilter } from '@/lib/stores/view-store';
 import { isOverdue } from '@/lib/utils/system-tags';
 import type { SystemTag } from '@/lib/utils/system-tags';
@@ -87,26 +100,30 @@ export default function LibraryPage() {
   // Collision detection for omnibar
   const headerRef = useRef<HTMLDivElement>(null);
   const needsOffset = useOmnibarCollision(headerRef);
-  const layout = useViewStore((state) => state.layout);
-  const sortBy = useViewStore((state) => state.sortBy);
-  const sortOrder = useViewStore((state) => state.sortOrder);
+
+  // Batched view settings (reduces 20+ subscriptions to 5)
+  // See: Phase 2 of performance optimization plan
+  const layout = useLayout();
+  const { sortBy, sortOrder } = useSorting();
+  const { groupBy, dateGrouping } = useGrouping();
+  const { reorderCards, loadViewSettings } = useViewActions();
+  const {
+    contentTypeFilters,
+    selectedTags,
+    showNoTagsOnly,
+    showNoPawkitsOnly,
+    unsortedFilter,
+    readingFilter,
+    linkStatusFilter,
+    scheduledFilter,
+    showDuplicatesOnly,
+    toggleTag,
+    setReadingFilter,
+    setScheduledFilter,
+  } = useFilterSettings();
+
+  // Card order still needs individual selector (not included in batched hooks)
   const cardOrder = useViewStore((state) => state.cardOrder);
-  const contentTypeFilters = useViewStore((state) => state.contentTypeFilters);
-  const selectedTags = useViewStore((state) => state.selectedTags);
-  const showNoTagsOnly = useViewStore((state) => state.showNoTagsOnly);
-  const showNoPawkitsOnly = useViewStore((state) => state.showNoPawkitsOnly);
-  const unsortedFilter = useViewStore((state) => state.unsortedFilter) as UnsortedFilter;
-  const readingFilter = useViewStore((state) => state.readingFilter) as ReadingFilter;
-  const linkStatusFilter = useViewStore((state) => state.linkStatusFilter) as LinkStatusFilter;
-  const scheduledFilter = useViewStore((state) => state.scheduledFilter) as ScheduledFilter;
-  const showDuplicatesOnly = useViewStore((state) => state.showDuplicatesOnly);
-  const groupBy = useViewStore((state) => state.groupBy) as GroupBy;
-  const dateGrouping = useViewStore((state) => state.dateGrouping) as DateGrouping;
-  const reorderCards = useViewStore((state) => state.reorderCards);
-  const loadViewSettings = useViewStore((state) => state.loadViewSettings);
-  const toggleTag = useViewStore((state) => state.toggleTag);
-  const setReadingFilter = useViewStore((state) => state.setReadingFilter);
-  const setScheduledFilter = useViewStore((state) => state.setScheduledFilter);
   const openAddCard = useModalStore((state) => state.openAddCard);
 
   // Load library-specific view settings on mount

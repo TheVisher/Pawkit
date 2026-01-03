@@ -3,25 +3,45 @@
 /**
  * Live Data Hooks
  *
- * These hooks read directly from Dexie using useLiveQuery.
+ * These hooks read from the DataContext when available (inside DashboardShell),
+ * or fall back to direct Dexie queries (for Portal, extensions, etc).
+ *
+ * The DataContext runs a single useLiveQuery for each data type, eliminating
+ * duplicate queries across components (7+ queries → 1 per data type).
+ *
  * All windows (main app, portal, extensions) see the same data
  * and automatically update when data changes.
  *
  * This replaces reading from Zustand stores for data.
  * Zustand is still used for UI state (modals, sidebar, etc.)
+ *
+ * @see Phase 2 of performance optimization plan
  */
 
+import { useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { LocalCard, LocalCollection, LocalWorkspace, LocalCalendarEvent } from '@/lib/db/types';
+import {
+  useIsInDataProvider,
+  useCardsFromContext,
+  useCollectionsFromContext,
+  useCalendarEventsFromContext,
+} from '@/lib/contexts/data-context';
 
 /**
  * Get all cards for a workspace
- * Automatically updates when cards change in Dexie
+ * Uses DataContext when available, falls back to direct query otherwise
  */
 export function useCards(workspaceId: string | undefined): LocalCard[] {
-  const cards = useLiveQuery(
+  const isInProvider = useIsInDataProvider();
+  const contextCards = useCardsFromContext();
+
+  // Direct query fallback (for Portal, extensions, etc)
+  const directCards = useLiveQuery(
     async () => {
+      // Skip query if we're using context
+      if (isInProvider) return [];
       if (!workspaceId) return [];
       return db.cards
         .where('workspaceId')
@@ -29,38 +49,55 @@ export function useCards(workspaceId: string | undefined): LocalCard[] {
         .filter((c) => !c._deleted)
         .toArray();
     },
-    [workspaceId],
-    [] // Default value while loading
+    [workspaceId, isInProvider],
+    [] as LocalCard[]
   );
 
-  return cards;
+  // Use context if available, otherwise fall back to direct query
+  return isInProvider ? contextCards : directCards;
 }
 
 /**
  * Get a single card by ID
- * Automatically updates when the card changes
+ * Uses context lookup when available, falls back to direct query otherwise
  */
 export function useCard(cardId: string | undefined): LocalCard | undefined {
-  const card = useLiveQuery(
+  const isInProvider = useIsInDataProvider();
+  const contextCards = useCardsFromContext();
+
+  // Find card in context (memoized to prevent unnecessary re-renders)
+  const contextCard = useMemo(
+    () => cardId ? contextCards.find((c) => c.id === cardId) : undefined,
+    [contextCards, cardId]
+  );
+
+  // Direct query fallback
+  const directCard = useLiveQuery(
     async () => {
+      if (isInProvider) return undefined;
       if (!cardId) return undefined;
       const c = await db.cards.get(cardId);
       return c?._deleted ? undefined : c;
     },
-    [cardId],
+    [cardId, isInProvider],
     undefined
   );
 
-  return card;
+  return isInProvider ? contextCard : directCard;
 }
 
 /**
  * Get all collections for a workspace
- * Automatically updates when collections change in Dexie
+ * Uses DataContext when available, falls back to direct query otherwise
  */
 export function useCollections(workspaceId: string | undefined): LocalCollection[] {
-  const collections = useLiveQuery(
+  const isInProvider = useIsInDataProvider();
+  const contextCollections = useCollectionsFromContext();
+
+  // Direct query fallback
+  const directCollections = useLiveQuery(
     async () => {
+      if (isInProvider) return [];
       if (!workspaceId) return [];
       return db.collections
         .where('workspaceId')
@@ -68,22 +105,34 @@ export function useCollections(workspaceId: string | undefined): LocalCollection
         .filter((c) => !c._deleted)
         .toArray();
     },
-    [workspaceId],
-    []
+    [workspaceId, isInProvider],
+    [] as LocalCollection[]
   );
 
-  return collections;
+  return isInProvider ? contextCollections : directCollections;
 }
 
 /**
  * Get a single collection by slug
+ * Uses context lookup when available
  */
 export function useCollection(
   workspaceId: string | undefined,
   slug: string | undefined
 ): LocalCollection | undefined {
-  const collection = useLiveQuery(
+  const isInProvider = useIsInDataProvider();
+  const contextCollections = useCollectionsFromContext();
+
+  // Find collection in context
+  const contextCollection = useMemo(
+    () => slug ? contextCollections.find((c) => c.slug === slug) : undefined,
+    [contextCollections, slug]
+  );
+
+  // Direct query fallback
+  const directCollection = useLiveQuery(
     async () => {
+      if (isInProvider) return undefined;
       if (!workspaceId || !slug) return undefined;
       const collections = await db.collections
         .where('workspaceId')
@@ -92,11 +141,11 @@ export function useCollection(
         .toArray();
       return collections[0];
     },
-    [workspaceId, slug],
+    [workspaceId, slug, isInProvider],
     undefined
   );
 
-  return collection;
+  return isInProvider ? contextCollection : directCollection;
 }
 
 /**
@@ -107,15 +156,42 @@ export function useCollection(
  * - Cards only show in their DEEPEST Pawkit (not parent Pawkits)
  * - A card in "Contacts > Work" has tags [#contacts, #work] but only shows in "Work"
  *
+ * Uses context data when available for better performance.
+ *
  * See: .claude/skills/pawkit-tag-architecture/SKILL.md
  */
 export function useCardsInCollection(
   workspaceId: string | undefined,
   collectionSlug: string | undefined
 ): LocalCard[] {
-  // Get all collections to build descendant lookup
-  const collections = useLiveQuery(
+  const isInProvider = useIsInDataProvider();
+  const contextCards = useCardsFromContext();
+  const contextCollections = useCollectionsFromContext();
+
+  // Compute from context (memoized)
+  const contextResult = useMemo(() => {
+    if (!isInProvider) return [];
+
+    // If no collection specified, return all cards
+    if (!collectionSlug) return contextCards;
+
+    // Build descendant slugs for this Pawkit
+    const descendantSlugs = getDescendantSlugsSync(collectionSlug, contextCollections);
+
+    // Filter cards that have this collection's tag
+    const cardsWithTag = contextCards.filter((c) => c.tags?.includes(collectionSlug));
+
+    // Leaf-only: exclude cards that have a descendant Pawkit tag
+    return cardsWithTag.filter((card) => {
+      const hasDescendantTag = descendantSlugs.some((d) => card.tags?.includes(d));
+      return !hasDescendantTag;
+    });
+  }, [isInProvider, contextCards, contextCollections, collectionSlug]);
+
+  // Direct query fallback for Portal/extensions
+  const directCollections = useLiveQuery(
     async () => {
+      if (isInProvider) return [];
       if (!workspaceId) return [];
       return db.collections
         .where('workspaceId')
@@ -123,12 +199,13 @@ export function useCardsInCollection(
         .filter((c) => !c._deleted)
         .toArray();
     },
-    [workspaceId],
-    []
+    [workspaceId, isInProvider],
+    [] as LocalCollection[]
   );
 
-  const cards = useLiveQuery(
+  const directCards = useLiveQuery(
     async () => {
+      if (isInProvider) return [];
       if (!workspaceId) return [];
 
       // If no collection specified, return all cards
@@ -141,7 +218,7 @@ export function useCardsInCollection(
       }
 
       // Build descendant slugs for this Pawkit
-      const descendantSlugs = getDescendantSlugsSync(collectionSlug, collections);
+      const descendantSlugs = getDescendantSlugsSync(collectionSlug, directCollections);
 
       // Use indexed tag query, then filter for leaf-only display
       const cardsWithTag = await db.cards
@@ -151,19 +228,16 @@ export function useCardsInCollection(
         .toArray();
 
       // Leaf-only: exclude cards that have a descendant Pawkit tag
-      // (those cards "live" in the child Pawkit, not this one)
       return cardsWithTag.filter((card) => {
-        const hasDescendantTag = descendantSlugs.some((d) =>
-          card.tags?.includes(d)
-        );
+        const hasDescendantTag = descendantSlugs.some((d) => card.tags?.includes(d));
         return !hasDescendantTag;
       });
     },
-    [workspaceId, collectionSlug, collections],
-    []
+    [workspaceId, collectionSlug, directCollections, isInProvider],
+    [] as LocalCard[]
   );
 
-  return cards;
+  return isInProvider ? contextResult : directCards;
 }
 
 /**
@@ -225,12 +299,17 @@ export function useDefaultWorkspace(): LocalWorkspace | null {
 
 /**
  * Get all calendar events for a workspace
- * Automatically updates when events change in Dexie
+ * Uses DataContext when available, falls back to direct query otherwise
  * This enables real-time updates when supertag cards generate calendar events
  */
 export function useCalendarEvents(workspaceId: string | undefined): LocalCalendarEvent[] {
-  const events = useLiveQuery(
+  const isInProvider = useIsInDataProvider();
+  const contextEvents = useCalendarEventsFromContext();
+
+  // Direct query fallback
+  const directEvents = useLiveQuery(
     async () => {
+      if (isInProvider) return [];
       if (!workspaceId) return [];
       return db.calendarEvents
         .where('workspaceId')
@@ -238,9 +317,9 @@ export function useCalendarEvents(workspaceId: string | undefined): LocalCalenda
         .filter((e) => !e._deleted)
         .toArray();
     },
-    [workspaceId],
-    []
+    [workspaceId, isInProvider],
+    [] as LocalCalendarEvent[]
   );
 
-  return events;
+  return isInProvider ? contextEvents : directEvents;
 }
