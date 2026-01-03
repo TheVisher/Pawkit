@@ -106,7 +106,7 @@ export const subscriptionSupertag: SupertagDefinition = {
   suggestedFields: ['service', 'amount', 'renewalDay', 'accountEmail', 'website'],
   template: buildSubscriptionTemplate(),
   uiHints: {
-    calendarFields: ['renewalDay'],
+    calendarFields: ['renews'],
     showInWidget: 'bills-widget',
   },
   sections: SUBSCRIPTION_SECTIONS,
