@@ -431,7 +431,8 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
 
   // Anchored positions - stored in ref to prevent recalculation on height changes
   // Only recalculates when: column count changes, card width changes significantly, or cards added/removed
-  const anchoredPositionsRef = useRef<Map<string, { x: number; y: number; column: number }>>(new Map());
+  // `index` is the stable order within the column (0 = top, 1 = second, etc.)
+  const anchoredPositionsRef = useRef<Map<string, { x: number; y: number; column: number; index: number }>>(new Map());
 
   // Calculate masonry positions with anchoring
   // Key insight: Once a card is placed in a column, KEEP it there even if heights change slightly
@@ -467,49 +468,45 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
     const columnHeights = new Array(columnCount).fill(0);
     const posMap = new Map<string, { x: number; y: number }>();
 
-    // Separate cards into anchored (existing) and unanchored (new)
-    // We need to process anchored cards first to know column heights before placing new cards
-    const anchoredCards: Array<{ card: typeof cards[0]; anchor: { x: number; y: number; column: number } }> = [];
+    // Group anchored cards by column with their stored index for stable ordering
+    const cardsByColumn: Array<Array<{ card: typeof cards[0]; index: number }>> = Array.from({ length: columnCount }, () => []);
     const unanchoredCards: typeof cards = [];
 
     for (const card of cards) {
       const existingAnchor = anchoredPositionsRef.current.get(card.id);
       if (existingAnchor && existingAnchor.column < columnCount) {
-        anchoredCards.push({ card, anchor: existingAnchor });
+        cardsByColumn[existingAnchor.column].push({ card, index: existingAnchor.index });
       } else {
         unanchoredCards.push(card);
       }
     }
 
-    // CRITICAL: Sort anchored cards by y position (top-to-bottom visual order)
-    // This ensures cards are processed in visual order regardless of which column they're in.
-    // Without this, the cards array order (sorted by createdAt) would cause
-    // cards to be placed out of visual order, creating gaps
-    //
-    // For cards at the same y, sort by column (left-to-right) to maintain consistent ordering
-    anchoredCards.sort((a, b) => {
-      const yDiff = a.anchor.y - b.anchor.y;
-      if (Math.abs(yDiff) > 1) return yDiff; // Use 1px tolerance for floating point
-      return a.anchor.column - b.anchor.column; // Left-to-right for same y
-    });
-
-    // First pass: position anchored cards and build up column heights
-    for (const { card, anchor } of anchoredCards) {
-      const column = anchor.column;
-
-      // Calculate position
-      const x = column * (cardWidth + cardSpacing);
-      const y = columnHeights[column];
-
-      posMap.set(card.id, { x, y });
-
-      // Update anchor with new y position (column stays same)
-      anchoredPositionsRef.current.set(card.id, { x, y, column });
-
-      // Update column height
-      const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
-      columnHeights[column] += cardHeight + cardSpacing;
+    // Sort each column by the stored index to maintain visual order
+    // This is critical - without sorting, the cards array order (by createdAt) would
+    // override the visual order, causing reshuffling on scroll
+    for (const columnCards of cardsByColumn) {
+      columnCards.sort((a, b) => a.index - b.index);
     }
+
+    // First pass: position anchored cards column by column
+    // Processing by column ensures stable y positions within each column
+    for (let col = 0; col < columnCount; col++) {
+      let indexInColumn = 0;
+      for (const { card } of cardsByColumn[col]) {
+        const x = col * (cardWidth + cardSpacing);
+        const y = columnHeights[col];
+
+        posMap.set(card.id, { x, y });
+        anchoredPositionsRef.current.set(card.id, { x, y, column: col, index: indexInColumn });
+        indexInColumn++;
+
+        const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
+        columnHeights[col] += cardHeight + cardSpacing;
+      }
+    }
+
+    // Track current index per column for new cards
+    const columnIndices = cardsByColumn.map(col => col.length);
 
     // Second pass: place new cards in shortest columns (now with accurate heights)
     for (const card of unanchoredCards) {
@@ -529,8 +526,9 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
 
       posMap.set(card.id, { x, y });
 
-      // Anchor this card to its column
-      anchoredPositionsRef.current.set(card.id, { x, y, column });
+      // Anchor this card to its column with the next available index
+      anchoredPositionsRef.current.set(card.id, { x, y, column, index: columnIndices[column] });
+      columnIndices[column]++;
 
       // Update column height
       const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);

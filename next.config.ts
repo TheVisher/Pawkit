@@ -48,7 +48,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com ipc: tauri:",
+              "connect-src 'self' https: wss://*.supabase.co ipc: tauri:",  // https: allows worker to fetch images for aspect ratio
               "media-src 'self' blob:",
               "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
               "worker-src 'self' blob:",  // Required for Web Workers (image processing)

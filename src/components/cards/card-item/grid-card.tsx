@@ -149,8 +149,9 @@ export function GridCard({
   // NOTE: New cards now get aspectRatio extracted at creation time via metadata-service.ts
   // This effect handles legacy cards that were created before that optimization
   useEffect(() => {
-    // Skip if: no image, already has both color and aspectRatio, already processing, or worker not supported
-    if (!card.image || (card.dominantColor && card.aspectRatio) || processingRef.current || !isImageWorkerSupported()) {
+    // Skip if: no image, already has aspectRatio (main priority for layout), already processing, or worker not supported
+    // We prioritize aspectRatio over dominantColor since it affects layout stability
+    if (!card.image || card.aspectRatio || processingRef.current || !isImageWorkerSupported()) {
       return;
     }
 
@@ -176,7 +177,7 @@ export function GridCard({
       // Fallback for Safari
       setTimeout(() => processImage(), 100);
     }
-  }, [card.id, card.image, card.dominantColor, card.aspectRatio, extractImageData, updateCard]);
+  }, [card.id, card.image, card.aspectRatio, extractImageData, updateCard]);
 
   // Use cached dominantColor to determine background brightness
   useEffect(() => {
