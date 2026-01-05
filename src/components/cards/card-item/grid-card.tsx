@@ -385,7 +385,6 @@ export function GridCard({
               alt={card.title || 'Card thumbnail'}
               fill
               sizes="(max-width: 768px) 100vw, 300px"
-              priority
               className="object-cover transition-transform duration-300 group-hover:scale-105"
               onError={() => setImageError(true)}
               onLoad={handleImageLoad}

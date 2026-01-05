@@ -210,6 +210,8 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
   const stabilityCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCardsLengthRef = useRef(cards.length);
   const initialStabilityCheckedRef = useRef(false);
+  // Track whether we've achieved stability at least once (don't reset timeout after)
+  const hasAchievedStabilityRef = useRef(false);
   // Track when layout is settling (cards added/deleted) - disable transitions during this
   const [isLayoutSettling, setIsLayoutSettling] = useState(false);
   const layoutSettlingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -254,14 +256,17 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
     return () => observer.disconnect();
   }, [setLastContainerWidth]);
 
-  // Virtualization: Set up IntersectionObserver for visibility tracking
-  // This replaces scroll-based calculations with native browser visibility detection
+  // Effect 1: Handle disabled virtualization (keep cards dependency)
   useEffect(() => {
     if (disableVirtualization) {
-      // When virtualization disabled, mark all cards as visible
       setVisibleCardIds(new Set(cards.map(c => c.id)));
-      return;
     }
+  }, [disableVirtualization, cards]);
+
+  // Effect 2: Create IntersectionObserver ONCE (remove cards dependency)
+  // MutationObserver below handles observing newly added cards
+  useEffect(() => {
+    if (disableVirtualization) return;
 
     // Find scroll container for rootMargin calculation
     const container = containerRef.current;
@@ -305,7 +310,23 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
       observerRef.current?.disconnect();
       observerRef.current = null;
     };
-  }, [disableVirtualization, cards]);
+  }, [disableVirtualization]); // REMOVED 'cards' from deps
+
+  // Effect 3: Clean up removed cards from visibleCardIds
+  useEffect(() => {
+    const currentIds = new Set(cards.map(c => c.id));
+    setVisibleCardIds(prev => {
+      let changed = false;
+      const next = new Set(prev);
+      for (const id of prev) {
+        if (!currentIds.has(id)) {
+          next.delete(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [cards]);
 
   // Calculate columns and card width
   const columnCount = useMemo(() => {
@@ -355,7 +376,7 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
 
   // Track the last column count to detect when layout fundamentally changes
   const lastColumnCountRef = useRef(columnCount);
-  const lastCardOrderRef = useRef<string>('');
+  const lastCardIdsRef = useRef<Set<string>>(new Set());
 
   // Anchored positions - stored in ref to prevent recalculation on height changes
   // Only recalculates when: column count changes, card order changes, or cardWidth changes
@@ -370,18 +391,24 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
       return { positions: new Map<string, { x: number; y: number }>(), totalHeight: 0 };
     }
 
-    // Generate card order signature to detect reordering
-    const cardOrderSignature = cards.map(c => c.id).join(',');
-    const layoutChanged =
-      columnCount !== lastColumnCountRef.current ||
-      cardOrderSignature !== lastCardOrderRef.current;
+    // Use Set-based comparison to detect actual card additions/removals
+    // This prevents false positives when Dexie returns cards in different internal order
+    const currentCardIds = new Set(cards.map(c => c.id));
+    const columnCountChanged = columnCount !== lastColumnCountRef.current;
 
-    // If layout fundamentally changed, clear anchors
-    if (layoutChanged) {
+    if (columnCountChanged) {
+      // Column count changed - must recalculate all positions
       anchoredPositionsRef.current.clear();
       lastColumnCountRef.current = columnCount;
-      lastCardOrderRef.current = cardOrderSignature;
     }
+
+    // Only remove anchors for cards that were actually deleted
+    for (const id of lastCardIdsRef.current) {
+      if (!currentCardIds.has(id)) {
+        anchoredPositionsRef.current.delete(id);
+      }
+    }
+    lastCardIdsRef.current = currentCardIds;
 
     const columnHeights = new Array(columnCount).fill(0);
     const posMap = new Map<string, { x: number; y: number }>();
@@ -429,6 +456,7 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
       prevCardsLengthRef.current = cards.length;
       setIsStable(false);
       initialStabilityCheckedRef.current = false;
+      hasAchievedStabilityRef.current = false; // Allow new stability timeout
 
       // Mark layout as settling - disable transitions temporarily
       setIsLayoutSettling(true);
@@ -580,12 +608,14 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
       }
 
       // Schedule stability check - mark stable after measurements settle
-      // NOTE: 10ms is the minimum stable value. Lower causes cards to shift.
-      // If users with many cards see shifting, try increasing to 20-50ms.
-      if (stabilityCheckRef.current) clearTimeout(stabilityCheckRef.current);
-      stabilityCheckRef.current = setTimeout(() => {
-        setIsStable(true);
-      }, 10);
+      // Once stable, stay stable (don't reset timeout on every ResizeObserver fire)
+      if (!hasAchievedStabilityRef.current) {
+        if (stabilityCheckRef.current) clearTimeout(stabilityCheckRef.current);
+        stabilityCheckRef.current = setTimeout(() => {
+          setIsStable(true);
+          hasAchievedStabilityRef.current = true;
+        }, 10);
+      }
     });
 
     // Observe all card elements for resize (images loading, content changes)
@@ -705,10 +735,10 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
             >
               {isVisible ? (
                 // Full card component - only mounted when visible
-                // Wrapped in container with min-height to prevent 0-height flash during mount
+                // Use cachedHeight as minHeight to match placeholder exactly
                 <div
                   style={{
-                    minHeight: card.image ? cardWidth / aspectRatio : undefined,
+                    minHeight: cachedHeight,
                     boxSizing: 'border-box',
                   }}
                 >
@@ -722,13 +752,13 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
                   />
                 </div>
               ) : (
-                // Lightweight placeholder - MUST be identical twin to card container
+                // Lightweight placeholder - must use fixed height (not minHeight)
+                // because empty div will collapse without content
                 // box-sizing: border-box ensures padding/border don't add to height
                 // contain: strict tells browser this box size is FINAL
                 <div
                   style={{
                     height: cachedHeight,
-                    minHeight: card.image ? cardWidth / aspectRatio : undefined,
                     background: card.dominantColor || 'var(--color-bg-surface-2)',
                     borderRadius: '1rem',
                     boxSizing: 'border-box',
