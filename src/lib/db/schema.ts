@@ -17,6 +17,7 @@ import type {
   NoteLink,
   NoteCardLink,
   CachedImage,
+  LayoutCacheEntry,
 } from './types';
 
 // Re-export types for convenience
@@ -46,6 +47,9 @@ export class PawkitDB extends Dexie {
 
   // Image cache
   imageCache!: Table<CachedImage>;
+
+  // Layout cache (persisted card heights for masonry grid)
+  layoutCache!: Table<LayoutCacheEntry>;
 
   constructor() {
     super('pawkit');
@@ -123,6 +127,9 @@ export class PawkitDB extends Dexie {
 
       // Image cache with LRU support
       imageCache: 'id, cachedAt, lastAccessedAt, size',
+
+      // Layout cache for masonry grid (persisted heights across sessions)
+      layoutCache: 'cardId, measuredAtWidth',
     });
   }
 }

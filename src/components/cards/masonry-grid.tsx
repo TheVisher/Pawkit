@@ -180,6 +180,28 @@ function estimateHeight(card: LocalCard, cardWidth: number): number {
 }
 
 /**
+ * Determine if a card needs ResizeObserver measurement
+ *
+ * Cards with both a cached height AND stored aspectRatio can skip measurement
+ * because their height is deterministic. Cards without aspectRatio may change
+ * height when images load (different aspect ratio than default).
+ */
+function cardNeedsMeasurement(
+  card: LocalCard,
+  cachedHeight: number | undefined
+): boolean {
+  // If no cached height, definitely needs measurement
+  if (!cachedHeight) return true;
+
+  // If no stored aspectRatio, we can't trust the estimated height
+  // (image might load with different aspect ratio than default)
+  if (!card.aspectRatio) return true;
+
+  // Has both cached height and aspectRatio - skip measurement
+  return false;
+}
+
+/**
  * Masonry grid layout with IntersectionObserver-based virtualization
  *
  * Virtualization strategy:
@@ -618,9 +640,22 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
       }
     });
 
-    // Observe all card elements for resize (images loading, content changes)
+    // Create a lookup map for cards by ID (for checking aspectRatio)
+    const cardsById = new Map(cards.map(c => [c.id, c]));
+
+    // Observe card elements that need measurement
+    // Cards with both cached height AND stored aspectRatio can skip ResizeObserver
+    // (their height is deterministic and won't change when images load)
     const cardElements = container.querySelectorAll('[data-card-id]');
-    cardElements.forEach((el) => resizeObserver.observe(el));
+    cardElements.forEach((el) => {
+      const id = el.getAttribute('data-card-id');
+      if (!id) return;
+
+      const card = cardsById.get(id);
+      if (card && cardNeedsMeasurement(card, cachedHeights.get(id))) {
+        resizeObserver.observe(el);
+      }
+    });
 
     // Use MutationObserver to detect new cards added to DOM (from virtualization scroll)
     // This avoids re-running the entire effect on every scroll
@@ -630,13 +665,24 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
           if (node instanceof HTMLElement) {
             // Check if it's a card element or contains card elements
             if (node.hasAttribute('data-card-id')) {
-              resizeObserver.observe(node);
-              // Also observe with IntersectionObserver for visibility
+              const id = node.getAttribute('data-card-id');
+              const card = id ? cardsById.get(id) : undefined;
+              // Only observe cards that need measurement
+              if (card && cardNeedsMeasurement(card, cachedHeights.get(id!))) {
+                resizeObserver.observe(node);
+              }
+              // Always observe with IntersectionObserver for visibility
               observerRef.current?.observe(node);
             } else {
               const newCards = node.querySelectorAll('[data-card-id]');
               newCards.forEach((el) => {
-                resizeObserver.observe(el);
+                const id = el.getAttribute('data-card-id');
+                const card = id ? cardsById.get(id) : undefined;
+                // Only observe cards that need measurement
+                if (card && cardNeedsMeasurement(card, cachedHeights.get(id!))) {
+                  resizeObserver.observe(el);
+                }
+                // Always observe with IntersectionObserver for visibility
                 observerRef.current?.observe(el);
               });
             }

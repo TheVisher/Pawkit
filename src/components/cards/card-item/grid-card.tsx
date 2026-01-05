@@ -144,11 +144,13 @@ export function GridCard({
   const hasImage = card.image && !imageError;
   const hasFavicon = card.favicon && !imageError;
 
-  // Effect: Process cards without dominantColor using Web Worker
+  // Effect: Process cards without dominantColor/aspectRatio using Web Worker
   // This runs once per card and persists the result to DB
+  // NOTE: New cards now get aspectRatio extracted at creation time via metadata-service.ts
+  // This effect handles legacy cards that were created before that optimization
   useEffect(() => {
-    // Skip if: no image, already has color, already processing, or worker not supported
-    if (!card.image || card.dominantColor || processingRef.current || !isImageWorkerSupported()) {
+    // Skip if: no image, already has both color and aspectRatio, already processing, or worker not supported
+    if (!card.image || (card.dominantColor && card.aspectRatio) || processingRef.current || !isImageWorkerSupported()) {
       return;
     }
 
@@ -174,7 +176,7 @@ export function GridCard({
       // Fallback for Safari
       setTimeout(() => processImage(), 100);
     }
-  }, [card.id, card.image, card.dominantColor, extractImageData, updateCard]);
+  }, [card.id, card.image, card.dominantColor, card.aspectRatio, extractImageData, updateCard]);
 
   // Use cached dominantColor to determine background brightness
   useEffect(() => {

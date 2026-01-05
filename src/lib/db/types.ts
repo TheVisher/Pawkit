@@ -307,3 +307,15 @@ export interface CachedImage {
 // Cache configuration
 export const IMAGE_CACHE_MAX_SIZE_MB = 100;
 export const IMAGE_CACHE_MAX_AGE_DAYS = 30;
+
+// =============================================================================
+// LAYOUT CACHE (for masonry grid height persistence)
+// =============================================================================
+
+export interface LayoutCacheEntry {
+  cardId: string;             // Primary key
+  height: number;
+  contentHash: string;
+  measuredAtWidth: number;
+  cachedAt: Date;
+}

@@ -5,6 +5,8 @@ import { useAuthStore } from '@/lib/stores/auth-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
 import { runTagArchitectureMigration, normalizeAllTags } from '@/lib/migrations/tag-architecture-migration';
+import { runAspectRatioBackfill } from '@/lib/migrations/aspect-ratio-migration';
+import { hydrateLayoutCache } from '@/lib/stores/layout-cache-store';
 import { useSync } from '@/lib/hooks/use-sync';
 import { useTauriEvents } from '@/lib/hooks/use-tauri-events';
 import { useRealtimeSync } from '@/lib/hooks/use-realtime-sync';
@@ -193,7 +195,16 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
         loadAll(workspaceId),
         // Auto-purge trash items older than 30 days
         purgeOldTrash(workspaceId, 30).catch(() => 0),
-      ]).then(([migrationResult, normResult, , purgedCount]) => {
+        // Hydrate layout cache from IndexedDB for instant masonry render
+        hydrateLayoutCache().catch((error) => {
+          log.error('Layout cache hydration failed:', error);
+        }),
+        // Backfill aspectRatio for cards created before extraction was added
+        runAspectRatioBackfill(workspaceId).catch((error) => {
+          log.error('AspectRatio backfill failed:', error);
+          return { cardsQueued: 0 };
+        }),
+      ]).then(([migrationResult, normResult, , purgedCount, , aspectRatioResult]) => {
         if (migrationResult.cardsUpdated > 0) {
           log.info(`Tag migration: updated ${migrationResult.cardsUpdated} cards`);
         }
@@ -202,6 +213,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
         }
         if (purgedCount > 0) {
           log.info(`Auto-purged ${purgedCount} old trash items`);
+        }
+        if (aspectRatioResult?.cardsQueued > 0) {
+          log.info(`AspectRatio backfill: queued ${aspectRatioResult.cardsQueued} cards`);
         }
       });
     }
