@@ -112,18 +112,144 @@ function isArticleUrl(url: string): boolean {
 // Maximum concurrent fetches
 const MAX_CONCURRENT_METADATA = 3;
 const MAX_CONCURRENT_ARTICLES = 2;
+const MAX_CONCURRENT_ASPECT_RATIO = 2;
 
 // Queues
 const metadataQueue: string[] = [];
 const articleQueue: string[] = [];
+const aspectRatioQueue: Array<{ cardId: string; imageUrl: string }> = [];
 
 // Active counts
 let metadataActiveCount = 0;
 let articleActiveCount = 0;
+let aspectRatioActiveCount = 0;
 
 // Track processed cards to avoid duplicates
 const metadataProcessed = new Set<string>();
 const articleProcessed = new Set<string>();
+const aspectRatioProcessed = new Set<string>();
+
+// =============================================================================
+// ASPECT RATIO EXTRACTION (Web Worker)
+// =============================================================================
+
+// Singleton worker for aspect ratio extraction (shared across all extractions)
+let aspectRatioWorker: Worker | null = null;
+const pendingExtractions = new Map<string, {
+  resolve: (value: { dominantColor?: string; aspectRatio?: number; error?: boolean }) => void;
+  reject: (error: Error) => void;
+}>();
+
+/**
+ * Get or create the singleton Web Worker for image processing
+ */
+function getAspectRatioWorker(): Worker | null {
+  if (typeof window === 'undefined') return null;
+
+  if (!aspectRatioWorker) {
+    try {
+      aspectRatioWorker = new Worker(
+        new URL('../workers/image-worker.ts', import.meta.url),
+        { type: 'module' }
+      );
+
+      aspectRatioWorker.onmessage = (e) => {
+        const { id, dominantColor, aspectRatio, error } = e.data;
+        const pending = pendingExtractions.get(id);
+        if (pending) {
+          pending.resolve({ dominantColor, aspectRatio, error });
+          pendingExtractions.delete(id);
+        }
+      };
+
+      aspectRatioWorker.onerror = (error) => {
+        console.error('[MetadataService] Worker error:', error);
+        // Reject all pending extractions
+        for (const [id, pending] of pendingExtractions) {
+          pending.reject(new Error('Worker error'));
+          pendingExtractions.delete(id);
+        }
+      };
+    } catch (error) {
+      console.warn('[MetadataService] Failed to create worker:', error);
+      return null;
+    }
+  }
+
+  return aspectRatioWorker;
+}
+
+/**
+ * Queue a card for aspect ratio extraction (after metadata fetch)
+ */
+export function queueAspectRatioExtraction(cardId: string, imageUrl: string): void {
+  if (aspectRatioProcessed.has(cardId) || aspectRatioQueue.some(q => q.cardId === cardId)) {
+    return;
+  }
+
+  aspectRatioQueue.push({ cardId, imageUrl });
+  processAspectRatioQueue();
+}
+
+/**
+ * Process the aspect ratio extraction queue
+ */
+function processAspectRatioQueue(): void {
+  while (aspectRatioActiveCount < MAX_CONCURRENT_ASPECT_RATIO && aspectRatioQueue.length > 0) {
+    const item = aspectRatioQueue.shift();
+    if (item && !aspectRatioProcessed.has(item.cardId)) {
+      aspectRatioActiveCount++;
+      aspectRatioProcessed.add(item.cardId);
+      extractAspectRatioForCard(item.cardId, item.imageUrl).finally(() => {
+        aspectRatioActiveCount--;
+        processAspectRatioQueue();
+      });
+    }
+  }
+}
+
+/**
+ * Extract aspect ratio and dominant color for a card's image
+ */
+async function extractAspectRatioForCard(cardId: string, imageUrl: string): Promise<void> {
+  const worker = getAspectRatioWorker();
+  if (!worker) {
+    console.warn('[MetadataService] No worker available for aspect ratio extraction');
+    return;
+  }
+
+  try {
+    const result = await new Promise<{ dominantColor?: string; aspectRatio?: number; error?: boolean }>(
+      (resolve, reject) => {
+        pendingExtractions.set(cardId, { resolve, reject });
+        worker.postMessage({ id: cardId, imageSrc: imageUrl });
+
+        // Timeout after 15 seconds
+        setTimeout(() => {
+          if (pendingExtractions.has(cardId)) {
+            pendingExtractions.delete(cardId);
+            resolve({ error: true });
+          }
+        }, 15000);
+      }
+    );
+
+    if (!result.error && (result.aspectRatio || result.dominantColor)) {
+      // Update card with extracted values (local-only, no server sync needed)
+      await db.cards.update(cardId, {
+        ...(result.aspectRatio && { aspectRatio: result.aspectRatio }),
+        ...(result.dominantColor && { dominantColor: result.dominantColor }),
+      });
+
+      console.log('[MetadataService] Aspect ratio extracted:', cardId, {
+        aspectRatio: result.aspectRatio?.toFixed(2),
+        dominantColor: result.dominantColor,
+      });
+    }
+  } catch (error) {
+    console.warn('[MetadataService] Aspect ratio extraction failed:', cardId, error);
+  }
+}
 
 interface MetadataResponse {
   title: string | null;
@@ -325,6 +451,12 @@ async function fetchMetadataForCard(cardId: string): Promise<void> {
     // Notify portal about the update (main app uses useLiveQuery, auto-updates)
     await notifyPortal();
 
+    // Queue aspect ratio extraction if we have an image
+    // This happens async after save - user sees card immediately, aspectRatio updates when ready
+    if (metadata.image) {
+      queueAspectRatioExtraction(cardId, metadata.image);
+    }
+
     // Queue article extraction after metadata is done
     // Skip YouTube videos (they don't have article content)
     if (card.url && isArticleUrl(card.url) && !isYouTubeUrl(card.url)) {
@@ -411,6 +543,7 @@ async function extractArticleForCard(cardId: string): Promise<void> {
 export function clearMetadataCache(): void {
   metadataProcessed.clear();
   articleProcessed.clear();
+  aspectRatioProcessed.clear();
 }
 
 /**
@@ -427,6 +560,11 @@ export function getMetadataQueueStatus() {
       queueLength: articleQueue.length,
       activeCount: articleActiveCount,
       processedCount: articleProcessed.size,
+    },
+    aspectRatio: {
+      queueLength: aspectRatioQueue.length,
+      activeCount: aspectRatioActiveCount,
+      processedCount: aspectRatioProcessed.size,
     },
   };
 }

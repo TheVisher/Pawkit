@@ -51,6 +51,7 @@ const nextConfig: NextConfig = {
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com ipc: tauri:",
               "media-src 'self' blob:",
               "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+              "worker-src 'self' blob:",  // Required for Web Workers (image processing)
               "object-src 'none'",
               "frame-ancestors 'none'",
               "base-uri 'self'",
