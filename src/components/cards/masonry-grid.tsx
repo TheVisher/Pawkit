@@ -242,13 +242,41 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
   const { getHeightsMap, setHeights, lastContainerWidth, setLastContainerWidth } = useLayoutCacheStore();
 
   // Generate content hashes for all cards (for cache invalidation)
+  // IMPORTANT: Include displaySettings in hash so cached heights are invalidated when settings change
+  const displaySettingsFingerprint = useMemo(() => {
+    if (!displaySettings) return '';
+    return [
+      displaySettings.showMetadataFooter ? '1' : '0',
+      displaySettings.showTitles ? '1' : '0',
+      displaySettings.showTags ? '1' : '0',
+      displaySettings.cardPadding || '',
+    ].join('');
+  }, [displaySettings]);
+
   const contentHashes = useMemo(() => {
     const hashes = new Map<string, string>();
     for (const card of cards) {
-      hashes.set(card.id, generateCardContentHash(card));
+      // Append displaySettings fingerprint to each card's hash
+      hashes.set(card.id, generateCardContentHash(card) + displaySettingsFingerprint);
     }
     return hashes;
-  }, [cards]);
+  }, [cards, displaySettingsFingerprint]);
+
+  // Track previous display settings to detect changes
+  const prevDisplaySettingsRef = useRef(displaySettings);
+
+  // Clear measured heights when display settings change (footer, titles, tags affect height)
+  useEffect(() => {
+    const prev = prevDisplaySettingsRef.current;
+    if (!displaySettingsEqual(prev, displaySettings)) {
+      // Settings changed - clear measured heights to force re-measurement
+      setMeasuredHeights(new Map());
+      setIsStable(false);
+      hasAchievedStabilityRef.current = false;
+      initialStabilityCheckedRef.current = false;
+    }
+    prevDisplaySettingsRef.current = displaySettings;
+  }, [displaySettings]);
 
   // Get minimum card width based on size setting
   const minCardWidth = CARD_SIZE_WIDTHS[cardSize];
@@ -396,12 +424,13 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
     }
   }, [cards, cardWidth, getHeightsMap, contentHashes]);
 
-  // Track the last column count to detect when layout fundamentally changes
+  // Track the last column count and card width to detect when layout fundamentally changes
   const lastColumnCountRef = useRef(columnCount);
+  const lastCardWidthRef = useRef(cardWidth);
   const lastCardIdsRef = useRef<Set<string>>(new Set());
 
   // Anchored positions - stored in ref to prevent recalculation on height changes
-  // Only recalculates when: column count changes, card order changes, or cardWidth changes
+  // Only recalculates when: column count changes, card width changes significantly, or cards added/removed
   const anchoredPositionsRef = useRef<Map<string, { x: number; y: number; column: number }>>(new Map());
 
   // Calculate masonry positions with anchoring
@@ -417,11 +446,14 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
     // This prevents false positives when Dexie returns cards in different internal order
     const currentCardIds = new Set(cards.map(c => c.id));
     const columnCountChanged = columnCount !== lastColumnCountRef.current;
+    // Card width tolerance - clear anchors if width changed significantly (affects height calculations)
+    const cardWidthChanged = Math.abs(cardWidth - lastCardWidthRef.current) > 20;
 
-    if (columnCountChanged) {
-      // Column count changed - must recalculate all positions
+    if (columnCountChanged || cardWidthChanged) {
+      // Layout fundamentally changed - must recalculate all positions
       anchoredPositionsRef.current.clear();
       lastColumnCountRef.current = columnCount;
+      lastCardWidthRef.current = cardWidth;
     }
 
     // Only remove anchors for cards that were actually deleted
@@ -435,22 +467,59 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
     const columnHeights = new Array(columnCount).fill(0);
     const posMap = new Map<string, { x: number; y: number }>();
 
+    // Separate cards into anchored (existing) and unanchored (new)
+    // We need to process anchored cards first to know column heights before placing new cards
+    const anchoredCards: Array<{ card: typeof cards[0]; anchor: { x: number; y: number; column: number } }> = [];
+    const unanchoredCards: typeof cards = [];
+
     for (const card of cards) {
       const existingAnchor = anchoredPositionsRef.current.get(card.id);
-      let column: number;
-
       if (existingAnchor && existingAnchor.column < columnCount) {
-        // Use anchored column - prevents cards from "jumping" columns
-        column = existingAnchor.column;
+        anchoredCards.push({ card, anchor: existingAnchor });
       } else {
-        // New card or layout changed - find shortest column
-        column = 0;
-        let minHeight = columnHeights[0];
-        for (let i = 1; i < columnCount; i++) {
-          if (columnHeights[i] < minHeight) {
-            minHeight = columnHeights[i];
-            column = i;
-          }
+        unanchoredCards.push(card);
+      }
+    }
+
+    // CRITICAL: Sort anchored cards by y position (top-to-bottom visual order)
+    // This ensures cards are processed in visual order regardless of which column they're in.
+    // Without this, the cards array order (sorted by createdAt) would cause
+    // cards to be placed out of visual order, creating gaps
+    //
+    // For cards at the same y, sort by column (left-to-right) to maintain consistent ordering
+    anchoredCards.sort((a, b) => {
+      const yDiff = a.anchor.y - b.anchor.y;
+      if (Math.abs(yDiff) > 1) return yDiff; // Use 1px tolerance for floating point
+      return a.anchor.column - b.anchor.column; // Left-to-right for same y
+    });
+
+    // First pass: position anchored cards and build up column heights
+    for (const { card, anchor } of anchoredCards) {
+      const column = anchor.column;
+
+      // Calculate position
+      const x = column * (cardWidth + cardSpacing);
+      const y = columnHeights[column];
+
+      posMap.set(card.id, { x, y });
+
+      // Update anchor with new y position (column stays same)
+      anchoredPositionsRef.current.set(card.id, { x, y, column });
+
+      // Update column height
+      const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
+      columnHeights[column] += cardHeight + cardSpacing;
+    }
+
+    // Second pass: place new cards in shortest columns (now with accurate heights)
+    for (const card of unanchoredCards) {
+      // Find shortest column
+      let column = 0;
+      let minHeight = columnHeights[0];
+      for (let i = 1; i < columnCount; i++) {
+        if (columnHeights[i] < minHeight) {
+          minHeight = columnHeights[i];
+          column = i;
         }
       }
 
@@ -781,22 +850,16 @@ export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_
             >
               {isVisible ? (
                 // Full card component - only mounted when visible
-                // Use cachedHeight as minHeight to match placeholder exactly
-                <div
-                  style={{
-                    minHeight: cachedHeight,
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  <MasonryCard
-                    card={card}
-                    onClick={() => openCardDetail(card.id)}
-                    displaySettings={displaySettings}
-                    currentCollection={currentCollection}
-                    onTagClick={onTagClick}
-                    onSystemTagClick={onSystemTagClick}
-                  />
-                </div>
+                // NO minHeight here - let the card render at its natural height
+                // so ResizeObserver can measure the true height
+                <MasonryCard
+                  card={card}
+                  onClick={() => openCardDetail(card.id)}
+                  displaySettings={displaySettings}
+                  currentCollection={currentCollection}
+                  onTagClick={onTagClick}
+                  onSystemTagClick={onSystemTagClick}
+                />
               ) : (
                 // Lightweight placeholder - must use fixed height (not minHeight)
                 // because empty div will collapse without content
