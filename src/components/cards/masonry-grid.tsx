@@ -1,18 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
-import { createPortal } from 'react-dom';
-import {
-  DragOverlay,
-  pointerWithin,
-  useDndMonitor,
-  type Modifier,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { useState, useEffect, useRef, useMemo, memo } from 'react';
 import { CardItem, type CardDisplaySettings } from './card-item';
 import type { SystemTag } from '@/lib/utils/system-tags';
 import { QuickNoteCard } from './quick-note-card';
@@ -21,20 +9,41 @@ import type { LocalCard } from '@/lib/db';
 import { useModalStore } from '@/lib/stores/modal-store';
 import { useLayoutCacheStore, generateCardContentHash } from '@/lib/stores/layout-cache-store';
 
-// Virtualization: pixels of overscan above/below viewport
-const VIRTUALIZATION_OVERSCAN = 500;
+// Virtualization: pixels of overscan above/below viewport for IntersectionObserver rootMargin
+// Using 1200px buffer to prevent "flying cards" on fast up-scroll
+// This gives browser time to mount cards before they hit the visible viewport
+const VIRTUALIZATION_OVERSCAN = 1200;
 
-// Custom modifier that centers the overlay on cursor based on overlay size
-const centerOverlayOnCursor: Modifier = ({ transform, draggingNodeRect }) => {
-  if (draggingNodeRect) {
-    return {
-      ...transform,
-      x: transform.x - draggingNodeRect.width / 2,
-      y: transform.y - draggingNodeRect.height / 2,
-    };
+/**
+ * Shallow comparison for string arrays - O(n) instead of O(n) JSON.stringify + compare
+ * Avoids micro-stutters from serialization overhead on every memo check
+ */
+function arraysShallowEqual(a?: string[], b?: string[]): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
   }
-  return transform;
-};
+  return true;
+}
+
+/**
+ * Shallow comparison for display settings object
+ */
+function displaySettingsEqual(
+  a?: Partial<CardDisplaySettings>,
+  b?: Partial<CardDisplaySettings>
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.cardPadding === b.cardPadding &&
+    a.showMetadataFooter === b.showMetadataFooter &&
+    a.showTitles === b.showTitles &&
+    a.showTags === b.showTags
+  );
+}
 
 // Configuration
 const DEFAULT_GAP = 16;
@@ -50,7 +59,6 @@ const CARD_SIZE_WIDTHS: Record<CardSize, number> = {
 
 interface MasonryGridProps {
   cards: LocalCard[];
-  onReorder?: (reorderedIds: string[]) => void;
   cardSize?: CardSize;
   cardSpacing?: number;
   displaySettings?: Partial<CardDisplaySettings>;
@@ -59,9 +67,11 @@ interface MasonryGridProps {
   onTagClick?: (tag: string) => void;
   /** Called when a system tag in the footer is clicked (for filtering) */
   onSystemTagClick?: (tag: SystemTag) => void;
+  /** Disable virtualization - useful for grouped views with smaller card sets */
+  disableVirtualization?: boolean;
 }
 
-interface SortableCardProps {
+interface MasonryCardProps {
   card: LocalCard;
   onClick: () => void;
   displaySettings?: Partial<CardDisplaySettings>;
@@ -70,79 +80,38 @@ interface SortableCardProps {
   onSystemTagClick?: (tag: SystemTag) => void;
 }
 
-interface SortableCardInnerProps extends SortableCardProps {
-  isDraggingThis: boolean;
-  isDropTarget: boolean;
-}
-
 /**
- * Sortable wrapper for individual cards
+ * Individual card component for masonry grid
  * Memoized to prevent re-renders when other cards in the list change
- *
- * IMPORTANT: We do NOT apply dnd-kit transforms here because we use
- * absolute positioning. Transforms would conflict and cause offset issues.
- * The DragOverlay handles the visual dragging instead.
  */
-const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis, isDropTarget, displaySettings, currentCollection, onTagClick, onSystemTagClick }: SortableCardInnerProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-  } = useSortable({
-    id: card.id,
-    data: {
-      type: 'Card',
-      card,
-      sortable: { containerId: 'masonry-grid-sortable' }
-    }
-  });
-
+const MasonryCard = memo(function MasonryCard({
+  card,
+  onClick,
+  displaySettings,
+  currentCollection,
+  onTagClick,
+  onSystemTagClick
+}: MasonryCardProps) {
   return (
     <CardContextMenu card={card} currentCollection={currentCollection}>
-      <div
-        ref={setNodeRef}
-        style={{
-          // Hide the original card while dragging - DragOverlay shows it instead
-          opacity: isDraggingThis ? 0.3 : 1,
-          cursor: isDraggingThis ? 'grabbing' : 'grab',
-        }}
-        className="w-full"
-        {...attributes}
-        {...listeners}
-      >
-        {/* Drop indicator - shows above the card when it's a drop target */}
-        {isDropTarget && (
-          <div
-            className="absolute -top-2 left-0 right-0 h-1 rounded-full z-10"
-            style={{
-              background: 'var(--color-accent)',
-              boxShadow: '0 0 12px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.6)',
-            }}
+      <div className="w-full">
+        {card.type === 'quick-note' ? (
+          <QuickNoteCard card={card} onClick={onClick} />
+        ) : (
+          <CardItem
+            card={card}
+            variant="grid"
+            onClick={onClick}
+            displaySettings={displaySettings}
+            onTagClick={onTagClick}
+            onSystemTagClick={onSystemTagClick}
           />
         )}
-        <div
-          className="relative"
-          style={{
-            // Glow effect on drop target
-            boxShadow: isDropTarget
-              ? '0 0 0 2px var(--color-accent), 0 0 20px hsl(var(--hue-accent) var(--sat-accent) 50% / 0.4)'
-              : 'none',
-            borderRadius: '1rem',
-            transition: 'box-shadow 150ms ease',
-          }}
-        >
-          {card.type === 'quick-note' ? (
-            <QuickNoteCard card={card} onClick={onClick} isDragging={isDraggingThis} />
-          ) : (
-            <CardItem card={card} variant="grid" onClick={onClick} displaySettings={displaySettings} onTagClick={onTagClick} onSystemTagClick={onSystemTagClick} />
-          )}
-        </div>
       </div>
     </CardContextMenu>
   );
 }, (prevProps, nextProps) => {
   // Only re-render if the card content actually changed
-  // Compare by ID and key fields that affect rendering
   return (
     prevProps.card.id === nextProps.card.id &&
     prevProps.card.title === nextProps.card.title &&
@@ -162,11 +131,9 @@ const SortableCard = memo(function SortableCard({ card, onClick, isDraggingThis,
     prevProps.card.isRead === nextProps.card.isRead &&
     prevProps.card.readProgress === nextProps.card.readProgress &&
     prevProps.card.readingTime === nextProps.card.readingTime &&
-    prevProps.isDraggingThis === nextProps.isDraggingThis &&
-    prevProps.isDropTarget === nextProps.isDropTarget &&
     prevProps.currentCollection === nextProps.currentCollection &&
-    JSON.stringify(prevProps.card.tags) === JSON.stringify(nextProps.card.tags) &&
-    JSON.stringify(prevProps.displaySettings) === JSON.stringify(nextProps.displaySettings)
+    arraysShallowEqual(prevProps.card.tags, nextProps.card.tags) &&
+    displaySettingsEqual(prevProps.displaySettings, nextProps.displaySettings)
   );
 });
 
@@ -178,6 +145,9 @@ const CONTENT_PADDING = 56; // Approximate height for title + domain + tags area
 /**
  * Estimate card height based on content
  * This is used for initial layout before actual measurements
+ *
+ * Uses stored aspectRatio from DB when available for accurate initial sizing
+ * This prevents "pop-in" effect when images load
  */
 function estimateHeight(card: LocalCard, cardWidth: number): number {
   // Quick notes are compact - fixed small height
@@ -185,11 +155,17 @@ function estimateHeight(card: LocalCard, cardWidth: number): number {
     return 100; // Matches min-h-[80px] + padding
   }
 
-  // For cards with images, use aspect ratio to estimate thumbnail height
-  // We can't know the actual aspect ratio until the image loads, so use default
-  const thumbnailHeight = card.image
-    ? cardWidth / DEFAULT_ASPECT_RATIO
-    : MIN_THUMBNAIL_HEIGHT;
+  // For cards with images, use stored aspectRatio if available
+  // Otherwise fall back to default. This provides stable sizing before image loads.
+  let thumbnailHeight: number;
+  if (card.image) {
+    // Use stored aspectRatio from DB (extracted by web worker) for accurate height
+    // This is key to preventing layout shift when scrolling back up
+    const aspectRatio = card.aspectRatio || DEFAULT_ASPECT_RATIO;
+    thumbnailHeight = cardWidth / aspectRatio;
+  } else {
+    thumbnailHeight = MIN_THUMBNAIL_HEIGHT;
+  }
 
   let height = thumbnailHeight + CONTENT_PADDING;
 
@@ -199,33 +175,47 @@ function estimateHeight(card: LocalCard, cardWidth: number): number {
   // Add height for tags
   if (card.tags && card.tags.length > 0) height += 28;
 
-  return height;
+  // Use Math.ceil to ensure integer heights (prevents sub-pixel cumulative errors)
+  return Math.ceil(height);
 }
 
 /**
- * Masonry grid layout with drag-and-drop support
+ * Masonry grid layout with IntersectionObserver-based virtualization
+ *
+ * Virtualization strategy:
+ * - Uses IntersectionObserver to track which cards are visible
+ * - Completely unmounts off-screen cards (clears React Fiber tree)
+ * - Renders lightweight placeholder divs with cached height for invisible cards
+ * - This reduces DOM nodes from ~180 to ~20-30 visible cards
  */
-export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing = DEFAULT_GAP, displaySettings, currentCollection, onTagClick, onSystemTagClick }: MasonryGridProps) {
+export function MasonryGrid({ cards, cardSize = 'medium', cardSpacing = DEFAULT_GAP, displaySettings, currentCollection, onTagClick, onSystemTagClick, disableVirtualization = false }: MasonryGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [containerWidth, setContainerWidth] = useState(0);
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [overId, setOverId] = useState<string | null>(null);
+  // Initialize with cached width for instant rendering on return navigation
+  const cachedWidth = useLayoutCacheStore((s) => s.lastContainerWidth);
+  const [containerWidth, setContainerWidth] = useState(() => cachedWidth || 0);
   const [measuredHeights, setMeasuredHeights] = useState<Map<string, number>>(new Map());
   const openCardDetail = useModalStore((s) => s.openCardDetail);
 
+  // Virtualization: track which card IDs are currently visible
+  const [visibleCardIds, setVisibleCardIds] = useState<Set<string>>(() => new Set());
+  const observerRef = useRef<IntersectionObserver | null>(null);
+
   // Track if layout is stable (heights confirmed by ResizeObserver)
   // Cards render with opacity:0 until stable, then fade in
-  const [isStable, setIsStable] = useState(false);
+  // Use lazy initialization to check if we can start stable (all heights cached)
+  const [isStable, setIsStable] = useState(() => {
+    // Can't be stable on first render - need to calculate container width first
+    return false;
+  });
   const stabilityCheckRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevCardsLengthRef = useRef(cards.length);
-
-  // Virtualization: track scroll position to only render visible cards
-  const [scrollTop, setScrollTop] = useState(0);
-  const [viewportHeight, setViewportHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 1000);
-  const scrollContainerRef = useRef<HTMLElement | null>(null);
+  const initialStabilityCheckedRef = useRef(false);
+  // Track when layout is settling (cards added/deleted) - disable transitions during this
+  const [isLayoutSettling, setIsLayoutSettling] = useState(false);
+  const layoutSettlingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Layout cache for persistent heights across navigation
-  const { getHeightsMap, setHeights } = useLayoutCacheStore();
+  const { getHeightsMap, setHeights, lastContainerWidth, setLastContainerWidth } = useLayoutCacheStore();
 
   // Generate content hashes for all cards (for cache invalidation)
   const contentHashes = useMemo(() => {
@@ -248,6 +238,8 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
       const width = container.offsetWidth;
       if (width > 0) {
         setContainerWidth(width);
+        // Cache width for instant rendering on return navigation
+        setLastContainerWidth(width);
       }
     };
 
@@ -260,14 +252,21 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
 
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [setLastContainerWidth]);
 
-  // Virtualization: Find scroll container and track scroll position
+  // Virtualization: Set up IntersectionObserver for visibility tracking
+  // This replaces scroll-based calculations with native browser visibility detection
   useEffect(() => {
+    if (disableVirtualization) {
+      // When virtualization disabled, mark all cards as visible
+      setVisibleCardIds(new Set(cards.map(c => c.id)));
+      return;
+    }
+
+    // Find scroll container for rootMargin calculation
     const container = containerRef.current;
     if (!container) return;
 
-    // Find the scroll container (parent with overflow)
     let scrollContainer: HTMLElement | null = container.parentElement;
     while (scrollContainer) {
       const style = getComputedStyle(scrollContainer);
@@ -277,30 +276,36 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
       scrollContainer = scrollContainer.parentElement;
     }
 
-    if (!scrollContainer) {
-      // Fallback to window scroll
-      scrollContainerRef.current = null;
-      const handleWindowScroll = () => {
-        setScrollTop(window.scrollY);
-        setViewportHeight(window.innerHeight);
-      };
-      window.addEventListener('scroll', handleWindowScroll, { passive: true });
-      handleWindowScroll();
-      return () => window.removeEventListener('scroll', handleWindowScroll);
-    }
+    // Create IntersectionObserver with overscan buffer
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        setVisibleCardIds((prev) => {
+          const next = new Set(prev);
+          for (const entry of entries) {
+            const id = entry.target.getAttribute('data-card-id');
+            if (id) {
+              if (entry.isIntersecting) {
+                next.add(id);
+              } else {
+                next.delete(id);
+              }
+            }
+          }
+          return next;
+        });
+      },
+      {
+        root: scrollContainer || null, // null = viewport
+        rootMargin: `${VIRTUALIZATION_OVERSCAN}px 0px`, // Overscan above/below
+        threshold: 0, // Trigger as soon as any pixel is visible
+      }
+    );
 
-    scrollContainerRef.current = scrollContainer;
-
-    const handleScroll = () => {
-      setScrollTop(scrollContainer!.scrollTop);
-      setViewportHeight(scrollContainer!.clientHeight);
+    return () => {
+      observerRef.current?.disconnect();
+      observerRef.current = null;
     };
-
-    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll(); // Initial measurement
-
-    return () => scrollContainer?.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [disableVirtualization, cards]);
 
   // Calculate columns and card width
   const columnCount = useMemo(() => {
@@ -338,98 +343,109 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
         }
         return merged;
       });
+
+      // If ALL cards have cached heights, we can be stable immediately
+      // This provides instant rendering when navigating back to library
+      if (cachedHeights.size === cards.length && !initialStabilityCheckedRef.current) {
+        initialStabilityCheckedRef.current = true;
+        setIsStable(true);
+      }
     }
   }, [cards, cardWidth, getHeightsMap, contentHashes]);
 
-  // Calculate masonry positions
+  // Track the last column count to detect when layout fundamentally changes
+  const lastColumnCountRef = useRef(columnCount);
+  const lastCardOrderRef = useRef<string>('');
+
+  // Anchored positions - stored in ref to prevent recalculation on height changes
+  // Only recalculates when: column count changes, card order changes, or cardWidth changes
+  const anchoredPositionsRef = useRef<Map<string, { x: number; y: number; column: number }>>(new Map());
+
+  // Calculate masonry positions with anchoring
+  // Key insight: Once a card is placed in a column, KEEP it there even if heights change slightly
+  // This prevents "flying cards" when scrolling up and heights fluctuate
   const { positions, totalHeight } = useMemo(() => {
     if (cards.length === 0) {
+      anchoredPositionsRef.current.clear();
       return { positions: new Map<string, { x: number; y: number }>(), totalHeight: 0 };
+    }
+
+    // Generate card order signature to detect reordering
+    const cardOrderSignature = cards.map(c => c.id).join(',');
+    const layoutChanged =
+      columnCount !== lastColumnCountRef.current ||
+      cardOrderSignature !== lastCardOrderRef.current;
+
+    // If layout fundamentally changed, clear anchors
+    if (layoutChanged) {
+      anchoredPositionsRef.current.clear();
+      lastColumnCountRef.current = columnCount;
+      lastCardOrderRef.current = cardOrderSignature;
     }
 
     const columnHeights = new Array(columnCount).fill(0);
     const posMap = new Map<string, { x: number; y: number }>();
 
     for (const card of cards) {
-      // Find shortest column
-      let shortestCol = 0;
-      let minHeight = columnHeights[0];
-      for (let i = 1; i < columnCount; i++) {
-        if (columnHeights[i] < minHeight) {
-          minHeight = columnHeights[i];
-          shortestCol = i;
+      const existingAnchor = anchoredPositionsRef.current.get(card.id);
+      let column: number;
+
+      if (existingAnchor && existingAnchor.column < columnCount) {
+        // Use anchored column - prevents cards from "jumping" columns
+        column = existingAnchor.column;
+      } else {
+        // New card or layout changed - find shortest column
+        column = 0;
+        let minHeight = columnHeights[0];
+        for (let i = 1; i < columnCount; i++) {
+          if (columnHeights[i] < minHeight) {
+            minHeight = columnHeights[i];
+            column = i;
+          }
         }
       }
 
       // Calculate position
-      const x = shortestCol * (cardWidth + cardSpacing);
-      const y = columnHeights[shortestCol];
+      const x = column * (cardWidth + cardSpacing);
+      const y = columnHeights[column];
 
       posMap.set(card.id, { x, y });
 
+      // Anchor this card to its column
+      anchoredPositionsRef.current.set(card.id, { x, y, column });
+
       // Update column height
       const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
-      columnHeights[shortestCol] += cardHeight + cardSpacing;
+      columnHeights[column] += cardHeight + cardSpacing;
     }
 
     const maxHeight = Math.max(...columnHeights);
     return { positions: posMap, totalHeight: maxHeight > 0 ? maxHeight - cardSpacing : 0 };
   }, [cards, columnCount, cardWidth, measuredHeights, cardSpacing]);
 
-  // Virtualization: Calculate container offset and filter visible cards
-  const containerOffset = useMemo(() => {
-    const container = containerRef.current;
-    if (!container || !scrollContainerRef.current) return 0;
-    // Get container's position relative to scroll container
-    const containerRect = container.getBoundingClientRect();
-    const scrollRect = scrollContainerRef.current.getBoundingClientRect();
-    return containerRect.top - scrollRect.top + scrollContainerRef.current.scrollTop;
-  }, [scrollTop]); // Recalculate when scrolling
-
-  // Determine which cards are visible in viewport
-  const visibleCardIds = useMemo(() => {
-    if (cards.length === 0) return new Set<string>();
-
-    // On first render before scroll container is found, show first batch of cards
-    // This ensures immediate content display without waiting for scroll detection
-    if (!scrollContainerRef.current && scrollTop === 0) {
-      // Show enough cards to fill the viewport (estimate ~8-12 cards for 2-3 columns)
-      const initialVisible = new Set<string>();
-      const maxInitialCards = Math.min(cards.length, 20);
-      for (let i = 0; i < maxInitialCards; i++) {
-        initialVisible.add(cards[i].id);
-      }
-      return initialVisible;
-    }
-
-    // Calculate visible range relative to container
-    const viewStart = scrollTop - containerOffset - VIRTUALIZATION_OVERSCAN;
-    const viewEnd = scrollTop - containerOffset + viewportHeight + VIRTUALIZATION_OVERSCAN;
-
-    const visible = new Set<string>();
-    for (const card of cards) {
-      const pos = positions.get(card.id);
-      if (!pos) continue;
-
-      const cardHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
-      const cardTop = pos.y;
-      const cardBottom = pos.y + cardHeight;
-
-      // Card is visible if it overlaps with the viewport range
-      if (cardBottom >= viewStart && cardTop <= viewEnd) {
-        visible.add(card.id);
-      }
-    }
-
-    return visible;
-  }, [cards, positions, measuredHeights, scrollTop, containerOffset, viewportHeight, cardWidth]);
-
   // Reset stability when cards array changes significantly
   useEffect(() => {
     if (cards.length !== prevCardsLengthRef.current) {
       prevCardsLengthRef.current = cards.length;
       setIsStable(false);
+      initialStabilityCheckedRef.current = false;
+
+      // Mark layout as settling - disable transitions temporarily
+      setIsLayoutSettling(true);
+      if (layoutSettlingTimeoutRef.current) {
+        clearTimeout(layoutSettlingTimeoutRef.current);
+      }
+      // Re-enable transitions after layout settles
+      layoutSettlingTimeoutRef.current = setTimeout(() => {
+        setIsLayoutSettling(false);
+      }, 300);
     }
+
+    return () => {
+      if (layoutSettlingTimeoutRef.current) {
+        clearTimeout(layoutSettlingTimeoutRef.current);
+      }
+    };
   }, [cards.length]);
 
   // Measure card heights after render and when cards resize (e.g., images load)
@@ -461,13 +477,15 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
 
         const rect = el.getBoundingClientRect();
         if (rect.height > 0) {
-          newHeights.set(id, rect.height);
+          // CRITICAL: Use Math.ceil() to eliminate sub-pixel cumulative errors
+          const height = Math.ceil(rect.height);
+          newHeights.set(id, height);
           // Prepare cache entry
           const hash = contentHashes.get(id);
           if (hash) {
             cacheEntries.push({
               cardId: id,
-              height: rect.height,
+              height,
               width: cardWidth,
               contentHash: hash,
             });
@@ -508,57 +526,56 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
       timer = setTimeout(() => measureCards(false), delay);
     }
 
-    // ResizeObserver for when images load - only measure cards that resize
+    // ResizeObserver for when images load - uses contentBoxSize (no forced layout)
+    // OPTIMIZATION: contentBoxSize is already computed by the browser, unlike
+    // getBoundingClientRect() which forces a synchronous layout recalculation
     const resizeObserver = new ResizeObserver((entries) => {
-      // Only measure the specific cards that resized
-      const resizedIds = new Set<string>();
+      const newHeights = new Map<string, number>();
+      const cacheEntries: Array<{ cardId: string; height: number; width: number; contentHash: string }> = [];
+
       for (const entry of entries) {
         const id = (entry.target as HTMLElement).getAttribute('data-card-id');
-        if (id) resizedIds.add(id);
-      }
+        if (!id) continue;
 
-      if (resizedIds.size > 0) {
-        const newHeights = new Map<string, number>();
-        const cacheEntries: Array<{ cardId: string; height: number; width: number; contentHash: string }> = [];
+        // Use contentBoxSize (no forced layout) instead of getBoundingClientRect
+        // Falls back to contentRect.height for older browsers
+        // CRITICAL: Use Math.ceil() to eliminate sub-pixel cumulative errors
+        // Sub-pixel heights (350.5px) cause layout drift when virtualization unmounts cards
+        const rawHeight = entry.contentBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+        const height = Math.ceil(rawHeight);
 
-        for (const id of resizedIds) {
-          const el = container.querySelector(`[data-card-id="${id}"]`);
-          if (el) {
-            const rect = el.getBoundingClientRect();
-            if (rect.height > 0) {
-              newHeights.set(id, rect.height);
-              const hash = contentHashes.get(id);
-              if (hash) {
-                cacheEntries.push({ cardId: id, height: rect.height, width: cardWidth, contentHash: hash });
-              }
-            }
+        if (height > 0) {
+          newHeights.set(id, height);
+          const hash = contentHashes.get(id);
+          if (hash) {
+            cacheEntries.push({ cardId: id, height, width: cardWidth, contentHash: hash });
           }
         }
+      }
 
-        if (newHeights.size > 0) {
-          let hasChanges = false;
+      if (newHeights.size > 0) {
+        let hasChanges = false;
 
-          setMeasuredHeights(prev => {
-            for (const [id, h] of newHeights) {
-              // Only update if height changed by more than 2px (ignore sub-pixel differences)
-              const prevHeight = prev.get(id);
-              if (!prevHeight || Math.abs(prevHeight - h) > 2) {
-                hasChanges = true;
-                break;
-              }
+        setMeasuredHeights(prev => {
+          for (const [id, h] of newHeights) {
+            // Only update if height changed by more than 2px (ignore sub-pixel differences)
+            const prevHeight = prev.get(id);
+            if (!prevHeight || Math.abs(prevHeight - h) > 2) {
+              hasChanges = true;
+              break;
             }
-            if (!hasChanges) return prev;
-
-            const merged = new Map(prev);
-            for (const [id, h] of newHeights) {
-              merged.set(id, h);
-            }
-            return merged;
-          });
-
-          if (cacheEntries.length > 0) {
-            setHeights(cacheEntries);
           }
+          if (!hasChanges) return prev;
+
+          const merged = new Map(prev);
+          for (const [id, h] of newHeights) {
+            merged.set(id, h);
+          }
+          return merged;
+        });
+
+        if (cacheEntries.length > 0) {
+          setHeights(cacheEntries);
         }
       }
 
@@ -575,158 +592,155 @@ export function MasonryGrid({ cards, onReorder, cardSize = 'medium', cardSpacing
     const cardElements = container.querySelectorAll('[data-card-id]');
     cardElements.forEach((el) => resizeObserver.observe(el));
 
+    // Use MutationObserver to detect new cards added to DOM (from virtualization scroll)
+    // This avoids re-running the entire effect on every scroll
+    const mutationObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node instanceof HTMLElement) {
+            // Check if it's a card element or contains card elements
+            if (node.hasAttribute('data-card-id')) {
+              resizeObserver.observe(node);
+              // Also observe with IntersectionObserver for visibility
+              observerRef.current?.observe(node);
+            } else {
+              const newCards = node.querySelectorAll('[data-card-id]');
+              newCards.forEach((el) => {
+                resizeObserver.observe(el);
+                observerRef.current?.observe(el);
+              });
+            }
+          }
+        }
+      }
+    });
+
+    mutationObserver.observe(container, { childList: true, subtree: true });
+
+    // Also set up initial IntersectionObserver observations
+    if (observerRef.current) {
+      cardElements.forEach((el) => observerRef.current?.observe(el));
+    }
+
     // Initial stability timeout for when all cards are cached and no resize needed
-    if (allCached) {
-      stabilityCheckRef.current = setTimeout(() => {
-        setIsStable(true);
-      }, 10);
+    // Skip if we already set stable from the cache initialization effect
+    if (allCached && !initialStabilityCheckedRef.current) {
+      initialStabilityCheckedRef.current = true;
+      // Use queueMicrotask instead of setTimeout for faster stability
+      queueMicrotask(() => setIsStable(true));
     }
 
     return () => {
       if (timer) clearTimeout(timer);
       if (stabilityCheckRef.current) clearTimeout(stabilityCheckRef.current);
       resizeObserver.disconnect();
+      mutationObserver.disconnect();
     };
   }, [containerWidth, cards, cardWidth, contentHashes, getHeightsMap, setHeights]);
 
-
-
-  // State for drag preview
-  const [activeDragItem, setActiveDragItem] = useState<LocalCard | null>(null);
-
-  useDndMonitor({
-    onDragStart: (event) => {
-      setActiveId(event.active.id as string);
-      setOverId(null);
-      const card = cards.find(c => c.id === event.active.id);
-      setActiveDragItem(card || null);
-    },
-    onDragOver: (event) => {
-      const { over } = event;
-      setOverId(over?.id as string | null);
-    },
-    onDragEnd: (event) => {
-      const { active, over } = event;
-      setActiveId(null);
-      setOverId(null);
-      setActiveDragItem(null);
-
-      if (over && active.id !== over.id && onReorder) {
-        // Only reorder if the drag originated here and stayed here (or similar logic)
-        // Since we are using global context, active.id should match one of our cards
-        const oldIndex = cards.findIndex((c) => c.id === active.id);
-        const newIndex = cards.findIndex((c) => c.id === over.id);
-
-        if (oldIndex !== -1 && newIndex !== -1) {
-          const newOrder = [...cards];
-          const [removed] = newOrder.splice(oldIndex, 1);
-          newOrder.splice(newIndex, 0, removed);
-          onReorder(newOrder.map((c) => c.id));
-        }
-      }
-    },
-    onDragCancel: () => {
-      setActiveId(null);
-      setOverId(null);
-      setActiveDragItem(null);
-    }
-  });
-
-  const cardIds = useMemo(() => cards.map((c) => c.id), [cards]);
-
   // Always render the container with ref, but show skeleton or content
   return (
-    <>
-      <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
-        <div
-          ref={containerRef}
-          className="relative w-full"
-          style={{
-            minHeight: containerWidth === 0 ? 400 : Math.max(200, totalHeight),
-            height: containerWidth === 0 ? 'auto' : totalHeight || 'auto',
-          }}
-        >
-          {containerWidth === 0 ? (
-            // Skeleton while measuring
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {cards.slice(0, 8).map((card) => (
-                <div
-                  key={card.id}
-                  className="h-48 rounded-2xl animate-pulse"
-                  style={{ background: 'var(--bg-surface-2)' }}
-                />
-              ))}
-            </div>
-          ) : (
-            // Masonry layout with TRUE virtualization - only create elements for visible cards
-            // This reduces React elements from 180 to ~20-30 (not just hiding, but not creating)
-            cards
-              .filter((card) => visibleCardIds.has(card.id))
-              .map((card) => {
-                const pos = positions.get(card.id);
-                if (!pos) return null;
-
-                return (
-                  <div
-                    key={card.id}
-                    data-card-id={card.id}
-                    style={{
-                      position: 'absolute',
-                      width: cardWidth,
-                      left: pos.x,
-                      top: pos.y,
-                      // Hide until layout is stable - use visibility to prevent flash
-                      visibility: isStable ? 'visible' : 'hidden',
-                      opacity: isStable ? 1 : 0,
-                      // Transitions: opacity for fade-in, position for drag reordering
-                      transition: isStable && !activeId ? 'opacity 150ms ease-out, left 250ms ease, top 250ms ease' : 'none',
-                    }}
-                  >
-                    <SortableCard
-                      card={card}
-                      onClick={() => openCardDetail(card.id)}
-                      isDraggingThis={activeId === card.id}
-                      isDropTarget={overId === card.id && activeId !== card.id}
-                      displaySettings={displaySettings}
-                      currentCollection={currentCollection}
-                      onTagClick={onTagClick}
-                      onSystemTagClick={onSystemTagClick}
-                    />
-                  </div>
-                );
-              })
-          )}
-        </div>
-      </SortableContext>
-
-      {typeof document !== 'undefined' && createPortal(
-        <DragOverlay
-          adjustScale={false}
-          dropAnimation={null}
-          modifiers={[centerOverlayOnCursor]}
-          style={{ zIndex: 9999 }}
-        >
-          {activeDragItem && (
+    <div
+      ref={containerRef}
+      className="relative w-full"
+      style={{
+        minHeight: containerWidth === 0 ? 400 : Math.max(200, totalHeight),
+        height: containerWidth === 0 ? 'auto' : totalHeight || 'auto',
+        // Disable browser scroll anchoring - we manage positions manually
+        // This prevents jitter when elements are added/removed during virtualization
+        overflowAnchor: 'none',
+      }}
+    >
+      {containerWidth === 0 ? (
+        // Skeleton while measuring container width
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {cards.slice(0, 8).map((card) => (
             <div
+              key={card.id}
+              className="h-48 rounded-2xl animate-pulse"
+              style={{ background: 'var(--bg-surface-2)' }}
+            />
+          ))}
+        </div>
+      ) : (
+        // Masonry layout with IntersectionObserver-based virtualization
+        // Strategy: Render position holders for ALL cards to maintain layout,
+        // but only mount the actual card component for visible ones.
+        // This reduces React component count from ~180 to ~20-30 visible cards.
+        cards.map((card) => {
+          const pos = positions.get(card.id);
+          if (!pos) return null;
+
+          const isVisible = visibleCardIds.has(card.id);
+          const cachedHeight = measuredHeights.get(card.id) || estimateHeight(card, cardWidth);
+          // Use stored aspectRatio for CSS locking, fallback to default
+          const aspectRatio = card.aspectRatio || DEFAULT_ASPECT_RATIO;
+
+          return (
+            <div
+              key={card.id}
+              data-card-id={card.id}
               style={{
-                width: activeDragItem.type === 'quick-note' ? cardWidth * 0.8 : cardWidth * 0.6,
-                opacity: 0.85,
-                transform: 'rotate(-2deg)', // Slight tilt for visual feedback
-                pointerEvents: 'none',
-                filter: 'drop-shadow(0 8px 24px rgba(0, 0, 0, 0.4))',
+                position: 'absolute',
+                width: cardWidth,
+                // GPU compositing: use translate3d instead of top/left
+                // This creates a compositor layer, making position changes GPU-only
+                // (no Layout/Paint on scroll, just Composite)
+                top: 0,
+                left: 0,
+                transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
+                // Force GPU layer ownership - prevents fallback to CPU rendering
+                backfaceVisibility: 'hidden',
+                // Hide until layout is stable (initial measurement complete)
+                visibility: isStable ? 'visible' : 'hidden',
+                opacity: isStable ? 1 : 0,
+                // Let browser skip rendering off-screen cards (native optimization)
+                contentVisibility: 'auto',
+                containIntrinsicSize: `${cardWidth}px ${cachedHeight}px`,
+                // Smooth transitions when stable
+                transition: isStable && !isLayoutSettling
+                  ? 'opacity 150ms ease-out, transform 200ms ease-out'
+                  : 'none',
               }}
             >
-              {activeDragItem.type === 'quick-note' ? (
-                <QuickNoteCard card={activeDragItem} isDragging />
+              {isVisible ? (
+                // Full card component - only mounted when visible
+                // Wrapped in container with min-height to prevent 0-height flash during mount
+                <div
+                  style={{
+                    minHeight: card.image ? cardWidth / aspectRatio : undefined,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <MasonryCard
+                    card={card}
+                    onClick={() => openCardDetail(card.id)}
+                    displaySettings={displaySettings}
+                    currentCollection={currentCollection}
+                    onTagClick={onTagClick}
+                    onSystemTagClick={onSystemTagClick}
+                  />
+                </div>
               ) : (
-                <CardItem card={activeDragItem} variant="grid" displaySettings={displaySettings} />
+                // Lightweight placeholder - MUST be identical twin to card container
+                // box-sizing: border-box ensures padding/border don't add to height
+                // contain: strict tells browser this box size is FINAL
+                <div
+                  style={{
+                    height: cachedHeight,
+                    minHeight: card.image ? cardWidth / aspectRatio : undefined,
+                    background: card.dominantColor || 'var(--color-bg-surface-2)',
+                    borderRadius: '1rem',
+                    boxSizing: 'border-box',
+                    contain: 'strict',
+                  }}
+                />
               )}
             </div>
-          )}
-        </DragOverlay>,
-        document.body
+          );
+        })
       )}
-    </>
+    </div>
   );
 }
 

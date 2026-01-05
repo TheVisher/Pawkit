@@ -201,12 +201,11 @@ export function CardGrid({
 
   const cardIds = useMemo(() => cards.map((c) => c.id), [cards]);
 
-  // Masonry layout with drag-and-drop
+  // Masonry layout with IntersectionObserver-based virtualization
   if (layout === 'masonry') {
     return (
       <MasonryGrid
         cards={cards}
-        onReorder={onReorder}
         cardSize={cardSize}
         cardSpacing={cardSpacing}
         displaySettings={displaySettings}

@@ -8,6 +8,20 @@ import { ListCard } from './list-card';
 import { type CardDisplaySettings, DEFAULT_CARD_DISPLAY } from './types';
 import type { SystemTag } from '@/lib/utils/system-tags';
 
+/**
+ * Shallow comparison for string arrays - O(n) instead of O(n) JSON.stringify + compare
+ * Avoids micro-stutters from serialization overhead on every memo check
+ */
+function arraysShallowEqual(a?: string[], b?: string[]): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
 interface CardItemProps {
   card: LocalCard;
   variant?: 'grid' | 'list';
@@ -80,7 +94,7 @@ export const CardItem = memo(function CardItem({
     prevProps.card.status === nextProps.card.status &&
     prevProps.card.type === nextProps.card.type &&
     prevProps.variant === nextProps.variant &&
-    JSON.stringify(prevProps.card.tags) === JSON.stringify(nextProps.card.tags) &&
+    arraysShallowEqual(prevProps.card.tags, nextProps.card.tags) &&
     // Compare display settings
     prevSettings.cardPadding === nextSettings.cardPadding &&
     prevSettings.showMetadataFooter === nextSettings.showMetadataFooter &&
