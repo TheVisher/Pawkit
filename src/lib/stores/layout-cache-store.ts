@@ -34,7 +34,8 @@ interface LayoutCacheState {
 }
 
 // Width tolerance - if width difference is within this range, use cached height
-const WIDTH_TOLERANCE = 5;
+// 20px accommodates scrollbar appearance (15-17px typical on Windows/Linux)
+const WIDTH_TOLERANCE = 20;
 
 export const useLayoutCacheStore = create<LayoutCacheState>((set, get) => ({
   heights: new Map(),
