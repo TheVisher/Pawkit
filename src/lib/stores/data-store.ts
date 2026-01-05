@@ -40,6 +40,9 @@ const LOCAL_ONLY_FIELDS = new Set([
   'readProgress',
   'headerGradientColor',
   'headerImagePosition',
+  // Image optimization fields - extracted locally, no need to sync
+  'dominantColor',
+  'aspectRatio',
 ]);
 
 function isLocalOnlyUpdate(updates: Partial<LocalCard>): boolean {

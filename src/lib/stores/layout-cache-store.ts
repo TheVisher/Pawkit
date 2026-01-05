@@ -18,12 +18,16 @@ interface LayoutCacheState {
   // Map of cardId -> CardHeightEntry
   heights: Map<string, CardHeightEntry>;
 
+  // Cached container width for instant rendering on return navigation
+  lastContainerWidth: number;
+
   // Actions
   getHeight: (cardId: string, currentWidth: number, contentHash: string) => number | null;
   setHeight: (cardId: string, height: number, width: number, contentHash: string) => void;
   setHeights: (entries: Array<{ cardId: string; height: number; width: number; contentHash: string }>) => void;
   removeHeight: (cardId: string) => void;
   clearCache: () => void;
+  setLastContainerWidth: (width: number) => void;
 
   // Bulk operations for efficiency
   getHeightsMap: (cardIds: string[], currentWidth: number, contentHashes: Map<string, string>) => Map<string, number>;
@@ -34,6 +38,7 @@ const WIDTH_TOLERANCE = 5;
 
 export const useLayoutCacheStore = create<LayoutCacheState>((set, get) => ({
   heights: new Map(),
+  lastContainerWidth: 0,
 
   getHeight: (cardId, currentWidth, contentHash) => {
     const entry = get().heights.get(cardId);
@@ -77,7 +82,11 @@ export const useLayoutCacheStore = create<LayoutCacheState>((set, get) => ({
   },
 
   clearCache: () => {
-    set({ heights: new Map() });
+    set({ heights: new Map(), lastContainerWidth: 0 });
+  },
+
+  setLastContainerWidth: (width) => {
+    set({ lastContainerWidth: width });
   },
 
   getHeightsMap: (cardIds, currentWidth, contentHashes) => {
@@ -99,8 +108,25 @@ export const useLayoutCacheStore = create<LayoutCacheState>((set, get) => ({
 }));
 
 /**
+ * Simple hash function - converts string to 32-bit integer hash
+ * Used for fast comparison of content changes
+ */
+function simpleHash(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return hash.toString(36);
+}
+
+/**
  * Content hash generator - creates a hash based on fields that affect card height
  * Used for cache invalidation when card content changes
+ *
+ * FIXED: Previously used content LENGTH which missed same-length edits
+ * Now uses actual content for proper invalidation
  */
 export function generateCardContentHash(card: {
   id: string;
@@ -110,14 +136,15 @@ export function generateCardContentHash(card: {
   type: string;
   content?: string;
 }): string {
-  // Use a simple concatenation of height-affecting fields
+  // Use actual content for height-affecting fields (not just length)
+  // This ensures cache invalidation when content changes without length change
   const parts = [
     card.type,
-    card.image ? '1' : '0',
-    (card.title?.length || 0).toString(),
-    (card.tags?.length || 0).toString(),
-    // For quick-notes, content affects height
-    card.type === 'quick-note' ? (card.content?.length || 0).toString() : '',
+    card.image || '',  // URL change = new image = potentially new aspect ratio
+    card.title || '',  // Full title - affects line wrapping/height
+    (card.tags || []).join(','),  // Tag list affects footer height
+    // For quick-notes, content affects height significantly
+    card.type === 'quick-note' ? (card.content || '') : '',
   ];
-  return parts.join(':');
+  return simpleHash(parts.join('|'));
 }

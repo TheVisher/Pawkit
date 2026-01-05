@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import DOMPurify from 'dompurify';
 import {
@@ -32,6 +32,8 @@ import type { LocalCard } from '@/lib/db';
 import { TagBadgeList } from '@/components/tags/tag-badge';
 import { getSystemTagsForCard } from '@/lib/utils/system-tags';
 import type { SystemTag } from '@/lib/utils/system-tags';
+import { useDataStore } from '@/lib/stores/data-store';
+import { useImageColorWorker, isImageWorkerSupported } from '@/lib/hooks/use-image-color-worker';
 import {
   type CardDisplaySettings,
   DEFAULT_CARD_DISPLAY,
@@ -40,7 +42,6 @@ import {
   getCardIcon,
   getDomain,
   getLuminance,
-  getAverageColor,
   isNoteCard,
 } from './types';
 
@@ -132,13 +133,69 @@ export function GridCard({
   const Icon = getCardIcon(card.type);
   const domain = card.domain || getDomain(card.url);
 
+  // Worker hook for off-main-thread color extraction
+  const { extractImageData } = useImageColorWorker();
+  const updateCard = useDataStore((s) => s.updateCard);
+  const processingRef = useRef(false);
+
   // Merge with defaults
   const settings: CardDisplaySettings = { ...DEFAULT_CARD_DISPLAY, ...displaySettings };
 
   const hasImage = card.image && !imageError;
   const hasFavicon = card.favicon && !imageError;
 
-  // Handle image load to get natural dimensions and calculate background brightness
+  // Effect: Process cards without dominantColor using Web Worker
+  // This runs once per card and persists the result to DB
+  useEffect(() => {
+    // Skip if: no image, already has color, already processing, or worker not supported
+    if (!card.image || card.dominantColor || processingRef.current || !isImageWorkerSupported()) {
+      return;
+    }
+
+    processingRef.current = true;
+
+    // Use requestIdleCallback for non-blocking processing
+    const processImage = async () => {
+      const result = await extractImageData(card.id, card.image!);
+      if (result) {
+        // Persist to DB (local-only, no sync conflict)
+        await updateCard(card.id, {
+          dominantColor: result.dominantColor,
+          aspectRatio: result.aspectRatio,
+        });
+      }
+      processingRef.current = false;
+    };
+
+    // Defer processing to idle time
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(() => processImage(), { timeout: 5000 });
+    } else {
+      // Fallback for Safari
+      setTimeout(() => processImage(), 100);
+    }
+  }, [card.id, card.image, card.dominantColor, extractImageData, updateCard]);
+
+  // Use cached dominantColor to determine background brightness
+  useEffect(() => {
+    if (card.dominantColor) {
+      // Parse hex color
+      const hex = card.dominantColor.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16);
+      const g = parseInt(hex.substring(2, 4), 16);
+      const b = parseInt(hex.substring(4, 6), 16);
+
+      // Apply 20% black overlay effect and calculate luminance
+      const overlayedR = r * 0.8;
+      const overlayedG = g * 0.8;
+      const overlayedB = b * 0.8;
+      const luminance = getLuminance(overlayedR, overlayedG, overlayedB);
+      setIsDarkBackground(luminance <= 0.4);
+    }
+  }, [card.dominantColor]);
+
+  // Handle image load - now only updates local aspect ratio state
+  // Color extraction is handled by the effect above via Web Worker
   const handleImageLoad = useCallback((event: React.SyntheticEvent<HTMLImageElement>) => {
     const img = event.currentTarget;
     if (img.naturalWidth && img.naturalHeight) {
@@ -146,25 +203,13 @@ export function GridCard({
       // Clamp aspect ratio to reasonable bounds (0.5 to 2.5)
       const clampedRatio = Math.max(0.5, Math.min(2.5, ratio));
       setImageAspectRatio(clampedRatio);
-
-      // Calculate average color and determine if background is dark
-      // The blurred background has a 20% black overlay, so we account for that
-      const extractedColor = getAverageColor(img);
-      if (extractedColor) {
-        // Apply the 20% black overlay effect to the average color
-        const overlayedR = extractedColor.r * 0.8;
-        const overlayedG = extractedColor.g * 0.8;
-        const overlayedB = extractedColor.b * 0.8;
-        const luminance = getLuminance(overlayedR, overlayedG, overlayedB);
-        // If luminance > 0.4, background is light enough to need dark text
-        setIsDarkBackground(luminance <= 0.4);
-      }
     }
   }, []);
 
   // Calculate the aspect ratio to use for the thumbnail container
+  // Prefer cached aspectRatio from DB, then measured, then default
   const thumbnailAspectRatio = hasImage
-    ? (imageAspectRatio || DEFAULT_ASPECT_RATIO)
+    ? (card.aspectRatio || imageAspectRatio || DEFAULT_ASPECT_RATIO)
     : DEFAULT_ASPECT_RATIO;
 
   // Determine if we should show the metadata footer
@@ -263,6 +308,11 @@ export function GridCard({
         'focus:outline-none',
         uniformHeight && 'h-full'
       )}
+      style={{
+        // CSS containment: isolate this card's layout/paint from affecting others
+        // Reduces paint scope and enables browser optimizations
+        contain: 'layout style paint',
+      }}
     >
       {/* Outer card container with configurable blurred padding */}
       <div
@@ -278,16 +328,29 @@ export function GridCard({
           border: '1px solid var(--glass-border)',
         }}
       >
-        {/* Blurred thumbnail background - creates colored blur padding */}
+        {/* Blurred thumbnail background - CSS blur using background-image (browser-cached)
+            Single image approach: uses same URL as main image, browser serves from cache
+            This halves the number of Image components from 360 to 180 across all cards */}
         {hasImage && (
           <div className="absolute inset-0 overflow-hidden rounded-2xl">
-            <Image
-              src={card.image!}
-              alt=""
-              fill
-              sizes="(max-width: 768px) 100vw, 300px"
-              className="object-cover scale-150 blur-2xl saturate-200 opacity-90"
-              onError={() => setImageError(true)}
+            {/* Instant placeholder: solid color background using cached dominantColor
+                Renders immediately while blur image loads (Fabric-style UX) */}
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundColor: card.dominantColor || 'var(--color-bg-surface-2)',
+              }}
+            />
+            {/* Blurred image layer */}
+            <div
+              className="absolute inset-[-20px] scale-110"
+              style={{
+                backgroundImage: `url(${card.image})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                filter: 'blur(32px) saturate(2)',
+                opacity: 0.9,
+              }}
             />
             {/* Darken overlay to ensure contrast */}
             <div className="absolute inset-0 bg-black/20" />
