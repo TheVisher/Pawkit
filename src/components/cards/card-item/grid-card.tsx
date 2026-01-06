@@ -113,6 +113,8 @@ interface GridCardProps {
   onTagClick?: (tag: string) => void;
   /** Called when a system tag in the footer is clicked (for filtering) */
   onSystemTagClick?: (tag: SystemTag) => void;
+  /** Prioritize this card's image for LCP (use for first ~6 visible cards) */
+  priority?: boolean;
 }
 
 /**
@@ -126,10 +128,12 @@ export function GridCard({
   uniformHeight = false,
   onTagClick,
   onSystemTagClick,
+  priority = false,
 }: GridCardProps) {
   const [imageError, setImageError] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
   const [isDarkBackground, setIsDarkBackground] = useState(true); // Default to dark (safer for overlays)
+  const cardRef = useRef<HTMLButtonElement>(null);
   const Icon = getCardIcon(card.type);
   const domain = card.domain || getDomain(card.url);
 
@@ -137,6 +141,8 @@ export function GridCard({
   const { extractImageData } = useImageColorWorker();
   const updateCard = useDataStore((s) => s.updateCard);
   const processingRef = useRef(false);
+  const idleCallbackIdRef = useRef<number | null>(null);
+  const timeoutIdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Merge with defaults
   const settings: CardDisplaySettings = { ...DEFAULT_CARD_DISPLAY, ...displaySettings };
@@ -144,14 +150,14 @@ export function GridCard({
   const hasImage = card.image && !imageError;
   const hasFavicon = card.favicon && !imageError;
 
-  // Effect: Process cards without dominantColor/aspectRatio using Web Worker
+  // Effect: Process cards without dominantColor/aspectRatio/blurDataUri using Web Worker
   // This runs once per card and persists the result to DB
   // NOTE: New cards now get aspectRatio extracted at creation time via metadata-service.ts
   // This effect handles legacy cards that were created before that optimization
   useEffect(() => {
-    // Skip if: no image, already has aspectRatio (main priority for layout), already processing, or worker not supported
-    // We prioritize aspectRatio over dominantColor since it affects layout stability
-    if (!card.image || card.aspectRatio || processingRef.current || !isImageWorkerSupported()) {
+    // Skip if: no image, already has all cached data, already processing, or worker not supported
+    // We check aspectRatio as the primary indicator since it affects layout stability
+    if (!card.image || (card.aspectRatio && card.blurDataUri) || processingRef.current || !isImageWorkerSupported()) {
       return;
     }
 
@@ -165,19 +171,39 @@ export function GridCard({
         await updateCard(card.id, {
           dominantColor: result.dominantColor,
           aspectRatio: result.aspectRatio,
+          blurDataUri: result.blurDataUri,
         });
       }
       processingRef.current = false;
     };
 
-    // Defer processing to idle time
+    // Defer processing with short timeout (100ms) to avoid blocking scroll
+    // Previous 5000ms timeout caused accumulated callbacks to block when user resumed scrolling
     if ('requestIdleCallback' in window) {
-      requestIdleCallback(() => processImage(), { timeout: 5000 });
+      idleCallbackIdRef.current = requestIdleCallback(() => {
+        idleCallbackIdRef.current = null;
+        processImage();
+      }, { timeout: 100 });
     } else {
-      // Fallback for Safari
-      setTimeout(() => processImage(), 100);
+      // Fallback for Safari - use setTimeout with cleanup
+      timeoutIdRef.current = setTimeout(() => {
+        timeoutIdRef.current = null;
+        processImage();
+      }, 50);
     }
-  }, [card.id, card.image, card.aspectRatio, extractImageData, updateCard]);
+
+    // Cleanup: cancel pending callbacks on unmount to prevent stale processing
+    return () => {
+      if (idleCallbackIdRef.current !== null && 'cancelIdleCallback' in window) {
+        cancelIdleCallback(idleCallbackIdRef.current);
+        idleCallbackIdRef.current = null;
+      }
+      if (timeoutIdRef.current !== null) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
+    };
+  }, [card.id, card.image, card.aspectRatio, card.blurDataUri, extractImageData, updateCard]);
 
   // Use cached dominantColor to determine background brightness
   useEffect(() => {
@@ -196,6 +222,7 @@ export function GridCard({
       setIsDarkBackground(luminance <= 0.4);
     }
   }, [card.dominantColor]);
+
 
   // Handle image load - now only updates local aspect ratio state
   // Color extraction is handled by the effect above via Web Worker
@@ -303,6 +330,7 @@ export function GridCard({
 
   return (
     <button
+      ref={cardRef}
       onClick={onClick}
       className={cn(
         'group relative w-full text-left',
@@ -331,30 +359,33 @@ export function GridCard({
           border: '1px solid var(--glass-border)',
         }}
       >
-        {/* Blurred thumbnail background - CSS blur using background-image (browser-cached)
-            Single image approach: uses same URL as main image, browser serves from cache
-            This halves the number of Image components from 360 to 180 across all cards */}
+        {/* Blurred thumbnail background using tiny data URI (~500 bytes)
+            Data URIs don't trigger LCP measurement, so blur loads instantly with cards
+            16x16 JPEG is visually identical when CSS blur(32px) is applied */}
         {hasImage && (
           <div className="absolute inset-0 overflow-hidden rounded-2xl">
             {/* Instant placeholder: solid color background using cached dominantColor
-                Renders immediately while blur image loads (Fabric-style UX) */}
+                Renders immediately while blur data URI loads (Fabric-style UX) */}
             <div
               className="absolute inset-0"
               style={{
                 backgroundColor: card.dominantColor || 'var(--color-bg-surface-2)',
               }}
             />
-            {/* Blurred image layer */}
-            <div
-              className="absolute inset-[-20px] scale-110"
-              style={{
-                backgroundImage: `url(${card.image})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                filter: 'blur(32px) saturate(2)',
-                opacity: 0.9,
-              }}
-            />
+            {/* Blurred image layer - uses tiny data URI (no LCP impact) */}
+            {card.blurDataUri && (
+              <div
+                className="absolute inset-[-20px] scale-110"
+                aria-hidden="true"
+                style={{
+                  backgroundImage: `url(${card.blurDataUri})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  filter: 'blur(32px) saturate(2)',
+                  opacity: 0.9,
+                }}
+              />
+            )}
             {/* Darken overlay to ensure contrast */}
             <div className="absolute inset-0 bg-black/20" />
           </div>
@@ -388,9 +419,11 @@ export function GridCard({
               alt={card.title || 'Card thumbnail'}
               fill
               sizes="(max-width: 768px) 100vw, 300px"
-              className="object-cover transition-transform duration-300 group-hover:scale-105"
+              className="object-cover"
               onError={() => setImageError(true)}
               onLoad={handleImageLoad}
+              priority={priority}
+              loading={priority ? undefined : 'lazy'}
             />
           ) : isNoteCard(card.type) ? (
             /* Note card preview - title at top, formatted content below */
