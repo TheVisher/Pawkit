@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, startTransition } from 'react';
 import Image from 'next/image';
 import DOMPurify from 'dompurify';
 import {
@@ -167,11 +167,14 @@ export function GridCard({
     const processImage = async () => {
       const result = await extractImageData(card.id, card.image!);
       if (result) {
-        // Persist to DB (local-only, no sync conflict)
-        await updateCard(card.id, {
-          dominantColor: result.dominantColor,
-          aspectRatio: result.aspectRatio,
-          blurDataUri: result.blurDataUri,
+        // Persist to DB using startTransition for low-priority update
+        // This prevents blocking scroll/interactions while React applies the state change
+        startTransition(() => {
+          updateCard(card.id, {
+            dominantColor: result.dominantColor,
+            aspectRatio: result.aspectRatio,
+            blurDataUri: result.blurDataUri,
+          });
         });
       }
       processingRef.current = false;

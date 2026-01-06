@@ -63,6 +63,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   // Timeout refs for delayed hide (gives user time to move mouse onto panel)
   const leftHideTimeout = useRef<NodeJS.Timeout | null>(null);
   const rightHideTimeout = useRef<NodeJS.Timeout | null>(null);
+  // Track current hover state with refs to avoid triggering re-renders for repeated setState calls
+  const leftHoveredRef = useRef(false);
+  const rightHoveredRef = useRef(false);
 
   const setBasicUserInfo = useAuthStore((s) => s.setBasicUserInfo);
   const setLoading = useAuthStore((s) => s.setLoading);
@@ -108,10 +111,12 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
 
       // Set user info in auth store
       setBasicUserInfo({ id: userId, email: userEmail });
-      setLoading(false);
 
-      // Load workspaces from Dexie
+      // Load workspaces from Dexie BEFORE hiding loading state
       await loadWorkspaces(userId);
+
+      // Only hide loading state after data is loaded
+      setLoading(false);
     }
 
     init();
@@ -235,12 +240,16 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
       clearTimeout(leftHideTimeout.current);
       leftHideTimeout.current = null;
     }
-    if (!isLeftOpen) setLeftHovered(true);
+    if (!isLeftOpen && !leftHoveredRef.current) {
+      leftHoveredRef.current = true;
+      setLeftHovered(true);
+    }
   }, [isLeftOpen]);
 
   const handleLeftMouseLeave = useCallback(() => {
     // Delay hiding to give user time to move mouse onto panel
     leftHideTimeout.current = setTimeout(() => {
+      leftHoveredRef.current = false;
       setLeftHovered(false);
     }, 550);
   }, []);
@@ -251,12 +260,16 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
       clearTimeout(rightHideTimeout.current);
       rightHideTimeout.current = null;
     }
-    if (!isRightOpen) setRightHovered(true);
+    if (!isRightOpen && !rightHoveredRef.current) {
+      rightHoveredRef.current = true;
+      setRightHovered(true);
+    }
   }, [isRightOpen]);
 
   const handleRightMouseLeave = useCallback(() => {
     // Delay hiding to give user time to move mouse onto panel
     rightHideTimeout.current = setTimeout(() => {
+      rightHoveredRef.current = false;
       setRightHovered(false);
     }, 550);
   }, []);
@@ -276,12 +289,18 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   }, []);
 
   // Track scroll position for omnibar collapse
+  // Only update state when crossing the threshold to avoid unnecessary re-renders on every scroll
+  const isScrolledRef = useRef(false);
   useEffect(() => {
     if (!scrollContainer) return;
 
     const handleScroll = () => {
       const shouldCollapse = scrollContainer.scrollTop > OMNIBAR_SCROLL_THRESHOLD;
-      setIsScrolled(shouldCollapse);
+      // Only trigger state update when crossing the threshold
+      if (shouldCollapse !== isScrolledRef.current) {
+        isScrolledRef.current = shouldCollapse;
+        setIsScrolled(shouldCollapse);
+      }
     };
 
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
@@ -294,37 +313,46 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   // Checks mouse position to trigger edge hover zones
   useEffect(() => {
     const triggerZoneWidth = 20;
+    let rafId: number | null = null;
 
     const handlePointerMove = (e: PointerEvent) => {
-      const windowWidth = window.innerWidth;
-      const x = e.clientX;
+      // Use RAF throttle to coalesce rapid pointermove events
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = null;
+        const windowWidth = window.innerWidth;
+        const x = e.clientX;
 
-      // Left edge zone
-      if (x <= triggerZoneWidth && !isLeftOpen) {
-        // Cancel any pending hide
-        if (leftHideTimeout.current) {
-          clearTimeout(leftHideTimeout.current);
-          leftHideTimeout.current = null;
+        // Left edge zone - only set state if changing to true
+        if (x <= triggerZoneWidth && !isLeftOpen && !leftHoveredRef.current) {
+          leftHoveredRef.current = true;
+          // Cancel any pending hide
+          if (leftHideTimeout.current) {
+            clearTimeout(leftHideTimeout.current);
+            leftHideTimeout.current = null;
+          }
+          setLeftHovered(true);
         }
-        setLeftHovered(true);
-      }
 
-      // Right edge zone
-      if (x >= windowWidth - triggerZoneWidth && !isRightOpen) {
-        // Cancel any pending hide
-        if (rightHideTimeout.current) {
-          clearTimeout(rightHideTimeout.current);
-          rightHideTimeout.current = null;
+        // Right edge zone - only set state if changing to true
+        if (x >= windowWidth - triggerZoneWidth && !isRightOpen && !rightHoveredRef.current) {
+          rightHoveredRef.current = true;
+          // Cancel any pending hide
+          if (rightHideTimeout.current) {
+            clearTimeout(rightHideTimeout.current);
+            rightHideTimeout.current = null;
+          }
+          setRightHovered(true);
         }
-        setRightHovered(true);
-      }
+      });
     };
 
     // Use document level listener with capture for better event reception
-    document.addEventListener('pointermove', handlePointerMove, { capture: true });
+    document.addEventListener('pointermove', handlePointerMove, { capture: true, passive: true });
 
     return () => {
       document.removeEventListener('pointermove', handlePointerMove, { capture: true });
+      if (rafId !== null) cancelAnimationFrame(rafId);
     };
   }, [isLeftOpen, isRightOpen]);
 
@@ -338,13 +366,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
   const leftMerged = isLeftOpen && isLeftAnchored;
   const rightMerged = isRightOpen && isRightAnchored;
 
-  if (!isInitialized) {
-    return (
-      <div className="h-screen w-screen flex items-center justify-center bg-bg-base text-text-primary">
-        <div className="text-text-muted">Loading...</div>
-      </div>
-    );
-  }
+  // NOTE: We no longer block rendering while waiting for workspace initialization
+  // Pages handle their own loading states via DataContext.isLoading
+  // This dramatically improves LCP by allowing the shell to render immediately
 
   // Panel base styles - Glass mode with backdrop blur (same for all panels, all states)
   // Uses CSS variables from globals.css for centralized theming
