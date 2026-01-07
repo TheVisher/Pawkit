@@ -77,6 +77,7 @@ export interface LocalCard extends SyncMetadata {
   // Image optimization (extracted via Web Worker for instant placeholders)
   dominantColor?: string;     // Hex color extracted from image, e.g., "#2a1f1f"
   aspectRatio?: number;       // Image width/height ratio for layout stability
+  blurDataUri?: string;       // Tiny base64 JPEG (16x16) for blur background (~500 bytes)
   metadata?: Record<string, unknown>;
   status: string;             // PENDING, READY, ERROR
   transcriptSegments?: string; // JSON string of YouTube transcripts
