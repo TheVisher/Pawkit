@@ -17,6 +17,7 @@ interface ImageProcessResponse {
   id: string;
   dominantColor?: string;
   aspectRatio?: number;
+  blurDataUri?: string;
   error?: boolean;
 }
 
@@ -128,7 +129,7 @@ export function useImageColorWorker() {
     async (
       cardId: string,
       imageSrc: string
-    ): Promise<{ dominantColor?: string; aspectRatio?: number } | null> => {
+    ): Promise<{ dominantColor?: string; aspectRatio?: number; blurDataUri?: string } | null> => {
       try {
         const worker = await getWorker();
 
@@ -152,6 +153,7 @@ export function useImageColorWorker() {
                 resolve({
                   dominantColor: result.dominantColor,
                   aspectRatio: result.aspectRatio,
+                  blurDataUri: result.blurDataUri,
                 });
               }
             },
@@ -184,8 +186,8 @@ export function useImageColorWorker() {
   const extractBatch = useCallback(
     async (
       items: Array<{ cardId: string; imageSrc: string }>
-    ): Promise<Map<string, { dominantColor?: string; aspectRatio?: number }>> => {
-      const results = new Map<string, { dominantColor?: string; aspectRatio?: number }>();
+    ): Promise<Map<string, { dominantColor?: string; aspectRatio?: number; blurDataUri?: string }>> => {
+      const results = new Map<string, { dominantColor?: string; aspectRatio?: number; blurDataUri?: string }>();
 
       // Process in parallel (worker handles sequentially internally)
       const promises = items.map(async ({ cardId, imageSrc }) => {
