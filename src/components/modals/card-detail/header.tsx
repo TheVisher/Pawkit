@@ -7,7 +7,7 @@
  * Supports expandable image mode with smooth animation
  */
 
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import Image from 'next/image';
 import { Globe, ExternalLink, Maximize2, ZoomIn } from 'lucide-react';
 import { cn } from '@/lib/utils';

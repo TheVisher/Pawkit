@@ -51,6 +51,7 @@ export function ArticleContent({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const progressRef = useRef(card.readProgress || 0);
+  const scrollPositionRef = useRef(card.lastScrollPosition || 0);
 
   // Derived state
   const articleContent = card.articleContent || '';
@@ -164,12 +165,15 @@ export function ArticleContent({
     }
   }, [card.id, card.url, isExtractingArticle, updateCard]);
 
-  // Save scroll progress (just for progress bar and resume position, not for read marking)
-  const saveScrollProgress = useCallback((progress: number, scrollPosition: number) => {
-    updateCard(card.id, {
-      readProgress: progress,
-      lastScrollPosition: scrollPosition,
-    });
+  // Save scroll progress on close (not during scroll to avoid re-renders and scroll jumping)
+  const saveScrollProgressOnClose = useCallback(() => {
+    // Only save if there's meaningful progress
+    if (progressRef.current > 0 || scrollPositionRef.current > 0) {
+      updateCard(card.id, {
+        readProgress: progressRef.current,
+        lastScrollPosition: scrollPositionRef.current,
+      });
+    }
   }, [card.id, updateCard]);
 
   // Simple auto-read marking: 15 seconds with modal open = marked as read
@@ -188,12 +192,13 @@ export function ArticleContent({
   }, [hasArticleContent, card.id, card.isRead, card.manuallyMarkedUnread, card.tags, updateCard]);
 
   // Track scroll progress in modal view - use direct DOM manipulation to avoid re-renders
-  // This is just for the visual progress bar and saving scroll position for resume
+  // Progress is saved only on close, not during scroll (prevents scroll jumping and re-renders)
+  const hasRestoredScrollRef = useRef(false);
+  const initialScrollPositionRef = useRef(card.lastScrollPosition);
+
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container || !hasArticleContent) return;
-
-    let saveTimeout: ReturnType<typeof setTimeout>;
 
     const handleScroll = () => {
       const { scrollTop, scrollHeight, clientHeight } = container;
@@ -202,30 +207,32 @@ export function ArticleContent({
 
       const progress = Math.min(100, Math.round((scrollTop / maxScroll) * 100));
 
-      // Update ref and DOM directly - no state change = no re-render
+      // Update refs and DOM directly - no state change = no re-render, no DB save
       progressRef.current = progress;
+      scrollPositionRef.current = scrollTop;
       if (progressBarRef.current) {
         progressBarRef.current.style.width = `${progress}%`;
       }
-
-      // Debounced save to DB (progress bar + scroll position only)
-      clearTimeout(saveTimeout);
-      saveTimeout = setTimeout(() => {
-        saveScrollProgress(progress, scrollTop);
-      }, 500);
     };
 
-    // Restore scroll position on mount
-    if (card.lastScrollPosition) {
-      container.scrollTop = card.lastScrollPosition;
+    // Restore scroll position on mount only
+    if (initialScrollPositionRef.current && !hasRestoredScrollRef.current) {
+      hasRestoredScrollRef.current = true;
+      container.scrollTop = initialScrollPositionRef.current;
     }
 
     container.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       container.removeEventListener('scroll', handleScroll);
-      clearTimeout(saveTimeout);
     };
-  }, [hasArticleContent, card.lastScrollPosition, saveScrollProgress]);
+  }, [hasArticleContent]);
+
+  // Save progress when component unmounts (modal closes)
+  useEffect(() => {
+    return () => {
+      saveScrollProgressOnClose();
+    };
+  }, [saveScrollProgressOnClose]);
 
   // Full viewport reader mode
   if (showFullReader && hasArticleContent) {
@@ -237,8 +244,8 @@ export function ArticleContent({
         domain={domain}
         wordCount={wordCount}
         readingTime={readingTime}
-        initialProgress={card.readProgress || 0}
-        onProgressChange={saveScrollProgress}
+        initialProgress={progressRef.current || card.readProgress || 0}
+        onProgressSave={saveScrollProgressOnClose}
         onClose={() => setShowFullReader(false)}
         onMinimize={() => setShowFullReader(false)}
       />
