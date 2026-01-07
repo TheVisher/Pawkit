@@ -11,15 +11,6 @@ import { X, Minus, Plus, Type, Minimize2, Sun, Moon, Monitor } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
-// Debounce helper
-function debounce<T extends (...args: Parameters<T>) => void>(fn: T, ms: number): T {
-  let timeoutId: ReturnType<typeof setTimeout>;
-  return ((...args: Parameters<T>) => {
-    clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => fn(...args), ms);
-  }) as T;
-}
-
 interface ReaderProps {
   title: string;
   content: string;
@@ -28,7 +19,7 @@ interface ReaderProps {
   wordCount?: number;
   readingTime?: number;
   initialProgress?: number;
-  onProgressChange?: (progress: number, scrollPosition: number) => void;
+  onProgressSave?: () => void; // Called on close to save progress
   onClose: () => void;
   onMinimize?: () => void; // Go back to modal reader view
 }
@@ -70,7 +61,7 @@ export function Reader({
   wordCount,
   readingTime,
   initialProgress = 0,
-  onProgressChange,
+  onProgressSave,
   onClose,
   onMinimize,
 }: ReaderProps) {
@@ -124,24 +115,17 @@ export function Reader({
       ADD_ATTR: ['allowfullscreen', 'frameborder', 'src', 'loading'],
     });
 
-    // Add lazy loading to images and handle errors
+    // Add lazy loading to images (onerror removed for security - handled via CSS)
     cleaned = cleaned.replace(
       /<img\s/gi,
-      '<img loading="lazy" onerror="this.style.display=\'none\'" '
+      '<img loading="lazy" '
     );
 
     return cleaned;
   }, [content]);
 
-  // Debounced progress save - only saves to DB every 500ms
-  const debouncedProgressSave = useMemo(
-    () => debounce((progress: number, scrollTop: number) => {
-      onProgressChange?.(progress, scrollTop);
-    }, 500),
-    [onProgressChange]
-  );
-
   // Handle scroll - updates DOM directly via refs to avoid re-renders
+  // Progress is saved only on close, not during scroll
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
 
@@ -150,7 +134,7 @@ export function Reader({
 
     const newProgress = maxScroll <= 0 ? 100 : Math.min(100, Math.round((scrollTop / maxScroll) * 100));
 
-    // Update refs and DOM directly - no state change = no re-render
+    // Update refs and DOM directly - no state change = no re-render, no DB save
     progressRef.current = newProgress;
     if (progressBarRef.current) {
       progressBarRef.current.style.width = `${newProgress}%`;
@@ -158,14 +142,25 @@ export function Reader({
     if (progressTextRef.current) {
       progressTextRef.current.textContent = `${newProgress}%`;
     }
+  }, []);
 
-    // Debounced save to DB
-    debouncedProgressSave(newProgress, scrollTop);
-  }, [debouncedProgressSave]);
+  // Handle close - save progress first
+  const handleClose = useCallback(() => {
+    onProgressSave?.();
+    onClose();
+  }, [onProgressSave, onClose]);
 
-  // Restore scroll position on mount
+  // Handle minimize - save progress first
+  const handleMinimize = useCallback(() => {
+    onProgressSave?.();
+    onMinimize?.();
+  }, [onProgressSave, onMinimize]);
+
+  // Restore scroll position on mount only (not when progress updates)
+  const hasRestoredScroll = useRef(false);
   useEffect(() => {
-    if (scrollRef.current && initialProgress > 0) {
+    if (scrollRef.current && initialProgress > 0 && !hasRestoredScroll.current) {
+      hasRestoredScroll.current = true;
       const { scrollHeight, clientHeight } = scrollRef.current;
       const maxScroll = scrollHeight - clientHeight;
       scrollRef.current.scrollTop = (initialProgress / 100) * maxScroll;
@@ -210,7 +205,7 @@ export function Reader({
           <Button
             variant="ghost"
             size="icon"
-            onClick={onClose}
+            onClick={handleClose}
             className="h-9 w-9"
             style={{ color: themeStyle.text }}
           >
@@ -251,7 +246,7 @@ export function Reader({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onMinimize}
+              onClick={handleMinimize}
               className="h-8 w-8"
               style={{ color: themeStyle.text }}
               title="Minimize to modal"
@@ -454,6 +449,10 @@ export function Reader({
           height: auto;
           border-radius: 8px;
           margin: 1em 0;
+        }
+        .reader-content img[src=""],
+        .reader-content img:not([src]) {
+          display: none;
         }
         .reader-content ul,
         .reader-content ol {
