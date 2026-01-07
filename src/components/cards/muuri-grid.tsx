@@ -241,8 +241,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
       // Initial calculation
       calculateWidth();
 
-      // Recalculate on resize - debounced to wait for sidebar animations to complete
-      // Sidebar transitions are 300ms, so wait 350ms before recalculating
+      // Recalculate on resize with minimal debounce (just to batch rapid resize events)
       let resizeTimeout: ReturnType<typeof setTimeout> | null = null;
       let isFirstObservation = true;
       const resizeObserver = new ResizeObserver(() => {
@@ -252,7 +251,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
           return;
         }
         if (resizeTimeout) clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(calculateWidth, 350);
+        resizeTimeout = setTimeout(calculateWidth, 16); // ~1 frame debounce
       });
       resizeObserver.observe(wrapperRef.current);
 
@@ -293,8 +292,8 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
             alignBottom,
             rounding: true,
           },
-          // Debounce resize layouts to wait for sidebar animations (300ms) to complete
-          layoutOnResize: 350,
+          // Minimal debounce for window resize events
+          layoutOnResize: 16,
           layoutOnInit: true,
           layoutDuration,
           layoutEasing,
@@ -488,6 +487,21 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
     // Images now get aspectRatio at creation time (metadata-service.ts),
     // so layout-breaking size changes are rare. If needed, we can add
     // targeted ResizeObserver for specific cases (e.g., note cards editing).
+
+    // Re-layout when item width changes (e.g., sidebar expand/collapse)
+    useEffect(() => {
+      if (!gridRef.current || !isInitializedRef.current) return;
+
+      // Use RAF to ensure React has applied the new widths to DOM
+      const rafId = requestAnimationFrame(() => {
+        if (gridRef.current) {
+          gridRef.current.refreshItems();
+          gridRef.current.layout();
+        }
+      });
+
+      return () => cancelAnimationFrame(rafId);
+    }, [calculatedItemWidth]);
 
     // Cleanup on unmount
     useEffect(() => {
