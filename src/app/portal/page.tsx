@@ -105,7 +105,7 @@ export default function PortalPage() {
 
     const nonDeleted = cards.filter((c) => !c._deleted);
     const filtered = selectedPawkit
-      ? nonDeleted.filter((c) => c.collections?.includes(selectedPawkit))
+      ? nonDeleted.filter((c) => c.tags?.includes(selectedPawkit))
       : nonDeleted;
 
     // Sort by newest first (handle Date objects or ISO strings)
@@ -218,7 +218,7 @@ export default function PortalPage() {
         await createUrlCard({
           url: url,
           workspaceId: currentWorkspace.id,
-          collections: targetCollection ? [targetCollection] : [],
+          tags: targetCollection ? [targetCollection] : [],
         });
         log.info('Card created, metadata fetching...');
       } catch (error) {
