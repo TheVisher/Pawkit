@@ -8,6 +8,7 @@ import {
   forwardRef,
   useImperativeHandle,
 } from 'react';
+import { useDebugGridValues } from '@/lib/hooks/use-debug-value';
 
 // Muuri type declarations (library doesn't include types)
 declare class MuuriGrid {
@@ -213,6 +214,9 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
     const [calculatedItemWidth, setCalculatedItemWidth] = useState<number>(minItemWidth);
     const [isReady, setIsReady] = useState(false);
 
+    // Get debug values for live tuning
+    const debugValues = useDebugGridValues();
+
     // Calculate stretched item width to fill available space with consistent edge padding
     useEffect(() => {
       if (!wrapperRef.current || itemCount === 0) {
@@ -251,7 +255,7 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
           return;
         }
         if (resizeTimeout) clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(calculateWidth, 16); // ~1 frame debounce
+        resizeTimeout = setTimeout(calculateWidth, debugValues.layoutOnResize);
       });
       resizeObserver.observe(wrapperRef.current);
 
@@ -286,17 +290,17 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
         const grid = new Muuri(containerRef.current, {
           items: '.muuri-item',
           layout: {
-            fillGaps,
+            fillGaps: debugValues.fillGaps,
             horizontal,
             alignRight,
             alignBottom,
             rounding: true,
           },
-          // Minimal debounce for window resize events
-          layoutOnResize: 16,
+          // Debounce for window resize events (configurable via debug panel)
+          layoutOnResize: debugValues.layoutOnResize,
           layoutOnInit: true,
-          layoutDuration,
-          layoutEasing,
+          layoutDuration: debugValues.layoutDuration,
+          layoutEasing: debugValues.layoutEasing,
           dragEnabled,
           dragContainer: document.body, // Move to body during drag to escape overflow clipping
           dragHandle: dragHandle || null,
@@ -332,8 +336,8 @@ export const MuuriGridComponent = forwardRef<MuuriGridRef, MuuriGridProps>(
               return placeholder;
             },
           },
-          showDuration: 200,
-          hideDuration: 200,
+          showDuration: debugValues.showDuration,
+          hideDuration: debugValues.hideDuration,
           visibleStyles: {
             opacity: 1,
             transform: 'scale(1)',

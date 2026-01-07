@@ -76,14 +76,14 @@ export function Omnibar({ isCompact }: OmnibarProps) {
         )}
         initial={false}
         animate={{
-          width: effectivelyCompact ? 140 : '100%',
+          width: effectivelyCompact ? 140 : 400,
           height: expandedHeight,
           scaleY: isEjecting ? 1.04 : 1,
           scaleX: isEjecting ? 0.98 : 1,
         }}
         transition={{
-          width: { duration: 0.3, ease: [0.4, 0, 0.2, 1] },
-          height: { duration: 0.2, ease: [0.4, 0, 0.2, 1] },
+          width: { duration: 0.25, ease: 'easeOut' },
+          height: { duration: 0.2, ease: 'easeOut' },
           scaleY: {
             type: 'spring',
             stiffness: 500,
@@ -97,7 +97,11 @@ export function Omnibar({ isCompact }: OmnibarProps) {
             mass: 0.8,
           },
         }}
-        style={{ transformOrigin: 'center top' }}
+        style={{
+          transformOrigin: 'center top',
+          willChange: 'width, height',
+          contain: 'layout style',
+        }}
       >
         <AnimatePresence mode="popLayout">
           {showToast ? (

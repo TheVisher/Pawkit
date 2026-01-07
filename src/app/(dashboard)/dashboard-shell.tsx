@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, startTransition } from 'react';
 import { useAuthStore } from '@/lib/stores/auth-store';
 import { useWorkspaceStore } from '@/lib/stores/workspace-store';
 import { useDataStore } from '@/lib/stores/data-store';
@@ -299,7 +299,9 @@ export function DashboardShell({ userId, userEmail, children }: DashboardShellPr
       // Only trigger state update when crossing the threshold
       if (shouldCollapse !== isScrolledRef.current) {
         isScrolledRef.current = shouldCollapse;
-        setIsScrolled(shouldCollapse);
+        // Use startTransition to defer the state update, preventing scroll jank
+        // The omnibar animation is low-priority compared to smooth scrolling
+        startTransition(() => setIsScrolled(shouldCollapse));
       }
     };
 
