@@ -162,17 +162,17 @@ export function DebugPanel() {
 
       {/* Sections */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
-        {SECTIONS.map(({ id, label, badge, component: SectionComponent }) => (
-          <div key={id} className="rounded-lg bg-bg-surface-2/30">
+        {SECTIONS.map((section) => (
+          <div key={section.id} className="rounded-lg bg-bg-surface-2/30">
             <SectionHeader
-              title={label}
-              badge={badge}
-              isExpanded={expandedSections.includes(id)}
-              onToggle={() => toggleSection(id)}
+              title={section.label}
+              badge={'badge' in section ? section.badge : undefined}
+              isExpanded={expandedSections.includes(section.id)}
+              onToggle={() => toggleSection(section.id)}
             />
-            {expandedSections.includes(id) && (
+            {expandedSections.includes(section.id) && (
               <div className="px-2 pb-2">
-                <SectionComponent />
+                <section.component />
               </div>
             )}
           </div>
